@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual Goldfish Calculator</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="fish" aria-hidden="true">🐟</span> Goldfish Calculator</div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="deck">1 · Deck</button>
+    <button class="tab" data-tab="hands">2 · Opening Hands</button>
+    <button class="tab" data-tab="table">3 · Goldfish Table</button>
+    <button class="tab" data-tab="sim">4 · Simulation</button>
+    <button class="tab" data-tab="odds">5 · Draw Odds</button>
+  </nav>
+  <div id="mirrorStatus" class="status-pill">checking ScryMirror…</div>
+</header>
+
+<main>
+  <!-- ============ DECK ============ -->
+  <section id="tab-deck" class="panel active">
+    <div class="deck-layout">
+      <div class="deck-input card-box">
+        <h2>Paste a decklist</h2>
+        <p class="hint">Moxfield, Archidekt, MTGO or plain text. <code>1 Sol Ring</code>, <code>1x Sol Ring (C21) 263</code>, a <code>Commander</code> section, or <code>*CMDR*</code> tags.</p>
+        <textarea id="deckText" spellcheck="false" placeholder="Commander&#10;1 Omnath, Locus of Rage&#10;&#10;Deck&#10;1 Sol Ring&#10;1 Cultivate&#10;20 Forest&#10;..."></textarea>
+        <div class="row">
+          <button id="loadDeck" class="primary">Load deck</button>
+          <button id="saveDeck" class="ghost" title="Save to this browser">Save</button>
+          <select id="savedDecks" class="ghost"><option value="">Saved decks…</option></select>
+        </div>
+        <div id="deckMsgs"></div>
+        <details class="settings" open>
+          <summary>Goldfish rules</summary>
+          <div class="grid2">
+            <label>Format
+              <select id="optFormat"><option value="commander">Commander (40 life, free mull)</option><option value="60">60-card (20 life)</option></select></label>
+            <label>Turns to simulate <input id="optTurns" type="number" min="3" max="20" value="10"></label>
+            <label>Keep 7 with lands ≥ <input id="optMinLands" type="number" min="0" max="7" value="2"></label>
+            <label>…and lands ≤ <input id="optMaxLands" type="number" min="0" max="7" value="5"></label>
+            <label class="check"><input id="optFreeMull" type="checkbox" checked> First mulligan free</label>
+            <label class="check"><input id="optOnPlay" type="checkbox"> On the play (skip T1 draw)</label>
+            <label class="check"><input id="optCmdrFirst" type="checkbox" checked> Prioritize casting commander</label>
+            <label>Opponent life <input id="optLife" type="number" min="1" max="200" value="40"></label>
+            <label>Games per simulation <input id="optN" type="number" min="200" max="50000" step="100" value="5000"></label>
+          </div>
+        </details>
+      </div>
+      <div class="deck-view">
+        <div id="deckTiles" class="tiles"></div>
+        <div class="card-box">
+          <div class="box-head"><h2>Curve wall</h2><span class="hint">Every non-land card stacked by mana value. Hover any card to zoom.</span></div>
+          <div id="curveWall" class="curve-wall empty-note">Load a deck to see its curve.</div>
+        </div>
+        <div class="card-box">
+          <div class="box-head"><h2>Lands &amp; mana</h2></div>
+          <div id="landWall" class="land-wall"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HANDS ============ -->
+  <section id="tab-hands" class="panel">
+    <div class="row wrap">
+      <button id="drawHand" class="primary">Draw a 7</button>
+      <button id="mullHand">Mulligan</button>
+      <button id="keepHand">Keep → Goldfish it</button>
+      <span class="sep"></span>
+      <button id="dealMany">Deal 12 sample hands</button>
+      <span id="handVerdict" class="verdict"></span>
+    </div>
+    <div id="handStage" class="hand-stage"><div class="empty-note">Load a deck, then draw a hand.</div></div>
+    <div id="handGrid" class="hand-grid"></div>
+    <div class="two-col">
+      <div class="card-box">
+        <div class="box-head"><h2>Lands in your opening 7</h2><span class="hint">Exact hypergeometric odds</span></div>
+        <div id="chartOpenLands" class="chart"></div>
+      </div>
+      <div class="card-box">
+        <div class="box-head"><h2>What a keepable hand looks like</h2></div>
+        <div id="keepStats" class="kv"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TABLE ============ -->
+  <section id="tab-table" class="panel">
+    <div class="table-controls row wrap">
+      <button id="tNew" class="primary">New game</button>
+      <button id="tAuto" title="Let the autopilot take this whole turn">▶ Autopilot turn</button>
+      <button id="tAutoTo">⏩ Autopilot to turn <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
+      <button id="tNext" title="Attack with everything, then untap and draw">Next turn ⟳</button>
+      <button id="tUndo" class="ghost">Undo</button>
+      <label class="check small"><input id="tFast" type="checkbox"> Fast animations</label>
+      <span class="hint">Click a hand card to play it (mana is auto-tapped). Click a permanent to tap or untap it. Right-click any card for more options.</span>
+    </div>
+    <div class="table">
+      <div class="table-side">
+        <div class="hud">
+          <div class="hud-item"><span class="lbl">Turn</span><span id="hTurn" class="big">0</span></div>
+          <div class="hud-item"><span class="lbl">Opponent life</span><span id="hLife" class="big">40</span></div>
+          <div class="hud-item"><span class="lbl">Mana open</span><span id="hMana" class="mana-pips"></span></div>
+          <div class="hud-item"><span class="lbl">Mana spent</span><span id="hSpent">0</span></div>
+        </div>
+        <div class="zone-pile" id="zLibrary"><div class="pile-label">Library <b id="cLibrary">0</b></div><div class="card-back pile"></div></div>
+        <div class="zone-pile" id="zCommand"><div class="pile-label">Command zone</div><div class="pile-cards"></div></div>
+        <div class="zone-pile" id="zGrave"><div class="pile-label">Graveyard <b id="cGrave">0</b></div><div class="pile-cards"></div></div>
+        <div class="zone-pile" id="zExile"><div class="pile-label">Exile <b id="cExile">0</b></div><div class="pile-cards"></div></div>
+      </div>
+      <div class="table-main">
+        <div class="bf-row" id="zCreatures"><span class="row-label">Creatures</span></div>
+        <div class="bf-row" id="zOther"><span class="row-label">Artifacts · Enchantments · Other</span></div>
+        <div class="bf-row lands" id="zLands"><span class="row-label">Lands</span></div>
+        <div class="hand-zone" id="zHand"></div>
+      </div>
+      <div class="table-log"><h3>Game log</h3><ol id="gameLog"></ol></div>
+    </div>
+  </section>
+
+  <!-- ============ SIM ============ -->
+  <section id="tab-sim" class="panel">
+    <div class="row wrap">
+      <button id="runSim" class="primary">Run simulation</button>
+      <div id="simProgress" class="progress"><div></div></div>
+      <span id="simInfo" class="hint"></span>
+    </div>
+    <div id="simTiles" class="tiles"></div>
+    <div class="two-col">
+      <div class="card-box"><div class="box-head"><h2>Mana available by turn</h2><span class="hint">Median line, shaded 10th–90th percentile</span></div><div id="chartMana" class="chart"></div></div>
+      <div class="card-box"><div class="box-head"><h2>Hitting every land drop</h2><span class="hint">P(at least N lands on turn N)</span></div><div id="chartLands" class="chart"></div></div>
+      <div class="card-box"><div class="box-head"><h2 id="cmdrTitle">Commander cast on turn…</h2></div><div id="chartCmdr" class="chart"></div></div>
+      <div class="card-box"><div class="box-head"><h2>Goldfish kill turn</h2><span class="hint">Combat damage only, no blockers</span></div><div id="chartKill" class="chart"></div></div>
+    </div>
+    <div class="card-box">
+      <div class="box-head"><h2>Sample games</h2><span class="hint">Pick a game from the distribution and replay it turn by turn</span></div>
+      <div class="row wrap" id="sampleButtons"></div>
+      <div id="replay" class="replay"></div>
+    </div>
+    <div class="card-box">
+      <div class="box-head"><h2>When each card gets played</h2><span class="hint">Color shows P(played by turn T). Sort by any column; hover a name for the card.</span></div>
+      <div id="heatmap" class="heatmap"></div>
+    </div>
+  </section>
+
+  <!-- ============ ODDS ============ -->
+  <section id="tab-odds" class="panel">
+    <div class="two-col">
+      <div class="card-box">
+        <h2>Draw odds (exact math)</h2>
+        <p class="hint">Pick cards. They're treated as a group: what are the odds you see at least <i>k</i> of them by each turn?</p>
+        <div class="row wrap">
+          <select id="oddsGroup">
+            <option value="">Quick groups…</option>
+            <option value="land">All lands</option>
+            <option value="ramp">All ramp</option>
+            <option value="draw">All card draw</option>
+            <option value="creature">All creatures</option>
+          </select>
+          <label>At least <input id="oddsK" type="number" min="1" max="20" value="1"></label>
+          <button id="oddsClear" class="ghost">Clear</button>
+        </div>
+        <div id="oddsPicker" class="odds-picker"></div>
+      </div>
+      <div class="card-box">
+        <div class="box-head"><h2 id="oddsTitle">Probability by turn</h2></div>
+        <div id="oddsSelected" class="odds-selected"></div>
+        <div id="chartOdds" class="chart"></div>
+        <div id="oddsTable"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="zoom" class="zoom" aria-hidden="true"></div>
+<div id="ctxMenu" class="ctx-menu"></div>
+<div id="toast" class="toast"></div>
+<div id="tooltip" class="tooltip"></div>
+
+<script src="sim.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

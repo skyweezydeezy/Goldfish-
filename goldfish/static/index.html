@@ -59,6 +59,12 @@
           <div class="box-head"><h2>Lands &amp; mana</h2></div>
           <div id="landWall" class="land-wall"></div>
         </div>
+        <div class="card-box">
+          <div class="box-head"><h2>How the engine reads your cards</h2><span class="hint">Each line of rules text: <span class="cov ok">simulated</span> <span class="cov neutral">doesn't matter vs. a goldfish</span> <span class="cov partial">approximated</span> <span class="cov ignored">not simulated</span></span></div>
+          <div class="row wrap"><label class="check small"><input id="covOnlyGaps" type="checkbox" checked> Only show cards with gaps</label><span id="covSummary" class="hint"></span></div>
+          <div id="coverage" class="coverage"></div>
+          <div id="tokenWall" class="token-wall"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -94,15 +100,18 @@
       <button id="tAuto" title="Let the autopilot take this whole turn">▶ Autopilot turn</button>
       <button id="tAutoTo">⏩ Autopilot to turn <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
       <button id="tNext" title="Attack with everything, then untap and draw">Next turn ⟳</button>
+      <button id="tToken" title="Create a token">+ Token</button>
       <button id="tUndo" class="ghost">Undo</button>
       <label class="check small"><input id="tFast" type="checkbox"> Fast animations</label>
-      <span class="hint">Click a hand card to play it (mana is auto-tapped). Click a permanent to tap or untap it. Right-click any card for more options.</span>
+      <span class="hint">Click a hand card to play it (mana auto-taps and triggers fire). Click a permanent to tap or untap it. Right-click for counters, sacrifice, moving cards and more.</span>
     </div>
     <div class="table">
       <div class="table-side">
         <div class="hud">
           <div class="hud-item"><span class="lbl">Turn</span><span id="hTurn" class="big">0</span></div>
-          <div class="hud-item"><span class="lbl">Opponent life</span><span id="hLife" class="big">40</span></div>
+          <div class="hud-item"><span class="lbl">Opponent life <small>(click to deal damage)</small></span><span id="hLife" class="big clickable">40</span></div>
+          <div class="hud-item"><span class="lbl">Commander damage</span><span id="hCmdr">0 / 21</span></div>
+          <div class="hud-item"><span class="lbl">Board power</span><span id="hPower">0</span></div>
           <div class="hud-item"><span class="lbl">Mana open</span><span id="hMana" class="mana-pips"></span></div>
           <div class="hud-item"><span class="lbl">Mana spent</span><span id="hSpent">0</span></div>
         </div>
@@ -133,7 +142,9 @@
       <div class="card-box"><div class="box-head"><h2>Mana available by turn</h2><span class="hint">Median line, shaded 10th–90th percentile</span></div><div id="chartMana" class="chart"></div></div>
       <div class="card-box"><div class="box-head"><h2>Hitting every land drop</h2><span class="hint">P(at least N lands on turn N)</span></div><div id="chartLands" class="chart"></div></div>
       <div class="card-box"><div class="box-head"><h2 id="cmdrTitle">Commander cast on turn…</h2></div><div id="chartCmdr" class="chart"></div></div>
-      <div class="card-box"><div class="box-head"><h2>Goldfish kill turn</h2><span class="hint">Combat damage only, no blockers</span></div><div id="chartKill" class="chart"></div></div>
+      <div class="card-box"><div class="box-head"><h2>Goldfish kill turn</h2><span class="hint">Combat, burn, drain and commander damage. No blockers.</span></div><div id="chartKill" class="chart"></div></div>
+      <div class="card-box"><div class="box-head"><h2>Total damage dealt by turn</h2><span class="hint">Median, shaded 10th–90th percentile</span></div><div id="chartDamage" class="chart"></div></div>
+      <div class="card-box"><div class="box-head"><h2>Board power by turn</h2><span class="hint">Total power on your side at end of turn</span></div><div id="chartPower" class="chart"></div></div>
     </div>
     <div class="card-box">
       <div class="box-head"><h2>Sample games</h2><span class="hint">Pick a game from the distribution and replay it turn by turn</span></div>

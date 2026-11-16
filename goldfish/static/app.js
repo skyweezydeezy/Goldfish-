@@ -75,7 +75,7 @@
   document.addEventListener('mouseover', e => {
     const m = e.target.closest('.mtg');
     if (!m || m.closest('.zoom') || m.dataset.uid == null) return;
-    const card = S.byUid[+m.dataset.uid]; if (!card) return;
+    const card = getCard(m.dataset.uid); if (!card) return;
     zoom.innerHTML = '';
     const faces = h('div', 'faces');
     const n = Math.max(1, (card.images || []).length || (card.remote_images || []).length);
@@ -95,6 +95,7 @@
     zoom.style.left = x + 'px'; zoom.style.top = y + 'px';
   }
 
+  function getCard(uid) { if (!S.deck) return null; return String(uid).startsWith('t:') ? S.deck.tokenCache[uid] : S.deck.unique[+uid]; }
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
   // ======================= deck loading =======================
@@ -119,7 +120,8 @@
       if (cand && total === 100) { cand.commander = true; cand._guessed = true; }
     }
     S.cards = cards;
-    S.deck = G.buildDeck(cards);
+    S.tokens = r.tokens || [];
+    S.deck = G.buildDeck(cards, S.tokens);
     S.byUid = S.deck.unique;
     S.game = null; S.sim = null; S.oddsSel.clear();
     const msgs = $('#deckMsgs'); msgs.innerHTML = '';
@@ -138,6 +140,7 @@
     const noImg = S.deck.unique.filter(c => !(c.images || []).length);
     if (noImg.length) add('warn', `No local image for: ${noImg.map(c => esc(c.name)).join(', ')}`);
     renderDeck();
+    renderCoverage();
     $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = '';
   }
 
@@ -190,6 +193,38 @@
       lw.appendChild(g);
     });
   }
+
+  function renderCoverage() {
+    if (!S.deck) return;
+    const only = $('#covOnlyGaps').checked;
+    const box = $('#coverage'); box.innerHTML = '';
+    const list = S.deck.unique.filter(c => !(c.a.isLand && /Basic/.test(c.type_line)));
+    let ok = 0, part = 0, none = 0;
+    list.forEach(c => { const l = c.a.coverageLevel; if (l === 'ok') ok++; else if (l === 'partial') part++; else none++; });
+    $('#covSummary').textContent = `${ok} fully simulated · ${part} partly · ${none} not at all (of ${list.length} non-basic cards)`;
+    list.sort((a, b) => ({ none: 0, partial: 1, ok: 2 }[a.a.coverageLevel] - { none: 0, partial: 1, ok: 2 }[b.a.coverageLevel]) || a.name.localeCompare(b.name))
+      .filter(c => !only || c.a.coverageLevel !== 'ok')
+      .forEach(c => {
+        const d = h('div', 'cov-card');
+        d.appendChild(cardEl(c));
+        const lines = h('div', 'lines');
+        lines.appendChild(h('b', '', esc(c.name)));
+        if (!c.a.coverage.length) lines.appendChild(h('div', 'ok', 'No rules text (vanilla).'));
+        c.a.coverage.forEach(x => lines.appendChild(h('div', x.status, esc(x.text))));
+        d.appendChild(lines);
+        box.appendChild(d);
+      });
+    if (!box.children.length) box.innerHTML = '<div class="empty-note">Every card in this deck is fully understood by the engine.</div>';
+    const tw = $('#tokenWall'); tw.innerHTML = '';
+    if ((S.deck.tokens || []).length) {
+      tw.appendChild(h('div', 'hint', 'Tokens this deck makes (from ScryMirror):'));
+      S.deck.tokens.forEach(t => {
+        const fake = Object.assign({}, t, { uid: 'preview:' + t.name });
+        const el = h('div', 'tok'); const c = cardEl(fake); el.appendChild(c); el.appendChild(h('span', '', `${esc(t.name)}${t.power != null ? ` ${t.power}/${t.toughness}` : ''} · ${esc(t.made_by || '')}`)); tw.appendChild(el);
+      });
+    }
+  }
+  $('#covOnlyGaps').addEventListener('change', renderCoverage);
 
   // saved decks
   function refreshSaved() {
@@ -317,7 +352,33 @@
   $('#tAuto').addEventListener('click', () => guard(autoTurn));
   $('#tAutoTo').addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; guard(async () => { const n = +$('#tAutoToN').value; while (S.game && S.game.turn < n || (S.game.turn === n && !S.game.turnDone)) await autoTurn(); }); });
   $('#tUndo').addEventListener('click', undo);
-  $('#zLibrary .card-back').addEventListener('click', () => { const g = S.game; if (!g) return; snap(); const d = G.draw(g, 1); d.forEach(c => log(`Drew ${c.card.name}`)); render(); });
+  $('#zLibrary .card-back').addEventListener('click', () => { const g = S.game; if (!g || S.busy) return; snap(); const d = G.draw(g, 1); d.forEach(c => log(`Drew ${esc(c.card.name)}`)); render(); });
+  $('#hLife').addEventListener('click', () => {
+    const g = S.game; if (!g || S.busy) return;
+    const v = prompt('Deal how much damage to the goldfish? (negative to undo)', '1');
+    const n = parseInt(v, 10); if (!n) return;
+    snap(); const ev = []; if (n > 0) G.damageOpp(g, n, ev, null); else g.damage = Math.max(0, g.damage + n);
+    describe(ev); render();
+  });
+  $('#tToken').addEventListener('click', () => {
+    const g = S.game; if (!g || S.busy) return;
+    const known = (S.deck.tokens || []).map((t, i) => `${i + 1}) ${t.name}${t.power != null ? ` ${t.power}/${t.toughness}` : ''}`).join('\n');
+    const v = prompt(`Create a token.\n${known ? 'Tokens your deck makes:\n' + known + '\n\nType a number, or ' : 'Type '}a custom one like "2/2 Zombie", "Treasure", "1/1 Soldier flying". Add "x3" for three.`, known ? '1' : '1/1 Soldier');
+    if (!v) return;
+    let n = 1; const mm = v.match(/x\s*(\d+)\s*$/i); let txt = v.replace(/x\s*\d+\s*$/i, '').trim(); if (mm) n = +mm[1];
+    let spec;
+    if (/^\d+$/.test(txt) && S.deck.tokens[+txt - 1]) {
+      const t = S.deck.tokens[+txt - 1];
+      spec = { name: t.name, creature: /Creature/.test(t.type_line), p: +t.power || 0, t: +t.toughness || 0, colors: t.colors || [], keywords: (t.keywords || []).map(k => k.toLowerCase()) };
+    } else {
+      const pm = txt.match(/^(\d+)\/(\d+)\s+(.*)$/);
+      const words = (pm ? pm[3] : txt).split(/\s+/);
+      const kws = words.filter(w => /^(flying|haste|trample|vigilance|lifelink|deathtouch|menace|reach)$/i.test(w)).map(w => w.toLowerCase());
+      const name = words.filter(w => !kws.includes(w.toLowerCase())).join(' ') || 'Token';
+      spec = pm ? { name, creature: true, p: +pm[1], t: +pm[2], subtypes: [name], colors: [], keywords: kws } : { name: name[0].toUpperCase() + name.slice(1), creature: false, artifact: true };
+    }
+    snap(); const ev = []; G.createTokens(g, spec, n, ev, null); describe(ev); render();
+  });
 
   async function guard(fn) { if (S.busy || !S.game) return; S.busy = true; try { await fn(); } finally { S.busy = false; render(); } }
 
@@ -330,7 +391,7 @@
   function startTableGame(g) {
     S.game = g; S.undo = []; g.turnDone = false;
     $('#gameLog').innerHTML = '';
-    log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => c.card.name).join(', ')}`);
+    log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => esc(c.card.name)).join(', ')}`);
     beginTurnUI();
     render(true);
   }
@@ -338,87 +399,124 @@
     const g = S.game;
     const ev = G.beginTurn(g); g.turnDone = false;
     logTurn(g.turn);
-    ev.filter(e => e.type === 'draw').forEach(e => log(`Drew ${e.inst.card.name}`));
+    describe(ev);
   }
   async function nextTurn() {
     const g = S.game; snap();
-    if (!g.turnDone) { await doCombat(); G.endTurn(g); }
+    if (!g.turnDone) { await doCombat(); describe(G.endTurn(g)); }
     beginTurnUI(); render();
+  }
+  async function play(ev) {
+    // animate a batch of events: highlight sources, float damage, then re-render
+    describe(ev);
+    render();
+    for (const e of ev) {
+      if (e.type === 'damage' || e.type === 'attack') floatDamage(e.n || e.dmg);
+      if (e.type === 'trigger' && e.source) flash(e.source.iid);
+      if (e.type === 'kill') killBanner(S.game.turn, e.cmdr);
+    }
+    await sleep(delay());
+  }
+  function flash(iid) {
+    const el = document.querySelector(`.table [data-iid="${iid}"]`);
+    if (el) { el.classList.remove('glow'); void el.offsetWidth; el.classList.add('glow'); setTimeout(() => el.classList.remove('glow'), 700); }
   }
   async function doCombat() {
     const g = S.game;
     const ev = G.combat(g);
+    // split at declare / attack boundaries for a two-beat animation
+    let batch = [];
     for (const e of ev) {
-      if (e.type === 'attack') {
+      batch.push(e);
+      if (e.type === 'declare') {
+        describe(batch); batch = [];
         render();
         e.attackers.forEach(p => { const el = document.querySelector(`.bf-row [data-iid="${p.iid}"]`); if (el) { el.classList.remove('attacking'); void el.offsetWidth; el.classList.add('attacking'); } });
-        await sleep(delay() * 0.6);
-        floatDamage(e.dmg);
-        log(`Attacked with ${e.attackers.map(p => p.card.name).join(', ')} for <b>${e.dmg}</b> (${e.total} total)`);
+        await sleep(delay() * 0.7);
       }
-      if (e.type === 'kill') { log(`<b>☠ Goldfish dead on turn ${g.turn}</b>`); killBanner(g.turn); }
     }
+    if (batch.length) await play(batch);
   }
   async function autoTurn() {
-    let g = S.game; snap();
-    if (g.turnDone) { G.endTurn(g); beginTurnUI(); render(); await sleep(delay()); }
+    const g = S.game; snap();
+    if (g.turnDone) { describe(G.endTurn(g)); beginTurnUI(); render(); await sleep(delay()); }
     if (!g.landThisTurn) {
       const le = G.landStep(g);
-      if (le) { log(`Played ${le.inst.card.name}${le.mdfc ? ' (land side)' : ''}${le.perm.tapped ? ' tapped' : ''}`); render(); await sleep(delay()); }
+      if (le) await play([le, ...le.ev]);
       else log('<i>No land drop</i>');
     }
-    for (let k = 0; k < 30; k++) {
-      const ev = G.castOne(g);
-      if (!ev) break;
-      describe(ev);
-      render(); await sleep(delay());
+    for (let k = 0; k < 80; k++) {
+      let ev = G.castOne(g);
+      if (!ev) ev = G.useAbilities(g);
+      if (!ev || !ev.length) break;
+      await play(ev);
     }
     await doCombat();
     g.turnDone = true;
   }
-  // endTurn bookkeeping when the user plays manually: the next "Next turn" closes it.
+
+  const nm = p => esc(p && p.card ? p.card.name : 'Spell');
   function describe(ev) {
     for (const e of ev) {
-      if (e.type === 'cast') log(`Cast <b>${esc(e.inst.card.name)}</b>`);
-      if (e.type === 'rampLand') log(`↳ put ${esc(e.inst.card.name)} onto the battlefield${e.perm.tapped ? ' tapped' : ''}`);
-      if (e.type === 'tutor') log(`↳ put ${esc(e.inst.card.name)} into hand`);
-      if (e.type === 'draw') log(`↳ drew ${esc(e.inst.card.name)}`);
-      if (e.type === 'land') log(`Played ${esc(e.inst.card.name)}`);
+      switch (e.type) {
+        case 'cast': log(`Cast <b>${esc(e.inst.card.name)}</b>`); break;
+        case 'land': log(`${e.extra ? '↳ put' : 'Played'} ${esc(e.inst.card.name)}${e.mdfc ? ' (land side)' : ''}${e.perm && e.perm.tapped ? ' tapped' : ''}`); break;
+        case 'rampLand': log(`↳ ${esc(e.inst.card.name)} onto the battlefield${e.perm.tapped ? ' tapped' : ''}`); break;
+        case 'tutor': log(`↳ ${esc(e.inst.card.name)} into hand`); break;
+        case 'draw': log(`${S.game && S.game.turnDrawLogged ? '↳ drew' : 'Drew'} ${esc(e.inst.card.name)}`); break;
+        case 'trigger': log(`<span class="trig">⚡ ${nm(e.source)}</span>: <i>${esc(e.text.length > 90 ? e.text.slice(0, 88) + '…' : e.text)}</i>`); break;
+        case 'token': log(`↳ created ${esc(e.inst.card.name)}${e.perm.card.a.isCreature ? ` ${G.powerOf(S.game, e.perm)}/${G.toughnessOf(S.game, e.perm)}` : ''} token`); break;
+        case 'damage': log(`↳ <b>${e.n}</b> damage to the goldfish (${e.total} total)`); break;
+        case 'counters': log(`↳ +${e.n} counter${e.n > 1 ? 's' : ''} on ${e.perms.length > 3 ? e.perms.length + ' creatures' : e.perms.map(nm).join(', ')}`); break;
+        case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
+        case 'mana': log(`↳ added ${e.n} mana`); break;
+        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.cost === -1 ? 'X' : e.cost}: <i>${esc(e.text)}</i> (loyalty ${e.perm.loyalty})`); break;
+        case 'equip': log(`Equipped ${nm(e.perm)} to ${nm(e.target)}`); break;
+        case 'activate': log(`Activated ${nm(e.perm)}: <i>${esc(e.text)}</i>`); break;
+        case 'note': log(`↳ ${esc(e.text)}`); break;
+        case 'declare': log(`Attack with ${e.attackers.length > 6 ? e.attackers.length + ' creatures' : e.attackers.map(nm).join(', ')}`); break;
+        case 'attack': log(`⚔ <b>${e.dmg}</b> combat damage (${e.total} total)`); break;
+        case 'kill': log(`<b>☠ Goldfish dead on turn ${S.game.turn}${e.cmdr ? ' (21 commander damage)' : ''}</b>`); break;
+      }
     }
   }
 
   function floatDamage(n) {
+    if (!n) return;
     const life = $('#hLife'); const r = life.getBoundingClientRect();
     const d = h('div', 'dmg-float', '−' + n); d.style.left = r.left + 'px'; d.style.top = r.top + 'px';
     document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
     life.classList.remove('hit'); void life.offsetWidth; life.classList.add('hit');
   }
-  function killBanner(t) { const b = h('div', 'kill-banner', `🐟 Goldfish defeated · turn ${t}`); document.body.appendChild(b); setTimeout(() => b.remove(), 2100); }
+  function killBanner(t, cmdr) { const b = h('div', 'kill-banner', `🐟 Goldfish defeated · turn ${t}${cmdr ? '<br><small>21 commander damage</small>' : ''}`); document.body.appendChild(b); setTimeout(() => b.remove(), 2100); }
 
   function log(html) { const li = h('li', '', html); $('#gameLog').appendChild(li); li.scrollIntoView({ block: 'nearest' }); }
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
-  // ---- undo via snapshots of zone membership ----
+  // ---- undo via snapshots ----
+  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed'];
   function snap() {
     const g = S.game;
+    const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });
     S.undo.push({
       library: g.library.slice(), hand: g.hand.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), command: g.command.slice(),
-      battlefield: g.battlefield.map(p => Object.assign({}, p)),
-      scal: { turn: g.turn, damage: g.damage, manaSpent: g.manaSpent, spentThisTurn: g.spentThisTurn, landThisTurn: g.landThisTurn, turnDone: g.turnDone, killTurn: g.killTurn, commanderCast: g.commanderCast, floating: (g.floating || []).slice(), turns: g.turns.slice() },
+      battlefield: g.battlefield.map(p => Object.assign({}, p)), scal, floating: (g.floating || []).slice(), turns: g.turns.slice(),
+      cmdrDamage: Object.assign({}, g.cmdrDamage), cmdrCasts: Object.assign({}, g.cmdrCasts), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) },
       log: $('#gameLog').innerHTML,
     });
-    if (S.undo.length > 60) S.undo.shift();
+    if (S.undo.length > 80) S.undo.shift();
   }
   function undo() {
     const s = S.undo.pop(); if (!s || S.busy) return;
     const g = S.game;
-    Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield }, s.scal);
+    Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
+      floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot }, s.scal);
     $('#gameLog').innerHTML = s.log; render();
   }
 
   // ---- interactions ----
   $('.table').addEventListener('click', e => {
-    const m = e.target.closest('.mtg'); if (!m || S.busy || !S.game) return;
+    const m = e.target.closest('.mtg'); if (!m || S.busy || !S.game || m.dataset.iid == null) return;
     const g = S.game, iid = +m.dataset.iid;
     const inHand = g.hand.find(i => i.iid === iid), inCmd = g.command.find(i => i.iid === iid), perm = g.battlefield.find(p => p.iid === iid);
     if (inHand || inCmd) playFromHand(inHand || inCmd, e.shiftKey, m);
@@ -428,26 +526,22 @@
     const g = S.game, a = inst.card.a;
     if (a.isLand || asLand) {
       snap();
-      if (g.landThisTurn && !force) toast('Extra land this turn (you already played one)');
-      g.hand.splice(g.hand.indexOf(inst), 1);
-      const perm = G.enter(g, inst, { asMdfcLand: !!asLand });
-      if (g.castTurn[inst.card.uid] == null) g.castTurn[inst.card.uid] = g.turn;
-      g.landThisTurn = g.landThisTurn || { inst, perm };
-      if (g.landsThisTurn == null) { /* recorded at endTurn */ }
-      log(`Played ${esc(inst.card.name)}${perm.tapped ? ' tapped' : ''}`);
-      return render();
+      if (!G.canPlayLand(g) && !force) toast('Extra land drop this turn');
+      const le = G.playLandCard(g, inst, !!asLand);
+      play([le, ...le.ev]);
+      return;
     }
     snap();
     const ev = G.castCard(g, inst, force);
-    if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return toast('Not enough mana. Shift-click to cast it anyway.'); }
-    describe(ev); render();
+    if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
+    play(ev);
   }
 
   // context menu
   const ctx = $('#ctxMenu');
   document.addEventListener('click', () => { ctx.style.display = 'none'; });
   $('.table').addEventListener('contextmenu', e => {
-    const m = e.target.closest('.mtg'); if (!m || !S.game) return;
+    const m = e.target.closest('.mtg'); if (!m || !S.game || m.dataset.iid == null) return;
     e.preventDefault();
     const g = S.game, iid = +m.dataset.iid;
     const zones = { hand: g.hand, battlefield: g.battlefield, graveyard: g.graveyard, exile: g.exile, command: g.command };
@@ -456,29 +550,39 @@
     if (!obj) return;
     const inst = zone === 'battlefield' ? obj.inst : obj;
     const items = [];
-    const move = (to, top) => () => {
-      snap();
-      zones[zone].splice(zones[zone].indexOf(obj), 1);
+    const act = fn => () => { snap(); fn(); render(); };
+    const move = (to, top) => act(() => {
+      if (zone === 'battlefield') G.removePerm(g, obj); else zones[zone].splice(zones[zone].indexOf(obj), 1);
+      if (inst.card.isToken && to !== 'battlefield') { log(`${esc(inst.card.name)} token ceases to exist`); return; }
       if (to === 'library') top ? g.library.unshift(inst) : g.library.push(inst);
-      else if (to === 'battlefield') G.enter(g, inst);
-      else if (inst.card.commander && (to === 'graveyard' || to === 'exile')) g.command.push(inst);
+      else if (to === 'battlefield') { const ev = []; G.enterWithTriggers(g, inst, {}, ev); describe(ev); }
+      else if (inst.card.commander && (to === 'graveyard' || to === 'exile')) { g.command.push(inst); log(`${esc(inst.card.name)} → command zone (tax now +${2 * (g.cmdrCasts[inst.iid] || 0)})`); return; }
       else zones[to].push(inst);
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
-      render();
-    };
+    });
     if (zone === 'hand') {
-      if (inst.card.a.mdfcLand) items.push(['Play as land (back face)', () => playFromHand(inst, false, m, true)]);
+      if (inst.card.a.mdfcLand) items.push(['Play as land (back face)', () => playFromHand(inst, true, m, true)]);
       items.push(['Cast (ignore mana)', () => playFromHand(inst, true, m)]);
       items.push(['Put onto battlefield', move('battlefield')]);
     }
-    if (zone === 'battlefield') items.push([obj.tapped ? 'Untap' : 'Tap', () => { snap(); obj.tapped = !obj.tapped; render(); }]);
-    ['hand', 'graveyard', 'exile'].filter(z => z !== zone).forEach(z => items.push(['Move to ' + z, move(z)]));
+    if (zone === 'battlefield') {
+      items.push([obj.tapped ? 'Untap' : 'Tap', act(() => { obj.tapped = !obj.tapped; })]);
+      if (G.isCreaturePerm(obj)) {
+        items.push(['+1/+1 counter', act(() => { obj.counters = (obj.counters || 0) + 1; })]);
+        items.push(['−1/−1 counter', act(() => { obj.counters = (obj.counters || 0) - 1; })]);
+        items.push([obj.sick ? 'Remove summoning sickness' : 'Give summoning sickness', act(() => { obj.sick = !obj.sick; })]);
+      }
+      if (obj.card.a.isPlaneswalker) { items.push(['Loyalty +1', act(() => { obj.loyalty++; })], ['Loyalty −1', act(() => { obj.loyalty--; })]); }
+      if (obj.card.a.isEquipment || obj.card.a.isAura) items.push(['Attach to best creature', act(() => { const b = g.battlefield.filter(G.isCreaturePerm).sort((x, y) => G.powerOf(g, y) - G.powerOf(g, x))[0]; obj.attachedTo = b ? b.iid : null; })]);
+      items.push(['Sacrifice / destroy', move('graveyard')]);
+    }
+    ['hand', 'graveyard', 'exile'].filter(z => z !== zone && !(zone === 'battlefield' && z === 'graveyard')).forEach(z => items.push(['Move to ' + z, move(z)]));
     if (zone !== 'battlefield' && zone !== 'hand') items.push(['Move to battlefield', move('battlefield')]);
-    items.push(['Put on top of library', move('library', true)], ['Put on bottom of library', move('library', false)]);
+    if (!inst.card.isToken) items.push(['Put on top of library', move('library', true)], ['Put on bottom of library', move('library', false)]);
     ctx.innerHTML = '';
     items.forEach(([label, fn]) => { const b = h('button', '', label); b.addEventListener('click', ev => { ev.stopPropagation(); ctx.style.display = 'none'; fn(); }); ctx.appendChild(b); });
     ctx.style.display = 'block';
-    ctx.style.left = Math.min(e.clientX, innerWidth - 190) + 'px'; ctx.style.top = Math.min(e.clientY, innerHeight - ctx.offsetHeight - 10) + 'px';
+    ctx.style.left = Math.min(e.clientX, innerWidth - 210) + 'px'; ctx.style.top = Math.max(8, Math.min(e.clientY, innerHeight - ctx.offsetHeight - 10)) + 'px';
   });
 
   // ---- rendering with FLIP animation ----
@@ -489,31 +593,30 @@
     const libRect = $('#zLibrary .card-back').getBoundingClientRect();
 
     const rows = { zCreatures: [], zOther: [], zLands: [] };
-    g.battlefield.forEach(p => {
-      const a = p.card.a;
-      rows[p.asLand ? 'zLands' : a.isCreature ? 'zCreatures' : 'zOther'].push(p);
-    });
+    g.battlefield.forEach(p => { rows[p.asLand ? 'zLands' : G.isCreaturePerm(p) ? 'zCreatures' : 'zOther'].push(p); });
     for (const [id, list] of Object.entries(rows)) {
       const row = document.getElementById(id);
       row.querySelectorAll('.mtg, .stackgroup').forEach(x => x.remove());
-      if (id === 'zLands') {
-        // group identical untapped/tapped basics so they stack
-        const groups = new Map();
-        list.forEach(p => { const k = p.card.uid + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : ''); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
-        for (const ps of groups.values()) {
-          const sg = h('div', 'stackgroup');
-          ps.forEach(p => sg.appendChild(permEl(p)));
-          row.appendChild(sg);
-        }
-      } else list.forEach(p => row.appendChild(permEl(p)));
+      // stack identical permanents (lands, and tokens in the same state) so big boards stay readable
+      const groups = new Map();
+      list.forEach(p => {
+        const stackable = id === 'zLands' || p.token;
+        const k = stackable ? p.card.uid + '|' + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : '') + '|' + (p.sick ? 's' : '') + '|' + (p.counters || 0) : 'solo' + p.iid;
+        if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p);
+      });
+      for (const ps of groups.values()) {
+        const sg = h('div', 'stackgroup');
+        ps.forEach(p => sg.appendChild(permEl(p)));
+        if (ps.length > 4) sg.appendChild(h('span', 'stack-count', '×' + ps.length));
+        row.appendChild(sg);
+      }
     }
-    // hand
     const hand = $('#zHand'); hand.innerHTML = '';
-    const units = (g.floating || []).concat(G.manaUnits(g));
+    const units = G.allUnits(g);
     g.hand.forEach(i => {
       const e = cardEl(i.card, { iid: i.iid });
-      if (!i.card.a.isLand && G.canPay(i.card.a.cost, units)) e.classList.add('castable');
-      if (i.card.a.isLand && !g.landThisTurn) e.classList.add('castable');
+      if (!i.card.a.isLand && G.canPay(G.effectiveCost(g, i), units)) e.classList.add('castable');
+      if ((i.card.a.isLand) && G.canPlayLand(g)) e.classList.add('castable');
       hand.appendChild(e);
     });
     const pile = (sel, arr, cnt) => { const c = document.querySelector(sel + ' .pile-cards'); c.innerHTML = ''; arr.forEach(i => c.appendChild(cardEl(i.card, { iid: i.iid }))); if (cnt) $(cnt).textContent = arr.length; };
@@ -522,12 +625,13 @@
     $('#hTurn').textContent = g.turn;
     $('#hLife').textContent = Math.max(0, g.opts.oppLife - g.damage);
     $('#hSpent').textContent = g.manaSpent + (g.spentThisTurn || 0);
-    // mana pips
+    const cd = Object.entries(g.cmdrDamage || {}).map(([iid, v]) => v);
+    $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
+    $('#hPower').textContent = g.battlefield.reduce((s, p) => s + Math.max(0, G.powerOf(g, p)), 0);
     const mp = $('#hMana'); mp.innerHTML = '';
-    units.forEach(u => { const cs = [...u.colors]; const cls = cs.length > 1 ? 'M' : cs[0]; mp.appendChild(h('span', 'pip ' + cls, cs.length > 1 ? '' : cls)); });
+    units.forEach(u => { const cs = [...u.colors]; const cls = cs.length > 1 ? 'M' : cs[0]; mp.appendChild(h('span', 'pip ' + cls + (u.floating ? ' floating' : ''), cs.length > 1 ? '' : cls)); });
     if (!units.length) mp.innerHTML = '<span class="hint">none</span>';
 
-    // FLIP
     if (first) return;
     $$('.table [data-iid]').forEach(e => {
       const r = e.getBoundingClientRect();
@@ -537,14 +641,26 @@
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
       const s = from.width / Math.max(1, r.width);
       const dur = $('#tFast').checked ? 220 : 480;
+      const isNewToken = !old && S.game.battlefield.some(p => String(p.iid) === e.dataset.iid && p.token);
+      if (isNewToken) { e.animate([{ scale: '0.2', opacity: 0, filter: 'brightness(3)' }, { scale: '1', opacity: 1, filter: 'none' }], { duration: dur + 150, easing: 'cubic-bezier(.2,.9,.3,1.3)' }); return; }
       e.animate([{ translate: `${dx}px ${dy}px`, scale: String(old ? s : 0.8), opacity: old ? 1 : 0.2 }, { translate: '0 0', scale: '1', opacity: 1 }], { duration: dur, easing: 'cubic-bezier(.2,.8,.2,1)' });
       if (!old) e.classList.add('flip-in');
     });
   }
   function permEl(p) {
+    const g = S.game;
     const e = cardEl(p.card, { iid: p.iid, face: p.mdfc ? 1 : 0 });
     if (p.tapped) e.classList.add('tapped');
-    if (p.sick && p.card.a.isCreature) e.classList.add('sick');
+    if (p.token) e.classList.add('token');
+    if (G.isCreaturePerm(p)) {
+      if (p.sick && !G.hasKw(g, p, 'haste')) e.classList.add('sick');
+      const pw = G.powerOf(g, p), tg = G.toughnessOf(g, p);
+      const buffed = pw !== p.card.a.power || tg !== p.card.a.toughness;
+      e.appendChild(h('span', 'pt' + (buffed ? ' buffed' : ''), `${pw}/${tg}`));
+      if (p.counters) e.appendChild(h('span', 'ctr', (p.counters > 0 ? '+' : '') + p.counters));
+    }
+    if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + p.loyalty));
+    if (p.attachedTo != null) { const t = g.battlefield.find(q => q.iid === p.attachedTo); if (t) e.appendChild(h('span', 'tag', '→ ' + esc(t.card.name.split(',')[0]))); }
     return e;
   }
 
@@ -569,7 +685,7 @@
       }
     };
     worker.onerror = err => { $('#runSim').disabled = false; $('#simInfo').textContent = 'Simulation error: ' + err.message; };
-    worker.postMessage({ cards: S.cards, opts: o, n: o.n, seed: rseed() });
+    worker.postMessage({ cards: S.cards, tokens: S.tokens, opts: o, n: o.n, seed: rseed() });
   }
 
   function medianTurn(hist) { let c = 0; for (let i = 0; i < hist.length - 1; i++) { c += hist[i]; if (c >= 0.5) return i + 1; } return null; }
@@ -583,7 +699,7 @@
     $('#simTiles').innerHTML =
       tile('Mana on turn 4', r.agg.manaAvail[3] ? r.agg.manaAvail[3].mean.toFixed(1) : '–', `median ${r.agg.manaAvail[3] ? r.agg.manaAvail[3].p50 : '–'}, a land per turn would be 4`) +
       (r.hasCommander ? tile('Commander on curve', pct(cumBy(r.cmdr, Math.max(1, Math.round(S.deck.commanders[0].card.a.mv)))), `cast by turn ${Math.round(S.deck.commanders[0].card.a.mv)}; median turn ${ct || '>' + T}`) : '') +
-      tile('Goldfish kill', kt ? 'Turn ' + kt : '>' + T, `median; ${pct(cumBy(r.kill, T))} dead by turn ${T}`) +
+      tile('Goldfish kill', kt ? 'Turn ' + kt : '>' + T, `median; ${pct(cumBy(r.kill, T))} dead by turn ${T}${r.cmdrKillShare > 0.005 ? `; ${pct(r.cmdrKillShare)} via commander damage` : ''}`) +
       tile('Missed a land drop by T3', pct(1 - r.onCurveLands[2]), `T4: ${pct(1 - r.onCurveLands[3])}`) +
       tile('Kept 7', pct(keep7), `avg ${avgM.toFixed(2)} mulligans`) +
       tile('Mana spent by T' + Math.min(6, T), r.agg.cumSpent[Math.min(6, T) - 1].mean.toFixed(1), 'avg total mana used');
@@ -600,6 +716,15 @@
     } else { $('#cmdrTitle').textContent = 'No commander in this list'; $('#chartCmdr').innerHTML = '<div class="empty-note">Mark a commander with *CMDR* or a Commander section.</div>'; }
     C.bars($('#chartKill'), r.kill.map((v, i) => ({ label: i < T ? tl(i) : 'later', v, color: i < T ? '#d95926' : '#383835', tip: `<b>${i < T ? 'Turn ' + (i + 1) : 'Alive after turn ' + T}</b><div class="tt-row"><span>Dies this turn</span><span>${pct(v)}</span></div><div class="tt-row"><span>Dead by this turn</span><span>${pct(cumBy(r.kill, i + 1))}</span></div>` })), { highlightMax: true });
 
+    C.band($('#chartDamage'), r.agg.damage.map((a, i) => ({ label: tl(i), mid: a.p50, lo: a.p10, hi: a.p90, a })), {
+      ref: () => o.oppLife, lastLabel: 'median ', yfmt: v => v,
+      tip: (d, i) => `<b>Turn ${i + 1}</b><div class="tt-row"><span>Median damage</span><span>${d.a.p50}</span></div><div class="tt-row"><span>Average</span><span>${d.a.mean.toFixed(1)}</span></div><div class="tt-row"><span>10th–90th pct</span><span>${d.a.p10}–${d.a.p90}</span></div><div class="tt-row"><span>Dashed line</span><span>opponent life (${o.oppLife})</span></div>`,
+    });
+    C.band($('#chartPower'), r.agg.power.map((a, i) => ({ label: tl(i), mid: a.p50, lo: a.p10, hi: a.p90, a })), {
+      lastLabel: 'median ', yfmt: v => v,
+      tip: (d, i) => `<b>Turn ${i + 1}</b><div class="tt-row"><span>Median power</span><span>${d.a.p50}</span></div><div class="tt-row"><span>Average</span><span>${d.a.mean.toFixed(1)}</span></div><div class="tt-row"><span>10th–90th pct</span><span>${d.a.p10}–${d.a.p90}</span></div>`,
+    });
+    if (r.errors) $('#simInfo').textContent += ` · ${r.errors} games hit an engine error and were skipped`;
     // sample buttons
     const sb = $('#sampleButtons'); sb.innerHTML = '';
     [['worst', 'Rough game (5th pct)'], ['low', 'Below average (25th)'], ['median', 'Typical game (median)'], ['high', 'Good game (75th)'], ['best', 'Nut draw (95th)']].forEach(([k, label]) => {
@@ -626,16 +751,30 @@
       const row = h('div', 'turnrow'); row.style.animationDelay = (t + 1) * 70 + 'ms';
       row.appendChild(h('div', 'tlabel', `Turn ${t + 1}<small>${tr.manaAvail} mana · spent ${tr.spent}</small>`));
       const cc = h('div', 'tcards');
-      const drawn = ev.filter(e => e.type === 'draw' && !e.why).map(e => e.inst.card.name);
-      if (drawn.length) cc.appendChild(h('span', 'drawn', 'drew ' + esc(drawn.join(', ')) + ' ·'));
+      const firstDraw = ev.find(e => e.type === 'draw');
+      if (firstDraw && !(t === 0 && o.onPlay)) cc.appendChild(h('span', 'drawn', 'drew ' + esc(firstDraw.inst.card.name) + ' ·'));
+      let pendingTokens = null;
+      const flushTokens = () => {
+        if (!pendingTokens) return;
+        for (const [, v] of pendingTokens) { const x = cardEl(v.card); x.classList.add('tokenmini'); if (v.n > 1) x.appendChild(h('span', 'badge', '×' + v.n)); cc.appendChild(x); }
+        pendingTokens = null;
+      };
+      let burn = 0;
       ev.forEach(e => {
+        if (e.type === 'token') { pendingTokens = pendingTokens || new Map(); const k = e.inst.card.uid; const v = pendingTokens.get(k) || { card: e.inst.card, n: 0 }; v.n++; pendingTokens.set(k, v); return; }
+        flushTokens();
+        if (e.type === 'damage') burn += e.n;
         if (e.type === 'land' || e.type === 'rampLand') { const x = cardEl(e.inst.card, { face: e.mdfc ? 1 : 0 }); x.classList.add('landplay'); if (e.type === 'rampLand') x.title = 'ramped'; cc.appendChild(x); }
         if (e.type === 'cast') cc.appendChild(cardEl(e.inst.card));
+        if (e.type === 'pw') cc.appendChild(h('span', 'burst', `◆ ${esc(e.perm.card.name.split(',')[0])} ${e.cost > 0 ? '+' : ''}${e.cost}`));
+        if (e.type === 'attack') cc.appendChild(h('span', 'burst', `⚔ ${e.dmg}`));
       });
+      flushTokens();
+      if (burn) cc.appendChild(h('span', 'burst', `⚡ ${burn} from triggers & spells`));
       if (tr.missedDrop) cc.appendChild(h('span', 'drawn', '(no land drop)'));
       row.appendChild(cc);
       const killed = g.killTurn === t + 1;
-      row.appendChild(h('div', 'tstats', `${killed ? '☠ <b>Goldfish dead</b>' : `dmg ${tr.damage}/${o.oppLife}`}<div class="dmgbar"><div style="width:${Math.min(100, tr.damage / o.oppLife * 100)}%"></div></div>`));
+      row.appendChild(h('div', 'tstats', `${killed ? '☠ <b>Goldfish dead</b>' : `dmg ${tr.damage}/${o.oppLife}`}<br><small>board power ${tr.power}</small><div class="dmgbar"><div style="width:${Math.min(100, tr.damage / o.oppLife * 100)}%"></div></div>`));
       box.appendChild(row);
       if (killed) break;
     }
@@ -685,7 +824,7 @@
     });
     // hover name -> zoom (reuse .mtg zoom by a proxy element)
     hm.querySelectorAll('.mtg-ref').forEach(s => {
-      s.addEventListener('mouseenter', e => { const fake = cardEl(S.byUid[+s.dataset.uid]); zoom.innerHTML = ''; const f = h('div', 'faces'); f.appendChild(fake); zoom.appendChild(f); zoom.classList.remove('two'); zoom.classList.add('show'); placeZoom(e); });
+      s.addEventListener('mouseenter', e => { const fake = cardEl(getCard(s.dataset.uid)); zoom.innerHTML = ''; const f = h('div', 'faces'); f.appendChild(fake); zoom.appendChild(f); zoom.classList.remove('two'); zoom.classList.add('show'); placeZoom(e); });
       s.addEventListener('mouseleave', () => zoom.classList.remove('show'));
     });
   }

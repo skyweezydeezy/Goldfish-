@@ -205,6 +205,28 @@ class Mirror:
             card, imgs = self.choose(rowids, set_code, cn)
         return (card, imgs) if card else None
 
+    def resolve_token(self, tid, name):
+        """Find a token printing by Scryfall id (preferred) or by name among token layouts."""
+        with self.lock:
+            cur = self.conn.cursor()
+            card = None
+            if tid:
+                cols = [c.lower() for c in getattr(self, "columns", [])]
+                if "id" in cols:
+                    r = cur.execute(f'SELECT rowid FROM "{self.table}" WHERE id=?', (tid,)).fetchone()
+                    if r:
+                        card = self._row(r[0])
+            if not card and name:
+                for rowid in self.index.get(norm(name), []):
+                    c = self._row(rowid)
+                    if c and (c.get("layout") in ("token", "double_faced_token", "emblem") or "Token" in (c.get("type_line") or "")):
+                        if not card or (self.find_image(c.get("set"), c.get("collector_number")) and not card.get("_img")):
+                            card = c
+                            card["_img"] = bool(self.find_image(c.get("set"), c.get("collector_number")))
+            if not card:
+                return None
+            return card, self.find_image(card.get("set"), card.get("collector_number"))
+
     def search(self, q, limit=12):
         q = norm(q)
         if len(q) < 2:
@@ -254,6 +276,11 @@ def slim(card, imgs):
         "produced_mana": card.get("produced_mana") or [],
         "keywords": card.get("keywords") or [],
         "legal_commander": (card.get("legalities") or {}).get("commander"),
+        "loyalty": g("loyalty", None),
+        "token_parts": [p.get("name") for p in (card.get("all_parts") or [])
+                        if p.get("component") == "token" or "Emblem" in (p.get("type_line") or "")],
+        "token_ids": [p.get("id") for p in (card.get("all_parts") or [])
+                      if p.get("component") == "token" or "Emblem" in (p.get("type_line") or "")],
         "set": card.get("set"),
         "cn": card.get("collector_number"),
         "faces": [{"name": f.get("name"), "mana_cost": f.get("mana_cost", ""), "type_line": f.get("type_line", ""),
@@ -374,7 +401,21 @@ class Handler(BaseHTTPRequestHandler):
                 card = slim(*r)
                 card.update({"qty": e["qty"], "commander": e["commander"], "input_name": e["name"]})
                 out.append(card)
-            return self._json({"cards": out, "missing": missing, "parsed": len(entries)})
+            tokens, seen = [], set()
+            if self.mirror.ok:
+                for c in out:
+                    for tid, tname in zip(c.get("token_ids") or [], c.get("token_parts") or []):
+                        r = self.mirror.resolve_token(tid, tname)
+                        if not r:
+                            continue
+                        t = slim(*r)
+                        key = (t["name"], t.get("power"), t.get("toughness"), tuple(t.get("colors") or []), t.get("oracle_text"))
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        t["made_by"] = c["name"]
+                        tokens.append(t)
+            return self._json({"cards": out, "missing": missing, "parsed": len(entries), "tokens": tokens})
         return self._json({"error": "not found"}, 404)
 
 

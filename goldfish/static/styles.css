@@ -251,3 +251,36 @@ label.small { font-size: 12px; }
 #oddsTable th { color: var(--muted); font-weight: 500; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ---------- v2: tokens, counters, coverage ---------- */
+.mtg .pt { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.85); color: #fff; font-size: 12px; font-weight: 800; padding: 1px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; border: 1px solid rgba(255,255,255,.25); }
+.mtg .pt.buffed { color: #7fdc7f; border-color: #3c8f3c; }
+.mtg .pt.loyalty { color: #f5d17a; }
+.mtg .ctr { position: absolute; left: 4px; top: 22px; background: #0ca30c; color: #fff; font-size: 11px; font-weight: 800; padding: 0 5px; border-radius: 99px; }
+.mtg.token { outline: 1px dashed rgba(255,255,255,.35); outline-offset: -3px; }
+.stackgroup { align-items: flex-end; }
+.stack-count { align-self: center; margin-left: 6px; font-weight: 800; color: var(--text-secondary); }
+.bf-row:not(.lands) .stackgroup .mtg + .mtg { margin-left: -78px; }
+.pip.floating { outline: 2px dashed #fff; outline-offset: 1px; }
+.clickable { cursor: pointer; }
+.table-log .trig { color: #f5d17a; }
+.cov { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+.cov.ok { background: rgba(12,163,12,.22); color: #8fe08f; }
+.cov.neutral { background: rgba(137,135,129,.22); color: var(--text-secondary); }
+.cov.partial { background: rgba(250,178,25,.2); color: #f7cf6f; }
+.cov.ignored { background: rgba(208,59,59,.22); color: #f19a9a; }
+.coverage { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 8px; margin-top: 6px; }
+.cov-card { display: grid; grid-template-columns: 56px 1fr; gap: 10px; background: var(--surface-2); border-radius: 10px; padding: 8px; }
+.cov-card .mtg { --card-w: 56px; }
+.cov-card .lines { font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+.cov-card .lines div { padding: 2px 6px; border-radius: 4px; border-left: 3px solid; }
+.cov-card .lines .ok { border-color: #0ca30c; background: rgba(12,163,12,.08); }
+.cov-card .lines .neutral { border-color: #555; color: var(--muted); }
+.cov-card .lines .partial { border-color: #fab219; background: rgba(250,178,25,.08); }
+.cov-card .lines .ignored { border-color: #d03b3b; background: rgba(208,59,59,.1); }
+.cov-card b { font-size: 13px; }
+.token-wall { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.token-wall .tok { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--text-secondary); gap: 3px; }
+.token-wall .mtg { --card-w: 84px; }
+.replay .tcards .mtg.tokenmini { --card-w: 40px; }
+.replay .tcards .burst { font-size: 11px; color: #f5d17a; margin: 0 4px; }

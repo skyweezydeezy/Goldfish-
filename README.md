@@ -25,14 +25,39 @@ Everything runs locally and only reads your files; nothing is uploaded.
 | **4 · Simulation** | Thousands of autopiloted games: mana by turn (median plus a 10–90% band), land-drop odds, commander cast turn, goldfish kill turn, and a heatmap of when every card gets played. You can replay a rough, typical or nut-draw game turn by turn with card images, then send it to the table. |
 | **5 · Draw Odds** | Click any group of cards and get the exact hypergeometric odds of seeing at least *k* of them by each turn. |
 
-## What the autopilot understands
+## What the engine understands
 
-- **Colored mana:** casts only when the right colors are available (hybrid, Phyrexian, X).
-- **Lands:** taplands vs. check/shock lands, fetches, Ancient Tomb-style lands, and MDFC land backs when you're short on lands.
-- **Ramp:** mana rocks and dorks (with summoning sickness), and land-fetching spells and creatures (Cultivate, Rampant Growth, Wood Elves, Primeval Titan).
-- **Card draw:** simple "draw N cards" spells and enter-the-battlefield triggers.
-- **Mulligans:** London mulligan with a free first mulligan in Commander and a keep range you set; it picks sensible cards to bottom.
-- **Play order:** ramp first, then the commander (optional), then the biggest spell it can afford, and it picks the land drop that lets it spend the most mana.
-- **Combat:** attacks with everything every turn; haste counts.
+The engine reads each card's Oracle text and turns it into abilities. The **Deck** tab shows every line of rules text, colored by whether it's *simulated*, *doesn't matter vs. a goldfish*, *approximated* or *not simulated*, so you always know what the numbers include.
 
-It's a goldfish: there are no opponents, no blockers, and no complex triggered abilities (tokens, anthems, Landfall, etc.). Damage comes from creature power only.
+- **Turn structure:** untap, upkeep, draw, main phase (land, spells, planeswalkers, equip, activated abilities), beginning of combat, attacks, combat damage, end step, and cleanup of "until end of turn" effects.
+- **Mana:** colored costs, hybrid, Phyrexian, X, taplands and check lands, fetches, MDFC land backs, rocks and dorks (with summoning sickness), Treasure, rituals and triggered mana, cost reducers ("Creature spells you cast cost {1} less"), extra land drops (Exploration, Burgeoning-style "put a land from your hand"), and commander tax.
+- **Triggers:** enters the battlefield, attacks, Landfall, "whenever you cast a (noncreature / instant or sorcery / creature…) spell", "whenever another creature / Elf / artifact enters", upkeep, beginning of combat, end step, combat damage to a player, and "whenever you draw".
+- **Effects:**
+  - creature tokens with power/toughness, colors and keywords, using the real token art from ScryMirror
+  - Treasure, Clue and Food tokens; Clues get cracked with spare mana
+  - card draw
+  - burn and drain to the face
+  - +1/+1 counters
+  - team pumps like Overrun and Craterhoof (+X/+X)
+  - land ramp
+  - extra combats, untaps and proliferate
+  - "for each creature / land you control" counts
+- **Permanents:** anthems (including tribal ones like "Other Elves you control get +1/+1"), keyword grants, Equipment (auto-equipped to your best attacker), Auras, and planeswalkers (activates its best loyalty ability each turn).
+- **Combat:** attacks with everything that can, including haste, double strike, vigilance and defender. Tracks 21 commander damage as a win in Commander.
+- **Mulligans:** London mulligan with a free first mulligan in Commander and a keep range you set.
+
+**Manual tools** on the Goldfish Table handle anything the engine doesn't:
+- **+ Token** creates any token, including the ones your deck makes.
+- Right-click a card to add or remove +1/+1 counters, change loyalty, sacrifice it, toggle summoning sickness, attach it, or move it between zones.
+- Click the opponent's life to deal damage.
+- Undo works on all of it.
+
+**Still not simulated** (flagged in red on the Deck tab):
+- death and sacrifice triggers
+- copying spells
+- stack interaction
+- complex modal or "choose one" choices
+- extra turns
+- anything that needs an opponent's board
+
+The goldfish never blocks, never removes anything, and never interacts.

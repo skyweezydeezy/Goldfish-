@@ -205,6 +205,41 @@ class Mirror:
             card, imgs = self.choose(rowids, set_code, cn)
         return (card, imgs) if card else None
 
+    def diagnose(self):
+        """Self-check: schema, row counts, and whether a few real cards resolve to image files."""
+        out = {"root": str(self.root) if self.root else None, "db": str(self.db_path) if self.db_path else None,
+               "images_dir": str(self.img_root) if self.img_root else None, "error": self.error}
+        if not self.conn:
+            return out
+        cur = self.conn.cursor()
+        tables = {}
+        for (t,) in cur.execute("SELECT name FROM sqlite_master WHERE type IN ('table','view')").fetchall():
+            cols = [r[1] for r in cur.execute(f'PRAGMA table_info("{t}")')]
+            try:
+                n = cur.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
+            except Exception:
+                n = None
+            tables[t] = {"columns": cols, "rows": n}
+        out["tables"] = tables
+        out["card_table"] = self.table
+        out["raw_column"] = self.raw_col
+        out["indexed_names"] = len(self.index)
+        checks = []
+        for name in ("Sol Ring", "Forest", "Command Tower", "Lightning Bolt"):
+            r = self.resolve(name)
+            if not r:
+                checks.append({"name": name, "found": False})
+                continue
+            card, imgs = r
+            on_disk = []
+            for u in imgs:
+                rel = urllib.parse.unquote(u[len("/img/"):])
+                on_disk.append((self.img_root / rel).exists() if self.img_root else False)
+            checks.append({"name": name, "found": True, "set": card.get("set"), "cn": card.get("collector_number"),
+                           "image_urls": imgs, "image_files_exist": on_disk})
+        out["sample_cards"] = checks
+        return out
+
     def resolve_token(self, tid, name):
         """Find a token printing by Scryfall id (preferred) or by name among token layouts."""
         with self.lock:
@@ -367,6 +402,8 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/status":
             return self._json({"ok": m.ok, "root": str(m.root) if m.root else None, "error": m.error,
                                "names": len(m.index), "images": bool(m.img_root), "table": m.table})
+        if p == "/api/diagnose":
+            return self._json(m.diagnose())
         if p == "/api/search":
             q = urllib.parse.parse_qs(u.query).get("q", [""])[0]
             return self._json(m.search(q))
@@ -440,6 +477,13 @@ def main():
     if mirror.error:
         print("!! " + mirror.error)
     Handler.mirror = mirror
+    if mirror.conn:
+        d = mirror.diagnose()
+        print(f"[mirror] card table: {d.get('card_table')} (raw json column: {d.get('raw_column')}), images: {d.get('images_dir')}")
+        for c in d.get("sample_cards", []):
+            ok = c.get("found") and all(c.get("image_files_exist") or [False])
+            print(f"[mirror]   {'OK ' if ok else 'BAD'} {c['name']}: " + (f"{c.get('set')} #{c.get('cn')} -> {c.get('image_urls')}" if c.get("found") else "not found"))
+        print("[mirror] full report: http://127.0.0.1:%d/api/diagnose" % a.port)
     srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
     url = f"http://127.0.0.1:{a.port}/"
     print(f"Goldfish calculator running at {url}  (Ctrl+C to stop)")

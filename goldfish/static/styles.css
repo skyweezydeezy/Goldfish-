@@ -457,3 +457,20 @@ h2 { color: var(--ice-2); }
 .pill.solo { background: rgba(127,155,176,.16); color: var(--text-secondary); box-shadow: inset 0 0 0 1px rgba(127,155,176,.35); }
 .pill.approx { background: rgba(250,178,25,.18); color: #f7cf6f; box-shadow: inset 0 0 0 1px rgba(250,178,25,.4); }
 .cov-card .lines .neutral { color: var(--text-secondary); }
+
+/* ---------- saved deck manager ---------- */
+.modal { position: fixed; inset: 0; z-index: 450; display: none; background: rgba(4,10,16,.78); backdrop-filter: blur(3px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 5vh 12px calc(24px + env(safe-area-inset-bottom)); }
+.modal.show { display: block; }
+body.modal-open { overflow: hidden; }
+.modal-card { max-width: 760px; margin: 0 auto; background: linear-gradient(180deg, #172a3a, #101e2a); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.modal-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+.modal-head h2 { margin: 0; flex: 1; }
+.dm-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; max-height: 58vh; overflow-y: auto; }
+.dm-row { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.dm-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dm-info b { overflow-wrap: anywhere; }
+.dm-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.dm-acts button { padding: 5px 11px; font-size: 13px; }
+button.danger { color: #ffb0b0; }
+button.danger:hover { background: rgba(208,59,59,.22); }
+.dm-foot { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }

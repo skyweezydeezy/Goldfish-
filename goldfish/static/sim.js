@@ -93,6 +93,7 @@
       t = t.split(n).join('~');
       const short = n.split(',')[0];
       if (short !== n && short.length > 3) t = t.split(short).join('~');
+      if (/Planeswalker/.test(card.type_line || '')) { const fw = n.split(/[ ,]/)[0]; if (fw.length >= 4) t = t.split(fw).join('~'); }   // "Ajani Resolute" is "Ajani" in her own text
       const shortOf = n.split(' of ')[0];                       // "Rosie Cotton of South Lane" is written "Rosie Cotton" in her rules text
       if (shortOf !== n && shortOf.length >= 8 && !/,/.test(shortOf)) t = t.split(shortOf).join('~');
     }
@@ -169,6 +170,11 @@
 
     m = text.match(new RegExp('(each opponent|target opponent|target player|that player|defending player|each player) loses ' + NRE + ' life', 'i'));
     if (m) fx.push({ type: 'drain', n: num(m[2]) });
+    if ((m = text.match(new RegExp('put ' + NRE + ' loyalty counters? on ~', 'i')))) fx.push({ type: 'loyalty', n: num(m[1]) });      // Ajani Resolute
+    // "that much": the amount of the life that was just gained / lost (Sanguine Bond, Exquisite Blood)
+    if (/(each opponent|target opponent|target player|that player) loses that much life/i.test(text)) fx.push({ type: 'drain', n: 'THAT' });
+    if (/\byou gain that much life/i.test(text)) fx.push({ type: 'gainLife', n: 'THAT' });
+    else if ((m = text.match(new RegExp('\\byou gain ' + NRE + ' life\\b', 'i')))) fx.push({ type: 'gainLife', n: num(m[1]) });
 
     m = text.match(new RegExp('put ' + NRE + ' \\+1\\/\\+1 counters? on (each (?:other )?(?:[a-z ]+?)creature you control|each creature you control|target creature(?: you control)?|up to [a-z]+ target creatures?|~|it|that creature|each of up to [a-z]+ target creatures)', 'i'));
     if (m) {
@@ -220,6 +226,9 @@
     [/^whenever a token you control leaves the battlefield,?\s*/i, ['tokenLeave']],
     [/^whenever you sacrifice a food,?\s*/i, ['foodSac']],
     [/^whenever a player casts their second spell each turn,?\s*/i, ['secondSpell']],
+    // life: Sanguine Bond ("whenever you gain life"), Exquisite Blood ("whenever an opponent loses life")
+    [/^whenever you gain life,?\s*/i, ['lifeGain']],
+    [/^whenever an opponent loses life,?\s*/i, ['oppLoseLife']],
     [/^when(?:ever)? ~ enters(?: the battlefield)? or attacks,?\s*/i, ['etb', 'attack']],
     [/^when(?:ever)? ~ enters(?: the battlefield)?(?: or dies)?,?\s*/i, ['etb']],
     [/^when(?:ever)? ~ attacks(?: or blocks)?,?\s*/i, ['attack']],
@@ -242,7 +251,7 @@
   function analyzeAbilities(card, a) {
     const text = normText(card, (card.front_oracle != null ? card.front_oracle : card.oracle_text) || '');
     const kwSet = new Set((card.keywords || []).map(k => k.toLowerCase()));
-    a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null };
+    a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
     for (const raw of lines) {
@@ -299,6 +308,7 @@
       }
       // Cabbage Merchant: tap two untapped Foods for one mana of any color. Faeburrow Elder: a mana of each color among your permanents.
       if (/^tap two untapped foods you control: add one mana of any color/i.test(line)) { a.foodMana = true; rec.status = 'ok'; continue; }
+      if (/^activated abilities of foods you control cost \{1\} less/i.test(line)) { a.statics.foodDiscount = 1; rec.status = 'ok'; continue; }     // Sam: cracking a Food for life costs {1}
       if (/^\{T\}: for each color among permanents you control, add one mana of that color/i.test(line)) { a.colorMana = true; rec.status = 'ok'; continue; }
       if ((m = line.match(/^~ gets \+(\d+)\/\+(\d+) for each color among permanents you control/i))) { a.statics.selfPerColor = { p: +m[1], t: +m[2] }; rec.status = 'ok'; continue; }
       // token and counter replacement effects: Doubling Season, Parallel Lives, Mondrak, Chatterfang, Divine Visitation, Academy Manufactor...
@@ -323,7 +333,10 @@
         if (trig.kinds[0] === 'attackAny') t.once = /^whenever you attack/i.test(line);
         // Belladonna Took: "...the first time this turn: X. If it's the second time, Y. If it's the third time, Z."
         const nm = trig.rest.match(/first time[^.]*\.\s*If it's the second time, ([^.]*)\.\s*If it's the third time, ([^.]*)\./i);
-        if (nm) { t.nth = [[], parseEffects(nm[1]).fx, parseEffects(nm[2]).fx]; t.fx = []; }
+        if (nm) {
+          const first = trig.rest.match(/^(.*?) if this is the first time/i);                  // "you gain 1 life" the first time
+          t.nth = [first ? parseEffects(first[1]).fx : [], parseEffects(nm[1]).fx, parseEffects(nm[2]).fx]; t.fx = [];
+        }
         if (r.fx.length || t.nth) a.triggers.push(t);
         rec.status = (r.fx.length || t.nth) ? 'ok' : r.neutral ? 'neutral' : 'ignored';
         continue;
@@ -364,17 +377,25 @@
     //   dev    - a real solo effect that is not built yet (in development)
     //   approx - simulated only roughly
     const HURTS_OPP = /\bopponents?\b[^.]*\bloses?\b|\bdeals? [^.]*damage to (each|target|any)/i;   // damage/drain to the goldfish DOES matter
-    const OPP_ONLY = /\bopponents?\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b|\bgets? [+\-−]?[\dX]+\/[\-−][\dX]+/i;
+    const OPP_ONLY = /\bopponents?\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b|\bgets? [+\-−]?[\dX]+\/[\-−][\dX]+|\bdeals? combat damage to you\b/i;
+    // lines the broad "doesn't matter solo" filter swallowed, although they change a solo game
+    const REAL_SOLO_EFFECT = /search your library for (a|an|up to [a-z]+) (?!basic land)[^.]*cards?\b|sacrifice an? [a-z ]+: add \{|\bloses? life equal\b|\btransform|\bexile ~, then return|return [^.]*from your graveyard/i;
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
         if (/^exile ~\.?$/i.test(t) || /^activated abilities of foods you control cost|isn't on the battlefield, it's a/i.test(t)) { rec.status = 'neutral'; rec.tag = 'solo'; }
         else if (oppOnly) { rec.status = 'neutral'; rec.tag = 'opp'; }
         else rec.tag = 'dev';
-      } else if (rec.status === 'neutral') rec.tag = rec.tag || (oppOnly ? 'opp' : 'solo');
-      else if (rec.status === 'partial') rec.tag = 'approx';
+      } else if (rec.status === 'neutral') {
+        if (!rec.tag) {
+          if (oppOnly) rec.tag = 'opp';
+          else if (REAL_SOLO_EFFECT.test(t)) { rec.status = 'ignored'; rec.tag = 'dev'; }   // tutors, sacrifice-for-mana, drain, transform...: these DO matter, they are just not built yet
+          else rec.tag = 'solo';
+        }
+      } else if (rec.status === 'partial') rec.tag = 'approx';
     }
     a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb'));
+    a.lifeWatch = a.triggers.some(t => t.kinds.includes('lifeGain'));      // something here cares when you gain life (Sanguine Bond)
     const total = a.coverage.length;
     const bad = a.coverage.filter(c => c.status === 'ignored' || c.status === 'partial').length;
     a.coverageLevel = !total || bad === 0 ? 'ok' : bad === total ? 'none' : 'partial';
@@ -430,9 +451,19 @@
       if (colors.size === 0) colors.add('C');
       if (colors.has('C') && colors.size > 1 && !/\{C\}/.test(text)) colors.delete('C');
       a.produce = { colors, amount };
-      a.entersTapped = (/enters( the battlefield)? tapped/i.test(text) && !/unless|you may pay|if you don't|if you control two or fewer/i.test(text)) || (a.fetch && /tapped/i.test(lower))
-        || /enters( the battlefield)? tapped unless you have two or more opponents/i.test(text);   // solo goldfish = one opponent, so it enters tapped
-      a.coverage.forEach(c => { if (/two or more opponents/i.test(c.text)) { c.status = 'ok'; c.tag = null; } });
+      a.entersTapped = (/enters( the battlefield)? tapped/i.test(text) && !/unless|you may (pay|reveal)|if you don't|if you control two or fewer/i.test(text)) || (a.fetch && /tapped/i.test(lower));
+      // Conditional lands decide whether they enter tapped at the moment they enter (see landEntersTapped):
+      //   check lands, slow lands, fast lands, shock lands, reveal lands (Snarls), Canopy Vista, The Shire, Undergrowth Stadium
+      let mm;
+      if (/enters( the battlefield)? tapped unless you have two or more opponents/i.test(text)) a.tapCond = { kind: 'tapped' };          // a goldfish has one opponent
+      else if (/enters( the battlefield)? tapped unless you control two or more other lands/i.test(text)) a.tapCond = { kind: 'otherLands', min: 2 };
+      else if (/enters( the battlefield)? tapped unless you control two or more basic lands/i.test(text)) a.tapCond = { kind: 'basicLands', min: 2 };
+      else if (/enters( the battlefield)? tapped unless you control two or fewer other lands/i.test(text)) a.tapCond = { kind: 'fewLands', max: 2 };
+      else if (/enters( the battlefield)? tapped unless you control (?:a|an) legendary creature/i.test(text)) a.tapCond = { kind: 'legendaryCreature' };
+      else if ((mm = text.match(/enters( the battlefield)? tapped unless you control (?:a|an) ([A-Za-z]+)(?: or (?:a|an) ([A-Za-z]+))?/i))) a.tapCond = { kind: 'types', types: [mm[2], mm[3]].filter(Boolean) };
+      else if ((mm = text.match(/you may reveal (?:a|an) ([A-Za-z]+)(?: or (?:a|an)? ?([A-Za-z]+))? card from your hand\. If you don't[^.]*tapped/i))) a.tapCond = { kind: 'reveal', types: [mm[1], mm[2]].filter(Boolean) };
+      else if ((mm = text.match(/you may pay (\d+) life\. If you don't[^.]*enters tapped/i))) a.tapCond = { kind: 'shock', life: +mm[1] };
+      a.coverage.forEach(c => { if (/enters( the battlefield)? tapped|you may (reveal|pay)/i.test(c.text)) { c.status = 'ok'; c.tag = null; } });
       a.triggers = a.triggers.filter(t => !t.fx.every(f => f.type === 'ramp'));
       a.coverageLevel = a.coverage.some(c => c.status === 'ignored') ? 'partial' : 'ok';
     } else if (a.isPermanent) {
@@ -528,6 +559,7 @@
       landPlayed: 0, manaSpent: 0, commanderCast: null, killTurn: null, cmdrCasts: {},
       castTurn: {}, drawTurn: {}, turns: [], floating: [], eot: { p: 0, t: 0, kw: new Set() }, extraCombats: 0,
       nextIid: deck.nextIid, landsPlayedThisTurn: 0, spentThisTurn: 0,
+      life: opts.oppLife || 40,                               // your own life total (starts like the goldfish's: 40 in Commander, 20 otherwise)
     };
   }
 
@@ -607,6 +639,8 @@
     if (a.watch) info.watchers.push(q);
     if (st.tokenRepl.length) info.repl.push(q);
     if (st.counterDouble) info.cm++;
+    if (st.foodDiscount) info.foodDiscount += st.foodDiscount;
+    if (a.lifeWatch) info.lifeWatch = true;
     if (q.token && q.card.name === 'Food') info.foods.push(q);
     if (!info.seenCards.has(q.card)) {                                // card-level facts, once per distinct card
       info.seenCards.add(q.card);
@@ -618,7 +652,7 @@
     const c = g._bf;
     if (c && c.arr === g.battlefield && c.len === g.battlefield.length && c.ver === (g.bfVer || 0)) return c;
     const info = { arr: g.battlefield, len: g.battlefield.length, ver: g.bfVer || 0, anthems: [], selfSrc: new Set(), attach: new Map(), byCard: new Map(), colors: new Set(), foodMana: false,
-      producers: [], reducers: [], watchers: [], repl: [], foods: [], cm: 0, seenCards: new Set() };
+      producers: [], reducers: [], watchers: [], repl: [], foods: [], cm: 0, foodDiscount: 0, lifeWatch: false, seenCards: new Set() };
     for (const q of g.battlefield) addToInfo(info, q);
     for (const em of g.emblems || []) info.anthems.push({ src: null, an: { other: false, filter: '', p: em.p, t: em.t, keywords: em.keywords || [] } });
     return (g._bf = info);
@@ -760,12 +794,30 @@
   }
 
   // ---------- Entering the battlefield & triggers ----------
+  // Does this land enter tapped right now? Conditional lands look at the board (and hand) as it is when they enter.
+  function landEntersTapped(g, a) {
+    const tc = a.tapCond;
+    if (!tc) return !!a.entersTapped;
+    const lands = g.battlefield.filter(p => p.asLand);
+    const hasType = (tl, types) => types.some(t => (tl || '').includes(t));
+    switch (tc.kind) {
+      case 'tapped': return true;
+      case 'types': return !lands.some(p => hasType(p.card.type_line, tc.types));              // check lands: a Plains or a Swamp...
+      case 'legendaryCreature': return !g.battlefield.some(p => isCreaturePerm(p) && p.card.a.isLegendary);
+      case 'otherLands': return lands.length < tc.min;                                        // slow lands
+      case 'basicLands': return lands.filter(p => /\bBasic\b/.test(p.card.type_line || '')).length < tc.min;
+      case 'fewLands': return lands.length > tc.max;                                          // fast lands
+      case 'reveal': return !g.hand.some(c => hasType(c.card.type_line, tc.types));           // reveal lands (Snarls, Bosk)
+      case 'shock': if (g.life > tc.life) { g.life -= tc.life; return false; } return true;   // pay the life: untapped
+    }
+    return !!a.entersTapped;
+  }
   function enter(g, inst, o) {
     o = o || {};
     const a = inst.card.a;
     const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1), token: !!inst.card.isToken };
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
-    else if (a.isLand) perm.tapped = !!a.entersTapped;
+    else if (a.isLand) perm.tapped = landEntersTapped(g, a);
     else perm.sick = a.isCreature;
     if (o.tapped) perm.tapped = true;
     if (a.isCreature && !perm.token && !perm.asLand && !o.silent) g.nontokenCreatureEnters = (g.nontokenCreatureEnters || 0) + 1;   // Gyome counts these
@@ -808,9 +860,14 @@
     return perm;
   }
 
-  function fire(g, trig, source, ev, subject) {
+  function fire(g, trig, source, ev, subject, amount) {
     g.depth = (g.depth || 0) + 1;
-    if (g.depth <= 25) {
+    if (amount > 0 && g.depth > 18 && g.killTurn == null) {
+      // A trigger loop that keeps feeding itself with a non-zero amount (Exquisite Blood + Sanguine Bond) never ends: the goldfish is drained.
+      ev.push({ type: 'note', text: `Infinite loop (${source ? source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null });
+      g.damage = Math.max(g.damage, g.opts.oppLife); g.infinite = true; checkKill(g, ev);
+    } else if (g.depth <= 25) {
+      const prevThat = g.thatMuch; g.thatMuch = amount;
       let fx = trig.fx;
       if (trig.nth && source) {
         // "the first / second / third time this turn" abilities (Belladonna Took): count resolutions this turn
@@ -820,6 +877,7 @@
       }
       ev.push({ type: 'trigger', source, text: trig.text });
       applyEffects(g, fx, source, ev, subject);
+      g.thatMuch = prevThat;
     }
     g.depth--;
   }
@@ -834,6 +892,20 @@
     g.damage += n;
     ev.push({ type: 'damage', n, source, total: g.damage });
     checkKill(g, ev);
+    oppLostLife(g, n, ev);
+  }
+  // "Whenever an opponent loses life" (Exquisite Blood). Called for every kind of life loss: burn, drain, combat damage.
+  function oppLostLife(g, n, ev) {
+    if (!(n > 0) || g.killTurn != null) return;
+    for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppLoseLife')) fire(g, t, q, ev, null, n);
+  }
+  // You gain life: track the total and fire "whenever you gain life" (Sanguine Bond, Ajani's Pridemate).
+  function gainLife(g, n, ev, source) {
+    if (!(n > 0)) return;
+    g.life += n;
+    ev.push({ type: 'life', n, total: g.life, source });
+    if (g.killTurn != null) return;
+    for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('lifeGain')) fire(g, t, q, ev, null, n);
   }
 
   // What actually gets created when an effect says "create n of this token", after your replacement effects.
@@ -879,6 +951,7 @@
     for (const f of fx) {
       let n = f.n;
       if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
+      else if (n === 'THAT') n = g.thatMuch || 0;                       // "that much life"
       else if (n === 'X') n = f.count ? countFor(g, f.count, source) : 1;
       switch (f.type) {
         case 'token': {
@@ -901,6 +974,8 @@
           break;
         }
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
+        case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'loyalty': if (source && source.card.a.isPlaneswalker) { source.loyalty += n * counterMult(g); ev.push({ type: 'note', text: `${source.card.name} gets ${n * counterMult(g)} loyalty`, source }); } break;
         case 'counters': {
           let targets = [];
           if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && matchesFilter(p.card, f.filter));
@@ -1105,6 +1180,18 @@
         }
       }
     }
+    // Food: "{2}, {T}, Sacrifice this: You gain 3 life." Only worth the mana when something cares about gaining life (Sanguine Bond...).
+    if (bfInfo(g).lifeWatch) {
+      const foodCost = { generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [] };      // Sam makes it {1}
+      for (let k = 0; k < 8 && g.killTurn == null; k++) {
+        const f = foodsOf(g).find(q => !q.tapped);
+        if (!f || !canPay(foodCost, allUnits(g))) break;
+        pay(g, foodCost); f.tapped = true;
+        ev.push({ type: 'note', text: 'Cracked a Food for 3 life' });
+        sacrificeFoods(g, 1, ev);                      // the tapped one goes first
+        gainLife(g, 3, ev, null);
+      }
+    }
     for (const p of g.battlefield.slice()) {
       if (p.card.isToken && /^clue/i.test(p.card.name) && canPay({ generic: 2, pips: [] }, allUnits(g))) {
         pay(g, { generic: 2, pips: [] }); removePerm(g, p); ev.push({ type: 'note', text: 'Cracked a Clue' }); draw(g, 1, ev);
@@ -1252,6 +1339,9 @@
         g.damage += dmg;
         ev.push({ type: 'attack', attackers: hitters, dmg, total: g.damage });
         checkKill(g, ev);
+        oppLostLife(g, dmg, ev);                                         // Exquisite Blood: combat damage is life loss too
+        const lifelink = hitters.reduce((s, p) => s + (hasKw(g, p, 'lifelink') ? Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1) : 0), 0);
+        if (lifelink > 0 && g.killTurn == null) gainLife(g, lifelink, ev, null);
         for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
           if (!t.kinds.includes('combatDamage')) continue;
           if (t.who === '~' || /equipped|enchanted/.test(t.who)) {

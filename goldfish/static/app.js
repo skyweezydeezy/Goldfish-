@@ -257,20 +257,126 @@
   }
   $('#covOnlyGaps').addEventListener('change', renderCoverage);
 
-  // saved decks
+  // ---- saved decks (kept in this browser: gf_decks = name -> decklist text, gf_decks_meta = name -> {saved: time}) ----
+  const getDecks = () => { try { return JSON.parse(localStorage.getItem('gf_decks') || '{}') || {}; } catch (e) { return {}; } };
+  const getMeta = () => { try { return JSON.parse(localStorage.getItem('gf_decks_meta') || '{}') || {}; } catch (e) { return {}; } };
+  function putDecks(all, meta) {
+    try {
+      localStorage.setItem('gf_decks', JSON.stringify(all));
+      localStorage.setItem('gf_decks_meta', JSON.stringify(meta || getMeta()));
+      return true;
+    } catch (e) { toast('Could not save: this browser is out of storage space'); return false; }
+  }
   function refreshSaved() {
-    const all = JSON.parse(localStorage.getItem('gf_decks') || '{}');
-    $('#savedDecks').innerHTML = '<option value="">Saved decks…</option>' + Object.keys(all).map(n => `<option>${esc(n)}</option>`).join('');
+    const all = getDecks();
+    $('#savedDecks').innerHTML = '<option value="">Saved decks…</option>' + Object.keys(all).sort((a, b) => a.localeCompare(b)).map(n => `<option>${esc(n)}</option>`).join('');
+  }
+  function uniqueName(base, all) {
+    if (!all[base]) return base;
+    for (let i = 2; i < 500; i++) { const n = `${base} (${i})`; if (!all[n]) return n; }
+    return base + ' ' + Date.now();
   }
   $('#saveDeck').addEventListener('click', () => {
-    const name = prompt('Save deck as:', (S.deck && S.deck.commanders[0] && S.deck.commanders[0].card.name) || 'My deck');
+    if (!$('#deckText').value.trim()) return toast('Paste a decklist first, then Save');
+    const name = (prompt('Save deck as:', (S.deck && S.deck.commanders[0] && S.deck.commanders[0].card.name) || 'My deck') || '').trim();
     if (!name) return;
-    const all = JSON.parse(localStorage.getItem('gf_decks') || '{}'); all[name] = $('#deckText').value;
-    localStorage.setItem('gf_decks', JSON.stringify(all)); refreshSaved(); toast('Saved');
+    const all = getDecks(), meta = getMeta();
+    if (all[name] != null && all[name] !== $('#deckText').value && !confirm(`"${name}" is already saved. Replace it with what is in the box now?`)) return;
+    all[name] = $('#deckText').value; meta[name] = { saved: Date.now() };
+    if (putDecks(all, meta)) { refreshSaved(); $('#savedDecks').value = name; toast('Saved "' + name + '"'); }
   });
   $('#savedDecks').addEventListener('change', e => {
-    const all = JSON.parse(localStorage.getItem('gf_decks') || '{}');
-    if (all[e.target.value]) { $('#deckText').value = all[e.target.value]; loadDeck(); }
+    const all = getDecks();
+    if (all[e.target.value] != null) { $('#deckText').value = all[e.target.value]; localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); }
+  });
+
+  // ---- the manager panel ----
+  const dm = $('#deckManager');
+  const fileSafe = s => s.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'deck';
+  function download(filename, text, mime) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: mime || 'text/plain' }));
+    a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  function summarize(text) {
+    const es = Source.parseDecklist(text);
+    const total = es.reduce((s, e) => s + e.qty, 0);
+    const cmdrs = es.filter(e => e.commander).map(e => e.name.split(',')[0]);
+    return `${total} cards${cmdrs.length ? ' · ' + cmdrs.join(' + ') : ''}`;
+  }
+  function renderManager() {
+    const all = getDecks(), meta = getMeta(), list = $('#dmList');
+    list.innerHTML = '';
+    const names = Object.keys(all).sort((a, b) => a.localeCompare(b));
+    $('#dmCount').textContent = names.length ? `${names.length} saved deck${names.length === 1 ? '' : 's'}` : '';
+    if (!names.length) { list.appendChild(h('div', 'empty-note', 'No saved decks yet. Paste a decklist, tap <b>Save</b>, and it will show up here.')); return; }
+    names.forEach(name => {
+      const when = meta[name] && meta[name].saved ? ' · saved ' + new Date(meta[name].saved).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      const row = h('div', 'dm-row');
+      row.appendChild(h('div', 'dm-info', `<b>${esc(name)}</b><span class="hint">${esc(summarize(all[name]))}${when}</span>`));
+      const acts = h('div', 'dm-acts');
+      const btn = (label, cls, fn, title) => { const b = h('button', cls || 'ghost', label); if (title) b.title = title; b.addEventListener('click', fn); acts.appendChild(b); return b; };
+      btn('Load', 'primary', () => { $('#deckText').value = all[name]; localStorage.setItem('gf_last', all[name]); $('#savedDecks').value = name; closeManager(); loadDeck(); });
+      btn('Rename', 'ghost', () => {
+        const to = (prompt('Rename deck to:', name) || '').trim();
+        if (!to || to === name) return;
+        const d = getDecks(), m = getMeta();
+        if (d[to] != null) return toast(`There is already a deck called "${to}"`);
+        d[to] = d[name]; delete d[name]; m[to] = m[name] || { saved: Date.now() }; delete m[name];
+        if (putDecks(d, m)) { refreshSaved(); renderManager(); }
+      });
+      btn('Duplicate', 'ghost', () => {
+        const d = getDecks(), m = getMeta(), to = uniqueName(name + ' copy', d);
+        d[to] = d[name]; m[to] = { saved: Date.now() };
+        if (putDecks(d, m)) { refreshSaved(); renderManager(); toast('Duplicated as "' + to + '"'); }
+      });
+      btn('Copy', 'ghost', async () => {
+        try { await navigator.clipboard.writeText(all[name]); toast('Decklist copied'); }
+        catch (e) { $('#deckText').value = all[name]; toast('Could not use the clipboard, so the list was put in the box instead'); closeManager(); }
+      }, 'Copy the decklist text');
+      btn('Export', 'ghost', () => download(fileSafe(name) + '.txt', all[name]), 'Download as a .txt file');
+      btn('Delete', 'ghost danger', () => {
+        if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+        const d = getDecks(), m = getMeta(); delete d[name]; delete m[name];
+        if (putDecks(d, m)) { refreshSaved(); renderManager(); toast('Deleted'); }
+      });
+      row.appendChild(acts);
+      list.appendChild(row);
+    });
+  }
+  function openManager() { renderManager(); dm.classList.add('show'); document.body.classList.add('modal-open'); }
+  function closeManager() { dm.classList.remove('show'); document.body.classList.remove('modal-open'); }
+  $('#manageDecks').addEventListener('click', openManager);
+  $('#dmClose').addEventListener('click', closeManager);
+  dm.addEventListener('click', e => { if (e.target === dm) closeManager(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && dm.classList.contains('show')) closeManager(); });
+  $('#dmSaveCurrent').addEventListener('click', () => { $('#saveDeck').click(); setTimeout(renderManager, 50); });
+  $('#dmExportAll').addEventListener('click', () => {
+    const all = getDecks();
+    if (!Object.keys(all).length) return toast('Nothing to export yet');
+    download('i-see-fish-decks.json', JSON.stringify({ app: 'I See Fish', version: 1, exported: new Date().toISOString(), decks: all }, null, 2), 'application/json');
+  });
+  $('#dmImport').addEventListener('click', () => $('#dmFile').click());
+  $('#dmFile').addEventListener('change', async e => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    const d = getDecks(), m = getMeta();
+    let added = 0;
+    try {
+      const j = JSON.parse(text);
+      const incoming = j && j.decks && typeof j.decks === 'object' ? j.decks : null;
+      if (!incoming) throw new Error('not a backup');
+      for (const [n, t] of Object.entries(incoming)) { if (typeof t !== 'string') continue; const to = uniqueName(n, d); d[to] = t; m[to] = { saved: Date.now() }; added++; }
+    } catch (err) {
+      // not a backup file: treat it as one decklist
+      if (!text.trim()) return toast('That file is empty');
+      const base = (prompt('Name for this deck:', file.name.replace(/\.[^.]+$/, '')) || '').trim();
+      if (!base) return;
+      const to = uniqueName(base, d); d[to] = text; m[to] = { saved: Date.now() }; added = 1;
+    }
+    if (putDecks(d, m)) { refreshSaved(); renderManager(); toast(`Imported ${added} deck${added === 1 ? '' : 's'}`); }
   });
   refreshSaved();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
@@ -560,6 +666,7 @@
         case 'trigger': log(`<span class="trig">⚡ ${nm(e.source)}${times(e.count)}</span>: <i>${esc(e.text.length > 90 ? e.text.slice(0, 88) + '…' : e.text)}</i>`); break;
         case 'token': log(`↳ created ${e.count > 1 ? e.count + ' × ' : ''}${esc(e.inst.card.name)}${e.perm.card.a.isCreature ? ` ${G.powerOf(S.game, e.perm)}/${G.toughnessOf(S.game, e.perm)}` : ''} token${e.count > 1 ? 's' : ''}`); break;
         case 'damage': log(`↳ <b>${e.n}</b> damage to the goldfish (${e.total} total)`); break;
+        case 'life': log(`↳ you gain <b>${e.n}</b> life (${e.total})`); break;
         case 'counters': log(`↳ +${e.n} counter${e.n > 1 ? 's' : ''} on ${e.perms.length > 3 ? e.perms.length + ' creatures' : e.perms.map(nm).join(', ')}`); break;
         case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
         case 'mana': log(`↳ added ${e.n} mana`); break;
@@ -587,7 +694,7 @@
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
-  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters'];
+  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life'];
   function snap() {
     const g = S.game;
     const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });
@@ -819,6 +926,7 @@
     $('#cLibrary').textContent = g.library.length;
     $('#hTurn').textContent = g.turn;
     $('#hLife').textContent = Math.max(0, g.opts.oppLife - g.damage);
+    $('#hMyLife').textContent = g.life;
     $('#hSpent').textContent = g.manaSpent + (g.spentThisTurn || 0);
     const cd = Object.values(g.cmdrDamage || {});
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';

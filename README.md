@@ -56,6 +56,8 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
   - **token replacement effects:** Doubling Season, Parallel Lives, Mondrak and Elspeth, Storm Slayer (they stack), Divine Visitation (creature tokens become Angels), Chatterfang and Peregrin Took (extra Squirrels or a Food), Academy Manufactor and Bilbo (Clue, Food and Treasure). Order used: conversions, then additions, then doublers. Doubling Season also doubles counters and starting/+ loyalty.
   - **token triggers:** "whenever a token enters / you create a token / a token leaves", including Belladonna Took's first-second-third-time-this-turn ability, Rosie Cotton, Mirkwood Bats, Nadier's Nightblade, Gyome, and Rapacious Guest's combat Food
   - **Food economy:** spends spare mana and Foods on "sacrifice a Food" abilities (Greta's cards and counters, Savvy Hunter and Peregrin Took's draws), with the payoffs: Nuka-Cola's Treasure, Rapacious Guest's counters, Mirkwood Bats and Nadier's Nightblade. Cabbage Merchant turns pairs of Foods into mana.
+  - **Life and combos:** tracks your life total; "whenever you gain life" and "whenever an opponent loses life" triggers; lifelink; Foods cracked for life when something cares (Sam makes it {1}). Exquisite Blood + Sanguine Bond is recognized as an infinite loop and kills the goldfish.
+  - **Lands:** check lands, slow and fast lands, shock lands, reveal lands (Snarls), Canopy Vista and The Shire all check the board (or your hand) when they enter, instead of always entering untapped.
   - **Also:** Faeburrow Elder (a mana per color you control), Lotho's second-spell Treasure, and planeswalker ultimates that make "creatures get +2/+2" emblems (used only when your board is wide)
   - Treasure, Clue and Food tokens; Clues get cracked with spare mana
   - card draw
@@ -90,3 +92,7 @@ The goldfish never blocks, never removes anything, and never interacts.
 *I See Fish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
 
 Card data and images are provided by [Scryfall](https://scryfall.com) and are not endorsed by Scryfall. Following Scryfall's and Wizards' policies, this app is **free to use with no sign-up or paywall**, card images are shown whole and unaltered, and the hosted version fetches everything from Scryfall directly instead of re-hosting it. Optional tips are welcome on Cash App at <https://cash.app/$SWDMark> and never unlock anything.
+
+## Saved decks
+
+Tap **Manage** on the Deck tab to rename, duplicate, copy, export or delete saved decks, and to back them all up to one file (**Export all**) or bring them back (**Import**). Decks live in your browser only, so export a backup before clearing browser data or switching devices.

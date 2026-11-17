@@ -41,6 +41,7 @@
           <button id="clearDeck" class="ghost" title="Empty the box so you can paste a new deck">Clear</button>
           <button id="saveDeck" class="ghost" title="Save to this browser">Save</button>
           <select id="savedDecks" class="ghost"><option value="">Saved decks…</option></select>
+          <button id="manageDecks" class="ghost" title="Rename, copy, export or delete saved decks">Manage</button>
         </div>
         <div id="deckMsgs"></div>
         <details class="settings" open>
@@ -120,6 +121,7 @@
         <div class="hud">
           <div class="hud-item"><span class="lbl">Turn</span><span id="hTurn" class="big">0</span></div>
           <div class="hud-item"><span class="lbl">Opponent life <small>(click to deal damage)</small></span><span id="hLife" class="big clickable">40</span></div>
+          <div class="hud-item"><span class="lbl">Your life</span><span id="hMyLife">40</span></div>
           <div class="hud-item"><span class="lbl">Commander damage</span><span id="hCmdr">0 / 21</span></div>
           <div class="hud-item"><span class="lbl">Board power</span><span id="hPower">0</span></div>
           <div class="hud-item"><span class="lbl">Mana open</span><span id="hMana" class="mana-pips"></span></div>
@@ -203,6 +205,20 @@
     <p>Card data and images are provided by <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a> and are not endorsed by Scryfall. Free to use, with no sign-up. If it's useful, you can <a class="donate" href="https://cash.app/$SWDMark" target="_blank" rel="noopener">tip the developer on Cash App ($SWDMark)</a>, or scan the code. Totally optional.</p>
   </div>
 </footer>
+
+<div id="deckManager" class="modal" role="dialog" aria-modal="true" aria-labelledby="dmTitle">
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="dmTitle">Saved decks</h2><span id="dmCount" class="hint"></span><button id="dmClose" class="ghost">Close</button></div>
+    <p class="hint">Decks are saved in this browser only. Use <b>Export all</b> to make a backup you can import on another device.</p>
+    <div id="dmList" class="dm-list"></div>
+    <div class="row wrap dm-foot">
+      <button id="dmSaveCurrent" class="ghost">Save what's in the box…</button>
+      <button id="dmImport" class="ghost">Import…</button>
+      <button id="dmExportAll" class="ghost">Export all</button>
+      <input id="dmFile" type="file" accept=".json,.txt,application/json,text/plain" hidden>
+    </div>
+  </div>
+</div>
 
 <div id="lightbox" class="lightbox" aria-modal="true"></div>
 <div id="zoom" class="zoom" aria-hidden="true"></div>

@@ -108,6 +108,16 @@
 
   // ======================= deck loading =======================
   $('#loadDeck').addEventListener('click', loadDeck);
+  // Clear: empty the decklist box, ready for a new deck (the deck already loaded stays until you load another)
+  $('#clearDeck').addEventListener('click', () => {
+    const box = $('#deckText');
+    box.value = '';
+    localStorage.setItem('gf_last', '');
+    $('#deckMsgs').innerHTML = '';
+    $('#savedDecks').value = '';
+    box.focus();
+    toast('Cleared. Paste your new deck, then tap Load deck.');
+  });
   async function loadDeck() {
     const text = $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');

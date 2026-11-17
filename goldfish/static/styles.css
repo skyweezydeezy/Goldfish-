@@ -446,3 +446,6 @@ h2 { color: var(--ice-2); }
 .mini-hand .acts { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
 .mini-hand .acts button { padding: 6px 12px; font-size: 13px; }
 .mini-hand.selected .pick { color: var(--ice); border-color: rgba(143,216,255,.5); }
+
+/* deck buttons: stay on one line, wrap as a row on narrow screens */
+.deck-actions button { white-space: nowrap; }

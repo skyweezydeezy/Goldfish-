@@ -36,8 +36,9 @@
         <h2>Paste a decklist</h2>
         <p class="hint">Moxfield, Archidekt, MTGO or plain text. <code>1 Sol Ring</code>, <code>1x Sol Ring (C21) 263</code>, a <code>Commander</code> section, or <code>*CMDR*</code> tags.</p>
         <textarea id="deckText" spellcheck="false" placeholder="Commander&#10;1 Omnath, Locus of Rage&#10;&#10;Deck&#10;1 Sol Ring&#10;1 Cultivate&#10;20 Forest&#10;..."></textarea>
-        <div class="row">
+        <div class="row wrap deck-actions">
           <button id="loadDeck" class="primary">Load deck</button>
+          <button id="clearDeck" class="ghost" title="Empty the box so you can paste a new deck">Clear</button>
           <button id="saveDeck" class="ghost" title="Save to this browser">Save</button>
           <select id="savedDecks" class="ghost"><option value="">Saved decks…</option></select>
         </div>

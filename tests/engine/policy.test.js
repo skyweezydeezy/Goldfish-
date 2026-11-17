@@ -79,6 +79,42 @@ check('mirror mode against another deck works (scores 0, 0.5 or 1 per match)', m
 check('"best" is only ever a row that beat the baseline significantly', c1.best === 0 || (c1.rows[c1.best].z > 1.64 && c1.rows[c1.best].diff > 0));
 console.log('goldfish fetch timing, 120 games each:', c1.rows.map(x => `${x.name}: ${x.mean.toFixed(3)}±${x.se.toFixed(3)} (z ${x.z.toFixed(1)})`).join(' | '));
 
+// ---- more learnable choices
+const syn = (name, type, cost, oracle, pw, th, extra) => { const c = Object.assign({ name, layout: 'normal', mana_cost: cost, cmc: (cost.match(/\{/g) || []).length, type_line: type, oracle_text: oracle, front_oracle: oracle, power: pw == null ? null : String(pw), toughness: th == null ? null : String(th), colors: [], color_identity: [], keywords: [], faces: [], produced_mana: /^Land/.test(type) ? ['W', 'U', 'B', 'R', 'G'] : [], images: [], remote_images: [], uid: 'syn-' + name }, extra || {}); c.a = G.analyze(c, ['W', 'B']); return c; };
+const duel = (polA, polB) => { const a = G.newGame(deck, Object.assign({}, O, { policy: polA }), 1), b = G.newGame(deck, Object.assign({}, O, { policy: polB }), 2); G.linkMatch(a, b); for (const x of [a, b]) { x.turn = 6; x.command = []; x.hand = []; x.library = x.library.slice(0, 40); } return { a, b }; };
+const putc = (g, c) => { const p = G.enter(g, { iid: g.nextIid++, card: c }, {}); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
+
+for (const [goal, want] of [['6', 6], ['11', 11], ['current', 9]]) {
+  g = fresh({ necroGoal: goal }); G.enterWithTriggers(g, inst(g, 'Necropotence'), {}, []); g.hand = []; g.life = 40; G.endTurn(g);
+  check(`necroGoal = ${goal}: Necropotence refills the hand to ${want}`, g.hand.length === want, g.hand.length);
+}
+const soldier = { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W'], subtypes: ['Soldier'], keywords: [], artifact: false, name: 'Soldier' };
+const sacSetup = (mode, watchers, toks) => { const x = fresh({ sacMode: mode }); G.enterWithTriggers(x, inst(x, 'Viscera Seer'), {}, []); if (watchers >= 1) G.enterWithTriggers(x, inst(x, 'Blood Artist'), {}, []); if (watchers >= 2) G.enterWithTriggers(x, inst(x, 'Zulaport'), {}, []); G.createTokens(x, soldier, toks, [], null); x.battlefield.forEach(q => { q.sick = false; }); const d0 = x.damage; G.postCombat(x); return x.damage - d0; };
+check('sacMode = never: tokens are never sacrificed, even with two death triggers', sacSetup('never', 2, 10) === 0);
+check('sacMode = always: one death trigger and 3 tokens are enough', sacSetup('always', 1, 3) >= 3, sacSetup('always', 1, 3));
+check('sacMode = current: one death trigger and 3 tokens are not', sacSetup('current', 1, 3) === 0);
+check('sacMode = two: needs two death triggers', sacSetup('two', 2, 4) >= 8 && sacSetup('two', 1, 12) === 0);
+check('sacMode = wide: needs 8 or more tokens', sacSetup('wide', 1, 9) >= 9 && sacSetup('wide', 2, 4) === 0);
+
+const cancelC = syn('Cancel', 'Instant', '{1}{U}{U}', 'Counter target spell.');
+const cheap = (n) => syn('Cheap' + n, 'Creature — Test', '{1}', '', 1, 1);
+for (const [hc, wantOpen] of [['yes', 3], ['no', 0]]) {
+  const { a } = duel({ holdCounters: hc }, {}); a.hand = [{ iid: a.nextIid++, card: cancelC }, { iid: a.nextIid++, card: cheap(1) }, { iid: a.nextIid++, card: cheap(2) }, { iid: a.nextIid++, card: cheap(3) }, { iid: a.nextIid++, card: cheap(4) }];
+  const rb = syn('Rainbow Land', 'Land', '', '{T}: Add one mana of any color.');
+  for (let i = 0; i < 4; i++) { const q = G.enter(a, { iid: a.nextIid++, card: rb }, {}); q.tapped = false; q.enteredTurn = 1; }
+  G.castPhase(a);
+  const open = a.battlefield.filter(q => q.asLand && !q.tapped).length;
+  check(`holdCounters = ${hc}: ${hc === 'yes' ? 'keeps 3 lands open for the counterspell' : 'spends all the mana on creatures'}`, hc === 'yes' ? open >= wantOpen : open === 0, `open lands ${open}`);
+}
+for (const [ac, attacks] of [['1', false], ['0.5', true]]) {
+  const { a, b } = duel({ attackCaution: ac }, {}); const s1 = putc(a, syn('Little', 'Creature — Test', '{1}', '', 2, 2)); const hit = putc(b, syn('Hitter', 'Creature — Test', '{5}', '', 8, 8)); hit.tapped = true; a.life = 6;
+  G.combat(a);
+  check(`attackCaution = ${ac}: a 2/2 facing 8 power at 6 life ${attacks ? 'attacks' : 'stays home'} (their only creature is tapped)`, attacks ? b.life === 38 : b.life === 40, `their life ${b.life}`);
+}
+let mullD = 0, mullT = 0; const NK = 300;
+for (let i = 0; i < NK; i++) { const gd = G.newGame(deck, Object.assign({}, O, { policy: {} }), 40 + i), gt = G.newGame(deck, Object.assign({}, O, { policy: { keepLands: '3-4' } }), 40 + i); G.mulligan(gd); G.mulligan(gt); mullD += gd.mulligans; mullT += gt.mulligans; }
+check('keepLands = 3-4 keeps fewer opening hands than the default 2-5 (more mulligans)', mullT > mullD, `${mullD} vs ${mullT} mulligans in ${NK} hands`);
+
 // ---- whole games with each policy
 for (const pc of ['untilNeeded', 'untilEnd', 'whenShuffleHelps']) { let thr = 0; for (let i = 0; i < 150; i++) { try { G.simulate(deck, Object.assign({}, O, { policy: { fetchHold: pc } }), 600 + i); } catch (e) { thr++; if (thr < 3) console.log(e.stack); } } check(`150 full games with fetchHold = ${pc}: no errors`, thr === 0, thr); }
 let thr2 = 0; for (let i = 0; i < 100; i++) { try { G.playMatch(deck, deck, Object.assign({}, O, { policy: { fetchHold: 'untilNeeded' } }), 900 + i, i % 2 === 0); } catch (e) { thr2++; } }

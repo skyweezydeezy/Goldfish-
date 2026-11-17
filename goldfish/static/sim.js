@@ -170,6 +170,7 @@
     else if (/deals damage equal to [^.]* to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'X' });
     if (/loses life equal to the number of creature cards in your graveyard/i.test(text)) fx.push({ type: 'drain', n: 'GYCREATURES' });                              // Grist -5
     if ((m = text.match(/\bthen mill (a|one|two|three|\d+) cards?/i))) fx.push({ type: 'mill', n: num(m[1]), insect: /if an insect card was milled this way/i.test(text) });   // Grist +1
+    if ((m = text.match(/\bscry (\d+)/i)) && !/sacrifice a creature: scry|shares a creature type/i.test(text)) fx.push({ type: 'scry', n: +m[1] });
     // Enlightened Confidant: surveil 1, and if that card's mana value is at most the life you gained this turn it goes to your hand
     if (/surveil 1\. if you put a card with mana value less than or equal to the amount of life you gained this turn into your graveyard this way, put that card into your hand/i.test(text)) fx.push({ type: 'surveilHand' });
     // graveyard and sweepers: Samwise ("return target historic card from your graveyard to your hand"), Dawn, Dusk
@@ -286,7 +287,7 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
@@ -302,6 +303,7 @@
         if (/^equip/.test(lower)) { const em = line.match(/equip[^{]*((?:\{[^}]+\})+)/i); a.equip = { cost: parseCost(em ? em[1] : '{0}') }; }
         continue;
       }
+      if ((m = line.match(/^\{[^}]+\}(?:, \{T\})?: add .*shares a creature type with your commander, scry (\d+)/i))) { a.scryOnType = +m[1]; rec.status = 'partial'; continue; }          // Path of Ancestry: approximated, the mana is not tracked
       if (/^(\{T\}|\{T\}, sacrifice ~|sacrifice ~)(?:, [^:]*)?: add/i.test(line)) { rec.status = 'ok'; if (/sacrifice ~/i.test(line)) a.sacMana = true; continue; }
       if (/^\{[^}]+\}(?:, \{T\})?: add/i.test(line)) { rec.status = 'ok'; continue; }
       if ((m = line.match(/^equip(?: [a-z ]+)?\s*((?:\{[^}]+\})+)/i))) { a.equip = { cost: parseCost(m[1]) }; rec.status = 'ok'; continue; }
@@ -323,6 +325,7 @@
       if ((m = line.match(/^((?:\{[^}]+\})+): ~ becomes an? (\d+)\/(\d+) [a-z ]*creature until end of turn\. it's still a land/i))) { a.animate = { cost: parseCost(m[1]), p: +m[2], t: +m[3] }; rec.status = 'ok'; continue; }          // Restless Cottage
       if (/^\{1\}, \{T\}, sacrifice ~: search your library for a basic land card, put it onto the battlefield tapped/i.test(line)) { a.terrace = true; rec.status = 'ok'; continue; }          // Shire Terrace
       if ((m = line.match(/^((?:\{[^}]+\})+): transform ~\./i))) { a.activated.push({ cost: parseCost(m[1]), tap: false, fx: [{ type: 'transform', same: true }], text: raw }); a.transformAbility = true; rec.status = 'ok'; continue; }          // Jennifer Walters
+      if ((m = line.match(/^sacrifice a creature: scry (\d+)/i))) { a.sacScry = +m[1]; rec.status = 'ok'; continue; }          // Viscera Seer
       if ((m = line.match(/^sacrifice (?:a|another) creature: add ((?:\{[WUBRGC]\})+)/i))) { a.altar = { n: (m[1].match(/\{/g) || []).length }; rec.status = 'ok'; continue; }          // Ashnod's Altar
       if (/^sacrifice ~: creatures you control gain indestructible until end of turn\. the ring tempts you/i.test(line)) { a.sacTempt = true; rec.status = 'ok'; continue; }      // Boromir, Warden of the Tower
       if (/^sacrifice a food: return ~ from your graveyard to the battlefield/i.test(line)) { a.gyReturn = { sacFood: 1 }; rec.status = 'ok'; continue; }          // Cauldron Familiar
@@ -1168,6 +1171,7 @@
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
         case 'gainLife': gainLife(g, n, ev, source); break;
         case 'transform': if (source) transformPerm(g, source, ev, f.same); break;
+        case 'scry': scry(g, Math.min(n, 5), ev, source); break;
         case 'surveilHand': {
           const top = g.library[0];
           if (top && (top.card.a.isLand ? 0 : top.card.a.mv) <= (g.lifeGainedThisTurn || 0)) {
@@ -1279,6 +1283,35 @@
     }
   }
 
+  // Scry: look at the top cards and send the ones you do not want to the bottom: surplus lands once you have plenty, and
+  // expensive cards you could not cast for several turns (never a combo piece or a token doubler).
+  function wantsBottom(g, c) {
+    const a = c.card.a;
+    const lands = g.battlefield.filter(p => p.asLand).length, handLands = g.hand.filter(i => i.card.a.isLand).length;
+    if (a.isLand) return lands >= 6 || (lands >= 4 && handLands >= 2);
+    if (a.comboRole || a.statics.tokenRepl.length || a.statics.counterDouble || c.card.commander) return false;
+    return a.castMv > lands + handLands + 4;
+  }
+  function scry(g, n, ev, source) {
+    for (let k = 0; k < n && g.library.length; k++) {
+      const top = g.library[0];
+      if (wantsBottom(g, top)) { g.library.push(g.library.shift()); ev.push({ type: 'note', text: `Scry: ${top.card.name} to the bottom`, source }); }
+      else { ev.push({ type: 'note', text: `Scry: kept ${top.card.name} on top`, source }); break; }
+    }
+  }
+  // Viscera Seer: with a wide board of tokens, sacrifice one to bottom a card you do not want
+  function seerScry(g, ev) {
+    for (const p of g.battlefield.slice()) {
+      if (!p.card.a.sacScry) continue;
+      for (let k = 0; k < 3 && g.library.length; k++) {
+        const toks = g.battlefield.filter(q => q.token && isCreaturePerm(q) && q !== p);
+        if (toks.length < 8 || !wantsBottom(g, g.library[0])) break;
+        leavePerm(g, toks[0], ev); flushLeaves(g, ev);
+        ev.push({ type: 'note', text: `${p.card.name}: sacrificed a token to scry`, source: p });
+        scry(g, p.card.a.sacScry, ev, p);
+      }
+    }
+  }
   // Exile the permanent and return it transformed: it comes back as its back face, as a new object (no counters, no summoning-sickness carry-over).
   function transformPerm(g, p, ev, same) {
     const back = p.card.a.backCard;
@@ -1335,6 +1368,10 @@
     const castEv = { type: 'cast', inst, toGrave: !a.isPermanent };
     ev.push(castEv);
     fireCastTriggers(g, inst, ev);
+    if (a.isCreature && !g.dry) {                                                                   // Path of Ancestry: scry when the mana cast a creature that shares a type with your commander
+      const cmd = (g.deck.commanders[0] || {}).card, types = t => (String(t || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean);
+      if (cmd && types(inst.card.type_line).some(w => types(cmd.type_line).includes(w))) for (const q of g.battlefield) if (q.card.a.scryOnType) scry(g, q.card.a.scryOnType, ev, q);
+    }
     g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
     if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);
     if (a.isPermanent) castEv.perm = enterWithTriggers(g, inst, {}, ev);
@@ -1853,6 +1890,7 @@
   function postCombat(g) {
     const ev = [];
     eachTrigger(g, 'postcombat', ev);
+    seerScry(g, ev);
     if (ev.some(e => e.type === 'transform')) ev.push(...castPhase(g).ev);
     return ev;
   }

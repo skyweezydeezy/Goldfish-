@@ -154,6 +154,7 @@
       <span id="simInfo" class="hint"></span>
     </div>
     <div id="simTiles" class="tiles"></div>
+    <div id="simSuggest" class="card-box suggest" hidden><div class="box-head"><h2>Suggestions</h2><span class="hint">From this run only, against a goldfish that never interacts. Nothing is saved or sent.</span></div><div id="suggestList"></div></div>
     <div class="two-col">
       <div class="card-box"><div class="box-head"><h2>Mana available by turn</h2><span class="hint">Median line, shaded 10th–90th percentile</span></div><div id="chartMana" class="chart"></div></div>
       <div class="card-box"><div class="box-head"><h2>Hitting every land drop</h2><span class="hint">P(at least N lands on turn N)</span></div><div id="chartLands" class="chart"></div></div>
@@ -248,6 +249,7 @@
 <script src="sim.js"></script>
 <script src="source.js"></script>
 <script src="charts.js"></script>
+<script src="suggest.js"></script>
 <script src="app.js"></script>
 <script src="looks.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>

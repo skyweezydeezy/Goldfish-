@@ -842,7 +842,7 @@
       const sc = tutorScore(g, i, ctx);
       if (sc > bs) { bs = sc; best = i; }
     }
-    return bs > -100 ? best : null;
+    return bs > 0 ? best : null;
   }
   // ---------- Counters ----------
   // Every counter goes through addCounters: it applies Doubling Season, keeps +1/+1 and -1/-1 cancelling out (p.counters is the NET),
@@ -930,6 +930,12 @@
 
   // Food: sacrificing one fires "whenever you sacrifice a Food" (Nuka-Cola, Rapacious Guest) and "a token leaves" (Nadier's Nightblade, Mirkwood Bats)
   function foodsOf(g) { return bfInfo(g).foods.slice(); }
+  // Foods you can spend on cards and recursion: the ones needed to crack for the life a trigger like Frodo's or Sorin's still requires are kept back
+  function extraFoods(g) {
+    const info = bfInfo(g);
+    const deficit = info.lifeWatch ? 0 : Math.max(0, info.lifeThreshold - (g.lifeGainedThisTurn || 0));
+    return foodsOf(g).length - Math.ceil(deficit / 3);
+  }
   function sacrificeFoods(g, n, ev) {
     const foods = foodsOf(g).sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0));        // spend the tapped ones first
     const gone = foods.slice(0, n);
@@ -1592,6 +1598,18 @@
     return v;
   }
 
+  // Cauldron Familiar: sacrifice a spare Food to return it from the graveyard (its enter trigger drains again)
+  function returnFamiliars(g, ev) {
+    for (const inst of g.graveyard.slice()) {
+      if (!inst.card.a.gyReturn || inst.retTurn === g.turn || extraFoods(g) < 1 || g.battlefield.length >= 250) continue;
+      sacrificeFoods(g, 1, ev);
+      g.graveyard.splice(g.graveyard.indexOf(inst), 1); inst.retTurn = g.turn;
+      ev.push({ type: 'note', text: `Sacrificed a Food: ${inst.card.name} returns from the graveyard` });
+      const perm = enterWithTriggers(g, inst, {}, ev);
+      ev.push({ type: 'rampLand', inst, perm, source: null });
+    }
+  }
+
   // Planeswalkers, equip, activated abilities, clues. Returns events (empty if nothing done).
   function useAbilities(g) {
     const ev = [];
@@ -1633,17 +1651,18 @@
       }
     }
     // Food economy: sacrifice Foods for cards, counters and the like, using mana left after casting. Draw first, then counters.
-    for (const kind of ['draw', 'other']) {
+    const foodKind = ab => ab.fx.some(f => f.type === 'draw') ? 'draw' : ab.fx.some(f => f.type === 'gyReturn') ? 'gy' : 'other';
+    for (const kind of ['draw', 'gy', 'other']) {
+      if (kind === 'other') returnFamiliars(g, ev);                    // Familiar comes back before spare Foods turn into counters
       for (const p of g.battlefield.slice()) {
         for (const ab of p.card.a.activated || []) {
-          if (!ab.sacFood || (kind === 'draw') !== ab.fx.some(f => f.type === 'draw')) continue;
+          if (!ab.sacFood || foodKind(ab) !== kind) continue;
           for (let k = 0; k < 8; k++) {
-            if (foodsOf(g).length < ab.sacFood || !canPay(ab.cost, allUnits(g))) break;
-            if (kind === 'draw' && (g.hand.length >= 8 || !g.library.length)) break;          // never discard to hand size
+            if (extraFoods(g) < ab.sacFood || !canPay(ab.cost, allUnits(g))) break;                 // only spare Foods: some are kept to crack for the life Frodo and Sorin need
+            if (kind === 'draw' && (g.hand.length >= 7 || !g.library.length)) break;                 // draw while the hand is short of seven
             if (kind === 'other' && ab.fx.every(f => f.type === 'counters') && !bestCreature(g)) break;
             const gyf = ab.fx.find(f => f.type === 'gyReturn');
-            if (gyf && (p.gyUsed === g.turn || !gyTarget(g, gyf))) break;      // Samwise: only with something worth returning, once a turn
-            if (gyf) p.gyUsed = g.turn;
+            if (gyf && !gyTarget(g, gyf)) break;                                // Samwise: as often as the Foods allow, but only with something worth returning
             pay(g, ab.cost);
             ev.push({ type: 'activate', perm: p, text: ab.text });
             sacrificeFoods(g, ab.sacFood, ev);
@@ -1688,15 +1707,6 @@
       ev.push({ type: 'note', text: `Sacrificed ${p.card.name}: the Ring tempts you`, source: p });
       leavePerm(g, p, ev);
       temptRing(g, ev, p);
-    }
-    // Cauldron Familiar: sacrifice a Food to return it from the graveyard (its enter trigger drains again)
-    for (const inst of g.graveyard.slice()) {
-      if (!inst.card.a.gyReturn || inst.retTurn === g.turn || !foodsOf(g).length || g.battlefield.length >= 250) continue;
-      sacrificeFoods(g, 1, ev);
-      g.graveyard.splice(g.graveyard.indexOf(inst), 1); inst.retTurn = g.turn;
-      ev.push({ type: 'note', text: `Sacrificed a Food: ${inst.card.name} returns from the graveyard` });
-      const perm = enterWithTriggers(g, inst, {}, ev);
-      ev.push({ type: 'rampLand', inst, perm, source: null });
     }
     // Food: "{2}, {T}, Sacrifice this: You gain 3 life." Only worth the mana when something cares about gaining life (Sanguine Bond...).
     if (bfInfo(g).lifeWatch || bfInfo(g).lifeThreshold) {

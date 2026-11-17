@@ -1133,6 +1133,14 @@
   function medianTurn(hist) { let c = 0; for (let i = 0; i < hist.length - 1; i++) { c += hist[i]; if (c >= 0.5) return i + 1; } return null; }
   function cumBy(hist, t) { let c = 0; for (let i = 0; i < Math.min(t, hist.length - 1); i++) c += hist[i]; return c; }
 
+  function renderSuggestions(r, o) {
+    const box = $('#simSuggest');
+    if (typeof Suggest === 'undefined') { box.hidden = true; return; }
+    const list = Suggest.fromSim(r, S.deck, o);
+    box.hidden = !list.length;
+    $('#suggestList').innerHTML = list.map(s => `<div class="sg ${s.level}"><b>${esc(s.title)}</b><p>${esc(s.detail)}</p>${s.cards ? `<ul>${s.cards.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+  }
+
   function renderSim() {
     const r = S.sim, o = S.simOpts, T = r.turns;
     const keep7 = r.mulligans[0];
@@ -1145,6 +1153,7 @@
       tile('Missed a land drop by T3', pct(1 - r.onCurveLands[2]), `T4: ${pct(1 - r.onCurveLands[3])}`) +
       tile('Kept 7', pct(keep7), `avg ${avgM.toFixed(2)} mulligans`) +
       tile('Mana spent by T' + Math.min(6, T), r.agg.cumSpent[Math.min(6, T) - 1].mean.toFixed(1), 'avg total mana used');
+    renderSuggestions(r, o);
 
     const tl = i => 'T' + (i + 1);
     C.band($('#chartMana'), r.agg.manaAvail.map((a, i) => ({ label: tl(i), mid: a.p50, lo: a.p10, hi: a.p90, a, s: r.agg.cumSpent[i], l: r.agg.lands[i] })), {

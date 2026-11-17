@@ -1114,8 +1114,22 @@
       const smp = res.samples[k]; if (!smp) return;
       const b = h('button', 'ghost', label); b.addEventListener('click', () => showMirrorLog(smp)); sb.appendChild(b);
     });
+    renderImpact(res.impact, nameB);
     $('#mmLog').innerHTML = '';
     if (res.errors) $('#mmInfo').textContent += ` · ${res.errors} games hit an error`;
+  }
+  // which of your cards are linked to winning this matchup (Suggest.matchImpact, run in the worker)
+  function renderImpact(imp, oppName) {
+    const box = $('#mmImpact');
+    if (!imp || typeof Suggest === 'undefined') { box.hidden = true; return; }
+    const hl = Suggest.impactHighlights(imp);
+    const pts = v => (v > 0 ? '+' : '') + (v * 100).toFixed(1) + ' points';
+    const row = r => `<li><b>${esc(r.name)}</b>: ${pts(r.gap)} <span class="hint">(won ${pct(r.wrDrawn)} of the ${r.games} games it was drawn, ${pct(r.wrNot)} of the rest)</span></li>`;
+    let html = `<h3>Cards linked to winning against ${esc(oppName)}</h3><p class="hint">For each card, your win rate when you drew it compared with when you didn't. Drawing an average card goes with winning ${Math.abs((imp.avgGap || 0) * 100).toFixed(1)} points ${(imp.avgGap || 0) >= 0 ? 'more' : 'less'} often (games where you see more cards play out differently), so each card is measured against that. Only gaps clearly bigger than chance are listed. "Linked to" is not proof: a card can also look weak because the autopilot plays it badly.</p>`;
+    if (hl.best.length) html += `<div class="sg good"><b>Linked to winning</b><ul>${hl.best.map(row).join('')}</ul></div>`;
+    if (hl.worst.length) html += `<div class="sg warn"><b>Linked to losing</b><p>Worth a closer look: try the deck without them, or check how the autopilot plays them.</p><ul>${hl.worst.map(row).join('')}</ul></div>`;
+    if (!hl.best.length && !hl.worst.length) html += `<div class="sg"><b>No card stands out yet</b><p>After ${imp.n.toLocaleString()} matches no card's gap is clearly bigger than chance. More matches (1,000–3,000) can show smaller effects.</p></div>`;
+    box.innerHTML = html; box.hidden = false;
   }
   function showMirrorLog(smp) {
     const { opp, o } = mmState;

@@ -132,6 +132,12 @@ g = fresh(); g.life = 40; G.playLandCard(g, inst(g, 'Marsh Flats'), false);
 check('a fetch land costs 1 life', g.life === 39, g.life);
 check('and no fetch or other line is mis-tagged "in development" now', !deck.unique.some(u => u.a.coverage.some(x => x.status === 'ok' && x.tag)));
 
+// ---- lifelink grants
+check('Vito and Heliod\'s lifelink abilities are simulated (they were mislabelled "no solo effect")', [by('Vito'), by('Heliod')].every(u => !u.a.coverage.some(x => x.tag === 'solo')) );
+g = fresh(); put(g, 'Vito'); tokens(g, 6); lands(g, 5); const sol = g.battlefield.filter(p => p.token); sol.forEach(q => { q.sick = false; q.enteredTurn = 1; });
+const life0 = g.life, dmg0 = g.damage; G.castPhase(g); G.combat(g);
+check('Vito: {3}{B}{B} gives the team lifelink, so six 1/1 attackers gain 6 life and Vito drains for it (6 + 6)', g.life - life0 >= 6 && g.damage - dmg0 >= 12, `life +${g.life - life0}, damage ${g.damage - dmg0}`);
+
 // ---- whole games
 let thr = 0; for (let i = 0; i < 300; i++) { try { G.simulate(deck, O, 700 + i); } catch (e) { thr++; if (thr < 3) console.log(e.stack); } }
 check('300 goldfish games with this deck run without errors', thr === 0, thr);

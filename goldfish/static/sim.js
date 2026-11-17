@@ -241,6 +241,7 @@
     if (m) fx.push({ type: 'pumpAll', p: num(m[1]), t: num(m[2]), keywords: kwList(m[3]) });
     else if ((m = text.match(/creatures you control gain ([a-z ,]+?) and get \+(\d+|x)\/\+(\d+|x) until end of turn/i))) fx.push({ type: 'pumpAll', p: num(m[2]), t: num(m[3]), keywords: kwList(m[1]) });
     else if ((m = text.match(/creatures you control gain ([a-z ,]+?) until end of turn/i))) fx.push({ type: 'pumpAll', p: 0, t: 0, keywords: kwList(m[1]) });
+    if ((m = text.match(/another target creature gains ([a-z ,]+?) until end of turn/i)) && kwList(m[1]).length) fx.push({ type: 'pumpOne', self: false, p: 0, t: 0, keywords: kwList(m[1]) });          // Heliod: lifelink for another creature
     m = text.match(/(~|target creature(?: you control)?|it) gets \+(\d+|x)\/\+(\d+|x)(?: and gains ([a-z ,]+?))? until end of turn/i);
     if (m) fx.push({ type: 'pumpOne', self: m[1] === '~' || m[1] === 'it', p: num(m[2]), t: num(m[3]), keywords: kwList(m[4]) });
 
@@ -516,7 +517,7 @@
         const r = parseEffects(m[2]);
         const otherCost = /sacrifice|discard|exile|pay|remove|return/i.test(m[1]);
         const cost = parseCost(m[1].replace(/\{T\}|\{Q\}/g, ''));
-        if (r.fx.length && !otherCost && r.fx.some(f => ['damage', 'drain', 'token', 'draw', 'counters'].includes(f.type))) {
+        if (r.fx.length && !otherCost && r.fx.some(f => ['damage', 'drain', 'token', 'draw', 'counters'].includes(f.type) || ((f.type === 'pumpAll' || f.type === 'pumpOne') && (f.keywords || []).includes('lifelink')))) {          // lifelink grants (Vito, Heliod) are worth the mana for the life they bring
           a.activated.push({ cost, tap: /\{T\}/.test(m[1]), fx: r.fx, text: raw }); rec.status = 'ok';
         } else rec.status = r.neutral ? 'neutral' : 'ignored';
         continue;

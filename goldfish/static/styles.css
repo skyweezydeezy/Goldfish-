@@ -38,11 +38,23 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight
   background: linear-gradient(180deg, rgba(14,36,52,0.96), rgba(8,18,26,0.94)); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(143,216,255,.08), 0 8px 24px -12px rgba(143,216,255,.25); }
 .brand { font-weight: 700; font-size: 16px; white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand .logo { display: block; width: 40px; height: 40px; filter: drop-shadow(0 0 8px rgba(143,216,255,.55)); animation: bob 5s ease-in-out infinite; }
-.brand-text { font-size: 20px; letter-spacing: .01em; color: var(--ice-2); text-shadow: 0 0 14px rgba(143,216,255,.35); }
+.brand .logo { display: block; width: 40px; height: 40px; filter: drop-shadow(0 0 8px rgba(143,216,255,.55)); animation: swim 5s ease-in-out infinite; will-change: transform; }
+.brand-text { margin-left: 8px; font-size: 20px; letter-spacing: .01em; color: var(--ice-2); text-shadow: 0 0 14px rgba(143,216,255,.35); }
 .brand-text b { color: #fff; font-weight: 800; }
 @keyframes bob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-2px) rotate(2deg); } }
-@keyframes swim { 0%,100% { transform: translateX(0) scaleX(1); } 45% { transform: translateX(6px) scaleX(1); } 50% { transform: translateX(6px) scaleX(-1); } 95% { transform: translateX(0) scaleX(-1); } }
+@keyframes swim {
+  0%   { transform: translate(0, 0) scaleX(1) rotate(0deg); }
+  12%  { transform: translate(3px, -2px) scaleX(1) rotate(-3deg); }
+  24%  { transform: translate(6px, 1px) scaleX(1) rotate(2deg); }
+  38%  { transform: translate(10px, -2px) scaleX(1) rotate(-2deg); }
+  45%  { transform: translate(10px, 0) scaleX(1) rotate(0deg); }
+  50%  { transform: translate(10px, 0) scaleX(-1) rotate(0deg); }
+  62%  { transform: translate(7px, -2px) scaleX(-1) rotate(-3deg); }
+  76%  { transform: translate(3px, 1px) scaleX(-1) rotate(2deg); }
+  90%  { transform: translate(0, -2px) scaleX(-1) rotate(-2deg); }
+  95%  { transform: translate(0, 0) scaleX(-1) rotate(0deg); }
+  100% { transform: translate(0, 0) scaleX(1) rotate(0deg); }
+}
 .tabs { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
 .tab { background: none; border: 0; padding: 7px 12px; border-radius: 8px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
 .tab:hover { background: var(--surface-2); }

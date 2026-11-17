@@ -101,6 +101,54 @@
   }
 
 
+
+  // ---------- tier A+: outlier games ----------
+  // What your fastest wins, and your fastest losses, have in common compared with every other game:
+  // cards you had early (in the opening hand or drawn by your turn EARLY), opening-hand lands and mulligans.
+  const EARLY = 3;
+  const z2 = (a, na, b, nb) => { const p = (a + b) / Math.max(1, na + nb); const se = Math.sqrt(Math.max(1e-6, p * (1 - p) * (1 / Math.max(1, na) + 1 / Math.max(1, nb)))); return (a / Math.max(1, na) - b / Math.max(1, nb)) / se; };
+  function meanZ(xs, ys) {
+    const m = a => a.reduce((s, v) => s + v, 0) / Math.max(1, a.length);
+    const v = (a, mu) => a.reduce((s, x) => s + (x - mu) * (x - mu), 0) / Math.max(1, a.length - 1);
+    const mx = m(xs), my = m(ys), se = Math.sqrt(Math.max(1e-6, v(xs, mx) / Math.max(1, xs.length) + v(ys, my) / Math.max(1, ys.length)));
+    return { group: mx, rest: my, z: (mx - my) / se };
+  }
+  function describeGroup(group, rest, deck) {
+    if (group.length < 15 || rest.length < 15) return null;
+    const U = deck.unique.length, inG = new Float64Array(U), inR = new Float64Array(U);
+    group.forEach(r => r.early.forEach(u => inG[u]++));
+    rest.forEach(r => r.early.forEach(u => inR[u]++));
+    const cards = [];
+    deck.unique.forEach((c, u) => {
+      if (c.commander || (c.a.isLand && /Basic/.test(c.type_line || ''))) return;
+      if (inG[u] + inR[u] < 10) return;
+      const z = z2(inG[u], group.length, inR[u], rest.length);
+      cards.push({ name: c.name, group: inG[u] / group.length, rest: inR[u] / rest.length, z });
+    });
+    const clear = cards.filter(x => Math.abs(x.z) >= 2.5);
+    const mulled = a => a.reduce((s, r) => s + (r.mulls > 0 ? 1 : 0), 0);
+    const mg = mulled(group), mr = mulled(rest);
+    return {
+      games: group.length, maxTurn: Math.max(...group.map(r => r.turn)),
+      more: clear.filter(x => x.z > 0).sort((a, b) => b.z - a.z).slice(0, 4),
+      less: clear.filter(x => x.z < 0).sort((a, b) => a.z - b.z).slice(0, 4),
+      lands: meanZ(group.map(r => r.lands), rest.map(r => r.lands)),
+      mulls: { group: mg / group.length, rest: mr / rest.length, z: z2(mg, group.length, mr, rest.length) },
+    };
+  }
+  // the fastest share of games of one kind (wins or losses), with ties on the cut-off turn included
+  function fastest(records, pick, share) {
+    const xs = records.filter(pick).sort((a, b) => a.turn - b.turn);
+    if (!xs.length) return [];
+    const cut = xs[Math.max(0, Math.ceil(xs.length * share) - 1)].turn;
+    return xs.filter(r => r.turn <= cut);
+  }
+  function matchOutliers(records, deck, share) {
+    share = share || 0.2;
+    const split = g => { const set = new Set(g); return describeGroup(g, records.filter(r => !set.has(r)), deck); };
+    return { early: EARLY, quickWins: split(fastest(records, r => r.won, share)), quickLosses: split(fastest(records, r => r.lost, share)) };
+  }
+
   // ---------- tier A+: which of your cards are linked to winning against a known opponent ----------
   // Replays the same matches as Goldfish.matchMonteCarlo (same seeds, same seats) and, for each of your cards, compares
   // your win rate in games where you drew it with games where you did not. Drawing more cards in longer games shifts every
@@ -111,12 +159,16 @@
     const U = deckA.unique.length;
     const drawnWin = new Float64Array(U), drawnN = new Float64Array(U);
     let games = 0, wins = 0;
+    const records = [];
     for (let i = 0; i < n; i++) {
       const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
       let m;
       try { m = G.playMatch(deckA, deckB, opts, s, aOnPlay); } catch (err) { continue; }
       const won = m.match.winner === 0 ? 1 : 0;
       games++; wins += won;
+      const early = [];
+      for (const k of Object.keys(m.gA.drawTurn)) if (m.gA.drawTurn[k] <= EARLY) early.push(+k);
+      records.push({ won, lost: m.match.winner === 1 ? 1 : 0, turn: m.match.turn == null ? opts.turns : m.match.turn, early, lands: m.gA.openingLands || 0, mulls: m.gA.mulligans || 0 });
       for (const k of Object.keys(m.gA.drawTurn)) { const u = +k; if (u >= 0 && u < U) { drawnN[u]++; drawnWin[u] += won; } }
       if (onProgress && i % 25 === 0) onProgress(i / n);
     }
@@ -133,7 +185,7 @@
     const mean = rows.reduce((s, r) => s + r.raw * r.games, 0) / wsum;
     rows.forEach(r => { r.gap = r.raw - mean; r.z = r.gap / r.se; delete r.raw; delete r.se; });
     rows.sort((a, b) => b.gap - a.gap);
-    return { n: games, base: games ? wins / games : 0, avgGap: mean, cards: rows };
+    return { n: games, base: games ? wins / games : 0, avgGap: mean, cards: rows, outliers: matchOutliers(records, deckA) };
   }
 
   // Cards whose gap is clearly bigger than the noise (|z| >= 2, seen in at least 30 games), split into best and worst.
@@ -143,7 +195,7 @@
     return { best: clear.filter(r => r.gap > 0).slice(0, max), worst: clear.filter(r => r.gap < 0).reverse().slice(0, max), tested: imp.cards.length };
   }
 
-  const api = { fromSim, deadCards, matchImpact, impactHighlights };
+  const api = { fromSim, deadCards, matchImpact, impactHighlights, matchOutliers };
   root.Suggest = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

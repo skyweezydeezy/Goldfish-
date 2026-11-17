@@ -29,5 +29,18 @@ const fake = { n: 1000, base: 0.5, cards: [
 const hl = Sg.impactHighlights(fake);
 check('highlights: clear gaps are kept, noise and rarely drawn cards are dropped', hl.best.map(x => x.name).join() === 'Big' && hl.worst.map(x => x.name).join() === 'Bad', JSON.stringify([hl.best.map(x => x.name), hl.worst.map(x => x.name)]));
 
+// outlier games: fastest wins and fastest losses
+const out = imp.outliers;
+check('outliers: fastest wins and losses are both described', out && out.quickWins && out.quickLosses, out && [out.quickWins && out.quickWins.games, out.quickLosses && out.quickLosses.games].join('/'));
+check('...each group is a minority of the games and ends early', [out.quickWins, out.quickLosses].every(g => g.games < imp.n / 2 && g.maxTurn < OPTS.turns));
+check('...listed cards are clearly over- or under-represented', [out.quickWins, out.quickLosses].every(g => g.more.every(x => x.z >= 2.5 && x.group > x.rest) && g.less.every(x => x.z <= -2.5 && x.group < x.rest)));
+// synthetic: a card always in the opening hand of the fastest wins stands out
+const u = deck.unique.findIndex(c => !c.commander && !c.a.isLand);
+const recs = [];
+for (let i = 0; i < 300; i++) { const fastWin = i < 60; recs.push({ won: i < 150 ? 1 : 0, lost: i < 150 ? 0 : 1, turn: fastWin ? 5 : 10 + (i % 5), early: fastWin || i % 10 === 0 ? [u] : [], lands: fastWin ? 4 : 3, mulls: 0 }); }
+const so = Sg.matchOutliers(recs, deck);
+check('synthetic: the card in every fast win is the top "had early" card', so.quickWins && so.quickWins.more[0] && so.quickWins.more[0].name === deck.unique[u].name, so.quickWins && JSON.stringify(so.quickWins.more.map(x => x.name)));
+check('synthetic: four-land opening hands show up in the fast wins', so.quickWins.lands.z >= 2 && so.quickWins.lands.group > so.quickWins.lands.rest);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

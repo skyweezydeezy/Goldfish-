@@ -107,3 +107,7 @@ Card data and images are provided by [Scryfall](https://scryfall.com) and are no
 ## Saved decks
 
 Tap **Manage** on the Deck tab to rename, duplicate, copy, export or delete saved decks, and to back them all up to one file (**Export all**) or bring them back (**Import**). Decks live in your browser only, so export a backup before clearing browser data or switching devices.
+
+## Tests
+
+`node tests/run.js` runs the engine scenario tests offline (about 250 checks); `node tests/run.js --ui` runs the browser tests. See `tests/README.md`. Add a test file for every card or rule you add to the engine.

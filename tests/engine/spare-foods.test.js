@@ -1,0 +1,38 @@
+const fs = require('fs');
+const G = require('../../goldfish/static/sim.js');
+const r = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'fixtures', 'frodo-loaded.json'), 'utf8'));
+r.cards.find(x => x.name.startsWith('Sorin')).faces[1].loyalty = '3';
+const deck = G.buildDeck(r.cards, r.tokens);
+const OPTS = { turns: 10, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40 };
+let pass = 0, fail = 0;
+const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+const by = n => deck.unique.find(c => c.name.startsWith(n));
+const fresh = () => { const g = G.newGame(deck, OPTS, 3); g.turn = 6; g.command = []; g.hand = []; g.library = g.library.slice(0, 60); return g; };
+const put = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.enteredTurn = 1; return p; };
+const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
+const food = (g, n = 1) => G.createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Food' }, n, [], null);
+const foods = g => g.battlefield.filter(p => p.token && /Food/.test(p.card.name)).length;
+const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W','U','B','R','G']), floating: true }); };
+const drawer = deck.unique.find(c => c.a.activated.some(ab => ab.sacFood && ab.fx.some(f => f.type === 'draw')));
+console.log('Food-draw card:', drawer && drawer.name, drawer && JSON.stringify(drawer.a.activated.filter(a => a.sacFood).map(a => a.cost)));
+
+let g = fresh(); put(g, drawer.name); food(g, 6); mana(g, 12); g.hand = [inst(g, 'Sol Ring'), inst(g, 'Sol Ring')];
+G.useAbilities(g);
+check('hand of 2 with spare Foods: it draws until the hand is seven', g.hand.length === 7, g.hand.length);
+g = fresh(); put(g, drawer.name); food(g, 6); mana(g, 12); for (let i = 0; i < 7; i++) g.hand.push(inst(g, 'Sol Ring'));
+G.useAbilities(g);
+check('hand already at seven: nothing is drawn', g.hand.length === 7 && g.library.length === 60, `hand ${g.hand.length}, library ${g.library.length}`);
+g = fresh(); put(g, drawer.name); put(g, 'Frodo'); food(g, 1); mana(g, 6); G.useAbilities(g);
+check('Frodo on board and 3 life still needed: the only Food is kept to be cracked for life', foods(g) <= 1 && g.hand.length === 0 || foods(g) === 0 && g.life > 40, `foods ${foods(g)}, hand ${g.hand.length}, life ${g.life}`);
+g = fresh(); put(g, drawer.name); put(g, 'Frodo'); food(g, 2); mana(g, 8); G.useAbilities(g);
+check('...with a second, spare Food it draws with that one', g.hand.length >= 1);
+g = fresh(); const fi = inst(g, 'Cauldron Familiar'); g.graveyard.push(fi); food(g, 1); for (let i = 0; i < 7; i++) g.hand.push(inst(g, 'Sol Ring')); put(g, drawer.name); mana(g, 6);
+G.useAbilities(g);
+check('full hand: the spare Food brings Cauldron Familiar back instead', g.battlefield.some(p => p.card.name === 'Cauldron Familiar') && g.hand.length === 7);
+g = fresh(); put(g, 'Samwise'); food(g, 6); g.graveyard.push(inst(g, 'Sol Ring'), inst(g, 'Arcane Signet')); G.useAbilities(g);
+check('Samwise: six Foods return two historic cards in one turn', g.hand.some(c => /Sol Ring/.test(c.card.name)) && g.hand.some(c => /Arcane Signet/.test(c.card.name)) && foods(g) === 0, `foods ${foods(g)}`);
+g = fresh(); put(g, 'Samwise'); food(g, 3); g.graveyard.push(inst(g, 'Viscera Seer')); G.useAbilities(g);
+check('Samwise does not pay Foods for a card that is not historic / not useful', g.hand.length === 0 && foods(g) === 3);
+let thr = 0; for (let i = 0; i < 600; i++) { try { G.simulate(deck, OPTS, 11000 + i); } catch (e) { thr++; } }
+check('600 full games, no errors', thr === 0);
+console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

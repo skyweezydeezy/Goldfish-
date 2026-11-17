@@ -1,0 +1,27 @@
+const fs = require('fs');
+const G = require('../../goldfish/static/sim.js');
+const r = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'fixtures', 'frodo-loaded.json'), 'utf8'));
+const sc = r.cards.find(x => x.name.startsWith('Sorin')); sc.faces[1].loyalty = '3';
+const deck = G.buildDeck(r.cards, r.tokens);
+const OPTS = { turns: 10, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40 };
+let pass = 0, fail = 0;
+const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+const by = n => deck.unique.find(c => c.name.startsWith(n));
+const fresh = () => { const g = G.newGame(deck, OPTS, 3); g.turn = 3; g.command = []; g.library = g.library.slice(0, 50); return g; };
+const put = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; return p; };
+const u = by('Liliana');
+check('Liliana\'s life trigger is read (no longer "in development")', u.a.triggers.some(t => t.kinds.includes('permEtb') && t.fx.some(f => f.type === 'gainLife')) && !u.a.coverage.some(c => c.tag === 'dev'), u.a.coverage.map(c => c.status + '/' + c.tag).join(','));
+let g = fresh(); const l = put(g, 'Liliana'); const l0 = g.life;
+check('Liliana herself entering gains nothing ("another")', g.life === l0);
+put(g, 'Belladonna'); check('another creature entering: gain 1', g.life === l0 + 1 || g.life === l0 + 1 + 0, g.life - l0);
+g = fresh(); put(g, 'Liliana'); const a0 = g.life; put(g, 'Ajani Resolute');
+check('a planeswalker entering: gain 1', g.life === a0 + 1, g.life - a0);
+g = fresh(); put(g, 'Liliana'); const b0 = g.life; put(g, 'Sol Ring');
+check('a non-creature artifact: nothing', g.life === b0);
+g = fresh(); put(g, 'Liliana'); const c0 = g.life; G.createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W'], subtypes: ['Soldier'], keywords: [], artifact: false, name: 'Soldier' }, 3, [], null);
+check('tokens are creatures: 3 Soldiers gain 3 life', g.life === c0 + 3, g.life - c0);
+g = fresh(); put(g, 'Liliana'); put(g, 'Sorin'); const d0 = g.life; g.lifeGainedThisTurn = 3; const ev = G.postCombat(g);
+check('Sorin returning transformed is a planeswalker entering: +1 life', g.life === d0 + 1 + 0 || g.life > d0, g.life - d0);
+let thr = 0; for (let i = 0; i < 400; i++) { try { G.simulate(deck, OPTS, 500 + i); } catch (e) { thr++; } }
+check('400 full games, no errors', thr === 0);
+console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

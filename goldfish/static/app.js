@@ -10,6 +10,7 @@
   const pct = C.pct;
 
   const S = { cards: [], deck: null, byUid: [], game: null, undo: [], sim: null, oddsSel: new Set(), busy: false };
+  window.__isf = S;                                  // read-only handle for automated UI tests
 
   // ======================= setup =======================
   $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -107,10 +108,17 @@
   const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated' };
   const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly' };
   function pillHtml(x) {
-    if (x.status === 'ok' || !x.tag) return '';
-    return `<span class="pill ${x.tag}" title="${esc(TAG_HELP[x.tag] || '')}">${TAG_LABEL[x.tag] || ''}</span> `;
+    const side = x.back ? '<span class="pill back" title="A rule on the back face of this double-faced card">Back</span> ' : '';
+    if (x.status === 'ok' || !x.tag) return side;
+    return side + `<span class="pill ${x.tag}" title="${esc(TAG_HELP[x.tag] || '')}">${TAG_LABEL[x.tag] || ''}</span> `;
   }
-  function getCard(uid) { if (!S.deck) return null; return String(uid).startsWith('t:') ? S.deck.tokenCache[uid] : S.deck.unique[+uid]; }
+  function getCard(uid) {
+    if (!S.deck) return null;
+    const s = String(uid);
+    if (s.startsWith('t:')) return S.deck.tokenCache[uid];
+    if (s.startsWith('b:')) { const f = S.deck.unique[+s.slice(2)]; return f && f.a.backCard; }          // the back face of a transformed card
+    return S.deck.unique[+uid];
+  }
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
   // ======================= deck loading =======================
@@ -582,7 +590,7 @@
   }
   async function nextTurn() {
     const g = S.game; snap();
-    if (!g.turnDone) { await doCombat(); describe(G.endTurn(g)); }
+    if (!g.turnDone) { await doCombat(); await doPostCombat(); describe(G.endTurn(g)); }
     beginTurnUI(); render();
   }
   async function play(ev) {
@@ -619,6 +627,11 @@
     }
     if (batch.length) await play(batch);
   }
+  // postcombat main phase (Sorin of House Markov transforms here)
+  async function doPostCombat() {
+    const ev = G.postCombat(S.game);
+    if (ev.length) await play(ev);
+  }
   async function autoTurn() {
     const g = S.game; snap();
     if (g.turnDone) { describe(G.endTurn(g)); beginTurnUI(); render(); await sleep(delay()); }
@@ -634,6 +647,7 @@
       await play(ev);
     }
     await doCombat();
+    await doPostCombat();
     g.turnDone = true;
   }
 
@@ -676,10 +690,11 @@
         case 'tempt': log(`<b>💍 The Ring tempts you</b> (${e.n > 4 ? e.n + 'th' : ORD[e.n]} time): ${e.bearer ? '<b>' + nm(e.bearer) + '</b> is your Ring-bearer.' : 'you have no creature to carry it.'} <i>${esc(e.ability)}</i>`); break;
         case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
         case 'mana': log(`↳ added ${e.n} mana`); break;
-        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.cost === -1 ? 'X' : e.cost}: <i>${esc(e.text)}</i> (loyalty ${e.perm.loyalty})`); break;
+        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.x ? 'X' : e.cost}: <i>${esc(e.text)}</i> (loyalty ${e.perm.loyalty})`); break;
         case 'equip': log(`Equipped ${nm(e.perm)} to ${nm(e.target)}`); break;
         case 'activate': log(`Activated ${nm(e.perm)}: <i>${esc(e.text)}</i>`); break;
         case 'note': log(`↳ ${esc(e.text)}`); break;
+        case 'transform': log(`<b>🔄 ${esc(e.from.name.split(' // ')[0])} transforms into ${esc(e.to.name)}</b>`); break;
         case 'declare': log(`Attack with ${e.attackers.length > 6 ? e.attackers.length + ' creatures' : e.attackers.map(nm).join(', ')}`); break;
         case 'attack': log(`⚔ <b>${e.dmg}</b> combat damage (${e.total} total)`); break;
         case 'kill': log(`<b>☠ Goldfish dead on turn ${S.game.turn}${e.cmdr ? ' (21 commander damage)' : ''}</b>`); break;
@@ -705,7 +720,7 @@
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
-  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn'];
+  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn', 'extortOwed'];
   function snap() {
     const g = S.game;
     const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });
@@ -882,7 +897,7 @@
   // ---- rendering: card elements are kept and moved, never rebuilt (rebuilding re-decodes images = flicker) ----
   const elCache = new Map();
   function tableEl(card, iid, face, used) {
-    const key = iid + ':' + (face || 0);
+    const key = iid + ':' + (face || 0) + ':' + card.uid;                  // card.uid: a transformed permanent gets a new element (its back-face art)
     used.add(key);
     let e = elCache.get(key);
     if (!e) { e = cardEl(card, { iid, face, eager: true }); elCache.set(key, e); }

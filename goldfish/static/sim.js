@@ -14,7 +14,7 @@
     'hexproof', 'indestructible', 'shroud', 'flash', 'defender', 'ward', 'protection', 'prowess', 'fear', 'intimidate', 'shadow', 'horsemanship',
     'skulk', 'unblockable', 'changeling', 'partner', 'cascade', 'convoke', 'delve', 'affinity', 'storm', 'myriad', 'exalted', 'annihilator',
     'infect', 'wither', 'undying', 'persist', 'riot', 'banding', 'landwalk', 'islandwalk', 'swampwalk', 'forestwalk', 'mountainwalk', 'plainswalk',
-    'equip', 'enchant', 'kicker', 'flashback', 'cycling', 'landcycling', 'ninjutsu', 'evoke', 'escape', 'foretell', 'overload', 'suspend', 'emerge'];
+    'extort', 'equip', 'enchant', 'kicker', 'flashback', 'cycling', 'landcycling', 'ninjutsu', 'evoke', 'escape', 'foretell', 'overload', 'suspend', 'emerge'];
   const ARTIFACT_TOKENS = {
     treasure: '{T}, Sacrifice ~: Add one mana of any color.',
     clue: '{2}, Sacrifice ~: Draw a card.',
@@ -166,7 +166,10 @@
 
     m = text.match(new RegExp('deals ' + NRE + ' damage (?:to|divided as you choose among) (any target|each opponent|target player|target opponent|each player|target player or planeswalker|any one target|that player|defending player|the defending player|target creature or player|any number of targets|one or two targets|up to [a-z]+ targets|each of up to)', 'i'));
     if (m) fx.push({ type: 'damage', n: num(m[1]) });
+    else if (/deals damage equal to the amount of life you gained this turn to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'LIFEGAINED' });     // Sorin, Ravenous Neonate
     else if (/deals damage equal to [^.]* to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'X' });
+    // "Exile Sorin, then return him to the battlefield transformed under his owner's control."
+    if (/\bexile (?:~|[A-Z][a-z]+), then return (?:it|him|her|~) to the battlefield transformed/i.test(text)) fx.push({ type: 'transform' });
 
     m = text.match(new RegExp('(each opponent|target opponent|target player|that player|defending player|each player) loses ' + NRE + ' life', 'i'));
     if (m) fx.push({ type: 'drain', n: num(m[2]) });
@@ -256,6 +259,7 @@
     [/^at the beginning of (?:your|each) upkeep,?\s*/i, ['upkeep']],
     [/^at the beginning of (?:your|each) draw step,?\s*/i, ['upkeep']],
     [/^at the beginning of combat on your turn,?\s*/i, ['combat']],
+    [/^at the beginning of each of your postcombat main phases,?\s*/i, ['postcombat']],
     [/^at the beginning of (?:your|each|the) end step,?\s*/i, ['end']],
     [/^at the beginning of (?:your )?(?:precombat |first )?main phase,?\s*/i, ['main']],
     [/^whenever (~|a creature you control|one or more creatures you control|equipped creature|enchanted creature|a [A-Z][a-z]+ you control) deals? combat damage to (?:a player|an opponent|a player or battle),?\s*/i, ['combatDamage']],
@@ -296,8 +300,8 @@
       if ((m = line.match(/^([+−\-–]?)(\d+|X): (.*)$/))) {
         const sign = m[1] === '+' ? 1 : m[1] ? -1 : 0;
         const cost = m[2] === 'X' ? -1 : sign * +m[2];
-        const r = parseEffects(m[3]);
-        a.pwAbilities.push({ cost, fx: r.fx, text: raw });
+        const r = /^gain control of target (creature|permanent)/i.test(m[3]) ? { fx: [], neutral: true } : parseEffects(m[3]);     // Sorin's -6 needs an opponent's creature
+        a.pwAbilities.push({ cost, x: m[2] === 'X', fx: r.fx, text: raw });         // x marks "-X": a real "-1" is not the same thing
         rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
         continue;
       }
@@ -391,6 +395,7 @@
       else if (r.neutral) rec.status = 'neutral';
     }
     a.kw = kwSet;
+    a.extort = kwSet.has('extort') || /^extort\b/im.test(text);          // "whenever you cast a spell, you may pay {W/B}: each opponent loses 1 life and you gain that much" (paid from spare mana, see resolveExtort)
     a.haste = kwSet.has('haste');
     a.doubleStrike = kwSet.has('double strike');
     a.defender = kwSet.has('defender');
@@ -400,7 +405,7 @@
     //   dev    - a real solo effect that is not built yet (in development)
     //   approx - simulated only roughly
     const HURTS_OPP = /\bopponents?\b[^.]*\bloses?\b|\bdeals? [^.]*damage to (each|target|any)/i;   // damage/drain to the goldfish DOES matter
-    const OPP_ONLY = /\bopponents?\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b|\bgets? [+\-−]?[\dX]+\/[\-−][\dX]+|\bdeals? combat damage to you\b/i;
+    const OPP_ONLY = /\bopponents?\b|\bgain control of target\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b|\bgets? [+\-−]?[\dX]+\/[\-−][\dX]+|\bdeals? combat damage to you\b/i;
     // lines the broad "doesn't matter solo" filter swallowed, although they change a solo game
     const REAL_SOLO_EFFECT = /search your library for (a|an|up to [a-z]+) (?!basic land)[^.]*cards?\b|sacrifice an? [a-z ]+: add \{|\bloses? life equal\b|\btransform|\bexile ~, then return|return [^.]*from your graveyard/i;
     for (const rec of a.coverage) {
@@ -505,6 +510,21 @@
     a.rampLands = ramp ? ramp.bf : 0; a.rampToHand = ramp ? ramp.hand : 0;
     a.draw = etbFx.filter(f => f.type === 'draw').reduce((s, f) => s + (f.n === 'X' ? 1 : f.n), 0);
     a.role = a.isLand ? 'land' : (a.produce || a.rampLands || a.rampToHand || a.statics.extraLands) ? 'ramp' : a.draw ? 'draw' : a.isCreature ? 'creature' : 'spell';
+    // Transforming cards (Sorin of House Markov): analyze the back face as its own card, so the engine can swap to it
+    if (card.layout === 'transform' && card.faces && card.faces[1] && card.faces[1].name && !a.isLand) {
+      const bf = card.faces[1];
+      const back = {
+        name: bf.name, mana_cost: '', cmc: card.cmc, type_line: bf.type_line || '', oracle_text: bf.oracle_text || '', power: bf.power, toughness: bf.toughness,
+        loyalty: bf.loyalty != null ? bf.loyalty : null, keywords: [], colors: bf.colors || card.colors || [], color_identity: card.color_identity || [], faces: [],
+        images: (card.images || []).slice(1, 2), remote_images: (card.remote_images || []).slice(1, 2), isBackFace: true, qty: 1, commander: false,
+      };
+      back.a = analyze(back, deckColors);
+      a.backCard = back;
+      // show the back face's rules lines in the Deck tab's coverage panel too, marked as the back side
+      back.a.coverage.forEach(r => a.coverage.push(Object.assign({}, r, { back: true })));
+      const bad = a.coverage.filter(c => c.status === 'ignored' || c.status === 'partial').length;
+      a.coverageLevel = !a.coverage.length || bad === 0 ? 'ok' : bad === a.coverage.length ? 'none' : 'partial';
+    }
     return a;
   }
 
@@ -514,6 +534,7 @@
     cards.forEach(c => (c.color_identity || []).forEach(x => ci.add(x)));
     const deckColors = ci.size ? [...ci] : COLORS;
     const unique = cards.map((c, i) => Object.assign({}, c, { uid: i, a: analyze(c, deckColors) }));
+    unique.forEach(u => { if (u.a.backCard) u.a.backCard.uid = 'b:' + u.uid; });                  // a transformed permanent is looked up by this id
     const library = [], commanders = [];
     let iid = 0;
     for (const c of unique) for (let k = 0; k < (c.qty || 1); k++) (c.commander ? commanders : library).push({ iid: iid++, card: c });
@@ -1067,6 +1088,7 @@
       let n = f.n;
       if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
       else if (n === 'THAT') n = g.thatMuch || 0;                       // "that much life"
+      else if (n === 'LIFEGAINED') n = g.lifeGainedThisTurn || 0;      // Sorin: damage equal to the life you gained this turn
       else if (n === 'X') n = f.count ? countFor(g, f.count, source) : 1;
       switch (f.type) {
         case 'token': {
@@ -1090,6 +1112,7 @@
         }
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'transform': if (source) transformPerm(g, source, ev); break;
         case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); break;
         case 'tutor': tutor(g, f, ev, source); break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
@@ -1162,8 +1185,38 @@
     }
   }
 
+  // Exile the permanent and return it transformed: it comes back as its back face, as a new object (no counters, no summoning-sickness carry-over).
+  function transformPerm(g, p, ev) {
+    const back = p.card.a.backCard;
+    if (!back || !g.battlefield.includes(p)) return;
+    const ba = back.a, from = p.card;
+    ev.push({ type: 'transform', perm: p, from, to: back });
+    p.card = back; p.transformed = true; p.enteredTurn = g.turn; p.tapped = false; p.counters = 0; p.other = null; p.attachedTo = null;
+    p.sick = ba.isCreature; p.pwUsed = undefined; p.actUsed = undefined;
+    p.produce = ba.produce; p.sacMana = ba.sacMana; p.asLand = ba.isLand;
+    p.loyalty = ba.loyalty * (ba.isPlaneswalker ? counterMult(g) : 1);
+    touch(g);
+  }
+
+  // Extort: every time you cast a spell, each Extort permanent owes a payment of {W/B}. It is paid from mana left over after casting
+  // (see resolveExtort), so extorting never stops a spell from being cast.
+  function resolveExtort(g, ev) {
+    if (!(g.extortOwed > 0)) return;
+    const src = g.battlefield.find(p => p.card.a.extort);
+    const cost = { generic: 0, pips: [['W', 'B']], x: 0 };
+    for (let k = 0; g.extortOwed > 0 && k < 40 && g.killTurn == null; k++) {
+      if (!canPay(cost, allUnits(g))) break;
+      pay(g, cost); g.extortOwed--;
+      ev.push({ type: 'note', text: 'Extort: paid {W/B}, each opponent loses 1 life and you gain 1', source: src });
+      damageOpp(g, 1, ev, src);
+      gainLife(g, 1, ev, src);
+    }
+    g.extortOwed = 0;                                                  // a payment you cannot afford this turn is lost
+  }
+
   function fireCastTriggers(g, inst, ev) {
     const a = inst.card.a;
+    if (!g.dry) for (const q of g.battlefield) if (q.card.a.extort) g.extortOwed = (g.extortOwed || 0) + 1;
     for (const q of g.battlefield.slice()) {
       for (const t of q.card.a.triggers) {
         if (!t.kinds.includes('cast')) continue;
@@ -1321,7 +1374,7 @@
   function fxValue(g, fx) {
     let v = 0;
     for (const f of fx) {
-      const n = f.n === 'X' ? 2 : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
+      const n = f.n === 'LIFEGAINED' ? (g.lifeGainedThisTurn || 0) : f.n === 'X' ? 2 : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
       if (f.type === 'token') v += n * (f.creature ? 1 + (+f.p || 0) : 0.8);
       if (f.type === 'draw') v += 1.5 * n;
       if (f.type === 'damage' || f.type === 'drain') v += n;
@@ -1341,15 +1394,16 @@
       if (!p.card.a.isPlaneswalker || p.pwUsed === g.turn || !p.card.a.pwAbilities.length) continue;
       let best = null, bs = -Infinity;
       for (const ab of p.card.a.pwAbilities) {
-        const c = ab.cost === -1 ? -Math.max(0, p.loyalty - 1) : ab.cost;
+        const c = ab.x ? -Math.max(0, p.loyalty - 1) : ab.cost;
         if (p.loyalty + c <= 0 && c < 0) continue;
+        if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
         const v = fxValue(g, ab.fx) + c * 0.6;
         if (v > bs) { bs = v; best = ab; }
       }
       p.pwUsed = g.turn;
       if (best) {
-        p.loyalty += best.cost === -1 ? 0 : (best.cost > 0 ? best.cost * counterMult(g) : best.cost);   // Doubling Season doubles + loyalty costs
-        ev.push({ type: 'pw', perm: p, text: best.text, cost: best.cost });
+        p.loyalty += best.x ? 0 : (best.cost > 0 ? best.cost * counterMult(g) : best.cost);   // Doubling Season doubles + loyalty costs
+        ev.push({ type: 'pw', perm: p, text: best.text, cost: best.cost, x: best.x });
         applyEffects(g, best.fx, p, ev, null);
         if (p.loyalty <= 0) { removePerm(g, p); g.graveyard.push(p.inst); }
       }
@@ -1402,6 +1456,7 @@
         gainLife(g, 3, ev, null);
       }
     }
+    resolveExtort(g, ev);
     for (const p of g.battlefield.slice()) {
       if (p.card.isToken && /^clue/i.test(p.card.name) && canPay({ generic: 2, pips: [] }, allUnits(g))) {
         pay(g, { generic: 2, pips: [] }); removePerm(g, p); ev.push({ type: 'note', text: 'Cracked a Clue' }); draw(g, 1, ev);
@@ -1496,7 +1551,7 @@
 
   function beginTurn(g) {
     g.turn++;
-    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0;
+    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0;
     const ev = [{ type: 'untap' }];
     g.battlefield.forEach(p => { p.tapped = false; if (p.enteredTurn < g.turn) p.sick = false; });
     eachTrigger(g, 'upkeep', ev);
@@ -1573,7 +1628,17 @@
     return ev;
   }
 
+  // Postcombat main phase: "at the beginning of each of your postcombat main phases" triggers (Sorin transforms if you gained 3+ life).
+  // If something changed (a transform), the new permanent gets to use its abilities and the spare mana is spent again.
+  function postCombat(g) {
+    const ev = [];
+    eachTrigger(g, 'postcombat', ev);
+    if (ev.some(e => e.type === 'transform')) ev.push(...castPhase(g).ev);
+    return ev;
+  }
+
   function endTurn(g) {
+    g.extortOwed = 0;
     const ev = [];
     eachTrigger(g, 'end', ev);
     g.manaSpent += g.spentThisTurn || 0;
@@ -1597,6 +1662,7 @@
     if (le) ev.push(le, ...le.ev);
     ev.push(...castPhase(g).ev);
     ev.push(...combat(g));
+    ev.push(...postCombat(g));
     ev.push(...endTurn(g));
     return ev;
   }
@@ -1682,7 +1748,7 @@
   const api = {
     parseCost, parseAdd, parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers,
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
-    beginTurn, landStep, combat, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
+    beginTurn, landStep, combat, postCombat, transformPerm, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,

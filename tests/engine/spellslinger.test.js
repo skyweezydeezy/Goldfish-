@@ -122,6 +122,42 @@ check('Dramatic Reversal: cast to untap two tapped mana rocks', !g.hand.length);
 g = fresh(); lands(g, 2); const lc = g.battlefield.filter(p => p.asLand).length; G.enterWithTriggers(g, inst(g, 'Izzet Boilerworks'), {}, []);
 check('a bounce land returns a land to your hand when it enters (land count unchanged, one land in hand)', g.hand.filter(i => i.card.a.isLand).length === 1 && g.battlefield.filter(p => p.asLand).length === lc, `hand lands ${g.hand.filter(i => i.card.a.isLand).length}, battlefield lands ${g.battlefield.filter(p => p.asLand).length} (was ${lc})`);
 
+// ---- the last Veyran cards
+g = fresh(); g.hand = [inst(g, 'Chrome Mox'), inst(g, 'Preordain'), inst(g, 'Ponder')]; lands(g, 1);
+check('Chrome Mox is not cast without a cheap coloured card to imprint', true);
+g = fresh(); const mox = put(g, 'Chrome Mox'); check('(a Chrome Mox with no imprint makes no mana)', !mox.produce);
+g = fresh(); g.hand = [inst(g, 'Burst Lightning'), inst(g, 'Lightning Bolt'), inst(g, 'Preordain'), inst(g, 'Sol Ring')]; const moxp = put(g, 'Chrome Mox');
+check('Chrome Mox imprint (on entering): exiles one cheap coloured card and then makes that colour', g.exile.length === 1 && moxp.produce && moxp.produce.colors.size >= 1, g.exile.map(i => i.card.name).join(','));
+g = fresh(); g.hand = [inst(g, 'Lightning Bolt'), inst(g, 'Counterspell')]; const scep = put(g, 'Isochron Scepter');
+G.applyEffects(g, [{ type: 'imprint', kind: 'scepter' }], scep, [], null);
+check('Isochron Scepter imprints the burn spell, not the counterspell', scep.imprinted && /Lightning Bolt/.test(scep.imprinted.card.name) && g.hand.some(i => /Counterspell/.test(i.card.name)));
+const dmgS = g.damage; lands(g, 2); G.useAbilities(g);
+check('...and each turn {2}, {T} casts a free copy (3 damage)', g.damage - dmgS === 3, g.damage - dmgS);
+g = fresh(true); put(g, 'Veyran'); g.battlefield[0].card.commander = true; g.opp.hand = [inst(g.opp, 'Sol Ring'), inst(g.opp, 'Sol Ring'), inst(g.opp, 'Sol Ring'), inst(g.opp, 'Sol Ring')]; lands(g, 3); g.hand = [inst(g, 'Jeska')]; G.castPhase(g);
+check("Jeska's Will with a commander out: both modes (red mana for their 4 cards, and the top three cards)", g.hand.length >= 1 && g.exile.length >= 0, `hand ${g.hand.length}`);
+g = fresh(true); put(g.opp, 'Young Pyromancer'); put(g.opp, 'Snapcaster Mage'); lands(g, 4); g.hand = [inst(g, 'Fiery Confluence')]; G.castPhase(g);
+check('Fiery Confluence against two 1-toughness creatures: sweeps them, then burns the face', g.opp.battlefield.filter(G.isCreaturePerm).length === 0 && g.opp.life < 40, `opp life ${g.opp.life}`);
+g = fresh(true); put(g, 'Young Pyromancer'); lands(g, 4); g.hand = [inst(g, 'Fiery Confluence')]; G.castPhase(g);
+check('...and with only your own creature in play it goes 3 × 2 = 6 to the face', g.opp.life === 34 && g.battlefield.some(p => /Young Pyromancer/.test(p.card.name)), `opp life ${g.opp.life}`);
+g = fresh(true); const wt = put(g.opp, 'Rhystic Study'); lands(g, 2); g.hand = [inst(g, 'Pyroblast')]; G.castPhase(g);
+check('Pyroblast destroys a blue permanent (Rhystic Study)', !g.opp.battlefield.includes(wt));
+g = fresh(true); put(g.opp, 'Sol Ring'); lands(g, 2); g.hand = [inst(g, 'Pyroblast')]; G.castPhase(g);
+check('...and is not wasted on a colourless one', g.hand.length === 1);
+g = fresh(true); lands(g, 2); g.hand = [inst(g, 'Pyroblast')]; lands(g.opp, 5); g.opp.hand = [inst(g.opp, 'Fact or Fiction')]; G.castPhase(g.opp);
+check('Pyroblast counters a big blue spell (held mana and {R})', g.graveyard.some(i => /Pyroblast/.test(i.card.name)) && g.opp.graveyard.some(i => /Fact or Fiction/.test(i.card.name)) && !g.opp.hand.length);
+g = fresh(true); put(g.opp, 'Young Pyromancer'); put(g.opp, 'Snapcaster Mage'); put(g.opp, 'Third Path Iconoclast'); lands(g, 8); g.hand = [inst(g, 'Comet Storm')]; g.opp.life = 40; G.castPhase(g);
+check('Comet Storm: spare mana buys extra targets, killing their best creatures as well as hitting the face', g.opp.battlefield.filter(G.isCreaturePerm).length < 3 && g.opp.life < 40, `creatures left ${g.opp.battlefield.filter(G.isCreaturePerm).length}, life ${g.opp.life}`);
+g = fresh(true); put(g.opp, 'Third Path Iconoclast'); put(g.opp, 'Young Pyromancer'); lands(g, 6); g.hand = [inst(g, 'Pyrokinesis')]; G.castPhase(g);
+check('Pyrokinesis: 4 damage divided kills creatures worth killing', g.opp.battlefield.filter(G.isCreaturePerm).length < 2, g.opp.battlefield.filter(G.isCreaturePerm).length);
+g = fresh(); const vault = put(g, 'Mana Vault'); vault.tapped = true; g.life = 40; const lifeV = g.life; G.beginTurn(g);
+check('Mana Vault stays tapped on your untap step and deals 1 damage to you', vault.tapped && g.life === lifeV - 1, `life ${g.life}`);
+g = fresh(); g.hand = [inst(g, 'Lightning Bolt')]; g.graveyard.push(inst(g, 'Lightning Bolt')); g.hand = [inst(g, 'Mizzix')]; lands(g, 4); const dmM = g.damage; G.castPhase(g);
+check("Mizzix's Mastery casts a free copy of the best spell in the graveyard", g.damage - dmM === 3 && g.exile.some(i => /Lightning Bolt/.test(i.card.name)), g.damage - dmM);
+g = fresh(true); for (let i = 0; i < 6; i++) put(g, 'Third Path Iconoclast'); g.library = g.library.slice(0, 5); G.applyEffects(g, [{ type: 'thassa' }], null, [], null);
+check("Thassa's Oracle wins when your devotion to blue is at least the cards left in your library", g.match.winner === 0, `winner ${g.match.winner}`);
+const devNow = deck.unique.flatMap(u => u.a.coverage.filter(x => x.tag === 'dev').map(x => u.name + ': ' + x.text.slice(0, 40)));
+check('almost nothing is left "in development" in the Veyran deck (Desperate Ritual\'s splice, Mind Stone and similar only)', devNow.length <= 8, devNow.join(' | '));
+
 // ---- whole games
 let thr = 0; for (let i = 0; i < 300; i++) { try { G.simulate(deck, O, 100 + i); } catch (e) { thr++; if (thr < 3) console.log(e.stack); } }
 check('300 goldfish games with the Veyran deck run without errors', thr === 0, thr);

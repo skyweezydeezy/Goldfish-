@@ -14,7 +14,7 @@
     'hexproof', 'indestructible', 'shroud', 'flash', 'defender', 'ward', 'protection', 'prowess', 'fear', 'intimidate', 'shadow', 'horsemanship',
     'skulk', 'unblockable', 'changeling', 'partner', 'cascade', 'convoke', 'delve', 'affinity', 'storm', 'myriad', 'exalted', 'annihilator',
     'infect', 'wither', 'undying', 'persist', 'riot', 'banding', 'landwalk', 'islandwalk', 'swampwalk', 'forestwalk', 'mountainwalk', 'plainswalk',
-    'extort', 'equip', 'enchant', 'kicker', 'flashback', 'cycling', 'landcycling', 'ninjutsu', 'evoke', 'escape', 'foretell', 'overload', 'suspend', 'emerge'];
+    'extort', 'aftermath', 'equip', 'enchant', 'kicker', 'flashback', 'cycling', 'landcycling', 'ninjutsu', 'evoke', 'escape', 'foretell', 'overload', 'suspend', 'emerge'];
   const ARTIFACT_TOKENS = {
     treasure: '{T}, Sacrifice ~: Add one mana of any color.',
     clue: '{2}, Sacrifice ~: Draw a card.',
@@ -168,6 +168,12 @@
     if (m) fx.push({ type: 'damage', n: num(m[1]) });
     else if (/deals damage equal to the amount of life you gained this turn to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'LIFEGAINED' });     // Sorin, Ravenous Neonate
     else if (/deals damage equal to [^.]* to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'X' });
+    // graveyard and sweepers: Samwise ("return target historic card from your graveyard to your hand"), Dawn, Dusk
+    if ((m = text.match(/return target ([a-z]+) card from your graveyard to your hand/i))) fx.push({ type: 'gyReturn', filter: m[1].toLowerCase() });
+    if ((m = text.match(/return all (creature )?cards? (?:with power (\d+) or less )?from your graveyard to your hand/i))) fx.push({ type: 'gyReturnAll', filter: m[1] ? 'creature' : 'any', maxPower: m[2] != null ? +m[2] : 99 });
+    if ((m = text.match(/destroy all creatures with power (\d+) or greater/i))) fx.push({ type: 'wrath', minPower: +m[1] });
+    if (/(each opponent|target opponent|target player) loses life equal to the amount of life you gained this turn/i.test(text)) fx.push({ type: 'drain', n: 'LIFEGAINED' });      // Gollum
+    if (/(each opponent|target opponent|target player) loses life equal to (?:its|~'s) power/i.test(text)) fx.push({ type: 'drain', n: 'THAT' });                              // Rapacious Guest (the power is passed in as "that much")
     // "Exile Sorin, then return him to the battlefield transformed under his owner's control."
     if (/\bexile (?:~|[A-Z][a-z]+), then return (?:it|him|her|~) to the battlefield transformed/i.test(text)) fx.push({ type: 'transform' });
 
@@ -261,6 +267,7 @@
     [/^at the beginning of (?:your|each) draw step,?\s*/i, ['upkeep']],
     [/^at the beginning of combat on your turn,?\s*/i, ['combat']],
     [/^at the beginning of each of your postcombat main phases,?\s*/i, ['postcombat']],
+    [/^when(?:ever)? ~ leaves the battlefield,?\s*/i, ['leave']],
     [/^at the beginning of (?:your|each|the) end step,?\s*/i, ['end']],
     [/^at the beginning of (?:your )?(?:precombat |first )?main phase,?\s*/i, ['main']],
     [/^whenever (~|a creature you control|one or more creatures you control|equipped creature|enchanted creature|a [A-Z][a-z]+ you control) deals? combat damage to (?:a player|an opponent|a player or battle),?\s*/i, ['combatDamage']],
@@ -274,8 +281,10 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+    a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
-      if (/^\/\/$/.test(raw)) continue;            // the divider between two halves of a split card, not rules text
+      if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: raw, status: 'ignored' };
       a.coverage.push(rec);
@@ -306,9 +315,12 @@
         rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
         continue;
       }
+      if ((m = line.match(/^sacrifice (?:a|another) creature: add ((?:\{[WUBRGC]\})+)/i))) { a.altar = { n: (m[1].match(/\{/g) || []).length }; rec.status = 'ok'; continue; }          // Ashnod's Altar
+      if (/^sacrifice a food: return ~ from your graveyard to the battlefield/i.test(line)) { a.gyReturn = { sacFood: 1 }; rec.status = 'ok'; continue; }          // Cauldron Familiar
       if (/^as an additional cost to cast ~, sacrifice a creature/i.test(line)) { a.sacCreatureCost = true; rec.status = 'ok'; continue; }      // Diabolic Intent
       if (a.isInstantSorcery) {
         const r = parseEffects(line);
+        if (a.aftermath && half === 2) { if (r.fx.length) { a.aftermathFx.push(...r.fx); rec.status = 'ok'; } else if (r.neutral) rec.status = 'neutral'; continue; }
         if (r.fx.length) { a.spellFx.push(...r.fx); rec.status = 'ok'; } else if (r.neutral) rec.status = 'neutral';
         continue;
       }
@@ -319,7 +331,7 @@
         if (sm && !/sacrifice ~/i.test(cm[1])) {
           const costPart = cm[1].replace(/,?\s*sacrifice (?:a|an|one|two|three|\d+) foods?/i, '').replace(/^[,\s]+|[,\s]+$/g, '');
           const r = parseEffects(cm[2]);
-          const useful = r.fx.some(f => ['draw', 'counters', 'token', 'damage', 'drain'].includes(f.type));
+          const useful = r.fx.some(f => ['draw', 'counters', 'token', 'damage', 'drain', 'gyReturn'].includes(f.type));
           if (useful && !/discard|exile|pay|remove|return|\{T\}/i.test(costPart)) {
             a.activated.push({ cost: parseCost(costPart), tap: false, sacFood: num(sm[1]), fx: r.fx, text: raw });
             rec.status = 'ok'; continue;
@@ -350,6 +362,7 @@
         let rest = trig.rest, cond = null, thenFx = [], im;
         if ((im = rest.match(/^if you gained (\d+) or more life this turn, /i))) { cond = { kind: 'lifeGained', min: +im[1] }; rest = rest.slice(im[0].length); }
         else if ((im = rest.match(/^if you gained life this turn, /i))) { cond = { kind: 'lifeGained', min: 1 }; rest = rest.slice(im[0].length); }
+        else if ((im = rest.match(/^each opponent dealt combat damage this game by a creature named ~ loses life equal to/i))) { cond = { kind: 'dealtBy' }; rest = 'each opponent loses life equal to' + rest.slice(im[0].length); }       // Gollum
         const tm2 = rest.match(/(?:\.\s*)?Then if ~ is your Ring-bearer and the Ring has tempted you (\w+) or more times this game, (.*)$/i);
         if (tm2) { thenFx = parseEffects(tm2[2]).fx.map(f => Object.assign({}, f, { cond: { kind: 'ringBearerSelf', min: num(tm2[1]) } })); rest = rest.slice(0, tm2.index); }
         const r = parseEffects(rest);
@@ -794,6 +807,29 @@
     g.pendingLeaves = [];
     for (const p of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('tokenLeave')) fire(g, t, q, ev, p);
   }
+  // A permanent is sacrificed or destroyed: a real card goes to the graveyard (a commander to the command zone), and "when ~ leaves the battlefield"
+  // triggers fire with its power (Rapacious Guest).
+  function leavePerm(g, p, ev) {
+    if (!g.battlefield.includes(p)) return;
+    const pw = Math.max(0, powerOf(g, p));
+    removePerm(g, p);
+    if (!p.token && p.inst) (p.card.commander ? g.command : g.graveyard).push(p.inst);
+    for (const t of p.card.a.triggers) if (t.kinds.includes('leave')) fire(g, t, p, ev, p, pw);
+  }
+  // best card in the graveyard for "return target <kind> card from your graveyard to your hand"
+  function gyTarget(g, f) {
+    const ctx = tutorContext(g);
+    let best = null, bs = -Infinity;
+    for (const i of g.graveyard) {
+      const a = i.card.a;
+      if (i.card.commander) continue;
+      const ok = f.filter === 'historic' ? (a.isArtifact || a.isLegendary || /\bSaga\b/.test(i.card.type_line || '')) : f.filter === 'creature' ? a.isCreature : f.filter === 'artifact' ? a.isArtifact : true;
+      if (!ok) continue;
+      const sc = tutorScore(g, i, ctx);
+      if (sc > bs) { bs = sc; best = i; }
+    }
+    return bs > -100 ? best : null;
+  }
   // ---------- Counters ----------
   // Every counter goes through addCounters: it applies Doubling Season, keeps +1/+1 and -1/-1 cancelling out (p.counters is the NET),
   // keeps other kinds in p.other (indestructible, shield...), loyalty in p.loyalty, and fires "whenever you put +1/+1 counters on a creature".
@@ -827,6 +863,7 @@
   function condMet(g, c, source) {
     switch (c.kind) {
       case 'lifeGained': return (g.lifeGainedThisTurn || 0) >= c.min;
+      case 'dealtBy': return !!(g.combatNames && source && g.combatNames[source.card.name]);
       case 'ringBearerSelf': return !!(g.ring && source && g.ring.bearer === source.iid && g.ring.tempts >= c.min);
     }
     return true;
@@ -869,6 +906,7 @@
       const a = i.card.a;
       let v = a.isLand ? (lands >= 6 ? 0 : lands >= 4 ? 4 : 9)
         : 2 + Math.min(8, a.castMv) * 0.5 + (a.comboRole ? 20 : 0) + (a.statics.tokenRepl.length ? 10 : 0) + (a.produce ? 5 : 0) - (a.castMv > lands + 4 ? 3 : 0);
+      if (a.aftermath) v = 1;                                // Dusk // Dawn wants to be in the graveyard
       if (v < ws) { ws = v; worst = i; }
     }
     g.hand.splice(g.hand.indexOf(worst), 1); g.graveyard.push(worst);
@@ -1118,6 +1156,19 @@
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
         case 'gainLife': gainLife(g, n, ev, source); break;
         case 'transform': if (source) transformPerm(g, source, ev); break;
+        case 'gyReturn': { const t = gyTarget(g, f); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); ev.push({ type: 'tutor', inst: t, source }); } break; }
+        case 'gyReturnAll': {
+          const back = g.graveyard.filter(i => !i.card.commander && (f.filter !== 'creature' || i.card.a.isCreature) && i.card.a.power <= f.maxPower);
+          back.forEach(i => { g.graveyard.splice(g.graveyard.indexOf(i), 1); g.hand.push(i); });
+          if (back.length) ev.push({ type: 'note', text: `Returned ${back.length} card${back.length > 1 ? 's' : ''} from the graveyard to your hand: ${back.map(i => i.card.name).join(', ')}`, source });
+          break;
+        }
+        case 'wrath': {
+          const dead = g.battlefield.filter(q => isCreaturePerm(q) && powerOf(g, q) >= f.minPower);
+          dead.forEach(q => leavePerm(g, q, ev));
+          ev.push({ type: 'note', text: `Destroyed ${dead.length} creature${dead.length === 1 ? '' : 's'} with power ${f.minPower} or greater`, source });
+          break;
+        }
         case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); break;
         case 'tutor': tutor(g, f, ev, source); break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
@@ -1314,19 +1365,20 @@
     else if (f.dest === 'battlefield') { const perm = enterWithTriggers(g, t.inst, {}, ev); ev.push({ type: 'rampLand', inst: t.inst, perm, source }); }
     else { g.hand.push(t.inst); ev.push({ type: 'tutor', inst: t.inst, source }); }
   }
-  // Diabolic Intent: "sacrifice a creature" as a cost. Only fodder that is not worth much: a token, or a creature with power 1 or less.
-  function pickSacrifice(g) {
-    let best = null, bs = Infinity;
+  // Creatures that are fine to sacrifice (Diabolic Intent's cost, Ashnod's Altar): a token, or a plain small creature. With an Altar a creature that comes
+  // back for a Food (Cauldron Familiar) is the best fodder of all. Worst-to-lose first.
+  function fodderList(g, altar) {
+    const out = [];
     for (const p of g.battlefield) {
       if (!isCreaturePerm(p) || p.card.commander) continue;
       const pw = powerOf(g, p), a = p.card.a;
-      // tokens are fine; a real card only if it is plain (no abilities, not legendary, not a mana creature) and small
-      if (!p.token && (pw > 1 || a.isLegendary || a.triggers.length || a.activated.length || a.statics.anthems.length || a.produce || (p.counters || 0) > 0)) continue;
-      const s = pw + (p.token ? 0 : 5);
-      if (s < bs) { bs = s; best = p; }
+      const recur = altar && a.gyReturn && foodsOf(g).length > 0;
+      if (!p.token && !recur && (pw > 1 || a.isLegendary || a.triggers.length || a.activated.length || a.statics.anthems.length || a.produce || (p.counters || 0) > 0)) continue;
+      out.push({ p, s: recur ? -5 : pw + (p.token ? 0 : 5) + (p.sick ? -0.2 : 0) });
     }
-    return best;
+    return out.sort((x, y) => x.s - y.s);
   }
+  function pickSacrifice(g) { const l = fodderList(g, false); return l.length ? l[0].p : null; }
 
   // ---------- Casting ----------
   function castCard(g, inst, force) {
@@ -1337,7 +1389,7 @@
     const n = pay(g, effectiveCost(g, inst));
     if (n == null && !force) return null;
     if (n != null) ev.push({ type: 'pay', n });
-    if (victim) { removePerm(g, victim); ev.push({ type: 'note', text: `Sacrificed ${victim.card.name} to cast ${inst.card.name}` }); }
+    if (victim) { leavePerm(g, victim, ev); ev.push({ type: 'note', text: `Sacrificed ${victim.card.name} to cast ${inst.card.name}` }); }
     if (g.command.includes(inst)) g.command.splice(g.command.indexOf(inst), 1);
     else if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);
     resolveSpell(g, inst, ev);
@@ -1355,21 +1407,73 @@
     if (a.spellFx.some(f => f.type === 'pumpAll')) s -= 30;  // Overrun-style effects wait until the board is built
     if (a.isAura && !bestCreature(g)) return -1;
     if (a.sacCreatureCost && !pickSacrifice(g)) return -1;     // nothing cheap to sacrifice
+    const wf = a.spellFx.find(f => f.type === 'wrath');
+    if (wf) {                                                  // Dusk: a goldfish has nothing to sweep, so it only goes to the graveyard to set up Dawn, and never over your own big creatures
+      const mine = g.battlefield.filter(p => isCreaturePerm(p) && powerOf(g, p) >= wf.minPower).length;
+      if (mine || !a.aftermath || smallCreaturesInYard(g, null) < 2) return -1;
+    }
     const tf = a.spellFx.find(f => f.type === 'tutor');
     if (tf) { const t = bestTutorTarget(g, tf); if (t) s += t.completes ? 400 : t.score >= 200 ? 60 : 0; }   // a tutor that completes the combo goes first
     return s;
+  }
+
+  function smallCreaturesInYard(g, except) { return g.graveyard.filter(i => i !== except && !i.card.commander && i.card.a.isCreature && i.card.a.power <= 2).length; }
+  function aftermathCost(card) { const parts = String(card.mana_cost || '').split('//'); return parts[1] ? parseCost(parts[1]) : null; }
+  function castAftermath(g, inst) {
+    const a = inst.card.a, ev = [];
+    const n = pay(g, aftermathCost(inst.card)); if (n == null) return null;
+    ev.push({ type: 'pay', n });
+    g.graveyard.splice(g.graveyard.indexOf(inst), 1);
+    ev.push({ type: 'cast', inst, toGrave: false });
+    fireCastTriggers(g, inst, ev);
+    g.spellsCast = (g.spellsCast || 0) + 1;
+    applyEffects(g, a.aftermathFx, null, ev, null);
+    g.exile.push(inst);                                       // aftermath: exiled after it resolves
+    flushLeaves(g, ev);
+    return ev;
   }
 
   function castOne(g) {
     const units = allUnits(g);
     if (!units.length) return null;
     const cands = g.hand.filter(c => !c.card.a.isLand).concat(g.command);
-    let best = null, bestScore = -1;
+    let best = null, bestScore = -1, altarK = 0;
     for (const c of cands) {
       if (!canPay(effectiveCost(g, c), units)) continue;
       if (c.card.a.sacCreatureCost && !pickSacrifice(g)) continue;
       const s = spellScore(g, c);
       if (s > bestScore) { bestScore = s; best = c; }
+    }
+    // Dawn (aftermath): cast from the graveyard when it brings back at least 2 small creatures
+    let aft = null, aftScore = -1;
+    for (const i of g.graveyard) {
+      const a = i.card.a;
+      if (!a.aftermath || !a.aftermathFx.length) continue;
+      const small = smallCreaturesInYard(g, i);
+      const cost = aftermathCost(i.card);
+      if (small >= 2 && cost && canPay(cost, units) && 5 + small > aftScore) { aft = i; aftScore = 5 + small; }
+    }
+    if (aft && aftScore > bestScore) return castAftermath(g, aft);
+    // Ashnod's Altar: nothing is castable, but sacrificing fodder for {C}{C} each would pay for a card that matters (combo piece, token doubler, commander)
+    if (!best && !g.dry && g.battlefield.some(p => p.card.a.altar)) {
+      const fl = fodderList(g, true);
+      for (let k = 1; k <= Math.min(fl.length, 4) && !best; k++) {
+        const extra = []; for (let j = 0; j < 2 * k; j++) extra.push({ src: null, colors: new Set(['C']), floating: true });
+        const more = units.concat(extra);
+        for (const c of cands) {
+          const a = c.card.a;
+          if (!(c.card.commander || a.comboRole || a.statics.tokenRepl.length || a.statics.counterDouble)) continue;
+          if (!canPay(effectiveCost(g, c), more) || (a.sacCreatureCost && !pickSacrifice(g))) continue;
+          const sc = spellScore(g, c);
+          if (sc > -1 && (!best || sc > bestScore)) { best = c; bestScore = sc; altarK = k; }
+        }
+      }
+      if (best) {
+        const pre = [];
+        for (let j = 0; j < altarK; j++) { const v = fodderList(g, true)[0]; if (!v) break; leavePerm(g, v.p, pre); pre.push({ type: 'note', text: `Ashnod's Altar: sacrificed ${v.p.card.name} for {C}{C}` }); g.floating.push({ src: null, colors: new Set(['C']), floating: true }, { src: null, colors: new Set(['C']), floating: true }); }
+        const ev2 = castCard(g, best);
+        return ev2 ? pre.concat(ev2) : pre;
+      }
     }
     if (!best) return null;
     const ev = castCard(g, best);
@@ -1441,6 +1545,9 @@
             if (foodsOf(g).length < ab.sacFood || !canPay(ab.cost, allUnits(g))) break;
             if (kind === 'draw' && (g.hand.length >= 8 || !g.library.length)) break;          // never discard to hand size
             if (kind === 'other' && ab.fx.every(f => f.type === 'counters') && !bestCreature(g)) break;
+            const gyf = ab.fx.find(f => f.type === 'gyReturn');
+            if (gyf && (p.gyUsed === g.turn || !gyTarget(g, gyf))) break;      // Samwise: only with something worth returning, once a turn
+            if (gyf) p.gyUsed = g.turn;
             pay(g, ab.cost);
             ev.push({ type: 'activate', perm: p, text: ab.text });
             sacrificeFoods(g, ab.sacFood, ev);
@@ -1448,6 +1555,15 @@
           }
         }
       }
+    }
+    // Cauldron Familiar: sacrifice a Food to return it from the graveyard (its enter trigger drains again)
+    for (const inst of g.graveyard.slice()) {
+      if (!inst.card.a.gyReturn || inst.retTurn === g.turn || !foodsOf(g).length || g.battlefield.length >= 250) continue;
+      sacrificeFoods(g, 1, ev);
+      g.graveyard.splice(g.graveyard.indexOf(inst), 1); inst.retTurn = g.turn;
+      ev.push({ type: 'note', text: `Sacrificed a Food: ${inst.card.name} returns from the graveyard` });
+      const perm = enterWithTriggers(g, inst, {}, ev);
+      ev.push({ type: 'rampLand', inst, perm, source: null });
     }
     // Food: "{2}, {T}, Sacrifice this: You gain 3 life." Only worth the mana when something cares about gaining life (Sanguine Bond...).
     if (bfInfo(g).lifeWatch || bfInfo(g).lifeThreshold) {
@@ -1607,6 +1723,7 @@
         const pw = Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1);
         if (pw <= 0) continue;
         dmg += pw; hitters.push(p);
+        g.combatNames = Object.assign({}, g.combatNames, { [p.card.name]: true });          // "each opponent dealt combat damage this game by a creature named Gollum"
         if (p.card.commander) g.cmdrDamage[p.iid] = (g.cmdrDamage[p.iid] || 0) + pw;
       }
       if (dmg) {
@@ -1754,7 +1871,7 @@
   const api = {
     parseCost, parseAdd, parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers,
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
-    beginTurn, landStep, combat, postCombat, transformPerm, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
+    beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,

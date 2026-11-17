@@ -1,5 +1,5 @@
 @echo off
-REM Visual Goldfish Calculator - double-click to start.
+REM I See Fish - double-click to start.
 REM Uses %USERPROFILE%\Documents\ScryMirror by default. To use another folder:
 REM   start.bat --scrymirror "D:\ScryMirror"
 cd /d "%~dp0"

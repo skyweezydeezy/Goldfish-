@@ -1,4 +1,4 @@
-/* Visual Goldfish Calculator - UI */
+/* I See Fish - UI */
 (function () {
   'use strict';
   const G = window.Goldfish, C = window.Charts;

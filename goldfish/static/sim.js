@@ -788,7 +788,8 @@
   }
 
   function mulligan(g) {
-    const o = g.opts;
+    const kl = pol(g, 'keepLands');
+    const o = kl && kl !== 'default' ? Object.assign({}, g.opts, { minLands: +kl.split('-')[0], maxLands: +kl.split('-')[1] }) : g.opts;
     for (let attempt = 0; ; attempt++) {
       g.hand = [];
       draw(g, 7);
@@ -1726,7 +1727,7 @@
   // Necropotence: skip the draw step and pay life instead, at the end step, to refill the hand
   function necroDig(g, ev) {
     if (g.dry || !g.battlefield.some(p => p.card.a.necroDig)) return;
-    const floor = g.opp ? 20 : 12, goal = g.life > 30 ? 9 : 7;
+    const floor = g.opp ? 20 : 12, ng = pol(g, 'necroGoal'), goal = ng === 'current' ? (g.life > 30 ? 9 : 7) : +ng;
     let k = 0;
     while (g.hand.length < goal && g.life > floor && g.library.length && k < 12) { const c = g.library.shift(); g.hand.push(c); g.life--; k++; }
     if (k) { ev.push({ type: 'note', text: `Necropotence: paid ${k} life, exiled ${k} card${k > 1 ? 's' : ''} and put them in your hand (life ${g.life})` }); checkDeath(g, ev); }
@@ -2329,7 +2330,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { fetchHold: 'never' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'yes', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   function pol(g, key) { const p = g.opts && g.opts.policy; return p && p[key] != null ? p[key] : DEFAULT_POLICY[key]; }
   // a held fetch land: crack it when mana is needed, after a library-reordering effect (Brainstorm, Sylvan Library: the shuffle sends the put-back cards away) or at the end of the turn
   function heldFetches(g) { return g.battlefield.filter(p => p.heldFetch && p.card.a.fetchSpec); }
@@ -2502,7 +2503,9 @@
     if (!watchers) return;
     const toks = g.battlefield.filter(q => q.token && isCreaturePerm(q) && !q.card.commander);
     const lethal = toks.length * watchers >= oppLifeLeft(g);
-    if (!(watchers >= 2 || toks.length >= 8 || lethal)) return;
+    const sm = pol(g, 'sacMode');
+    const go = sm === 'always' ? toks.length >= 1 : sm === 'lethalOnly' ? lethal : sm === 'never' ? false : sm === 'wide' ? (toks.length >= 8 || lethal) : sm === 'two' ? (watchers >= 2 || lethal) : (watchers >= 2 || toks.length >= 8 || lethal);
+    if (!go) return;
     let n = 0;
     for (const t of toks.slice(0, 40)) {
       if (g.killTurn != null || matchOver(g)) break;
@@ -2703,7 +2706,7 @@
     for (const a of cands) if (!blocks.has(a)) open += Math.max(0, powerOf(g, a)) * (hasKw(g, a, 'double strike') ? 2 : 1);
     if (open >= d.life) return cands;                                                  // lethal even through their blocks
     const theirPower = d.battlefield.reduce((s, p) => s + (isCreaturePerm(p) ? Math.max(0, powerOf(d, p)) : 0), 0);
-    const defensive = g.life <= theirPower;                                            // they could kill me next turn: stay home
+    const defensive = g.life <= theirPower * (+pol(g, 'attackCaution') || 1);                                            // they could kill me next turn: stay home
     const blockers = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock);
     return cands.filter(a => {
       if (defensive && !hasKw(g, a, 'vigilance')) return false;
@@ -2892,7 +2895,7 @@
   // Keep mana open for the cheapest counterspell in hand: those lands are marked "held" for the rest of the main phase.
   function holdSize(g) { let b = null; for (const c of g.hand) if (c.card.a.counter && (!b || c.card.a.castMv < b.card.a.castMv)) b = c; return b ? b.card.a.castMv : 0; }
   function holdForCounter(g) {
-    if (!g.opp || g.turn < 2) return [];
+    if (!g.opp || g.turn < 2 || pol(g, 'holdCounters') === 'no') return [];
     let best = null;
     for (const c of g.hand) if (c.card.a.counter && (!best || c.card.a.castMv < best.card.a.castMv)) best = c;
     if (!best) return [];

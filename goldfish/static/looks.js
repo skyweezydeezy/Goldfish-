@@ -8,7 +8,9 @@
  *            { id, name, image }          an image file in this folder, e.g. 'mats/partner-dragon.jpg'
  *   sleeves: { id, name, color }          the sleeve colour; the card back is drawn from it, or
  *            { id, name, color, back }    'back' = an image file for the card back
- *   Optional on either: partner: { name: 'Brand', url: 'https://...' }  shows a "Shop at Brand" link
+ *   Optional on either: shop: 'https://...'  shows a "Shop →" link under the design.
+ *                       shop: ''             a placeholder "Shop · coming soon" button; paste the URL in later.
+ *                       partner: { name: 'Brand', url: 'https://...' }  shows "Shop at Brand →" instead
  *   under the design. Only add a brand's art or name with that brand's written permission.
  */
 (function () {
@@ -16,6 +18,10 @@
 
   const MATS = [
     { id: 'frozen', name: 'Frozen pond', css: '' },   // '' = the built-in look
+    // I See Fish originals (matching sets: each playmat has a sleeve of the same name)
+    { id: 'prism', name: 'Prism Nexus', image: 'looks/mat-prism.jpg', shop: '' },
+    { id: 'tide', name: 'Sunken Gate', image: 'looks/mat-tide.jpg', shop: '' },
+    { id: 'eclipse', name: 'Eclipse Spires', image: 'looks/mat-eclipse.jpg', shop: '' },
     { id: 'felt', name: 'Card-room felt', css: 'radial-gradient(ellipse at 50% 0%, #2f7048 0%, #1c4a2d 50%, #0f2c1b 100%)' },
     { id: 'crimson', name: 'Crimson', css: 'radial-gradient(ellipse at 50% 0%, #7a2433 0%, #4a1520 50%, #250a10 100%)' },
     { id: 'royal', name: 'Royal violet', css: 'radial-gradient(ellipse at 50% 0%, #563585 0%, #321e55 50%, #180f2e 100%)' },
@@ -28,6 +34,9 @@
 
   const SLEEVES = [
     { id: 'none', name: 'No sleeves', color: '' },   // bare cards, the built-in frozen card back
+    { id: 'prism', name: 'Prism Nexus', color: '#b8913f', back: 'looks/sleeve-prism.jpg', shop: '' },
+    { id: 'tide', name: 'Sunken Gate', color: '#2a8c86', back: 'looks/sleeve-tide.jpg', shop: '' },
+    { id: 'eclipse', name: 'Eclipse Spires', color: '#8e4bb5', back: 'looks/sleeve-eclipse.jpg', shop: '' },
     { id: 'ice', name: 'Ice blue', color: '#4aa6e0' },
     { id: 'black', name: 'Matte black', color: '#1d1f22' },
     { id: 'white', name: 'Pearl white', color: '#e9edf0' },
@@ -98,12 +107,18 @@
     <h3>Playmat</h3><div id="lkMats" class="look-grid"></div>
     <div class="row wrap look-upload"><button id="lkUpload" class="ghost">Use my own playmat image…</button><input id="lkFile" type="file" accept="image/*" hidden><span id="lkMsg" class="hint"></span></div>
     <h3>Sleeves</h3><div id="lkSleeves" class="look-grid sleeves"></div>
+    <p id="lkShopMsg" class="look-shop-msg" aria-live="polite"></p>
     <p class="hint">Saved in this browser only. Card images are always shown whole; sleeves only colour the edge and the card backs.</p>
   </div>`;
   document.body.appendChild(modal);
 
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const partnerLink = p => p && p.url ? `<a class="look-shop" href="${esc(p.url)}" target="_blank" rel="noopener sponsored">Shop at ${esc(p.name)} →</a>` : '';
+  const shopLink = (x, kind) => {
+    if (x.partner && x.partner.url) return `<a class="look-shop" href="${esc(x.partner.url)}" target="_blank" rel="noopener sponsored">Shop at ${esc(x.partner.name)} →</a>`;
+    if (typeof x.shop !== 'string') return '';
+    if (x.shop) return `<a class="look-shop" href="${esc(x.shop)}" target="_blank" rel="noopener" data-shop="${kind}:${esc(x.id)}">Shop →</a>`;
+    return `<button type="button" class="look-shop soon" data-shop="${kind}:${esc(x.id)}" data-name="${esc(x.name)} ${kind === 'mat' ? 'playmat' : 'sleeves'}">Shop · coming soon</button>`;
+  };
 
   function render() {
     const mats = $('#lkMats'); mats.innerHTML = '';
@@ -111,7 +126,7 @@
     list.forEach(m => {
       const mb = matBackground(m);
       const b = document.createElement('div'); b.className = 'look-opt' + (look.mat === m.id ? ' on' : '');
-      b.innerHTML = `<button class="look-sw mat" data-mat="${esc(m.id)}" aria-pressed="${look.mat === m.id}" title="${esc(m.name)}"></button><span>${esc(m.name)}</span>${partnerLink(m.partner)}`;
+      b.innerHTML = `<button class="look-sw mat" data-mat="${esc(m.id)}" aria-pressed="${look.mat === m.id}" title="${esc(m.name)}"></button><span>${esc(m.name)}</span>${shopLink(m, 'mat')}`;
       const sw = b.firstChild;
       if (mb) { sw.style.background = mb.bg; sw.style.backgroundSize = mb.size; sw.style.backgroundPosition = 'center'; } else sw.classList.add('default-mat');
       sw.addEventListener('click', () => { look.mat = m.id; save(); });
@@ -120,7 +135,7 @@
     const sl = $('#lkSleeves'); sl.innerHTML = '';
     SLEEVES.forEach(s => {
       const b = document.createElement('div'); b.className = 'look-opt' + (look.sleeve === s.id ? ' on' : '');
-      b.innerHTML = `<button class="look-sw sleeve" data-sleeve="${esc(s.id)}" aria-pressed="${look.sleeve === s.id}" title="${esc(s.name)}"></button><span>${esc(s.name)}</span>${partnerLink(s.partner)}`;
+      b.innerHTML = `<button class="look-sw sleeve" data-sleeve="${esc(s.id)}" aria-pressed="${look.sleeve === s.id}" title="${esc(s.name)}"></button><span>${esc(s.name)}</span>${shopLink(s, 'sleeve')}`;
       const sw = b.firstChild;
       if (s.color) { sw.style.background = sleeveBack(s); sw.style.borderColor = s.color; } else sw.classList.add('bare');
       sw.addEventListener('click', () => { look.sleeve = s.id; save(); });
@@ -153,7 +168,11 @@
     img.src = url;
   }
 
-  function open() { render(); $('#lkMsg').textContent = ''; modal.classList.add('show'); document.body.classList.add('modal-open'); }
+  modal.addEventListener('click', e => {
+    const b = e.target.closest('button.look-shop.soon'); if (!b) return;
+    $('#lkShopMsg').textContent = `The shop for ${b.dataset.name} is coming soon.`;
+  });
+  function open() { render(); $('#lkMsg').textContent = ''; $('#lkShopMsg').textContent = ''; modal.classList.add('show'); document.body.classList.add('modal-open'); }
   function close() { modal.classList.remove('show'); document.body.classList.remove('modal-open'); }
   $('#lkClose').addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });

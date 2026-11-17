@@ -549,3 +549,8 @@ html.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px
 .look-shop { font-size: 11px; color: var(--ice); }
 .look-upload { margin-top: 10px; align-items: center; }
 @media (max-width: 520px) { .look-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .look-grid.sleeves { grid-template-columns: repeat(4, minmax(0, 1fr)); } .look-sw.sleeve { width: 52px; } }
+button.look-shop { background: none; border: 0; padding: 2px 4px; min-height: 0; cursor: pointer; font: inherit; font-size: 11px; color: var(--ice); }
+button.look-shop:hover { background: none; text-decoration: underline; }
+.look-shop.soon { color: var(--muted); }
+a.look-shop { text-decoration: none; font-weight: 650; } a.look-shop:hover { text-decoration: underline; }
+.look-shop-msg { min-height: 1.4em; margin: 10px 0 0; color: var(--ice); font-size: 13px; }

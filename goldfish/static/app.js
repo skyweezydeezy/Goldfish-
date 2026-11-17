@@ -265,7 +265,9 @@
   $('#drawHand').addEventListener('click', () => { if (!need()) return; H = { g: G.newGame(S.deck, opts(), rseed()), mulls: 0 }; dealHand(); });
   $('#mullHand').addEventListener('click', () => {
     if (!H) return $('#drawHand').click();
-    H.g.library.push(...H.g.hand); H.g.hand = []; G.shuffle(H.g.library, H.g.rnd); H.mulls++; dealHand();
+    H.g.library.push(...H.g.hand); H.g.hand = []; G.shuffle(H.g.library, H.g.rnd); H.mulls++;
+    clearSampleSelection();
+    dealHand();
   });
   $('#keepHand').addEventListener('click', () => {
     if (!H) return toast('Draw a hand first');
@@ -279,9 +281,9 @@
 
   function bottomCount(mulls, o) { return Math.max(0, mulls - (o.freeMulligan && mulls >= 1 ? 1 : 0)); }
 
-  function dealHand() {
+  function dealHand(alreadyDrawn) {
     const g = H.g, o = opts();
-    G.draw(g, 7);
+    if (!alreadyDrawn) G.draw(g, 7);
     const k = bottomCount(H.mulls, o);
     H.bottom = k ? chooseBottom(g.hand, k, o) : [];
     const stage = $('#handStage'); stage.innerHTML = '';
@@ -326,20 +328,48 @@
     return out;
   }
 
+  // Pick one of the sample hands: it replaces the big hand above (still free to mulligan, keep, or goldfish).
+  function clearSampleSelection() {
+    $$('.mini-hand').forEach(x => {
+      x.classList.toggle('selected', false);
+      const b = x.querySelector('.pick'); if (b) b.textContent = 'Use this hand';
+    });
+  }
+  function selectSample(box, scroll) {
+    clearSampleSelection();
+    box.classList.add('selected');
+    const pb = box.querySelector('.pick'); if (pb) pb.textContent = '✓ In use';
+    H = { g: box._g, mulls: 0 };
+    dealHand(true);
+    if (scroll) {
+      const st = $('#handStage'); const y = st.getBoundingClientRect().top + window.scrollY - 90;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }
+    toast('Hand swapped in. Keep it, mulligan, or goldfish it.');
+  }
   $('#dealMany').addEventListener('click', () => {
     if (!need()) return;
     const grid = $('#handGrid'); grid.innerHTML = '';
     const o = opts();
+    grid.appendChild(h('div', 'grid-hint', 'Tap a hand to swap it in above, or press <b>Goldfish ▶</b> to play it right away. (Long-press a card to see it large.)'));
     for (let i = 0; i < 12; i++) {
       const g = G.newGame(S.deck, o, rseed()); G.draw(g, 7);
       const lands = G.landCount(g.hand), ok = G.keepable(g.hand, o);
       // can it make a T2/T3 play with just these cards + lands?
       const cheap = g.hand.filter(c => !c.card.a.isLand && c.card.a.castMv <= Math.max(1, Math.min(lands + 1, 3))).length;
-      const box = h('div', 'mini-hand');
+      const box = h('div', 'mini-hand'); box._g = g;
       const cards = h('div', 'cards');
-      g.hand.slice().sort((a, b) => (b.card.a.isLand - a.card.a.isLand) || a.card.a.mv - b.card.a.mv).forEach(c => cards.appendChild(cardEl(c.card)));
+      g.hand.slice().sort((a, b) => (b.card.a.isLand - a.card.a.isLand) || a.card.a.mv - b.card.a.mv).forEach(c => cards.appendChild(cardEl(c.card, { eager: true })));
       box.appendChild(cards);
       box.appendChild(h('div', 'meta', `<span>${lands} land${lands === 1 ? '' : 's'} · ${cheap} early play${cheap === 1 ? '' : 's'}</span><span class="verdict ${ok ? 'keep' : 'mull'}">${ok ? 'Keep' : 'Mulligan'}</span>`));
+      const acts = h('div', 'acts');
+      acts.appendChild(h('button', 'pick ghost', 'Use this hand'));
+      acts.appendChild(h('button', 'go primary', 'Goldfish ▶'));
+      box.appendChild(acts);
+      box.addEventListener('click', e => {
+        if (e.target.closest('.go')) { selectSample(box, false); $('#keepHand').click(); return; }
+        selectSample(box, true);
+      });
       box.style.animation = `fadein .3s ease ${i * 50}ms both`;
       grid.appendChild(box);
     }
@@ -631,7 +661,7 @@
   document.addEventListener('click', e => {
     if (canHover) return;
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('.table, #oddsPicker, #lightbox') || m.dataset.uid == null) return;
+    if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand') || m.dataset.uid == null) return;
     showLightbox(getCard(m.dataset.uid));
   });
 

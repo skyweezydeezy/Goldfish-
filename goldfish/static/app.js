@@ -720,7 +720,7 @@
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
-  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn', 'extortOwed', 'combatNames'];
+  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn', 'extortOwed', 'combatNames', 'combatDone'];
   function snap() {
     const g = S.game;
     const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });

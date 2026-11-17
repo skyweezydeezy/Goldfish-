@@ -168,6 +168,8 @@
     if (m) fx.push({ type: 'damage', n: num(m[1]) });
     else if (/deals damage equal to the amount of life you gained this turn to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'LIFEGAINED' });     // Sorin, Ravenous Neonate
     else if (/deals damage equal to [^.]* to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'X' });
+    if (/loses life equal to the number of creature cards in your graveyard/i.test(text)) fx.push({ type: 'drain', n: 'GYCREATURES' });                              // Grist -5
+    if ((m = text.match(/\bthen mill (a|one|two|three|\d+) cards?/i))) fx.push({ type: 'mill', n: num(m[1]), insect: /if an insect card was milled this way/i.test(text) });   // Grist +1
     // graveyard and sweepers: Samwise ("return target historic card from your graveyard to your hand"), Dawn, Dusk
     if ((m = text.match(/return target ([a-z]+) card from your graveyard to your hand/i))) fx.push({ type: 'gyReturn', filter: m[1].toLowerCase() });
     if ((m = text.match(/return all (creature )?cards? (?:with power (\d+) or less )?from your graveyard to your hand/i))) fx.push({ type: 'gyReturnAll', filter: m[1] ? 'creature' : 'any', maxPower: m[2] != null ? +m[2] : 99 });
@@ -175,6 +177,7 @@
     if (/(each opponent|target opponent|target player) loses life equal to the amount of life you gained this turn/i.test(text)) fx.push({ type: 'drain', n: 'LIFEGAINED' });      // Gollum
     if (/(each opponent|target opponent|target player) loses life equal to (?:its|~'s) power/i.test(text)) fx.push({ type: 'drain', n: 'THAT' });                              // Rapacious Guest (the power is passed in as "that much")
     // "Exile Sorin, then return him to the battlefield transformed under his owner's control."
+    if (/\btransform ~(?![a-z])/i.test(text)) fx.push({ type: 'transform', same: true });
     if (/\bexile (?:~|[A-Z][a-z]+), then return (?:it|him|her|~) to the battlefield transformed/i.test(text)) fx.push({ type: 'transform' });
 
     m = text.match(new RegExp('(each opponent|target opponent|target player|that player|defending player|each player) loses ' + NRE + ' life', 'i'));
@@ -281,7 +284,7 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.sacTempt = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
@@ -315,6 +318,9 @@
         rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
         continue;
       }
+      if ((m = line.match(/^((?:\{[^}]+\})+): ~ becomes an? (\d+)\/(\d+) [a-z ]*creature until end of turn\. it's still a land/i))) { a.animate = { cost: parseCost(m[1]), p: +m[2], t: +m[3] }; rec.status = 'ok'; continue; }          // Restless Cottage
+      if (/^\{1\}, \{T\}, sacrifice ~: search your library for a basic land card, put it onto the battlefield tapped/i.test(line)) { a.terrace = true; rec.status = 'ok'; continue; }          // Shire Terrace
+      if ((m = line.match(/^((?:\{[^}]+\})+): transform ~\./i))) { a.activated.push({ cost: parseCost(m[1]), tap: false, fx: [{ type: 'transform', same: true }], text: raw }); a.transformAbility = true; rec.status = 'ok'; continue; }          // Jennifer Walters
       if ((m = line.match(/^sacrifice (?:a|another) creature: add ((?:\{[WUBRGC]\})+)/i))) { a.altar = { n: (m[1].match(/\{/g) || []).length }; rec.status = 'ok'; continue; }          // Ashnod's Altar
       if (/^sacrifice ~: creatures you control gain indestructible until end of turn\. the ring tempts you/i.test(line)) { a.sacTempt = true; rec.status = 'ok'; continue; }      // Boromir, Warden of the Tower
       if (/^sacrifice a food: return ~ from your graveyard to the battlefield/i.test(line)) { a.gyReturn = { sacFood: 1 }; rec.status = 'ok'; continue; }          // Cauldron Familiar
@@ -426,7 +432,9 @@
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
-        if (/^exile ~\.?$/i.test(t) || /^activated abilities of foods you control cost|isn't on the battlefield, it's a/i.test(t)) { rec.status = 'neutral'; rec.tag = 'solo'; }
+        if (/is dealt damage, you may have/i.test(t)) { rec.status = 'neutral'; rec.tag = 'opp'; }          // She-Hulk: needs something to damage your creatures
+        else if (/have all activated abilities of all creature cards exiled with/i.test(t)) { rec.status = 'neutral'; rec.tag = 'opp'; }          // needs creature cards in an opponent's graveyard
+        else if (/^exile ~\.?$/i.test(t) || /^activated abilities of foods you control cost|isn't on the battlefield, it's a/i.test(t)) { rec.status = 'neutral'; rec.tag = 'solo'; }
         else if (oppOnly) { rec.status = 'neutral'; rec.tag = 'opp'; }
         else rec.tag = 'dev';
       } else if (rec.status === 'neutral') {
@@ -526,7 +534,7 @@
     a.draw = etbFx.filter(f => f.type === 'draw').reduce((s, f) => s + (f.n === 'X' ? 1 : f.n), 0);
     a.role = a.isLand ? 'land' : (a.produce || a.rampLands || a.rampToHand || a.statics.extraLands) ? 'ramp' : a.draw ? 'draw' : a.isCreature ? 'creature' : 'spell';
     // Transforming cards (Sorin of House Markov): analyze the back face as its own card, so the engine can swap to it
-    if (card.layout === 'transform' && card.faces && card.faces[1] && card.faces[1].name && !a.isLand) {
+    if ((card.layout === 'transform' || (card.layout === 'modal_dfc' && a.transformAbility)) && card.faces && card.faces[1] && card.faces[1].name && !a.isLand) {
       const bf = card.faces[1];
       const back = {
         name: bf.name, mana_cost: '', cmc: card.cmc, type_line: bf.type_line || '', oracle_text: bf.oracle_text || '', power: bf.power, toughness: bf.toughness,
@@ -744,16 +752,16 @@
     for (const b of att) { dp += b.p; dt += b.t; b.keywords.forEach(k => kw.add(k)); }
     return { dp, dt, kw };
   }
-  function isCreaturePerm(p) { return p.card.a.isCreature && !p.asLand; }
+  function isCreaturePerm(p) { return (p.card.a.isCreature && !p.asLand) || !!p.animated; }          // a manland (Restless Cottage) is a creature while animated
   function powerOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor;
-    return p.card.a.power + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * bfInfo(g).colors.size : 0) + (p.eotP || 0) + g.eot.p;
+    return (p.animated ? p.animated.p : p.card.a.power) + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * bfInfo(g).colors.size : 0) + (p.eotP || 0) + g.eot.p;
   }
   function toughnessOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor;
-    return p.card.a.toughness + (p.counters || 0) + anthemsFor(g, p).dt + (pc ? pc.t * bfInfo(g).colors.size : 0) + (p.eotT || 0) + g.eot.t;
+    return (p.animated ? p.animated.t : p.card.a.toughness) + (p.counters || 0) + anthemsFor(g, p).dt + (pc ? pc.t * bfInfo(g).colors.size : 0) + (p.eotT || 0) + g.eot.t;
   }
   function hasKw(g, p, k) {
     if (p.card.a.kw && p.card.a.kw.has(k)) return true;
@@ -1132,7 +1140,8 @@
       let n = f.n;
       if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
       else if (n === 'THAT') n = g.thatMuch || 0;                       // "that much life"
-      else if (n === 'LIFEGAINED') n = g.lifeGainedThisTurn || 0;      // Sorin: damage equal to the life you gained this turn
+      else if (n === 'LIFEGAINED') n = g.lifeGainedThisTurn || 0;
+      else if (n === 'GYCREATURES') n = g.graveyard.filter(i => i.card.a.isCreature).length;      // Grist -5      // Sorin: damage equal to the life you gained this turn
       else if (n === 'X') n = f.count ? countFor(g, f.count, source) : 1;
       switch (f.type) {
         case 'token': {
@@ -1156,7 +1165,19 @@
         }
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
         case 'gainLife': gainLife(g, n, ev, source); break;
-        case 'transform': if (source) transformPerm(g, source, ev); break;
+        case 'transform': if (source) transformPerm(g, source, ev, f.same); break;
+        case 'mill': {
+          for (let k = 0; k < Math.min(n, 10) && g.library.length; k++) {
+            const c = g.library.shift(); g.graveyard.push(c);
+            ev.push({ type: 'note', text: `Milled ${c.card.name}`, source });
+            if (f.insect && source && /\bInsect\b/.test(c.card.type_line || '') && (g.millDepth || 0) < 5) {       // an Insect card milled: a loyalty counter, and repeat the whole ability
+              addCounters(g, source, 'loyalty', 1, ev, source);
+              const ab = source.card.a.pwAbilities.find(x => x.fx.includes(f));
+              if (ab) { g.millDepth = (g.millDepth || 0) + 1; applyEffects(g, ab.fx, source, ev, subject); g.millDepth--; }
+            }
+          }
+          break;
+        }
         case 'gyReturn': { const t = gyTarget(g, f); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); ev.push({ type: 'tutor', inst: t, source }); } break; }
         case 'gyReturnAll': {
           const back = g.graveyard.filter(i => !i.card.commander && (f.filter !== 'creature' || i.card.a.isCreature) && i.card.a.power <= f.maxPower);
@@ -1203,6 +1224,11 @@
         }
         case 'ramp': {
           const want = f.bf + f.hand, found = [];
+          if (f.wantMissing) {                                                   // Shire Terrace: fetch a basic that makes a color you do not have yet
+            const have = new Set(); g.battlefield.forEach(q => { if (q.asLand && q.produce) q.produce.colors.forEach(c => have.add(c)); });
+            const c0 = g.library.find(c => c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '') && c.card.a.produce && [...c.card.a.produce.colors].some(x => !have.has(x)));
+            if (c0) found.push(c0);
+          }
           for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
           if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
           found.forEach(c => g.library.splice(g.library.indexOf(c), 1));
@@ -1243,11 +1269,12 @@
   }
 
   // Exile the permanent and return it transformed: it comes back as its back face, as a new object (no counters, no summoning-sickness carry-over).
-  function transformPerm(g, p, ev) {
+  function transformPerm(g, p, ev, same) {
     const back = p.card.a.backCard;
     if (!back || !g.battlefield.includes(p)) return;
     const ba = back.a, from = p.card;
     ev.push({ type: 'transform', perm: p, from, to: back });
+    if (same) { p.card = back; p.transformed = true; touch(g); return; }          // "Transform ~" (Jennifer Walters): the same permanent, nothing resets
     p.card = back; p.transformed = true; p.enteredTurn = g.turn; p.tapped = false; p.counters = 0; p.other = null; p.attachedTo = null;
     p.sick = ba.isCreature; p.pwUsed = undefined; p.actUsed = undefined;
     p.produce = ba.produce; p.sacMana = ba.sacMana; p.asLand = ba.isLand;
@@ -1485,7 +1512,7 @@
   function fxValue(g, fx) {
     let v = 0;
     for (const f of fx) {
-      const n = f.n === 'LIFEGAINED' ? (g.lifeGainedThisTurn || 0) : f.n === 'X' ? 2 : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
+      const n = f.n === 'GYCREATURES' ? g.graveyard.filter(i => i.card.a.isCreature).length : f.n === 'LIFEGAINED' ? (g.lifeGainedThisTurn || 0) : f.n === 'X' ? 2 : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
       if (f.type === 'token') v += n * (f.creature ? 1 + (+f.p || 0) : 0.8);
       if (f.type === 'draw') v += 1.5 * n;
       if (f.type === 'damage' || f.type === 'drain') v += n;
@@ -1506,9 +1533,10 @@
       let best = null, bs = -Infinity;
       for (const ab of p.card.a.pwAbilities) {
         const c = ab.x ? -Math.max(0, p.loyalty - 1) : ab.cost;
-        if (p.loyalty + c <= 0 && c < 0) continue;
+        if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
         if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
-        const v = fxValue(g, ab.fx) + c * 0.6;
+        let v = fxValue(g, ab.fx) + c * 0.6;
+        if (ab.fx.some(f => f.n === 'GYCREATURES') && g.damage + g.graveyard.filter(i => i.card.a.isCreature).length >= g.opts.oppLife) v += 1000;         // Grist's -5 as the finisher
         if (v > bs) { bs = v; best = ab; }
       }
       p.pwUsed = g.turn;
@@ -1556,6 +1584,31 @@
           }
         }
       }
+    }
+    // Restless Cottage: spare {2}{B}{G} (without tapping the Cottage itself) makes it a 4/4 that attacks this turn
+    if (!g.combatDone) for (const p of g.battlefield.slice()) {
+      const an = p.card.a.animate;
+      if (!an || !p.asLand || p.animated || p.tapped || p.enteredTurn >= g.turn) continue;
+      p.tapped = true;
+      const ok = canPay(an.cost, allUnits(g)) && pay(g, an.cost) != null;
+      p.tapped = false;
+      if (!ok) continue;
+      p.animated = { p: an.p, t: an.t }; p.sick = false; touch(g);
+      ev.push({ type: 'note', text: `${p.card.name} becomes a ${an.p}/${an.t} creature until end of turn`, source: p });
+    }
+    // Shire Terrace: {1}, {T}, sacrifice: fetch a basic land that makes a color you are missing (tapped)
+    for (const p of g.battlefield.slice()) {
+      if (!p.card.a.terrace || !p.asLand || p.tapped) continue;
+      const have = new Set(); g.battlefield.forEach(q => { if (q.asLand && q.produce) q.produce.colors.forEach(c => have.add(c)); });
+      const missing = (g.deck.deckColors || []).filter(c => !have.has(c));
+      if (!missing.length || !g.library.some(c => c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '') && c.card.a.produce && [...c.card.a.produce.colors].some(x => missing.includes(x)))) continue;
+      const fcost = { generic: 1, pips: [], x: 0 };
+      p.tapped = true;
+      const ok = canPay(fcost, allUnits(g)) && pay(g, fcost) != null;
+      if (!ok) { p.tapped = false; continue; }
+      ev.push({ type: 'note', text: `${p.card.name}: sacrificed to fetch a basic land`, source: p });
+      leavePerm(g, p, ev);
+      applyEffects(g, [{ type: 'ramp', bf: 1, hand: 0, tapped: true, basicOnly: true, wantMissing: true }], p, ev, null);
     }
     // Boromir: "Sacrifice ~: ... The Ring tempts you." Worth it only when the temptation unlocks something: a new Ring level (loot at 2, 3 life drain at 4),
     // or Frodo's draw (he needs the Ring to have tempted you twice), and only while another creature can carry the Ring.
@@ -1686,7 +1739,7 @@
 
   function beginTurn(g) {
     g.turn++;
-    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0;
+    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0; g.combatDone = false;
     const ev = [{ type: 'untap' }];
     g.battlefield.forEach(p => { p.tapped = false; if (p.enteredTurn < g.turn) p.sick = false; });
     eachTrigger(g, 'upkeep', ev);
@@ -1713,6 +1766,7 @@
   }
 
   function combat(g) {
+    g.combatDone = true;
     const ev = [];
     eachTrigger(g, 'combat', ev);
     let phases = 1;
@@ -1787,7 +1841,7 @@
       creatures: g.battlefield.filter(isCreaturePerm).length, power: g.battlefield.reduce((s, p) => s + Math.max(0, powerOf(g, p)), 0),
     });
     g.eot = { p: 0, t: 0, kw: new Set() };
-    g.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; });
+    g.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.animated = null; });
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
     return ev;
   }

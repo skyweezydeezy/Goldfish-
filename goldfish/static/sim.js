@@ -170,6 +170,8 @@
     else if (/deals damage equal to [^.]* to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'X' });
     if (/loses life equal to the number of creature cards in your graveyard/i.test(text)) fx.push({ type: 'drain', n: 'GYCREATURES' });                              // Grist -5
     if ((m = text.match(/\bthen mill (a|one|two|three|\d+) cards?/i))) fx.push({ type: 'mill', n: num(m[1]), insect: /if an insect card was milled this way/i.test(text) });   // Grist +1
+    // Enlightened Confidant: surveil 1, and if that card's mana value is at most the life you gained this turn it goes to your hand
+    if (/surveil 1\. if you put a card with mana value less than or equal to the amount of life you gained this turn into your graveyard this way, put that card into your hand/i.test(text)) fx.push({ type: 'surveilHand' });
     // graveyard and sweepers: Samwise ("return target historic card from your graveyard to your hand"), Dawn, Dusk
     if ((m = text.match(/return target ([a-z]+) card from your graveyard to your hand/i))) fx.push({ type: 'gyReturn', filter: m[1].toLowerCase() });
     if ((m = text.match(/return all (creature )?cards? (?:with power (\d+) or less )?from your graveyard to your hand/i))) fx.push({ type: 'gyReturnAll', filter: m[1] ? 'creature' : 'any', maxPower: m[2] != null ? +m[2] : 99 });
@@ -537,7 +539,7 @@
     if ((card.layout === 'transform' || (card.layout === 'modal_dfc' && a.transformAbility)) && card.faces && card.faces[1] && card.faces[1].name && !a.isLand) {
       const bf = card.faces[1];
       const back = {
-        name: bf.name, mana_cost: '', cmc: card.cmc, type_line: bf.type_line || '', oracle_text: bf.oracle_text || '', power: bf.power, toughness: bf.toughness,
+        name: bf.name, mana_cost: card.layout === 'modal_dfc' ? (bf.mana_cost || '') : '', cmc: card.layout === 'modal_dfc' ? 6 : card.cmc, type_line: bf.type_line || '', oracle_text: bf.oracle_text || '', power: bf.power, toughness: bf.toughness,
         loyalty: bf.loyalty != null ? bf.loyalty : null, keywords: [], colors: bf.colors || card.colors || [], color_identity: card.color_identity || [], faces: [],
         images: (card.images || []).slice(1, 2), remote_images: (card.remote_images || []).slice(1, 2), isBackFace: true, qty: 1, commander: false,
       };
@@ -1166,6 +1168,15 @@
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
         case 'gainLife': gainLife(g, n, ev, source); break;
         case 'transform': if (source) transformPerm(g, source, ev, f.same); break;
+        case 'surveilHand': {
+          const top = g.library[0];
+          if (top && (top.card.a.isLand ? 0 : top.card.a.mv) <= (g.lifeGainedThisTurn || 0)) {
+            g.library.shift(); g.hand.push(top);
+            ev.push({ type: 'tutor', inst: top, source });
+            ev.push({ type: 'note', text: `Surveil: ${top.card.name} (mana value ${top.card.a.isLand ? 0 : top.card.a.mv}) goes to the graveyard, then to your hand`, source });
+          } else if (top) ev.push({ type: 'note', text: `Surveil: ${top.card.name} stays on top`, source });
+          break;
+        }
         case 'mill': {
           for (let k = 0; k < Math.min(n, 10) && g.library.length; k++) {
             const c = g.library.shift(); g.graveyard.push(c);
@@ -1471,6 +1482,25 @@
       if (c.card.a.sacCreatureCost && !pickSacrifice(g)) continue;
       const s = spellScore(g, c);
       if (s > bestScore) { bestScore = s; best = c; }
+    }
+    // a modal double-faced creature (Jennifer Walters // The Sensational She-Hulk) can be cast as its back face when that is the best use of the mana
+    let backCast = null, backScore = -1;
+    for (const c of g.hand) {
+      const bc = c.card.a.backCard;
+      if (!bc || c.card.layout !== 'modal_dfc' || !bc.a.isCreature || !bc.mana_cost) continue;
+      if (canPay(bc.a.cost, units) && bc.a.castMv > backScore) { backCast = c; backScore = bc.a.castMv; }
+    }
+    if (backCast && backScore > bestScore) {
+      const bi = { iid: backCast.iid, card: backCast.card.a.backCard, front: backCast.card };
+      const evB = [];
+      const nB = pay(g, bi.card.a.cost);
+      if (nB != null) {
+        evB.push({ type: 'pay', n: nB });
+        g.hand.splice(g.hand.indexOf(backCast), 1);
+        resolveSpell(g, bi, evB); flushLeaves(g, evB);
+        if (!g.dry) while (canPlayLand(g)) { const le = playLand(g); if (!le) break; evB.push(le, ...le.ev); }
+        return evB;
+      }
     }
     // Dawn (aftermath): cast from the graveyard when it brings back at least 2 small creatures
     let aft = null, aftScore = -1;

@@ -153,6 +153,8 @@
     while ((m = tokRe.exec(text))) fx.push(parseTokenSpec(m));
     const artRe = new RegExp('create ' + NRE + ' (tapped )?(Treasure|Food|Clue|Blood|Map|Gold|Powerstone|Junk)(?: artifact)? tokens?', 'gi');
     while ((m = artRe.exec(text))) fx.push({ type: 'token', n: num(m[1]), tapped: !!m[2], creature: false, name: m[3][0].toUpperCase() + m[3].slice(1).toLowerCase(), artifact: true });
+    // "You get an emblem with 'Creatures you control get +2/+2 (and have flying)'" (Ajani Resolute, Elspeth Sun's Champion)
+    if ((m = text.match(/emblem with ["“]creatures you control get \+(\d+)\/\+(\d+)(?: and have ([a-z ,]+?))?\.?["”]/i))) fx.push({ type: 'emblem', p: +m[1], t: +m[2], keywords: kwList(m[3]) });
     // Gyome, Master Chef: Food equal to the nontoken creatures that entered this turn
     if ((m = text.match(/create a number of (Food|Treasure|Clue) tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn/i))) fx.push({ type: 'token', n: 'X', creature: false, artifact: true, name: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase(), count: { zone: 'special', what: 'nontoken creatures entered' } });
     if (/create (?:a|one) (?:token that's a copy|copy)/i.test(text)) fx.push({ type: 'copyToken' });
@@ -216,6 +218,8 @@
     [/^whenever a token you control enters(?: the battlefield)?,?\s*/i, ['tokenEnter']],
     [/^whenever you create (?:a|one or more) tokens?,?\s*/i, ['tokenEnter']],
     [/^whenever a token you control leaves the battlefield,?\s*/i, ['tokenLeave']],
+    [/^whenever you sacrifice a food,?\s*/i, ['foodSac']],
+    [/^whenever a player casts their second spell each turn,?\s*/i, ['secondSpell']],
     [/^when(?:ever)? ~ enters(?: the battlefield)? or attacks,?\s*/i, ['etb', 'attack']],
     [/^when(?:ever)? ~ enters(?: the battlefield)?(?: or dies)?,?\s*/i, ['etb']],
     [/^when(?:ever)? ~ attacks(?: or blocks)?,?\s*/i, ['attack']],
@@ -238,7 +242,7 @@
   function analyzeAbilities(card, a) {
     const text = normText(card, (card.front_oracle != null ? card.front_oracle : card.oracle_text) || '');
     const kwSet = new Set((card.keywords || []).map(k => k.toLowerCase()));
-    a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false };
+    a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
     for (const raw of lines) {
@@ -278,6 +282,25 @@
         if (r.fx.length) { a.spellFx.push(...r.fx); rec.status = 'ok'; } else if (r.neutral) rec.status = 'neutral';
         continue;
       }
+      // Food economy: "{cost}, Sacrifice a Food: ..." and "Sacrifice two Foods: Draw a card."
+      {
+        const cm = line.match(/^([^:"]+): (.*)$/);
+        const sm = cm && cm[1].match(/sacrifice (a|an|one|two|three|\d+) foods?/i);
+        if (sm && !/sacrifice ~/i.test(cm[1])) {
+          const costPart = cm[1].replace(/,?\s*sacrifice (?:a|an|one|two|three|\d+) foods?/i, '').replace(/^[,\s]+|[,\s]+$/g, '');
+          const r = parseEffects(cm[2]);
+          const useful = r.fx.some(f => ['draw', 'counters', 'token', 'damage', 'drain'].includes(f.type));
+          if (useful && !/discard|exile|pay|remove|return|\{T\}/i.test(costPart)) {
+            a.activated.push({ cost: parseCost(costPart), tap: false, sacFood: num(sm[1]), fx: r.fx, text: raw });
+            rec.status = 'ok'; continue;
+          }
+          rec.status = 'ignored'; continue;          // e.g. "gains indestructible": tagged by the pass below
+        }
+      }
+      // Cabbage Merchant: tap two untapped Foods for one mana of any color. Faeburrow Elder: a mana of each color among your permanents.
+      if (/^tap two untapped foods you control: add one mana of any color/i.test(line)) { a.foodMana = true; rec.status = 'ok'; continue; }
+      if (/^\{T\}: for each color among permanents you control, add one mana of that color/i.test(line)) { a.colorMana = true; rec.status = 'ok'; continue; }
+      if ((m = line.match(/^~ gets \+(\d+)\/\+(\d+) for each color among permanents you control/i))) { a.statics.selfPerColor = { p: +m[1], t: +m[2] }; rec.status = 'ok'; continue; }
       // token and counter replacement effects: Doubling Season, Parallel Lives, Mondrak, Chatterfang, Divine Visitation, Academy Manufactor...
       {
         let rm;
@@ -345,7 +368,7 @@
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
-        if (/^exile ~\.?$/i.test(t)) { rec.status = 'neutral'; rec.tag = 'solo'; }
+        if (/^exile ~\.?$/i.test(t) || /^activated abilities of foods you control cost|isn't on the battlefield, it's a/i.test(t)) { rec.status = 'neutral'; rec.tag = 'solo'; }
         else if (oppOnly) { rec.status = 'neutral'; rec.tag = 'opp'; }
         else rec.tag = 'dev';
       } else if (rec.status === 'neutral') rec.tag = rec.tag || (oppOnly ? 'opp' : 'solo');
@@ -416,6 +439,7 @@
       const m = text.match(/(^|\n)(\{T\}|\{T\}, Sacrifice ~|Sacrifice ~): Add [^\n]*/i);
       if (m) { const pr = parseAdd(m[0]); if (pr) { a.produce = pr; if (/sacrifice/i.test(m[0])) a.sacMana = true; } }
     }
+    if (a.colorMana && !a.produce) a.produce = { colors: new Set(COLORS), amount: 1, dynamic: 'colors' };   // Faeburrow Elder: one mana of each color among your permanents
     a.isRock = !!a.produce && !a.isLand;
     const etbFx = a.spellFx.concat(...a.triggers.filter(t => t.kinds.includes('etb') || t.kinds.includes('etbStatic')).map(t => t.fx));
     const ramp = etbFx.find(f => f.type === 'ramp');
@@ -571,15 +595,32 @@
   // So the battlefield is scanned once and remembered until something changes (a permanent enters or leaves, or is attached).
   const NO_KW = new Set();
   function touch(g) { g.bfVer = (g.bfVer || 0) + 1; }
+  // The same cache also keeps short lists of the permanents that matter for mana, cost reducers, entering-triggers, token replacement
+  // and Foods, so those checks never have to walk a 150-token board. A permanent entering is added in place (see enter());
+  // anything else that changes the board (leaving, attaching, emblems) just invalidates the cache and it is rebuilt on the next look.
+  function addToInfo(info, q) {
+    const a = q.card.a, st = a.statics;
+    if (st.anthems.length) { for (const an of st.anthems) { info.anthems.push({ src: q, an }); if (an.other) info.selfSrc.add(q); } info.byCard.clear(); }
+    if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus); }
+    if (q.produce) info.producers.push(q);
+    if (st.reducers.length) info.reducers.push(q);
+    if (a.watch) info.watchers.push(q);
+    if (st.tokenRepl.length) info.repl.push(q);
+    if (st.counterDouble) info.cm++;
+    if (q.token && q.card.name === 'Food') info.foods.push(q);
+    if (!info.seenCards.has(q.card)) {                                // card-level facts, once per distinct card
+      info.seenCards.add(q.card);
+      const cs = q.card.colors; if (cs) for (const c of cs) info.colors.add(c);       // "each color among permanents you control"
+      if (a.foodMana) info.foodMana = true;                            // Cabbage Merchant is out
+    }
+  }
   function bfInfo(g) {
     const c = g._bf;
     if (c && c.arr === g.battlefield && c.len === g.battlefield.length && c.ver === (g.bfVer || 0)) return c;
-    const info = { arr: g.battlefield, len: g.battlefield.length, ver: g.bfVer || 0, anthems: [], selfSrc: new Set(), attach: new Map(), byCard: new Map() };
-    for (const q of g.battlefield) {
-      const st = q.card.a.statics;
-      if (st && st.anthems.length) for (const an of st.anthems) { info.anthems.push({ src: q, an }); if (an.other) info.selfSrc.add(q); }
-      if (q.attachedTo != null && q.card.a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(q.card.a.attachBonus); }
-    }
+    const info = { arr: g.battlefield, len: g.battlefield.length, ver: g.bfVer || 0, anthems: [], selfSrc: new Set(), attach: new Map(), byCard: new Map(), colors: new Set(), foodMana: false,
+      producers: [], reducers: [], watchers: [], repl: [], foods: [], cm: 0, seenCards: new Set() };
+    for (const q of g.battlefield) addToInfo(info, q);
+    for (const em of g.emblems || []) info.anthems.push({ src: null, an: { other: false, filter: '', p: em.p, t: em.t, keywords: em.keywords || [] } });
     return (g._bf = info);
   }
   function computeAnthems(info, p) {
@@ -606,11 +647,13 @@
   function isCreaturePerm(p) { return p.card.a.isCreature && !p.asLand; }
   function powerOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
-    return p.card.a.power + (p.counters || 0) + anthemsFor(g, p).dp + (p.eotP || 0) + g.eot.p;
+    const pc = p.card.a.statics.selfPerColor;
+    return p.card.a.power + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * bfInfo(g).colors.size : 0) + (p.eotP || 0) + g.eot.p;
   }
   function toughnessOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
-    return p.card.a.toughness + (p.counters || 0) + anthemsFor(g, p).dt + (p.eotT || 0) + g.eot.t;
+    const pc = p.card.a.statics.selfPerColor;
+    return p.card.a.toughness + (p.counters || 0) + anthemsFor(g, p).dt + (pc ? pc.t * bfInfo(g).colors.size : 0) + (p.eotT || 0) + g.eot.t;
   }
   function hasKw(g, p, k) {
     if (p.card.a.kw && p.card.a.kw.has(k)) return true;
@@ -635,13 +678,20 @@
 
   function manaUnits(g) {
     const units = [];
-    for (const p of g.battlefield) {
+    const info = bfInfo(g);
+    for (const p of info.producers) {
       if (p.tapped || !p.produce) continue;
       if (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')) continue;
+      if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
       for (let k = 0; k < p.produce.amount; k++) units.push({ src: p, colors: p.produce.colors });
+    }
+    if (info.foodMana) {                                              // Cabbage Merchant: every two untapped Foods make one mana of any color
+      const foods = info.foods.filter(q => !q.tapped);
+      for (let i = 0; i + 1 < foods.length; i += 2) units.push({ src: { pseudo: true, foods: [foods[i], foods[i + 1]], produce: { colors: ANY_COLOR, amount: 1 } }, colors: ANY_COLOR });
     }
     return units;
   }
+  const ANY_COLOR = new Set(COLORS);
   function allUnits(g) { return (g.floating || []).concat(manaUnits(g)); }
 
   function removePerm(g, p) {
@@ -658,11 +708,19 @@
     g.pendingLeaves = [];
     for (const p of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('tokenLeave')) fire(g, t, q, ev, p);
   }
+  // Food: sacrificing one fires "whenever you sacrifice a Food" (Nuka-Cola, Rapacious Guest) and "a token leaves" (Nadier's Nightblade, Mirkwood Bats)
+  function foodsOf(g) { return bfInfo(g).foods.slice(); }
+  function sacrificeFoods(g, n, ev) {
+    const foods = foodsOf(g).sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0));        // spend the tapped ones first
+    const gone = foods.slice(0, n);
+    for (const f of gone) removePerm(g, f);
+    ev.push({ type: 'note', text: `Sacrificed ${gone.length} Food${gone.length === 1 ? '' : 's'}` });
+    for (const f of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('foodSac')) fire(g, t, q, ev, f);
+    flushLeaves(g, ev);
+  }
   // Doubling Season: counters are doubled once per copy on the battlefield
   function counterMult(g) {
-    let k = 0;
-    for (const p of g.battlefield) if (p.card.a.statics && p.card.a.statics.counterDouble) k++;
-    return Math.pow(2, k);
+    return Math.pow(2, bfInfo(g).cm);
   }
   function pay(g, cost) {
     const units = allUnits(g);
@@ -670,11 +728,11 @@
     if (!idx) return null;
     const usedFloat = new Set(idx.filter(i => units[i].floating).map(i => units[i]));
     const srcs = new Set(idx.filter(i => !units[i].floating).map(i => units[i].src));
-    const leftovers = [];
+    const leftovers = [], used = new Set(idx);
     srcs.forEach(s => {
       s.tapped = true;
-      const usedFromS = idx.filter(i => units[i].src === s).length;
-      for (let k = usedFromS; k < s.produce.amount; k++) leftovers.push({ src: null, colors: s.produce.colors, floating: true });
+      if (s.foods) s.foods.forEach(f => { f.tapped = true; });         // Cabbage Merchant taps the two Foods
+      units.forEach((u, i) => { if (u.src === s && !used.has(i)) leftovers.push({ src: null, colors: u.colors, floating: true }); });   // unused mana from a multi-mana source floats
       if (s.sacMana) removePerm(g, s);
     });
     g.floating = g.floating.filter(u => !usedFloat.has(u)).concat(leftovers);
@@ -685,9 +743,8 @@
   function effectiveCost(g, inst) {
     const a = inst.card.a;
     let red = 0;
-    for (const p of g.battlefield) {
-      const rs = p.card.a.statics && p.card.a.statics.reducers;
-      if (!rs || !rs.length) continue;
+    for (const p of bfInfo(g).reducers) {
+      const rs = p.card.a.statics.reducers;
       for (const r of rs) {
         const f = r.filter;
         if (!f || (f === 'creature' && a.isCreature) || (f === 'noncreature' && !a.isCreature) || (f === 'artifact' && a.isArtifact) ||
@@ -712,7 +769,9 @@
     else perm.sick = a.isCreature;
     if (o.tapped) perm.tapped = true;
     if (a.isCreature && !perm.token && !perm.asLand && !o.silent) g.nontokenCreatureEnters = (g.nontokenCreatureEnters || 0) + 1;   // Gyome counts these
+    const c = g._bf, wasValid = c && c.arr === g.battlefield && c.len === g.battlefield.length && c.ver === (g.bfVer || 0);
     g.battlefield.push(perm); touch(g);
+    if (wasValid) { addToInfo(c, perm); c.len = g.battlefield.length; c.ver = g.bfVer; }       // add in place instead of rebuilding: bulk token creation stays fast
     return perm;
   }
 
@@ -732,8 +791,7 @@
     if (a.isAura && a.attachBonus) { const target = bestCreature(g); if (target) { perm.attachedTo = target.iid; touch(g); } }
     if (o.silent) return perm;
     a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) fire(g, t, perm, ev, perm); });
-    const watchers = [];                                           // only permanents that care about things entering (big token boards stay fast)
-    for (const q of g.battlefield) if (q.card.a.watch) watchers.push(q);
+    const watchers = bfInfo(g).watchers.slice();                   // only permanents that care about things entering (big token boards stay fast)
     for (const q of watchers) {
       for (const t of q.card.a.triggers) {
         if (perm.asLand && t.kinds.includes('landfall')) fire(g, t, q, ev, perm);
@@ -785,7 +843,7 @@
   //   3. doublers:    Doubling Season, Parallel Lives, Mondrak, Elspeth Storm Slayer (each doubles everything, so they stack)
   function tokenGroups(g, spec, n) {
     const repl = [];
-    for (const p of g.battlefield) { const st = p.card.a.statics; if (st && st.tokenRepl.length) repl.push(...st.tokenRepl); }
+    for (const p of bfInfo(g).repl) repl.push(...p.card.a.statics.tokenRepl);
     let groups = [{ spec, n }];
     if (!repl.length) return groups;
     const of = t => repl.filter(r => r.type === t);
@@ -897,6 +955,7 @@
           g.battlefield.forEach(p => { if (f.what === 'permanents' || (f.what === 'lands' && p.asLand) || (f.what === 'creatures' && isCreaturePerm(p))) p.tapped = false; });
           ev.push({ type: 'note', text: 'Untapped ' + f.what, source });
           break;
+        case 'emblem': (g.emblems = g.emblems || []).push({ p: f.p, t: f.t, keywords: f.keywords || [] }); touch(g); ev.push({ type: 'note', text: `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;
         case 'proliferate': g.battlefield.forEach(p => { if (p.counters > 0) p.counters++; if (p.card.a.isPlaneswalker) p.loyalty++; }); break;
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + 1; ev.push({ type: 'note', text: 'Extra turn (not simulated)', source }); break;
       }
@@ -927,6 +986,8 @@
     const castEv = { type: 'cast', inst, toGrave: !a.isPermanent };
     ev.push(castEv);
     fireCastTriggers(g, inst, ev);
+    g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
+    if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);
     if (a.isPermanent) castEv.perm = enterWithTriggers(g, inst, {}, ev);
     else { applyEffects(g, a.spellFx, null, ev, null); g.graveyard.push(inst); }
   }
@@ -983,6 +1044,7 @@
       if (f.type === 'counters') v += n * (f.scope === 'each' ? 2 : 1);
       if (f.type === 'ramp') v += 2;
       if (f.type === 'pumpAll') v += 3;
+      if (f.type === 'emblem') v += 1.5 * (f.p || 0) * Math.max(1, g.battlefield.filter(isCreaturePerm).length);   // worth more the wider your board is
       if (f.type === 'mana') v += 0.5;
     }
     return v;
@@ -1017,12 +1079,30 @@
     }
     for (const p of g.battlefield.slice()) {
       for (const ab of p.card.a.activated || []) {
+        if (ab.sacFood) continue;                      // Food abilities are handled below, because they have to sacrifice the Foods
         if (p.actUsed === g.turn) continue;
         if (ab.tap && (p.tapped || (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')))) continue;
         if (!canPay(ab.cost, allUnits(g))) continue;
         pay(g, ab.cost); if (ab.tap) p.tapped = true; p.actUsed = g.turn;
         ev.push({ type: 'activate', perm: p, text: ab.text });
         applyEffects(g, ab.fx, p, ev, null);
+      }
+    }
+    // Food economy: sacrifice Foods for cards, counters and the like, using mana left after casting. Draw first, then counters.
+    for (const kind of ['draw', 'other']) {
+      for (const p of g.battlefield.slice()) {
+        for (const ab of p.card.a.activated || []) {
+          if (!ab.sacFood || (kind === 'draw') !== ab.fx.some(f => f.type === 'draw')) continue;
+          for (let k = 0; k < 8; k++) {
+            if (foodsOf(g).length < ab.sacFood || !canPay(ab.cost, allUnits(g))) break;
+            if (kind === 'draw' && (g.hand.length >= 8 || !g.library.length)) break;          // never discard to hand size
+            if (kind === 'other' && ab.fx.every(f => f.type === 'counters') && !bestCreature(g)) break;
+            pay(g, ab.cost);
+            ev.push({ type: 'activate', perm: p, text: ab.text });
+            sacrificeFoods(g, ab.sacFood, ev);
+            applyEffects(g, ab.fx, p, ev, null);
+          }
+        }
       }
     }
     for (const p of g.battlefield.slice()) {
@@ -1063,7 +1143,7 @@
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
-      cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [], pendingLeaves: [],
+      cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [], pendingLeaves: [], emblems: (g.emblems || []).slice(),
     });
   }
 
@@ -1119,7 +1199,7 @@
 
   function beginTurn(g) {
     g.turn++;
-    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0;
+    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0;
     const ev = [{ type: 'untap' }];
     g.battlefield.forEach(p => { p.tapped = false; if (p.enteredTurn < g.turn) p.sick = false; });
     eachTrigger(g, 'upkeep', ev);
@@ -1298,7 +1378,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    tokenGroups, flushLeaves, counterMult, touch,
+    tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

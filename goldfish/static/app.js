@@ -587,14 +587,14 @@
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
-  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed'];
+  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters'];
   function snap() {
     const g = S.game;
     const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });
     S.undo.push({
       library: g.library.slice(), hand: g.hand.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), command: g.command.slice(),
       battlefield: g.battlefield.map(p => Object.assign({}, p)), scal, floating: (g.floating || []).slice(), turns: g.turns.slice(),
-      cmdrDamage: Object.assign({}, g.cmdrDamage), cmdrCasts: Object.assign({}, g.cmdrCasts), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) },
+      cmdrDamage: Object.assign({}, g.cmdrDamage), cmdrCasts: Object.assign({}, g.cmdrCasts), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, emblems: (g.emblems || []).slice(),
       log: $('#gameLog').innerHTML,
     });
     if (S.undo.length > 80) S.undo.shift();
@@ -603,7 +603,8 @@
     const s = S.undo.pop(); if (!s || S.busy) return;
     const g = S.game;
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
-      floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot }, s.scal);
+      floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems }, s.scal);
+    G.touch(g);
     $('#gameLog').innerHTML = s.log; render();
   }
 

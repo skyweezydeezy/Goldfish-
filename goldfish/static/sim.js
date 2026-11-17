@@ -93,6 +93,8 @@
       t = t.split(n).join('~');
       const short = n.split(',')[0];
       if (short !== n && short.length > 3) t = t.split(short).join('~');
+      const shortOf = n.split(' of ')[0];                       // "Rosie Cotton of South Lane" is written "Rosie Cotton" in her rules text
+      if (shortOf !== n && shortOf.length >= 8 && !/,/.test(shortOf)) t = t.split(shortOf).join('~');
     }
     t = t.replace(/\bthis (creature|artifact|enchantment|land|planeswalker|permanent|spell|card|equipment|aura|vehicle|token)\b/gi, '~');
     t = t.replace(/\([^)]*\)/g, '').replace(/[ \t]+/g, ' ');
@@ -133,6 +135,16 @@
     return { type: 'token', n, tapped: !!m[2], creature: true, p, t, colors, subtypes, keywords: kwList(m[7]), artifact: /artifact/i.test(m[6] || ''), name: subtypes.join(' ') || 'Creature' };
   }
 
+  // a token described in a replacement effect, like "4/4 white Angel creature tokens with flying and vigilance"
+  function specFromDesc(p, t, desc, kws) {
+    const colors = [], subtypes = [];
+    String(desc || '').split(/\s+|,/).forEach(w => {
+      if (!w || w === 'and') return;
+      if (COLOR_WORDS[w.toLowerCase()]) colors.push(COLOR_WORDS[w.toLowerCase()]); else subtypes.push(w);
+    });
+    return { type: 'token', n: 1, creature: true, p: +p, t: +t, colors, subtypes, keywords: kwList(kws), artifact: false, name: subtypes.join(' ') || 'Creature' };
+  }
+
   function parseEffects(text) {
     const fx = [];
     let neutral = false, m;
@@ -141,6 +153,8 @@
     while ((m = tokRe.exec(text))) fx.push(parseTokenSpec(m));
     const artRe = new RegExp('create ' + NRE + ' (tapped )?(Treasure|Food|Clue|Blood|Map|Gold|Powerstone|Junk)(?: artifact)? tokens?', 'gi');
     while ((m = artRe.exec(text))) fx.push({ type: 'token', n: num(m[1]), tapped: !!m[2], creature: false, name: m[3][0].toUpperCase() + m[3].slice(1).toLowerCase(), artifact: true });
+    // Gyome, Master Chef: Food equal to the nontoken creatures that entered this turn
+    if ((m = text.match(/create a number of (Food|Treasure|Clue) tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn/i))) fx.push({ type: 'token', n: 'X', creature: false, artifact: true, name: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase(), count: { zone: 'special', what: 'nontoken creatures entered' } });
     if (/create (?:a|one) (?:token that's a copy|copy)/i.test(text)) fx.push({ type: 'copyToken' });
     if ((m = text.match(/\binvestigates?( twice| three times)?/i))) fx.push({ type: 'token', n: m[1] ? (/twice/.test(m[1]) ? 2 : 3) : 1, creature: false, name: 'Clue', artifact: true });
 
@@ -158,7 +172,7 @@
     if (m) {
       const scope = /each/i.test(m[2]) && !/each of up to/i.test(m[2]) ? 'each' : (m[2] === '~' || m[2].toLowerCase() === 'it') ? 'self' : 'target';
       const tm = m[2].match(/each (other )?([a-z ]+?)\s*creature you control/i);
-      fx.push({ type: 'counters', n: num(m[1]), scope, other: /other/i.test(m[2]), filter: tm && tm[2].trim() ? tm[2].trim() : null });
+      fx.push({ type: 'counters', n: num(m[1]), scope, other: /other/i.test(m[2]), excl: /other than ~/i.test(text), filter: tm && tm[2].trim() ? tm[2].trim() : null });
     }
 
     m = text.match(/creatures you control get \+(\d+|x)\/\+(\d+|x)(?: and gain ([a-z ,]+?))? until end of turn/i);
@@ -197,6 +211,11 @@
 
   // ---------- Ability parsing ----------
   const TRIGGERS = [
+    // tokens: "whenever a token you control enters", "whenever you create a token", "create or sacrifice a token", "a token leaves"
+    [/^whenever you create or sacrifice a token,?\s*/i, ['tokenEnter', 'tokenLeave']],
+    [/^whenever a token you control enters(?: the battlefield)?,?\s*/i, ['tokenEnter']],
+    [/^whenever you create (?:a|one or more) tokens?,?\s*/i, ['tokenEnter']],
+    [/^whenever a token you control leaves the battlefield,?\s*/i, ['tokenLeave']],
     [/^when(?:ever)? ~ enters(?: the battlefield)? or attacks,?\s*/i, ['etb', 'attack']],
     [/^when(?:ever)? ~ enters(?: the battlefield)?(?: or dies)?,?\s*/i, ['etb']],
     [/^when(?:ever)? ~ attacks(?: or blocks)?,?\s*/i, ['attack']],
@@ -211,7 +230,7 @@
     [/^at the beginning of combat on your turn,?\s*/i, ['combat']],
     [/^at the beginning of (?:your|each|the) end step,?\s*/i, ['end']],
     [/^at the beginning of (?:your )?(?:precombat |first )?main phase,?\s*/i, ['main']],
-    [/^whenever (~|a creature you control|one or more creatures you control|equipped creature|enchanted creature|a [A-Z][a-z]+ you control) deals combat damage to (?:a player|an opponent|a player or battle),?\s*/i, ['combatDamage']],
+    [/^whenever (~|a creature you control|one or more creatures you control|equipped creature|enchanted creature|a [A-Z][a-z]+ you control) deals? combat damage to (?:a player|an opponent|a player or battle),?\s*/i, ['combatDamage']],
     [/^whenever (a creature you control|you) attacks?,?\s*/i, ['attackAny']],
     [/^whenever you draw (?:a|your second) card[^,]*,\s*/i, ['onDraw']],
   ];
@@ -219,7 +238,7 @@
   function analyzeAbilities(card, a) {
     const text = normText(card, (card.front_oracle != null ? card.front_oracle : card.oracle_text) || '');
     const kwSet = new Set((card.keywords || []).map(k => k.toLowerCase()));
-    a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0 };
+    a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
     for (const raw of lines) {
@@ -259,6 +278,17 @@
         if (r.fx.length) { a.spellFx.push(...r.fx); rec.status = 'ok'; } else if (r.neutral) rec.status = 'neutral';
         continue;
       }
+      // token and counter replacement effects: Doubling Season, Parallel Lives, Mondrak, Chatterfang, Divine Visitation, Academy Manufactor...
+      {
+        let rm;
+        if (/would create one or more tokens under your control, it creates twice that many|tokens? would be created under your control, twice that many/i.test(line)) { a.statics.tokenRepl.push({ type: 'double' }); rec.status = 'ok'; continue; }
+        if ((rm = line.match(/one or more creature tokens would be created under your control, that many (\d+)\/(\d+) ([a-z ]+?) creature tokens?(?: with ([a-z ,]+?))? (?:are|is) created instead/i))) { a.statics.tokenRepl.push({ type: 'convert', spec: specFromDesc(rm[1], rm[2], rm[3], rm[4]) }); rec.status = 'ok'; continue; }
+        if ((rm = line.match(/those tokens plus that many (\d+)\/(\d+) ([a-z ]+?) creature tokens?(?: with ([a-z ,]+?))? are created instead/i))) { a.statics.tokenRepl.push({ type: 'plusSame', spec: specFromDesc(rm[1], rm[2], rm[3], rm[4]) }); rec.status = 'ok'; continue; }
+        if ((rm = line.match(/those tokens plus an additional (Food|Treasure|Clue) tokens? are created instead/i))) { a.statics.tokenRepl.push({ type: 'plusOne', spec: { type: 'token', n: 1, creature: false, artifact: true, name: rm[1][0].toUpperCase() + rm[1].slice(1).toLowerCase() } }); rec.status = 'ok'; continue; }
+        if (/would create a Clue, Food, or Treasure token, instead create one of each/i.test(line)) { a.statics.tokenRepl.push({ type: 'manufactor' }); rec.status = 'ok'; continue; }
+        if (/would create a Food token, instead create a Food token and a Treasure token/i.test(line)) { a.statics.tokenRepl.push({ type: 'foodTreasure' }); rec.status = 'ok'; continue; }
+        if (/would put one or more counters on a permanent you control, it puts twice that many/i.test(line)) { a.statics.counterDouble = true; rec.status = 'ok'; continue; }
+      }
       let trig = null;
       for (const [re, kinds] of TRIGGERS) { const tm = line.match(re); if (tm) { trig = { kinds, rest: line.slice(tm[0].length), m: tm }; break; } }
       if (trig) {
@@ -268,8 +298,11 @@
         if (trig.kinds[0] === 'permEtb') { t.other = /other|another/i.test(trig.m[1]); t.nontoken = !!trig.m[2]; t.filter = ((trig.m[3] || '') + ' ' + (trig.m[4] || '')).trim(); }
         if (trig.kinds[0] === 'combatDamage') t.who = trig.m[1].toLowerCase();
         if (trig.kinds[0] === 'attackAny') t.once = /^whenever you attack/i.test(line);
-        if (r.fx.length) a.triggers.push(t);
-        rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
+        // Belladonna Took: "...the first time this turn: X. If it's the second time, Y. If it's the third time, Z."
+        const nm = trig.rest.match(/first time[^.]*\.\s*If it's the second time, ([^.]*)\.\s*If it's the third time, ([^.]*)\./i);
+        if (nm) { t.nth = [[], parseEffects(nm[1]).fx, parseEffects(nm[2]).fx]; t.fx = []; }
+        if (r.fx.length || t.nth) a.triggers.push(t);
+        rec.status = (r.fx.length || t.nth) ? 'ok' : r.neutral ? 'neutral' : 'ignored';
         continue;
       }
       if ((m = line.match(/^(other )?([a-z ]*?)creatures you control get \+(\d+)\/\+(\d+)(?: and have ([a-z ,]+))?\.?$/i)) && !/until end of turn/i.test(line)) {
@@ -308,7 +341,7 @@
     //   dev    - a real solo effect that is not built yet (in development)
     //   approx - simulated only roughly
     const HURTS_OPP = /\bopponents?\b[^.]*\bloses?\b|\bdeals? [^.]*damage to (each|target|any)/i;   // damage/drain to the goldfish DOES matter
-    const OPP_ONLY = /\bopponents?\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b/i;
+    const OPP_ONLY = /\bopponents?\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b|\bgets? [+\-−]?[\dX]+\/[\-−][\dX]+/i;
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
@@ -318,6 +351,7 @@
       } else if (rec.status === 'neutral') rec.tag = rec.tag || (oppOnly ? 'opp' : 'solo');
       else if (rec.status === 'partial') rec.tag = 'approx';
     }
+    a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb'));
     const total = a.coverage.length;
     const bad = a.coverage.filter(c => c.status === 'ignored' || c.status === 'partial').length;
     a.coverageLevel = !total || bad === 0 ? 'ok' : bad === total ? 'none' : 'partial';
@@ -533,17 +567,40 @@
     return f.split(/\s+/).every(w => tl.includes(singular(w)));
   }
 
-  function anthemsFor(g, p) {
-    let dp = 0, dt = 0; const kw = new Set();
+  // Anthems and equipment bonuses are looked up a LOT (every creature, every combat), and token boards get big.
+  // So the battlefield is scanned once and remembered until something changes (a permanent enters or leaves, or is attached).
+  const NO_KW = new Set();
+  function touch(g) { g.bfVer = (g.bfVer || 0) + 1; }
+  function bfInfo(g) {
+    const c = g._bf;
+    if (c && c.arr === g.battlefield && c.len === g.battlefield.length && c.ver === (g.bfVer || 0)) return c;
+    const info = { arr: g.battlefield, len: g.battlefield.length, ver: g.bfVer || 0, anthems: [], selfSrc: new Set(), attach: new Map(), byCard: new Map() };
     for (const q of g.battlefield) {
       const st = q.card.a.statics;
-      if (st && st.anthems.length) for (const an of st.anthems) {
-        if (an.other && q === p) continue;
-        if (!matchesFilter(p.card, an.filter)) continue;
-        dp += an.p; dt += an.t; an.keywords.forEach(k => kw.add(k));
-      }
-      if (q.attachedTo === p.iid && q.card.a.attachBonus) { dp += q.card.a.attachBonus.p; dt += q.card.a.attachBonus.t; q.card.a.attachBonus.keywords.forEach(k => kw.add(k)); }
+      if (st && st.anthems.length) for (const an of st.anthems) { info.anthems.push({ src: q, an }); if (an.other) info.selfSrc.add(q); }
+      if (q.attachedTo != null && q.card.a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(q.card.a.attachBonus); }
     }
+    return (g._bf = info);
+  }
+  function computeAnthems(info, p) {
+    let dp = 0, dt = 0, kw = null;
+    for (const { src, an } of info.anthems) {
+      if (an.other && src === p) continue;
+      if (!matchesFilter(p.card, an.filter)) continue;
+      dp += an.p; dt += an.t;
+      if (an.keywords.length) { kw = kw || new Set(); an.keywords.forEach(k => kw.add(k)); }
+    }
+    return { dp, dt, kw: kw || NO_KW };
+  }
+  function anthemsFor(g, p) {
+    const info = bfInfo(g);
+    let base;
+    if (info.selfSrc.has(p)) base = computeAnthems(info, p);          // a source of an "other creatures" anthem excludes itself
+    else { base = info.byCard.get(p.card.uid); if (!base) { base = computeAnthems(info, p); info.byCard.set(p.card.uid, base); } }
+    const att = info.attach.get(p.iid);
+    if (!att) return base;
+    let dp = base.dp, dt = base.dt; const kw = new Set(base.kw);
+    for (const b of att) { dp += b.p; dt += b.t; b.keywords.forEach(k => kw.add(k)); }
     return { dp, dt, kw };
   }
   function isCreaturePerm(p) { return p.card.a.isCreature && !p.asLand; }
@@ -564,6 +621,7 @@
   function countFor(g, count, self) {
     if (!count) return 1;
     if (count.zone === 'special') {
+      if (/entered/.test(count.what)) return g.nontokenCreatureEnters || 0;
       if (/power/.test(count.what)) return self ? powerOf(g, self) : 0;
       if (/hand/.test(count.what)) return g.hand.length;
       return 1;
@@ -588,8 +646,23 @@
 
   function removePerm(g, p) {
     const i = g.battlefield.indexOf(p);
-    if (i >= 0) g.battlefield.splice(i, 1);
+    if (i >= 0) {
+      g.battlefield.splice(i, 1); touch(g);
+      if (p.token) (g.pendingLeaves = g.pendingLeaves || []).push(p);   // "whenever a token leaves the battlefield" fires at the next checkpoint
+    }
     g.battlefield.forEach(q => { if (q.attachedTo === p.iid) q.attachedTo = null; });
+  }
+  // fire "token leaves the battlefield" triggers for tokens removed since the last checkpoint
+  function flushLeaves(g, ev) {
+    const gone = g.pendingLeaves || [];
+    g.pendingLeaves = [];
+    for (const p of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('tokenLeave')) fire(g, t, q, ev, p);
+  }
+  // Doubling Season: counters are doubled once per copy on the battlefield
+  function counterMult(g) {
+    let k = 0;
+    for (const p of g.battlefield) if (p.card.a.statics && p.card.a.statics.counterDouble) k++;
+    return Math.pow(2, k);
   }
   function pay(g, cost) {
     const units = allUnits(g);
@@ -633,12 +706,13 @@
   function enter(g, inst, o) {
     o = o || {};
     const a = inst.card.a;
-    const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: a.loyalty, token: !!inst.card.isToken };
+    const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1), token: !!inst.card.isToken };
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
     else if (a.isLand) perm.tapped = !!a.entersTapped;
     else perm.sick = a.isCreature;
     if (o.tapped) perm.tapped = true;
-    g.battlefield.push(perm);
+    if (a.isCreature && !perm.token && !perm.asLand && !o.silent) g.nontokenCreatureEnters = (g.nontokenCreatureEnters || 0) + 1;   // Gyome counts these
+    g.battlefield.push(perm); touch(g);
     return perm;
   }
 
@@ -655,12 +729,15 @@
     o = o || {};
     const perm = enter(g, inst, o);
     const a = inst.card.a;
-    if (a.isAura && a.attachBonus) { const target = bestCreature(g); if (target) perm.attachedTo = target.iid; }
+    if (a.isAura && a.attachBonus) { const target = bestCreature(g); if (target) { perm.attachedTo = target.iid; touch(g); } }
     if (o.silent) return perm;
     a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) fire(g, t, perm, ev, perm); });
-    for (const q of g.battlefield.slice()) {
+    const watchers = [];                                           // only permanents that care about things entering (big token boards stay fast)
+    for (const q of g.battlefield) if (q.card.a.watch) watchers.push(q);
+    for (const q of watchers) {
       for (const t of q.card.a.triggers) {
         if (perm.asLand && t.kinds.includes('landfall')) fire(g, t, q, ev, perm);
+        if (perm.token && t.kinds.includes('tokenEnter')) fire(g, t, q, ev, perm);
         if (t.kinds.includes('permEtb')) {
           if (t.other && q === perm) continue;
           if (t.nontoken && perm.token) continue;
@@ -675,7 +752,17 @@
 
   function fire(g, trig, source, ev, subject) {
     g.depth = (g.depth || 0) + 1;
-    if (g.depth <= 25) { ev.push({ type: 'trigger', source, text: trig.text }); applyEffects(g, trig.fx, source, ev, subject); }
+    if (g.depth <= 25) {
+      let fx = trig.fx;
+      if (trig.nth && source) {
+        // "the first / second / third time this turn" abilities (Belladonna Took): count resolutions this turn
+        const prev = source._nth && source._nth.turn === g.turn ? source._nth.n : 0;
+        source._nth = { turn: g.turn, n: prev + 1 };       // new object each time, so a dry-run copy never shares the count
+        fx = trig.nth[Math.min(prev, trig.nth.length - 1)] && prev < trig.nth.length ? trig.nth[prev] : [];
+      }
+      ev.push({ type: 'trigger', source, text: trig.text });
+      applyEffects(g, fx, source, ev, subject);
+    }
     g.depth--;
   }
 
@@ -691,12 +778,42 @@
     checkKill(g, ev);
   }
 
+  // What actually gets created when an effect says "create n of this token", after your replacement effects.
+  // Order used (the real game lets you choose; this is the strongest sensible order):
+  //   1. conversions: Divine Visitation (creature tokens become Angels), Academy Manufactor / Bilbo (Clue, Food, Treasure)
+  //   2. additions:   Peregrin Took (+1 Food), Chatterfang (+ as many Squirrels as tokens)
+  //   3. doublers:    Doubling Season, Parallel Lives, Mondrak, Elspeth Storm Slayer (each doubles everything, so they stack)
+  function tokenGroups(g, spec, n) {
+    const repl = [];
+    for (const p of g.battlefield) { const st = p.card.a.statics; if (st && st.tokenRepl.length) repl.push(...st.tokenRepl); }
+    let groups = [{ spec, n }];
+    if (!repl.length) return groups;
+    const of = t => repl.filter(r => r.type === t);
+    const mk = name => ({ type: 'token', n: 1, creature: false, artifact: true, name });
+    const isFood = s => !s.creature && /^food$/i.test(s.name);
+    const conv = of('convert')[0];
+    if (conv) groups = groups.map(gr => gr.spec.creature ? { spec: conv.spec, n: gr.n } : gr);
+    if (of('manufactor').length) groups = groups.flatMap(gr => (!gr.spec.creature && /^(clue|food|treasure)$/i.test(gr.spec.name)) ? ['Clue', 'Food', 'Treasure'].map(nm => ({ spec: mk(nm), n: gr.n })) : [gr]);
+    if (of('foodTreasure').length) groups = groups.flatMap(gr => isFood(gr.spec) ? [gr, { spec: mk('Treasure'), n: gr.n }] : [gr]);
+    for (const r of of('plusOne')) groups.push({ spec: r.spec, n: 1 });
+    for (const r of of('plusSame')) groups.push({ spec: r.spec, n: groups.reduce((s, gr) => s + gr.n, 0) });
+    const d = of('double').length;
+    if (d) groups = groups.map(gr => ({ spec: gr.spec, n: gr.n * Math.pow(2, d) }));
+    return groups;
+  }
+
   function createTokens(g, spec, n, ev, source) {
-    const card = tokenCard(g.deck, spec);
-    for (let i = 0; i < n && g.battlefield.length < 400; i++) {
-      const inst = { iid: g.nextIid++, card };
-      const perm = enterWithTriggers(g, inst, { tapped: spec.tapped }, ev);
-      ev.push({ type: 'token', perm, inst, source });
+    const groups = tokenGroups(g, spec, n);
+    const changed = groups.length > 1 || groups[0].n !== n || groups[0].spec !== spec;
+    if (changed) ev.push({ type: 'note', text: 'Token replacement effects: ' + groups.map(gr => `${gr.n} ${gr.spec.name}`).join(', '), source: null });
+    let made = 0;
+    for (const gr of groups) {
+      const card = tokenCard(g.deck, gr.spec);
+      for (let i = 0; i < gr.n && g.battlefield.length < 250 && made < 100; i++, made++) {
+        const inst = { iid: g.nextIid++, card };
+        const perm = enterWithTriggers(g, inst, { tapped: gr === groups[0] ? spec.tapped : false }, ev);
+        ev.push({ type: 'token', perm, inst, source });
+      }
     }
   }
 
@@ -730,9 +847,10 @@
           let targets = [];
           if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && matchesFilter(p.card, f.filter));
           else if (f.scope === 'self') targets = source && isCreaturePerm(source) ? [source] : [];
-          else { const b = bestCreature(g); if (b) targets = [b]; }
-          targets.forEach(p => { p.counters = (p.counters || 0) + n; });
-          if (targets.length) ev.push({ type: 'counters', n, perms: targets, source });
+          else { const b = bestCreature(g, f.excl ? source : null); if (b) targets = [b]; }
+          const add = n * counterMult(g);                 // Doubling Season
+          targets.forEach(p => { p.counters = (p.counters || 0) + add; });
+          if (targets.length) ev.push({ type: 'counters', n: add, perms: targets, source });
           break;
         }
         case 'pumpAll': {
@@ -823,6 +941,7 @@
     if (g.command.includes(inst)) g.command.splice(g.command.indexOf(inst), 1);
     else if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);
     resolveSpell(g, inst, ev);
+    flushLeaves(g, ev);
     return ev;
   }
 
@@ -883,7 +1002,7 @@
       }
       p.pwUsed = g.turn;
       if (best) {
-        p.loyalty += best.cost === -1 ? 0 : best.cost;
+        p.loyalty += best.cost === -1 ? 0 : (best.cost > 0 ? best.cost * counterMult(g) : best.cost);   // Doubling Season doubles + loyalty costs
         ev.push({ type: 'pw', perm: p, text: best.text, cost: best.cost });
         applyEffects(g, best.fx, p, ev, null);
         if (p.loyalty <= 0) { removePerm(g, p); g.graveyard.push(p.inst); }
@@ -894,7 +1013,7 @@
       if (p.attachedTo != null && g.battlefield.some(q => q.iid === p.attachedTo)) continue;
       const target = bestCreature(g);
       if (!target) continue;
-      if (pay(g, p.card.a.equip.cost) != null) { p.attachedTo = target.iid; ev.push({ type: 'equip', perm: p, target }); }
+      if (pay(g, p.card.a.equip.cost) != null) { p.attachedTo = target.iid; touch(g); ev.push({ type: 'equip', perm: p, target }); }
     }
     for (const p of g.battlefield.slice()) {
       for (const ab of p.card.a.activated || []) {
@@ -911,6 +1030,7 @@
         pay(g, { generic: 2, pips: [] }); removePerm(g, p); ev.push({ type: 'note', text: 'Cracked a Clue' }); draw(g, 1, ev);
       }
     }
+    flushLeaves(g, ev);
     return ev;
   }
 
@@ -943,7 +1063,7 @@
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
-      cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [],
+      cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [], pendingLeaves: [],
     });
   }
 
@@ -999,7 +1119,7 @@
 
   function beginTurn(g) {
     g.turn++;
-    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0;
+    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0;
     const ev = [{ type: 'untap' }];
     g.battlefield.forEach(p => { p.tapped = false; if (p.enteredTurn < g.turn) p.sick = false; });
     eachTrigger(g, 'upkeep', ev);
@@ -1178,6 +1298,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
+    tokenGroups, flushLeaves, counterMult, touch,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

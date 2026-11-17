@@ -530,15 +530,35 @@
 
   const nm = p => esc(p && p.card ? p.card.name : 'Spell');
   function describe(ev) {
+    // With token doublers one effect can make dozens of tokens and fire the same trigger dozens of times:
+    // group those into one log line ("created 8 × Soldier", "⚡ Belladonna Took ×8") instead of one line each.
+    const items = [], seen = new Map();
     for (const e of ev) {
+      let key = null;
+      if (e.type === 'token') key = 't:' + e.inst.card.uid;
+      else if (e.type === 'trigger') key = 'g:' + (e.source ? e.source.iid : '') + '|' + e.text;
+      else if (e.type === 'damage') key = 'd:' + (e.source ? e.source.iid : '');
+      if (key && seen.has(key)) {
+        const first = seen.get(key);
+        first.count++;
+        if (e.type === 'damage') { first.n += e.n; first.total = e.total; }
+        if (e.type === 'token') first.perm = e.perm;
+        continue;
+      }
+      const item = key ? Object.assign({}, e, { count: 1 }) : e;
+      if (key) seen.set(key, item);
+      items.push(item);
+    }
+    const times = c => (c > 1 ? ` × ${c}` : '');
+    for (const e of items) {
       switch (e.type) {
         case 'cast': log(`Cast <b>${esc(e.inst.card.name)}</b>`); break;
         case 'land': log(`${e.extra ? '↳ put' : 'Played'} ${esc(e.inst.card.name)}${e.mdfc ? ' (land side)' : ''}${e.perm && e.perm.tapped ? ' tapped' : ''}`); break;
         case 'rampLand': log(`↳ ${esc(e.inst.card.name)} onto the battlefield${e.perm.tapped ? ' tapped' : ''}`); break;
         case 'tutor': log(`↳ ${esc(e.inst.card.name)} into hand`); break;
         case 'draw': log(`${S.game && S.game.turnDrawLogged ? '↳ drew' : 'Drew'} ${esc(e.inst.card.name)}`); break;
-        case 'trigger': log(`<span class="trig">⚡ ${nm(e.source)}</span>: <i>${esc(e.text.length > 90 ? e.text.slice(0, 88) + '…' : e.text)}</i>`); break;
-        case 'token': log(`↳ created ${esc(e.inst.card.name)}${e.perm.card.a.isCreature ? ` ${G.powerOf(S.game, e.perm)}/${G.toughnessOf(S.game, e.perm)}` : ''} token`); break;
+        case 'trigger': log(`<span class="trig">⚡ ${nm(e.source)}${times(e.count)}</span>: <i>${esc(e.text.length > 90 ? e.text.slice(0, 88) + '…' : e.text)}</i>`); break;
+        case 'token': log(`↳ created ${e.count > 1 ? e.count + ' × ' : ''}${esc(e.inst.card.name)}${e.perm.card.a.isCreature ? ` ${G.powerOf(S.game, e.perm)}/${G.toughnessOf(S.game, e.perm)}` : ''} token${e.count > 1 ? 's' : ''}`); break;
         case 'damage': log(`↳ <b>${e.n}</b> damage to the goldfish (${e.total} total)`); break;
         case 'counters': log(`↳ +${e.n} counter${e.n > 1 ? 's' : ''} on ${e.perms.length > 3 ? e.perms.length + ' creatures' : e.perms.map(nm).join(', ')}`); break;
         case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
@@ -699,7 +719,7 @@
     if (!obj) return;
     const inst = zone === 'battlefield' ? obj.inst : obj;
     const items = [['🔍 View card', () => showLightbox(inst.card)]];
-    const act = fn => () => { snap(); fn(); render(); };
+    const act = fn => () => { snap(); fn(); G.touch(g); render(); };
     const move = (to, top) => act(() => {
       if (zone === 'battlefield') G.removePerm(g, obj); else zones[zone].splice(zones[zone].indexOf(obj), 1);
       if (inst.card.isToken && to !== 'battlefield') { log(`${esc(inst.card.name)} token ceases to exist`); return; }
@@ -771,7 +791,7 @@
       const nodes = [label];
       for (const ps of groups.values()) {
         const sg = h('div', 'stackgroup');
-        ps.forEach(p => sg.appendChild(permEl(p, used)));
+        (ps.length > 4 ? ps.slice(0, 4) : ps).forEach(p => sg.appendChild(permEl(p, used)));   // a big stack shows 4 cards and a count, not 100 images
         if (ps.length > 4) sg.appendChild(h('span', 'stack-count', '×' + ps.length));
         nodes.push(sg);
       }

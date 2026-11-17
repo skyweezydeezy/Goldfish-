@@ -1116,6 +1116,7 @@
       const b = h('button', 'ghost', label); b.addEventListener('click', () => showMirrorLog(smp)); sb.appendChild(b);
     });
     renderImpact(res.impact, nameB);
+    renderOutliers(res.impact && res.impact.outliers, nameB);
     $('#mmLog').innerHTML = '';
     if (res.errors) $('#mmInfo').textContent += ` · ${res.errors} games hit an error`;
   }
@@ -1131,6 +1132,29 @@
     if (hl.worst.length) html += `<div class="sg warn"><b>Linked to losing</b><p>Worth a closer look: try the deck without them, or check how the autopilot plays them.</p><ul>${hl.worst.map(row).join('')}</ul></div>`;
     if (!hl.best.length && !hl.worst.length) html += `<div class="sg"><b>No card stands out yet</b><p>After ${imp.n.toLocaleString()} matches no card's gap is clearly bigger than chance. More matches (1,000–3,000) can show smaller effects.</p></div>`;
     box.innerHTML = html; box.hidden = false;
+  }
+  // what your fastest wins and fastest losses have in common (Suggest.matchOutliers, run in the worker)
+  function renderOutliers(out, oppName) {
+    const box = $('#mmOutliers');
+    if (!out || (!out.quickWins && !out.quickLosses)) { box.hidden = true; return; }
+    const early = `in your opening hand or drawn by turn ${out.early}`;
+    const cardLi = x => `<li><b>${esc(x.name)}</b>: ${pct(x.group)} of these games, ${pct(x.rest)} of the others</li>`;
+    const group = (g, title, moreLbl, lessLbl, cls) => {
+      if (!g) return '';
+      const notes = [];
+      if (Math.abs(g.lands.z) >= 2) notes.push(`<li>Opening hands had <b>${g.lands.group.toFixed(1)} lands</b> on average, ${g.lands.rest.toFixed(1)} in the others</li>`);
+      if (Math.abs(g.mulls.z) >= 2) notes.push(`<li>You mulliganed in <b>${pct(g.mulls.group)}</b> of these games, ${pct(g.mulls.rest)} of the others</li>`);
+      let body = '';
+      if (g.more.length) body += `<p>${moreLbl}</p><ul>${g.more.map(cardLi).join('')}</ul>`;
+      if (g.less.length) body += `<p>${lessLbl}</p><ul>${g.less.map(cardLi).join('')}</ul>`;
+      if (notes.length) body += `<p>Opening hands</p><ul>${notes.join('')}</ul>`;
+      if (!body) body = '<p>Nothing stands out clearly from the other games yet. More matches can show smaller patterns.</p>';
+      return `<div class="sg ${cls}"><b>${title} (${g.games} games, over by turn ${g.maxTurn})</b>${body}</div>`;
+    };
+    box.innerHTML = `<h3>Outlier games against ${esc(oppName)}</h3><p class="hint">Your fastest 20% of wins and fastest 20% of losses, compared with every other game. "Had early" means ${early}. Only clear differences are listed; with this many cards a single surprising line can still be chance.</p>` +
+      group(out.quickWins, 'Your fastest wins', 'Cards you had early much more often:', 'Cards you rarely had early:', 'good') +
+      group(out.quickLosses, 'Your fastest losses', 'Cards you had early more often (they may not help here):', 'Cards you were missing early:', 'warn');
+    box.hidden = false;
   }
   function showMirrorLog(smp) {
     const { opp, o } = mmState;

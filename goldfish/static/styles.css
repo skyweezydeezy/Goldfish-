@@ -555,8 +555,9 @@ html.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px
 .suggest .sg.warn { border-left-color: var(--warning); }
 .suggest .sg.good { border-left-color: var(--good); }
 .suggest .sg p { margin: 2px 0 0; color: var(--text-secondary); font-size: 13px; }
-#mmImpact { margin-top: 14px; }
-#mmImpact h3 { margin: 0 0 4px; font-size: 15px; }
+#mmImpact, #mmOutliers { margin-top: 14px; }
+#mmImpact h3, #mmOutliers h3 { margin: 0 0 4px; font-size: 15px; }
+.suggest .sg > p + ul, .suggest .sg ul + p { margin-top: 4px; }
 .suggest .sg ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); }
 button.look-shop { background: none; border: 0; padding: 2px 4px; min-height: 0; cursor: pointer; font: inherit; font-size: 11px; color: var(--ice); }
 button.look-shop:hover { background: none; text-decoration: underline; }

@@ -173,6 +173,7 @@
     if ((m = text.match(new RegExp('put ' + NRE + ' loyalty counters? on ~', 'i')))) fx.push({ type: 'loyalty', n: num(m[1]) });      // Ajani Resolute
     // "that much": the amount of the life that was just gained / lost (Sanguine Bond, Exquisite Blood)
     if (/(each opponent|target opponent|target player|that player) loses that much life/i.test(text)) fx.push({ type: 'drain', n: 'THAT' });
+    if ((m = text.match(new RegExp('\\byou lose ' + NRE + ' life\\b', 'i')))) fx.push({ type: 'loseLife', n: num(m[1]) });          // Vampiric Tutor: "You lose 2 life."
     if (/\byou gain that much life/i.test(text)) fx.push({ type: 'gainLife', n: 'THAT' });
     else if ((m = text.match(new RegExp('\\byou gain ' + NRE + ' life\\b', 'i')))) fx.push({ type: 'gainLife', n: num(m[1]) });
 
@@ -201,7 +202,13 @@
       else if (/onto the battlefield/i.test(sentence) || /put (it|them|those cards|that card) onto the battlefield/i.test(text)) bf = n;
       else hand = n;
       fx.push({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly });
-    } else if (/search your library for (a|an|up to [a-z]+) [^.]*cards?/i.test(text)) { neutral = true; }
+    } else if ((m = text.match(/search your library for (?:a|an|one) ([^,.]*?)cards?\b/i))) {
+      // Tutors: Vampiric Tutor (to the top), Demonic Tutor / Diabolic Intent (to your hand), typed ones like "a creature card"
+      const words = (m[1] || '').toLowerCase();
+      const filters = ['creature', 'artifact', 'enchantment', 'instant', 'sorcery', 'planeswalker', 'legendary'].filter(w => words.includes(w));
+      const dest = /\bon top\b/i.test(text) ? 'top' : /onto the battlefield/i.test(text) ? 'battlefield' : 'hand';
+      fx.push({ type: 'tutor', filters, dest });
+    }
     if (/put a land card from your hand onto the battlefield/i.test(text)) fx.push({ type: 'landFromHand' });
     if (/you may play an additional land this turn/i.test(text)) fx.push({ type: 'extraLand' });
 
@@ -286,6 +293,7 @@
         rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
         continue;
       }
+      if (/^as an additional cost to cast ~, sacrifice a creature/i.test(line)) { a.sacCreatureCost = true; rec.status = 'ok'; continue; }      // Diabolic Intent
       if (a.isInstantSorcery) {
         const r = parseEffects(line);
         if (r.fx.length) { a.spellFx.push(...r.fx); rec.status = 'ok'; } else if (r.neutral) rec.status = 'neutral';
@@ -396,6 +404,9 @@
     }
     a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb'));
     a.lifeWatch = a.triggers.some(t => t.kinds.includes('lifeGain'));      // something here cares when you gain life (Sanguine Bond)
+    // the two halves of the life loop: "opponent loses life -> you gain that much" (blood) and "you gain life -> opponent loses that much" (bond)
+    a.comboRole = a.triggers.some(t => t.kinds.includes('oppLoseLife') && t.fx.some(f => f.type === 'gainLife')) ? 'blood'
+      : a.triggers.some(t => t.kinds.includes('lifeGain') && t.fx.some(f => f.type === 'drain')) ? 'bond' : null;
     const total = a.coverage.length;
     const bad = a.coverage.filter(c => c.status === 'ignored' || c.status === 'partial').length;
     a.coverageLevel = !total || bad === 0 ? 'ok' : bad === total ? 'none' : 'partial';
@@ -975,6 +986,8 @@
         }
         case 'damage': case 'drain': damageOpp(g, n, ev, source); break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); break;
+        case 'tutor': tutor(g, f, ev, source); break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) { source.loyalty += n * counterMult(g); ev.push({ type: 'note', text: `${source.card.name} gets ${n * counterMult(g)} loyalty`, source }); } break;
         case 'counters': {
           let targets = [];
@@ -1067,13 +1080,93 @@
     else { applyEffects(g, a.spellFx, null, ev, null); g.graveyard.push(inst); }
   }
 
+  // ---------- Tutors ----------
+  // Which card should a tutor fetch? In order of priority:
+  //   1. the missing half of a combo (Exquisite Blood + Sanguine Bond) when the other half is already out or in hand
+  //   2. the cheaper half of a combo you have neither of
+  //   3. a token doubler / replacement effect (they multiply everything else)
+  //   4. a cheap mana rock when you are short on mana
+  //   5. otherwise the strongest permanent you can actually afford soon
+  function tutorScore(g, inst, ctx) {
+    const a = inst.card.a;
+    if (a.isLegendary && ctx.names.has(inst.card.name)) return -1000;                 // legend rule: a second copy would be useless
+    let s = 0;
+    if (a.comboRole) {
+      if (ctx.roles.has(a.comboRole)) s -= 500;                                        // you already have that half
+      else if (ctx.roles.has(a.comboRole === 'blood' ? 'bond' : 'blood')) s += 1000;  // it completes the combo
+      else s += 300 - a.castMv * 10;                                                   // start the combo with the cheaper half
+    }
+    const repl = a.statics.tokenRepl;
+    if (repl.some(r => r.type === 'double')) s += ctx.tokenMaker ? 220 : 120;
+    else if (repl.length) s += ctx.tokenMaker ? 130 : 60;
+    if (a.statics.counterDouble) s += 40;
+    if (a.isLand) s += ctx.lands < 3 ? 200 : -100;
+    else if (a.isRock && a.castMv <= 2 && ctx.mana < 5) s += 150 - a.castMv * 10;
+    if (a.isCreature) s += Math.max(0, a.power) * 8 + a.triggers.length * 15 + (a.produce ? 25 : 0);
+    if (a.isPlaneswalker) s += 70;
+    if (a.triggers.length && !a.isCreature) s += 20;
+    if (a.castMv > ctx.mana + 3) s -= (a.castMv - ctx.mana - 3) * 25;               // too expensive to cast any time soon
+    if (a.sacCreatureCost) s -= 40;
+    return s;
+  }
+  function tutorContext(g) {
+    const roles = new Set(), names = new Set();
+    for (const p of g.battlefield) { if (p.card.a.comboRole) roles.add(p.card.a.comboRole); names.add(p.card.name); }
+    for (const i of g.hand) if (i.card.a.comboRole) roles.add(i.card.a.comboRole);
+    const lands = g.battlefield.filter(p => p.asLand).length + g.hand.filter(i => i.card.a.isLand).length;
+    const mana = g.battlefield.reduce((s, p) => s + (p.produce ? p.produce.amount : 0), 0);
+    const tokenMaker = g.battlefield.some(p => p.card.a.makesTokens || p.card.a.triggers.some(t => t.fx.some(f => f.type === 'token'))) || g.hand.some(i => i.card.a.makesTokens);
+    return { roles, names, lands, mana, tokenMaker };
+  }
+  function tutorMatches(inst, filters) {
+    if (!filters || !filters.length) return true;
+    const a = inst.card.a, tl = (inst.card.type_line || '').toLowerCase();
+    return filters.some(w => w === 'legendary' ? a.isLegendary : tl.includes(w));
+  }
+  function bestTutorTarget(g, f) {
+    const ctx = tutorContext(g);
+    let best = null, bs = -Infinity;
+    for (const i of g.library) {
+      if (!tutorMatches(i, f.filters)) continue;
+      const s = tutorScore(g, i, ctx);
+      if (s > bs) { bs = s; best = i; }
+    }
+    const ca = best && best.card.a;
+    return best ? { inst: best, score: bs, completes: !!(ca.comboRole && ctx.roles.has(ca.comboRole === 'blood' ? 'bond' : 'blood')) } : null;
+  }
+  function tutor(g, f, ev, source) {
+    const t = bestTutorTarget(g, f);
+    if (!t) { ev.push({ type: 'note', text: 'Searched the library: nothing to find', source }); return; }
+    g.library.splice(g.library.indexOf(t.inst), 1);
+    shuffle(g.library, g.rnd);
+    if (f.dest === 'top') { g.library.unshift(t.inst); ev.push({ type: 'note', text: `Tutored ${t.inst.card.name} to the top of the library`, source }); }
+    else if (f.dest === 'battlefield') { const perm = enterWithTriggers(g, t.inst, {}, ev); ev.push({ type: 'rampLand', inst: t.inst, perm, source }); }
+    else { g.hand.push(t.inst); ev.push({ type: 'tutor', inst: t.inst, source }); }
+  }
+  // Diabolic Intent: "sacrifice a creature" as a cost. Only fodder that is not worth much: a token, or a creature with power 1 or less.
+  function pickSacrifice(g) {
+    let best = null, bs = Infinity;
+    for (const p of g.battlefield) {
+      if (!isCreaturePerm(p) || p.card.commander) continue;
+      const pw = powerOf(g, p), a = p.card.a;
+      // tokens are fine; a real card only if it is plain (no abilities, not legendary, not a mana creature) and small
+      if (!p.token && (pw > 1 || a.isLegendary || a.triggers.length || a.activated.length || a.statics.anthems.length || a.produce || (p.counters || 0) > 0)) continue;
+      const s = pw + (p.token ? 0 : 5);
+      if (s < bs) { bs = s; best = p; }
+    }
+    return best;
+  }
+
   // ---------- Casting ----------
   function castCard(g, inst, force) {
     if (inst.card.a.isAura && inst.card.a.enchantCreature && !bestCreature(g) && !force) return null;
+    let victim = null;
+    if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g); if (!victim && !force) return null; }
     const ev = [];
     const n = pay(g, effectiveCost(g, inst));
     if (n == null && !force) return null;
     if (n != null) ev.push({ type: 'pay', n });
+    if (victim) { removePerm(g, victim); ev.push({ type: 'note', text: `Sacrificed ${victim.card.name} to cast ${inst.card.name}` }); }
     if (g.command.includes(inst)) g.command.splice(g.command.indexOf(inst), 1);
     else if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);
     resolveSpell(g, inst, ev);
@@ -1090,6 +1183,9 @@
     else if (a.draw) s += 0.5;
     if (a.spellFx.some(f => f.type === 'pumpAll')) s -= 30;  // Overrun-style effects wait until the board is built
     if (a.isAura && !bestCreature(g)) return -1;
+    if (a.sacCreatureCost && !pickSacrifice(g)) return -1;     // nothing cheap to sacrifice
+    const tf = a.spellFx.find(f => f.type === 'tutor');
+    if (tf) { const t = bestTutorTarget(g, tf); if (t) s += t.completes ? 400 : t.score >= 200 ? 60 : 0; }   // a tutor that completes the combo goes first
     return s;
   }
 
@@ -1100,6 +1196,7 @@
     let best = null, bestScore = -1;
     for (const c of cands) {
       if (!canPay(effectiveCost(g, c), units)) continue;
+      if (c.card.a.sacCreatureCost && !pickSacrifice(g)) continue;
       const s = spellScore(g, c);
       if (s > bestScore) { bestScore = s; best = c; }
     }
@@ -1468,7 +1565,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf,
+    tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

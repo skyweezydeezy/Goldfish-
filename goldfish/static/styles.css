@@ -372,3 +372,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .tab { font-size: 13px; padding: 9px 11px; }
   .chart svg text { font-size: 10px; }
 }
+
+.site-footer .tip { display: flex; gap: 14px; align-items: flex-start; }
+.site-footer .tip-qr { flex: none; display: block; border-radius: 10px; overflow: hidden; line-height: 0; }
+.site-footer .tip-qr img { width: 96px; height: auto; display: block; }

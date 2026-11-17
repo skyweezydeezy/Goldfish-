@@ -100,7 +100,50 @@
     return out;
   }
 
-  const api = { fromSim, deadCards };
+
+  // ---------- tier A+: which of your cards are linked to winning against a known opponent ----------
+  // Replays the same matches as Goldfish.matchMonteCarlo (same seeds, same seats) and, for each of your cards, compares
+  // your win rate in games where you drew it with games where you did not. Drawing more cards in longer games shifts every
+  // card the same way, so each gap is measured against the average gap of your cards ("compared with your average card").
+  // Returns { n, base, avgGap, cards: [{ name, games, wrDrawn, wrNot, gap, z }] } sorted by gap, best first.
+  function matchImpact(G, cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) {
+    const deckA = G.buildDeck(cardsA, tokensA), deckB = G.buildDeck(cardsB, tokensB);
+    const U = deckA.unique.length;
+    const drawnWin = new Float64Array(U), drawnN = new Float64Array(U);
+    let games = 0, wins = 0;
+    for (let i = 0; i < n; i++) {
+      const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
+      let m;
+      try { m = G.playMatch(deckA, deckB, opts, s, aOnPlay); } catch (err) { continue; }
+      const won = m.match.winner === 0 ? 1 : 0;
+      games++; wins += won;
+      for (const k of Object.keys(m.gA.drawTurn)) { const u = +k; if (u >= 0 && u < U) { drawnN[u]++; drawnWin[u] += won; } }
+      if (onProgress && i % 25 === 0) onProgress(i / n);
+    }
+    const rows = [];
+    deckA.unique.forEach((c, u) => {
+      if (c.commander || (c.a.isLand && /Basic/.test(c.type_line || ''))) return;
+      const nd = drawnN[u], nn = games - nd;
+      if (nd < 1 || nn < 1) return;
+      const pd = drawnWin[u] / nd, pn = (wins - drawnWin[u]) / nn;
+      rows.push({ name: c.name, games: nd, wrDrawn: pd, wrNot: pn, raw: pd - pn, se: Math.sqrt(Math.max(0.0025, pd * (1 - pd)) / nd + Math.max(0.0025, pn * (1 - pn)) / nn) });
+    });
+    // centre on the average card, weighted by how often each is drawn
+    const wsum = rows.reduce((s, r) => s + r.games, 0) || 1;
+    const mean = rows.reduce((s, r) => s + r.raw * r.games, 0) / wsum;
+    rows.forEach(r => { r.gap = r.raw - mean; r.z = r.gap / r.se; delete r.raw; delete r.se; });
+    rows.sort((a, b) => b.gap - a.gap);
+    return { n: games, base: games ? wins / games : 0, avgGap: mean, cards: rows };
+  }
+
+  // Cards whose gap is clearly bigger than the noise (|z| >= 2, seen in at least 30 games), split into best and worst.
+  function impactHighlights(imp, max) {
+    max = max || 5;
+    const clear = imp.cards.filter(r => Math.abs(r.z) >= 2 && r.games >= 30);
+    return { best: clear.filter(r => r.gap > 0).slice(0, max), worst: clear.filter(r => r.gap < 0).reverse().slice(0, max), tested: imp.cards.length };
+  }
+
+  const api = { fromSim, deadCards, matchImpact, impactHighlights };
   root.Suggest = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

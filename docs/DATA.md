@@ -46,6 +46,22 @@ Rules applied to the results of the current run:
 
 Cost: only UI and rule code. It fits the current privacy promise exactly.
 
+### Tier A+: learn from thousands of games (outliers and what wins)
+The goal: after thousands of games, find the outliers and the cards that actually change results, especially against a known opponent (the mirror match or a saved deck).
+
+What is missing today: the simulation keeps per-card numbers (when each card was drawn and cast) but throws away which games were fast or slow, and the mirror match keeps only who won and when. Nothing links a card to a result.
+
+How to get it without changing `sim.js`: the engine already exports `simulate()` and `playMatch()`, and each finished game carries `drawTurn` and `castTurn` for every card. A separate analysis step can run the games itself and keep, per card:
+- **Won when drawn vs. won when not drawn** (against an opponent), or **kill turn when cast early vs. not** (against the goldfish). The gap is the card's impact.
+- **Outlier games:** what the fastest 10% and the slowest 10% have in common, such as a card that shows up in most nut draws, or a missing color or land count in most rough games.
+- **Pairs:** two cards that are much better together than apart (an undeclared combo or a strong synergy).
+
+Things to be careful about:
+- **Noise:** a card drawn in 30% of 2,000 games is only seen 600 times, so every number needs an error margin, and small gaps should not be shown.
+- **Correlation, not cause:** cards drawn in long games look better at winning long games. Comparing "drawn by turn N" fixes some of this, but each suggestion should still say "linked to", not "causes".
+- **The autopilot plays every deck the same way**, so a card can look weak only because the autopilot misplays it. The coverage flags help here.
+- **Speed:** thousands of matches take time in the browser, so this runs in the worker with a progress bar.
+
 ### Tier B: one deck over time, on the device
 Keep a small summary of each run (kill turn, cast turn, missed drops, dead cards) next to the saved deck, so the player can see **what changed when they swapped cards**: "kill turn went from 9.1 to 8.4 after you cut Card A for Card B."
 - Stored in `localStorage` like the saved decks, and removed with them.
@@ -64,6 +80,7 @@ This changes what the app is:
 - Do we stay **device-only** (tiers A and B) on purpose, as a feature?
 - For tier A, which suggestions are trustworthy enough to show, given what the engine does not simulate (stack interaction, dies triggers, an opponent's board)?
 - Should a suggestion name specific replacement cards, or only describe the problem ("you need more 2-mana ramp")? Naming cards needs a card pool to search, such as Scryfall search in hosted mode or ScryMirror locally.
+- Tier A+: which opponent counts as "known": the mirror, a saved deck, or a field of several saved decks weighted by how often you meet them?
 - How do we show uncertainty? A suggestion from 500 games is noisier than one from 5,000.
 - If we ever do tier C: what exactly would be sent, who runs the server, and how does a player see and delete their data?
 

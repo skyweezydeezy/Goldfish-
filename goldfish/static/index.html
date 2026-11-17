@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Goldfish">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Visual Goldfish Calculator</title>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -186,13 +194,21 @@
   </section>
 </main>
 
+<footer class="site-footer">
+  <p><b>Visual Goldfish Calculator</b> is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.</p>
+  <p>Card data and images are provided by <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a> and are not endorsed by Scryfall. Free to use, with no sign-up. If it's useful, you can <a class="donate" href="https://paypal.me/skyweezydeezy" target="_blank" rel="noopener">tip the developer on PayPal</a>. Totally optional.</p>
+</footer>
+
+<div id="lightbox" class="lightbox" aria-modal="true"></div>
 <div id="zoom" class="zoom" aria-hidden="true"></div>
 <div id="ctxMenu" class="ctx-menu"></div>
 <div id="toast" class="toast"></div>
 <div id="tooltip" class="tooltip"></div>
 
 <script src="sim.js"></script>
+<script src="source.js"></script>
 <script src="charts.js"></script>
 <script src="app.js"></script>
+<script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>
 </html>

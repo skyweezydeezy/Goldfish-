@@ -25,7 +25,7 @@
 
   function frame(container, opts) {
     container.innerHTML = '';
-    const W = Math.max(320, container.clientWidth || 560), H = opts.height || 240;
+    const W = Math.max(280, container.clientWidth || 560), H = opts.height || 240;
     const m = Object.assign({ l: 40, r: 16, t: 14, b: 30 }, opts.margin || {});
     const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.label || 'chart' }, container);
     return { svg, W, H, m, iw: W - m.l - m.r, ih: H - m.t - m.b };
@@ -72,7 +72,7 @@
     const lt = el('text', { x: X(n - 1) - 4, y: Y(last.mid) - 9, 'text-anchor': 'end', class: 'label' }, g);
     lt.textContent = (opts.lastLabel || '') + (opts.vfmt ? opts.vfmt(last.mid) : last.mid);
     const hit = el('rect', { x: f.m.l, y: f.m.t, width: f.iw, height: f.ih, class: 'hit' }, f.svg);
-    hit.addEventListener('mousemove', e => {
+    hit.addEventListener('pointermove', e => {
       const r = f.svg.getBoundingClientRect(), sx = (e.clientX - r.left) * f.W / r.width;
       const i = Math.max(0, Math.min(n - 1, Math.round((sx - f.m.l) / (f.iw / Math.max(1, n - 1)))));
       const d = data[i];
@@ -80,7 +80,8 @@
       dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(d.mid)); dot.setAttribute('opacity', 1);
       showTip(opts.tip ? opts.tip(d, i) : `<b>${d.label}</b>`, e.clientX, e.clientY);
     });
-    hit.addEventListener('mouseleave', () => { cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); hideTip(); });
+    hit.addEventListener('pointerleave', e => { if (e.pointerType === 'touch') return; cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); hideTip(); });
+    hit.addEventListener('pointerdown', e => hit.dispatchEvent(new PointerEvent('pointermove', e)));
   }
 
   // Bars. data: [{label, v, v2?, tip?}]; opts.series2 -> paired bars
@@ -116,11 +117,12 @@
         lt.textContent = (opts.vfmt || pct)(d.v);
       }
       const hit = el('rect', { x: cx - slot / 2, y: f.m.t, width: slot, height: f.ih, class: 'hit' }, g);
-      hit.addEventListener('mousemove', e => {
+      hit.addEventListener('pointermove', e => {
         groups.forEach((q, j) => q.classList.toggle('dim', j !== i));
         showTip(d.tip || `<b>${d.label}</b><div class="tt-row"><span>${opts.name || 'Value'}</span><span>${(opts.vfmt || pct)(d.v)}</span></div>`, e.clientX, e.clientY);
       });
-      hit.addEventListener('mouseleave', () => { groups.forEach(q => q.classList.remove('dim')); hideTip(); });
+      hit.addEventListener('pointerleave', e => { if (e.pointerType === 'touch') return; groups.forEach(q => q.classList.remove('dim')); hideTip(); });
+      hit.addEventListener('pointerdown', e => hit.dispatchEvent(new PointerEvent('pointermove', e)));
     });
     if (two && opts.legend) {
       const lg = el('g', {}, f.svg);
@@ -137,6 +139,8 @@
     const i = Math.max(0, Math.min(RAMP.length - 1, Math.round(v * (RAMP.length - 1))));
     return RAMP[i];
   }
+
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('.chart, .heatmap')) hideTip(); });
 
   window.Charts = { band, bars, rampColor, showTip, hideTip, pct };
 })();

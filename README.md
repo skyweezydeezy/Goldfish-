@@ -2,7 +2,26 @@
 
 Paste a decklist and watch it goldfish. It uses your own card images from **ScryMirror**, plus exact draw math and a Monte Carlo simulation.
 
-## Run it (Windows)
+## Use it on your phone or iPad (hosted version)
+
+The `goldfish/static` folder is a complete web app that needs no server. In this mode it loads card data and images live from [Scryfall](https://scryfall.com) in your browser, remembers cards for 7 days, and can be installed to your Home Screen.
+
+**Publish it with GitHub Pages (free, about 2 minutes):**
+1. In the repo on GitHub: **Settings -> Pages -> Build and deployment -> Source: GitHub Actions**.
+2. Go to the **Actions** tab, open **Deploy to GitHub Pages**, and wait for the green check (or click **Run workflow**).
+3. Your app is at `https://<your-github-name>.github.io/Goldfish-/`. Open it on your phone.
+
+GitHub Pages is free for public repositories. If the repo is private, use any free static host instead (for example drag the `goldfish/static` folder onto <https://app.netlify.com/drop>).
+
+**Install it as an app:**
+- **iPhone / iPad (Safari):** Share button -> **Add to Home Screen**.
+- **Android (Chrome):** menu -> **Install app** / **Add to Home screen**.
+
+**Touch controls:** tap a hand card to play it, tap a permanent to tap it, **long-press** any card for the menu (counters, sacrifice, move zones, view card). Outside the table, tap a card to see it large, with how the engine reads its rules text.
+
+**Same Wi-Fi only, using your PC's ScryMirror images:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
+
+## Run it on your PC with your own ScryMirror (Windows)
 
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
 2. Double-click `start.bat` (in the top folder, or the one inside `goldfish`). Keep the whole downloaded folder together; the launcher needs `server.py` and `static` beside it. Your browser opens at <http://127.0.0.1:8765>.
@@ -61,3 +80,9 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 - anything that needs an opponent's board
 
 The goldfish never blocks, never removes anything, and never interacts.
+
+## Fan content, credits and donations
+
+*Visual Goldfish Calculator is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
+
+Card data and images are provided by [Scryfall](https://scryfall.com) and are not endorsed by Scryfall. Following Scryfall's and Wizards' policies, this app is **free to use with no sign-up or paywall**, card images are shown whole and unaltered, and the hosted version fetches everything from Scryfall directly instead of re-hosting it. Optional tips are welcome at <https://paypal.me/skyweezydeezy> and never unlock anything.

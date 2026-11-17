@@ -235,7 +235,7 @@ label.small { font-size: 12px; }
 .heatmap th.sorted { color: var(--text-primary); }
 .heatmap td { padding: 0; height: 22px; min-width: 34px; text-align: center; border-radius: 3px; font-variant-numeric: tabular-nums; }
 .heatmap td.name { text-align: left; padding: 0 8px; white-space: nowrap; color: var(--text-primary); cursor: default; background: var(--surface-2); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
-.heatmap td.name .thumb { display: inline-block; width: 18px; height: 18px; border-radius: 3px; vertical-align: -4px; margin-right: 6px; background-size: 200%; background-position: 50% 22%; }
+.heatmap td.name .thumb { display: inline-block; width: 14px; height: 20px; border-radius: 3px; vertical-align: -4px; margin-right: 6px; background-size: 100% 100%; }
 .heatmap td.num { color: var(--text-secondary); background: var(--surface-2); padding: 0 6px; }
 
 /* ---------- odds tab ---------- */
@@ -284,3 +284,91 @@ label.small { font-size: 12px; }
 .token-wall .mtg { --card-w: 84px; }
 .replay .tcards .mtg.tokenmini { --card-w: 40px; }
 .replay .tcards .burst { font-size: 11px; color: #f5d17a; margin: 0 4px; }
+
+/* ---------- footer, viewer ---------- */
+.site-footer { max-width: 1100px; margin: 0 auto; padding: 18px 18px calc(28px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--border); }
+.site-footer p { margin: 0 0 8px; }
+.site-footer a { color: var(--text-secondary); }
+.site-footer a.donate { color: #7fb3f0; font-weight: 600; }
+.lightbox { position: fixed; inset: 0; z-index: 500; display: none; background: rgba(0,0,0,.88); overflow: auto; -webkit-overflow-scrolling: touch; }
+.lightbox.show { display: block; }
+.lb-inner { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 14px calc(24px + env(safe-area-inset-bottom)); }
+.lb-faces { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.lb-faces .mtg { width: min(86vw, 380px); cursor: default; }
+.lb-cov { width: min(92vw, 520px); font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; }
+.lb-cov .cl { padding: 3px 8px; border-radius: 4px; border-left: 3px solid; background: var(--surface-1); }
+.lb-cov .ok { border-color: #0ca30c; } .lb-cov .neutral { border-color: #555; color: var(--muted); } .lb-cov .partial { border-color: #fab219; } .lb-cov .ignored { border-color: #d03b3b; }
+
+/* ---------- touch & small screens ---------- */
+.mtg, .mtg img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
+button, .tab, select, label { touch-action: manipulation; }
+.chart .hit { touch-action: pan-y; }
+.topbar { padding-top: calc(10px + env(safe-area-inset-top)); }
+.two-col { grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+
+@media (pointer: coarse) {
+  button, select, input[type=number] { min-height: 42px; }
+  .ctx-menu { min-width: 230px; padding: 6px; }
+  .ctx-menu button { padding: 12px 14px; font-size: 15px; }
+  .tab { padding: 10px 14px; }
+  .toast { bottom: calc(22px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 900px) {
+  main { padding: 12px 10px 40px; }
+  .topbar { gap: 10px; flex-wrap: wrap; }
+  .status-pill { order: 3; }
+  .tabs { order: 4; flex-basis: 100%; }
+  .brand { font-size: 15px; }
+  .deck-input textarea { height: 220px; }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .table-controls .hint { display: none; }
+  .table { grid-template-columns: 1fr; }
+  .table-log { display: block; max-height: 220px; order: 3; }
+  .table-side { flex-direction: row; flex-wrap: wrap; }
+  .table-side > * { flex: 1 1 140px; }
+  .hud { grid-template-columns: repeat(3, 1fr); flex: 1 1 100%; }
+  .zone-pile .pile-cards .mtg { --card-w: 46px; margin: 0 -24px -48px 0; }
+  #zCommand .pile-cards .mtg { --card-w: 96px; }
+  #zLibrary .card-back { width: 64px; }
+  .bf-row { min-height: 120px; }
+  .bf-row .mtg { --card-w: 76px; }
+  .bf-row.lands .mtg { --card-w: 66px; }
+  .stackgroup .mtg + .mtg { margin-left: -46px; }
+  .bf-row:not(.lands) .stackgroup .mtg + .mtg { margin-left: -58px; }
+  .hand-zone { overflow-x: auto; justify-content: flex-start; min-height: 170px; padding: 14px 6px 4px; }
+  .hand-zone .mtg { --card-w: 96px; margin: 0 -14px; }
+  .hand-zone .mtg:hover { transform: none; margin: 0 -14px; }
+  .fan .mtg { --card-w: 108px; }
+  .curve-col { min-width: 74px; } .curve-col .stack, .curve-col .stack .mtg { width: 70px; }
+  .replay .turnrow { grid-template-columns: 70px 1fr; }
+  .replay .tstats { grid-column: 1 / -1; text-align: left; }
+  .replay .tcards .mtg { --card-w: 52px; }
+  .odds-picker .mtg { --card-w: 68px; }
+  .hand-grid { grid-template-columns: 1fr; }
+  .coverage { grid-template-columns: 1fr; }
+  .kill-banner { font-size: 32px; text-align: center; }
+}
+@media (max-width: 520px) {
+  .tile .val { font-size: 22px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .fan { height: 250px; } .fan .mtg { --card-w: 92px; }
+}
+@media (display-mode: standalone) { .topbar { position: sticky; } }
+
+/* ---------- overflow safety on narrow screens ---------- */
+html, body { max-width: 100%; overflow-x: hidden; }
+.deck-layout, .two-col, .table, .deck-view, .panel { min-width: 0; }
+.deck-layout > *, .two-col > *, .table > *, .deck-view > * { min-width: 0; }
+#deckMsgs .msg, .hint, .kv span, .box-head { overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .deck-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) {
+  .table { grid-template-columns: minmax(0, 1fr); }
+  .table-main { min-height: 0; }
+  .bf-row { min-height: 96px; }
+  .hand-zone { padding: 14px 22px 6px; }
+  .tabs { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { font-size: 13px; padding: 9px 11px; }
+  .chart svg text { font-size: 10px; }
+}

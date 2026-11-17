@@ -275,99 +275,6 @@ def glob_escape(s):
     return re.sub(r"([*?\[])", r"[\1]", s)
 
 
-def slim(card, imgs):
-    """Reduce a Scryfall card object to what the simulator needs."""
-    faces = card.get("card_faces") or []
-    remote = []
-    if card.get("image_uris"):
-        remote = [card["image_uris"].get("normal")]
-    elif faces and faces[0].get("image_uris"):
-        remote = [f.get("image_uris", {}).get("normal") for f in faces]
-    front = faces[0] if faces and card.get("layout") in ("transform", "modal_dfc", "double_faced_token", "reversible_card") else None
-
-    def g(key, default=""):
-        if front and front.get(key) not in (None, ""):
-            return front.get(key)
-        if card.get(key) not in (None, ""):
-            return card.get(key)
-        return default
-
-    oracle = card.get("oracle_text")
-    if oracle is None and faces:
-        oracle = "\n//\n".join(f.get("oracle_text", "") for f in faces)
-    return {
-        "name": card.get("name"),
-        "layout": card.get("layout", "normal"),
-        "mana_cost": g("mana_cost"),
-        "cmc": card.get("cmc", 0) or 0,
-        "type_line": g("type_line"),
-        "full_type_line": card.get("type_line") or " // ".join(f.get("type_line", "") for f in faces),
-        "oracle_text": oracle or "",
-        "front_oracle": (front or card).get("oracle_text", oracle or ""),
-        "power": g("power", None),
-        "toughness": g("toughness", None),
-        "colors": card.get("colors") or (front or {}).get("colors") or [],
-        "color_identity": card.get("color_identity") or [],
-        "produced_mana": card.get("produced_mana") or [],
-        "keywords": card.get("keywords") or [],
-        "legal_commander": (card.get("legalities") or {}).get("commander"),
-        "loyalty": g("loyalty", None),
-        "token_parts": [p.get("name") for p in (card.get("all_parts") or [])
-                        if p.get("component") == "token" or "Emblem" in (p.get("type_line") or "")],
-        "token_ids": [p.get("id") for p in (card.get("all_parts") or [])
-                      if p.get("component") == "token" or "Emblem" in (p.get("type_line") or "")],
-        "set": card.get("set"),
-        "cn": card.get("collector_number"),
-        "faces": [{"name": f.get("name"), "mana_cost": f.get("mana_cost", ""), "type_line": f.get("type_line", ""),
-                   "oracle_text": f.get("oracle_text", ""), "power": f.get("power"), "toughness": f.get("toughness")}
-                  for f in faces],
-        "images": imgs,
-        "remote_images": [u for u in remote if u],
-    }
-
-
-LINE_RE = re.compile(
-    r"^\s*(?:(?P<qty>\d+)\s*[xX]?\s+)?(?P<name>.+?)"
-    r"(?:\s+\((?P<set>[A-Za-z0-9]{2,6})\)(?:\s+(?P<cn>[A-Za-z0-9\-\u2605]+))?)?"
-    r"(?P<tags>(?:\s+\*[^*]+\*|\s+\[[^\]]*\]|\s+#\S+)*)\s*$"
-)
-SECTION_RE = re.compile(r"^\s*(//\s*)?(commander|commanders|deck|mainboard|main|sideboard|maybeboard|companion|tokens?|considering)\s*:?\s*(\(\d+\))?\s*$", re.I)
-
-
-def parse_decklist(text):
-    entries, section = [], "main"
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            if not line and section == "commander" and entries:
-                section = "main"
-            continue
-        m = SECTION_RE.match(line)
-        if m:
-            s = m.group(2).lower()
-            section = "commander" if s.startswith("commander") else ("main" if s in ("deck", "mainboard", "main") else "skip")
-            continue
-        if line.startswith("//"):
-            continue
-        if section == "skip":
-            continue
-        m = LINE_RE.match(line)
-        if not m:
-            continue
-        tags = (m.group("tags") or "").lower()
-        is_cmdr = section == "commander" or "*cmdr*" in tags or "[commander" in tags
-        name = m.group("name").strip()
-        name = re.sub(r"\s+\*F\*$", "", name)
-        entries.append({
-            "qty": int(m.group("qty") or 1),
-            "name": name,
-            "set": m.group("set"),
-            "cn": m.group("cn"),
-            "commander": is_cmdr,
-        })
-    return entries
-
-
 class Handler(BaseHTTPRequestHandler):
     mirror: Mirror = None
 
@@ -427,32 +334,25 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._json({"error": "bad json"}, 400)
-        if u.path == "/api/resolve":
-            entries = parse_decklist(payload.get("text", ""))
-            out, missing = [], []
-            for e in entries:
-                r = self.mirror.resolve(e["name"], e.get("set"), e.get("cn")) if self.mirror.ok else None
+        if u.path == "/api/collection":
+            # Same shape as Scryfall's POST /cards/collection, answered from the local ScryMirror.
+            # Identifiers may also carry a "name" (the browser always sends one) so set+number lookups can fall back to it.
+            data, not_found = [], []
+            for ident in payload.get("identifiers", []):
+                r = None
+                if self.mirror.ok:
+                    if ident.get("id"):
+                        r = self.mirror.resolve_token(ident["id"], ident.get("name"))
+                    elif ident.get("name"):
+                        r = self.mirror.resolve(ident["name"], ident.get("set"), ident.get("collector_number"))
                 if not r:
-                    missing.append(e)
+                    not_found.append(ident)
                     continue
-                card = slim(*r)
-                card.update({"qty": e["qty"], "commander": e["commander"], "input_name": e["name"]})
-                out.append(card)
-            tokens, seen = [], set()
-            if self.mirror.ok:
-                for c in out:
-                    for tid, tname in zip(c.get("token_ids") or [], c.get("token_parts") or []):
-                        r = self.mirror.resolve_token(tid, tname)
-                        if not r:
-                            continue
-                        t = slim(*r)
-                        key = (t["name"], t.get("power"), t.get("toughness"), tuple(t.get("colors") or []), t.get("oracle_text"))
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        t["made_by"] = c["name"]
-                        tokens.append(t)
-            return self._json({"cards": out, "missing": missing, "parsed": len(entries), "tokens": tokens})
+                card, imgs = r
+                card = dict(card)
+                card["_local_images"] = imgs
+                data.append(card)
+            return self._json({"object": "list", "not_found": not_found, "data": data})
         return self._json({"error": "not found"}, 404)
 
 
@@ -469,6 +369,7 @@ def main():
     ap.add_argument("--scrymirror", help="Path to the ScryMirror folder (default: ~/Documents/ScryMirror)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--lan", action="store_true", help="Let other devices on your Wi-Fi (phone, iPad) open the app")
     a = ap.parse_args()
     root = Path(a.scrymirror) if a.scrymirror else default_root()
     if not root:
@@ -484,9 +385,16 @@ def main():
             ok = c.get("found") and all(c.get("image_files_exist") or [False])
             print(f"[mirror]   {'OK ' if ok else 'BAD'} {c['name']}: " + (f"{c.get('set')} #{c.get('cn')} -> {c.get('image_urls')}" if c.get("found") else "not found"))
         print("[mirror] full report: http://127.0.0.1:%d/api/diagnose" % a.port)
-    srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
+    srv = ThreadingHTTPServer(("0.0.0.0" if a.lan else "127.0.0.1", a.port), Handler)
     url = f"http://127.0.0.1:{a.port}/"
     print(f"Goldfish calculator running at {url}  (Ctrl+C to stop)")
+    if a.lan:
+        import socket
+        try:
+            sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); sk.connect(("10.255.255.255", 1)); ip = sk.getsockname()[0]; sk.close()
+        except Exception:
+            ip = "<your-PC-address>"
+        print(f"On your phone or iPad (same Wi-Fi) open:  http://{ip}:{a.port}/")
     if not a.no_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

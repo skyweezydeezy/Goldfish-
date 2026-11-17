@@ -22,11 +22,16 @@
     if (t === 'odds' && S.deck) renderOdds();
   }
 
-  fetch('/api/status').then(r => r.json()).then(s => {
+  Source.init().then(st => {
     const el = $('#mirrorStatus');
-    if (s.ok) { el.textContent = `ScryMirror: ${s.names.toLocaleString()} card names${s.images ? '' : ' (no image folder!)'}`; el.className = 'status-pill ok'; el.title = s.root; }
-    else { el.textContent = 'ScryMirror not found'; el.className = 'status-pill bad'; el.title = s.error || ''; }
-  }).catch(() => { $('#mirrorStatus').textContent = 'server offline'; $('#mirrorStatus').className = 'status-pill bad'; });
+    if (st.mode === 'local') {
+      const i = st.info;
+      el.textContent = `ScryMirror: ${i.names.toLocaleString()} card names${i.images ? '' : ' (no image folder!)'}`; el.className = 'status-pill ok'; el.title = i.root;
+    } else {
+      el.textContent = st.info && st.info.error ? 'ScryMirror not found · using Scryfall live' : 'Cards: Scryfall (live)';
+      el.className = 'status-pill ok'; el.title = 'Card data and images load from Scryfall in your browser.';
+    }
+  });
 
   function opts() {
     const fmt = $('#optFormat').value;
@@ -72,7 +77,9 @@
   }
 
   const zoom = $('#zoom');
+  const canHover = matchMedia('(hover: hover)').matches;
   document.addEventListener('mouseover', e => {
+    if (!canHover) return;
     const m = e.target.closest('.mtg');
     if (!m || m.closest('.zoom') || m.dataset.uid == null) return;
     const card = getCard(m.dataset.uid); if (!card) return;
@@ -103,12 +110,18 @@
   async function loadDeck() {
     const text = $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
-    $('#loadDeck').disabled = true; $('#loadDeck').textContent = 'Resolving…';
+    const btn = $('#loadDeck');
+    btn.disabled = true; btn.textContent = 'Resolving…';
     try {
-      const r = await fetch('/api/resolve', { method: 'POST', body: JSON.stringify({ text }) }).then(r => r.json());
-      setDeck(r);
-    } catch (err) { toast('Could not reach the local server'); }
-    $('#loadDeck').disabled = false; $('#loadDeck').textContent = 'Load deck';
+      await Source.init();
+      const r = await Source.loadDeck(text, m => { btn.textContent = m; });
+      if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
+      else setDeck(r);
+    } catch (err) {
+      console.error(err);
+      $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
+    }
+    btn.disabled = false; btn.textContent = 'Load deck';
   }
 
   function setDeck(r) {
@@ -137,7 +150,7 @@
       const banned = S.deck.unique.filter(c => c.legal_commander && c.legal_commander !== 'legal' && c.legal_commander !== 'restricted');
       if (banned.length) add('warn', `Not commander-legal: ${banned.map(c => esc(c.name)).join(', ')}`);
     }
-    const noImg = S.deck.unique.filter(c => !(c.images || []).length);
+    const noImg = S.deck.unique.filter(c => !(c.images || []).length && !(c.remote_images || []).length);
     if (noImg.length) add('warn', `No local image for: ${noImg.map(c => esc(c.name)).join(', ')}`);
     renderDeck();
     renderCoverage();
@@ -537,19 +550,75 @@
     play(ev);
   }
 
+  // ---- touch: long-press and card viewer ----
+  const lightbox = $('#lightbox');
+  function showLightbox(card) {
+    if (!card) return;
+    lightbox.innerHTML = '';
+    const wrap = h('div', 'lb-inner');
+    const faces = h('div', 'lb-faces');
+    const n = Math.max(1, Math.min(2, (card.images || []).length || (card.remote_images || []).length));
+    for (let i = 0; i < n; i++) faces.appendChild(cardEl(card, { face: i }));
+    wrap.appendChild(faces);
+    if (card.a && card.a.coverage && card.a.coverage.length) {
+      const cov = h('div', 'lb-cov');
+      cov.appendChild(h('div', 'hint', 'How the engine reads this card'));
+      card.a.coverage.forEach(x => cov.appendChild(h('div', 'cl ' + x.status, esc(x.text))));
+      wrap.appendChild(cov);
+    }
+    wrap.appendChild(h('div', 'hint', 'Tap anywhere to close'));
+    lightbox.appendChild(wrap);
+    lightbox.classList.add('show');
+  }
+  lightbox.addEventListener('click', () => lightbox.classList.remove('show'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.remove('show'); });
+
+  let lp = null, suppressClick = false;
+  document.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;
+    const m = e.target.closest('.mtg');
+    if (!m || m.closest('#lightbox') || m.dataset.uid == null) return;
+    const me = lp = { m, x: e.clientX, y: e.clientY, fired: false };
+    me.t = setTimeout(() => {
+      me.fired = true;
+      if (navigator.vibrate) navigator.vibrate(15);
+      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(getCard(m.dataset.uid));
+    }, 480);
+  });
+  document.addEventListener('pointermove', e => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) { clearTimeout(lp.t); lp = null; } });
+  ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => {
+    if (!lp) return;
+    clearTimeout(lp.t);
+    if (lp.fired) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 450); }
+    lp = null;
+  }));
+  document.addEventListener('click', e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('contextmenu', e => { if (e.target.closest('.mtg') && !canHover) e.preventDefault(); });
+  // on touch screens, tapping a card anywhere except the table / odds picker opens the viewer
+  document.addEventListener('click', e => {
+    if (canHover) return;
+    const m = e.target.closest('.mtg');
+    if (!m || m.closest('.table, #oddsPicker, #lightbox') || m.dataset.uid == null) return;
+    showLightbox(getCard(m.dataset.uid));
+  });
+
   // context menu
   const ctx = $('#ctxMenu');
   document.addEventListener('click', () => { ctx.style.display = 'none'; });
   $('.table').addEventListener('contextmenu', e => {
     const m = e.target.closest('.mtg'); if (!m || !S.game || m.dataset.iid == null) return;
     e.preventDefault();
+    openCtx(m, e.clientX, e.clientY);
+  });
+  function openCtx(m, cx, cy) {
+    if (!S.game || m.dataset.iid == null) return;
     const g = S.game, iid = +m.dataset.iid;
     const zones = { hand: g.hand, battlefield: g.battlefield, graveyard: g.graveyard, exile: g.exile, command: g.command };
     let zone = null, obj = null;
     for (const [z, arr] of Object.entries(zones)) { const f = arr.find(x => x.iid === iid); if (f) { zone = z; obj = f; } }
     if (!obj) return;
     const inst = zone === 'battlefield' ? obj.inst : obj;
-    const items = [];
+    const items = [['🔍 View card', () => showLightbox(inst.card)]];
     const act = fn => () => { snap(); fn(); render(); };
     const move = (to, top) => act(() => {
       if (zone === 'battlefield') G.removePerm(g, obj); else zones[zone].splice(zones[zone].indexOf(obj), 1);
@@ -582,8 +651,8 @@
     ctx.innerHTML = '';
     items.forEach(([label, fn]) => { const b = h('button', '', label); b.addEventListener('click', ev => { ev.stopPropagation(); ctx.style.display = 'none'; fn(); }); ctx.appendChild(b); });
     ctx.style.display = 'block';
-    ctx.style.left = Math.min(e.clientX, innerWidth - 210) + 'px'; ctx.style.top = Math.max(8, Math.min(e.clientY, innerHeight - ctx.offsetHeight - 10)) + 'px';
-  });
+    ctx.style.left = Math.max(8, Math.min(cx, innerWidth - ctx.offsetWidth - 8)) + 'px'; ctx.style.top = Math.max(8, Math.min(cy, innerHeight - ctx.offsetHeight - 10)) + 'px';
+  }
 
   // ---- rendering with FLIP animation ----
   function render(first) {
@@ -824,6 +893,7 @@
     });
     // hover name -> zoom (reuse .mtg zoom by a proxy element)
     hm.querySelectorAll('.mtg-ref').forEach(s => {
+      s.addEventListener('click', () => { if (!canHover) showLightbox(getCard(s.dataset.uid)); });
       s.addEventListener('mouseenter', e => { const fake = cardEl(getCard(s.dataset.uid)); zoom.innerHTML = ''; const f = h('div', 'faces'); f.appendChild(fake); zoom.appendChild(f); zoom.classList.remove('two'); zoom.classList.add('show'); placeZoom(e); });
       s.addEventListener('mouseleave', () => zoom.classList.remove('show'));
     });

@@ -1117,6 +1117,7 @@
     });
     renderImpact(res.impact, nameB);
     renderOutliers(res.impact && res.impact.outliers, nameB);
+    renderPairs(res.impact && res.impact.pairs, nameB, res.impact && res.impact.n);
     $('#mmLog').innerHTML = '';
     if (res.errors) $('#mmInfo').textContent += ` · ${res.errors} games hit an error`;
   }
@@ -1155,6 +1156,19 @@
       group(out.quickWins, 'Your fastest wins', 'Cards you had early much more often:', 'Cards you rarely had early:', 'good') +
       group(out.quickLosses, 'Your fastest losses', 'Cards you had early more often (they may not help here):', 'Cards you were missing early:', 'warn');
     box.hidden = false;
+  }
+  // pairs of your cards that do much better, or much worse, together than apart (Suggest.matchPairs, run in the worker)
+  function renderPairs(pr, oppName, n) {
+    const box = $('#mmPairs');
+    if (!pr) { box.hidden = true; return; }
+    const pts = v => (v > 0 ? '+' : '') + (v * 100).toFixed(0) + ' points';
+    const li = x => `<li><b>${esc(x.a)}</b> + <b>${esc(x.b)}</b>: ${pts(x.synergy)} <span class="hint">(won ${pct(x.wrBoth)} of the ${x.games} games with both, ${pct(x.wrA)} with only the first, ${pct(x.wrB)} with only the second, ${pct(x.wrNeither)} with neither)</span></li>`;
+    let html = `<h3>Pairs against ${esc(oppName)}</h3><p class="hint">For every pair of your cards (${pr.tested.toLocaleString()} pairs), how much better or worse you do when you draw both than the two cards would do on their own, compared within games of similar length. So many pairs are tested that only very clear results are listed, and the list can change from run to run: a pair that shows up again when you rerun is the one to trust.</p>`;
+    if (pr.best.length) html += `<div class="sg good"><b>Better together</b><ul>${pr.best.map(li).join('')}</ul></div>`;
+    if (pr.worst.length) html += `<div class="sg warn"><b>Worse together</b><p>These may compete for the same job, or one may get in the other's way.</p><ul>${pr.worst.map(li).join('')}</ul></div>`;
+    if (!pr.best.length && !pr.worst.length) html += `<div class="sg"><b>No pair stands out yet</b><p>After ${(n || 0).toLocaleString()} matches no pair is clearly better or worse together. Pairs need many games: try 3,000 matches.</p></div>`;
+    else if ((n || 0) < 2000) html += `<p class="hint">With ${(n || 0).toLocaleString()} matches only the strongest pairs show up; 3,000 matches find more.</p>`;
+    box.innerHTML = html; box.hidden = false;
   }
   function showMirrorLog(smp) {
     const { opp, o } = mmState;

@@ -42,5 +42,29 @@ const so = Sg.matchOutliers(recs, deck);
 check('synthetic: the card in every fast win is the top "had early" card', so.quickWins && so.quickWins.more[0] && so.quickWins.more[0].name === deck.unique[u].name, so.quickWins && JSON.stringify(so.quickWins.more.map(x => x.name)));
 check('synthetic: four-land opening hands show up in the fast wins', so.quickWins.lands.z >= 2 && so.quickWins.lands.group > so.quickWins.lands.rest);
 
+// pairs
+const pr = imp.pairs;
+check('pairs: a short run still returns a pairs result', pr && typeof pr.tested === 'number' && Array.isArray(pr.best) && Array.isArray(pr.worst), pr && pr.tested);
+check('...every listed pair is beyond the cut-off and on the right side', pr.best.every(x => x.z >= pr.z && x.synergy > 0) && pr.worst.every(x => x.z <= -pr.z && x.synergy < 0));
+// synthetic: two cards that win only together, games of mixed length
+const keep = deck.unique.map(c => !(c.commander || (c.a.isLand && /Basic/.test(c.type_line || ''))));
+const ids = deck.unique.map((c, i) => i).filter(i => keep[i]);
+const A = ids[0], B = ids[1];
+let rs = 1; const rnd = () => (rs = (rs * 1103515245 + 12345) % 2147483648) / 2147483648;
+const syn = [];
+for (let i = 0; i < 2000; i++) {
+  const drawn = ids.filter(() => rnd() < 0.3).sort((a, b) => a - b);
+  const both = drawn.includes(A) && drawn.includes(B);
+  syn.push({ won: rnd() < (both ? 0.85 : 0.45) ? 1 : 0, turn: 6 + Math.floor(rnd() * 10), drawn });
+}
+const sp = Sg.matchPairs(deck, keep, syn);
+check('synthetic: thousands of pairs are tested', sp.tested > 1000, sp.tested);
+check('synthetic: a pair that wins together is the top "better together" pair', sp.best[0] && [sp.best[0].a, sp.best[0].b].sort().join() === [deck.unique[A].name, deck.unique[B].name].sort().join(), sp.best[0] && sp.best[0].a + ' + ' + sp.best[0].b);
+// shuffled wins: almost nothing should be flagged
+// (at the z 4 cut-off about 0.3 false alarms per run are expected with ~4,000 pairs)
+let flagged = 0;
+for (let t = 0; t < 6; t++) { const w = syn.map(() => rnd() < 0.5 ? 1 : 0); flagged += Sg.matchPairs(deck, keep, syn.map((x, i) => Object.assign({}, x, { won: w[i] }))).flagged; }
+check('random results flag almost no pairs (false alarms stay rare)', flagged <= 4, flagged + ' in 6 runs');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

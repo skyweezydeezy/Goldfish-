@@ -178,6 +178,19 @@
       <div class="row wrap" id="mmSamples"></div>
       <div id="mmLog" class="replay"></div>
     </div>
+    <div class="card-box" id="labBox">
+      <div class="box-head"><h2>Policy lab <span class="pill approx">beta</span></h2><span class="hint">Learn by trial and error: the engine plays the same games with each option and keeps the one that does better. What it learns is saved in this browser for this deck and used by the autopilot.</span></div>
+      <div class="row wrap">
+        <label>Choice <select id="plDecision"><option value="fetch">Fetch land timing</option></select></label>
+        <label>Test by <select id="plMode"><option value="goldfish">Goldfish (how early it wins)</option><option value="mirror">Mirror match (vs the opponent chosen above)</option></select></label>
+        <label>Games per option <input id="plN" type="number" min="50" max="3000" value="400"></label>
+        <button id="plRun" class="primary">Run the lab</button>
+        <div id="plProgress" class="progress"><div></div></div>
+      </div>
+      <div id="plInfo" class="hint"></div>
+      <div id="plOut"></div>
+      <div id="plSaved" class="hint"></div>
+    </div>
     <div class="card-box">
       <div class="box-head"><h2>Sample games</h2><span class="hint">Pick a game from the distribution and replay it turn by turn</span></div>
       <div class="row wrap" id="sampleButtons"></div>

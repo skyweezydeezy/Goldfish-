@@ -561,3 +561,10 @@ button.look-shop:hover { background: none; text-decoration: underline; }
 .look-shop.soon { color: var(--muted); }
 a.look-shop { text-decoration: none; font-weight: 650; } a.look-shop:hover { text-decoration: underline; }
 .look-shop-msg { min-height: 1.4em; margin: 10px 0 0; color: var(--ice); font-size: 13px; }
+
+/* policy lab */
+.labtable { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.labtable th, .labtable td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.labtable th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.labtable tr.best td { background: rgba(143,216,255,.07); }
+@media (max-width: 700px) { .labtable { display: block; overflow-x: auto; } }

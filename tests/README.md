@@ -26,6 +26,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | confidant-shehulk | Enlightened Confidant surveil, casting a modal back face |
 | scry | Scry, Viscera Seer, Path of Ancestry |
 | spare-foods | Order in which spare Foods are spent |
+| policy | Policies and trial-and-error learning: holding fetch lands, comparePolicies, the Policy lab engine |
 | fetchlands | Fetch lands: cracking, life, graveyard, choosing the land, types, shuffle, landfall twice |
 | second-breakfast | The Frodo + Sam Bracket 4 list: death triggers, outlets, Skullclamp, Sheoldred, Felidar, Reservoir, Necropotence, Sylvan Library, Deluge, Persist, Urborg... |
 | spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |

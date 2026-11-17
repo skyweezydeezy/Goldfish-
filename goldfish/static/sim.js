@@ -255,6 +255,7 @@
     [/^whenever you play a land,?\s*/i, ['landfall']],
     [/^whenever you cast (?:a|an|your first) ?([a-z ,]*?)\s*spell[^,]*,\s*/i, ['cast']],
     [/^whenever (another|a|an|one or more other|one or more) (nontoken )?([a-z ]*?)\s*(creatures?|permanents?|artifacts?|enchantments?)(?: you control)? enters?(?: the battlefield)?(?: under your control)?,?\s*/i, ['permEtb']],
+    [/^whenever (another) (nontoken )?(creature or planeswalker) you control enters?(?: the battlefield)?,?\s*/i, ['permEtb']],       // Liliana the Faultless
     [/^whenever (another|a|an|one or more other|one or more) (nontoken )?([A-Z][a-z]+)s? you control enters?(?: the battlefield)?,?\s*/, ['permEtb']],
     [/^at the beginning of (?:your|each) upkeep,?\s*/i, ['upkeep']],
     [/^at the beginning of (?:your|each) draw step,?\s*/i, ['upkeep']],
@@ -969,13 +970,7 @@
     return best;
   }
 
-  function enterWithTriggers(g, inst, o, ev) {
-    o = o || {};
-    const perm = enter(g, inst, o);
-    const a = inst.card.a;
-    if (a.isAura && a.attachBonus) { const target = bestCreature(g); if (target) { perm.attachedTo = target.iid; touch(g); } }
-    if (o.silent) return perm;
-    a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) fire(g, t, perm, ev, perm); });
+  function fireEnterWatchers(g, perm, ev) {
     const watchers = bfInfo(g).watchers.slice();                   // only permanents that care about things entering (big token boards stay fast)
     for (const q of watchers) {
       for (const t of q.card.a.triggers) {
@@ -985,11 +980,21 @@
           if (t.other && q === perm) continue;
           if (t.nontoken && perm.token) continue;
           const f = t.filter.toLowerCase();
-          const ok = /permanent/.test(f) ? true : /artifact/.test(f) ? perm.card.a.isArtifact : /enchantment/.test(f) ? perm.card.a.isEnchantment : isCreaturePerm(perm) && matchesFilter(perm.card, f);
+          const ok = /creature or planeswalker/.test(f) ? (isCreaturePerm(perm) || perm.card.a.isPlaneswalker) : /permanent/.test(f) ? true : /artifact/.test(f) ? perm.card.a.isArtifact : /enchantment/.test(f) ? perm.card.a.isEnchantment : isCreaturePerm(perm) && matchesFilter(perm.card, f);
           if (ok) fire(g, t, q, ev, perm);
         }
       }
     }
+  }
+
+  function enterWithTriggers(g, inst, o, ev) {
+    o = o || {};
+    const perm = enter(g, inst, o);
+    const a = inst.card.a;
+    if (a.isAura && a.attachBonus) { const target = bestCreature(g); if (target) { perm.attachedTo = target.iid; touch(g); } }
+    if (o.silent) return perm;
+    a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) fire(g, t, perm, ev, perm); });
+    fireEnterWatchers(g, perm, ev);
     return perm;
   }
 
@@ -1196,6 +1201,7 @@
     p.produce = ba.produce; p.sacMana = ba.sacMana; p.asLand = ba.isLand;
     p.loyalty = ba.loyalty * (ba.isPlaneswalker ? counterMult(g) : 1);
     touch(g);
+    fireEnterWatchers(g, p, ev);                                        // it returned to the battlefield: "whenever a planeswalker enters" triggers (Liliana)
   }
 
   // Extort: every time you cast a spell, each Extort permanent owes a payment of {W/B}. It is paid from mana left over after casting

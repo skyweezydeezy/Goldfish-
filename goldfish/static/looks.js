@@ -1,0 +1,167 @@
+/* Playmats and sleeves: how the table and your cards look. Purely cosmetic; the engine never sees any of this.
+ *
+ * Card images are never covered or changed (Scryfall's rules): a sleeve is a coloured edge around the card
+ * and the art on card backs. A playmat is the background of the Goldfish Table and the Opening Hands stage.
+ *
+ * Adding a design, including a partner's licensed art, needs no code changes: add an entry below.
+ *   mats:    { id, name, css }            CSS background (gradients), or
+ *            { id, name, image }          an image file in this folder, e.g. 'mats/partner-dragon.jpg'
+ *   sleeves: { id, name, color }          the sleeve colour; the card back is drawn from it, or
+ *            { id, name, color, back }    'back' = an image file for the card back
+ *   Optional on either: partner: { name: 'Brand', url: 'https://...' }  shows a "Shop at Brand" link
+ *   under the design. Only add a brand's art or name with that brand's written permission.
+ */
+(function () {
+  'use strict';
+
+  const MATS = [
+    { id: 'frozen', name: 'Frozen pond', css: '' },   // '' = the built-in look
+    { id: 'felt', name: 'Card-room felt', css: 'radial-gradient(ellipse at 50% 0%, #2f7048 0%, #1c4a2d 50%, #0f2c1b 100%)' },
+    { id: 'crimson', name: 'Crimson', css: 'radial-gradient(ellipse at 50% 0%, #7a2433 0%, #4a1520 50%, #250a10 100%)' },
+    { id: 'royal', name: 'Royal violet', css: 'radial-gradient(ellipse at 50% 0%, #563585 0%, #321e55 50%, #180f2e 100%)' },
+    { id: 'slate', name: 'Slate', css: 'repeating-linear-gradient(115deg, rgba(255,255,255,.025) 0 2px, transparent 2px 9px), radial-gradient(ellipse at 50% 0%, #46505a 0%, #2a3038 50%, #15181c 100%)' },
+    { id: 'dusk', name: 'Dusk', css: 'radial-gradient(ellipse at 80% 0%, rgba(255,140,90,.35), transparent 45%), linear-gradient(165deg, #5b2a4c 0%, #2b2152 55%, #0e1a33 100%)' },
+    { id: 'tide', name: 'Tide pool', css: 'repeating-radial-gradient(circle at 30% 120%, rgba(143,216,255,.05) 0 3px, transparent 3px 26px), radial-gradient(ellipse at 50% 0%, #136a72 0%, #0b4249 50%, #062227 100%)' },
+    { id: 'stars', name: 'Starfield', css: 'radial-gradient(1.5px 1.5px at 20% 30%, #fff8, transparent), radial-gradient(1px 1px at 70% 60%, #fff7, transparent), radial-gradient(1.5px 1.5px at 40% 80%, #cdf6, transparent), radial-gradient(1px 1px at 85% 20%, #fff6, transparent), radial-gradient(ellipse at 50% 0%, #1d2550 0%, #0f1430 55%, #070a18 100%)', size: '180px 180px, 230px 230px, 260px 260px, 140px 140px, cover' },
+    { id: 'sand', name: 'Desert', css: 'radial-gradient(ellipse at 50% 0%, #8a6a3e 0%, #5c4325 50%, #2d200f 100%)' },
+  ];
+
+  const SLEEVES = [
+    { id: 'none', name: 'No sleeves', color: '' },   // bare cards, the built-in frozen card back
+    { id: 'ice', name: 'Ice blue', color: '#4aa6e0' },
+    { id: 'black', name: 'Matte black', color: '#1d1f22' },
+    { id: 'white', name: 'Pearl white', color: '#e9edf0' },
+    { id: 'red', name: 'Crimson', color: '#c0263a' },
+    { id: 'green', name: 'Emerald', color: '#1f9d55' },
+    { id: 'purple', name: 'Royal purple', color: '#7b4fc9' },
+    { id: 'gold', name: 'Gold', color: '#d4a72c' },
+    { id: 'orange', name: 'Orange', color: '#e8772a' },
+    { id: 'pink', name: 'Pink', color: '#e46aa8' },
+    { id: 'sapphire', name: 'Sapphire', color: '#2449b8' },
+  ];
+
+  const KEY = 'isf_look', IMG_KEY = 'isf_mat_img';
+  const $ = s => document.querySelector(s);
+  const root = document.documentElement;
+
+  const load = () => { try { return Object.assign({ mat: 'frozen', sleeve: 'none' }, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return { mat: 'frozen', sleeve: 'none' }; } };
+  let look = load();
+
+  // hex colour helpers for drawing a sleeve back from one colour
+  const rgb = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const mix = (hex, to, t) => { const a = rgb(hex), b = to === 'w' ? [255, 255, 255] : [0, 0, 0]; return 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')'; };
+
+  function matBackground(m) {
+    if (!m) return null;
+    if (m.id === 'custom') {
+      const img = localStorage.getItem(IMG_KEY);
+      return img ? { bg: `linear-gradient(rgba(0,0,0,.28), rgba(0,0,0,.28)), url("${img}")`, size: 'cover' } : null;
+    }
+    if (m.image) return { bg: `linear-gradient(rgba(0,0,0,.2), rgba(0,0,0,.2)), url("${m.image}")`, size: 'cover' };
+    return m.css ? { bg: m.css, size: m.size || 'cover' } : null;
+  }
+
+  function sleeveBack(s) {
+    if (s.back) return `url("${s.back}") center / cover`;
+    const c = s.color;
+    return `radial-gradient(ellipse at 50% 50%, ${mix(c, 'w', .55)} 0 13%, ${mix(c, 'w', .15)} 14% 24%, transparent 25%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 6px, transparent 6px 12px),
+      linear-gradient(160deg, ${mix(c, 'w', .18)} 0%, ${c} 45%, ${mix(c, 'b', .45)} 100%)`;
+  }
+
+  function apply() {
+    const m = MATS.find(x => x.id === look.mat) || (look.mat === 'custom' ? { id: 'custom' } : null);
+    const mb = matBackground(m);
+    if (mb) { root.style.setProperty('--mat', mb.bg); root.style.setProperty('--mat-size', mb.size); }
+    else { root.style.removeProperty('--mat'); root.style.removeProperty('--mat-size'); }
+    const s = SLEEVES.find(x => x.id === look.sleeve);
+    const on = !!(s && s.color);
+    root.classList.toggle('sleeved', on);
+    if (on) {
+      root.style.setProperty('--sleeve', s.color);
+      root.style.setProperty('--sleeve-dark', mix(s.color, 'b', .55));
+      root.style.setProperty('--sleeve-mid', mix(s.color, 'b', .3));
+      root.style.setProperty('--sleeve-back', sleeveBack(s));
+    } else ['--sleeve', '--sleeve-dark', '--sleeve-mid', '--sleeve-back'].forEach(p => root.style.removeProperty(p));
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(look)); } catch (e) { /* storage full or blocked: the look still applies for this visit */ }
+    apply(); render();
+  }
+
+  // ---- picker ----
+  const modal = document.createElement('div');
+  modal.id = 'lookPicker'; modal.className = 'modal'; modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-labelledby', 'lkTitle');
+  modal.innerHTML = `<div class="modal-card look-card">
+    <div class="modal-head"><h2 id="lkTitle">Playmat &amp; sleeves</h2><button id="lkClose" class="ghost">Done</button></div>
+    <h3>Playmat</h3><div id="lkMats" class="look-grid"></div>
+    <div class="row wrap look-upload"><button id="lkUpload" class="ghost">Use my own playmat image…</button><input id="lkFile" type="file" accept="image/*" hidden><span id="lkMsg" class="hint"></span></div>
+    <h3>Sleeves</h3><div id="lkSleeves" class="look-grid sleeves"></div>
+    <p class="hint">Saved in this browser only. Card images are always shown whole; sleeves only colour the edge and the card backs.</p>
+  </div>`;
+  document.body.appendChild(modal);
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const partnerLink = p => p && p.url ? `<a class="look-shop" href="${esc(p.url)}" target="_blank" rel="noopener sponsored">Shop at ${esc(p.name)} →</a>` : '';
+
+  function render() {
+    const mats = $('#lkMats'); mats.innerHTML = '';
+    const list = MATS.slice(); if (localStorage.getItem(IMG_KEY)) list.push({ id: 'custom', name: 'My playmat' });
+    list.forEach(m => {
+      const mb = matBackground(m);
+      const b = document.createElement('div'); b.className = 'look-opt' + (look.mat === m.id ? ' on' : '');
+      b.innerHTML = `<button class="look-sw mat" data-mat="${esc(m.id)}" aria-pressed="${look.mat === m.id}" title="${esc(m.name)}"></button><span>${esc(m.name)}</span>${partnerLink(m.partner)}`;
+      const sw = b.firstChild;
+      if (mb) { sw.style.background = mb.bg; sw.style.backgroundSize = mb.size; sw.style.backgroundPosition = 'center'; } else sw.classList.add('default-mat');
+      sw.addEventListener('click', () => { look.mat = m.id; save(); });
+      mats.appendChild(b);
+    });
+    const sl = $('#lkSleeves'); sl.innerHTML = '';
+    SLEEVES.forEach(s => {
+      const b = document.createElement('div'); b.className = 'look-opt' + (look.sleeve === s.id ? ' on' : '');
+      b.innerHTML = `<button class="look-sw sleeve" data-sleeve="${esc(s.id)}" aria-pressed="${look.sleeve === s.id}" title="${esc(s.name)}"></button><span>${esc(s.name)}</span>${partnerLink(s.partner)}`;
+      const sw = b.firstChild;
+      if (s.color) { sw.style.background = sleeveBack(s); sw.style.borderColor = s.color; } else sw.classList.add('bare');
+      sw.addEventListener('click', () => { look.sleeve = s.id; save(); });
+      sl.appendChild(b);
+    });
+  }
+
+  // own playmat: shrink it so it fits in browser storage, keep it on this device only
+  function useImage(file) {
+    const msg = $('#lkMsg');
+    if (!file || !/^image\//.test(file.type)) { msg.textContent = 'That file is not an image.'; return; }
+    msg.textContent = 'Loading…';
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 1600, k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let data = c.toDataURL('image/jpeg', 0.82);
+      try { localStorage.setItem(IMG_KEY, data); }
+      catch (e) {
+        try { data = c.toDataURL('image/jpeg', 0.6); localStorage.setItem(IMG_KEY, data); }
+        catch (e2) { msg.textContent = 'That image is too big to save in this browser. Try a smaller one.'; return; }
+      }
+      msg.textContent = 'Your playmat is saved on this device.';
+      look.mat = 'custom'; save();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); msg.textContent = 'Could not read that image.'; };
+    img.src = url;
+  }
+
+  function open() { render(); $('#lkMsg').textContent = ''; modal.classList.add('show'); document.body.classList.add('modal-open'); }
+  function close() { modal.classList.remove('show'); document.body.classList.remove('modal-open'); }
+  $('#lkClose').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('show')) close(); });
+  $('#lkUpload').addEventListener('click', () => $('#lkFile').click());
+  $('#lkFile').addEventListener('change', e => { useImage(e.target.files[0]); e.target.value = ''; });
+  document.querySelectorAll('.open-looks').forEach(b => b.addEventListener('click', open));
+
+  apply();
+  window.__isfLooks = { MATS, SLEEVES, get: () => Object.assign({}, look), set: (o) => { Object.assign(look, o); save(); }, open, close };
+})();

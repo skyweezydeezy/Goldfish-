@@ -82,6 +82,8 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 - **Combat:** attacks with everything that can, including haste, double strike, vigilance and defender. Tracks 21 commander damage as a win in Commander.
 - **Mulligans:** London mulligan with a free first mulligan in Commander and a keep range you set.
 
+**Playmat & sleeves:** the 🎨 button on the Goldfish Table and Opening Hands tabs picks a playmat (or your own image) and a sleeve colour. It is saved in your browser. Card images are never covered: sleeves only colour the card edge and the card backs. To add a design, add an entry to the list at the top of `goldfish/static/looks.js` (it can take an image file and a shop link for a licensed partner).
+
 **Manual tools** on the Goldfish Table handle anything the engine doesn't:
 - **+ Token** creates any token, including the ones your deck makes.
 - Right-click a card to add or remove +1/+1 counters, change loyalty, sacrifice it, toggle summoning sickness, attach it, or move it between zones.

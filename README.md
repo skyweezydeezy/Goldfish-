@@ -5,7 +5,7 @@ Paste a decklist and watch it goldfish. It uses your own card images from **Scry
 ## Run it (Windows)
 
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
-2. Double-click `goldfish\start.bat`. Your browser opens at <http://127.0.0.1:8765>.
+2. Double-click `start.bat` (in the top folder, or the one inside `goldfish`). Keep the whole downloaded folder together; the launcher needs `server.py` and `static` beside it. Your browser opens at <http://127.0.0.1:8765>.
 
 It reads `%USERPROFILE%\Documents\ScryMirror` by default:
 

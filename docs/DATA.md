@@ -35,6 +35,8 @@ That is enough to make a first set of suggestions **without collecting anything 
 ## 3. Suggestion ideas, from least to most data needed
 
 ### Tier A: one deck, one run, on the device (no new data)
+**Status: built.** The rules are in `goldfish/static/suggest.js` and tested in `tests/engine/suggest.test.js`, and they show in the **Suggestions** box on the Simulation tab. Color screw is not built yet, because the simulation result does not record why a card stayed in hand.
+
 Rules applied to the results of the current run:
 - **Dead cards:** a card that is often drawn but rarely cast ("drawn, never cast in 40% of games") is probably too expensive or missing its enablers.
 - **Mana:** if land drops are missed often by turn 4, suggest more lands or cheap ramp. If the median mana floats well above what gets spent, suggest fewer lands or more mana sinks.
@@ -69,4 +71,4 @@ This changes what the app is:
 
 | Date | Decision | Why |
 |---|---|---|
-| | | |
+| 2026-11-17 | Build tier A first, on the device only | It uses numbers the simulation already makes and keeps the "nothing is uploaded" promise. |

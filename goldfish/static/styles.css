@@ -502,3 +502,11 @@ button.danger:hover { background: rgba(208,59,59,.22); }
 /* ---------- table: keep the hand right under the lands, not pushed below the fold by the log's height ---------- */
 .table { align-items: start; }
 .table-main { min-height: 0; }
+
+/* ---------- tapped cards are turned sideways: give them room so they don't cover their neighbours ---------- */
+.bf-row .stackgroup:has(> .mtg.tapped) { padding: 0 14px; }
+.bf-row.lands .stackgroup:has(> .mtg.tapped) { padding: 0 12px; }
+@media (max-width: 900px) {
+  .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0 11px; }
+  .bf-row.lands .stackgroup:has(> .mtg.tapped) { padding: 0 9px; }
+}

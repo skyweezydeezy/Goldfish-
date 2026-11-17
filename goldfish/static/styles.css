@@ -449,3 +449,11 @@ h2 { color: var(--ice-2); }
 
 /* deck buttons: stay on one line, wrap as a row on narrow screens */
 .deck-actions button { white-space: nowrap; }
+
+/* ---------- why-a-line-isn't-simulated tags ---------- */
+.pill { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; padding: 1px 7px; margin-right: 6px; border-radius: 99px; vertical-align: 1px; white-space: nowrap; }
+.pill.dev { background: rgba(208,59,59,.22); color: #ffb0b0; box-shadow: inset 0 0 0 1px rgba(208,59,59,.45); }
+.pill.opp { background: rgba(143,216,255,.14); color: var(--ice); box-shadow: inset 0 0 0 1px rgba(143,216,255,.35); }
+.pill.solo { background: rgba(127,155,176,.16); color: var(--text-secondary); box-shadow: inset 0 0 0 1px rgba(127,155,176,.35); }
+.pill.approx { background: rgba(250,178,25,.18); color: #f7cf6f; box-shadow: inset 0 0 0 1px rgba(250,178,25,.4); }
+.cov-card .lines .neutral { color: var(--text-secondary); }

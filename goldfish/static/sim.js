@@ -223,9 +223,11 @@
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
     for (const raw of lines) {
+      if (/^\/\/$/.test(raw)) continue;            // the divider between two halves of a split card, not rules text
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (/^partner with /i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
       const lower = line.toLowerCase();
       let m;
       const parts = lower.replace(/\.$/, '').split(/,\s*/);
@@ -300,6 +302,22 @@
     a.haste = kwSet.has('haste');
     a.doubleStrike = kwSet.has('double strike');
     a.defender = kwSet.has('defender');
+    // Say WHY a line is not simulated. Each line ends up with one tag:
+    //   opp    - only matters against an opponent (removal, counters, "opponents can't...", protection, blocking)
+    //   solo   - does nothing when you play alone (lifegain, scry, the partner clause...)
+    //   dev    - a real solo effect that is not built yet (in development)
+    //   approx - simulated only roughly
+    const HURTS_OPP = /\bopponents?\b[^.]*\bloses?\b|\bdeals? [^.]*damage to (each|target|any)/i;   // damage/drain to the goldfish DOES matter
+    const OPP_ONLY = /\bopponents?\b|\bcounter (target|that)\b|\b(destroy|exile) (target|all|each)\b|\bcan't (block|be blocked|attack|be countered|be targeted|cast)\b|\bhexproof\b|\bindestructible\b|\bprotection from\b|\bphases? out\b|\btap target\b|\bfights?\b|\bprevent\b|\bgoad\b/i;
+    for (const rec of a.coverage) {
+      const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
+      if (rec.status === 'ignored') {
+        if (/^exile ~\.?$/i.test(t)) { rec.status = 'neutral'; rec.tag = 'solo'; }
+        else if (oppOnly) { rec.status = 'neutral'; rec.tag = 'opp'; }
+        else rec.tag = 'dev';
+      } else if (rec.status === 'neutral') rec.tag = rec.tag || (oppOnly ? 'opp' : 'solo');
+      else if (rec.status === 'partial') rec.tag = 'approx';
+    }
     const total = a.coverage.length;
     const bad = a.coverage.filter(c => c.status === 'ignored' || c.status === 'partial').length;
     a.coverageLevel = !total || bad === 0 ? 'ok' : bad === total ? 'none' : 'partial';
@@ -355,7 +373,9 @@
       if (colors.size === 0) colors.add('C');
       if (colors.has('C') && colors.size > 1 && !/\{C\}/.test(text)) colors.delete('C');
       a.produce = { colors, amount };
-      a.entersTapped = (/enters( the battlefield)? tapped/i.test(text) && !/unless|you may pay|if you don't|if you control two or fewer/i.test(text)) || (a.fetch && /tapped/i.test(lower));
+      a.entersTapped = (/enters( the battlefield)? tapped/i.test(text) && !/unless|you may pay|if you don't|if you control two or fewer/i.test(text)) || (a.fetch && /tapped/i.test(lower))
+        || /enters( the battlefield)? tapped unless you have two or more opponents/i.test(text);   // solo goldfish = one opponent, so it enters tapped
+      a.coverage.forEach(c => { if (/two or more opponents/i.test(c.text)) { c.status = 'ok'; c.tag = null; } });
       a.triggers = a.triggers.filter(t => !t.fx.every(f => f.type === 'ramp'));
       a.coverageLevel = a.coverage.some(c => c.status === 'ignored') ? 'partial' : 'ok';
     } else if (a.isPermanent) {

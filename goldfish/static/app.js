@@ -103,6 +103,13 @@
     zoom.style.left = x + 'px'; zoom.style.top = y + 'px';
   }
 
+  // Every rules line that is not simulated says why: it needs an opponent, does nothing solo, or is still in development.
+  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated' };
+  const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly' };
+  function pillHtml(x) {
+    if (x.status === 'ok' || !x.tag) return '';
+    return `<span class="pill ${x.tag}" title="${esc(TAG_HELP[x.tag] || '')}">${TAG_LABEL[x.tag] || ''}</span> `;
+  }
   function getCard(uid) { if (!S.deck) return null; return String(uid).startsWith('t:') ? S.deck.tokenCache[uid] : S.deck.unique[+uid]; }
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
@@ -225,7 +232,7 @@
     const list = S.deck.unique.filter(c => !(c.a.isLand && /Basic/.test(c.type_line)));
     let ok = 0, part = 0, none = 0;
     list.forEach(c => { const l = c.a.coverageLevel; if (l === 'ok') ok++; else if (l === 'partial') part++; else none++; });
-    $('#covSummary').textContent = `${ok} fully simulated · ${part} partly · ${none} not at all (of ${list.length} non-basic cards)`;
+    $('#covSummary').textContent = `${ok} fully understood · ${part} partly in development · ${none} in development (of ${list.length} non-basic cards)`;
     list.sort((a, b) => ({ none: 0, partial: 1, ok: 2 }[a.a.coverageLevel] - { none: 0, partial: 1, ok: 2 }[b.a.coverageLevel]) || a.name.localeCompare(b.name))
       .filter(c => !only || c.a.coverageLevel !== 'ok')
       .forEach(c => {
@@ -234,7 +241,7 @@
         const lines = h('div', 'lines');
         lines.appendChild(h('b', '', esc(c.name)));
         if (!c.a.coverage.length) lines.appendChild(h('div', 'ok', 'No rules text (vanilla).'));
-        c.a.coverage.forEach(x => lines.appendChild(h('div', x.status, esc(x.text))));
+        c.a.coverage.forEach(x => lines.appendChild(h('div', x.status, pillHtml(x) + esc(x.text))));
         d.appendChild(lines);
         box.appendChild(d);
       });
@@ -636,7 +643,7 @@
     if (card.a && card.a.coverage && card.a.coverage.length) {
       const cov = h('div', 'lb-cov');
       cov.appendChild(h('div', 'hint', 'How the engine reads this card'));
-      card.a.coverage.forEach(x => cov.appendChild(h('div', 'cl ' + x.status, esc(x.text))));
+      card.a.coverage.forEach(x => cov.appendChild(h('div', 'cl ' + x.status, pillHtml(x) + esc(x.text))));
       wrap.appendChild(cov);
     }
     wrap.appendChild(h('div', 'hint', 'Tap anywhere to close'));

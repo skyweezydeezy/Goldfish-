@@ -162,6 +162,21 @@
       <div class="card-box"><div class="box-head"><h2>Total damage dealt by turn</h2><span class="hint">Median, shaded 10th–90th percentile</span></div><div id="chartDamage" class="chart"></div></div>
       <div class="card-box"><div class="box-head"><h2>Board power by turn</h2><span class="hint">Total power on your side at end of turn</span></div><div id="chartPower" class="chart"></div></div>
     </div>
+    <div class="card-box" id="mirrorBox">
+      <div class="box-head"><h2>Mirror match <span class="pill approx">beta</span></h2><span class="hint">Your deck plays another deck, or itself. Both sides use the same autopilot: attacks, blocks, life totals, and the first player to 0 life (or 21 commander damage) loses.</span></div>
+      <div class="row wrap">
+        <label>Opponent <select id="mmOpp"><option value="">This deck (mirror)</option></select></label>
+        <label>Matches <input id="mmN" type="number" min="20" max="3000" value="400"></label>
+        <label>Max rounds <input id="mmT" type="number" min="5" max="40" value="20"></label>
+        <button id="mmRun" class="primary">Run mirror match</button>
+        <div id="mmProgress" class="progress"><div></div></div>
+      </div>
+      <div id="mmInfo" class="hint"></div>
+      <div id="mmTiles" class="tiles"></div>
+      <div id="mmBars" class="mmbars"></div>
+      <div class="row wrap" id="mmSamples"></div>
+      <div id="mmLog" class="replay"></div>
+    </div>
     <div class="card-box">
       <div class="box-head"><h2>Sample games</h2><span class="hint">Pick a game from the distribution and replay it turn by turn</span></div>
       <div class="row wrap" id="sampleButtons"></div>

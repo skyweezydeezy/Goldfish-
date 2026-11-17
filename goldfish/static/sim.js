@@ -287,7 +287,7 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
@@ -1062,7 +1062,7 @@
     if (amount > 0 && g.depth > 18 && g.killTurn == null) {
       // A trigger loop that keeps feeding itself with a non-zero amount (Exquisite Blood + Sanguine Bond) never ends: the goldfish is drained.
       ev.push({ type: 'note', text: `Infinite loop (${source ? source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null });
-      g.damage = Math.max(g.damage, g.opts.oppLife); g.infinite = true; checkKill(g, ev);
+      g.damage = Math.max(g.damage, g.opts.oppLife); if (g.opp) g.opp.life = 0; g.infinite = true; checkKill(g, ev);
     } else if (g.depth <= 25) {
       const prevThat = g.thatMuch; g.thatMuch = amount;
       let fx = trig.fx;
@@ -1079,14 +1079,29 @@
     g.depth--;
   }
 
+  // ---- mirror match links (g.opp is the other player's game; goldfish games have none) ----
+  function matchOver(g) { return !!(g.match && g.match.winner != null); }
+  function setWinner(g, ev, why) {
+    if (!g.match || g.match.winner != null) return;
+    g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn;
+    ev.push({ type: 'kill', cmdr: why === 'commander', mirror: true });
+  }
+  function checkDeath(g, ev) { if (g.opp && g.life <= 0) setWinner(g.opp, ev || [], 'life'); }          // you lost your last life point: the other player wins
+  function oppLifeLeft(g) { return g.opp ? g.opp.life : g.opts.oppLife - g.damage; }
+  function dealToOpp(g, n) { g.damage += n; if (g.opp) g.opp.life -= n; }
   function checkKill(g, ev) {
     if (g.killTurn != null) return;
+    if (g.opp) {
+      const ck = g.opts.cmdrDamage !== false && Object.values(g.cmdrDamage).some(v => v >= 21);
+      if (g.opp.life <= 0) setWinner(g, ev, 'life'); else if (ck) setWinner(g, ev, 'commander');
+      return;
+    }
     const cmdrKill = g.opts.cmdrDamage !== false && Object.keys(g.cmdrDamage).length && Object.values(g.cmdrDamage).some(v => v >= 21);
     if (g.damage >= g.opts.oppLife || cmdrKill) { g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: !!cmdrKill && g.damage < g.opts.oppLife }); }
   }
   function damageOpp(g, n, ev, source) {
     if (!(n > 0)) return;
-    g.damage += n;
+    dealToOpp(g, n);
     ev.push({ type: 'damage', n, source, total: g.damage });
     checkKill(g, ev);
     oppLostLife(g, n, ev);
@@ -1212,7 +1227,7 @@
           ev.push({ type: 'note', text: `Destroyed ${dead.length} creature${dead.length === 1 ? '' : 's'} with power ${f.minPower} or greater`, source });
           break;
         }
-        case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); break;
+        case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); checkDeath(g, ev); break;
         case 'tutor': tutor(g, f, ev, source); break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
         case 'counters': {
@@ -1621,7 +1636,7 @@
         if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
         if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
         let v = fxValue(g, ab.fx) + c * 0.6;
-        if (ab.fx.some(f => f.n === 'GYCREATURES') && g.damage + g.graveyard.filter(i => i.card.a.isCreature).length >= g.opts.oppLife) v += 1000;         // Grist's -5 as the finisher
+        if (ab.fx.some(f => f.n === 'GYCREATURES') && g.graveyard.filter(i => i.card.a.isCreature).length >= oppLifeLeft(g)) v += 1000;         // Grist's -5 as the finisher
         if (v > bs) { bs = v; best = ab; }
       }
       p.pwUsed = g.turn;
@@ -1756,7 +1771,10 @@
   function canPlayLand(g) { return g.landsPlayedThisTurn < landsAllowed(g) && g.hand.some(c => c.card.a.isLand || c.card.a.mdfcLand); }
 
   function cloneState(g) {
-    return Object.assign({}, g, {
+    // a dry run must never touch the other player: give the copy its own stand-in opponent and match record
+    const m2 = g.match ? Object.assign({}, g.match) : undefined;
+    const opp2 = g.opp ? Object.assign({}, g.opp, { match: m2, opp: null }) : undefined;
+    return Object.assign({}, g, { match: m2, opp: opp2, 
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
@@ -1848,7 +1866,8 @@
     eachTrigger(g, 'combat', ev);
     let phases = 1;
     for (let ph = 0; ph < phases && ph < 6; ph++) {
-      const attackers = g.battlefield.filter(p => canAttack(g, p));
+      let attackers = g.battlefield.filter(p => canAttack(g, p));
+      if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
       if (!attackers.length) break;
       attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) p.tapped = true; p.attacking = true; });
       ev.push({ type: 'declare', attackers });
@@ -1860,9 +1879,10 @@
       // The Ring, level 2: "whenever your Ring-bearer attacks, draw a card, then discard a card"
       let rb = ringBearer(g);
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
-      let dmg = 0;
-      const hitters = [];
-      for (const p of attackers) {
+      let dmg = 0, vsLifelink = 0;
+      let hitters = [];
+      if (g.opp) { const r = resolveCombatVs(g, attackers, ev); dmg = r.dmg; hitters = r.hitters; vsLifelink = r.lifelink; }
+      else for (const p of attackers) {
         if (!g.battlefield.includes(p)) continue;
         const pw = Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1);
         if (pw <= 0) continue;
@@ -1871,11 +1891,11 @@
         if (p.card.commander) g.cmdrDamage[p.iid] = (g.cmdrDamage[p.iid] || 0) + pw;
       }
       if (dmg) {
-        g.damage += dmg;
+        dealToOpp(g, dmg);
         ev.push({ type: 'attack', attackers: hitters, dmg, total: g.damage });
         checkKill(g, ev);
         oppLostLife(g, dmg, ev);                                         // Exquisite Blood: combat damage is life loss too
-        const lifelink = hitters.reduce((s, p) => s + (hasKw(g, p, 'lifelink') ? Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1) : 0), 0);
+        const lifelink = g.opp ? 0 : hitters.reduce((s, p) => s + (hasKw(g, p, 'lifelink') ? Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1) : 0), 0);
         if (lifelink > 0 && g.killTurn == null) gainLife(g, lifelink, ev, null);
         // The Ring, level 4: "whenever your Ring-bearer deals combat damage to a player, each opponent loses 3 life"
         rb = ringBearer(g);
@@ -1889,7 +1909,9 @@
           else hitters.filter(h => matchesFilter(h.card, t.who.replace(/^a /, '').replace(/ you control$/, ''))).forEach(h => fire(g, t, q, ev, h));
         }
       }
+      if (vsLifelink > 0 && !matchOver(g)) gainLife(g, vsLifelink, ev, null);
       attackers.forEach(p => { p.attacking = false; });
+      if (matchOver(g)) break;
       if (g.extraCombats > 0) { g.extraCombats--; phases++; }
     }
     return ev;
@@ -2007,6 +2029,211 @@
     };
   }
 
+  // ======================= Mirror match =======================
+  // Two full games run side by side, linked through g.opp: damage and life loss hit the other player's life, creatures block each other,
+  // and the first player to reach 0 life (or 21 commander damage) loses. Each side is played by the same autopilot.
+  function linkMatch(a, b) { const m = { winner: null, reason: null, turn: null }; a.opp = b; b.opp = a; a.pid = 0; b.pid = 1; a.match = b.match = m; return m; }
+
+  const hasFirst = (g, p) => hasKw(g, p, 'first strike') || hasKw(g, p, 'double strike');
+  const deathtouch = (g, p) => hasKw(g, p, 'deathtouch');
+  function creatureValue(g, p) {
+    const a = p.card.a;
+    return (p.token ? 0.4 : 1) * (a.mv || 0) + Math.max(0, powerOf(g, p)) * 0.7 + a.triggers.length * 0.8 + (a.isLegendary ? 1 : 0) + Math.max(0, p.counters || 0) * 0.5;
+  }
+  // can blocker b (of game d) block attacker a (of game g)?
+  function canBlock(g, a, d, b) {
+    if (!isCreaturePerm(b) || b.tapped || b.card.a.cantBlock) return false;
+    if (hasKw(g, a, 'flying') && !(hasKw(d, b, 'flying') || hasKw(d, b, 'reach'))) return false;
+    if (hasKw(g, a, 'unblockable') || hasKw(g, a, 'shadow') || hasKw(g, a, 'horsemanship')) return false;
+    if (hasKw(g, a, 'skulk') && powerOf(d, b) > powerOf(g, a)) return false;
+    return true;
+  }
+  const kills = (gx, x, gy, y) => powerOf(gx, x) > 0 && (deathtouch(gx, x) || powerOf(gx, x) >= toughnessOf(gy, y));
+  // one attacker against one blocker: who dies? (first strike resolved first)
+  function duel(g, a, d, b) {
+    const aKills = kills(g, a, d, b), bKills = kills(d, b, g, a), fa = hasFirst(g, a), fb = hasFirst(d, b);
+    if (fa && !fb) return { aDies: !aKills && bKills, bDies: aKills };
+    if (fb && !fa) return { aDies: bKills, bDies: !bKills && aKills };
+    return { aDies: bKills, bDies: aKills };
+  }
+
+  // The defender (game d) chooses blockers against the attackers of game g. Returns Map(attacker -> [blockers]).
+  function chooseBlocks(d, g, attackers) {
+    const res = new Map();
+    const pool = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock);
+    if (!pool.length || !attackers.length) return res;
+    const used = new Set();
+    const order = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x));
+    const total = () => attackers.reduce((s, a) => s + (res.has(a) && !hasKw(g, a, 'trample') ? 0 : Math.max(0, powerOf(g, a)) * (hasKw(g, a, 'double strike') ? 2 : 1)), 0);
+    const pressure = d.life <= (d.opts.oppLife || 40) * 0.5 ? 1.5 : 0;                  // below half life you trade more freely
+    // 1. good blocks: kill the attacker and live, live without killing, or an even trade
+    for (const a of order) {
+      if (hasKw(g, a, 'menace')) continue;
+      let best = null, bs = 0;
+      for (const b of pool) {
+        if (used.has(b) || !canBlock(g, a, d, b)) continue;
+        const r = duel(g, a, d, b);
+        const va = creatureValue(g, a), vb = creatureValue(d, b);
+        let sc = 0;
+        if (r.bDies === false && r.aDies) sc = 3 + va * 0.1;                         // kills it and survives
+        else if (r.aDies && r.bDies && vb <= va + pressure) sc = 1.5 + (va - vb) * 0.1;   // trade up or even
+        else if (!r.bDies) sc = 1;                                                    // survive: stops the damage
+        if (sc > bs) { bs = sc; best = b; }
+      }
+      if (best) { res.set(a, [best]); used.add(best); }
+    }
+    // 2. if the damage that is left would put you near death, chump the biggest unblocked attackers
+    const danger = Math.max(6, (d.opts.oppLife || 40) * 0.2);
+    for (const a of order) {
+      if (d.life - total() > danger) break;
+      if (res.has(a)) continue;
+      const need = hasKw(g, a, 'menace') ? 2 : 1;
+      const free = pool.filter(b => !used.has(b) && canBlock(g, a, d, b)).sort((x, y) => creatureValue(d, x) - creatureValue(d, y));
+      if (free.length >= need) { const bs = free.slice(0, need); res.set(a, bs); bs.forEach(b => used.add(b)); }
+    }
+    return res;
+  }
+
+  // The attacking player (game g) picks attackers: everything that is not a bad attack, all-in when it is lethal, and nothing but vigilance when defending.
+  function chooseAttackers(g, cands) {
+    const d = g.opp;
+    if (!cands.length || !d) return cands;
+    const blocks = chooseBlocks(d, g, cands);
+    let open = 0;
+    for (const a of cands) if (!blocks.has(a)) open += Math.max(0, powerOf(g, a)) * (hasKw(g, a, 'double strike') ? 2 : 1);
+    if (open >= d.life) return cands;                                                  // lethal even through their blocks
+    const theirPower = d.battlefield.reduce((s, p) => s + (isCreaturePerm(p) ? Math.max(0, powerOf(d, p)) : 0), 0);
+    const defensive = g.life <= theirPower;                                            // they could kill me next turn: stay home
+    const blockers = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock);
+    return cands.filter(a => {
+      if (defensive && !hasKw(g, a, 'vigilance')) return false;
+      const bad = blockers.some(b => canBlock(g, a, d, b) && (() => { const r = duel(g, a, d, b); return r.aDies && (!r.bDies || creatureValue(d, b) < creatureValue(g, a) - 1); })());
+      return !bad;
+    });
+  }
+
+  // Combat damage between the attackers of game g and the blockers of game d. Returns what reached the player.
+  function resolveCombatVs(g, attackers, ev) {
+    const d = g.opp;
+    const blocks = chooseBlocks(d, g, attackers);
+    const blockedSet = new Set(blocks.keys());
+    blocks.forEach((bl, a) => ev.push({ type: 'note', text: `${bl.map(b => b.card.name).join(' + ')} blocks ${a.card.name}`, source: bl[0] }));
+    let dmg = 0, ll = 0, llD = 0; const hitters = [];
+    const alive = (game, p) => game.battlefield.includes(p);
+    const steps = attackers.concat([...blocks.values()].flat()).some(p => hasFirst(g.battlefield.includes(p) ? g : d, p)) ? ['first', 'regular'] : ['regular'];
+    for (const step of steps) {
+      const strikes = (game, p) => step === 'first' ? hasFirst(game, p) : (!hasKw(game, p, 'first strike') || hasKw(game, p, 'double strike'));
+      const marks = [];                                                                // {to: perm|'player', n, from, game}
+      for (const a of attackers) {
+        if (!alive(g, a)) continue;
+        const bl = (blocks.get(a) || []).filter(b => alive(d, b));
+        const pw = Math.max(0, powerOf(g, a));
+        if (strikes(g, a) && pw > 0) {
+          if (!blockedSet.has(a)) marks.push({ to: 'player', n: pw, from: a, game: g });
+          else if (bl.length) {
+            let left = pw;
+            for (const b of bl) {
+              const lethal = deathtouch(g, a) ? 1 : Math.max(0, toughnessOf(d, b) - (b.dmg || 0));
+              const n = Math.min(left, lethal); if (n > 0) { marks.push({ to: b, n, from: a, game: g }); left -= n; }
+            }
+            if (left > 0) { if (hasKw(g, a, 'trample')) marks.push({ to: 'player', n: left, from: a, game: g }); else marks.push({ to: bl[bl.length - 1], n: left, from: a, game: g }); }
+          } else if (hasKw(g, a, 'trample')) marks.push({ to: 'player', n: pw, from: a, game: g });
+        }
+        for (const b of bl) { const pb = Math.max(0, powerOf(d, b)); if (strikes(d, b) && pb > 0) marks.push({ to: a, n: pb, from: b, game: d }); }
+      }
+      for (const m of marks) {
+        if (m.to === 'player') {
+          dmg += m.n; if (!hitters.includes(m.from)) hitters.push(m.from);
+          g.combatNames = Object.assign({}, g.combatNames, { [m.from.card.name]: true });
+          if (m.from.card.commander) g.cmdrDamage[m.from.iid] = (g.cmdrDamage[m.from.iid] || 0) + m.n;
+        } else { m.to.dmg = (m.to.dmg || 0) + m.n; if (deathtouch(m.game, m.from)) m.to.dt = true; }
+        if (hasKw(m.game, m.from, 'lifelink')) { if (m.game === g) ll += m.n; else llD += m.n; }
+      }
+      // state-based actions: creatures with lethal damage die
+      for (const [game, list] of [[g, attackers], [d, [...blocks.values()].flat()]]) {
+        for (const p of list) if (alive(game, p) && (p.dt || (p.dmg || 0) >= toughnessOf(game, p)) && (p.dmg || 0) > 0) { ev.push({ type: 'note', text: `${p.card.name} dies in combat`, source: p }); leavePerm(game, p, ev); }
+      }
+    }
+    for (const game of [g, d]) game.battlefield.forEach(p => { p.dmg = 0; p.dt = false; });
+    flushLeaves(g, ev); flushLeaves(d, ev);
+    if (llD > 0) gainLife(d, llD, ev, null);
+    return { dmg, hitters: hitters.filter(h => g.battlefield.includes(h) || true), lifelink: ll };
+  }
+
+  // Play a whole match. aOnPlay: does player A go first? Returns the two linked games and the match record.
+  function playMatch(deckA, deckB, opts, seed, aOnPlay, hook) {
+    const sA = seed >>> 0, sB = (seed ^ 0x9e3779b9) >>> 0;
+    const gA = newGame(deckA, Object.assign({}, opts, { onPlay: aOnPlay !== false }), sA);
+    const gB = newGame(deckB, Object.assign({}, opts, { onPlay: aOnPlay === false }), sB);
+    const m = linkMatch(gA, gB);
+    mulligan(gA); mulligan(gB);
+    const order = aOnPlay === false ? [gB, gA] : [gA, gB];
+    for (let t = 0; t < opts.turns && m.winner == null; t++) {
+      for (const g of order) {
+        if (m.winner != null) break;
+        const tev = playTurn(g);
+        if (hook) hook(g, t, tev);
+        if (m.winner == null && g.library.length === 0 && g.hand.length === 0) m.winner = g.opp.pid;       // nothing left to draw
+      }
+    }
+    return { gA, gB, match: m, order };
+  }
+
+  // Many matches. Seats alternate (A on the play in even games), so a mirror of the same deck comes out even.
+  function matchMonteCarlo(cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) {
+    const deckA = buildDeck(cardsA, tokensA), deckB = buildDeck(cardsB, tokensB);
+    const T = opts.turns;
+    const res = { n, turns: T, winA: 0, winB: 0, none: 0, histA: new Array(T + 2).fill(0), histB: new Array(T + 2).fill(0), reasons: { life: 0, commander: 0, empty: 0 },
+      playWins: 0, drawWins: 0, errors: 0, firstError: null, games: [], lifeA: 0, lifeB: 0 };
+    for (let i = 0; i < n; i++) {
+      const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
+      try {
+        const m = playMatch(deckA, deckB, opts, s, aOnPlay);
+        const w = m.match.winner;
+        if (w == null) res.none++;
+        else {
+          if (w === 0) { res.winA++; res.histA[Math.min(T + 1, m.match.turn)]++; } else { res.winB++; res.histB[Math.min(T + 1, m.match.turn)]++; }
+          if ((w === 0) === aOnPlay) res.playWins++; else res.drawWins++;
+          res.reasons[m.match.reason || 'empty']++;
+        }
+        res.lifeA += Math.max(0, m.gA.life); res.lifeB += Math.max(0, m.gB.life);
+        res.games.push({ seed: s, aOnPlay, winner: w, turn: m.match.turn == null ? T : m.match.turn });
+      } catch (err) { res.errors++; if (!res.firstError) res.firstError = String(err && err.stack || err); }
+      if (onProgress && i % 25 === 0) onProgress(i / n);
+    }
+    const ok = Math.max(1, n - res.errors);
+    res.avgTurn = res.games.reduce((a, g) => a + g.turn, 0) / Math.max(1, res.games.length);
+    res.lifeA /= ok; res.lifeB /= ok;
+    const sorted = res.games.slice().sort((a, b) => a.turn - b.turn);
+    const pick = q => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1)))] : null;
+    res.samples = { quick: pick(0.1), median: pick(0.5), long: pick(0.9) };
+    res.nameA = (deckA.commanders[0] || {}).card ? deckA.commanders[0].card.name : null;
+    res.nameB = (deckB.commanders[0] || {}).card ? deckB.commanders[0].card.name : null;
+    return res;
+  }
+
+  // One match as a readable turn-by-turn log (for the sample replay).
+  function matchLog(cardsA, tokensA, cardsB, tokensB, opts, seed, aOnPlay) {
+    const deckA = buildDeck(cardsA, tokensA), deckB = buildDeck(cardsB, tokensB);
+    const lines = [];
+    const names = ['A', 'B'];
+    const m = playMatch(deckA, deckB, opts, seed, aOnPlay, (g, t, ev) => {
+      const me = names[g.pid];
+      const items = [];
+      for (const e of ev) {
+        if (e.type === 'cast') items.push('cast ' + e.inst.card.name);
+        else if (e.type === 'land') items.push('land ' + e.inst.card.name);
+        else if (e.type === 'declare') items.push('attacks with ' + e.attackers.map(p => p.card.name).join(', '));
+        else if (e.type === 'note' && /blocks|dies in combat|Extort|transform|Ring/.test(e.text)) items.push(e.text);
+        else if (e.type === 'attack') items.push(e.dmg + ' combat damage got through');
+        else if (e.type === 'kill') items.push('☠ WINS');
+      }
+      const creatures = g.battlefield.filter(isCreaturePerm), power = creatures.reduce((s, p) => s + Math.max(0, powerOf(g, p)), 0);
+      lines.push({ turn: g.turn, who: me, life: g.pid === 0 ? [g.life, g.opp.life] : [g.opp.life, g.life], text: items, board: `${creatures.length} creatures, ${power} power, ${g.battlefield.filter(p => p.asLand).length} lands, hand ${g.hand.length}` });
+    });
+    return { lines, winner: m.match.winner, reason: m.match.reason, turn: m.match.turn, lifeA: m.gA.life, lifeB: m.gB.life };
+  }
+
   // ---------- Exact hypergeometric ----------
   const LF = [0]; for (let i = 1; i <= 400; i++) LF.push(LF[i - 1] + Math.log(i));
   function choose(n, k) { if (k < 0 || k > n) return 0; return Math.exp(LF[n] - LF[k] - LF[n - k]); }
@@ -2018,6 +2245,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
+    playMatch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

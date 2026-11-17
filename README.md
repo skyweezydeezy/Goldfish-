@@ -100,6 +100,12 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 
 The goldfish never blocks, never removes anything, and never interacts.
 
+## Mirror match (beta)
+
+On the **Simulation** tab, the **Mirror match** card plays your deck against itself or against another saved deck, instead of against a goldfish that never fights back. Two full games run side by side and are linked: damage, drain and lifelink move both life totals, creatures block each other (flying, reach, menace, first strike, double strike, deathtouch, trample and lifelink are handled), creatures that lose a fight go to the graveyard, and the first player to reach 0 life or deal 21 commander damage wins. Seats alternate (you are on the play in every other match), so playing a deck against a copy of itself comes out even. You get win rates with a 95% range, the average length, win rate on the play and on the draw, how often matches end by life or by commander damage, a histogram of the turn each side wins on, and a turn-by-turn replay of a quick, a typical and a long match.
+
+**What it does not do yet:** removal, counterspells, bounce and other cards that target the other player's board are still tagged "Needs opponent" and do nothing (the next step), and the autopilot only has simple rules for when to attack and block (it will not hold up creatures for tricks, bluff or plan around cards it cannot see). Treat the numbers as a comparison between two builds, not as a prediction of a real game. Normal goldfish results are unchanged.
+
 ## Fan content, credits and donations
 
 *I See Fish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*

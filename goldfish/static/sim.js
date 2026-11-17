@@ -281,7 +281,7 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.sacTempt = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
@@ -316,6 +316,7 @@
         continue;
       }
       if ((m = line.match(/^sacrifice (?:a|another) creature: add ((?:\{[WUBRGC]\})+)/i))) { a.altar = { n: (m[1].match(/\{/g) || []).length }; rec.status = 'ok'; continue; }          // Ashnod's Altar
+      if (/^sacrifice ~: creatures you control gain indestructible until end of turn\. the ring tempts you/i.test(line)) { a.sacTempt = true; rec.status = 'ok'; continue; }      // Boromir, Warden of the Tower
       if (/^sacrifice a food: return ~ from your graveyard to the battlefield/i.test(line)) { a.gyReturn = { sacFood: 1 }; rec.status = 'ok'; continue; }          // Cauldron Familiar
       if (/^as an additional cost to cast ~, sacrifice a creature/i.test(line)) { a.sacCreatureCost = true; rec.status = 'ok'; continue; }      // Diabolic Intent
       if (a.isInstantSorcery) {
@@ -1555,6 +1556,18 @@
           }
         }
       }
+    }
+    // Boromir: "Sacrifice ~: ... The Ring tempts you." Worth it only when the temptation unlocks something: a new Ring level (loot at 2, 3 life drain at 4),
+    // or Frodo's draw (he needs the Ring to have tempted you twice), and only while another creature can carry the Ring.
+    for (const p of g.battlefield.slice()) {
+      if (!p.card.a.sacTempt || g.killTurn != null) continue;
+      const tempts = (g.ring && g.ring.tempts) || 0;
+      const other = g.battlefield.some(q => q !== p && isCreaturePerm(q));
+      const frodo = g.battlefield.some(q => q !== p && q.card.a.triggers.some(t => t.fx.some(f => f.cond && f.cond.kind === 'ringBearerSelf')));
+      if (!other || tempts >= 4 || !(tempts + 1 === 2 || tempts + 1 === 4 || (frodo && tempts + 1 >= 2))) continue;
+      ev.push({ type: 'note', text: `Sacrificed ${p.card.name}: the Ring tempts you`, source: p });
+      leavePerm(g, p, ev);
+      temptRing(g, ev, p);
     }
     // Cauldron Familiar: sacrifice a Food to return it from the graveyard (its enter trigger drains again)
     for (const inst of g.graveyard.slice()) {

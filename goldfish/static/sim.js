@@ -177,12 +177,17 @@
     if (/\byou gain that much life/i.test(text)) fx.push({ type: 'gainLife', n: 'THAT' });
     else if ((m = text.match(new RegExp('\\byou gain ' + NRE + ' life\\b', 'i')))) fx.push({ type: 'gainLife', n: num(m[1]) });
 
-    m = text.match(new RegExp('put ' + NRE + ' \\+1\\/\\+1 counters? on (each (?:other )?(?:[a-z ]+?)creature you control|each creature you control|target creature(?: you control)?|up to [a-z]+ target creatures?|~|it|that creature|each of up to [a-z]+ target creatures)', 'i'));
-    if (m) {
-      const scope = /each/i.test(m[2]) && !/each of up to/i.test(m[2]) ? 'each' : (m[2] === '~' || m[2].toLowerCase() === 'it') ? 'self' : 'target';
-      const tm = m[2].match(/each (other )?([a-z ]+?)\s*creature you control/i);
-      fx.push({ type: 'counters', n: num(m[1]), scope, other: /other/i.test(m[2]), excl: /other than ~/i.test(text), filter: tm && tm[2].trim() ? tm[2].trim() : null });
+    // Counters: "put N <kind> counters on <who>". <who> = each / ~ / target, optionally limited to subtypes ("target Halfling or Treefolk").
+    // "that many" means the amount that triggered it (Treebeard: as many counters as the life you gained).
+    m = text.match(new RegExp('put ' + NRE + ' (\\+1\\/\\+1|-1\\/-1|[a-z]+) counters? on ([^.,]+)', 'i'));
+    if (m && m[2].toLowerCase() !== 'loyalty') {
+      const who = m[3].trim(), lw = who.toLowerCase();
+      const scope = /^each\b/.test(lw) ? 'each' : (lw === '~' || lw === 'it') ? 'self' : 'target';
+      const STOP = new Set(['each', 'other', 'another', 'target', 'up', 'to', 'one', 'two', 'three', 'creature', 'creatures', 'you', 'control', 'than', 'of', 'that', 'and', 'a', 'an', 'permanent', 'permanents', 'nontoken']);
+      const types = lw.replace(/~/g, ' ').split(/[^a-z]+/).filter(w => w && !STOP.has(w));
+      fx.push({ type: 'counters', kind: m[2], n: /^that many$/i.test(m[1]) ? 'THAT' : num(m[1]), scope, other: /\bother\b/.test(lw), excl: /other than ~|\banother\b/i.test(who), types });
     }
+    if (/\bthe ring tempts you\b/i.test(text)) fx.push({ type: 'tempt' });                 // Frodo, Boromir...
 
     m = text.match(/creatures you control get \+(\d+|x)\/\+(\d+|x)(?: and gain ([a-z ,]+?))? until end of turn/i);
     if (m) fx.push({ type: 'pumpAll', p: num(m[1]), t: num(m[2]), keywords: kwList(m[3]) });
@@ -235,6 +240,9 @@
     [/^whenever a player casts their second spell each turn,?\s*/i, ['secondSpell']],
     // life: Sanguine Bond ("whenever you gain life"), Exquisite Blood ("whenever an opponent loses life")
     [/^whenever you gain life,?\s*/i, ['lifeGain']],
+    [/^whenever the ring tempts you,?\s*/i, ['ringTempts']],
+    [/^whenever (?:you put )?one or more \+1\/\+1 counters are put on (?:a|an|another) [a-z ]*?creature(?: you control)?,?\s*/i, ['countersPut']],
+    [/^whenever you put one or more \+1\/\+1 counters on (?:a|an|another) [a-z ]*?creature,?\s*/i, ['countersPut']],
     [/^whenever an opponent loses life,?\s*/i, ['oppLoseLife']],
     [/^when(?:ever)? ~ enters(?: the battlefield)? or attacks,?\s*/i, ['etb', 'attack']],
     [/^when(?:ever)? ~ enters(?: the battlefield)?(?: or dies)?,?\s*/i, ['etb']],
@@ -333,8 +341,15 @@
       let trig = null;
       for (const [re, kinds] of TRIGGERS) { const tm = line.match(re); if (tm) { trig = { kinds, rest: line.slice(tm[0].length), m: tm }; break; } }
       if (trig) {
-        const r = parseEffects(trig.rest);
-        const t = { kinds: trig.kinds, fx: r.fx, text: raw };
+        // intervening "if" conditions and the Ring's "Then if ~ is your Ring-bearer..." follow-up (Frodo)
+        let rest = trig.rest, cond = null, thenFx = [], im;
+        if ((im = rest.match(/^if you gained (\d+) or more life this turn, /i))) { cond = { kind: 'lifeGained', min: +im[1] }; rest = rest.slice(im[0].length); }
+        else if ((im = rest.match(/^if you gained life this turn, /i))) { cond = { kind: 'lifeGained', min: 1 }; rest = rest.slice(im[0].length); }
+        const tm2 = rest.match(/(?:\.\s*)?Then if ~ is your Ring-bearer and the Ring has tempted you (\w+) or more times this game, (.*)$/i);
+        if (tm2) { thenFx = parseEffects(tm2[2]).fx.map(f => Object.assign({}, f, { cond: { kind: 'ringBearerSelf', min: num(tm2[1]) } })); rest = rest.slice(0, tm2.index); }
+        const r = parseEffects(rest);
+        r.fx.push(...thenFx);
+        const t = { kinds: trig.kinds, fx: r.fx, text: raw, cond };
         if (trig.kinds[0] === 'cast') t.filter = (trig.m[1] || '').trim().toLowerCase();
         if (trig.kinds[0] === 'permEtb') { t.other = /other|another/i.test(trig.m[1]); t.nontoken = !!trig.m[2]; t.filter = ((trig.m[3] || '') + ' ' + (trig.m[4] || '')).trim(); }
         if (trig.kinds[0] === 'combatDamage') t.who = trig.m[1].toLowerCase();
@@ -402,8 +417,10 @@
         }
       } else if (rec.status === 'partial') rec.tag = 'approx';
     }
-    a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb'));
-    a.lifeWatch = a.triggers.some(t => t.kinds.includes('lifeGain'));      // something here cares when you gain life (Sanguine Bond)
+    a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb' || k === 'countersPut'));
+    // lifeWatch: pays off for EVERY point of life you gain (Sanguine Bond, Treebeard). lifeThreshold: only needs N life once a turn (Frodo: 3).
+    a.lifeWatch = a.triggers.some(t => t.kinds.includes('lifeGain'));
+    a.lifeThreshold = Math.max(0, ...a.triggers.filter(t => t.cond && t.cond.kind === 'lifeGained').map(t => t.cond.min));
     // the two halves of the life loop: "opponent loses life -> you gain that much" (blood) and "you gain life -> opponent loses that much" (bond)
     a.comboRole = a.triggers.some(t => t.kinds.includes('oppLoseLife') && t.fx.some(f => f.type === 'gainLife')) ? 'blood'
       : a.triggers.some(t => t.kinds.includes('lifeGain') && t.fx.some(f => f.type === 'drain')) ? 'bond' : null;
@@ -571,6 +588,7 @@
       castTurn: {}, drawTurn: {}, turns: [], floating: [], eot: { p: 0, t: 0, kw: new Set() }, extraCombats: 0,
       nextIid: deck.nextIid, landsPlayedThisTurn: 0, spentThisTurn: 0,
       life: opts.oppLife || 40,                               // your own life total (starts like the goldfish's: 40 in Commander, 20 otherwise)
+      ring: { tempts: 0, bearer: null },                      // the Ring: how many times it has tempted you, and your Ring-bearer (a permanent id)
     };
   }
 
@@ -652,6 +670,7 @@
     if (st.counterDouble) info.cm++;
     if (st.foodDiscount) info.foodDiscount += st.foodDiscount;
     if (a.lifeWatch) info.lifeWatch = true;
+    if (a.lifeThreshold > info.lifeThreshold) info.lifeThreshold = a.lifeThreshold;
     if (q.token && q.card.name === 'Food') info.foods.push(q);
     if (!info.seenCards.has(q.card)) {                                // card-level facts, once per distinct card
       info.seenCards.add(q.card);
@@ -663,7 +682,7 @@
     const c = g._bf;
     if (c && c.arr === g.battlefield && c.len === g.battlefield.length && c.ver === (g.bfVer || 0)) return c;
     const info = { arr: g.battlefield, len: g.battlefield.length, ver: g.bfVer || 0, anthems: [], selfSrc: new Set(), attach: new Map(), byCard: new Map(), colors: new Set(), foodMana: false,
-      producers: [], reducers: [], watchers: [], repl: [], foods: [], cm: 0, foodDiscount: 0, lifeWatch: false, seenCards: new Set() };
+      producers: [], reducers: [], watchers: [], repl: [], foods: [], cm: 0, foodDiscount: 0, lifeWatch: false, lifeThreshold: 0, seenCards: new Set() };
     for (const q of g.battlefield) addToInfo(info, q);
     for (const em of g.emblems || []) info.anthems.push({ src: null, an: { other: false, filter: '', p: em.p, t: em.t, keywords: em.keywords || [] } });
     return (g._bf = info);
@@ -753,6 +772,88 @@
     g.pendingLeaves = [];
     for (const p of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('tokenLeave')) fire(g, t, q, ev, p);
   }
+  // ---------- Counters ----------
+  // Every counter goes through addCounters: it applies Doubling Season, keeps +1/+1 and -1/-1 cancelling out (p.counters is the NET),
+  // keeps other kinds in p.other (indestructible, shield...), loyalty in p.loyalty, and fires "whenever you put +1/+1 counters on a creature".
+  function hasSubtype(card, types) {
+    if (!types || !types.length) return true;
+    const tl = (card.type_line || '').toLowerCase();
+    return types.some(w => tl.includes(singular(w)));
+  }
+  function addCounters(g, p, kind, n, ev, source, noDouble) {
+    if (!(n > 0)) return 0;
+    const add = noDouble ? n : n * counterMult(g);
+    if (kind === '+1/+1') p.counters = (p.counters || 0) + add;
+    else if (kind === '-1/-1') p.counters = (p.counters || 0) - add;
+    else if (kind === 'loyalty') p.loyalty = (p.loyalty || 0) + add;
+    else p.other = Object.assign({}, p.other, { [kind]: ((p.other && p.other[kind]) || 0) + add });   // a new object each time: dry-run copies never share it
+    ev.push({ type: 'counters', n: add, kind, perms: [p], source });
+    if (kind === '+1/+1' && isCreaturePerm(p)) for (const q of bfInfo(g).watchers.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('countersPut')) fire(g, t, q, ev, p, add);
+    return add;
+  }
+  // "target Halfling or Treefolk", "target creature you control other than ~": the best matching creature gets them (the strongest, so the counters pay off)
+  function counterTarget(g, f, source) {
+    let best = null, bs = -Infinity;
+    for (const p of g.battlefield) {
+      if (!isCreaturePerm(p) || (f.excl && p === source) || !hasSubtype(p.card, f.types)) continue;
+      const s = powerOf(g, p) + (p.sick && !hasKw(g, p, 'haste') ? -0.5 : 0) + (g.ring && g.ring.bearer === p.iid ? 0.5 : 0);
+      if (s > bs) { bs = s; best = p; }
+    }
+    return best;
+  }
+  // "if you gained 3 or more life this turn", "if ~ is your Ring-bearer and the Ring has tempted you two or more times"
+  function condMet(g, c, source) {
+    switch (c.kind) {
+      case 'lifeGained': return (g.lifeGainedThisTurn || 0) >= c.min;
+      case 'ringBearerSelf': return !!(g.ring && source && g.ring.bearer === source.iid && g.ring.tempts >= c.min);
+    }
+    return true;
+  }
+
+  // ---------- The Ring ----------
+  // "The Ring tempts you": you choose a creature as your Ring-bearer, and the Ring gains one more ability each time (up to four).
+  const RING_TEXT = ["Your Ring-bearer is legendary and can't be blocked by creatures with greater power.",
+    'Whenever your Ring-bearer attacks, draw a card, then discard a card.',
+    "Whenever your Ring-bearer becomes blocked by a creature, that creature's controller sacrifices it at end of combat.",
+    'Whenever your Ring-bearer deals combat damage to a player, each opponent loses 3 life.'];
+  function ringBearer(g) { return g.ring && g.ring.bearer != null ? g.battlefield.find(p => p.iid === g.ring.bearer) || null : null; }
+  function chooseRingBearer(g) {
+    const cur = ringBearer(g);
+    let best = null, bs = -Infinity;
+    for (const p of g.battlefield) {
+      if (!isCreaturePerm(p)) continue;
+      const a = p.card.a;
+      let s = powerOf(g, p) + (p.sick && !hasKw(g, p, 'haste') ? -0.5 : 0) + (p === cur ? 1 : 0);
+      if (a.triggers.some(t => (t.cond && t.cond.kind === 'ringBearerSelf') || t.fx.some(f => f.cond && f.cond.kind === 'ringBearerSelf'))) s += 6;   // Frodo draws extra cards while he carries the Ring
+      if (s > bs) { bs = s; best = p; }
+    }
+    return best;
+  }
+  function temptRing(g, ev, source) {
+    const ring = g.ring = Object.assign({ tempts: 0, bearer: null }, g.ring);          // a new object, so a dry-run copy never shares it
+    ring.tempts++;
+    const bearer = chooseRingBearer(g);
+    ring.bearer = bearer ? bearer.iid : null;
+    const level = Math.min(4, ring.tempts);
+    ev.push({ type: 'tempt', n: ring.tempts, level, bearer, ability: RING_TEXT[level - 1], source });
+    for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('ringTempts')) fire(g, t, q, ev, bearer);
+  }
+  // draw, then discard the card you want least (extra lands once you have plenty, uncastable expensive spells; never a combo piece)
+  function discardWorst(g, ev) {
+    if (!g.hand.length) return;
+    const lands = g.battlefield.filter(p => p.asLand).length;
+    let worst = null, ws = Infinity;
+    for (const i of g.hand) {
+      const a = i.card.a;
+      let v = a.isLand ? (lands >= 6 ? 0 : lands >= 4 ? 4 : 9)
+        : 2 + Math.min(8, a.castMv) * 0.5 + (a.comboRole ? 20 : 0) + (a.statics.tokenRepl.length ? 10 : 0) + (a.produce ? 5 : 0) - (a.castMv > lands + 4 ? 3 : 0);
+      if (v < ws) { ws = v; worst = i; }
+    }
+    g.hand.splice(g.hand.indexOf(worst), 1); g.graveyard.push(worst);
+    ev.push({ type: 'note', text: `Discarded ${worst.card.name}` });
+  }
+  function ringLoot(g, ev) { const d = []; draw(g, 1, d); ev.push(...d); discardWorst(g, ev); }
+
   // Food: sacrificing one fires "whenever you sacrifice a Food" (Nuka-Cola, Rapacious Guest) and "a token leaves" (Nadier's Nightblade, Mirkwood Bats)
   function foodsOf(g) { return bfInfo(g).foods.slice(); }
   function sacrificeFoods(g, n, ev) {
@@ -872,6 +973,7 @@
   }
 
   function fire(g, trig, source, ev, subject, amount) {
+    if (trig.cond && !condMet(g, trig.cond, source)) return;           // an "if you gained 3 or more life this turn" trigger that does not apply
     g.depth = (g.depth || 0) + 1;
     if (amount > 0 && g.depth > 18 && g.killTurn == null) {
       // A trigger loop that keeps feeding itself with a non-zero amount (Exquisite Blood + Sanguine Bond) never ends: the goldfish is drained.
@@ -914,6 +1016,7 @@
   function gainLife(g, n, ev, source) {
     if (!(n > 0)) return;
     g.life += n;
+    g.lifeGainedThisTurn = (g.lifeGainedThisTurn || 0) + n;               // "if you gained 3 or more life this turn"
     ev.push({ type: 'life', n, total: g.life, source });
     if (g.killTurn != null) return;
     for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('lifeGain')) fire(g, t, q, ev, null, n);
@@ -960,6 +1063,7 @@
 
   function applyEffects(g, fx, source, ev, subject) {
     for (const f of fx) {
+      if (f.cond && !condMet(g, f.cond, source)) continue;             // e.g. Frodo's draw only while he is the Ring-bearer
       let n = f.n;
       if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
       else if (n === 'THAT') n = g.thatMuch || 0;                       // "that much life"
@@ -988,17 +1092,18 @@
         case 'gainLife': gainLife(g, n, ev, source); break;
         case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); break;
         case 'tutor': tutor(g, f, ev, source); break;
-        case 'loyalty': if (source && source.card.a.isPlaneswalker) { source.loyalty += n * counterMult(g); ev.push({ type: 'note', text: `${source.card.name} gets ${n * counterMult(g)} loyalty`, source }); } break;
+        case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
         case 'counters': {
+          // who gets them: each matching creature / the source itself / the best matching target
           let targets = [];
-          if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && matchesFilter(p.card, f.filter));
-          else if (f.scope === 'self') targets = source && isCreaturePerm(source) ? [source] : [];
-          else { const b = bestCreature(g, f.excl ? source : null); if (b) targets = [b]; }
-          const add = n * counterMult(g);                 // Doubling Season
-          targets.forEach(p => { p.counters = (p.counters || 0) + add; });
-          if (targets.length) ev.push({ type: 'counters', n: add, perms: targets, source });
+          const kind = f.kind || '+1/+1';
+          if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && hasSubtype(p.card, f.types));
+          else if (f.scope === 'self') targets = source && (isCreaturePerm(source) || kind !== '+1/+1') ? [source] : [];
+          else { const b = counterTarget(g, f, source); if (b) targets = [b]; }
+          for (const p of targets) addCounters(g, p, kind, n, ev, source);
           break;
         }
+        case 'tempt': temptRing(g, ev, source); break;
         case 'pumpAll': {
           let p = f.p, t = f.t;
           if (p === 'X' || t === 'X') { const x = countFor(g, f.count || { what: 'creature', zone: 'you control' }, source); if (p === 'X') p = x; if (t === 'X') t = x; }
@@ -1044,7 +1149,14 @@
           ev.push({ type: 'note', text: 'Untapped ' + f.what, source });
           break;
         case 'emblem': (g.emblems = g.emblems || []).push({ p: f.p, t: f.t, keywords: f.keywords || [] }); touch(g); ev.push({ type: 'note', text: `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;
-        case 'proliferate': g.battlefield.forEach(p => { if (p.counters > 0) p.counters++; if (p.card.a.isPlaneswalker) p.loyalty++; }); break;
+        case 'proliferate':                                              // one more of each kind of counter already there
+          for (const p of g.battlefield.slice()) {
+            if ((p.counters || 0) > 0) addCounters(g, p, '+1/+1', 1, ev, source);
+            else if ((p.counters || 0) < 0) addCounters(g, p, '-1/-1', 1, ev, source);
+            if (p.card.a.isPlaneswalker) addCounters(g, p, 'loyalty', 1, ev, source);
+            for (const k of Object.keys(p.other || {})) addCounters(g, p, k, 1, ev, source);
+          }
+          break;
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + 1; ev.push({ type: 'note', text: 'Extra turn (not simulated)', source }); break;
       }
     }
@@ -1278,9 +1390,10 @@
       }
     }
     // Food: "{2}, {T}, Sacrifice this: You gain 3 life." Only worth the mana when something cares about gaining life (Sanguine Bond...).
-    if (bfInfo(g).lifeWatch) {
+    if (bfInfo(g).lifeWatch || bfInfo(g).lifeThreshold) {
       const foodCost = { generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [] };      // Sam makes it {1}
-      for (let k = 0; k < 8 && g.killTurn == null; k++) {
+      const need = bfInfo(g).lifeWatch ? Infinity : bfInfo(g).lifeThreshold;                // Frodo only needs 3 life once; Bond wants all it can get
+      for (let k = 0; k < 8 && g.killTurn == null && (g.lifeGainedThisTurn || 0) < need; k++) {
         const f = foodsOf(g).find(q => !q.tapped);
         if (!f || !canPay(foodCost, allUnits(g))) break;
         pay(g, foodCost); f.tapped = true;
@@ -1327,7 +1440,7 @@
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
-      cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [], pendingLeaves: [], emblems: (g.emblems || []).slice(),
+      cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [], pendingLeaves: [], emblems: (g.emblems || []).slice(), ring: Object.assign({}, g.ring),
     });
   }
 
@@ -1383,7 +1496,7 @@
 
   function beginTurn(g) {
     g.turn++;
-    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0;
+    g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0;
     const ev = [{ type: 'untap' }];
     g.battlefield.forEach(p => { p.tapped = false; if (p.enteredTurn < g.turn) p.sick = false; });
     eachTrigger(g, 'upkeep', ev);
@@ -1423,6 +1536,9 @@
         if (!t.kinds.includes('attackAny')) continue;
         if (t.once) fire(g, t, q, ev, null); else attackers.forEach(p => fire(g, t, q, ev, p));
       }
+      // The Ring, level 2: "whenever your Ring-bearer attacks, draw a card, then discard a card"
+      let rb = ringBearer(g);
+      if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
       let dmg = 0;
       const hitters = [];
       for (const p of attackers) {
@@ -1439,6 +1555,9 @@
         oppLostLife(g, dmg, ev);                                         // Exquisite Blood: combat damage is life loss too
         const lifelink = hitters.reduce((s, p) => s + (hasKw(g, p, 'lifelink') ? Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1) : 0), 0);
         if (lifelink > 0 && g.killTurn == null) gainLife(g, lifelink, ev, null);
+        // The Ring, level 4: "whenever your Ring-bearer deals combat damage to a player, each opponent loses 3 life"
+        rb = ringBearer(g);
+        if (rb && hitters.includes(rb) && g.ring.tempts >= 4 && g.killTurn == null) { ev.push({ type: 'note', text: `💍 ${rb.card.name} deals combat damage: each opponent loses 3 life`, source: rb }); damageOpp(g, 3, ev, rb); }
         for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
           if (!t.kinds.includes('combatDamage')) continue;
           if (t.who === '~' || /equipped|enchanted/.test(t.who)) {
@@ -1566,6 +1685,7 @@
     beginTurn, landStep, combat, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
+    addCounters, temptRing, ringBearer, RING_TEXT,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

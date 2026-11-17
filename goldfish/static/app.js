@@ -593,7 +593,10 @@
       if (e.type === 'damage' || e.type === 'attack') floatDamage(e.n || e.dmg);
       if (e.type === 'trigger' && e.source) flash(e.source.iid);
       if (e.type === 'kill') killBanner(S.game.turn, e.cmdr);
+      if (e.type === 'tempt') ringBanner(e);
     }
+    const tempt = ev.filter(e => e.type === 'tempt').pop();
+    if (tempt && tempt.bearer) flash(tempt.bearer.iid);                  // the new Ring-bearer lights up
     await sleep(delay());
   }
   function flash(iid) {
@@ -644,14 +647,16 @@
       if (e.type === 'token') key = 't:' + e.inst.card.uid;
       else if (e.type === 'trigger') key = 'g:' + (e.source ? e.source.iid : '') + '|' + e.text;
       else if (e.type === 'damage') key = 'd:' + (e.source ? e.source.iid : '');
+      else if (e.type === 'counters') key = 'c:' + (e.kind || '+1/+1') + ':' + e.n + ':' + (e.source ? e.source.iid : '');       // "+1 counters on 12 creatures" is one line
       if (key && seen.has(key)) {
         const first = seen.get(key);
         first.count++;
         if (e.type === 'damage') { first.n += e.n; first.total = e.total; }
+        if (e.type === 'counters') first.perms = first.perms.concat(e.perms);
         if (e.type === 'token') first.perm = e.perm;
         continue;
       }
-      const item = key ? Object.assign({}, e, { count: 1 }) : e;
+      const item = key ? Object.assign({}, e, { count: 1, perms: e.perms ? e.perms.slice() : e.perms }) : e;
       if (key) seen.set(key, item);
       items.push(item);
     }
@@ -667,7 +672,8 @@
         case 'token': log(`↳ created ${e.count > 1 ? e.count + ' × ' : ''}${esc(e.inst.card.name)}${e.perm.card.a.isCreature ? ` ${G.powerOf(S.game, e.perm)}/${G.toughnessOf(S.game, e.perm)}` : ''} token${e.count > 1 ? 's' : ''}`); break;
         case 'damage': log(`↳ <b>${e.n}</b> damage to the goldfish (${e.total} total)`); break;
         case 'life': log(`↳ you gain <b>${e.n}</b> life (${e.total})`); break;
-        case 'counters': log(`↳ +${e.n} counter${e.n > 1 ? 's' : ''} on ${e.perms.length > 3 ? e.perms.length + ' creatures' : e.perms.map(nm).join(', ')}`); break;
+        case 'counters': log(`↳ +${e.n} ${esc(e.kind || '+1/+1')} counter${e.n > 1 ? 's' : ''} on ${e.perms.length > 3 ? e.perms.length + ' permanents' : e.perms.map(nm).join(', ')}`); break;
+        case 'tempt': log(`<b>💍 The Ring tempts you</b> (${e.n > 4 ? e.n + 'th' : ORD[e.n]} time): ${e.bearer ? '<b>' + nm(e.bearer) + '</b> is your Ring-bearer.' : 'you have no creature to carry it.'} <i>${esc(e.ability)}</i>`); break;
         case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
         case 'mana': log(`↳ added ${e.n} mana`); break;
         case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.cost === -1 ? 'X' : e.cost}: <i>${esc(e.text)}</i> (loyalty ${e.perm.loyalty})`); break;
@@ -688,20 +694,25 @@
     document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
     life.classList.remove('hit'); void life.offsetWidth; life.classList.add('hit');
   }
+  const ORD = ['', '1st', '2nd', '3rd', '4th'];
+  function ringBanner(e) {
+    const b = h('div', 'ring-banner', `💍 The Ring tempts you<br><small>${e.n > 4 ? e.n + 'th' : ORD[e.n]} time${e.bearer ? ' · ' + esc(e.bearer.card.name.split(',')[0]) + ' is your Ring-bearer' : ''}</small>`);
+    document.body.appendChild(b); setTimeout(() => b.remove(), 2200);
+  }
   function killBanner(t, cmdr) { const b = h('div', 'kill-banner', `🐟 Goldfish defeated · turn ${t}${cmdr ? '<br><small>21 commander damage</small>' : ''}`); document.body.appendChild(b); setTimeout(() => b.remove(), 2100); }
 
   function log(html) { const ol = $('#gameLog'); ol.appendChild(h('li', '', html)); const box = ol.parentElement; box.scrollTop = box.scrollHeight; }
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
-  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life'];
+  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn'];
   function snap() {
     const g = S.game;
     const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });
     S.undo.push({
       library: g.library.slice(), hand: g.hand.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), command: g.command.slice(),
       battlefield: g.battlefield.map(p => Object.assign({}, p)), scal, floating: (g.floating || []).slice(), turns: g.turns.slice(),
-      cmdrDamage: Object.assign({}, g.cmdrDamage), cmdrCasts: Object.assign({}, g.cmdrCasts), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, emblems: (g.emblems || []).slice(),
+      cmdrDamage: Object.assign({}, g.cmdrDamage), cmdrCasts: Object.assign({}, g.cmdrCasts), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, emblems: (g.emblems || []).slice(), ring: Object.assign({}, g.ring),
       log: $('#gameLog').innerHTML,
     });
     if (S.undo.length > 80) S.undo.shift();
@@ -710,7 +721,7 @@
     const s = S.undo.pop(); if (!s || S.busy) return;
     const g = S.game;
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
-      floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems }, s.scal);
+      floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems, ring: s.ring }, s.scal);
     G.touch(g);
     $('#gameLog').innerHTML = s.log; render();
   }
@@ -845,8 +856,14 @@
     if (zone === 'battlefield') {
       items.push([obj.tapped ? 'Untap' : 'Tap', act(() => { obj.tapped = !obj.tapped; })]);
       if (G.isCreaturePerm(obj)) {
-        items.push(['+1/+1 counter', act(() => { obj.counters = (obj.counters || 0) + 1; })]);
-        items.push(['−1/−1 counter', act(() => { obj.counters = (obj.counters || 0) - 1; })]);
+        items.push(['💍 The Ring tempts you: make this the Ring-bearer', act(() => {
+          const ring = g.ring = Object.assign({ tempts: 0, bearer: null }, g.ring);
+          ring.tempts++; ring.bearer = obj.iid;
+          const e = { type: 'tempt', n: ring.tempts, level: Math.min(4, ring.tempts), bearer: obj, ability: G.RING_TEXT[Math.min(4, ring.tempts) - 1] };
+          describe([e]); ringBanner(e);
+        })]);
+        items.push(['+1/+1 counter', act(() => { G.addCounters(g, obj, '+1/+1', 1, [], null); })]);
+        items.push(['−1/−1 counter', act(() => { G.addCounters(g, obj, '-1/-1', 1, [], null); })]);
         items.push([obj.sick ? 'Remove summoning sickness' : 'Give summoning sickness', act(() => { obj.sick = !obj.sick; })]);
       }
       if (obj.card.a.isPlaneswalker) { items.push(['Loyalty +1', act(() => { obj.loyalty++; })], ['Loyalty −1', act(() => { obj.loyalty--; })]); }
@@ -874,7 +891,7 @@
   function clearState(e) {
     e.style.marginLeft = ''; e.style.marginRight = '';
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
-    e.classList.remove('tapped', 'token', 'sick', 'castable');
+    e.classList.remove('tapped', 'token', 'sick', 'castable', 'ringbearer');
   }
 
   function render(first) {
@@ -927,6 +944,7 @@
     $('#hTurn').textContent = g.turn;
     $('#hLife').textContent = Math.max(0, g.opts.oppLife - g.damage);
     $('#hMyLife').textContent = g.life;
+    renderRing(g);
     $('#hSpent').textContent = g.manaSpent + (g.spentThisTurn || 0);
     const cd = Object.values(g.cmdrDamage || {});
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
@@ -950,6 +968,18 @@
       e.animate([{ translate: `${dx}px ${dy}px`, scale: String(old ? sc : 0.85), opacity: old ? 1 : 0.5 }, { translate: '0 0', scale: '1', opacity: 1 }], { duration: dur, easing: 'cubic-bezier(.2,.8,.2,1)' });
     });
   }
+  // The Ring panel: how many times it has tempted you, who carries it, and which of its four abilities you have unlocked
+  function renderRing(g) {
+    const ring = g.ring || { tempts: 0, bearer: null }, rb = G.ringBearer(g);
+    const hr = $('#hRing'), panel = $('#ringPanel');
+    hr.textContent = ring.tempts ? `💍 ${ring.tempts}×${rb ? ' · ' + rb.card.name.split(',')[0] : ''}` : '—';
+    if (!ring.tempts) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const level = Math.min(4, ring.tempts);
+    panel.innerHTML = `<div class="rp-head"><b>💍 The Ring</b> tempted you ${ring.tempts} time${ring.tempts === 1 ? '' : 's'}<br>` +
+      `<span class="hint">Ring-bearer: <b>${rb ? esc(rb.card.name) : 'none (no creature)'}</b></span></div>` +
+      '<ol>' + G.RING_TEXT.map((t, i) => `<li class="${i < level ? 'on' : 'off'}">${esc(t)}</li>`).join('') + '</ol>';
+  }
   function permEl(p, used) {
     const g = S.game;
     const e = tableEl(p.card, p.iid, p.mdfc ? 1 : 0, used);
@@ -961,8 +991,11 @@
       const pw = G.powerOf(g, p), tg = G.toughnessOf(g, p);
       const buffed = pw !== p.card.a.power || tg !== p.card.a.toughness;
       e.appendChild(h('span', 'pt' + (buffed ? ' buffed' : ''), `${pw}/${tg}`));
-      if (p.counters) e.appendChild(h('span', 'ctr', (p.counters > 0 ? '+' : '') + p.counters));
+      if (p.counters) e.appendChild(h('span', 'ctr' + (p.counters < 0 ? ' neg' : ''), (p.counters > 0 ? '+' : '') + p.counters));
+      if (g.ring && g.ring.bearer === p.iid && g.ring.tempts > 0) { e.classList.add('ringbearer'); e.title = 'Ring-bearer'; }
     }
+    // other kinds of counters (indestructible, shield...) as small labelled badges
+    Object.keys(p.other || {}).forEach((k, i) => e.appendChild(h('span', 'ctr kind', `${esc(k)} ×${p.other[k]}`)).style.top = (44 + i * 18) + 'px');
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + p.loyalty));
     if (p.attachedTo != null) { const t = g.battlefield.find(q => q.iid === p.attachedTo); if (t) e.appendChild(h('span', 'tag', '→ ' + esc(t.card.name.split(',')[0]))); }
     return e;
@@ -1070,6 +1103,7 @@
         if (e.type === 'damage') burn += e.n;
         if (e.type === 'land' || e.type === 'rampLand') { const x = cardEl(e.inst.card, { face: e.mdfc ? 1 : 0 }); x.classList.add('landplay'); if (e.type === 'rampLand') x.title = 'ramped'; cc.appendChild(x); }
         if (e.type === 'cast') cc.appendChild(cardEl(e.inst.card));
+        if (e.type === 'tempt') cc.appendChild(h('span', 'burst', `💍 Ring tempts (${e.n})${e.bearer ? ' · ' + esc(e.bearer.card.name.split(',')[0]) : ''}`));
         if (e.type === 'pw') cc.appendChild(h('span', 'burst', `◆ ${esc(e.perm.card.name.split(',')[0])} ${e.cost > 0 ? '+' : ''}${e.cost}`));
         if (e.type === 'attack') cc.appendChild(h('span', 'burst', `⚔ ${e.dmg}`));
       });

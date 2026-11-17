@@ -474,3 +474,19 @@ body.modal-open { overflow: hidden; }
 button.danger { color: #ffb0b0; }
 button.danger:hover { background: rgba(208,59,59,.22); }
 .dm-foot { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+
+/* ---------- The Ring, counters ---------- */
+.mtg.ringbearer { box-shadow: 0 0 0 2px #ffb347, 0 0 18px rgba(255,179,71,.75); }
+.mtg.ringbearer::before { content: '💍'; position: absolute; left: 50%; top: 2px; transform: translateX(-50%); font-size: 17px; z-index: 4; filter: drop-shadow(0 0 4px #ffb347); }
+.ring-panel { background: linear-gradient(180deg, rgba(60,40,12,.55), rgba(23,42,58,.92)); border: 1px solid rgba(255,179,71,.4); border-radius: 12px; padding: 10px; font-size: 12.5px; }
+.ring-panel[hidden] { display: none; }
+.ring-panel .rp-head { margin-bottom: 6px; }
+.ring-panel ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.ring-panel li.on { color: var(--text-primary); }
+.ring-panel li.off { color: var(--muted); opacity: .55; }
+.ring-panel li.on::marker { color: #ffb347; font-weight: 800; }
+.ring-banner { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 260; pointer-events: none; text-align: center; font-size: 26px; font-weight: 800; color: #fff0d0; text-shadow: 0 0 22px rgba(255,179,71,.95), 0 3px 10px #000; animation: ringb 2.2s ease forwards; }
+.ring-banner small { font-size: 14px; font-weight: 600; color: #ffd9a0; }
+@keyframes ringb { 0% { opacity: 0; transform: translateX(-50%) scale(.8); } 15% { opacity: 1; transform: translateX(-50%) scale(1.05); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-14px); } }
+.mtg .ctr.neg { background: #d03b3b; }
+.mtg .ctr.kind { background: #5a4aa0; font-size: 10px; padding: 0 5px; white-space: nowrap; }

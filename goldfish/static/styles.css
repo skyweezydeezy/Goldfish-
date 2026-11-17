@@ -109,8 +109,8 @@ label.small { font-size: 12px; }
 .tile .val { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .tile .sub { font-size: 12px; color: var(--text-secondary); }
 
-.curve-wall { display: flex; gap: 10px; align-items: flex-end; overflow-x: auto; padding: 8px 2px 4px; min-height: 120px; }
-.curve-col { display: flex; flex-direction: column-reverse; align-items: center; min-width: 96px; }
+.curve-wall { display: flex; gap: 6px; align-items: flex-end; overflow-x: auto; padding: 8px 2px 4px; min-height: 120px; }
+.curve-col { display: flex; flex-direction: column-reverse; align-items: center; min-width: 92px; flex: 1 0 92px; }
 .curve-col .mv { margin-top: 6px; font-weight: 700; color: var(--text-secondary); font-size: 13px; }
 .curve-col .mv small { color: var(--muted); font-weight: 400; }
 .curve-col .stack { position: relative; width: 92px; }
@@ -358,7 +358,7 @@ button, .tab, select, label { touch-action: manipulation; }
   .hand-zone .mtg { --card-w: 96px; margin: 0 -14px; }
   .hand-zone .mtg:hover { transform: none; margin: 0 -14px; }
   .fan .mtg { --card-w: 108px; }
-  .curve-col { min-width: 74px; } .curve-col .stack, .curve-col .stack .mtg { width: 70px; }
+  .curve-col { min-width: 74px; flex-basis: 74px; } .curve-col .stack, .curve-col .stack .mtg { width: 70px; }
   .replay .turnrow { grid-template-columns: 70px 1fr; }
   .replay .tstats { grid-column: 1 / -1; text-align: left; }
   .replay .tcards .mtg { --card-w: 52px; }

@@ -107,7 +107,12 @@ The goldfish never blocks, never removes anything, and never interacts.
 
 Some choices have no right answer you can read off a card: should a fetch land be cracked at once, or held? The **Policy lab** on the Simulation tab settles it with evidence. It plays the same games (same shuffles, same seats) once with each option, in goldfish mode (how early you win) or as a mirror match (win rate), and shows each option's score with its margin of error and whether it beat the baseline by more than chance. An option only counts as better when it wins by more than chance would explain (about 95% sure); otherwise the answer is "no clear difference", which is a real answer. **Use this** saves the choice for that deck in your browser, and the autopilot, the simulation and mirror matches then use it. **Reset** goes back to the defaults. For now the lab tests fetch land timing (crack at once, hold when a shuffle helps, hold until needed, hold until the end of the turn); the engine's `opts.policy` and `comparePolicies` are built so more choices can be added the same way.
 
-What it found so far: on the Second Breakfast and Veyran lists, cracking at once is as good as or slightly better than every way of holding (holding costs a mana whenever the engine guesses wrong, and the shuffle benefit is rare), so the default stays.
+What it found so far (thousands of games on the Second Breakfast, Veyran and old Frodo lists, checked again on fresh shuffles):
+- **Holding mana open for counterspells loses.** Playing counterspells only with spare mana won 7 to 11 points more often in every Veyran matchup (z between 4.7 and 7.9), so that is now the default (`holdCounters = no`). The old behaviour is still available in the lab.
+- **Fetch lands:** cracking at once is as good as or slightly better than every way of holding, so the default stays.
+- **Opening hands depend on the deck:** keeping 3 to 5 lands won 0.8 points more often for the old Frodo list (z 4.7), while for Veyran the default keeps are best (3 or 4 lands loses 1.7 points, z -6.9). That is why the lab saves its result per deck instead of changing one global rule.
+- **No measurable effect:** Necropotence's hand size, and when to sacrifice tokens to Blood Artist (never sacrificing is a hair worse in a goldfish, z -2.7).
+- **Close:** being more aggressive when they could kill you next turn (attack caution 0.5) won 0.6 to 0.8 points more often in two of three matchups (z 2.1 each). That is about what chance produces when many options are compared, so it is not adopted; more games would settle it.
 
 ## Mirror match (beta)
 

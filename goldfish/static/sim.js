@@ -2330,7 +2330,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'yes', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   function pol(g, key) { const p = g.opts && g.opts.policy; return p && p[key] != null ? p[key] : DEFAULT_POLICY[key]; }
   // a held fetch land: crack it when mana is needed, after a library-reordering effect (Brainstorm, Sylvan Library: the shuffle sends the put-back cards away) or at the end of the turn
   function heldFetches(g) { return g.battlefield.filter(p => p.heldFetch && p.card.a.fetchSpec); }

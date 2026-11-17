@@ -19,6 +19,7 @@ const brainstorm = { name: 'Brainstorm', layout: 'normal', mana_cost: '{U}', cmc
 brainstorm.a = G.analyze(brainstorm, ['W', 'B']);
 
 // ---- defaults
+check('learned default: counterspells are only cast with spare mana (not by holding mana open): it won 7 to 11 points more often in 1000-match trials', G.pol(fresh(), 'holdCounters') === 'no');
 check('the default policy cracks a fetch land at once', G.pol(fresh(), 'fetchHold') === 'never' && G.pol(fresh({ fetchHold: 'untilEnd' }), 'fetchHold') === 'untilEnd');
 let g = fresh(); withLib(g, ['Plains', 'Swamp']); G.playLandCard(g, inst(g, 'Marsh Flats'), false);
 check('(default) Marsh Flats is cracked on the spot', g.graveyard.some(i => /Marsh Flats/.test(i.card.name)) && heldCount(g) === 0);

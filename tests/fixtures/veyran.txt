@@ -1,0 +1,103 @@
+// Double Down (Veyran)
+// COMMANDER
+1 Veyran, Voice of Duality (SLD) 1915
+// DECK
+1 An Offer You Can't Refuse (FDN) 311
+1 Ancient Tomb (EXP) 36 *F*
+1 Anger of the Gods (SLD) 1503
+1 Arcane Signet (SLD) 589
+1 Archmage Emeritus (SPG) 150
+1 Bloodstained Mire (EXP) 18 *F*
+1 Brainstorm (SLD) 7013
+1 Brazen Borrower // Petty Theft (SPG) 30
+1 Burst Lightning (SOA) 41
+1 Chain Lightning (MP2) 26 *F*
+1 Chrome Mox (SPG) 102 *F*
+1 Comet Storm (PWWK) 76★ *F*
+1 Command Tower (PIP) 888 *F*
+1 Counterspell (SLD) 7117
+1 Curiosity (SLD) 2569 *F*
+1 Cyclonic Rift (RVR) 419
+1 Deflecting Swat (CMM) 698
+1 Desperate Ritual (SLD) 1984
+1 Dig Through Time (MAR) 54
+1 Dramatic Reversal (SLD) 1083
+1 Expansion // Explosion (PGRN) 224s *F*
+1 Expressive Iteration (SLD) 2305
+1 Fact or Fiction (SLD) 333
+1 Fierce Guardianship (SLC) 86 *F*
+1 Fiery Confluence (SLC) 107 *F*
+1 Fire // Ice (F06) 12a *F*
+1 Fireball (P05) 3
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14 *F*
+1 Frantic Search (SLD) 228
+1 Gamble (SLD) 188
+1 Gitaxian Probe (SLD) 2067
+1 Guttersnipe (SLD) 2361
+1 Into the Roil (CMR) 397
+1 Island (J14) 2★ *F*
+1 Island (P23) 7 *F*
+1 Island (SLD) 1131
+1 Island (SLD) 1400
+1 Island (SLD) 1469
+1 Island (SLD) 673 *F*
+1 Island (SLP) 32
+1 Isochron Scepter (SLC) 9
+1 Izzet Boilerworks (2X2) 408
+1 Izzet Signet (SLD) 293
+1 Jace, the Mind Sculptor (BLC) 93 *F*
+1 Jeska's Will (SOA) 44
+1 Lightning Bolt (SLC) 114 *F*
+1 Lotus Petal (SLD) 7031 *F*
+1 Mana Confluence (EXP) 42 *F*
+1 Mana Drain (OTP) 67 *F*
+1 Mana Vault (MPS) 17 *F*
+1 Mind Stone (DCI) 11 *F*
+1 Mindbreak Trap (OTP) 68 *F*
+1 Misty Rainforest (EXP) 25 *F*
+1 Mizzix's Mastery (STA) 43
+1 Mountain (J14) 4★ *F*
+1 Mountain (PL24) 5 *F*
+1 Mountain (SLD) 1402
+1 Mountain (SLD) 1471
+1 Mountain (SLD) 1650
+1 Mountain (SLD) 674 *F*
+1 Mountain (SLZ) 374
+1 Murmuring Mystic (SPG) 151
+1 Mystical Tutor (SLD) 334
+1 Niv-Mizzet, Parun (SLD) 1530 *F*
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16 *F*
+1 Ponder (SLD) 7119
+1 Preordain (SLD) 1719
+1 Pyretic Ritual (SLD) 1064
+1 Pyroblast (SLD) 2707
+1 Pyrokinesis (EMA) 143
+1 Red Elemental Blast (A25) 147
+1 Remand (F08) 1 *F*
+1 Rhystic Study (WOT) 91 *F*
+1 Scalding Tarn (EXP) 22 *F*
+1 Shivan Reef (DMU) 380
+1 Snapcaster Mage (SLD) 808
+1 Sol Ring (PIP) 887 *F*
+1 Spell Pierce (MP2) 17 *F*
+1 Spirebluff Canal (SLD) 1373
+1 Steam Vents (EXP) 12 *F*
+1 Storm-Kiln Artist (CMM) 644
+1 Sulfur Falls (PIP) 822 *F*
+1 Swan Song (SLD) 1591
+1 Talisman of Creativity (SLD) 1058
+1 Temple of Epiphany (PIP) 1047 *F*
+1 Thassa's Oracle (SLD) 1280
+1 Third Path Iconoclast (BRO) 223
+1 Thousand-Year Storm (2X2) 390
+1 Time Warp (STA) 22
+1 Tishana's Tidebinder (LCI) 335
+1 Treasure Cruise (TSR) 319
+1 Vendilion Clique (SLD) 118 *F*
+1 Volcanic Island (3ED) 291
+1 Walking Ballista (PIP) 880 *F*
+1 Wooded Foothills (EXP) 19 *F*
+1 Young Pyromancer (2X2) 364

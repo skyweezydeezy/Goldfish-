@@ -110,6 +110,7 @@
   const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly' };
   function pillHtml(x) {
     const side = x.back ? '<span class="pill back" title="A rule on the back face of this double-faced card">Back</span> ' : '';
+    if (x.mirror) return side + '<span class="pill opp" title="Does nothing against a goldfish. It is used in a Mirror match (Simulation tab).">Mirror matches only</span> ';
     if (x.status === 'ok' || !x.tag) return side;
     return side + `<span class="pill ${x.tag}" title="${esc(TAG_HELP[x.tag] || '')}">${TAG_LABEL[x.tag] || ''}</span> `;
   }

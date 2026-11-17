@@ -375,7 +375,7 @@ button, .tab, select, label { touch-action: manipulation; }
 @media (display-mode: standalone) { .topbar { position: sticky; } }
 
 /* ---------- overflow safety on narrow screens ---------- */
-html, body { max-width: 100%; overflow-x: hidden; }
+html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; }   /* clip, not hidden: hidden turns body into a scroll box and the sticky top bar stops sticking */
 .deck-layout, .two-col, .table, .deck-view, .panel { min-width: 0; }
 .deck-layout > *, .two-col > *, .table > *, .deck-view > * { min-width: 0; }
 #deckMsgs .msg, .hint, .kv span, .box-head { overflow-wrap: anywhere; }

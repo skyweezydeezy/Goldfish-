@@ -498,3 +498,7 @@ button.danger:hover { background: rgba(208,59,59,.22); }
   .tab { white-space: normal; text-align: center; line-height: 1.15; font-size: 12px; padding: 7px 3px; min-height: 42px; }
   .tab-n { display: none; }
 }
+
+/* ---------- table: keep the hand right under the lands, not pushed below the fold by the log's height ---------- */
+.table { align-items: start; }
+.table-main { min-height: 0; }

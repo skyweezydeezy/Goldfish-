@@ -47,6 +47,8 @@ Rules applied to the results of the current run:
 Cost: only UI and rule code. It fits the current privacy promise exactly.
 
 ### Tier A+: learn from thousands of games (outliers and what wins)
+**Status: card impact is built** for any match mode (the mirror or a saved deck as the opponent), not the solo goldfish. `Suggest.matchImpact` in `goldfish/static/suggest.js` replays the same matches in the worker and lists the cards clearly linked to winning or losing under the mirror match results. Outlier games and pairs are not built yet.
+
 The goal: after thousands of games, find the outliers and the cards that actually change results, especially against a known opponent (the mirror match or a saved deck).
 
 What is missing today: the simulation keeps per-card numbers (when each card was drawn and cast) but throws away which games were fast or slow, and the mirror match keeps only who won and when. Nothing links a card to a result.
@@ -80,7 +82,7 @@ This changes what the app is:
 - Do we stay **device-only** (tiers A and B) on purpose, as a feature?
 - For tier A, which suggestions are trustworthy enough to show, given what the engine does not simulate (stack interaction, dies triggers, an opponent's board)?
 - Should a suggestion name specific replacement cards, or only describe the problem ("you need more 2-mana ramp")? Naming cards needs a card pool to search, such as Scryfall search in hosted mode or ScryMirror locally.
-- Tier A+: which opponent counts as "known": the mirror, a saved deck, or a field of several saved decks weighted by how often you meet them?
+- Tier A+: should a "field" of several saved decks, weighted by how often you meet them, be added as an opponent?
 - How do we show uncertainty? A suggestion from 500 games is noisier than one from 5,000.
 - If we ever do tier C: what exactly would be sent, who runs the server, and how does a player see and delete their data?
 
@@ -89,3 +91,4 @@ This changes what the app is:
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-17 | Build tier A first, on the device only | It uses numbers the simulation already makes and keeps the "nothing is uploaded" promise. |
+| 2026-11-17 | Card impact runs in every match mode (mirror or a saved deck), not the solo goldfish | A known opponent gives win rates, which say more than goldfish speed. |

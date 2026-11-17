@@ -1,7 +1,7 @@
 # Tests
 
 Scenario tests for the simulation engine (`goldfish/static/sim.js`). They use a saved copy of the Frodo/Sam commander deck
-(`fixtures/frodo-loaded.json`, real Scryfall data) so they run offline.
+(`fixtures/frodo-loaded.json` and `fixtures/veyran-loaded.json`, real Scryfall data) so they run offline.
 
 ```
 node tests/run.js          # engine tests: fast, no network
@@ -26,6 +26,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | confidant-shehulk | Enlightened Confidant surveil, casting a modal back face |
 | scry | Scry, Viscera Seer, Path of Ancestry |
 | spare-foods | Order in which spare Foods are spent |
+| spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
 | ui/looks | Playmat and sleeve picker (browser test) |

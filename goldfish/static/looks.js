@@ -16,6 +16,10 @@
 
   const MATS = [
     { id: 'frozen', name: 'Frozen pond', css: '' },   // '' = the built-in look
+    // I See Fish originals (matching sets: each playmat has a sleeve of the same name)
+    { id: 'prism', name: 'Prism Nexus', image: 'looks/mat-prism.jpg' },
+    { id: 'tide', name: 'Sunken Gate', image: 'looks/mat-tide.jpg' },
+    { id: 'eclipse', name: 'Eclipse Spires', image: 'looks/mat-eclipse.jpg' },
     { id: 'felt', name: 'Card-room felt', css: 'radial-gradient(ellipse at 50% 0%, #2f7048 0%, #1c4a2d 50%, #0f2c1b 100%)' },
     { id: 'crimson', name: 'Crimson', css: 'radial-gradient(ellipse at 50% 0%, #7a2433 0%, #4a1520 50%, #250a10 100%)' },
     { id: 'royal', name: 'Royal violet', css: 'radial-gradient(ellipse at 50% 0%, #563585 0%, #321e55 50%, #180f2e 100%)' },
@@ -28,6 +32,9 @@
 
   const SLEEVES = [
     { id: 'none', name: 'No sleeves', color: '' },   // bare cards, the built-in frozen card back
+    { id: 'prism', name: 'Prism Nexus', color: '#b8913f', back: 'looks/sleeve-prism.jpg' },
+    { id: 'tide', name: 'Sunken Gate', color: '#2a8c86', back: 'looks/sleeve-tide.jpg' },
+    { id: 'eclipse', name: 'Eclipse Spires', color: '#8e4bb5', back: 'looks/sleeve-eclipse.jpg' },
     { id: 'ice', name: 'Ice blue', color: '#4aa6e0' },
     { id: 'black', name: 'Matte black', color: '#1d1f22' },
     { id: 'white', name: 'Pearl white', color: '#e9edf0' },

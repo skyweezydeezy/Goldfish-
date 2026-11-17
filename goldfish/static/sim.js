@@ -327,7 +327,7 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
@@ -622,8 +622,12 @@
       if (colors.size === 0) colors.add('C');
       if (colors.has('C') && colors.size > 1 && !/\{C\}/.test(text)) colors.delete('C');
       a.fetchLife = a.fetch && /pay 1 life/i.test(text);
+      if (a.fetch) {                                                                                       // a fetch land really cracks: sacrifice it and fetch a land (see crackFetch)
+        const fl = text.match(/(?:^|\n)\{T\}(?:, Pay (\d+) life)?, Sacrifice ~: Search your library for an? ([^,.]*?) card[^.]*onto the battlefield( tapped)?/i);
+        if (fl) a.fetchSpec = { types: /basic land/i.test(fl[2]) ? 'basic' : Object.keys(BASIC_TYPES).filter(t => new RegExp('\\b' + t + '\\b').test(fl[2])), tapped: !!fl[3], life: fl[1] ? +fl[1] : 0 };
+      }
       a.produce = { colors, amount };
-      a.entersTapped = (/enters( the battlefield)? tapped/i.test(text) && !/unless|you may (pay|reveal)|if you don't|if you control two or fewer/i.test(text)) || (a.fetch && /tapped/i.test(lower));
+      a.entersTapped = (/enters( the battlefield)? tapped/i.test(text) && !/unless|you may (pay|reveal)|if you don't|if you control two or fewer/i.test(text)) || (a.fetch && !a.fetchSpec && /tapped/i.test(lower));
       // Conditional lands decide whether they enter tapped at the moment they enter (see landEntersTapped):
       //   check lands, slow lands, fast lands, shock lands, reveal lands (Snarls), Canopy Vista, The Shire, Undergrowth Stadium
       let mm;
@@ -1145,7 +1149,7 @@
   function enter(g, inst, o) {
     o = o || {};
     const a = inst.card.a;
-    const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1), token: !!inst.card.isToken };
+    const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: a.fetchSpec ? null : a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1), token: !!inst.card.isToken };
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
     else if (a.isLand) perm.tapped = landEntersTapped(g, a);
     else perm.sick = a.isCreature;
@@ -1197,6 +1201,7 @@
     if (o.silent) return perm;
     a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) fire(g, t, perm, ev, perm); });
     fireEnterWatchers(g, perm, ev);
+    if (a.fetchSpec && !o.noCrack) return crackFetch(g, perm, ev) || perm;                                // the fetch land is cracked at once; what you get is the land it fetched
     return perm;
   }
 
@@ -2287,7 +2292,8 @@
   function evalLandChoice(g, o) {
     const s = cloneState(g);
     s.hand.splice(s.hand.indexOf(o.inst), 1);
-    const perm = enter(s, o.inst, { asMdfcLand: o.mdfc });
+    let perm = enter(s, o.inst, { asMdfcLand: o.mdfc });
+    if (perm.card.a.fetchSpec) { const np = crackFetch(s, perm, []); if (np) perm = np; }                      // judge a fetch land by the land it would fetch
     s.landsPlayedThisTurn = 99;
     let spent = 0;
     try { spent = castPhase(s, true).spent; } catch (e) { spent = 0; }
@@ -2298,9 +2304,9 @@
   }
 
   function chooseLand(g) {
-    const lands = g.hand.filter(c => c.card.a.isLand);
+    const lands = g.hand.filter(c => c.card.a.isLand && (!c.card.a.fetchSpec || fetchCandidates(g, c.card.a.fetchSpec).length));          // a fetch land with nothing left to fetch is a dead card
     const options = lands.map(c => ({ inst: c, mdfc: false }));
-    if (!lands.length) g.hand.filter(c => c.card.a.mdfcLand).forEach(c => options.push({ inst: c, mdfc: true }));
+    if (!lands.length && !g.hand.some(c => c.card.a.isLand)) g.hand.filter(c => c.card.a.mdfcLand).forEach(c => options.push({ inst: c, mdfc: true }));
     if (!options.length) return null;
     if (options.length === 1) return options[0];
     const seen = new Set();
@@ -2314,12 +2320,41 @@
     return best;
   }
 
+  // ---------- Fetch lands ----------
+  // Cracking a fetch land: pay the life, sacrifice it (it goes to the graveyard) and fetch the best land of the right types, then shuffle.
+  function fetchCandidates(g, spec) {
+    return g.library.filter(i => i.card.a.isLand && (spec.types === 'basic' ? /\bBasic\b/.test(i.card.type_line || '') : spec.types.some(t => (i.card.type_line || '').includes(t))));
+  }
+  function fetchScore(g, inst, spec, have, need) {
+    const a = inst.card.a; let sc = 0;
+    a.produce.colors.forEach(c => { if (c !== 'C') sc += (have.has(c) ? 0.3 : 2.5) * (1 + (need.get(c) || 0)); });          // colours you do not have yet, weighted by what your hand wants
+    sc += a.produce.colors.size * 0.3;
+    if (!spec.tapped) { if (a.tapCond && a.tapCond.kind === 'shock') sc -= g.life > 12 ? 0.2 : 2; else if (a.entersTapped) sc -= 2.5; }
+    return sc;
+  }
+  function crackFetch(g, perm, ev) {
+    const spec = perm.card.a.fetchSpec;
+    if (!spec || !g.battlefield.includes(perm)) return null;
+    const cands = fetchCandidates(g, spec);
+    if (!cands.length) return null;
+    const have = new Set(); g.battlefield.forEach(p => { if (p.produce) p.produce.colors.forEach(c => have.add(c)); });
+    const need = new Map(), addNeed = c => (c.a.cost.pips || []).forEach(pp => pp.forEach(col => need.set(col, (need.get(col) || 0) + 1 / pp.length)));
+    g.hand.forEach(i => { if (!i.card.a.isLand) addNeed(i.card); }); g.command.forEach(i => addNeed(i.card));
+    let best = null, bs = -Infinity;
+    for (const c of cands) { const sc = fetchScore(g, c, spec, have, need); if (sc > bs) { bs = sc; best = c; } }
+    if (spec.life) { g.life -= spec.life; checkDeath(g, ev); }
+    leavePerm(g, perm, ev);
+    g.library.splice(g.library.indexOf(best), 1);
+    shuffle(g.library, g.rnd);
+    const np = enterWithTriggers(g, best, { tapped: spec.tapped }, ev);
+    ev.push({ type: 'rampLand', inst: best, perm: np, source: perm });
+    return np;
+  }
   function playLandCard(g, inst, asMdfc) {
     const ev = [];
     if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);
     const perm = enterWithTriggers(g, inst, { asMdfcLand: asMdfc }, ev);
     if (g.castTurn[inst.card.uid] == null) g.castTurn[inst.card.uid] = g.turn;
-    if (inst.card.a.fetchLife && !g.dry) { g.life -= 1; checkDeath(g, ev); }                                  // fetch lands: pay 1 life
     g.landsPlayedThisTurn++; g.landPlayed++;
     if (!g.landThisTurn) g.landThisTurn = { inst, perm };
     return { type: 'land', inst, perm, mdfc: asMdfc, ev };

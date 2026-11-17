@@ -491,3 +491,17 @@ button.danger:hover { background: rgba(208,59,59,.22); }
 @keyframes ringb { 0% { opacity: 0; transform: translateX(-50%) scale(.8); } 15% { opacity: 1; transform: translateX(-50%) scale(1.05); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-14px); } }
 .mtg .ctr.neg { background: #d03b3b; }
 .mtg .ctr.kind { background: #5a4aa0; font-size: 10px; padding: 0 5px; white-space: nowrap; }
+
+/* mirror match */
+.mmbars { display: grid; grid-template-columns: 46px 1fr; gap: 4px 10px; align-items: center; margin: 6px 0 12px; font-size: 12px; }
+.mmbars .t { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.mmbars .b { display: flex; flex-direction: column; gap: 2px; }
+.mmbars .b i { display: block; height: 7px; border-radius: 4px; min-width: 2px; }
+.mmbars .b i.a { background: var(--ice, #8fd8ff); }
+.mmbars .b i.b { background: #f7cf6f; }
+.mmbars .legend { grid-column: 1 / -1; color: var(--text-secondary); }
+.mmlog { display: grid; grid-template-columns: 70px 74px 1fr; gap: 8px; padding: 5px 8px; border-radius: 10px; background: var(--surface-2); font-size: 12.5px; }
+.mmlog.a { border-left: 3px solid var(--ice, #8fd8ff); }
+.mmlog.b { border-left: 3px solid #f7cf6f; }
+.mmlog small { color: var(--muted); display: block; }
+@media (max-width: 640px) { .mmlog { grid-template-columns: 56px 1fr; } .mmlog > :nth-child(2) { display: none; } }

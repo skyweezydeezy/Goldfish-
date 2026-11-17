@@ -20,6 +20,7 @@
     if (t === 'hands' && S.deck) renderOpenLandsChart();
     requestAnimationFrame(refit);
     if (t === 'table' && S.deck && !S.game) newTableGame();
+    if (t === 'sim') fillMirror();
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
   }
@@ -1039,6 +1040,94 @@
     worker.onerror = err => { $('#runSim').disabled = false; $('#simInfo').textContent = 'Simulation error: ' + err.message; };
     worker.postMessage({ cards: S.cards, tokens: S.tokens, opts: o, n: o.n, seed: rseed() });
   }
+
+
+  // ======================= mirror match =======================
+  const mmCache = new Map();
+  function fillMirror() {
+    const sel = $('#mmOpp'), cur = sel.value, names = Object.keys(getDecks());
+    sel.innerHTML = '<option value="">This deck (mirror)</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    sel.value = names.includes(cur) ? cur : '';
+  }
+  function markCommander(cards) {
+    const total = cards.reduce((s, c) => s + c.qty, 0);
+    if (!cards.some(c => c.commander) && total === 100) { const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1); if (cand) cand.commander = true; }
+    return cards;
+  }
+  async function mirrorOpponent() {
+    const name = $('#mmOpp').value;
+    if (!name) return { cards: S.cards, tokens: S.tokens, name: 'Your deck (mirror)' };
+    if (!mmCache.has(name)) {
+      $('#mmInfo').textContent = `Loading "${name}"…`;
+      await Source.init();
+      const r = await Source.loadDeck(getDecks()[name] || '', m => { $('#mmInfo').textContent = m; });
+      mmCache.set(name, { cards: markCommander(r.cards), tokens: r.tokens || [] });
+    }
+    return Object.assign({ name }, mmCache.get(name));
+  }
+  let mmWorker = null, mmState = null;
+  async function runMirror() {
+    if (!need()) return;
+    const btn = $('#mmRun'); btn.disabled = true;
+    let opp;
+    try { opp = await mirrorOpponent(); } catch (err) { $('#mmInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; }
+    if (!opp.cards.length) { $('#mmInfo').textContent = 'That deck has no cards.'; btn.disabled = false; return; }
+    const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
+    const n = Math.max(20, Math.min(3000, +$('#mmN').value || 400));
+    if (mmWorker) mmWorker.terminate();
+    mmWorker = new Worker('worker.js');
+    const bar = $('#mmProgress div'); bar.style.width = '0';
+    const t0 = performance.now();
+    $('#mmInfo').textContent = `Playing ${n.toLocaleString()} matches…`;
+    mmWorker.onmessage = e => {
+      if (e.data.progress != null) bar.style.width = (e.data.progress * 100).toFixed(1) + '%';
+      if (e.data.result) {
+        bar.style.width = '100%'; btn.disabled = false;
+        mmState = { res: e.data.result, opp, o };
+        $('#mmInfo').textContent = `${n.toLocaleString()} matches in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
+        renderMirror();
+      }
+    };
+    mmWorker.onerror = err => { btn.disabled = false; $('#mmInfo').textContent = 'Mirror match error: ' + err.message; };
+    mmWorker.postMessage({ match: { cardsA: S.cards, tokensA: S.tokens, cardsB: opp.cards, tokensB: opp.tokens }, opts: o, n, seed: rseed() });
+  }
+  function renderMirror() {
+    const { res, opp, o } = mmState;
+    const decided = res.winA + res.winB, N = Math.max(1, res.n - res.errors);
+    const pa = res.winA / N, pb = res.winB / N, ci = 1.96 * Math.sqrt(Math.max(0.0001, pa * (1 - pa)) / N) * 100;
+    const nameA = res.nameA ? res.nameA.split(',')[0] : 'Your deck', nameB = opp.name === 'Your deck (mirror)' ? (res.nameB ? res.nameB.split(',')[0] + ' (copy)' : 'Copy of your deck') : opp.name;
+    $('#mmTiles').innerHTML = [
+      tile(`${esc(nameA)} wins`, (pa * 100).toFixed(1) + '%', `±${ci.toFixed(1)} points (95% range)`),
+      tile(`${esc(nameB)} wins`, (pb * 100).toFixed(1) + '%', ''),
+      tile('Average length', res.avgTurn.toFixed(1), 'rounds (one turn each)'),
+      tile('Won on the play', decided ? (res.playWins / decided * 100).toFixed(0) + '%' : '—', `${decided ? (res.drawWins / decided * 100).toFixed(0) : '—'}% on the draw`),
+      tile('Won by', decided ? ((res.reasons.life / decided) * 100).toFixed(0) + '% life' : '—', `${decided ? ((res.reasons.commander / decided) * 100).toFixed(0) : 0}% commander damage`),
+      tile('No winner', (res.none / N * 100).toFixed(1) + '%', `in ${res.turns} rounds`),
+    ].join('');
+    const T = res.turns, maxv = Math.max(1, ...res.histA.slice(1, T + 1), ...res.histB.slice(1, T + 1));
+    let rows = `<div class="legend"><span style="color:var(--ice)">■</span> ${esc(nameA)} &nbsp; <span style="color:#f7cf6f">■</span> ${esc(nameB)} &nbsp; · turn on which the winner finished the game</div>`;
+    for (let t = 1; t <= T; t++) rows += `<div class="t">T${t}</div><div class="b"><i class="a" style="width:${(res.histA[t] / maxv * 100).toFixed(1)}%"></i><i class="b" style="width:${(res.histB[t] / maxv * 100).toFixed(1)}%"></i></div>`;
+    $('#mmBars').innerHTML = rows;
+    const sb = $('#mmSamples'); sb.innerHTML = '';
+    [['quick', '⚡ A quick game'], ['median', '🎲 A typical game'], ['long', '🐌 A long game']].forEach(([k, label]) => {
+      const smp = res.samples[k]; if (!smp) return;
+      const b = h('button', 'ghost', label); b.addEventListener('click', () => showMirrorLog(smp)); sb.appendChild(b);
+    });
+    $('#mmLog').innerHTML = '';
+    if (res.errors) $('#mmInfo').textContent += ` · ${res.errors} games hit an error`;
+  }
+  function showMirrorLog(smp) {
+    const { opp, o } = mmState;
+    const L = G.matchLog(S.cards, S.tokens, opp.cards, opp.tokens, o, smp.seed, smp.aOnPlay);
+    const box = $('#mmLog'); box.innerHTML = '';
+    box.appendChild(h('div', 'hint', `Seed ${smp.seed}: ${smp.aOnPlay ? 'you' : 'the opponent'} went first. ` + (L.winner == null ? 'No winner.' : `${L.winner === 0 ? 'You win' : 'The opponent wins'} on turn ${L.turn} (${L.reason === 'commander' ? '21 commander damage' : 'life'}). Final life ${L.lifeA} – ${L.lifeB}.`)));
+    L.lines.forEach(l => {
+      const row = h('div', 'mmlog ' + (l.who === 'A' ? 'a' : 'b'));
+      row.innerHTML = `<div><b>${l.who === 'A' ? 'You' : 'Opp'}</b> T${l.turn}</div><div>${l.life[0]} – ${l.life[1]}<small>life</small></div><div>${esc(l.board)}<small>${esc(l.text.join('; ')) || '—'}</small></div>`;
+      box.appendChild(row);
+    });
+  }
+  $('#mmRun').addEventListener('click', runMirror);
 
   function medianTurn(hist) { let c = 0; for (let i = 0; i < hist.length - 1; i++) { c += hist[i]; if (c >= 0.5) return i + 1; } return null; }
   function cumBy(hist, t) { let c = 0; for (let i = 0; i < Math.min(t, hist.length - 1); i++) c += hist[i]; return c; }

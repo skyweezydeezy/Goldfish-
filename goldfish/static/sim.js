@@ -1201,7 +1201,11 @@
     if (o.silent) return perm;
     a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) fire(g, t, perm, ev, perm); });
     fireEnterWatchers(g, perm, ev);
-    if (a.fetchSpec && !o.noCrack) return crackFetch(g, perm, ev) || perm;                                // the fetch land is cracked at once; what you get is the land it fetched
+    if (a.fetchSpec && !o.noCrack) {
+      const hm = pol(g, 'fetchHold');
+      if (!g.dry && hm !== 'never' && (hm !== 'whenShuffleHelps' || shuffleHelps(g)) && fetchCandidates(g, a.fetchSpec).length) { perm.heldFetch = true; return perm; }                    // held: cracked later (see crackHeld)
+      return crackFetch(g, perm, ev) || perm;
+    }                                // the fetch land is cracked at once; what you get is the land it fetched
     return perm;
   }
 
@@ -1564,6 +1568,7 @@
             g.hand.splice(g.hand.indexOf(worst), 1); g.library.unshift(worst);
           }
           ev.push({ type: 'note', text: `Put ${Math.min(n, 5)} cards back on top of the library`, source });
+          if (!g.dry) crackHeld(g, ev, 1);                                                                   // a held fetch land shuffles the cards you put back
           break;
         }
         case 'untapLands': { let k = 0; for (const p of g.battlefield) if (p.asLand && p.tapped && k < n) { p.tapped = false; k++; } if (k) ev.push({ type: 'note', text: `Untapped ${k} land${k > 1 ? 's' : ''}`, source }); break; }
@@ -1716,6 +1721,7 @@
     keep.forEach(i => { if (!g.hand.includes(i)) g.hand.push(i); });
     back.forEach(i => g.library.unshift(i));
     ev.push({ type: 'note', text: `Sylvan Library: kept ${keep.map(i => i.card.name).join(' and ')}` });
+    if (back.length) crackHeld(g, ev, 1);
   }
   // Necropotence: skip the draw step and pay life instead, at the end step, to refill the hand
   function necroDig(g, ev) {
@@ -2261,6 +2267,7 @@
       const e = castOne(g);
       if (e) { ev.push(...e); continue; }
       if (dry) break;
+      if (needsHeldFetch(g)) { const ce = []; if (crackHeld(g, ce, 1)) { ev.push(...ce); continue; } }
       const ab = useAbilities(g);
       if (!ab.length) break;
       ev.push(...ab);
@@ -2320,6 +2327,26 @@
     return best;
   }
 
+  // ---------- Policies (choices the engine can learn by trial and error) ----------
+  // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
+  const DEFAULT_POLICY = { fetchHold: 'never' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  function pol(g, key) { const p = g.opts && g.opts.policy; return p && p[key] != null ? p[key] : DEFAULT_POLICY[key]; }
+  // a held fetch land: crack it when mana is needed, after a library-reordering effect (Brainstorm, Sylvan Library: the shuffle sends the put-back cards away) or at the end of the turn
+  function heldFetches(g) { return g.battlefield.filter(p => p.heldFetch && p.card.a.fetchSpec); }
+  function crackHeld(g, ev, max) {
+    let k = 0;
+    for (const p of heldFetches(g)) { if (max != null && k >= max) break; p.heldFetch = false; if (crackFetch(g, p, ev)) k++; else p.heldFetch = false; }
+    return k;
+  }
+  // a shuffle is worth waiting for when Brainstorm-like cards are in hand, or Sylvan Library is out
+  function shuffleHelps(g) {
+    return g.battlefield.some(p => p.card.a.sylvan) || g.hand.some(i => i.card.a.spellFx.some(f => f.type === 'putBack'));
+  }
+  function needsHeldFetch(g) {
+    if (g.dry || !heldFetches(g).length) return false;
+    const have = allUnits(g).length;
+    return g.hand.some(i => !i.card.a.isLand && i.card.a.castMv > have && i.card.a.castMv <= have + heldFetches(g).length && !i.card.a.counter) || (!!g.command.length && g.command.some(i => i.card.a.castMv > have && i.card.a.castMv <= have + heldFetches(g).length));
+  }
   // ---------- Fetch lands ----------
   // Cracking a fetch land: pay the life, sacrifice it (it goes to the graveyard) and fetch the best land of the right types, then shuffle.
   function fetchCandidates(g, spec) {
@@ -2500,7 +2527,7 @@
 
   function endTurn(g) {
     g.extortOwed = 0;
-    const necroEv = []; necroDig(g, necroEv);
+    const necroEv = []; if (pol(g, 'fetchHold') === 'untilEnd' || pol(g, 'fetchHold') === 'whenShuffleHelps') crackHeld(g, necroEv); necroDig(g, necroEv);
     if (g.opp) g.floating = [];
     const ev = necroEv;
     eachTrigger(g, 'end', ev);
@@ -2877,10 +2904,10 @@
   }
 
   // Play a whole match. aOnPlay: does player A go first? Returns the two linked games and the match record.
-  function playMatch(deckA, deckB, opts, seed, aOnPlay, hook) {
+  function playMatch(deckA, deckB, opts, seed, aOnPlay, hook, optsB) {
     const sA = seed >>> 0, sB = (seed ^ 0x9e3779b9) >>> 0;
     const gA = newGame(deckA, Object.assign({}, opts, { onPlay: aOnPlay !== false }), sA);
-    const gB = newGame(deckB, Object.assign({}, opts, { onPlay: aOnPlay === false }), sB);
+    const gB = newGame(deckB, Object.assign({}, optsB || opts, { onPlay: aOnPlay === false }), sB);
     const m = linkMatch(gA, gB);
     mulligan(gA); mulligan(gB);
     const order = aOnPlay === false ? [gB, gA] : [gA, gB];
@@ -2929,6 +2956,44 @@
     return res;
   }
 
+  // ---------- Learning by trial and error ----------
+  // Play the same games (same shuffles, same seats) with each candidate policy and compare the scores. The first candidate is the baseline;
+  // another one wins only if it beats the baseline by more than chance would explain (z > 1.64, about 95% one-sided).
+  // goldfish: score = how early you win (1 = turn 1, 0 = no win). mirror: 1 for a win, 0.5 for no winner, 0 for a loss, against the same deck or another one.
+  function comparePolicies(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, onProgress) {
+    const deckA = buildDeck(cardsA, tokensA), deckB = mode === 'mirror' ? buildDeck(cardsB || cardsA, tokensB || tokensA) : null;
+    const T = opts.turns, K = candidates.length;
+    const scores = candidates.map(() => new Float64Array(n)), kills = new Array(K).fill(0), killSum = new Array(K).fill(0), wins = new Array(K).fill(0);
+    let errors = 0;
+    for (let i = 0; i < n; i++) {
+      const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
+      for (let c = 0; c < K; c++) {
+        const o = Object.assign({}, opts, { policy: Object.assign({}, opts.policy, candidates[c].policy) });
+        try {
+          if (mode === 'mirror') {
+            const m = playMatch(deckA, deckB, o, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policy }));
+            const w = m.match.winner; scores[c][i] = w == null ? 0.5 : w === 0 ? 1 : 0; if (w === 0) wins[c]++;
+          } else {
+            const g = simulate(deckA, o, s);
+            scores[c][i] = g.killTurn != null ? Math.max(0, (T + 1 - g.killTurn) / T) : 0;
+            if (g.killTurn != null) { kills[c]++; killSum[c] += g.killTurn; }
+          }
+        } catch (err) { errors++; scores[c][i] = 0; }
+      }
+      if (onProgress && i % 10 === 0) onProgress(i / n);
+    }
+    const stat = arr => { let m = 0; for (const v of arr) m += v; m /= arr.length; let q = 0; for (const v of arr) q += (v - m) * (v - m); return { mean: m, se: Math.sqrt(q / Math.max(1, arr.length - 1) / arr.length) }; };
+    const rows = candidates.map((cd, c) => {
+      const st = stat(scores[c]);
+      const diff = Array.from(scores[c], (v, i) => v - scores[0][i]), ds = stat(diff);
+      return { name: cd.name, policy: cd.policy, mean: st.mean, se: st.se, diff: c === 0 ? 0 : ds.mean, diffSe: c === 0 ? 0 : ds.se, z: c === 0 || ds.se === 0 ? 0 : ds.mean / ds.se,
+        kills: kills[c], avgKillTurn: kills[c] ? killSum[c] / kills[c] : null, wins: wins[c] };
+    });
+    let best = 0;
+    rows.forEach((r, c) => { if (c > 0 && r.z > 1.64 && r.diff > 0 && (best === 0 || r.mean > rows[best].mean)) best = c; });
+    return { mode: mode || 'goldfish', n, turns: T, errors, rows, best };
+  }
+
   // One match as a readable turn-by-turn log (for the sample replay).
   function matchLog(cardsA, tokensA, cardsB, tokensB, opts, seed, aOnPlay) {
     const deckA = buildDeck(cardsA, tokensA), deckB = buildDeck(cardsB, tokensB);
@@ -2962,7 +3027,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    playMatch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
+    playMatch, comparePolicies, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

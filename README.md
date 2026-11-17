@@ -103,6 +103,12 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 
 The goldfish never blocks, never removes anything, and never interacts.
 
+## Policy lab: learning by trial and error (beta)
+
+Some choices have no right answer you can read off a card: should a fetch land be cracked at once, or held? The **Policy lab** on the Simulation tab settles it with evidence. It plays the same games (same shuffles, same seats) once with each option, in goldfish mode (how early you win) or as a mirror match (win rate), and shows each option's score with its margin of error and whether it beat the baseline by more than chance. An option only counts as better when it wins by more than chance would explain (about 95% sure); otherwise the answer is "no clear difference", which is a real answer. **Use this** saves the choice for that deck in your browser, and the autopilot, the simulation and mirror matches then use it. **Reset** goes back to the defaults. For now the lab tests fetch land timing (crack at once, hold when a shuffle helps, hold until needed, hold until the end of the turn); the engine's `opts.policy` and `comparePolicies` are built so more choices can be added the same way.
+
+What it found so far: on the Second Breakfast and Veyran lists, cracking at once is as good as or slightly better than every way of holding (holding costs a mana whenever the engine guesses wrong, and the shuffle benefit is rare), so the default stays.
+
 ## Mirror match (beta)
 
 On the **Simulation** tab, the **Mirror match** card plays your deck against itself or against another saved deck, instead of against a goldfish that never fights back. Two full games run side by side and are linked: damage, drain and lifelink move both life totals, creatures block each other (flying, reach, menace, first strike, double strike, deathtouch, trample and lifelink are handled), creatures that lose a fight go to the graveyard, and the first player to reach 0 life or deal 21 commander damage wins. Seats alternate (you are on the play in every other match), so playing a deck against a copy of itself comes out even. You get win rates with a 95% range, the average length, win rate on the play and on the draw, how often matches end by life or by commander damage, a histogram of the turn each side wins on, and a turn-by-turn replay of a quick, a typical and a long match.

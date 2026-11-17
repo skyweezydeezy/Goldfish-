@@ -20,7 +20,7 @@
     if (t === 'hands' && S.deck) renderOpenLandsChart();
     requestAnimationFrame(refit);
     if (t === 'table' && S.deck && !S.game) newTableGame();
-    if (t === 'sim') fillMirror();
+    if (t === 'sim') { fillMirror(); renderLabSaved(); }
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
   }
@@ -44,6 +44,7 @@
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
       minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 5000,
+      policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
     };
   }
   $('#optFormat').addEventListener('change', () => {
@@ -1143,6 +1144,79 @@
     });
   }
   $('#mmRun').addEventListener('click', runMirror);
+
+  // ======================= policy lab (learning by trial and error) =======================
+  const DECISIONS = {
+    fetch: { label: 'Fetch land timing', key: 'fetchHold', options: [{ name: 'Crack at once', value: 'never' }, { name: 'Hold when a shuffle helps', value: 'whenShuffleHelps' }, { name: 'Hold until needed', value: 'untilNeeded' }, { name: 'Hold until the end of the turn', value: 'untilEnd' }] },
+  };
+  const deckSig = () => S.cards.map(c => c.name + ':' + (c.commander ? 'c' : '')).sort().join('|');
+  const sigHash = str => { let x = 5381; for (let i = 0; i < str.length; i++) x = ((x << 5) + x + str.charCodeAt(i)) >>> 0; return x.toString(36); };
+  const getPolicies = () => { try { return JSON.parse(localStorage.getItem('gf_policy') || '{}') || {}; } catch (e) { return {}; } };
+  function currentPolicy() { if (!S.cards || !S.cards.length) return {}; const e = getPolicies()[sigHash(deckSig())]; return e && e.policy ? e.policy : {}; }
+  function savePolicy(key, value, note) {
+    const all = getPolicies(), id = sigHash(deckSig()), cur = all[id] || { policy: {}, notes: {} };
+    if (value == null) { cur.policy[key] = undefined; cur.notes[key] = undefined; } else { cur.policy[key] = value; cur.notes[key] = note; }
+    cur.policy = JSON.parse(JSON.stringify(cur.policy)); cur.notes = JSON.parse(JSON.stringify(cur.notes));
+    cur.when = Date.now();
+    if (Object.keys(cur.policy).length) all[id] = cur; else all[id] = undefined;
+    try { localStorage.setItem('gf_policy', JSON.stringify(all)); } catch (e) { toast('Could not save in this browser'); }
+    renderLabSaved();
+  }
+  function renderLabSaved() {
+    const box = $('#plSaved'); if (!S.cards || !S.cards.length) { box.textContent = ''; return; }
+    const pol = currentPolicy(), keys = Object.keys(pol);
+    if (!keys.length) { box.textContent = 'Nothing learned for this deck yet: the autopilot uses its default choices.'; return; }
+    const names = keys.map(k => { const d = Object.values(DECISIONS).find(x => x.key === k); const o = d && d.options.find(x => x.value === pol[k]); return `${d ? d.label : k} = ${o ? o.name : pol[k]}`; });
+    box.innerHTML = `Saved for this deck: <b>${esc(names.join('; '))}</b> (used by the autopilot, the simulation and mirror matches). <button class="ghost" id="plReset">Reset</button>`;
+    $('#plReset').addEventListener('click', () => { keys.forEach(k => savePolicy(k, null)); toast('Back to the default choices'); });
+  }
+  let plWorker = null, plState = null;
+  async function runLab() {
+    if (!need()) return;
+    const btn = $('#plRun'); btn.disabled = true;
+    const dec = DECISIONS[$('#plDecision').value], mode = $('#plMode').value;
+    const n = Math.max(50, Math.min(3000, +$('#plN').value || 400));
+    let opp = null;
+    if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }
+    const o = Object.assign(opts(), { turns: mode === 'mirror' ? Math.max(5, Math.min(40, +$('#mmT').value || 20)) : (+$('#optTurns').value || 10) });
+    o.policy = Object.assign({}, o.policy, { [dec.key]: undefined });
+    o.policy = JSON.parse(JSON.stringify(o.policy));
+    const candidates = dec.options.map(op => ({ name: op.name, policy: { [dec.key]: op.value } }));
+    if (plWorker) plWorker.terminate();
+    plWorker = new Worker('worker.js');
+    const bar = $('#plProgress div'); bar.style.width = '0';
+    $('#plInfo').textContent = `Playing ${n.toLocaleString()} games with each of the ${candidates.length} options…`;
+    const t0 = performance.now();
+    plWorker.onmessage = e => {
+      if (e.data.progress != null) bar.style.width = (e.data.progress * 100).toFixed(1) + '%';
+      if (e.data.result) {
+        bar.style.width = '100%'; btn.disabled = false;
+        plState = { res: e.data.result, dec, mode, n };
+        $('#plInfo').textContent = `${n.toLocaleString()} games per option in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
+        renderLab();
+      }
+    };
+    plWorker.onerror = err => { btn.disabled = false; $('#plInfo').textContent = 'Policy lab error: ' + err.message; };
+    plWorker.postMessage({ learn: { cards: S.cards, tokens: S.tokens, candidates, mode, cardsB: opp ? opp.cards : null, tokensB: opp ? opp.tokens : null }, opts: o, n, seed: rseed() });
+  }
+  function renderLab() {
+    const { res, dec, mode, n } = plState;
+    const unit = mode === 'mirror' ? 'win rate' : 'win-earliness score';
+    const rows = res.rows.map((r, i) => {
+      const verdict = i === 0 ? 'baseline' : r.z > 1.64 ? '✓ better' : r.z < -1.64 ? '✗ worse' : '≈ no clear difference';
+      const extra = mode === 'mirror' ? `${(r.mean * 100).toFixed(1)}% wins` : (r.kills ? `${(r.kills / n * 100).toFixed(0)}% win by turn ${res.turns}, on average turn ${r.avgKillTurn.toFixed(1)}` : 'never won');
+      return `<tr class="${res.best === i ? 'best' : ''}"><td><b>${esc(r.name)}</b></td><td>${r.mean.toFixed(3)} ± ${r.se.toFixed(3)}</td><td>${extra}</td><td>${i === 0 ? '—' : (r.diff >= 0 ? '+' : '') + r.diff.toFixed(3) + ' (z ' + r.z.toFixed(1) + ')'}</td><td>${verdict}</td><td><button class="ghost" data-use="${i}">Use this</button></td></tr>`;
+    }).join('');
+    const best = res.rows[res.best];
+    const msg = res.best === 0 ? `No option clearly beat “${esc(res.rows[0].name)}”. That is a real answer: for this deck the choice is too small to measure with ${n.toLocaleString()} games. More games can reveal a small difference.` : `<b>${esc(best.name)}</b> did better than the baseline by more than chance explains.`;
+    $('#plOut').innerHTML = `<p class="hint">${msg} Scores are ${unit} (higher is better) ± one standard error; the same shuffles are used for every option.</p><table class="labtable"><thead><tr><th>Option</th><th>Score</th><th>Result</th><th>Versus baseline</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table>${res.errors ? `<p class="hint">${res.errors} games hit an error.</p>` : ''}`;
+    $$('#plOut [data-use]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.use, r = res.rows[i], op = dec.options[i];
+      savePolicy(dec.key, i === 0 ? null : op.value, `${mode} ${n} games, score ${r.mean.toFixed(3)}`);
+      toast(i === 0 ? 'Default choice restored' : `Saved: ${op.name}`);
+    }));
+  }
+  $('#plRun').addEventListener('click', runLab);
 
   function medianTurn(hist) { let c = 0; for (let i = 0; i < hist.length - 1; i++) { c += hist[i]; if (c >= 0.5) return i + 1; } return null; }
   function cumBy(hist, t) { let c = 0; for (let i = 0; i < Math.min(t, hist.length - 1); i++) c += hist[i]; return c; }

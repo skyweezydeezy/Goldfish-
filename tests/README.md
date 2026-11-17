@@ -26,4 +26,5 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | confidant-shehulk | Enlightened Confidant surveil, casting a modal back face |
 | scry | Scry, Viscera Seer, Path of Ancestry |
 | spare-foods | Order in which spare Foods are spent |
+| interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |

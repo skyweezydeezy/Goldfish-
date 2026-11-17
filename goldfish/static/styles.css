@@ -109,8 +109,8 @@ label.small { font-size: 12px; }
 .tile .val { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .tile .sub { font-size: 12px; color: var(--text-secondary); }
 
-.curve-wall { display: flex; gap: 10px; align-items: flex-end; overflow-x: auto; padding: 8px 2px 4px; min-height: 120px; }
-.curve-col { display: flex; flex-direction: column-reverse; align-items: center; min-width: 96px; }
+.curve-wall { display: flex; gap: 6px; align-items: flex-end; overflow-x: auto; padding: 8px 2px 4px; min-height: 120px; }
+.curve-col { display: flex; flex-direction: column-reverse; align-items: center; min-width: 92px; flex: 1 0 92px; }
 .curve-col .mv { margin-top: 6px; font-weight: 700; color: var(--text-secondary); font-size: 13px; }
 .curve-col .mv small { color: var(--muted); font-weight: 400; }
 .curve-col .stack { position: relative; width: 92px; }
@@ -358,7 +358,7 @@ button, .tab, select, label { touch-action: manipulation; }
   .hand-zone .mtg { --card-w: 96px; margin: 0 -14px; }
   .hand-zone .mtg:hover { transform: none; margin: 0 -14px; }
   .fan .mtg { --card-w: 108px; }
-  .curve-col { min-width: 74px; } .curve-col .stack, .curve-col .stack .mtg { width: 70px; }
+  .curve-col { min-width: 74px; flex-basis: 74px; } .curve-col .stack, .curve-col .stack .mtg { width: 70px; }
   .replay .turnrow { grid-template-columns: 70px 1fr; }
   .replay .tstats { grid-column: 1 / -1; text-align: left; }
   .replay .tcards .mtg { --card-w: 52px; }
@@ -375,7 +375,7 @@ button, .tab, select, label { touch-action: manipulation; }
 @media (display-mode: standalone) { .topbar { position: sticky; } }
 
 /* ---------- overflow safety on narrow screens ---------- */
-html, body { max-width: 100%; overflow-x: hidden; }
+html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; }   /* clip, not hidden: hidden turns body into a scroll box and the sticky top bar stops sticking */
 .deck-layout, .two-col, .table, .deck-view, .panel { min-width: 0; }
 .deck-layout > *, .two-col > *, .table > *, .deck-view > * { min-width: 0; }
 #deckMsgs .msg, .hint, .kv span, .box-head { overflow-wrap: anywhere; }
@@ -505,3 +505,22 @@ button.danger:hover { background: rgba(208,59,59,.22); }
 .mmlog.b { border-left: 3px solid #f7cf6f; }
 .mmlog small { color: var(--muted); display: block; }
 @media (max-width: 640px) { .mmlog { grid-template-columns: 56px 1fr; } .mmlog > :nth-child(2) { display: none; } }
+
+/* ---------- phone tab bar: all five tabs visible, no hidden sideways scroll ---------- */
+@media (max-width: 600px) {
+  .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; overflow: visible; }
+  .tab { white-space: normal; text-align: center; line-height: 1.15; font-size: 12px; padding: 7px 3px; min-height: 42px; }
+  .tab-n { display: none; }
+}
+
+/* ---------- table: keep the hand right under the lands, not pushed below the fold by the log's height ---------- */
+.table { align-items: start; }
+.table-main { min-height: 0; }
+
+/* ---------- tapped cards are turned sideways: give them room so they don't cover their neighbours ---------- */
+.bf-row .stackgroup:has(> .mtg.tapped) { padding: 0 14px; }
+.bf-row.lands .stackgroup:has(> .mtg.tapped) { padding: 0 12px; }
+@media (max-width: 900px) {
+  .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0 11px; }
+  .bf-row.lands .stackgroup:has(> .mtg.tapped) { padding: 0 9px; }
+}

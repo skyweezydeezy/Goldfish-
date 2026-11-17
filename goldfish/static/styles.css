@@ -524,3 +524,28 @@ button.danger:hover { background: rgba(208,59,59,.22); }
   .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0 11px; }
   .bf-row.lands .stackgroup:has(> .mtg.tapped) { padding: 0 9px; }
 }
+
+/* ---------- playmats and sleeves (looks.js) ---------- */
+.table-main, .hand-stage { background-size: var(--mat-size, auto); background-position: center; }
+.table-main { background-image: var(--mat, radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%)); }
+.hand-stage { background-image: var(--mat, radial-gradient(ellipse at 50% 120%, #1c5272, var(--felt-2) 70%)); }
+/* the sleeve edge; :where keeps it weaker than the commander, castable, glow and Ring-bearer highlights */
+:where(html.sleeved .bf-row, html.sleeved .hand-zone, html.sleeved .fan, html.sleeved .mini-hand, html.sleeved #zCommand) .mtg { box-shadow: 0 0 0 3px var(--sleeve), 0 2px 6px rgba(0,0,0,.55); }
+html.sleeved .card-back { background: var(--sleeve-back); border-color: var(--sleeve-dark); }
+html.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px 0 var(--sleeve-mid), 6px 6px 8px rgba(0,0,0,.6); }
+.hands-looks { margin-left: auto; }
+.look-card h3 { margin: 14px 0 8px; }
+.look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.look-grid.sleeves { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+.look-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); text-align: center; }
+.look-opt.on { color: var(--text-primary); font-weight: 650; }
+.look-sw { width: 100%; padding: 0; border: 2px solid transparent; border-radius: 10px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.look-sw.mat { aspect-ratio: 16 / 10; }
+.look-sw.mat.default-mat { background: radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%); }
+.look-sw.sleeve { width: 58px; aspect-ratio: 488 / 680; border-width: 3px; border-radius: 6px; }
+.look-sw.sleeve.bare { background: radial-gradient(ellipse at 50% 50%, #bfe9ff 0 16%, #4aa6e0 17% 30%, #12324a 31% 100%); border-color: #0a2030; }
+.look-opt.on .look-sw { outline: 2px solid var(--ice); outline-offset: 3px; }
+.look-sw:hover { filter: brightness(1.12); }
+.look-shop { font-size: 11px; color: var(--ice); }
+.look-upload { margin-top: 10px; align-items: center; }
+@media (max-width: 520px) { .look-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .look-grid.sleeves { grid-template-columns: repeat(4, minmax(0, 1fr)); } .look-sw.sleeve { width: 52px; } }

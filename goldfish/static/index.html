@@ -89,6 +89,7 @@
       <span class="sep"></span>
       <button id="dealMany">Deal 12 sample hands</button>
       <span id="handVerdict" class="verdict"></span>
+      <button class="ghost open-looks hands-looks" title="Choose a playmat and sleeves">🎨 Playmat &amp; sleeves</button>
     </div>
     <div id="handStage" class="hand-stage"><div class="empty-note">Load a deck, then draw a hand.</div></div>
     <div id="handGrid" class="hand-grid"></div>
@@ -113,6 +114,7 @@
       <button id="tNext" title="Attack with everything, then untap and draw">Next turn ⟳</button>
       <button id="tToken" title="Create a token">+ Token</button>
       <button id="tUndo" class="ghost">Undo</button>
+      <button class="ghost open-looks" title="Choose a playmat and sleeves">🎨 Playmat &amp; sleeves</button>
       <label class="check small"><input id="tFast" type="checkbox"> Fast animations</label>
       <span class="hint">Click a hand card to play it (mana auto-taps and triggers fire). Click a permanent to tap or untap it. Right-click for counters, sacrifice, moving cards and more.</span>
     </div>
@@ -247,6 +249,7 @@
 <script src="source.js"></script>
 <script src="charts.js"></script>
 <script src="app.js"></script>
+<script src="looks.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>
 </html>

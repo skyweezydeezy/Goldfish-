@@ -616,7 +616,7 @@
         for (const [t, c] of Object.entries(BASIC_TYPES)) if (text.includes(t)) colors.add(c);
         if (/basic land card/i.test(lower) && colors.size === 0) (deckColors || COLORS).forEach(c => colors.add(c));
         a.fetch = true;
-        a.coverage.forEach(c => { if (/search your library/i.test(c.text)) c.status = 'ok'; });
+        a.coverage.forEach(c => { if (/search your library/i.test(c.text)) { c.status = 'ok'; c.tag = null; } });
       }
       if (colors.size === 0) colors.add('C');
       if (colors.has('C') && colors.size > 1 && !/\{C\}/.test(text)) colors.delete('C');

@@ -376,3 +376,24 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .site-footer .tip { display: flex; gap: 14px; align-items: flex-start; }
 .site-footer .tip-qr { flex: none; display: block; border-radius: 10px; overflow: hidden; line-height: 0; }
 .site-footer .tip-qr img { width: 96px; height: auto; display: block; }
+
+/* ---------- calmer motion ---------- */
+@keyframes flipin { from { opacity: .4; } to { opacity: 1; } }
+.bf-row .mtg { transition: transform .3s ease, filter .3s ease; }
+.hand-zone { justify-content: center; }
+.hand-zone .mtg { margin: 0; }
+.mini-hand .cards { justify-content: center; }
+.mini-hand .cards .mtg { margin-right: 0; }
+
+/* ---------- phone table: stats, then battlefield + hand, then piles, then log ---------- */
+@media (max-width: 900px) {
+  .table { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-side { display: contents; }
+  .hud, .table-main, .table-log { grid-column: 1 / -1; }
+  .hud { order: 0; padding: 8px 10px; gap: 6px; }
+  .hud-item .big { font-size: 20px; }
+  .table-main { order: 1; }
+  .zone-pile { order: 2; }
+  .table-log { order: 3; }
+  #zLibrary .card-back { width: 54px; margin-bottom: 2px; }
+}

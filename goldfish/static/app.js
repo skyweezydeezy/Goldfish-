@@ -17,6 +17,7 @@
     $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
     $$('.panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + t));
     if (t === 'hands' && S.deck) renderOpenLandsChart();
+    requestAnimationFrame(refit);
     if (t === 'table' && S.deck && !S.game) newTableGame();
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
@@ -65,7 +66,7 @@
       if (o.tag) e.appendChild(h('span', 'tag', esc(o.tag)));
     }
     if (src) {
-      const img = new Image(); img.loading = 'lazy'; img.alt = card.name; img.src = src;
+      const img = new Image(); img.loading = o.eager ? 'eager' : 'lazy'; img.alt = card.name; img.src = src;
       img.onerror = () => {
         const alt = card.remote_images && card.remote_images[o.face || 0];
         if (alt && img.src !== alt && !img.dataset.tried) { img.dataset.tried = 1; img.src = alt; } else fb();
@@ -259,7 +260,7 @@
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));
 
   // ======================= opening hands =======================
-  let H = null;
+  let H = null, fanLayout = null;
   const rseed = () => (Math.random() * 2 ** 32) >>> 0;
   $('#drawHand').addEventListener('click', () => { if (!need()) return; H = { g: G.newGame(S.deck, opts(), rseed()), mulls: 0 }; dealHand(); });
   $('#mullHand').addEventListener('click', () => {
@@ -286,15 +287,26 @@
     const stage = $('#handStage'); stage.innerHTML = '';
     const fan = h('div', 'fan'); stage.appendChild(fan);
     const n = g.hand.length;
-    g.hand.forEach((inst, i) => {
-      const e = cardEl(inst.card, { tag: H.bottom.includes(inst) ? 'bottom' : null });
-      const mid = (n - 1) / 2, ang = (i - mid) * 6, dx = (i - mid) * 108;
-      e.style.transform = `translateX(calc(-50% + ${dx}px)) rotate(${ang}deg)`;
+    const els = g.hand.map(inst => {
+      const e = cardEl(inst.card, { tag: H.bottom.includes(inst) ? 'bottom' : null, eager: true });
       if (H.bottom.includes(inst)) e.style.filter = 'grayscale(.8) brightness(.55)';
-      e.animate([{ transform: `translateX(-50%) translateY(260px) rotate(0) scale(.6)`, opacity: 0 }, { transform: e.style.transform, opacity: 1 }],
-        { duration: 450, delay: i * 70, easing: 'cubic-bezier(.2,.9,.3,1.1)', fill: 'backwards' });
       fan.appendChild(e);
+      return e;
     });
+    // spread the cards so the whole hand always fits the screen
+    fanLayout = () => {
+      const W = stage.clientWidth, cw = els[0] ? els[0].offsetWidth : 150, ch = els[0] ? els[0].offsetHeight : 210;
+      const mid = (n - 1) / 2, rad = Math.PI / 180;
+      // widest the fan gets for a given spacing: card centre + the sideways swing of the tilt (pivot sits below the card) + half the tilted card
+      const extent = (step, tilt) => { const th = mid * tilt * rad; return mid * step + 0.9 * ch * Math.sin(th) + (cw * Math.cos(th) + ch * Math.sin(th)) / 2; };
+      let step = 108, tilt = 6;
+      for (; step > 12; step -= 2) { tilt = 6 * Math.max(0.35, step / 108); if (n < 2 || extent(step, tilt) <= W / 2 - 6) break; }
+      if (n < 2) step = 0;
+      els.forEach((e, i) => { e.style.transform = `translateX(calc(-50% + ${(i - mid) * step}px)) rotate(${(i - mid) * tilt}deg)`; });
+    };
+    fanLayout();
+    els.forEach((e, i) => e.animate([{ transform: 'translateX(-50%) translateY(260px) rotate(0) scale(.6)', opacity: 0 }, { transform: e.style.transform, opacity: 1 }],
+      { duration: 450, delay: i * 70, easing: 'cubic-bezier(.2,.9,.3,1.1)', fill: 'backwards' }));
     const kept = g.hand.filter(c => !H.bottom.includes(c));
     const lands = G.landCount(kept);
     const ok = G.keepable(g.hand, o);
@@ -331,6 +343,7 @@
       box.style.animation = `fadein .3s ease ${i * 50}ms both`;
       grid.appendChild(box);
     }
+    grid.querySelectorAll('.cards').forEach(c => fitRow(c, 0.28));
   });
 
   function renderOpenLandsChart() {
@@ -402,7 +415,7 @@
     startTableGame(g);
   }
   function startTableGame(g) {
-    S.game = g; S.undo = []; g.turnDone = false;
+    S.game = g; S.undo = []; g.turnDone = false; elCache.clear();
     $('#gameLog').innerHTML = '';
     log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => esc(c.card.name)).join(', ')}`);
     beginTurnUI();
@@ -503,7 +516,7 @@
   }
   function killBanner(t, cmdr) { const b = h('div', 'kill-banner', `🐟 Goldfish defeated · turn ${t}${cmdr ? '<br><small>21 commander damage</small>' : ''}`); document.body.appendChild(b); setTimeout(() => b.remove(), 2100); }
 
-  function log(html) { const li = h('li', '', html); $('#gameLog').appendChild(li); li.scrollIntoView({ block: 'nearest' }); }
+  function log(html) { const ol = $('#gameLog'); ol.appendChild(h('li', '', html)); const box = ol.parentElement; box.scrollTop = box.scrollHeight; }
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
@@ -549,6 +562,26 @@
     if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
     play(ev);
   }
+
+  // ---- fit a row of cards inside its container (overlap only as much as needed) ----
+  function fitRow(row, baseOverlap) {
+    if (!row) return;
+    const kids = Array.from(row.children).filter(k => k.classList && k.classList.contains('mtg'));
+    if (!kids.length) return;
+    const cs = getComputedStyle(row);
+    const avail = row.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+    const w = kids[0].offsetWidth; if (!w || avail <= 0) return;
+    const n = kids.length;
+    let overlap = w * baseOverlap;
+    if (n > 1 && w * n - overlap * (n - 1) > avail) overlap = Math.min(w * 0.84, (w * n - avail) / (n - 1));
+    kids.forEach((k, i) => { k.style.marginLeft = i ? (-overlap) + 'px' : '0px'; k.style.marginRight = '0px'; });
+  }
+  function refit() {
+    if (fanLayout) fanLayout();
+    fitRow($('#zHand'), 0.14);
+    $$('.mini-hand .cards').forEach(c => fitRow(c, 0.28));
+  }
+  window.addEventListener('resize', () => { clearTimeout(window._rz2); window._rz2 = setTimeout(refit, 120); });
 
   // ---- touch: long-press and card viewer ----
   const lightbox = $('#lightbox');
@@ -654,18 +687,33 @@
     ctx.style.left = Math.max(8, Math.min(cx, innerWidth - ctx.offsetWidth - 8)) + 'px'; ctx.style.top = Math.max(8, Math.min(cy, innerHeight - ctx.offsetHeight - 10)) + 'px';
   }
 
-  // ---- rendering with FLIP animation ----
+  // ---- rendering: card elements are kept and moved, never rebuilt (rebuilding re-decodes images = flicker) ----
+  const elCache = new Map();
+  function tableEl(card, iid, face, used) {
+    const key = iid + ':' + (face || 0);
+    used.add(key);
+    let e = elCache.get(key);
+    if (!e) { e = cardEl(card, { iid, face, eager: true }); elCache.set(key, e); }
+    return e;
+  }
+  function clearState(e) {
+    e.style.marginLeft = ''; e.style.marginRight = '';
+    e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
+    e.classList.remove('tapped', 'token', 'sick', 'castable');
+  }
+
   function render(first) {
     const g = S.game; if (!g) return;
     const before = new Map();
     $$('.table [data-iid]').forEach(e => before.set(e.dataset.iid, e.getBoundingClientRect()));
     const libRect = $('#zLibrary .card-back').getBoundingClientRect();
+    const used = new Set();
 
     const rows = { zCreatures: [], zOther: [], zLands: [] };
     g.battlefield.forEach(p => { rows[p.asLand ? 'zLands' : G.isCreaturePerm(p) ? 'zCreatures' : 'zOther'].push(p); });
     for (const [id, list] of Object.entries(rows)) {
       const row = document.getElementById(id);
-      row.querySelectorAll('.mtg, .stackgroup').forEach(x => x.remove());
+      const label = row.querySelector('.row-label');
       // stack identical permanents (lands, and tokens in the same state) so big boards stay readable
       const groups = new Map();
       list.forEach(p => {
@@ -673,28 +721,38 @@
         const k = stackable ? p.card.uid + '|' + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : '') + '|' + (p.sick ? 's' : '') + '|' + (p.counters || 0) : 'solo' + p.iid;
         if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p);
       });
+      const nodes = [label];
       for (const ps of groups.values()) {
         const sg = h('div', 'stackgroup');
-        ps.forEach(p => sg.appendChild(permEl(p)));
+        ps.forEach(p => sg.appendChild(permEl(p, used)));
         if (ps.length > 4) sg.appendChild(h('span', 'stack-count', '×' + ps.length));
-        row.appendChild(sg);
+        nodes.push(sg);
       }
+      row.replaceChildren(...nodes);
     }
-    const hand = $('#zHand'); hand.innerHTML = '';
+    const hand = $('#zHand');
     const units = G.allUnits(g);
-    g.hand.forEach(i => {
-      const e = cardEl(i.card, { iid: i.iid });
+    hand.replaceChildren(...g.hand.map(i => {
+      const e = tableEl(i.card, i.iid, 0, used);
+      clearState(e);
       if (!i.card.a.isLand && G.canPay(G.effectiveCost(g, i), units)) e.classList.add('castable');
-      if ((i.card.a.isLand) && G.canPlayLand(g)) e.classList.add('castable');
-      hand.appendChild(e);
-    });
-    const pile = (sel, arr, cnt) => { const c = document.querySelector(sel + ' .pile-cards'); c.innerHTML = ''; arr.forEach(i => c.appendChild(cardEl(i.card, { iid: i.iid }))); if (cnt) $(cnt).textContent = arr.length; };
+      if (i.card.a.isLand && G.canPlayLand(g)) e.classList.add('castable');
+      return e;
+    }));
+    fitRow(hand, 0.14);
+    const pile = (sel, arr, cnt) => {
+      const c = document.querySelector(sel + ' .pile-cards');
+      c.replaceChildren(...arr.map(i => { const e = tableEl(i.card, i.iid, 0, used); clearState(e); return e; }));
+      if (cnt) $(cnt).textContent = arr.length;
+    };
     pile('#zGrave', g.graveyard, '#cGrave'); pile('#zExile', g.exile, '#cExile'); pile('#zCommand', g.command);
+    for (const k of Array.from(elCache.keys())) if (!used.has(k)) elCache.delete(k);
+
     $('#cLibrary').textContent = g.library.length;
     $('#hTurn').textContent = g.turn;
     $('#hLife').textContent = Math.max(0, g.opts.oppLife - g.damage);
     $('#hSpent').textContent = g.manaSpent + (g.spentThisTurn || 0);
-    const cd = Object.entries(g.cmdrDamage || {}).map(([iid, v]) => v);
+    const cd = Object.values(g.cmdrDamage || {});
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
     $('#hPower').textContent = g.battlefield.reduce((s, p) => s + Math.max(0, G.powerOf(g, p)), 0);
     const mp = $('#hMana'); mp.innerHTML = '';
@@ -702,25 +760,26 @@
     if (!units.length) mp.innerHTML = '<span class="hint">none</span>';
 
     if (first) return;
+    const dur = $('#tFast').checked ? 200 : 420;
     $$('.table [data-iid]').forEach(e => {
       const r = e.getBoundingClientRect();
       const old = before.get(e.dataset.iid);
       const from = old || libRect;
       const dx = from.left + from.width / 2 - (r.left + r.width / 2), dy = from.top + from.height / 2 - (r.top + r.height / 2);
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-      const s = from.width / Math.max(1, r.width);
-      const dur = $('#tFast').checked ? 220 : 480;
-      const isNewToken = !old && S.game.battlefield.some(p => String(p.iid) === e.dataset.iid && p.token);
-      if (isNewToken) { e.animate([{ scale: '0.2', opacity: 0, filter: 'brightness(3)' }, { scale: '1', opacity: 1, filter: 'none' }], { duration: dur + 150, easing: 'cubic-bezier(.2,.9,.3,1.3)' }); return; }
-      e.animate([{ translate: `${dx}px ${dy}px`, scale: String(old ? s : 0.8), opacity: old ? 1 : 0.2 }, { translate: '0 0', scale: '1', opacity: 1 }], { duration: dur, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      if (!old) e.classList.add('flip-in');
+      const sc = from.width / Math.max(1, r.width);
+      if (!old && S.game.battlefield.some(p => String(p.iid) === e.dataset.iid && p.token)) {
+        e.animate([{ scale: '0.6', opacity: 0 }, { scale: '1', opacity: 1 }], { duration: dur, easing: 'ease-out' }); return;
+      }
+      e.animate([{ translate: `${dx}px ${dy}px`, scale: String(old ? sc : 0.85), opacity: old ? 1 : 0.5 }, { translate: '0 0', scale: '1', opacity: 1 }], { duration: dur, easing: 'cubic-bezier(.2,.8,.2,1)' });
     });
   }
-  function permEl(p) {
+  function permEl(p, used) {
     const g = S.game;
-    const e = cardEl(p.card, { iid: p.iid, face: p.mdfc ? 1 : 0 });
-    if (p.tapped) e.classList.add('tapped');
-    if (p.token) e.classList.add('token');
+    const e = tableEl(p.card, p.iid, p.mdfc ? 1 : 0, used);
+    clearState(e);
+    e.classList.toggle('tapped', !!p.tapped);
+    e.classList.toggle('token', !!p.token);
     if (G.isCreaturePerm(p)) {
       if (p.sick && !G.hasKw(g, p, 'haste')) e.classList.add('sick');
       const pw = G.powerOf(g, p), tg = G.toughnessOf(g, p);

@@ -99,7 +99,10 @@
       if (shortOf !== n && (shortOf.length >= 8 || (shortOf.length >= 6 && /Legendary/.test(card.type_line || ''))) && !/,/.test(shortOf)) t = t.split(shortOf).join('~');
     }
     if (curTribe) {
-      t = t.replace(/a creature you control of the chosen type/gi, 'a ' + curTribe + ' you control').replace(/creature you control of the chosen type/gi, curTribe + ' you control')
+      t = t.replace(/\b(other )?creatures you control of the chosen type/gi, (x, o) => (o ? 'Other ' : '') + curTribe + ' creatures you control')              // Vanquisher's Banner, Adaptive Automaton, Obelisk of Urd...
+        .replace(/^creatures of the chosen type (get|have)/gim, curTribe + ' creatures you control $1')                                                   // Brass Herald, Steely Resolve (yours only: a goldfish has none)
+        .replace(/creature spells you cast of the chosen type/gi, curTribe + ' spells you cast').replace(/spells of the chosen type you cast/gi, curTribe + ' spells you cast')   // Herald's Horn, Morophon
+        .replace(/a creature you control of the chosen type/gi, 'a ' + curTribe + ' you control').replace(/creature you control of the chosen type/gi, curTribe + ' you control')
         .replace(/creature spells of the chosen type/gi, curTribe + ' spells').replace(/a spell of the chosen type/gi, 'a ' + curTribe + ' spell');
     }
     t = t.replace(/\bthis (creature|artifact|enchantment|land|planeswalker|permanent|spell|card|equipment|aura|vehicle|token)\b/gi, '~');
@@ -703,7 +706,7 @@
       if ((m = line.match(/^(other )?([a-z ]*?)creatures you control have ([a-z ,]+)\.?$/i))) {
         const k = kwList(m[3]); if (k.length) { a.statics.anthems.push({ other: !!m[1], filter: m[2].trim().toLowerCase(), p: 0, t: 0, keywords: k }); rec.status = 'ok'; continue; }
       }
-      if ((m = line.match(/^([a-z ]*?)spells you cast cost \{(\d+)\} less to cast/i))) { a.statics.reducers.push({ filter: m[1].trim().toLowerCase(), n: +m[2] }); rec.status = 'ok'; continue; }
+      if ((m = line.match(/^([a-z ]*?)spells (?:you cast )?cost \{(\d+)\} less to cast/i))) { a.statics.reducers.push({ filter: m[1].trim().toLowerCase(), n: +m[2] }); rec.status = 'ok'; continue; }
       if ((m = line.match(/you may play (an|one|two|three) additional lands? on each of your turns/i))) { a.statics.extraLands += NUM[m[1].toLowerCase()]; rec.status = 'ok'; continue; }
       if (/enters(?: the battlefield)? tapped|^~ can't block|^~ can't be (blocked|countered)|^you have no maximum hand size|^~ doesn't untap|^as ~ enters|^~ is every creature type|^~ can block|^this spell can't be countered|^~ can't attack|attacks? each combat if able|^~ must be blocked/i.test(line)) { rec.status = 'neutral'; continue; }
       if ((m = line.match(/^([^:"]+): (.*)$/)) && /\{/.test(m[1])) {
@@ -868,20 +871,56 @@
     return a;
   }
 
+  // ---------- Tribe: the creature type the deck is built around ----------
+  // For "choose a creature type" cards (Kindred Discovery, Cavern of Souls, Vanquisher's Banner, Herald's Horn...). Each type scores
+  // 1 per creature of that type (0.5 for Human, which many creatures are by accident), 4 per commander of that type, 1 per Kindred card,
+  // 1.5 per card that makes tokens of that type, 2 per card whose text names the type (lords and payoffs), and changelings count for
+  // every type. A deck is tribal when the best type scores 12 or more with 5 or more bodies (Humans also need 2 cards that name Humans).
+  // A deck that is not tribal but has a card that chooses a type still names its best-scoring type.
+  const TRIBE_PLURAL = { Elf: 'Elves', Dwarf: 'Dwarves', Wolf: 'Wolves', Werewolf: 'Werewolves', Merfolk: 'Merfolk', Fish: 'Fish', Sheep: 'Sheep', Ox: 'Oxen', Fungus: 'Fungi', Sphinx: 'Sphinxes', Fox: 'Foxes', Mouse: 'Mice', Octopus: 'Octopi', Ally: 'Allies', Fairy: 'Fairies' };
+  function tribeOf(cards) {
+    const sub = c => { const f = String(c.type_line || '').split(' // ')[0]; return /\b(Creature|Kindred|Tribal)\b/.test(f) ? (f.split('—')[1] || '').trim().split(/\s+/).filter(Boolean) : []; };
+    const txt = c => ((c.faces && c.faces.length) ? c.faces.map(f => f.oracle_text || '').join('\n') : (c.oracle_text || '')).replace(/\([^)]*\)/g, '');
+    const score = {}, bodies = {}, why = {}, payoffs = {};
+    const add = (w, v, name, body) => { score[w] = (score[w] || 0) + v; if (body) bodies[w] = (bodies[w] || 0) + body; (why[w] = why[w] || new Set()).add(name); };
+    let changelings = 0; const choosers = [];
+    for (const c of cards) {
+      const q = c.qty || 1, isCre = /\bCreature\b/.test(String(c.type_line || '').split(' // ')[0]);
+      if (c.commander) sub(c).forEach(w => add(w, 4, c.name, 1));
+      else sub(c).forEach(w => add(w, (isCre ? (w === 'Human' ? 0.5 : 1) : 1) * q, c.name, isCre ? q : 0));
+    }
+    const types = Object.keys(score);
+    for (const c of cards) {
+      const t = txt(c);
+      if (/choose a creature type|the chosen type|chosen creature type/i.test(t)) choosers.push(c.name);
+      if (/\bchangeling\b/i.test(c.oracle_text || '') || /is every creature type/i.test(t)) { if (!c.commander) changelings += c.qty || 1; continue; }
+      for (const w of types) {
+        if (!new RegExp('\\b(' + w + '|' + (TRIBE_PLURAL[w] || w + 's') + ')\\b').test(t)) continue;
+        if (new RegExp('create[^.]*\\b' + w + '\\b[^.]*token', 'i').test(t)) add(w, 1.5, c.name);
+        else { add(w, 2, c.name); payoffs[w] = (payoffs[w] || 0) + 1; }
+      }
+    }
+    for (const w of types) { score[w] += changelings; bodies[w] = (bodies[w] || 0) + changelings; }
+    const ranked = types.map(w => ({ type: w, score: score[w], creatures: bodies[w] || 0, payoffs: payoffs[w] || 0, cards: [...why[w]] })).sort((a, b) => b.score - a.score || a.type.localeCompare(b.type));
+    const best = ranked[0] || null;
+    const tribal = !!best && best.score >= 12 && best.creatures >= 5 && (best.type !== 'Human' || best.payoffs >= 2);
+    return { type: tribal ? best.type : null, chosen: (tribal || choosers.length) && best ? best.type : null, best, ranked: ranked.slice(0, 6), changelings, choosers };
+  }
+
   // ---------- Deck ----------
-  function buildDeck(cards, tokens) {
+  // tribeChoice: a creature type for "choose a creature type" cards to name instead of the detected one (the Policy lab's "tribe" choice).
+  function buildDeck(cards, tokens, tribeChoice) {
     const ci = new Set();
     cards.forEach(c => (c.color_identity || []).forEach(x => ci.add(x)));
     const deckColors = ci.size ? [...ci] : COLORS;
-    { const cnt = {}; let total = 0;
-      for (const c of cards) if (/\bCreature\b/.test(c.type_line || '')) { total++; for (const w of ((c.type_line.split('—')[1] || '').trim().split(/\s+/))) if (w && w !== 'Human') cnt[w] = (cnt[w] || 0) + (c.qty || 1); }
-      const best = Object.entries(cnt).sort((x, y) => y[1] - x[1])[0]; curTribe = best && best[1] >= 8 ? best[0] : null; }
+    const tribeInfo = tribeOf(cards);
+    curTribe = tribeChoice && tribeChoice !== 'auto' ? tribeChoice : tribeInfo.chosen;
     const unique = cards.map((c, i) => Object.assign({}, c, { uid: i, a: analyze(c, deckColors) }));
     unique.forEach(u => { if (u.a.backCard) u.a.backCard.uid = 'b:' + u.uid; });                  // a transformed permanent is looked up by this id
     const library = [], commanders = [];
     let iid = 0;
     for (const c of unique) for (let k = 0; k < (c.qty || 1); k++) (c.commander ? commanders : library).push({ iid: iid++, card: c });
-    return { library, commanders, unique, deckColors, tribe: curTribe, tokens: tokens || [], tokenCache: {}, nextIid: iid + 100000 };
+    return { library, commanders, unique, deckColors, tribe: curTribe, tribeInfo, tokens: tokens || [], tokenCache: {}, nextIid: iid + 100000 };
   }
 
   function tokenCard(deck, spec) {
@@ -3240,7 +3279,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   function pol(g, key) { const p = g.opts && g.opts.policy; return p && p[key] != null ? p[key] : DEFAULT_POLICY[key]; }
   // a held fetch land: crack it when mana is needed, after a library-reordering effect (Brainstorm, Sylvan Library: the shuffle sends the put-back cards away) or at the end of the turn
   function heldFetches(g) { return g.battlefield.filter(p => p.heldFetch && p.card.a.fetchSpec); }
@@ -3540,7 +3579,7 @@
   }
 
   function monteCarlo(cards, opts, n, seed, onProgress, tokens) {
-    const deck = buildDeck(cards, tokens);
+    const deck = buildDeck(cards, tokens, (opts.policy && opts.policy.tribe));
     const T = opts.turns;
     const per = { manaAvail: [], lands: [], cumSpent: [], spent: [], damage: [], hand: [], power: [] };
     Object.keys(per).forEach(k => { for (let t = 0; t < T; t++) per[k].push(new Float64Array(n)); });
@@ -3893,7 +3932,7 @@
 
   // Many matches. Seats alternate (A on the play in even games), so a mirror of the same deck comes out even.
   function matchMonteCarlo(cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) {
-    const deckA = buildDeck(cardsA, tokensA), deckB = buildDeck(cardsB, tokensB);
+    const deckA = buildDeck(cardsA, tokensA, (opts.policy && opts.policy.tribe)), deckB = buildDeck(cardsB, tokensB);
     const T = opts.turns;
     const res = { n, turns: T, winA: 0, winB: 0, none: 0, histA: new Array(T + 2).fill(0), histB: new Array(T + 2).fill(0), reasons: { life: 0, commander: 0, empty: 0 },
       playWins: 0, drawWins: 0, errors: 0, firstError: null, games: [], lifeA: 0, lifeB: 0 };
@@ -3929,7 +3968,11 @@
   // another one wins only if it beats the baseline by more than chance would explain (z > 1.64, about 95% one-sided).
   // goldfish: score = how early you win (1 = turn 1, 0 = no win). mirror: 1 for a win, 0.5 for no winner, 0 for a loss, against the same deck or another one.
   function comparePolicies(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, onProgress) {
-    const deckA = buildDeck(cardsA, tokensA), deckB = mode === 'mirror' ? buildDeck(cardsB || cardsA, tokensB || tokensA) : null;
+    const deckB = mode === 'mirror' ? buildDeck(cardsB || cardsA, tokensB || tokensA) : null;
+    // one deck per candidate: the "tribe" choice changes how the cards are read, so each option gets its own build
+    const tribeFor = cd => (cd.policy && cd.policy.tribe) || (opts.policy && opts.policy.tribe) || 'auto';
+    const builds = {}; const deckFor = cd => builds[tribeFor(cd)] || (builds[tribeFor(cd)] = buildDeck(cardsA, tokensA, tribeFor(cd)));
+    const decksA = candidates.map(deckFor);
     const T = opts.turns, K = candidates.length;
     const scores = candidates.map(() => new Float64Array(n)), kills = new Array(K).fill(0), killSum = new Array(K).fill(0), wins = new Array(K).fill(0);
     let errors = 0;
@@ -3939,10 +3982,10 @@
         const o = Object.assign({}, opts, { policy: Object.assign({}, opts.policy, candidates[c].policy) });
         try {
           if (mode === 'mirror') {
-            const m = playMatch(deckA, deckB, o, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policy }));
+            const m = playMatch(decksA[c], deckB, o, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policy }));
             const w = m.match.winner; scores[c][i] = w == null ? 0.5 : w === 0 ? 1 : 0; if (w === 0) wins[c]++;
           } else {
-            const g = simulate(deckA, o, s);
+            const g = simulate(decksA[c], o, s);
             scores[c][i] = g.killTurn != null ? Math.max(0, (T + 1 - g.killTurn) / T) : 0;
             if (g.killTurn != null) { kills[c]++; killSum[c] += g.killTurn; }
           }
@@ -3964,7 +4007,7 @@
 
   // One match as a readable turn-by-turn log (for the sample replay).
   function matchLog(cardsA, tokensA, cardsB, tokensB, opts, seed, aOnPlay) {
-    const deckA = buildDeck(cardsA, tokensA), deckB = buildDeck(cardsB, tokensB);
+    const deckA = buildDeck(cardsA, tokensA, (opts.policy && opts.policy.tribe)), deckB = buildDeck(cardsB, tokensB);
     const lines = [];
     const names = ['A', 'B'];
     const m = playMatch(deckA, deckB, opts, seed, aOnPlay, (g, t, ev) => {
@@ -3995,7 +4038,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, stealPerm, sendHome, playMatch, comparePolicies, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
+    pay, stealPerm, sendHome, playMatch, comparePolicies, tribeOf, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

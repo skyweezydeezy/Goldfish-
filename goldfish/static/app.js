@@ -163,7 +163,7 @@
     }
     S.cards = cards;
     S.tokens = r.tokens || [];
-    S.deck = G.buildDeck(cards, S.tokens);
+    S.deck = G.buildDeck(cards, S.tokens, currentPolicy().tribe);
     S.byUid = S.deck.unique;
     S.game = null; S.sim = null; S.oddsSel.clear();
     const msgs = $('#deckMsgs'); msgs.innerHTML = '';
@@ -1205,7 +1205,17 @@
   $('#mmRun').addEventListener('click', runMirror);
 
   // ======================= policy lab (learning by trial and error) =======================
+  // The creature type that "choose a creature type" cards name (Kindred Discovery, Cavern of Souls, banners, Herald's Horn...). The options are
+  // the deck's detected tribe first (the baseline), then the next best types, so the lab can show whether another type plays better.
+  function tribeOptions() {
+    const info = S.deck && S.deck.tribeInfo, ranked = (info && info.ranked) || [];
+    const detected = info && info.chosen;
+    const opts = [{ name: detected ? `Detected: ${detected}` : 'None detected (no type chosen)', value: 'auto' }];
+    ranked.filter(r => r.type !== detected).slice(0, 4).forEach(r => opts.push({ name: r.type, value: r.type }));
+    return opts;
+  }
   const DECISIONS = {
+    tribe: { label: 'Creature type for "choose a creature type" cards', key: 'tribe', dynamic: true, options: [{ name: 'Detected tribe', value: 'auto' }] },
     fetch: { label: 'Fetch land timing', key: 'fetchHold', options: [{ name: 'Crack at once', value: 'never' }, { name: 'Hold when a shuffle helps', value: 'whenShuffleHelps' }, { name: 'Hold until needed', value: 'untilNeeded' }, { name: 'Hold until the end of the turn', value: 'untilEnd' }] },
     keep: { label: 'Opening hand: how many lands to keep', key: 'keepLands', options: [{ name: 'Your setting (Hands tab)', value: 'default' }, { name: 'Keep 3 or 4 lands', value: '3-4' }, { name: 'Keep 2 to 4 lands', value: '2-4' }, { name: 'Keep 3 to 5 lands', value: '3-5' }, { name: 'Keep 2 to 6 lands', value: '2-6' }] },
     necro: { label: 'Necropotence: how full to refill the hand', key: 'necroGoal', options: [{ name: 'Refill to 7 (9 above 30 life)', value: 'current' }, { name: 'Refill to 6', value: '6' }, { name: 'Refill to 9', value: '9' }, { name: 'Refill to 11', value: '11' }] },
@@ -1240,6 +1250,8 @@
     if (!need()) return;
     const btn = $('#plRun'); btn.disabled = true;
     const dec = DECISIONS[$('#plDecision').value], mode = dec.mirrorOnly ? 'mirror' : $('#plMode').value;
+    if (dec.dynamic) dec.options = tribeOptions();
+    if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
     const n = Math.max(50, Math.min(3000, +$('#plN').value || 400));
     let opp = null;
     if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }
@@ -1278,6 +1290,7 @@
     $$('#plOut [data-use]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.use, r = res.rows[i], op = dec.options[i];
       savePolicy(dec.key, i === 0 ? null : op.value, `${mode} ${n} games, score ${r.mean.toFixed(3)}`);
+      if (dec.key === 'tribe') { S.deck = G.buildDeck(S.cards, S.tokens, i === 0 ? null : op.value); S.byUid = S.deck.unique; }          // the next game on the table and in the hands uses the new type
       toast(i === 0 ? 'Default choice restored' : `Saved: ${op.name}`);
     }));
   }

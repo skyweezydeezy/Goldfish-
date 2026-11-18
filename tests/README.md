@@ -29,6 +29,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | policy | Policies and trial-and-error learning: holding fetch lands, comparePolicies, the Policy lab engine |
 | fetchlands | Fetch lands: cracking, life, graveyard, choosing the land, types, shuffle, landfall twice |
 | loyalty-program | The Atraxa planeswalker deck: multiple activations, proliferate, look-and-take, Oko, Nissa, Wrenn, Spark Double, Kaya, Teferi, Vraska, all 16 deck pairings |
+| zul-ashur | The Zombie reanimator list: Reanimate, Entomb, Snuff Out alternative cost, Everflowing Chalice, 30 full games. |
 | second-breakfast | The Frodo + Sam Bracket 4 list: death triggers, outlets, Skullclamp, Sheoldred, Felidar, Reservoir, Necropotence, Sylvan Library, Deluge, Persist, Urborg... |
 | spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |

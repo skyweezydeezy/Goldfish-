@@ -133,8 +133,11 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Veyran | 100 | 149 | 110 | 31 | 4 | 3 | 1 (Desperate Ritual's splice) |
 | Second Breakfast | 100 | 161 | 138 | 17 | 4 | 2 | 0 |
 | Loyalty Program | 100 | 168 | 131 | 28 | 6 | 0 | 3 (the Kaya, Vraska and Wrenn emblem ultimates) |
+| Zul Ashur (Zombie reanimator) | 100 | 134 | 110 | 17 | 4 | 0 | 3 (Fain's Treasure, Inkling and untap abilities) |
 
-All 16 pairings of the four decks play full mirror matches without errors, and every deck plays as a goldfish.
+The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Some of its subtler abilities (Kalitas and Gisa replacement effects, Sidisi, Dread Return flashback) are only partly modelled.
+
+All pairings of the decks play full mirror matches without errors, and every deck plays as a goldfish.
 
 ## Fan content, credits and donations
 

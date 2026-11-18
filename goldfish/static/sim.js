@@ -380,6 +380,7 @@
         continue;
       }
       if ((m = line.match(/^\{[^}]+\}(?:, \{T\})?: add .*shares a creature type with your commander, scry (\d+)/i))) { a.scryOnType = +m[1]; rec.status = 'partial'; continue; }          // Path of Ancestry: approximated, the mana is not tracked
+      if (/^\{2\}, \{t\}: add \{b\} for each swamp you control/i.test(line)) { a.coffers = true; rec.status = 'ok'; continue; }                                                               // Cabal Coffers
       if (/^(\{T\}|\{T\}, sacrifice ~|sacrifice ~)(?:, [^:]*)?: add/i.test(line)) { rec.status = 'ok'; if (/sacrifice ~/i.test(line)) a.sacMana = true; continue; }
       if (/^\{[^}]+\}(?:, \{T\})?: add/i.test(line)) { rec.status = 'ok'; continue; }
       if ((m = line.match(/^equip(?: [a-z ]+)?\s*((?:\{[^}]+\})+)/i))) { a.equip = { cost: parseCost(m[1]) }; rec.status = 'ok'; continue; }
@@ -451,7 +452,6 @@
       if (/^\{t\}, sacrifice a creature you control with mana value x other than ~: return target creature card with mana value x plus 1/i.test(line)) { a.sidisi = true; rec.status = 'ok'; continue; }          // Sidisi, Regent of the Mire
       if (/^\{t\}, sacrifice a creature: put two \+1\/\+1 counters on target creature/i.test(line)) { a.fain = true; a.sacOutlet = true; rec.status = 'ok'; continue; }                         // Fain, the Broker
       if (/^\{1\}\{b\}\{b\}, \{t\}: draw a card, then you lose life equal to the number of cards in your hand/i.test(line)) { a.castle = true; rec.status = 'ok'; continue; }                         // Castle Locthwain
-      if (/^\{2\}, \{t\}: add \{b\} for each swamp you control/i.test(line)) { a.coffers = true; rec.status = 'ok'; continue; }                                                               // Cabal Coffers
       if ((m = line.match(/^multikicker \{(\d+)\}/i))) { a.multikick = +m[1]; rec.status = 'ok'; continue; }                                                                                 // Everflowing Chalice
       if (/^~ enters with a charge counter on it for each time it was kicked/i.test(line)) { a.chalice = true; rec.status = 'ok'; continue; }
       if (/^if you control a swamp, you may pay 4 life rather than pay ~'s mana cost/i.test(line)) { a.lifeAlt = 4; rec.status = 'ok'; continue; }                                            // Snuff Out

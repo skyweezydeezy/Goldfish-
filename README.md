@@ -134,10 +134,13 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Second Breakfast | 100 | 161 | 138 | 17 | 4 | 2 | 0 |
 | Loyalty Program | 100 | 168 | 131 | 28 | 6 | 0 | 3 (the Kaya, Vraska and Wrenn emblem ultimates) |
 | Zul Ashur (Zombie reanimator) | 100 | 134 | 113 | 17 | 4 | 0 | 0 |
+| Death Tax (Teysa Karlov) | 100 | 151 | 130 | 17 | 2 | 2 (Grim Haruspex's morph, Path of Ancestry's scry) | 0 |
 
 The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Kalitas and Gisa exile opposing creatures instead of letting them die (Gisa's come back decayed at your upkeep and are sacrificed after attacking), Sidisi, Cemetery Reaper, Lord of the Undead, Castle Locthwain, Fain and Dread Return's flashback are played by simple rules of thumb (see the policy lab to tune them), and The Meathook Massacre picks the X that takes more of their board than yours.
 
-All 25 pairings of the five decks play full mirror matches without errors, and every deck plays as a goldfish.
+The Death Tax list adds Teysa Karlov (a dying creature's triggers trigger twice, tokens get vigilance and lifelink), Cruel Celebrant, Luminous Broodmoth, Reveillark, Sun Titan, Woe Strider's escape, Bolas's Citadel (top-of-library casting for life and the ten-permanent drain), Yawgmoth, Priest of Forgotten Gods, Warren Soultrader, High Market, Phyrexian Altar and Deadly Dispute. These are played by simple rules of thumb: for example Yawgmoth only draws while life is above 12, and the Citadel only pays life it can spare.
+
+All 36 pairings of the six decks play full mirror matches without errors, and every deck plays as a goldfish.
 
 ## Fan content, credits and donations
 

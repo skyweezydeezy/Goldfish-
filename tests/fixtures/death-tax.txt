@@ -1,0 +1,106 @@
+// Death Tax (Teysa Karlov)
+
+// COMMANDER
+1 Teysa Karlov
+
+// DECK
+1 Ancient Tomb
+1 Anguished Unmaking
+1 Animate Dead
+1 Arcane Signet
+1 Ashnod's Altar
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Blood Artist
+1 Bolas's Citadel
+1 Brightclimb Pathway
+1 Caves of Koilos
+1 Command Tower
+1 Commander's Sphere
+1 Cruel Celebrant
+1 Dark Ritual
+1 Deadly Dispute
+1 Demonic Tutor
+1 Diabolic Intent
+1 Doomed Traveler
+1 Dusk // Dawn
+1 Elas il-Kor, Sadistic Pilgrim
+1 Elspeth, Sun's Champion
+1 Enlightened Tutor
+1 Exsanguinate
+1 Fabled Passage
+1 Fatal Push
+1 Fetid Heath
+1 Gix, Yawgmoth Praetor
+1 Godless Shrine
+1 Grave Pact
+1 Gravecrawler
+1 Grim Haruspex
+1 Grim Tutor
+1 High Market
+1 Isolated Chapel
+1 Liliana, Dreadhorde General
+1 Lotus Petal
+1 Luminous Broodmoth
+1 Mana Vault
+1 Marsh Flats
+1 Mirkwood Bats
+1 Mox Amber
+1 Necropotence
+1 Night's Whisper
+1 Ophiomancer
+1 Opposition Agent
+1 Orcish Bowmasters
+1 Orzhov Signet
+1 Path of Ancestry
+1 Path to Exile
+1 Phyrexian Altar
+1 Phyrexian Tower
+1 Pitiless Plunderer
+1 Plains
+1 Plains
+1 Plains
+1 Plains
+1 Plains
+1 Plains
+1 Plains
+1 Priest of Forgotten Gods
+1 Reassembling Skeleton
+1 Reveillark
+1 Sanguine Bond
+1 Scoured Barrens
+1 Shattered Sanctum
+1 Sheoldred's Edict
+1 Shineshadow Snarl
+1 Sifter of Skulls
+1 Silence
+1 Skullclamp
+1 Smothering Tithe
+1 Sol Ring
+1 Solemn Simulacrum
+1 Sun Titan
+1 Sunlit Marsh
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swamp
+1 Swords to Plowshares
+1 Talisman of Hierarchy
+1 Teferi's Protection
+1 Temple of Silence
+1 Toxic Deluge
+1 Vampiric Tutor
+1 Vindicate
+1 Viscera Seer
+1 Walking Ballista
+1 Warren Soultrader
+1 Woe Strider
+1 Yahenni, Undying Partisan
+1 Yawgmoth, Thran Physician
+1 Zulaport Cutthroat
+

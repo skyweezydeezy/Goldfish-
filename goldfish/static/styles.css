@@ -641,3 +641,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .lb-buy { flex: 1 1 120px; text-align: center; padding: 11px 12px; border-radius: 10px; background: var(--surface-3); color: var(--text-primary); text-decoration: none; font-weight: 650; box-shadow: inset 0 0 0 1px var(--border); }
 .lb-buy:hover { background: #2c4c66; }
 .lb-cov { width: min(94vw, 560px); }
+
+/* ---------- dropdowns: the list always has two contrasting colours (light text on a dark panel), on every platform ---------- */
+select, select.ghost { background-color: var(--surface-2); color: var(--text-primary); }
+select option, select optgroup { background-color: #0f1d2a; color: #eef7fd; }
+select option:checked, select option:hover { background-color: #2b6fb3; color: #ffffff; }
+select option:disabled { color: #7f9bb0; }
+select optgroup { color: var(--ice); font-weight: 700; }

@@ -1,6 +1,6 @@
 /* Service worker: lets the app open offline and keeps card images you've already seen. */
-const VERSION = 'isf-v9';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'looks.js', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
+const VERSION = 'isf-v10';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'profile.js', 'looks.js', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const IMG = 'gf-img-v1';
 const MAX_IMAGES = 600;

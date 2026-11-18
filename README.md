@@ -133,9 +133,9 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Veyran | 100 | 149 | 110 | 31 | 4 | 3 | 1 (Desperate Ritual's splice) |
 | Second Breakfast | 100 | 161 | 138 | 17 | 4 | 2 | 0 |
 | Loyalty Program | 100 | 168 | 131 | 28 | 6 | 0 | 3 (the Kaya, Vraska and Wrenn emblem ultimates) |
-| Zul Ashur (Zombie reanimator) | 100 | 134 | 110 | 17 | 4 | 0 | 3 (Fain's Treasure, Inkling and untap abilities) |
+| Zul Ashur (Zombie reanimator) | 100 | 134 | 113 | 17 | 4 | 0 | 0 |
 
-The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Some of its subtler abilities (Kalitas and Gisa replacement effects, Sidisi, Dread Return flashback) are only partly modelled.
+The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Kalitas and Gisa exile opposing creatures instead of letting them die (Gisa's come back decayed at your upkeep and are sacrificed after attacking), Sidisi, Cemetery Reaper, Lord of the Undead, Castle Locthwain, Fain and Dread Return's flashback are played by simple rules of thumb (see the policy lab to tune them), and The Meathook Massacre picks the X that takes more of their board than yours.
 
 All 25 pairings of the five decks play full mirror matches without errors, and every deck plays as a goldfish.
 

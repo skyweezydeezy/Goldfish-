@@ -362,13 +362,14 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.lordReturn = false; a.reaper = false; a.kalitasSac = false; a.kalitas = false; a.gisaR = false; a.sidisi = false; a.fain = false; a.castle = false; a.coffers = false; a.multikick = 0; a.chalice = false; a.lifeAlt = 0; a.cashInFree = false; a.bmc = false; a.zulAshur = false; a.reanimAura = false; a.landfallReturn = false; a.yardActivate = null; a.yardCastIfZombie = false; a.dieReturn = null; a.dieReanim = false; a.sacOutlet = false; a.sacCounter = false; a.discardZombie = false; a.zombieDraw = false; a.cumulative = false; a.sparkDouble = false; a.tapPain = 0; a.proliferateAb = null; a.chainVeil = false; a.masterTime = false; a.oath = false; a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.lordReturn = false; a.reaper = false; a.kalitasSac = false; a.kalitas = false; a.gisaR = false; a.sidisi = false; a.fain = false; a.castle = false; a.coffers = false; a.flashSac = 0; a.multikick = 0; a.chalice = false; a.lifeAlt = 0; a.cashInFree = false; a.bmc = false; a.zulAshur = false; a.reanimAura = false; a.landfallReturn = false; a.yardActivate = null; a.yardCastIfZombie = false; a.dieReturn = null; a.dieReanim = false; a.sacOutlet = false; a.sacCounter = false; a.discardZombie = false; a.zombieDraw = false; a.cumulative = false; a.sparkDouble = false; a.tapPain = 0; a.proliferateAb = null; a.chainVeil = false; a.masterTime = false; a.oath = false; a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (/^flashback—sacrifice three creatures/i.test(line)) { a.flashSac = 3; rec.status = 'ok'; continue; }                                                          // Dread Return
       if (/^partner with /i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
       const lower = line.toLowerCase();
       let m;
@@ -465,6 +466,7 @@
       if (/^pay 1 life: exile the top card of your library face down/i.test(line)) { a.necroDig = true; rec.status = 'ok'; continue; }
       if (/^whenever you discard a card, exile that card from your graveyard/i.test(line)) { rec.status = 'ok'; continue; }
       if (/^at the beginning of your draw step, you may draw two additional cards/i.test(line)) { a.sylvan = true; rec.status = 'ok'; continue; }                                  // Sylvan Library
+      if (/^\{t\}, remove a counter from a creature you control: create a treasure token/i.test(line) || /^\{t\}, sacrifice an artifact: create a 2\/1 white and black inkling/i.test(line) || /^\{3\}\{b\}: untap ~/i.test(line)) { a.fain = true; rec.status = 'ok'; continue; }   // Fain's other abilities (see zombieAbilities)
       if (/^as an additional cost to cast ~, pay x life/i.test(line)) { a.delugeCost = true; rec.status = 'ok'; continue; }                                                      // Toxic Deluge
       if (/^all creatures get -x\/-x until end of turn/i.test(line)) { a.spellFx.push({ type: 'deluge' }); rec.status = 'ok'; continue; }
       if (/^if ~ would enter, you may discard a land card instead/i.test(line)) { a.moxDiamond = true; rec.status = 'ok'; continue; }                                              // Mox Diamond
@@ -1054,7 +1056,18 @@
   function leavePerm(g, p, ev, dest) {
     if (!g.battlefield.includes(p)) return;
     const pw = Math.max(0, powerOf(g, p)), wasCreature = isCreaturePerm(p), equippers = g.battlefield.filter(q => q.attachedTo === p.iid);
+    let repl = null;                                                                                      // Kalitas / Gisa on the other side: the creature is exiled instead of dying
+    if (wasCreature && g.opp && !g.dry && !p.card.commander && dest !== 'exile' && dest !== 'hand' && dest !== 'library3') {
+      const kq = !p.token && g.opp.battlefield.find(q => q.card.a.kalitas), gq = g.opp.battlefield.find(q => q.card.a.gisaR);
+      repl = kq ? { q: kq, kalitas: true } : gq ? { q: gq, gisa: true } : null;
+    }
     removePerm(g, p);
+    if (repl) {
+      if (!p.token && p.inst) { if (repl.gisa) (repl.q.gisaCards = repl.q.gisaCards || []).push(p.inst); else g.exile.push(p.inst); }
+      if (repl.kalitas) createTokens(g.opp, { type: 'token', n: 1, creature: true, p: 2, t: 2, colors: ['B'], subtypes: ['Zombie'], keywords: [], artifact: false, name: 'Zombie' }, 1, ev, repl.q);
+      ev.push({ type: 'note', text: `${p.card.name} is exiled instead of dying (${repl.q.card.name})`, source: repl.q });
+      dest = 'exile';
+    } else
     if (!p.token && p.inst) { if (dest === 'library3') g.library.splice(Math.min(2, g.library.length), 0, p.inst); else (p.card.commander ? g.command : dest === 'exile' ? g.exile : dest === 'hand' ? g.hand : g.graveyard).push(p.inst); }
     for (const t of p.card.a.triggers) if (t.kinds.includes('leave')) fire(g, t, p, ev, p, pw);
     if (p.ghostform && !p.token && p.inst && (dest === 'graveyard' || dest === 'exile' || !dest)) {                    // Kaya's ghostform: back to your hand, and a 1/1 flying Spirit
@@ -1858,7 +1871,7 @@
     const a = inst.card.a;
     if (!a.isCreature) return -1;
     let v = a.mv * 1.0 + Math.max(0, a.power) * 0.8 + (a.kw && (a.kw.has('flying') || a.kw.has('lifelink') || a.kw.has('deathtouch')) ? 1.5 : 0);
-    for (const t of a.triggers) if (t.kinds.includes('etb')) v += fxValue(g, t.fx) * 1.5;
+    for (const t of a.triggers) if (t.kinds.includes('etb')) { const fv = fxValue(g, t.fx); if (isFinite(fv)) v += fv * 1.5; }          // a dynamic count (Diregraf Colossus) is not a number here
     return v;
   }
   function reanimateCandidates(g, f) {
@@ -2189,7 +2202,14 @@
     let victim = null;
     if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g); if (!victim && !force) return null; }
     const ev = [];
-    let n = pay(g, effectiveCost(g, inst));
+    let n;
+    let flashVictims = null;
+    if (inst.flashing && g.graveyard.includes(inst)) {
+      const fl = fodderList(g, true).slice(0, inst.card.a.flashSac);
+      if (fl.length < inst.card.a.flashSac && !force) return null;
+      flashVictims = fl.map(x => x.p); n = 0;
+    } else n = pay(g, effectiveCost(g, inst));
+    if (flashVictims) for (const v of flashVictims) leavePerm(g, v, ev);
     if (n == null && !force && snuffAlt(g, inst)) {                                                  // Snuff Out: pay 4 life instead of mana
       g.life -= inst.card.a.lifeAlt; ev.push({ type: 'note', text: `Paid ${inst.card.a.lifeAlt} life for ${inst.card.name}` }); n = 0;
     }
@@ -2200,6 +2220,7 @@
     else if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);
     else if (g.graveyard.includes(inst)) g.graveyard.splice(g.graveyard.indexOf(inst), 1);
     resolveSpell(g, inst, ev);
+    if (flashVictims) { const gi = g.graveyard.indexOf(inst); if (gi >= 0) { g.graveyard.splice(gi, 1); g.exile.push(inst); } inst.flashing = false; }
     flushLeaves(g, ev);
     return ev;
   }
@@ -2232,11 +2253,22 @@
       if (!bx) return -1;
       c.deluge = bx; s += 30;
     }
+    if (a.spellFx.some(f => f.type === 'xShrink')) {            // The Meathook Massacre: choose X to take more of their board than yours
+      let bx = 0, bs = g.opp ? 3 : -4;
+      const maxX = 1 + (c.extraX || 0);
+      for (let X = 1; X <= Math.min(7, maxX); X++) {
+        const gain = g.opp ? g.opp.battlefield.filter(p => isCreaturePerm(p) && toughnessOf(g.opp, p) <= X).reduce((t, p) => t + creatureValue(g.opp, p), 0) : 0;
+        const loss = g.battlefield.filter(p => isCreaturePerm(p) && toughnessOf(g, p) <= X).reduce((t, p) => t + creatureValue(g, p), 0);
+        const sc = gain - loss - X * 0.5; if (sc > bs) { bs = sc; bx = X; }
+      }
+      if (!bx) return -1;
+      c.extraX = bx - 1; s += 30;
+    }
     if (a.moxDiamond && !(g.hand.filter(i => i.card.a.isLand).length >= 1 && g.battlefield.filter(p => p.asLand).length >= 2)) return -1;
     { const rf = a.spellFx.find(f => f.type === 'reanimate') || (a.reanimAura || a.triggers.some(t => t.kinds.includes('etb') && t.fx.some(f => f.type === 'reanimate')) ? a.triggers.flatMap(t => t.fx).find(f => f.type === 'reanimate') : null);
       if (rf) {                                                  // Reanimate, Animate Dead, Necromancy, Dread Return, Victimize: only with a worthwhile creature to bring back
         const b = bestReanimation(g, rf);
-        if (!b || b.v < 6 || (rf.sacrifice && !fodderList(g, true).length)) return -1;
+        if (!b || b.v < (c.flashing ? 9 : 6) || (rf.sacrifice && !fodderList(g, true).length)) return -1;
         s += 40 + b.v;
       } }
     if (a.sparkDouble && !sparkTarget(g)) return -1;
@@ -2300,12 +2332,13 @@
     if (!units.length) return null;
     const isZ = p => /\bZombie\b/.test((p.card.type_line || '')) || p.zombie;
     const hasZ = g.battlefield.some(isZ);
-    const cands = g.hand.filter(c => !c.card.a.isLand).concat(g.command).concat(g.graveyard.filter(i => (i.card.a.yardCastIfZombie && hasZ) || i.zulCast === g.turn));          // Gravecrawler, Zul Ashur: cast from the graveyard
+    const cands = g.hand.filter(c => !c.card.a.isLand).concat(g.command).concat(g.graveyard.filter(i => (i.card.a.yardCastIfZombie && hasZ) || i.zulCast === g.turn || (i.card.a.flashSac && fodderList(g, true).length >= i.card.a.flashSac)));          // Gravecrawler, Zul Ashur: cast from the graveyard
     let best = null, bestScore = -1, altarK = 0;
     for (const c of cands) {
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick) - (c.card.a.mv > 0 ? 0 : 0)));
       if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X
-      if (!canPay(effectiveCost(g, c), units) && !snuffAlt(g, c)) continue;
+      c.flashing = !!(c.card.a.flashSac && g.graveyard.includes(c));                                  // Dread Return's flashback: sacrifice three creatures instead of paying mana
+      if (!c.flashing && !canPay(effectiveCost(g, c), units) && !snuffAlt(g, c)) continue;
       if (c.card.a.sacCreatureCost && !pickSacrifice(g)) continue;
       const s = spellScore(g, c);
       if (s > bestScore) { bestScore = s; best = c; }
@@ -2401,6 +2434,73 @@
   }
 
   // Planeswalkers, equip, activated abilities, clues. Returns events (empty if nothing done).
+  // Zul Ashur's friends: Lord of the Undead, Cemetery Reaper, Kalitas, Sidisi, Castle Locthwain and Fain. Each is used at most once per call; castPhase loops.
+  function zombieAbilities(g, ev) {
+    const bp = (generic, pip) => ({ generic, pips: pip ? [[pip]] : [], x: 0 });
+    const ready = p => !p.tapped && !(p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste'));
+    const spend = (p, cost, tapIt) => {                                                                 // pay {cost} with p tapped as part of it; undo when it cannot be paid
+      if (tapIt) p.tapped = true;
+      if (canPay(cost, allUnits(g)) && pay(g, cost) != null) return true;
+      if (tapIt) p.tapped = false; return false;
+    };
+    const isZ = i => /\bZombie\b/.test(i.card.type_line || '');
+    for (const p of g.battlefield.slice()) {
+      const a = p.card.a;
+      if (!g.battlefield.includes(p)) continue;
+      if (a.lordReturn && ready(p)) {                                                                    // Lord of the Undead: a Zombie card back to your hand
+        const zs = g.graveyard.filter(i => isZ(i) && i.card.a.isCreature && !i.card.a.landfallReturn && !i.card.a.yardActivate).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x));
+        if (zs[0] && reanimateValue(g, zs[0]) >= 3 && g.hand.length < 7 && spend(p, bp(1, 'B'), true)) { g.graveyard.splice(g.graveyard.indexOf(zs[0]), 1); g.hand.push(zs[0]); ev.push({ type: 'note', text: `${p.card.name}: ${zs[0].card.name} returns to your hand`, source: p }); return; }
+      }
+      if (a.reaper && ready(p)) {                                                                        // Cemetery Reaper: exile a creature card from a graveyard for a 2/2 Zombie
+        const theirs = g.opp ? g.opp.graveyard.filter(i => i.card.a.isCreature) : [];
+        const mine = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander && reanimateValue(g, i) < 3 && !i.card.a.yardActivate && !i.card.a.landfallReturn);
+        const t = theirs[0] ? { src: g.opp, i: theirs[0] } : mine[0] ? { src: g, i: mine[0] } : null;
+        if (t && spend(p, bp(2, 'B'), true)) {
+          t.src.graveyard.splice(t.src.graveyard.indexOf(t.i), 1); t.src.exile.push(t.i);
+          createTokens(g, { type: 'token', n: 1, creature: true, p: 2, t: 2, colors: ['B'], subtypes: ['Zombie'], keywords: [], artifact: false, name: 'Zombie' }, 1, ev, p);
+          ev.push({ type: 'note', text: `${p.card.name}: exiled ${t.i.card.name} for a 2/2 Zombie`, source: p }); return;
+        }
+      }
+      if (a.kalitasSac && g.opp) {                                                                       // Kalitas: sacrifice a Zombie token for two +1/+1 counters (only to put pressure on a real opponent)
+        const f = g.battlefield.find(q => q !== p && q.token && /\b(Zombie|Vampire)\b/.test(q.card.type_line || q.card.name || ''));
+        if (f && g.battlefield.filter(q => q.token && isCreaturePerm(q)).length >= 2 && spend(p, bp(2, 'B'), false)) { leavePerm(g, f, ev); addCounters(g, p, '+1/+1', 2, ev, p); flushLeaves(g, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${f.card.name} for two +1/+1 counters`, source: p }); return; }
+      }
+      if (a.sidisi && ready(p)) {                                                                        // Sidisi: sacrifice a creature of mana value X, return one of mana value X+1
+        let best = null, bs = 2;
+        for (const f of g.battlefield) {
+          if (f === p || !isCreaturePerm(f) || f.card.commander) continue;
+          const x = f.token ? 0 : f.card.a.mv;
+          for (const i of g.graveyard) {
+            if (!i.card.a.isCreature || i.card.commander || i.card.a.mv !== x + 1) continue;
+            const sc = reanimateValue(g, i) - creatureValue(g, f) * 0.6;
+            if (sc > bs) { bs = sc; best = { f, i }; }
+          }
+        }
+        if (best) {
+          p.tapped = true; leavePerm(g, best.f, ev); flushLeaves(g, ev);
+          g.graveyard.splice(g.graveyard.indexOf(best.i), 1); enterWithTriggers(g, best.i, {}, ev);
+          ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${best.f.card.name} to return ${best.i.card.name}`, source: p }); return;
+        }
+      }
+      if (a.castle && !p.tapped && p.asLand && g.library.length && g.hand.length <= 2 && g.life > (g.opp ? 20 : 12)) {   // Castle Locthwain: draw, then lose life equal to your hand size
+        if (spend(p, { generic: 1, pips: [['B'], ['B']], x: 0 }, true)) { const ce = []; draw(g, 1, ce); g.life -= g.hand.length; ev.push(...ce); ev.push({ type: 'note', text: `${p.card.name}: drew a card and lost ${g.hand.length} life`, source: p }); checkDeath(g, ev); return; }
+      }
+      if (a.fain && !g.dry) {                                                                            // Fain: Inkling from a spare artifact, Treasure from a counter, or two counters from a spare creature (see sacOutlets)
+        let acted = false;
+        for (let k = 0; k < 2 && !acted; k++) {
+          if (!ready(p)) { if (p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && k === 0 && spareFainWork(g, p) && spend(p, bp(3, 'B'), false)) { p.tapped = false; ev.push({ type: 'note', text: `${p.card.name} untaps ({3}{B})`, source: p }); continue; } break; }
+          const art = g.battlefield.find(q => q.token && q.card.a.isArtifact !== false && /Food|Clue|Blood|Powerstone/.test(q.card.name || '') && !/Treasure/.test(q.card.name || ''));
+          if (art) { p.tapped = true; leavePerm(g, art, ev); createTokens(g, { type: 'token', n: 1, creature: true, p: 2, t: 1, colors: ['W', 'B'], subtypes: ['Inkling'], keywords: ['flying'], artifact: false, name: 'Inkling' }, 1, ev, p); ev.push({ type: 'note', text: `${p.card.name}: ${art.card.name} becomes a 2/1 flying Inkling`, source: p }); acted = true; break; }
+          const cp = g.battlefield.find(q => isCreaturePerm(q) && (q.counters || 0) !== 0);
+          const short = g.hand.some(h => !h.card.a.isLand && !h.card.commander && h.card.a.mv === allUnits(g).length + 1);
+          if (cp && short) { p.tapped = true; cp.counters = (cp.counters || 0) + ((cp.counters || 0) < 0 ? 1 : -1); createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev, p); ev.push({ type: 'note', text: `${p.card.name}: removed a counter for a Treasure`, source: p }); acted = true; break; }
+          break;
+        }
+        if (acted) return;
+      }
+    }
+  }
+  function spareFainWork(g, fain) { return g.battlefield.some(q => q !== fain && q.token && /Food|Clue|Blood/.test(q.card.name || '')); }
   function useAbilities(g) {
     const ev = [];
     // The Chain Veil: {4}, {T} lets every planeswalker activate once more this turn (worth it when one has already been used)
@@ -2489,6 +2589,7 @@
       i.yardN = (i.yardTurn === g.turn ? i.yardN || 0 : 0) + 1; i.yardTurn = g.turn;
       const np = enterWithTriggers(g, i, { tapped: ya.tapped }, ev); ev.push({ type: 'note', text: `${i.card.name} returns from the graveyard` }); ev.push({ type: 'rampLand', inst: i, perm: np, source: null });
     }
+    if (!g.dry) zombieAbilities(g, ev);
     for (const p of g.battlefield.slice()) {
       if (p.card.a.zulAshur && !p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && !g.dry) {
         const zs = g.graveyard.filter(i => i.card.a.isCreature && /\bZombie\b/.test(i.card.type_line || '') && i.zulCast !== g.turn && canPay(effectiveCost(g, i), allUnits(g))).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x));
@@ -2810,6 +2911,9 @@
       if (g.opp && p.age <= 1 && canPay(cc, allUnits(g))) { pay(g, cc); ev.push({ type: 'note', text: `Paid cumulative upkeep for ${p.card.name}`, source: p }); }
       else { leavePerm(g, p, ev); ev.push({ type: 'note', text: `${p.card.name} is sacrificed (cumulative upkeep)`, source: p }); }
     }
+    for (const q of g.battlefield.slice()) if (q.card.a.gisaR && q.gisaCards && q.gisaCards.length) {      // Gisa: everything exiled with her returns under your control, decayed
+      for (const i of q.gisaCards.splice(0)) { if (g.battlefield.length >= 250) break; const np = enterWithTriggers(g, i, {}, ev); np.decayed = true; ev.push({ type: 'note', text: `${i.card.name} returns under your control with decayed (${q.card.name})`, source: q }); }
+    }
     if (g.pendingMana) { for (let i = 0; i < Math.min(g.pendingMana, 30); i++) g.floating.push({ src: null, colors: new Set(['C']), floating: true }); ev.push({ type: 'note', text: `Mana Drain: ${g.pendingMana} colorless mana` }); g.pendingMana = 0; }
     if (g.pactDue) {                                                                                      // Pact of Negation: pay {3}{U}{U} this upkeep or lose
       g.pactDue = false;
@@ -2848,7 +2952,7 @@
       let attackers = g.battlefield.filter(p => canAttack(g, p));
       if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
       if (!attackers.length) break;
-      attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) p.tapped = true; p.attacking = true; });
+      attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) p.tapped = true; p.attacking = true; p.attackedTurn = g.turn; });
       ev.push({ type: 'declare', attackers });
       for (const p of attackers) for (const t of p.card.a.triggers) if (t.kinds.includes('attack')) fire(g, t, p, ev, p);
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
@@ -2901,7 +3005,9 @@
   // If something changed (a transform), the new permanent gets to use its abilities and the spare mana is spent again.
   // Blood Artist / Zulaport Cutthroat / Grave Pact + a free sacrifice outlet (Viscera Seer, Ashnod's Altar): after combat, sacrifice the tokens
   function sacOutlets(g, ev) {
-    const outlets = g.battlefield.filter(p => p.card.a.altar || p.card.a.sacScry || p.card.a.sacOutlet);
+    let outlets = g.battlefield.filter(p => p.card.a.altar || p.card.a.sacScry || p.card.a.sacOutlet);
+    const freeOutlet = outlets.some(o => !o.card.a.fain);
+    if (!freeOutlet) outlets = outlets.filter(o => !o.tapped && !(o.sick && !hasKw(g, o, 'haste')));          // Fain needs {T} for every sacrifice: once a turn
     if (!outlets.length || g.killTurn != null) return;
     const watchers = g.battlefield.filter(p => p.card.a.triggers.some(t => t.kinds.includes('dies') && t.who !== '~' && t.who !== 'equipped creature' && t.fx.some(f => f.type === 'drain' || f.type === 'damage' || f.type === 'edict'))).length;
     if (!watchers) return;
@@ -2911,9 +3017,10 @@
     const go = sm === 'always' ? toks.length >= 1 : sm === 'lethalOnly' ? lethal : sm === 'never' ? false : sm === 'wide' ? (toks.length >= 8 || lethal) : sm === 'two' ? (watchers >= 2 || lethal) : (watchers >= 2 || toks.length >= 8 || lethal);
     if (!go) return;
     let n = 0;
-    for (const t of toks.slice(0, 40)) {
+    for (const t of toks.slice(0, freeOutlet ? 40 : 1)) {
       if (g.killTurn != null || matchOver(g)) break;
       leavePerm(g, t, ev); n++;
+      if (!freeOutlet) { outlets[0].tapped = true; const tgt = g.battlefield.filter(q => isCreaturePerm(q) && q !== t).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0]; if (tgt) addCounters(g, tgt, '+1/+1', 2, ev, outlets[0]); }
       outlets.filter(o => o.card.a.sacCounter && g.battlefield.includes(o)).slice(0, 1).forEach(o => addCounters(g, o, '+1/+1', 1, ev, o));
       if (outlets.some(o => o.card.a.altar)) for (let i = 0; i < 2; i++) g.floating.push({ src: null, colors: new Set(['C']), floating: true });
     }
@@ -2927,6 +3034,7 @@
       ev.push({ type: 'note', text: `${p.card.name}: sacrificed for a basic land`, source: p }); leavePerm(g, p, ev);
       applyEffects(g, [{ type: 'ramp', bf: 1, hand: 0, tapped: true, basicOnly: true }], p, ev, null);
     }
+    for (const p of g.battlefield.slice()) if (p.decayed && p.attackedTurn === g.turn) { ev.push({ type: 'note', text: `${p.card.name} (decayed) is sacrificed after attacking`, source: p }); leavePerm(g, p, ev); }
     sacOutlets(g, ev);
     seerScry(g, ev);
     if (ev.some(e => e.type === 'transform' || e.type === 'note' && /^Sacrificed \d+ tokens/.test(e.text))) ev.push(...castPhase(g).ev);
@@ -3052,7 +3160,7 @@
   }
   // can blocker b (of game d) block attacker a (of game g)?
   function canBlock(g, a, d, b) {
-    if (!isCreaturePerm(b) || b.tapped || b.card.a.cantBlock) return false;
+    if (!isCreaturePerm(b) || b.tapped || b.card.a.cantBlock || b.decayed) return false;
     if (hasKw(g, a, 'flying') && !(hasKw(d, b, 'flying') || hasKw(d, b, 'reach'))) return false;
     if (hasKw(g, a, 'unblockable') || hasKw(g, a, 'shadow') || hasKw(g, a, 'horsemanship')) return false;
     if (hasKw(g, a, 'skulk') && powerOf(d, b) > powerOf(g, a)) return false;
@@ -3070,7 +3178,7 @@
   // The defender (game d) chooses blockers against the attackers of game g. Returns Map(attacker -> [blockers]).
   function chooseBlocks(d, g, attackers) {
     const res = new Map();
-    const pool = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock);
+    const pool = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock && !p.decayed);
     if (!pool.length || !attackers.length) return res;
     const used = new Set();
     const order = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x));
@@ -3114,7 +3222,7 @@
     if (open >= d.life) return cands;                                                  // lethal even through their blocks
     const theirPower = d.battlefield.reduce((s, p) => s + (isCreaturePerm(p) ? Math.max(0, powerOf(d, p)) : 0), 0);
     const defensive = g.life <= theirPower * (+pol(g, 'attackCaution') || 1);                                            // they could kill me next turn: stay home
-    const blockers = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock);
+    const blockers = d.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && !p.card.a.cantBlock && !p.decayed);
     return cands.filter(a => {
       if (defensive && !hasKw(g, a, 'vigilance')) return false;
       const bad = blockers.some(b => canBlock(g, a, d, b) && (() => { const r = duel(g, a, d, b); return r.aDies && (!r.bDies || creatureValue(d, b) < creatureValue(g, a) - 1); })());

@@ -305,6 +305,7 @@
     if (/\bthe ring tempts you\b/i.test(text)) fx.push({ type: 'tempt' });                 // Frodo, Boromir...
 
     m = text.match(/creatures you control get \+(\d+|x)\/\+(\d+|x)(?: and gain ([a-z ,]+?))? until end of turn/i);
+    if (m && /if x is \d+ or more, creatures you control get/i.test(text)) m = null;          // Finale of Devastation: the pump only happens with a huge X
     if (m) fx.push({ type: 'pumpAll', p: num(m[1]), t: num(m[2]), keywords: kwList(m[3]) });
     else if ((m = text.match(/creatures you control gain ([a-z ,]+?) and get \+(\d+|x)\/\+(\d+|x) until end of turn/i))) fx.push({ type: 'pumpAll', p: num(m[2]), t: num(m[3]), keywords: kwList(m[1]) });
     else if ((m = text.match(/creatures you control gain ([a-z ,]+?) until end of turn/i))) fx.push({ type: 'pumpAll', p: 0, t: 0, keywords: kwList(m[1]) });
@@ -323,7 +324,7 @@
       else if (/onto the battlefield/i.test(sentence) || /put (it|them|those cards|that card) onto the battlefield/i.test(text)) bf = n;
       else hand = n;
       fx.push({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly });
-    } else if (!/put that card into your graveyard/i.test(text) && (m = text.match(/search your library for (?:a|an|one) ([^,.]*?)cards?\b/i))) {
+    } else if (!/put that card into your graveyard/i.test(text) && (m = text.match(/search your library(?: and\/or graveyard)? for (?:a|an|one) ([^,.]*?)cards?\b/i))) {
       // Tutors: Vampiric Tutor (to the top), Demonic Tutor / Diabolic Intent (to your hand), typed ones like "a creature card"
       const words = (m[1] || '').toLowerCase();
       const filters = ['creature', 'artifact', 'enchantment', 'instant', 'sorcery', 'planeswalker', 'legendary'].filter(w => words.includes(w));
@@ -2392,7 +2393,7 @@
             pick = cands[0] && imprintValue(g, cands[0]) <= 5 ? cands[0] : null;
             if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); source.produce = { colors: new Set(pick.card.colors), amount: 1 }; touch(g); ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} (Chrome Mox makes ${pick.card.colors.join('/')})`, source }); }
           } else {
-            const cands = hand.filter(i => /\bInstant\b/.test(i.card.type_line || '') && i.card.a.castMv <= 2 && !i.card.a.counter && i.card.a.spellFx.length).sort((x, y) => fxValue(g, y.card.a.spellFx) - fxValue(g, x.card.a.spellFx));
+            const cands = hand.filter(i => /\bInstant\b/.test(i.card.type_line || '') && i.card.a.castMv <= 2 && !i.card.a.counter && i.card.a.spellFx.length).sort((x, y) => (comboNeed(g, y) - comboNeed(g, x)) || (fxValue(g, y.card.a.spellFx) - fxValue(g, x.card.a.spellFx)));
             pick = cands[0] || null;
             if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); source.imprinted = pick; ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} under Isochron Scepter`, source }); }
           }
@@ -3001,10 +3002,30 @@
   //   3. a token doubler / replacement effect (they multiply everything else)
   //   4. a cheap mana rock when you are short on mana
   //   5. otherwise the strongest permanent you can actually afford soon
+  // How much a card would advance one of the combo lines (see comboLines), given what is already in hand and on the battlefield.
+  // Used by tutors (find the missing piece) and by Isochron Scepter (imprint the untap-all instant).
+  function comboNeed(g, inst) {
+    const k = comboKind(inst.card), have = g.hand.concat(g.battlefield), kinds = have.map(x => comboKind(x.card));
+    const any = f => kinds.some(f);
+    let s = 0;
+    const winner = x => x.oracleWin || x.drawWin;
+    if (k.emptier && any(winner)) s += 1000;
+    if (winner(k) && any(x => x.emptier)) s += 1000;
+    if (winner(k) && !any(winner)) s += 40;
+    const untapAll = inst.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland') && /\bInstant\b/.test(inst.card.type_line || '');
+    const scepterHere = have.some(x => x.card.a.imprint === 'scepter' && !(x.imprinted && x.imprinted.card.a.spellFx.some(f => f.type === 'untapAll')));
+    if (untapAll && scepterHere) s += 900;
+    if (inst.card.a.imprint === 'scepter' && have.some(x => x.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'))) s += 900;
+    if (infiniteMana(g) && (k.ballista || k.xBurn || k.drawEngine)) s += 1500;
+    const mono = any(x => x.untapCost != null), enabler = any(x => x.powerArtifact || x.rings) || g.battlefield.some(p => p.card.a.statics.nonlandDouble) || g.hand.some(i => i.card.a.statics.nonlandDouble);
+    if (mono && !enabler && (k.powerArtifact || k.rings || inst.card.a.statics.nonlandDouble)) s += 700;
+    if (enabler && !mono && k.untapCost != null) s += 700;
+    return s;
+  }
   function tutorScore(g, inst, ctx) {
     const a = inst.card.a;
     if (a.isLegendary && ctx.names.has(inst.card.name)) return -1000;                 // legend rule: a second copy would be useless
-    let s = 0;
+    let s = comboNeed(g, inst);
     if (a.comboRole) {
       if (ctx.roles.has(a.comboRole)) s -= 500;                                        // you already have that half
       else if (ctx.roles.has(a.comboRole === 'blood' ? 'bond' : 'blood')) s += 1000;  // it completes the combo
@@ -3260,6 +3281,7 @@
       .concat(topCastable(g) ? [g.library[0]] : []);          // Bolas's Citadel: the top card, paid for with life          // Gravecrawler, Zul Ashur: cast from the graveyard
     let best = null, bestScore = -1, altarK = 0;
     for (const c of cands) {
+      if (holdForCombo(g, c)) continue;
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick) - (c.card.a.mv > 0 ? 0 : 0)));
       if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X
       c.fromTop = g.library[0] === c; c.viaCitadel = c.fromTop && citadelOk(g) && !(topCastOk(g) && canPay(effectiveCost(g, c), units)); c.retracing = !!(g.graveyard.includes(c) && retraceOk(g, c) && !(c.card.a.yardCastIfZombie || c.zulCast === g.turn || c.card.a.escape || (g.wrennEmblem && c.card.a.isPermanent)));
@@ -3983,7 +4005,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -4005,6 +4027,9 @@
     { id: 'sac', key: 'sacMode', label: 'Sacrificing tokens to "whenever a creature dies" payoffs',
       needs: [{ what: 'a sacrifice outlet', test: a => !!(a.altar || a.sacScry || a.sacOutlet) }, { what: 'a "whenever a creature dies" payoff', test: isDeathPayoff }, { what: 'a token maker', test: makesTokens }],
       options: [{ name: 'Two payoffs out, a wide board or lethal', value: 'current' }, { name: 'Whenever there is a token', value: 'always' }, { name: 'Only for lethal', value: 'lethalOnly' }, { name: 'Never', value: 'never' }, { name: 'Only with 8+ tokens or lethal', value: 'wide' }, { name: 'Only with two payoffs out or lethal', value: 'two' }] },
+    { id: 'scepter', key: 'scepterHold', label: 'Waiting to imprint an untap-all instant on a copy-an-instant artifact',
+      needs: [{ what: 'an artifact that imprints an instant and copies it', test: a => a.imprint === 'scepter' }, { what: 'an instant that untaps all your nonland permanents', test: (a, c) => /\bInstant\b/.test(c.type_line || '') && a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland') }],
+      options: [{ name: 'Cast it now and imprint the best instant in hand', value: 'no' }, { name: 'Hold it until the untap-all instant is in hand (up to turn 8)', value: 'yes' }] },
     { id: 'counters', key: 'holdCounters', label: 'Holding mana open for counterspells', mirrorOnly: true,
       needs: [{ what: 'a counterspell', test: a => !!a.counter }],
       options: [{ name: 'Only counter with spare mana (learned default)', value: 'no' }, { name: 'Hold mana open', value: 'yes' }] },
@@ -4329,11 +4354,108 @@
     return ev;
   }
 
+  // ---------- Combo lines ----------
+  // Finishes that casting one card at a time never finds. Every piece is recognised by its rules text, not its name:
+  //   A. a card that exiles your library (Demonic Consultation, Tainted Pact) + a card that wins with an empty library
+  //      (Thassa's Oracle; Jace, Wielder of Mysteries), both paid for this turn;
+  //   B. infinite mana: an untap-all-nonland instant imprinted on Isochron Scepter with 3+ mana from nonland sources,
+  //      or a mana rock that untaps itself (Basalt Monolith) with Kinnan, Power Artifact or Rings of Brighthearth;
+  //      it wins when there is an outlet: Walking Ballista, an X damage spell, Thrasios with an empty-library winner.
+  function comboText(card) { return ((card.faces && card.faces.length) ? card.faces.map(f => f.oracle_text || '').join('\n') : (card.oracle_text || '')).replace(/\([^)]*\)/g, ''); }
+  function comboKind(card) {
+    const a = card.a;
+    if (a._combo) return a._combo;
+    const t = comboText(card), k = {};
+    k.oracleWin = /if x is greater than or equal to the number of cards in your library, you win the game/i.test(t);
+    k.drawWin = /if you would draw a card while your library has no cards in it, you win the game instead/i.test(t);
+    k.emptier = /reveal cards from the top of your library until you reveal a card with the chosen name/i.test(t) || /repeat this process until you put a card into your hand or you exile (the last card|two cards with the same name)/i.test(t);
+    const um = t.match(/\{(\d+)\}: untap (?:~|this artifact|this creature|[^.:\n]*?)\.?$/im);
+    k.untapCost = um && a.produce && (a.produce.amount || 1) >= 2 ? +um[1] : null;          // Basalt Monolith ({3}), Grim Monolith ({4})
+    k.powerArtifact = /enchanted artifact's activated abilities cost \{2\} less to activate/i.test(t);
+    k.rings = /whenever you activate an ability, if it isn't a mana ability, you may pay \{2\}\. if you do, copy that ability/i.test(t);
+    k.ballista = /remove a \+1\/\+1 counter from ~: (it|~) deals 1 damage to any target/i.test(t) || (/remove a \+1\/\+1 counter from/i.test(t) && /deals 1 damage to any target/i.test(t) && a.cost.x > 0);
+    k.xBurn = a.cost.x > 0 && /deals x damage to (any target|target player|each opponent|target opponent)|each opponent loses x life/i.test(t);
+    k.drawEngine = a.activated.some(x => !x.tap && x.fx.some(f => f.type === 'draw'));          // Thrasios: pay mana, draw (scry and reveal)
+    return (a._combo = k);
+  }
+  function comboWin(g, ev, text) {
+    if (g.killTurn != null || matchOver(g)) return true;
+    ev.push({ type: 'note', text: 'Combo: ' + text, source: null });
+    g.comboWin = text;
+    if (g.match) setWinner(g, ev, 'combo');
+    else { g.damage = Math.max(g.damage, g.opts.oppLife); checkKill(g, ev); }
+    return true;
+  }
+  const sumCost = (a, b) => ({ generic: a.generic + b.generic, pips: a.pips.concat(b.pips), x: 0 });
+  function infiniteMana(g) {
+    const bf = g.battlefield, ready = q => !q.asLand && q.produce && !(q.sick && isCreaturePerm(q) && !hasKw(g, q, 'haste'));
+    const nonland = bf.filter(ready);
+    const kinnan = bf.some(q => q.card.a.statics.nonlandDouble);
+    const amount = q => (q.produce.amount || 1) + (kinnan ? 1 : 0);
+    // B1: Isochron Scepter holding an untap-all-nonland instant
+    const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
+    if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])) };
+    // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes
+    for (const m of nonland) {
+      const u = comboKind(m.card).untapCost; if (u == null) continue;
+      const k = amount(m);
+      const pa = bf.some(q => comboKind(q.card).powerArtifact), rings = bf.some(q => comboKind(q.card).rings);
+      if (k > u || (pa && k > u - 2) || (rings && 2 * k > u + 2)) return { how: `${m.card.name} + ${kinnan && k > u ? 'Kinnan' : pa ? 'Power Artifact' : 'Rings of Brighthearth'}`, colors: new Set(m.produce.colors || ['C']) };
+    }
+    return null;
+  }
+  function comboLines(g, ev) {
+    if (g.dry || g.killTurn != null || matchOver(g)) return;
+    const hand = g.hand;
+    // A. empty the library, then win with it empty
+    const winners = hand.filter(i => comboKind(i.card).oracleWin || (comboKind(i.card).drawWin && i.card.a.isPlaneswalker));
+    const emptiers = hand.filter(i => comboKind(i.card).emptier);
+    for (const w of winners) for (const e of emptiers) {
+      const cost = sumCost(effectiveCost(g, e), effectiveCost(g, w));
+      if (!canPay(cost, allUnits(g))) continue;
+      pay(g, cost);
+      [e, w].forEach(i => { g.hand.splice(g.hand.indexOf(i), 1); });
+      g.graveyard.push(e); g.exile.push(...g.library); g.library = [];
+      enterWithTriggers(g, w, {}, ev);
+      return comboWin(g, ev, `${e.card.name} exiles the library, then ${w.card.name} wins`);
+    }
+    // B. infinite mana and an outlet
+    const inf = infiniteMana(g);
+    if (!inf) return;
+    const all = hand.concat(g.battlefield.map(p => p)).map(x => x.card);
+    const bfHas = f => g.battlefield.some(p => f(comboKind(p.card)));
+    const ballista = bfHas(k => k.ballista) || hand.some(i => comboKind(i.card).ballista);
+    if (ballista) return comboWin(g, ev, `infinite mana (${inf.how}) into Walking Ballista`);
+    const burn = hand.find(i => comboKind(i.card).xBurn && i.card.a.cost.pips.every(p => p.some(c => inf.colors.has(c)) || canPay({ generic: 0, pips: [p], x: 0 }, allUnits(g))));
+    if (burn) return comboWin(g, ev, `infinite mana (${inf.how}) into ${burn.card.name}`);
+    const engine = g.battlefield.find(p => comboKind(p.card).drawEngine && !(p.sick && isCreaturePerm(p) && /\{T\}/.test(comboText(p.card)) && !hasKw(g, p, 'haste')));
+    if (engine) {
+      const finisher = g.library.concat(hand).find(i => { const k = comboKind(i.card); return k.oracleWin || k.drawWin || k.ballista || k.xBurn; }) || g.battlefield.find(p => comboKind(p.card).drawWin);
+      if (finisher) return comboWin(g, ev, `infinite mana (${inf.how}) into ${engine.card.name}: draws the library and finds ${finisher.card.name}`);
+    }
+    if (!g._infNoted) { g._infNoted = true; ev.push({ type: 'note', text: `Infinite mana (${inf.how}), but no way to win with it yet`, source: null }); }
+  }
+  // Hold the pieces of line A instead of casting them on their own: an empty-library winner with a full library does nothing,
+  // and the library emptier is only worth casting together with it.
+  function holdForCombo(g, c) {
+    const k = comboKind(c.card);
+    if (k.oracleWin && g.library.length > 6) return true;
+    if (k.emptier && g.library.concat(g.hand).some(i => i !== c && (comboKind(i.card).oracleWin || comboKind(i.card).drawWin))) return true;
+    // Isochron Scepter: wait for the untap-all instant (Dramatic Reversal) while it is still in the library, unless nothing else is worth imprinting either
+    if (c.card.a.imprint === 'scepter') {
+      const isUntapAll = i => /\bInstant\b/.test(i.card.type_line || '') && i.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland');
+      if (pol(g, 'scepterHold') === 'yes' && !g.hand.some(isUntapAll) && g.library.some(isUntapAll) && g.turn < 9) return true;
+    }
+    return false;
+  }
+
   function playTurn(g) {
     const ev = beginTurn(g);
     const le = landStep(g);
     if (le) ev.push(le, ...le.ev);
+    comboLines(g, ev);
     ev.push(...castPhase(g).ev);
+    comboLines(g, ev);
     ev.push(...combat(g));
     ev.push(...postCombat(g));
     ev.push(...endTurn(g));
@@ -4814,7 +4936,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
+    pay, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

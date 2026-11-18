@@ -31,9 +31,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 7,
+    "full": 8,
     "approx": 0,
-    "partial": 5,
+    "partial": 4,
     "none": 0
    }
   },
@@ -319,9 +319,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 21,
+    "full": 22,
     "approx": 0,
-    "partial": 7,
+    "partial": 6,
     "none": 3
    }
   },
@@ -537,8 +537,8 @@
    "coverage": {
     "full": 7,
     "approx": 1,
-    "partial": 4,
-    "none": 1
+    "partial": 3,
+    "none": 2
    }
   },
   {
@@ -571,10 +571,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 21,
+    "full": 22,
     "approx": 0,
     "partial": 7,
-    "none": 2
+    "none": 1
    }
   },
   {
@@ -589,9 +589,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 21,
+    "full": 22,
     "approx": 1,
-    "partial": 7,
+    "partial": 6,
     "none": 2
    }
   },
@@ -625,9 +625,9 @@
    "reprints": 238,
    "missing": 0,
    "coverage": {
-    "full": 194,
+    "full": 196,
     "approx": 2,
-    "partial": 73,
+    "partial": 71,
     "none": 28
    }
   },
@@ -643,9 +643,9 @@
    "reprints": 233,
    "missing": 0,
    "coverage": {
-    "full": 183,
+    "full": 185,
     "approx": 13,
-    "partial": 66,
+    "partial": 64,
     "none": 30
    }
   },
@@ -697,9 +697,9 @@
    "reprints": 360,
    "missing": 0,
    "coverage": {
-    "full": 351,
+    "full": 355,
     "approx": 14,
-    "partial": 114,
+    "partial": 110,
     "none": 52
    }
   },
@@ -715,10 +715,10 @@
    "reprints": 307,
    "missing": 0,
    "coverage": {
-    "full": 403,
+    "full": 404,
     "approx": 22,
-    "partial": 167,
-    "none": 59
+    "partial": 164,
+    "none": 61
    }
   },
   {
@@ -733,10 +733,10 @@
    "reprints": 697,
    "missing": 0,
    "coverage": {
-    "full": 477,
+    "full": 479,
     "approx": 18,
-    "partial": 164,
-    "none": 78
+    "partial": 161,
+    "none": 79
    }
   },
   {
@@ -751,10 +751,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 12,
+    "full": 13,
     "approx": 0,
     "partial": 1,
-    "none": 1
+    "none": 0
    }
   },
   {
@@ -1165,9 +1165,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 1,
+    "full": 2,
     "approx": 0,
-    "partial": 1,
+    "partial": 0,
     "none": 0
    }
   },
@@ -1363,9 +1363,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 13,
+    "full": 14,
     "approx": 1,
-    "partial": 5,
+    "partial": 4,
     "none": 1
    }
   },
@@ -1381,10 +1381,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 6,
+    "full": 5,
     "approx": 0,
     "partial": 2,
-    "none": 2
+    "none": 3
    }
   },
   {
@@ -2713,9 +2713,9 @@
    "reprints": 53,
    "missing": 0,
    "coverage": {
-    "full": 149,
+    "full": 161,
     "approx": 5,
-    "partial": 130,
+    "partial": 118,
     "none": 25
    }
   },
@@ -3541,9 +3541,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 18,
+    "full": 20,
     "approx": 0,
-    "partial": 6,
+    "partial": 4,
     "none": 0
    }
   },
@@ -3757,10 +3757,10 @@
    "reprints": 237,
    "missing": 0,
    "coverage": {
-    "full": 226,
+    "full": 225,
     "approx": 10,
     "partial": 82,
-    "none": 23
+    "none": 24
    }
   },
   {
@@ -4027,9 +4027,9 @@
    "reprints": 1,
    "missing": 0,
    "coverage": {
-    "full": 13,
+    "full": 14,
     "approx": 0,
-    "partial": 10,
+    "partial": 9,
     "none": 1
    }
   },
@@ -4261,9 +4261,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 29,
+    "full": 30,
     "approx": 0,
-    "partial": 7,
+    "partial": 6,
     "none": 1
    }
   },
@@ -4387,9 +4387,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 14,
+    "full": 15,
     "approx": 0,
-    "partial": 5,
+    "partial": 4,
     "none": 0
    }
   },

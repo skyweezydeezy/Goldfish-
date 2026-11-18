@@ -30,6 +30,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | fetchlands | Fetch lands: cracking, life, graveyard, choosing the land, types, shuffle, landfall twice |
 | loyalty-program | The Atraxa planeswalker deck: multiple activations, proliferate, look-and-take, Oko, Nissa, Wrenn, Spark Double, Kaya, Teferi, Vraska, all 16 deck pairings |
 | rules-batch1 | Rules added from the set coverage reports: monarch, initiative, modular, adapt, landcycling, pump abilities, cost reduction by count, power from a count, sacrifice-search, madness, Dream Pillager. |
+| rules-batch2 | Rules from the set coverage reports, batch 2: modal triggers, hasty pump at combat, Silas Renn, Meren and experience, sacrifice-fetch for basics, fetch lands with type lists. |
 | sets | The card database by set: every card's full record is stored once (in its first set), pointers lead to earlier sets, and the simulator reads every card without throwing. |
 | red-rum-raiders | The Admiral Beckett Brass Pirate list: Treasure engines, Pirate damage triggers, Kari Zev, Port Razer, dash, theft (Treachery, Insurrection, Captivating Crew, Hostage Taker, Admiral), Conspiracy, Protean Raider, 30 full games. |
 | mermaids | The Hakbal Merfolk list: explore, Merfolk lords, Hardened Scales / Branching Evolution / Doubling Season, casting from the top, retrace, Kindred Discovery, Metallic Mimic, Reflections, Kumena, Vorel, Survival, 30 full games. |

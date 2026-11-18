@@ -1,0 +1,103 @@
+// Void Tax (Zhulodok, Void Gorger)
+// COMMANDER
+1 Zhulodok, Void Gorger (CMM) 752
+// DECK
+1 All Is Dust (SLD) 268
+1 Ancient Tomb (EXP) 36
+1 Basalt Monolith (CMA) 210
+1 Blightsteel Colossus (2XM) 357
+1 Bonders' Enclave (EOS) 94
+1 Buried Ruin (PIP) 782
+1 Cavern of Souls (LCI) 410a
+1 City of Traitors (EXO) 143
+1 Crystal Vein (PD3) 24
+1 Dark Depths (SLD) 1680
+1 Dust Bowl (EXP) 37
+1 Eldrazi Temple (SLD) 1154
+1 Emrakul, the Promised End (INR) 481
+1 Emrakul, the World Anew (MH3) 381
+1 Everflowing Chalice (LCC) 111
+1 Expedition Map (2XM) 359
+1 Eye of Ugin (EXP) 38
+1 Forsaken Monument (PZNR) 244s
+1 Gemstone Caverns (EOS) 151
+1 Glacial Chasm (V12) 7
+1 God-Pharaoh's Statue (WAR) 238
+1 Grim Monolith (ULG) 126
+1 Introduction to Annihilation (STX) 3
+1 Inventors' Fair (EOS) 156
+1 It That Betrays (SLD) 2673
+1 Karn Liberated (SLP) 36
+1 Karn, Scion of Urza (MED) RA1
+1 Karn, the Great Creator (BLC) 73
+1 Kozilek, Butcher of Truth (2X2) 576
+1 Kozilek, the Great Distortion (CMM) 1057
+1 Kuldotha Forgemaster (2XM) 266
+1 Lightning Greaves (SLD) 1493★
+1 Lotus Petal (SLD) 7031
+1 Mana Vault (MPS) 17
+1 Memory Jar (V10) 8
+1 Metalworker (UDS) 135
+1 Mind Stone (DCI) 11
+1 Mind's Eye (SLD) 2704
+1 Mindslaver (OTP) 80
+1 Mishra's Workshop (ATQ) 81
+1 Mox Diamond (V10) 10
+1 Mox Opal (2XM) 362
+1 Mycosynth Lattice (SLD) 1434
+1 Mystic Forge (40K) 246★
+1 Nevinyrral's Disk (V10) 11
+1 Not of This World (PLST) ROE-8
+1 Planar Bridge (SLD) 447
+1 Portal to Phyrexia (BRO) 365
+1 Possessed Portal (5DN) 144
+1 Reliquary Tower (SLD) 695
+1 Rings of Brighthearth (LTC) 382
+1 Sanctum of Ugin (PBFZ) 242s
+1 Scavenger Grounds (EOS) 172
+1 Sensei's Divining Top (2X2) 398
+1 Shrine of the Forsaken Gods (PBFZ) 245s
+1 Smokestack (SLC) 1998
+1 Sol Ring (PIP) 887
+1 Spatial Contortion (F16) 7
+1 Sphere of Resistance (SLD) 1484
+1 Static Orb (MPS) 26
+1 Storage Matrix (9ED) 310★
+1 Strip Mine (EXP) 43
+1 Tangle Wire (SLD) 694
+1 Temple of the False God (SLC) 47
+1 The One Ring (HOC) 84
+1 The Tabernacle at Pendrell Vale (LEG) 307
+1 Thespian's Stage (EOS) 179
+1 Thran Dynamo (CMM) 658
+1 Tomb of the Spirit Dragon (M3C) 397
+1 Torpor Orb (BIG) 57
+1 Trinisphere (SLD) 2838
+1 Ugin's Labyrinth (MH3) 359
+1 Ugin, Eye of the Storms (TDM) 409
+1 Ugin, the Spirit Dragon (SLP) 6
+1 Ulamog, the Ceaseless Hunger (CMM) 1059
+1 Ulamog, the Defiler (MH3) 383
+1 Ulamog, the Infinite Gyre (2X2) 577
+1 Unwinding Clock (PLST) NPH-164
+1 Urza's Cave (MH3) 234
+1 Urza's Mine (2XM) 370
+1 Urza's Power Plant (2XM) 371
+1 Urza's Saga (SLC) 48
+1 Urza's Tower (2XM) 372
+1 Vesuva (SLC) 22
+1 Void Winnower (SLD) 1075
+1 Voltaic Key (PMEI) 2024-11
+1 Walking Ballista (PIP) 880
+1 War Room (PIP) 1068
+1 Warping Wail (SPG) 119
+1 Wasteland (EXP) 45
+1 Wastes (SLZ) 364
+1 Wastes (SLD) 795★
+1 Wastes (SLD) 704
+1 Wastes (PLG25) 2
+1 Wastes (SLD) 705
+1 Wastes (SLD) 706
+1 Winter Orb (SLD) 2400
+1 Worldslayer (MRD) 276
+1 Worn Powerstone (LCC) 120

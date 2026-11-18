@@ -1,0 +1,103 @@
+// Night's Curfew (Y'shtola, Night's Blessed)
+// COMMANDER
+1 Y'shtola, Night's Blessed (FIC) 215
+// DECK
+1 Sol Ring (PIP) 887
+1 Mana Vault (MPS) 17
+1 Grim Monolith (ULG) 126
+1 Chrome Mox (SPG) 102
+1 Mox Diamond (V10) 10
+1 Lotus Petal (SLD) 7031
+1 Arcane Signet (SLD) 589
+1 Talisman of Dominance (SLD) 1053
+1 Talisman of Progress (SLD) 1052
+1 Talisman of Hierarchy (SLD) 1057
+1 Smothering Tithe (WOT) 87
+1 Rhystic Study (WOT) 91
+1 Mystic Remora (SLD) 406
+1 The One Ring (HOC) 84
+1 Necropotence (WOT) 94
+1 Esper Sentinel (PMH2) 12s
+1 Consecrated Sphinx (SLD) 7023
+1 Bolas's Citadel (FCA) 7
+1 Sensei's Divining Top (2X2) 398
+1 Demonic Tutor (SLD) 1856
+1 Vampiric Tutor (SOA) 35
+1 Imperial Seal (2X2) 354
+1 Enlightened Tutor (TLE) 305
+1 Mystical Tutor (SLD) 334
+1 Stasis (SLD) 1103
+1 Winter Orb (SLD) 2400
+1 Aetherflux Reservoir (PKLD) 192s
+1 Rising Waters (NEM) 38
+1 Drannith Magistrate (TLE) 2
+1 Opposition Agent (SLC) 112
+1 Grand Arbiter Augustin IV (SLD) 1483★
+1 Tergrid, God of Fright (PKHM) 112s
+1 Toxrill, the Corrosive (SLD) 1929
+1 Hokori, Dust Drinker (SLD) 420
+1 Sheoldred, the Apocalypse (DMU) 436
+1 Jin-Gitaxias, Core Augur (MUL) 141
+1 Narset, Parter of Veils (SLD) 1141
+1 Notion Thief (SLD) 2482
+1 Teferi, Time Raveler (BLC) 92
+1 Overwhelming Splendor (PHOU) 19s
+1 Armageddon (MP2) 31
+1 Ravages of War (PIP) 882
+1 Sunder (MP2) 36
+1 Cataclysm (V14) 3
+1 Cyclonic Rift (RVR) 419
+1 Farewell (PIP) 881
+1 Force of Will (MP2) 14
+1 Force of Negation (2X2) 346
+1 Fierce Guardianship (SLC) 86
+1 Mana Drain (OTP) 67
+1 Pact of Negation (MP2) 16
+1 Swan Song (SLD) 1591
+1 Swords to Plowshares (PF25) 12
+1 Teferi's Protection (STA) 11
+1 Orcish Bowmasters (HOC) 59
+1 Thassa's Oracle (SLD) 1280
+1 Demonic Consultation (SLC) 31
+1 Exquisite Blood (SLD) 206
+1 Sanguine Bond (SLD) 1799
+1 Expropriate (SPG) 66
+1 Torment of Hailfire (SLD) 9992
+1 Command Tower (PIP) 888
+1 City of Brass (SCH) 41
+1 Mana Confluence (EXP) 42
+1 The Tabernacle at Pendrell Vale (LEG) 307
+1 Ancient Tomb (EXP) 36
+1 Strip Mine (EXP) 43
+1 Wasteland (EXP) 45
+1 Otawara, Soaring City (NEO) 414
+1 Eiganjo, Seat of the Empire (NEO) 413
+1 Takenuma, Abandoned Mire (NEO) 416
+1 Urborg, Tomb of Yawgmoth (LTC) 405
+1 Tundra (30A) 280
+1 Underground Sea (30A) 281
+1 Scrubland (30A) 277
+1 Hallowed Fountain (EXP) 6
+1 Watery Grave (EXP) 7
+1 Godless Shrine (EXP) 11
+1 Polluted Delta (EXP) 17
+1 Flooded Strand (EXP) 16
+1 Marsh Flats (EXP) 21
+1 Misty Rainforest (EXP) 25
+1 Scalding Tarn (EXP) 22
+1 Bloodstained Mire (EXP) 18
+1 Verdant Catacombs (EXP) 23
+1 Raffine's Tower (SNC) 292
+1 Seachrome Coast (ONE) 374
+1 Darkslick Shores (ONE) 372
+1 Concealed Courtyard (SLD) 1372
+1 Adarkar Wastes (DMU) 377
+1 Underground River (BRO) 300
+1 Caves of Koilos (DMU) 378
+1 Exotic Orchard (SLD) 1231
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Swamp (J14) 3★
+1 Swamp (SLD) 361
+1 Plains (PL26) 5
+1 Plains (J14) 1★

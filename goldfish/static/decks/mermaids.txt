@@ -1,0 +1,103 @@
+// Mermaids (Hakbal of the Surging Soul)
+// COMMANDER
+1 Hakbal of the Surging Soul (LCC) 19
+// DECK
+1 An Offer You Can't Refuse (FDN) 311
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Barkchannel Pathway (SLU) 11
+1 Benthic Biomancer (PRNA) 32s
+1 Birds of Paradise (BLC) 81
+1 Boseiju, Who Endures (NEO) 412
+1 Botanical Sanctum (SLD) 1376
+1 Branching Evolution (PIP) 996
+1 Breeding Pool (EXP) 15
+1 Cavern of Souls (LCI) 410a
+1 Chrome Mox (SPG) 102
+1 Cold-Eyed Selkie (EVE) 149
+1 Cursecatcher (SHM) 34
+1 Cyclonic Rift (RVR) 419
+1 Deeproot Elite (PRIX) 127s
+1 Deeproot Historian (LCC) 59
+1 Deeproot Waters (XLN) 51
+1 Doubling Season (WOT) 101
+1 Eldritch Evolution (SLD) 1414
+1 Emperor Mihail II (DMC) 73
+1 Fierce Guardianship (SLC) 86
+1 Finale of Devastation (CMM) 700
+1 Flooded Grove (EXP) 35
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Forest (J14) 5★
+1 Forest (P23) 10
+1 Forest (PL25) 6
+1 Forest (SLD) 395
+1 Green Sun's Zenith (SPG) 127
+1 Hall of Echoes (FRA) 379
+1 Hardened Scales (SLD) 2365
+1 Herald of Secret Streams (PXLN) 59s
+1 Heroic Intervention (SLC) 97
+1 Hinterland Harbor (PIP) 1026
+1 Inspiring Call (SLD) 2328
+1 Island (J14) 2★
+1 Island (P23) 7
+1 Island (SLD) 1131
+1 Island (SLD) 1400
+1 Island (SLD) 1469
+1 Island (SLD) 416
+1 Island (SLD) 673
+1 Island (SLP) 32
+1 Kindred Discovery (WOT) 89
+1 Kiora's Follower (PBNG) 150
+1 Kopala, Warden of Waves (PXLN) 61p
+1 Kumena, Tyrant of Orazca (SLD) 1412★
+1 Lightning Greaves (SLD) 1493★
+1 Lord of Atlantis (SPG) 1
+1 Lotus Petal (SLD) 7031
+1 Mana Vault (MPS) 17
+1 Master of the Pearl Trident (TSR) 310
+1 Mental Misstep (SLD) 1179
+1 Merfolk Mistbinder (RIX) 164
+1 Merfolk Skydiver (WAR) 205
+1 Merfolk Sovereign (M10) 62
+1 Merrow Reejerey (F09) 4
+1 Metallic Mimic (SLD) 194
+1 Minamo, School at Water's Edge (LTC) 399
+1 Mistrise Village (PTDM) 261s
+1 Misty Rainforest (EXP) 25
+1 Mox Amber (PDOM) 224s
+1 Mox Diamond (V10) 10
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Nicanzil, Current Conductor (LCI) 236
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16
+1 Rapid Hybridization (SLD) 1126
+1 Realmwalker (SLD) 1724
+1 Reflections of Littjara (PKHM) 73s
+1 Rhystic Study (WOT) 91
+1 Ripples of Potential (SLD) 2453
+1 Rogue's Passage (SLD) 607
+1 Seafloor Oracle (PRIX) 51s
+1 Simic Ascendancy (SLD) 1832
+1 Simic Growth Chamber (2X2) 412
+1 Simic Signet (SLD) 295
+1 Singer of Swift Rivers (LCC) 66
+1 Sol Ring (PIP) 887
+1 Stonybrook Banneret (PLST) MOR-51
+1 Survival of the Fittest (G09) 4
+1 Svyelun of Sea and Sky (MH2) 310
+1 Swan Song (SLD) 1591
+1 Swiftfoot Boots (SLD) 606
+1 Thieving Skydiver (ZNR) 335
+1 Tishana's Tidebinder (LCI) 335
+1 Topography Tracker (LCC) 63
+1 Tropical Island (SUM) 288
+1 Unclaimed Territory (40K) 304★
+1 Veil of Summer (SOA) 60
+1 Vodalian Hexcatcher (DMU) 398
+1 Vorel of the Hull Clade (C16) 227
+1 Waterlogged Grove (ACR) 116
+1 Worldly Tutor (TLE) 314
+1 Yavimaya, Cradle of Growth (LTC) 407

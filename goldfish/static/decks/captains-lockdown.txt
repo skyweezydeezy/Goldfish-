@@ -1,0 +1,103 @@
+// Captain's Lockdown (Sisay, Weatherlight Captain)
+// COMMANDER
+1 Sisay, Weatherlight Captain (SLD) 1444
+// DECK
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Armageddon (MP2) 31
+1 Bayou (30A) 274
+1 Birds of Paradise (BLC) 81
+1 Bloodstained Mire (EXP) 18
+1 Bloom Tender (SLD) 284
+1 Boseiju, Who Endures (NEO) 412
+1 Braids, Cabal Minion (EMA) 82
+1 Breeding Pool (EXP) 15
+1 Cataclysm (V14) 3
+1 Cavern of Souls (LCI) 410a
+1 Chrome Mox (SPG) 102
+1 City of Brass (SCH) 41
+1 Command Tower (PIP) 888
+1 Cyclonic Rift (RVR) 419
+1 Delighted Halfling (HOC) 65
+1 Demonic Consultation (SLC) 31
+1 Demonic Tutor (SLD) 1856
+1 Derevi, Empyrial Tactician (BLC) 87
+1 Drannith Magistrate (TLE) 2
+1 Eiganjo, Seat of the Empire (NEO) 413
+1 Elesh Norn, Mother of Machines (ONE) 419
+1 Enlightened Tutor (TLE) 305
+1 Esper Sentinel (PMH2) 12s
+1 Exotic Orchard (SLD) 1231
+1 Fierce Guardianship (SLC) 86
+1 Flooded Strand (EXP) 16
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Forest (J14) 5★
+1 Gaea's Cradle (JGP) 3
+1 Godless Shrine (EXP) 11
+1 Grand Arbiter Augustin IV (SLD) 1483★
+1 Hallowed Fountain (EXP) 6
+1 Hokori, Dust Drinker (SLD) 420
+1 Imperial Seal (2X2) 354
+1 Island (J14) 2★
+1 Jace, Wielder of Mysteries (SLD) 1576
+1 Kinnan, Bonder Prodigy (FCA) 55
+1 Linvala, Keeper of Silence (SLD) 1289
+1 Lotus Petal (SLD) 7031
+1 Mana Confluence (EXP) 42
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Marsh Flats (EXP) 21
+1 Misty Rainforest (EXP) 25
+1 Mox Amber (PDOM) 224s
+1 Mox Diamond (V10) 10
+1 Mox Opal (2XM) 362
+1 Mystic Remora (SLD) 406
+1 Najeela, the Blade-Blossom (SLD) 1032
+1 Narset, Parter of Veils (SLD) 1141
+1 Necropotence (WOT) 94
+1 Notion Thief (SLD) 2482
+1 Opposition Agent (SLC) 112
+1 Orcish Bowmasters (HOC) 59
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16
+1 Plaza of Heroes (EOS) 168
+1 Polluted Delta (EXP) 17
+1 Ravages of War (PIP) 882
+1 Reflecting Pool (EOS) 171
+1 Relic of Legends (SLD) 7109
+1 Rhystic Study (WOT) 91
+1 Savannah (30A) 276
+1 Scrubland (30A) 277
+1 Sen Triplets (SLD) 1198
+1 Sheoldred, the Apocalypse (DMU) 436
+1 Smothering Tithe (WOT) 87
+1 Sol Ring (PIP) 887
+1 Stasis (SLD) 1103
+1 Static Orb (MPS) 26
+1 Strip Mine (EXP) 43
+1 Swords to Plowshares (PF25) 12
+1 Sylvan Library (SPG) 155
+1 Takenuma, Abandoned Mire (NEO) 416
+1 Teferi's Protection (STA) 11
+1 Teferi, Time Raveler (BLC) 92
+1 Temple Garden (EXP) 10
+1 Tergrid, God of Fright (PKHM) 112s
+1 Thassa's Oracle (SLD) 1280
+1 The One Ring (HOC) 84
+1 The Tabernacle at Pendrell Vale (LEG) 307
+1 Thrasios, Triton Hero (SLD) 2742
+1 Tropical Island (30A) 279
+1 Tundra (30A) 280
+1 Tymna the Weaver (FCA) 18
+1 Underground Sea (30A) 281
+1 Urborg, Tomb of Yawgmoth (LTC) 405
+1 Urza, Lord High Artificer (CMM) 1060
+1 Vampiric Tutor (SOA) 35
+1 Verdant Catacombs (EXP) 23
+1 Volcanic Island (30A) 282
+1 Watery Grave (EXP) 7
+1 Windswept Heath (EXP) 20
+1 Winter Orb (SLD) 2400
+1 Wooded Foothills (EXP) 19
+1 Zur the Enchanter (SLD) 726

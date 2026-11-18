@@ -1,0 +1,103 @@
+// Scorched Sky (The Ur-Dragon)
+// COMMANDER
+1 The Ur-Dragon (CMM) 1065
+// DECK
+1 Aggravated Assault (WOT) 96
+1 Ancient Copper Dragon (CLB) 368
+1 Ancient Silver Dragon (CLB) 366
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Armageddon (MP2) 31
+1 Atarka, World Render (PFRF) 149s
+1 Aura Shards (SLD) 2694
+1 Badlands (30A) 273
+1 Balefire Dragon (CMM) 697
+1 Bayou (30A) 274
+1 Birds of Paradise (BLC) 81
+1 Bloodstained Mire (EXP) 18
+1 Bloom Tender (SLD) 284
+1 Boseiju, Who Endures (NEO) 412
+1 Breeding Pool (EXP) 15
+1 Cavern of Souls (LCI) 410a
+1 Chrome Mox (SPG) 102
+1 City of Brass (SCH) 41
+1 Command Tower (PIP) 888
+1 Crux of Fate (STA) 25
+1 Cyclonic Rift (RVR) 419
+1 Deflecting Swat (CMM) 698
+1 Delighted Halfling (HOC) 65
+1 Demonic Tutor (SLD) 1856
+1 Dracogenesis (PTDM) 105s
+1 Dragon Tempest (PL24) 7
+1 Dragon's Hoard (SLD) 709
+1 Dragonlord Dromoka (2X2) 376
+1 Drannith Magistrate (TLE) 2
+1 Esper Sentinel (PMH2) 12s
+1 Exotic Orchard (SLD) 1231
+1 Farseek (SLD) 2698
+1 Fierce Guardianship (SLC) 86
+1 Flooded Strand (EXP) 16
+1 Force of Will (MP2) 14
+1 Forest (J14) 5★
+1 Gaea's Cradle (JGP) 3
+1 Goldspan Dragon (PKHM) 139s
+1 Haven of the Spirit Dragon (DTK) 249
+1 Hellkite Tyrant (RVR) 428
+1 Jeska's Will (SOA) 44
+1 Jetmir's Garden (SNC) 291
+1 Ketria Triome (IKO) 310
+1 Kindred Discovery (WOT) 89
+1 Lathliss, Dragon Queen (FDC) 7
+1 Mana Confluence (EXP) 42
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Miirym, Sentinel Wyrm (SLD) 2500
+1 Misty Rainforest (EXP) 25
+1 Mox Diamond (V10) 10
+1 Mystic Remora (SLD) 406
+1 Nature's Lore (SLD) 2278
+1 Niv-Mizzet, Parun (SLD) 1530
+1 Old Gnawbone (AFR) 296
+1 Opposition Agent (SLC) 112
+1 Overgrown Tomb (EXP) 13
+1 Path of Ancestry (SLD) 914
+1 Plateau (30A) 275
+1 Polluted Delta (EXP) 17
+1 Ravages of War (PIP) 882
+1 Reflecting Pool (EOS) 171
+1 Rhystic Study (WOT) 91
+1 Sacred Foundry (EXP) 14
+1 Savage Ventmaw (C17) 191
+1 Savannah (30A) 276
+1 Scalding Tarn (EXP) 22
+1 Scourge of Valkas (SLD) 1490★
+1 Skithiryx, the Blight Dragon (MUL) 147
+1 Smothering Tithe (WOT) 87
+1 Sneak Attack (WOT) 99
+1 Sol Ring (PIP) 887
+1 Steam Vents (EXP) 12
+1 Stomping Ground (EXP) 9
+1 Swords to Plowshares (PF25) 12
+1 Sylvan Library (SPG) 155
+1 Taiga (30A) 278
+1 Teferi's Protection (STA) 11
+1 Temple Garden (EXP) 10
+1 Temur Ascendancy (PKTK) 207s
+1 Terror of the Peaks (PSPL) 1
+1 The One Ring (HOC) 84
+1 Three Visits (SLD) 1676
+1 Tiamat (AFR) 298
+1 Tropical Island (30A) 279
+1 Tundra (30A) 280
+1 Unclaimed Territory (40K) 304★
+1 Ureni of the Unwritten (TDC) 9
+1 Urza's Incubator (DMR) 453
+1 Utvara Hellkite (RVR) 431
+1 Vampiric Tutor (SOA) 35
+1 Verdant Catacombs (EXP) 23
+1 Volcanic Island (30A) 282
+1 Vorinclex, Voice of Hunger (MUL) 159
+1 Windswept Heath (EXP) 20
+1 Wooded Foothills (EXP) 19
+1 Worldly Tutor (TLE) 314
+1 Ziatora's Proving Ground (SNC) 295

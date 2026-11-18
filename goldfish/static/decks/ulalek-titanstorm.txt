@@ -1,0 +1,103 @@
+// Ulalek Titanstorm (Ulalek, Fused Atrocity)
+// COMMANDER
+1 Ulalek, Fused Atrocity (M3C) 143
+// DECK
+1 Adarkar Wastes (DMU) 377
+1 All Is Dust (SLD) 268
+1 Ancient Stirrings (SLP) 50
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Artisan of Kozilek (F11) 4
+1 Ash Barrens (SLD) 469
+1 Awakening Zone (NCC) 281
+1 Azlask, the Swelling Scourge (M3C) 136
+1 Basalt Monolith (CMA) 210
+1 Bonders' Enclave (EOS) 94
+1 Brushland (BRO) 298
+1 Cascading Cataracts (EOS) 95
+1 Caves of Koilos (DMU) 378
+1 Command Tower (PIP) 888
+1 Corrupted Crossroads (POGW) 169s
+1 Crop Rotation (SLC) 30
+1 Echoes of Eternity (MH3) 320
+1 Eldrazi Confluence (M3C) 32
+1 Eldrazi Displacer (POGW) 13s
+1 Eldrazi Linebreaker (PMH3) 117s
+1 Eldrazi Monument (SLD) 603
+1 Eldrazi Temple (SLD) 1154
+1 Eldritch Immunity (M3C) 33
+1 Endbringer (POGW) 3s
+1 Everflowing Chalice (LCC) 111
+1 Exotic Orchard (SLD) 1231
+1 Eye of Ugin (EXP) 38
+1 Field of the Dead (SLD) 1356
+1 Forsaken Monument (PZNR) 244s
+1 Glaring Fleshraker (MH3) 507
+1 Hedron Archive (SLD) 691
+1 Herald's Horn (PL22) 5
+1 Hideous Taskmaster (M3C) 57
+1 Idol of Oblivion (BLC) 277
+1 Imprisoned in the Moon (SLD) 1102
+1 It That Heralds the End (MH3) 9
+1 Karplusan Forest (DMU) 379
+1 Kozilek's Return (POGW) 98s
+1 Kozilek's Unsealing (MH3) 65
+1 Kozilek, Butcher of Truth (2X2) 576
+1 Kozilek, the Broken Reality (MH3) 382
+1 Kozilek, the Great Distortion (CMM) 1057
+1 Krark-Clan Ironworks (SLC) 38
+1 Llanowar Wastes (BRO) 299
+1 Lotus Petal (SLD) 7031
+1 Mana Vault (MPS) 17
+1 Mystic Forge (40K) 246★
+1 Null Elemental Blast (MH3) 387
+1 Oblivion Sower (PBFZ) 11s
+1 Path of Ancestry (SLD) 914
+1 Path of Annihilation (MH3) 165
+1 Phyrexian Altar (2X2) 396
+1 Reliquary Tower (SLD) 695
+1 Rings of Brighthearth (LTC) 382
+1 Ruins of Oran-Rief (POGW) 176s
+1 Sanctum of Ugin (PBFZ) 242s
+1 Scrap Trawler (BRR) 112
+1 Secluded Courtyard (SPG) 63
+1 Selective Obliteration (M3C) 35
+1 Shivan Reef (DMU) 380
+1 Shrine of the Forsaken Gods (PBFZ) 245s
+1 Sire of Stagnation (PBFZ) 206s
+1 Skittering Invasion (M3C) 159
+1 Snapping Voidcraw (MH3) 517
+1 Sol Ring (PIP) 887
+1 Spawnbed Protector (M3C) 36
+1 Spawning Bed (M3C) 380
+1 Strionic Resonator (LCC) 116
+1 Sulfurous Springs (DMU) 381
+1 Talisman of Curiosity (SLD) 1061
+1 Talisman of Resilience (SLD) 1059
+1 Tendo Ice Bridge (BOK) 165
+1 The Soul Stone (SPM) 243
+1 Thief of Existence (PMH3) 174s
+1 Thought Vessel (SLD) 1495★
+1 Thran Dynamo (CMM) 658
+1 Titans' Vanguard (MH3) 518
+1 Tomb of the Spirit Dragon (M3C) 397
+1 Ugin's Binding (MH3) 328
+1 Ugin's Labyrinth (MH3) 359
+1 Ugin, the Ineffable (SLD) 1243
+1 Ulamog's Dreadsire (M3C) 38
+1 Ulamog, the Ceaseless Hunger (CMM) 1059
+1 Ultima, Origin of Oblivion (FIN) 324
+1 Unclaimed Territory (40K) 304★
+1 Underground River (BRO) 300
+1 Urza's Incubator (DMR) 453
+1 Urza's Mine (2XM) 370
+1 Urza's Power Plant (2XM) 371
+1 Urza's Saga (SLC) 48
+1 Urza's Tower (2XM) 372
+1 Vesuva (SLC) 22
+1 War Room (PIP) 1068
+1 Warping Wail (SPG) 119
+1 Wasteland (EXP) 45
+1 Wastes (SLZ) 364
+1 World Breaker (POGW) 126s
+1 Yavimaya Coast (DMU) 382

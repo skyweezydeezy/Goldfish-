@@ -1,0 +1,17 @@
+// Took's Adventure (Mono-White Tokens)
+// 60-card deck, no commander
+// DECK
+4 Belladonna Took (HOB) 4
+4 Cosmogrand Zenith (EOE) 9
+3 Voice of Victory (TDM) 33
+2 City Pigeon (SPM) 4
+2 Momo, Playful Pet (TLA) 30
+4 Hop to It (BLB) 16
+4 The Last Ronin's Technique (TMT) 12
+4 Practiced Offense (SOS) 25
+3 Get Lost
+3 Erode (SOS) 15
+2 Caretaker's Talent
+1 Elspeth, Storm Slayer
+4 Fountainport
+20 Plains

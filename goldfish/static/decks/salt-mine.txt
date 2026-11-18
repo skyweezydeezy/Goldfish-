@@ -1,0 +1,103 @@
+// Salt Mine (Nekusar, the Mindrazer)
+// COMMANDER
+1 Nekusar, the Mindrazer (SLD) 1301
+// DECK
+1 Sol Ring (PIP) 887
+1 Arcane Signet (SLD) 589
+1 Fellwar Stone (SLD) 1040
+1 Talisman of Dominance (SLD) 1053
+1 Talisman of Creativity (SLD) 1058
+1 Talisman of Indulgence (SLD) 1054
+1 Mana Vault (MPS) 17
+1 Chrome Mox (SPG) 102
+1 Dark Ritual (MP2) 21
+1 Mind Stone (DCI) 11
+1 Demonic Tutor (SLD) 1856
+1 Vampiric Tutor (SOA) 35
+1 Gamble (SLD) 188
+1 Wishclaw Talisman (PELD) 110s
+1 Windfall (SLD) 2182
+1 Wheel of Fortune (G10) 7
+1 Timetwister (2ED) 85
+1 Reforge the Soul (PLST) AVR-151
+1 Magus of the Wheel (SLD) 1166
+1 Echo of Eons (SLD) 821
+1 Whispering Madness (C16) 229
+1 Fate Unraveler (DSC) 141
+1 Jace's Archivist (PLST) M12-59
+1 Kederekt Parasite (CON) 48
+1 Razorkin Needlehead (DSK) 347
+1 Psychosis Crawler (BRR) 107
+1 Scrawling Crawler (FDN) 415
+1 Howling Mine (SLD) 7046
+1 Dark Deal (SLD) 873
+1 Molten Psyche (PLST) SOM-98
+1 Teferi's Puzzle Box (9ED) 312★
+1 Peer into the Abyss (SLD) 2002
+1 Syphon Mind (DCI) 40
+1 Underworld Dreams (SLD) 1298
+1 Megrim (8ED) 143★
+1 Liliana's Caress (M11) 103
+1 Waste Not (SLD) 1299
+1 Mindcrank (SLD) 2186
+1 Sheoldred, the Apocalypse (DMU) 436
+1 Rhystic Study (WOT) 91
+1 Blood Moon (WOT) 97
+1 Tangle Wire (SLD) 694
+1 Ruination (SLD) 9993
+1 Jokulhaups (DKM) 15
+1 Opposition Agent (SLC) 112
+1 Stranglehold (SLD) 1804
+1 Pestilence (PLST) USG-147
+1 Sulfuric Vortex (EMA) 150
+1 Mana Drain (OTP) 67
+1 Counterspell (SLD) 7117
+1 Force of Will (MP2) 14
+1 Force of Negation (2X2) 346
+1 Arcane Denial (SLD) 1545★
+1 Pact of Negation (MP2) 16
+1 Cyclonic Rift (RVR) 419
+1 Toxic Deluge (2XM) 345
+1 Blasphemous Act (SLD) 322
+1 Control Magic (DDM) 30
+1 Treachery (UDS) 50
+1 Mindslaver (OTP) 80
+1 Command Tower (PIP) 888
+1 Trinisphere (SLD) 2838
+1 Back to Basics (SLD) 1718
+1 Winter Orb (SLD) 2400
+1 Static Orb (MPS) 26
+1 Reliquary Tower (SLD) 695
+1 Underground Sea (30A) 281
+1 Badlands (30A) 273
+1 Volcanic Island (30A) 282
+1 Watery Grave (EXP) 7
+1 Blood Crypt (EXP) 8
+1 Steam Vents (EXP) 12
+1 Polluted Delta (EXP) 17
+1 Bloodstained Mire (EXP) 18
+1 Scalding Tarn (EXP) 22
+1 Shivan Reef (DMU) 380
+1 Underground River (BRO) 300
+1 Sulfurous Springs (DMU) 381
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Island (SLD) 1131
+1 Swamp (J14) 3★
+1 Swamp (SLD) 361
+1 Swamp (SLD) 241
+1 Swamp (SLD) 1470
+1 Swamp (SLD) 1952
+1 Swamp (SLD) 1132
+1 Swamp (SLD) 1649
+1 Mountain (J14) 4★
+1 Mountain (PL24) 5
+1 Mountain (SLD) 1402
+1 Mountain (SLZ) 374
+1 Mountain (SLD) 1471
+1 Mountain (SLD) 674
+1 Mountain (SLD) 1650

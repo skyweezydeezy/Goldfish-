@@ -1,0 +1,89 @@
+// Hatsune Miku (Trostani, Selesnya's Voice)
+// COMMANDER
+1 Trostani, Selesnya's Voice (SLD) 2429
+// DECK
+1 Aetherflux Reservoir (PKLD) 192s
+1 Ajani's Pridemate (FDN) 293
+1 Angel of Indemnity (OTC) 9
+1 Angelic Chorus (BBD) 87
+1 Arcane Signet (SLD) 589
+1 Archangel of Thune (SLD) 2430
+1 Avacyn's Pilgrim (F12) 8
+1 Azusa, Lost but Seeking (SLD) 1597
+1 Beloved Princess (SLD) 804
+1 Bountiful Promenade (SLD) 2440
+1 Bramble Sovereign (CLB) 372
+1 Break Down (SLD) 2436
+1 Brokers Hideout (SNC) 248
+1 Camaraderie (SLD) 7183
+1 Canopy Vista (EXP) 5
+1 Chord of Calling (SLD) 1595
+1 Command Tower (PIP) 888
+1 Crested Sunmare (SLD) 1228
+1 Cultivate (SLD) 2437
+1 Eladamri's Call (SLD) 1770
+1 Elenda's Hierophant (LCC) 39
+1 Elvish Mystic (SLD) 805
+1 Explore (SLD) 2327
+1 Fabled Passage (SLD) 471
+1 Fanatic of Rhonas (PMH3) 152s
+1 Farewell (PIP) 881
+1 Farseek (SLD) 2698
+1 Fauna Shaman (SLP) 41
+1 Finale of Devastation (SLD) 2438
+8 Forest (SLD) 2442
+1 Gavony Township (SLD) 357
+1 Ghalta and Mavren (PMOM) 225s
+1 Giada, Font of Hope (SLD) 1586
+1 Grand Crescendo (SLD) 2432
+1 Green Sun's Zenith (SPG) 127
+1 Grove of the Guardian (PRTR) 240★
+1 Growing Ranks (GK1) 113
+1 Halo Fountain (SLD) 2431
+1 Harmonize (SLD) 1596
+1 Heliod, Sun-Crowned (SLD) 2165
+1 Heroic Intervention (SLC) 97
+1 Hour of Reckoning (PIP) 978
+1 Lathiel, the Bounteous Dawn (MUL) 180
+1 Llanowar Elves (SLC) 12
+1 Mentor of the Meek (2X2) 340
+1 Mind Stone (DCI) 11
+1 Nature's Lore (SLD) 2278
+1 Nykthos Paragon (PMH2) 22s
+1 Overgrown Farmland (MID) 283
+1 Path to Exile (SLD) 226
+8 Plains (SLD) 2441
+1 Prosperous Innkeeper (SLD) 878
+1 Radiant Fountain (C21) 310
+1 Resplendent Angel (LCI) 334
+1 Rogue's Passage (SLD) 607
+1 Sapseep Forest (C21) 313
+1 Selesnya Sanctuary (2X2) 411
+1 Selesnya Signet (SLD) 290
+1 Seraph Sanctuary (SLD) 1292
+1 Shalai, Voice of Plenty (SLD) 2433
+1 Shamanic Revelation (SOA) 57
+1 Shelter (SLD) 1587
+1 Skullclamp (SLD) 1112
+1 Smothering Tithe (WOT) 87
+1 Sol Ring (SLD) 1604
+1 Song of the Worldsoul (SLD) 2434
+1 Soul Warden (SLD) 2435
+1 Speaker of the Heavens (PM21) 38s
+1 Storm Herd (PLST) GPT-19
+1 Sundering Growth (MAR) 95
+1 Sungrass Prairie (PIP) 1041
+1 Sunpetal Grove (SLD) 460
+1 Swords to Plowshares (PF25) 12
+1 Sylvan Library (SPG) 155
+1 Talisman of Unity (SLD) 1056
+1 Teferi's Protection (STA) 11
+1 Temple Garden (CLU) 282
+1 Temple of Plenty (PIP) 837
+1 Thespian's Stage (SLD) 1607
+1 Voice of Resurgence (SLD) 1258
+1 Voice of the Blessed (VOW) 354
+1 Vorinclex, Voice of Hunger (SLD) 2439
+1 Walking Ballista (PIP) 880
+1 Wrath of God (MP2) 7
+1 Youthful Valkyrie (SLD) 1588

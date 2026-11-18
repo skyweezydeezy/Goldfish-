@@ -1,0 +1,103 @@
+// Finale of the Floodborn (Hakbal of the Surging Soul)
+// COMMANDER
+1 Hakbal of the Surging Soul (LCC) 19
+// DECK
+1 Aetherize (SLD) 1667
+1 Alchemist's Refuge (SLD) 358
+1 Arcane Signet (SLD) 589
+1 Beast Within (SLD) 323
+1 Benthic Biomancer (PRNA) 32s
+1 Branching Evolution (PIP) 996
+1 Breeding Pool (UNF) 537
+1 Cavern of Souls (LCI) 410a
+1 Cold-Eyed Selkie (EVE) 149
+1 Command Tower (PIP) 888
+1 Coralhelm Commander (ROE) 57
+1 Cryptolith Rite (SLD) 2293
+1 Curse of the Swine (CLB) 716
+1 Cyclonic Rift (RVR) 419
+1 Deeproot Elite (PRIX) 127s
+1 Deeproot Waters (XLN) 51
+1 Doubling Season (WOT) 101
+1 Emperor Mihail II (DMC) 73
+1 Evolution Sage (SLD) 765
+1 Finale of Devastation (CMM) 700
+1 Forest (J14) 5★
+1 Forest (PL25) 6
+1 Forest (VOW) 412
+1 Forest (P23) 10
+1 Forest (SLD) 395
+1 Forest (SLD) 1949
+1 Forest (SLD) 1472
+1 Gaea's Cradle (JGP) 3
+1 Hardened Scales (SLD) 2365
+1 Herald of Secret Streams (PXLN) 59s
+1 Heroic Intervention (SLC) 97
+1 Hinterland Harbor (PIP) 1026
+1 Inspiring Call (SLD) 2328
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Island (VOW) 409
+1 Island (SLD) 1131
+1 Island (SLD) 416
+1 Island (SLD) 1383
+1 Island (SLD) 255
+1 Island (SLZ) 369
+1 Kami of Whispered Hopes (MOM) 383
+1 Karn's Bastion (SLD) 1751
+1 Kindred Discovery (WOT) 89
+1 Kiora's Follower (PBNG) 150
+1 Kodama's Reach (SLD) 371
+1 Kopala, Warden of Waves (PXLN) 61p
+1 Kumena, Tyrant of Orazca (SLD) 1412★
+1 Llanowar Reborn (FUT) 171
+1 Lord of Atlantis (SPG) 1
+1 Master of the Pearl Trident (TSR) 310
+1 Merfolk Mistbinder (RIX) 164
+1 Merfolk Skydiver (WAR) 205
+1 Merfolk Sovereign (M10) 62
+1 Merrow Reejerey (F09) 4
+1 Metallic Mimic (SLD) 194
+1 Misty Rainforest (EXP) 25
+1 Myriad Landscape (CMM) 660
+1 Nicanzil, Current Conductor (LCI) 236
+1 Ouroboroid (PEOE) 201s
+1 Path of Ancestry (SLD) 914
+1 Rapid Hybridization (SLD) 1126
+1 Realmwalker (SLD) 1724
+1 Reflections of Littjara (PKHM) 73s
+1 Reliquary Tower (SLD) 695
+1 Rhystic Study (WOT) 91
+1 Ripples of Potential (SLD) 2453
+1 Rishkar, Peema Renegade (SDS) 14
+1 Rogue's Passage (SLD) 607
+1 Ruinous Intrusion (MIC) 66
+1 Seafloor Oracle (PRIX) 51s
+1 Secluded Courtyard (SPG) 63
+1 Simic Ascendancy (SLD) 1832
+1 Simic Growth Chamber (2X2) 412
+1 Simic Signet (SLD) 295
+1 Singer of Swift Rivers (LCC) 66
+1 Sol Ring (PIP) 887
+1 Stonybrook Banneret (PLST) MOR-51
+1 Svyelun of Sea and Sky (MH2) 310
+1 Swan Song (SLD) 1591
+1 Swiftfoot Boots (SLD) 606
+1 Tatyova, Benthic Druid (CMM) 687
+1 Temple of Mystery (PIP) 1050
+1 Terrasymbiosis (EOE) 312
+1 Thieving Skydiver (ZNR) 335
+1 Thrasios, Triton Hero (SLD) 2742
+1 Tishana, Voice of Thunder (PXLN) 230s
+1 Topography Tracker (LCC) 63
+1 Unclaimed Territory (40K) 304★
+1 Vineglimmer Snarl (WHO) 1123
+1 Vodalian Hexcatcher (DMU) 398
+1 Vorel of the Hull Clade (C16) 227
+1 Xolatoyac, the Smiling Flood (LCC) 34
+1 Yavimaya Coast (DMU) 382
+1 Zegana, Utopian Speaker (GK2) 107

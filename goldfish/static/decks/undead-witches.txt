@@ -1,0 +1,103 @@
+// Undead Witches (Zul Ashur)
+// COMMANDER
+1 Zul Ashur, Lich Lord (FDN) 389
+// DECK
+1 Ancient Tomb (EXP) 36
+1 Animate Dead (SLD) 2189
+1 Arcane Signet (SLD) 589
+1 Black Market Connections (PLST) LCC-181
+1 Bloodghast (DFT) 536
+1 Cabal Coffers (LTC) 390
+1 Carrion Feeder (SLD) 1114
+1 Castle Locthwain (ELD) 389
+1 Cemetery Reaper (ARC) 12
+1 Chittering Witch (ELD) 319
+1 Commander's Sphere (SLD) 315
+1 Cryptbreaker (PEMN) 86s
+1 Death Baron (PM19) 90
+1 Demonic Tutor (SLD) 1856
+1 Diregraf Colossus (PSOI) 107s
+1 Diregraf Ghoul (PISD) 97
+1 Doom Blade (SLD) 9990
+1 Dread Return (SLD) 2564
+1 Entomb (MP2) 23
+1 Everflowing Chalice (LCC) 111
+1 Fain, the Broker (C21) 367
+1 Feed the Swarm (MAR) 16
+1 Fellwar Stone (SLD) 1040
+1 Ghoulraiser (J22) 418
+1 Gisa, Glorious Resurrector (PMID) 103s
+1 Gisa, the Hellraiser (OTJ) 288
+1 Go for the Throat (SLD) 1986
+1 Grave Pact (WOT) 93
+1 Grave Titan (SLD) 2188
+1 Gravecrawler (SLD) 231
+1 Gravedigger (DCI) 16
+1 Gray Merchant of Asphodel (SLC) 34
+1 Infernal Grasp (INR) 310
+1 Kaervek, the Punisher (OTJ) 289
+1 Kalitas, Traitor of Ghet (SLD) 1687
+1 Liliana's Reaver (JMP) 251
+1 Liliana, Death's Majesty (SLD) 232
+1 Liliana, Dreadhorde General (FDN) 419
+1 Lord of the Undead (SPG) 98
+1 Massacre Wurm (M21) 316
+1 Mind Stone (DCI) 11
+1 Mortuary Mire (PIP) 800
+1 Moseo, Vein's New Dean (SOS) 326
+1 Mutavault (EOS) 163
+1 Necromancy (PLST) VIS-64
+1 Night's Whisper (SLD) 1937
+1 Open the Graves (PM19) 112s
+1 Phyrexian Arena (FDN) 386
+1 Phyrexian Tower (SLD) 208
+1 Plaguecrafter (SLD) 1116
+1 Read the Bones (SLD) 7069
+1 Reanimate (MAR) 20
+1 Reassembling Skeleton (SLD) 1406
+1 Relentless Dead (PSOI) 131s
+1 Reliquary Tower (SLD) 695
+1 Rotlung Reanimator (ONS) 164
+1 Rotting Regisaur (PM20) 111s
+1 Sidisi, Regent of the Mire (PTDM) 92s
+1 Sign in Blood (SLD) 2712
+1 Skullclamp (SLD) 1112
+1 Snuff Out (SLC) 110
+1 Sol Ring (PIP) 887
+1 Swamp (J14) 3★
+1 Swamp (SLD) 361
+1 Swamp (SLD) 241
+1 Swamp (SLD) 1470
+1 Swamp (SLD) 1952
+1 Swamp (SLD) 1132
+1 Swamp (SLD) 1649
+1 Swamp (SLD) 1654
+1 Swamp (SLD) 1384
+1 Swamp (SLD) 417
+1 Swamp (SLD) 1192
+1 Swamp (SLD) 1947
+1 Swamp (SLD) 890
+1 Swamp (P23) 8
+1 Swamp (UNF) 493
+1 Swamp (SLD) 1090
+1 Swamp (PIP) 850
+1 Swamp (SLD) 394
+1 Swamp (SLD) 119
+1 Swamp (UNH) 138
+1 Swamp (SLD) 1401
+1 Swamp (PIP) 849
+1 Swamp (SLP) 33
+1 Swamp (SLD) 558
+1 Swamp (SLD) 256
+1 Swamp (SLD) 539
+1 Sweettooth Witch (WOE) 111
+1 Tempting Witch (JMP) 283
+1 The Meathook Massacre (INR) 486
+1 Thought Vessel (SLD) 1495
+1 Toxic Deluge (2XM) 345
+1 Undead Warchief (HOP) 44
+1 Urborg, Tomb of Yawgmoth (LTC) 405
+1 Vampiric Tutor (SOA) 35
+1 Victimize (SPG) 23
+1 Witch of the Moors (SLD) 1722
+1 Witch's Cottage (ELD) 249

@@ -303,9 +303,40 @@
       return true;
     } catch (e) { toast('Could not save: this browser is out of storage space'); return false; }
   }
+  // ---- built-in decks (goldfish/static/decks, listed in decks/index.json by tools/build-deck-index.js), grouped by number of colors ----
+  let BUILTIN = [];
+  const COLOR_GROUP = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
+  const COLOR_ORDER = 'WUBRG';
+  const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
+  function builtinOptions() {
+    let html = '';
+    for (let k = 5; k >= 0; k--) {
+      const ds = BUILTIN.filter(d => d.colors.length === k).sort((a, b) => colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name));
+      if (!ds.length) continue;
+      html += `<optgroup label="${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}</option>`).join('') + '</optgroup>';
+    }
+    return html;
+  }
+  const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
+  async function builtinText(d) {
+    const r = await fetch('decks/' + encodeURIComponent(d.file));
+    if (!r.ok) throw new Error(`could not load "${d.name}" (${r.status})`);
+    return r.text();
+  }
+  async function loadBuiltinIndex() {
+    try {
+      const r = await fetch('decks/index.json');
+      if (!r.ok) return;
+      BUILTIN = ((await r.json()).decks || []).filter(d => d && d.file && d.name);
+      refreshSaved(); fillMirror();
+    } catch (e) { /* offline and never loaded: only saved decks are listed */ }
+  }
   function refreshSaved() {
-    const all = getDecks();
-    $('#savedDecks').innerHTML = '<option value="">Saved decks…</option>' + Object.keys(all).sort((a, b) => a.localeCompare(b)).map(n => `<option>${esc(n)}</option>`).join('');
+    const all = getDecks(), sel = $('#savedDecks'), cur = sel.value;
+    const mine = Object.keys(all).sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">Choose a deck…</option>' + builtinOptions() +
+      (mine.length ? `<optgroup label="Saved in this browser">${mine.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   }
   function uniqueName(base, all) {
     if (!all[base]) return base;
@@ -321,9 +352,14 @@
     all[name] = $('#deckText').value; meta[name] = { saved: Date.now() };
     if (putDecks(all, meta)) { refreshSaved(); $('#savedDecks').value = name; toast('Saved "' + name + '"'); }
   });
-  $('#savedDecks').addEventListener('change', e => {
+  $('#savedDecks').addEventListener('change', async e => {
+    const v = e.target.value, b = builtinByValue(v);
+    if (b) {
+      try { $('#deckText').value = await builtinText(b); } catch (err) { return toast('Could not open the deck: ' + err.message); }
+      localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); return;
+    }
     const all = getDecks();
-    if (all[e.target.value] != null) { $('#deckText').value = all[e.target.value]; localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); }
+    if (all[v] != null) { $('#deckText').value = all[v]; localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); }
   });
 
   // ---- the manager panel ----
@@ -415,6 +451,7 @@
     if (putDecks(d, m)) { refreshSaved(); renderManager(); toast(`Imported ${added} deck${added === 1 ? '' : 's'}`); }
   });
   refreshSaved();
+  loadBuiltinIndex();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));
 
@@ -1199,9 +1236,10 @@
   // ======================= mirror match =======================
   const mmCache = new Map();
   function fillMirror() {
-    const sel = $('#mmOpp'), cur = sel.value, names = Object.keys(getDecks());
-    sel.innerHTML = '<option value="">This deck (mirror)</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-    sel.value = names.includes(cur) ? cur : '';
+    const sel = $('#mmOpp'), cur = sel.value, names = Object.keys(getDecks()).sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">This deck (mirror)</option>' + builtinOptions() +
+      (names.length ? `<optgroup label="Saved in this browser">${names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : '';
   }
   function markCommander(cards) {
     const total = cards.reduce((s, c) => s + c.qty, 0);
@@ -1209,15 +1247,16 @@
     return cards;
   }
   async function mirrorOpponent() {
-    const name = $('#mmOpp').value;
-    if (!name) return { cards: S.cards, tokens: S.tokens, name: 'Your deck (mirror)' };
-    if (!mmCache.has(name)) {
+    const value = $('#mmOpp').value, b = builtinByValue(value), name = b ? b.name : value;
+    if (!value) return { cards: S.cards, tokens: S.tokens, name: 'Your deck (mirror)' };
+    if (!mmCache.has(value)) {
       $('#mmInfo').textContent = `Loading "${name}"…`;
       await Source.init();
-      const r = await Source.loadDeck(getDecks()[name] || '', m => { $('#mmInfo').textContent = m; });
-      mmCache.set(name, { cards: markCommander(r.cards), tokens: r.tokens || [] });
+      const text = b ? await builtinText(b) : (getDecks()[value] || '');
+      const r = await Source.loadDeck(text, m => { $('#mmInfo').textContent = m; });
+      mmCache.set(value, { cards: markCommander(r.cards), tokens: r.tokens || [] });
     }
-    return Object.assign({ name }, mmCache.get(name));
+    return Object.assign({ name }, mmCache.get(value));
   }
   let mmWorker = null, mmState = null;
   async function runMirror() {

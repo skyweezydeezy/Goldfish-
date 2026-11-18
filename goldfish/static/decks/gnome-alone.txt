@@ -1,0 +1,102 @@
+// Gnome Alone (Anim Pakal)
+// COMMANDER
+1 Anim Pakal, Thousandth Moon (PLCI) 223s
+// DECK
+1 Adeline, Resplendent Cathar (FCA) 1
+1 Akroma's Will (FCA) 21
+1 Anointed Procession (PAKH) 2s
+1 Arcane Signet (SLD) 589
+1 Arena of Glory (MH3) 351
+1 Arid Mesa (EXP) 24
+1 Aurelia, the Warleader (MAR) 86
+1 Battlefield Forge (BRO) 297
+1 Blasphemous Act (SLD) 322
+1 Castle Ardenvale (LTC) 391
+1 Cathars' Crusade (INR) 483
+1 Chandra, Torch of Defiance (FRA) 309
+1 Chaos Warp (SLD) 741★
+1 Chrome Mox (SPG) 102
+1 Citadel Siege (CM2) 21
+1 Clifftop Retreat (PIP) 1019
+1 Coalition Relic (FUT) 161
+1 Command Beacon (SLD) 470
+1 Command Tower (PIP) 888
+1 Court of Grace (SLD) 1338
+1 Devilish Valet (PSNC) 105s
+1 Dispatch (PIP) 687
+1 Esper Sentinel (PMH2) 12s
+1 Fateful Absence (PMID) 18s
+1 Fellwar Stone (SLD) 1040
+1 Flawless Maneuver (SLD) 1728
+1 Furycalm Snarl (WHO) 1090
+1 Generous Gift (SLD) 369
+1 Goblin Rabblemaster (SLD) 2836
+1 Goldnight Commander (J22) 192
+1 Guide of Souls (SCH) 46
+1 Hero of Bladehold (PMBS) 8★
+1 Hour of Reckoning (PIP) 978
+1 Idol of Oblivion (BLC) 277
+1 Impact Tremors (SLD) 313
+1 Inspiring Vantage (SLD) 1605★
+1 Intangible Virtue (WOT) 6
+1 Land Tax (WOT) 86
+1 Legion Warboss (PGRN) 109s
+1 Lightning Bolt (SLC) 114
+1 Lotus Petal (SLD) 7031
+1 Luminarch Aspirant (PZNR) 24s
+1 March of Otherworldly Light (PNEO) 28s
+1 Mentor of the Meek (2X2) 340
+1 Mind Stone (DCI) 11
+1 Molten Gatekeeper (MH3) 128
+1 Mondrak, Glory Dominus (ONE) 346
+1 Mother of Runes (SLD) 297
+2 Mountain (J14) 4★
+1 Mountain (PL24) 5
+1 Mountain (SLD) 1402
+1 Mountain (SLD) 1471
+1 Mountain (SLD) 1650
+1 Mountain (SLD) 674
+1 Mountain (SLZ) 374
+1 Mutavault (EOS) 163
+1 Needleverge Pathway (SLU) 19
+1 Outpost Siege (AFC) 135
+1 Path to Exile (SLD) 226
+1 Pearl Medallion (MH3) 347
+1 Plains (J14) 1★
+1 Plains (P23) 6
+1 Plains (PL26) 5
+1 Plains (SLD) 1088
+1 Plains (SLD) 1130
+1 Plains (SLD) 1399
+1 Plains (SLD) 1468
+1 Plains (SLZ) 366
+1 Plaza of Heroes (EOS) 168
+1 Purphoros, God of the Forge (FCA) 14
+1 Radiant Summit (MSC) 486
+1 Reckless Fireweaver (SLD) 1526
+1 Rosie Cotton of South Lane (LTR) 27
+1 Ruby Medallion (MH3) 348
+1 Rugged Prairie (EXP) 34
+1 Rumor Gatherer (CLB) 705
+1 Sacred Foundry (EXP) 14
+1 Secluded Courtyard (SPG) 63
+1 Selfless Spirit (PRCQ) 2
+1 Settle the Wreckage (SLD) 2372
+1 Skullclamp (SLD) 1112
+1 Smothering Tithe (WOT) 87
+1 Sokenzan, Crucible of Defiance (NEO) 415
+1 Sol Ring (PIP) 887
+1 Spire of Industry (PIP) 1039
+1 Sunbaked Canyon (ACR) 111
+1 Sunbillow Verge (DFT) 373
+1 Sundown Pass (VOW) 285
+1 Swords to Plowshares (PF25) 12
+1 Talisman of Conviction (SLD) 1060
+1 Teferi's Protection (STA) 11
+1 Temple of Triumph (PIP) 1053
+1 Trouble in Pairs (PZA) 3
+1 Unbreakable Formation (SLC) 87
+1 Unexpectedly Absent (C13) 25
+1 Valorous Stance (PIP) 702
+1 Warleader's Call (MAR) 96
+1 Welcoming Vampire (DBL) 313

@@ -1,0 +1,103 @@
+// Double Down (Veyran)
+// COMMANDER
+1 Veyran, Voice of Duality (SLD) 1915
+// DECK
+1 An Offer You Can't Refuse (FDN) 311
+1 Ancient Tomb (EXP) 36
+1 Anger of the Gods (SLD) 1503
+1 Arcane Signet (SLD) 1641
+1 Archmage Emeritus (SPG) 150
+1 Bloodstained Mire (EXP) 18
+1 Brainstorm (CMD) 40
+1 Brazen Borrower // Petty Theft (SPG) 30
+1 Burst Lightning (SOA) 41
+1 Chain Lightning (MP2) 26
+1 Chrome Mox (SPG) 102
+1 Comet Storm (PWWK) 76★
+1 Command Tower (PMEI) 2026-13
+1 Counterspell (SLD) 2664
+1 Curiosity (SLD) 2569
+1 Cyclonic Rift (RVR) 419
+1 Deflecting Swat (CMM) 698
+1 Desperate Ritual (SLD) 1984
+1 Dig Through Time (SLD) 97
+1 Dramatic Reversal (SLD) 1083
+1 Expansion // Explosion (PGRN) 224s
+1 Expressive Iteration (SLD) 2305
+1 Fact or Fiction (CMM) 631
+1 Fierce Guardianship (SLC) 86
+1 Fiery Confluence (SLC) 107
+1 Fire // Ice (F06) 12a
+1 Fireball (P05) 3
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Frantic Search (SLD) 228
+1 Gamble (SLD) 188
+1 Gitaxian Probe (SLD) 2067
+1 Guttersnipe (SLD) 2361
+1 Into the Roil (CMR) 397
+1 Island (J14) 2★
+1 Island (P23) 7
+1 Island (SLD) 1131
+1 Island (SLD) 1400
+1 Island (SLD) 1469
+1 Island (SLD) 673
+1 Island (SLP) 32
+1 Isochron Scepter (SLC) 9
+1 Izzet Boilerworks (2X2) 408
+1 Izzet Signet (SLD) 293
+1 Jace, the Mind Sculptor (BLC) 93
+1 Jeska's Will (SOA) 44
+1 Lightning Bolt (SLD) 675
+1 Lotus Petal (SLD) 7031
+1 Mana Confluence (EXP) 42
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Mind Stone (WHO) 244
+1 Mindbreak Trap (OTP) 68
+1 Misty Rainforest (EXP) 25
+1 Mizzix's Mastery (STA) 43
+1 Mountain (J14) 4★
+1 Mountain (PL24) 5
+1 Mountain (SLD) 1402
+1 Mountain (SLD) 1471
+1 Mountain (SLD) 1650
+1 Mountain (SLD) 674
+1 Mountain (SLZ) 374
+1 Murmuring Mystic (SPG) 151
+1 Mystical Tutor (SLD) 334
+1 Niv-Mizzet, Parun (SLD) 1530
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16
+1 Ponder (P08) 6
+1 Preordain (J22) 63
+1 Pyretic Ritual (SLD) 1064
+1 Pyroblast (SLD) 2707
+1 Pyrokinesis (EMA) 143
+1 Red Elemental Blast (A25) 147
+1 Remand (F08) 1
+1 Rhystic Study (WOT) 91
+1 Scalding Tarn (EXP) 22
+1 Shivan Reef (DMU) 380
+1 Snapcaster Mage (SLD) 808
+1 Sol Ring (MPS) 24
+1 Spell Pierce (XLN) 81
+1 Spirebluff Canal (SLD) 1373
+1 Steam Vents (EXP) 12
+1 Storm-Kiln Artist (CMM) 644
+1 Sulfur Falls (PIP) 512
+1 Swan Song (SLD) 1591
+1 Talisman of Creativity (SLD) 1058
+1 Temple of Epiphany (M21) 387
+1 Thassa's Oracle (SLD) 1280
+1 Third Path Iconoclast (BRO) 223
+1 Thousand-Year Storm (2X2) 390
+1 Time Warp (STA) 22
+1 Tishana's Tidebinder (LCI) 335
+1 Treasure Cruise (TSR) 319
+1 Vendilion Clique (SLD) 118
+1 Volcanic Island (3ED) 291
+1 Walking Ballista (PIP) 880
+1 Wooded Foothills (EXP) 19
+1 Young Pyromancer (SLD) 2904

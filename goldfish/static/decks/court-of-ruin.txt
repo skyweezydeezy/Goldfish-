@@ -1,0 +1,103 @@
+// Court of Ruin (Kefka, Court Mage)
+// COMMANDER
+1 Kefka, Court Mage (FIN) 543
+// MAINBOARD
+1 Command Tower (PIP) 888
+1 Underground Sea (3ED) 290
+1 Volcanic Island (3ED) 291
+1 Badlands (3ED) 282
+1 Watery Grave (EOE) 381
+1 Steam Vents (CLU) 280
+1 Blood Crypt (CLU) 274
+1 Polluted Delta (MH3) 356
+1 Scalding Tarn (EXP) 22
+1 Bloodstained Mire (MH3) 352
+1 Flooded Strand (MH3) 353
+1 Misty Rainforest (EXP) 25
+1 Verdant Catacombs (EXP) 23
+1 Arid Mesa (EXP) 24
+1 Marsh Flats (EXP) 21
+1 Xander's Lounge (SNC) 294
+1 Morphic Pool (PCLB) 357s
+1 Luxury Suite (ZNE) 18
+1 Training Center (CMM) 665
+1 City of Brass (SCH) 41
+1 Mana Confluence (EOS) 160
+1 Ancient Tomb (EOS) 136
+1 Urborg, Tomb of Yawgmoth (LTC) 405
+1 Otawara, Soaring City (NEO) 414
+1 Takenuma, Abandoned Mire (NEO) 416
+1 Sokenzan, Crucible of Defiance (NEO) 415
+1 Strip Mine (EOS) 175
+1 Wasteland (PIP) 889
+1 Bojuka Bog (LTC) 388
+1 Sol Ring (MPS) 24
+1 Mana Vault (MPS) 17
+1 Chrome Mox (MPS) 9
+1 Mox Diamond (V10) 10
+1 Lotus Petal (MPS) 15
+1 Lion's Eye Diamond (MIR) 307
+1 Arcane Signet (SLD) 589
+1 Talisman of Dominance (SLD) 1053
+1 Talisman of Indulgence (SLD) 1054
+1 Dark Ritual (G09) 1
+1 Grim Monolith (ULG) 126
+1 Tinybones, Trinket Thief (SLD) 1407
+1 Tinybones, Bauble Burglar (FDN) 388
+1 The Raven Man (PDMU) 103s
+1 Waste Not (SLD) 1299
+1 Megrim (8ED) 143★
+1 Liliana's Caress (M11) 103
+1 Painful Quandary (BRO) 331
+1 Sheoldred, the Apocalypse (DMU) 436
+1 Tergrid, God of Fright (PKHM) 112s
+1 Hymn to Tourach (SLC) 8
+1 Mind Twist (MP2) 24
+1 Bottomless Pit (SLD) 1404
+1 Geth's Grimoire (DST) 123
+1 Rankle, Master of Pranks (SLD) 1707
+1 Smallpox (SOA) 33
+1 Dark Deal (SLD) 873
+1 Windfall (SLD) 2182
+1 Wheel of Fortune (G10) 7
+1 Timetwister (2ED) 85
+1 Echo of Eons (SLD) 821
+1 Underworld Dreams (SLD) 1298
+1 Notion Thief (SLD) 2482
+1 Orcish Bowmasters (HOC) 59
+1 Opposition Agent (PCMR) 141p
+1 Narset, Parter of Veils (SLD) 1141
+1 Stranglehold (SLD) 1804
+1 Ashiok, Dream Render (SLD) 399
+1 Force of Will (MP2) 14
+1 Force of Negation (2X2) 346
+1 Fierce Guardianship (SLC) 86
+1 Deflecting Swat (CMM) 698
+1 Mana Drain (OTP) 67
+1 Counterspell (SLD) 7117
+1 Swan Song (SLD) 1591
+1 Cyclonic Rift (RVR) 419
+1 Snuff Out (SLC) 110
+1 Deadly Rollick (CMM) 695
+1 Toxic Deluge (2XM) 345
+1 Chaos Warp (SLD) 741★
+1 Demonic Tutor (SLD) 1856
+1 Vampiric Tutor (SOA) 35
+1 Imperial Seal (2X2) 354
+1 Mystical Tutor (SLD) 334
+1 Gamble (SLD) 188
+1 Rhystic Study (WOT) 25
+1 Mystic Remora (SLD) 406
+1 Necropotence (WOT) 94
+1 Bolas's Citadel (FCA) 7
+1 Thassa's Oracle (SLD) 1280
+1 Demonic Consultation (SLC) 31
+1 Tainted Pact (SLC) 90
+1 Underworld Breach (SLD) 2045
+1 Brain Freeze (SLC) 29
+1 Tinybones, Pocket Nuisance (FRA) 237
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Swamp (J14) 3★
+1 Swamp (VOW) 410
+1 Mountain (J14) 4★

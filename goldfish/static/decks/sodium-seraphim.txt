@@ -1,0 +1,85 @@
+// Sodium Seraphim (Gisela, the Broken Blade)
+// COMMANDER
+1 Gisela, the Broken Blade (SLD) 1335
+// DECK
+1 Angel of Serenity (SLD) 1377
+1 Angelic Arbiter (JMP) 86
+1 Arcane Signet (SLD) 589
+1 Arch of Orazca (PRIX) 185s
+1 Archangel of Thune (SLD) 1337
+1 Archangel of Tithes (PLST) ORI-4
+1 Archon of Emeria (PZNR) 4s
+1 Armageddon (MP2) 31
+1 Austere Command (MP2) 1
+1 Aven Mindcensor (MP2) 2
+1 Baneslayer Angel (M21) 340
+1 Bruna, the Fading Light (SLD) 1336
+1 Chrome Mox (SPG) 102
+1 Containment Priest (MP2) 3
+1 Council's Judgment (SLD) 7041
+1 Dawnbreak Reclaimer (SLD) 1346
+1 Drannith Magistrate (TLE) 2
+1 Elesh Norn, Grand Cenobite (SLD) 811
+1 Emeria, the Sky Ruin (SLD) 1291
+1 Esper Sentinel (PMH2) 12s
+1 Ethersworn Canonist (SLD) 2102
+1 Everflowing Chalice (LCC) 111
+1 Fellwar Stone (SLD) 1040
+1 Flawless Maneuver (SLD) 1728
+1 Ghost Quarter (SLD) 468
+1 Ghostly Prison (SLD) 7042
+1 Grand Abolisher (CMM) 625
+1 Kismet (6ED) 27
+1 Kor Haven (EXP) 41
+1 Land Tax (WOT) 86
+1 Lyra Dawnbringer (DMR) 413
+1 Mana Tithe (STA) 8
+1 Mana Vault (MPS) 17
+1 Maze of Ith (SLD) 924
+1 Mazemind Tome (PM21) 232s
+1 Mentor of the Meek (2X2) 340
+1 Mind Stone (DCI) 11
+1 Monologue Tax (C21) 346
+1 Mutavault (EOS) 163
+1 Oblivion Ring (F09) 11
+1 Path to Exile (SLD) 226
+1 Pearl Medallion (MH3) 347
+3 Plains (J14) 1★
+2 Plains (P23) 6
+2 Plains (PIP) 845
+3 Plains (PL26) 5
+3 Plains (SLD) 1088
+3 Plains (SLD) 1130
+3 Plains (SLD) 1399
+3 Plains (SLD) 1468
+2 Plains (SLD) 547
+3 Plains (SLZ) 366
+2 Plains (UNF) 491
+1 Platinum Angel (MPS) 46
+1 Ravages of War (PIP) 882
+1 Rest in Peace (MAR) 6
+1 Righteous Valkyrie (PKHM) 24s
+1 Rishadan Port (J15) 3
+1 Rule of Law (SLD) 2478
+1 Sanctum Prelate (SLD) 278
+1 Sephara, Sky's Blade (PM20) 36s
+1 Serra Ascendant (SLD) 1125
+1 Settle the Wreckage (SLD) 2372
+1 Silence (SLD) 881
+1 Smothering Tithe (WOT) 87
+1 Sol Ring (PIP) 887
+1 Sphere of Resistance (SLD) 1484
+1 Static Orb (MPS) 26
+1 Stony Silence (SLD) 2554
+1 Strip Mine (EXP) 43
+1 Sunblast Angel (PLST) SOM-22
+1 Swords to Plowshares (PF25) 12
+1 Teferi's Protection (STA) 11
+1 Thalia, Guardian of Thraben (VOW) 331
+1 Thalia, Heretic Cathar (SLD) 1428
+1 Thorn of Amethyst (LTC) 386
+1 Thran Dynamo (CMM) 658
+1 Trinisphere (SLD) 2838
+1 Unexpectedly Absent (C13) 25
+1 Wasteland (EXP) 45
+1 Winter Orb (SLD) 2400

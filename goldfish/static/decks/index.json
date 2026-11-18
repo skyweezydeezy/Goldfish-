@@ -1,0 +1,338 @@
+{
+ "about": "Built-in decks. Rebuild with: node tools/build-deck-index.js",
+ "decks": [
+  {
+   "file": "bridge-to-the-inevitable-abyss.txt",
+   "name": "Bridge to the Inevitable Abyss (Esika, God of the Tree)",
+   "commanders": [
+    "Esika, God of the Tree"
+   ],
+   "colors": "WUBRG",
+   "cards": 100
+  },
+  {
+   "file": "captains-lockdown.txt",
+   "name": "Captain's Lockdown (Sisay, Weatherlight Captain)",
+   "commanders": [
+    "Sisay, Weatherlight Captain"
+   ],
+   "colors": "WUBRG",
+   "cards": 100
+  },
+  {
+   "file": "scorched-sky.txt",
+   "name": "Scorched Sky (The Ur-Dragon)",
+   "commanders": [
+    "The Ur-Dragon"
+   ],
+   "colors": "WUBRG",
+   "cards": 100
+  },
+  {
+   "file": "the-kings-gambit.txt",
+   "name": "The King's Gambit (Kenrith, the Returned King)",
+   "commanders": [
+    "Kenrith, the Returned King"
+   ],
+   "colors": "WUBRG",
+   "cards": 100
+  },
+  {
+   "file": "ulalek-titanstorm.txt",
+   "name": "Ulalek Titanstorm (Ulalek, Fused Atrocity)",
+   "commanders": [
+    "Ulalek, Fused Atrocity"
+   ],
+   "colors": "WUBRG",
+   "cards": 100
+  },
+  {
+   "file": "unified-misery.txt",
+   "name": "Unified Misery (Jodah, the Unifier)",
+   "commanders": [
+    "Jodah, the Unifier"
+   ],
+   "colors": "WUBRG",
+   "cards": 100
+  },
+  {
+   "file": "compleat-contagion.txt",
+   "name": "Compleat Contagion (Atraxa, Praetors' Voice)",
+   "commanders": [
+    "Atraxa, Praetors' Voice"
+   ],
+   "colors": "WUBG",
+   "cards": 100
+  },
+  {
+   "file": "compound-interest.txt",
+   "name": "Compound Interest (Atraxa, Praetors' Voice)",
+   "commanders": [
+    "Atraxa, Praetors' Voice"
+   ],
+   "colors": "WUBG",
+   "cards": 100
+  },
+  {
+   "file": "loyalty-program.txt",
+   "name": "Loyalty Program (Atraxa, Praetors' Voice)",
+   "commanders": [
+    "Atraxa, Praetors' Voice"
+   ],
+   "colors": "WUBG",
+   "cards": 100
+  },
+  {
+   "file": "tidewoven.txt",
+   "name": "Tidewoven (Tymna + Thrasios)",
+   "commanders": [
+    "Thrasios, Triton Hero",
+    "Tymna the Weaver"
+   ],
+   "colors": "WUBG",
+   "cards": 100
+  },
+  {
+   "file": "court-of-ruin.txt",
+   "name": "Court of Ruin (Kefka, Court Mage)",
+   "commanders": [
+    "Kefka, Court Mage"
+   ],
+   "colors": "UBR",
+   "cards": 100
+  },
+  {
+   "file": "nights-curfew.txt",
+   "name": "Night's Curfew (Y'shtola, Night's Blessed)",
+   "commanders": [
+    "Y'shtola, Night's Blessed"
+   ],
+   "colors": "WUB",
+   "cards": 100
+  },
+  {
+   "file": "odds-and-ends.txt",
+   "name": "Odds and Ends (Yennett, Cryptic Sovereign)",
+   "commanders": [
+    "Yennett, Cryptic Sovereign"
+   ],
+   "colors": "WUB",
+   "cards": 100
+  },
+  {
+   "file": "red-rum-raiders.txt",
+   "name": "Red Rum Raiders (Admiral Beckett Brass)",
+   "commanders": [
+    "Admiral Beckett Brass"
+   ],
+   "colors": "UBR",
+   "cards": 100
+  },
+  {
+   "file": "salt-mine.txt",
+   "name": "Salt Mine (Nekusar, the Mindrazer)",
+   "commanders": [
+    "Nekusar, the Mindrazer"
+   ],
+   "colors": "UBR",
+   "cards": 100
+  },
+  {
+   "file": "second-breakfast.txt",
+   "name": "Second Breakfast (Frodo & Sam)",
+   "commanders": [
+    "Frodo, Adventurous Hobbit",
+    "Sam, Loyal Attendant"
+   ],
+   "colors": "WBG",
+   "cards": 100
+  },
+  {
+   "file": "black-mage-blackout.txt",
+   "name": "Black Mage Blackout (Vivi Ornitier)",
+   "commanders": [
+    "Vivi Ornitier"
+   ],
+   "colors": "UR",
+   "cards": 100
+  },
+  {
+   "file": "dead-sea.txt",
+   "name": "Dead Sea (Thrasios, Triton Hero)",
+   "commanders": [
+    "Thrasios, Triton Hero"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "death-tax.txt",
+   "name": "Death Tax (Teysa Karlov)",
+   "commanders": [
+    "Teysa Karlov"
+   ],
+   "colors": "WB",
+   "cards": 100
+  },
+  {
+   "file": "double-down.txt",
+   "name": "Double Down (Veyran)",
+   "commanders": [
+    "Veyran, Voice of Duality"
+   ],
+   "colors": "UR",
+   "cards": 100
+  },
+  {
+   "file": "finale-of-the-floodborn.txt",
+   "name": "Finale of the Floodborn (Hakbal of the Surging Soul)",
+   "commanders": [
+    "Hakbal of the Surging Soul"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "gnome-alone.txt",
+   "name": "Gnome Alone (Anim Pakal)",
+   "commanders": [
+    "Anim Pakal, Thousandth Moon"
+   ],
+   "colors": "WR",
+   "cards": 100
+  },
+  {
+   "file": "hatsune-miku.txt",
+   "name": "Hatsune Miku (Trostani, Selesnya's Voice)",
+   "commanders": [
+    "Trostani, Selesnya's Voice"
+   ],
+   "colors": "WG",
+   "cards": 100
+  },
+  {
+   "file": "mermaids.txt",
+   "name": "Mermaids (Hakbal of the Surging Soul)",
+   "commanders": [
+    "Hakbal of the Surging Soul"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "otk.txt",
+   "name": "OTK (Bruna, Light of Alabaster)",
+   "commanders": [
+    "Bruna, Light of Alabaster"
+   ],
+   "colors": "WU",
+   "cards": 100
+  },
+  {
+   "file": "permafrost-prodigy.txt",
+   "name": "Permafrost Prodigy (Kinnan, Bonder Prodigy)",
+   "commanders": [
+    "Kinnan, Bonder Prodigy"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "soul-brokers.txt",
+   "name": "Soul Brokers (Teysa Karlov)",
+   "commanders": [
+    "Teysa Karlov"
+   ],
+   "colors": "WB",
+   "cards": 100
+  },
+  {
+   "file": "tidal-loop.txt",
+   "name": "Tidal Loop (Hakbal of the Surging Soul)",
+   "commanders": [
+    "Hakbal of the Surging Soul"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "tidecaller.txt",
+   "name": "Tidecaller (Thrasios, Triton Hero)",
+   "commanders": [
+    "Thrasios, Triton Hero"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "zimone-infinite-analyst.txt",
+   "name": "Zimone, Infinite Analyst",
+   "commanders": [
+    "Zimone, Infinite Analyst"
+   ],
+   "colors": "UG",
+   "cards": 100
+  },
+  {
+   "file": "counter-culture.txt",
+   "name": "Counter Culture (Rishkar, Peema Renegade)",
+   "commanders": [
+    "Rishkar, Peema Renegade"
+   ],
+   "colors": "G",
+   "cards": 100
+  },
+  {
+   "file": "ice-age-engine.txt",
+   "name": "Ice Age Engine (Urza, Lord High Artificer)",
+   "commanders": [
+    "Urza, Lord High Artificer"
+   ],
+   "colors": "U",
+   "cards": 100
+  },
+  {
+   "file": "second-draw.txt",
+   "name": "Second Draw (Alandra)",
+   "commanders": [
+    "Alandra, Sky Dreamer"
+   ],
+   "colors": "U",
+   "cards": 100
+  },
+  {
+   "file": "sodium-seraphim.txt",
+   "name": "Sodium Seraphim (Gisela, the Broken Blade)",
+   "commanders": [
+    "Gisela, the Broken Blade"
+   ],
+   "colors": "W",
+   "cards": 100
+  },
+  {
+   "file": "tooks-adventure.txt",
+   "name": "Took's Adventure (Mono-White Tokens)",
+   "commanders": [],
+   "colors": "W",
+   "cards": 60
+  },
+  {
+   "file": "undead-witches.txt",
+   "name": "Undead Witches (Zul Ashur)",
+   "commanders": [
+    "Zul Ashur, Lich Lord"
+   ],
+   "colors": "B",
+   "cards": 100
+  },
+  {
+   "file": "void-tax.txt",
+   "name": "Void Tax (Zhulodok, Void Gorger)",
+   "commanders": [
+    "Zhulodok, Void Gorger"
+   ],
+   "colors": "",
+   "cards": 100
+  }
+ ]
+}

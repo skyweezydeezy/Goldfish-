@@ -1,0 +1,103 @@
+// Permafrost Prodigy (Kinnan, Bonder Prodigy)
+// COMMANDER
+1 Kinnan, Bonder Prodigy (FCA) 55
+// DECK
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Basalt Monolith (CMA) 210
+1 Birds of Paradise (BLC) 81
+1 Boseiju, Who Endures (NEO) 412
+1 Breeding Pool (EXP) 15
+1 Chrome Mox (SPG) 102
+1 City of Brass (SCH) 41
+1 Command Tower (PIP) 888
+1 Commandeer (OTP) 9
+1 Consecrated Sphinx (SLD) 7023
+1 Counterspell (SLD) 7117
+1 Crop Rotation (SLC) 30
+1 Cyclonic Rift (RVR) 419
+1 Displacer Kitten (SLD) 2506
+1 Echo of Eons (SLD) 821
+1 Expropriate (SPG) 66
+1 Fact or Fiction (SLD) 333
+1 Faerie Mastermind (PMOM) 58s
+1 Fierce Guardianship (SLC) 86
+1 Finale of Devastation (CMM) 700
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Forest (J14) 5★
+1 Forest (PL25) 6
+1 Forest (VOW) 412
+1 Forest (P23) 10
+1 Forest (SLD) 395
+1 Forest (SLD) 1949
+1 Forest (SLD) 1472
+1 Gaea's Cradle (JGP) 3
+1 Gemstone Caverns (EOS) 151
+1 Gilded Drake (USG) 76
+1 Grim Monolith (ULG) 126
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Island (VOW) 409
+1 Island (SLD) 1131
+1 Island (SLD) 416
+1 Island (SLD) 1383
+1 Island (SLD) 255
+1 Island (SLZ) 369
+1 Island (PAL05) 2
+1 Isochron Scepter (SLC) 9
+1 Jin-Gitaxias, Core Augur (MUL) 141
+1 Karn, the Great Creator (BLC) 73
+1 Llanowar Elves (SLC) 12
+1 Lotus Petal (SLD) 7031
+1 Mana Breach (PLST) EXO-38
+1 Mana Confluence (EXP) 42
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Memory Jar (V10) 8
+1 Mental Misstep (SLD) 1179
+1 Mind's Eye (SLD) 2704
+1 Mindbreak Trap (OTP) 68
+1 Misty Rainforest (EXP) 25
+1 Mox Amber (PDOM) 224s
+1 Mox Diamond (V10) 10
+1 Mox Opal (2XM) 362
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Nyxbloom Ancient (FCA) 16
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16
+1 Polluted Delta (EXP) 17
+1 Rhystic Study (WOT) 91
+1 Scalding Tarn (EXP) 22
+1 Seedborn Muse (SLD) 907
+1 Sensei's Divining Top (2X2) 398
+1 Sol Ring (PIP) 887
+1 Stasis (SLD) 1103
+1 Static Orb (MPS) 26
+1 Strip Mine (EXP) 43
+1 Sunder (MP2) 36
+1 Swan Song (SLD) 1591
+1 Sylvan Library (SPG) 155
+1 Thassa's Oracle (SLD) 1280
+1 The One Ring (HOC) 84
+1 Thrasios, Triton Hero (SLD) 2742
+1 Timetwister (2ED) 85
+1 Torpor Orb (BIG) 57
+1 Tropical Island (30A) 279
+1 Ugin, Eye of the Storms (TDM) 409
+1 Unwinding Clock (PLST) NPH-164
+1 Verdant Catacombs (EXP) 23
+1 Void Winnower (SLD) 1075
+1 Vorinclex, Voice of Hunger (MUL) 159
+1 Walking Ballista (PIP) 880
+1 Windfall (SLD) 2182
+1 Windswept Heath (EXP) 20
+1 Winter Orb (SLD) 2400
+1 Wooded Foothills (EXP) 19
+1 Worldly Tutor (TLE) 314
+1 Yavimaya Coast (DMU) 382

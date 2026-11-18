@@ -1,0 +1,103 @@
+// Ice Age Engine (Urza, Lord High Artificer)
+// COMMANDER
+1 Urza, Lord High Artificer (CMM) 1060
+// DECK
+1 Academy Ruins (2XM) 369
+1 An Offer You Can't Refuse (FDN) 311
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Back to Basics (SLD) 1718
+1 Basalt Monolith (CMA) 210
+1 Chrome Mox (SPG) 102
+1 Consecrated Sphinx (SLD) 7023
+1 Counterspell (SLD) 7117
+1 Cyclonic Rift (RVR) 419
+1 Darksteel Citadel (SLD) 608
+1 Dramatic Reversal (SLD) 1083
+1 Echo of Eons (SLD) 821
+1 Emry, Lurker of the Loch (SLC) 2019
+1 Fabricate (SLD) 7118
+1 Faerie Mastermind (PMOM) 58s
+1 Fierce Guardianship (SLC) 86
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Grafdigger's Cage (SLD) 324
+1 Grim Monolith (ULG) 126
+1 Inventors' Fair (EOS) 156
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Island (VOW) 409
+1 Island (SLD) 1131
+1 Island (SLD) 416
+1 Island (SLD) 1383
+1 Island (SLD) 255
+1 Island (SLZ) 369
+1 Island (PAL05) 2
+1 Island (SLD) 449
+1 Island (UNH) 137
+1 Island (UNF) 492
+1 Island (SLD) 1653
+1 Island (SLD) 1648
+1 Island (SLD) 1946
+1 Island (SLD) 1089
+1 Island (SLD) 889
+1 Island (SLD) 1479
+1 Island (SLD) 1191
+1 Island (SLD) 240
+1 Island (DFT) 513
+1 Island (SLD) 1951
+1 Island (SLD) 1940
+1 Isochron Scepter (SLC) 9
+1 Karn, the Great Creator (BLC) 73
+1 Lotus Petal (SLD) 7031
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Memory Jar (V10) 8
+1 Mind's Eye (SLD) 2704
+1 Mishra's Workshop (ATQ) 81
+1 Mox Amber (PDOM) 224s
+1 Mox Diamond (V10) 10
+1 Mox Opal (2XM) 362
+1 Mystic Forge (40K) 246★
+1 Mystic Remora (SLD) 406
+1 Narset, Parter of Veils (SLD) 1141
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16
+1 Phyrexian Metamorph (SLD) 1110
+1 Rhystic Study (WOT) 91
+1 Rising Waters (NEM) 38
+1 Seat of the Synod (SLD) 301
+1 Sensei's Divining Top (2X2) 398
+1 Smokestack (SLC) 1998
+1 Sol Ring (PIP) 887
+1 Spellskite (SLD) 2340
+1 Stasis (SLD) 1103
+1 Static Orb (MPS) 26
+1 Storage Matrix (9ED) 310★
+1 Strip Mine (EXP) 43
+1 Sunder (MP2) 36
+1 Swan Song (SLD) 1591
+1 Tezzeret the Seeker (MED) WS4
+1 Thassa's Oracle (SLD) 1280
+1 The One Ring (HOC) 84
+1 The Tabernacle at Pendrell Vale (LEG) 307
+1 Thought Monitor (PMH2) 71s
+1 Timetwister (2ED) 85
+1 Torpor Orb (BIG) 57
+1 Trinisphere (SLD) 2838
+1 Ugin, Eye of the Storms (TDM) 409
+1 Unwinding Clock (PLST) NPH-164
+1 Urza's Saga (SLC) 48
+1 Uthros, Titanic Godcore (EOE) 380
+1 Void Winnower (SLD) 1075
+1 Voltaic Key (PMEI) 2024-11
+1 Walking Ballista (PIP) 880
+1 Whir of Invention (SPG) 96
+1 Windfall (SLD) 2182
+1 Winter Moon (PMH3) 213s
+1 Winter Orb (SLD) 2400

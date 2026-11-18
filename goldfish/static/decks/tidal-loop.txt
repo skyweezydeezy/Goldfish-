@@ -1,0 +1,103 @@
+// Tidal Loop (Hakbal of the Surging Soul)
+// COMMANDER
+1 Hakbal of the Surging Soul (LCC) 19
+// DECK
+1 An Offer You Can't Refuse (FDN) 311
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Barkchannel Pathway (SLU) 11
+1 Biomancer's Familiar (PRNA) 158s
+1 Birds of Paradise (BLC) 81
+1 Boseiju, Who Endures (NEO) 412
+1 Botanical Sanctum (SLD) 1376
+1 Brainstorm (SLD) 7013
+1 Breeding Pool (EXP) 15
+1 Cavern of Souls (LCI) 410a
+1 Chord of Calling (SLD) 1595
+1 Chrome Mox (SPG) 102
+1 Cold-Eyed Selkie (EVE) 149
+1 Counterspell (SLD) 7117
+1 Cursecatcher (SHM) 34
+1 Cyclonic Rift (RVR) 419
+1 Dispel (PLST) BFZ-76
+1 Dramatic Reversal (SLD) 1083
+1 Drift of Phantasms (RAV) 46
+1 Eldritch Evolution (SLD) 1414
+1 Fabricate (SLD) 7118
+1 Fierce Guardianship (SLC) 86
+1 Finale of Devastation (CMM) 700
+1 Flooded Grove (EXP) 35
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Forest (J14) 5★
+1 Forest (P23) 10
+1 Forest (PL25) 6
+1 Frantic Search (SLD) 228
+1 Freed from the Real (SLD) 2828
+1 Gitaxian Probe (SLD) 2067
+1 Green Sun's Zenith (SPG) 127
+1 Gyre Engineer (RNA) 180
+1 Hall of Echoes (FRA) 379
+1 Heroic Intervention (SLC) 97
+1 Hinterland Harbor (PIP) 1026
+1 Impulse (V13) 5
+1 Island (J14) 2★
+1 Island (P23) 7
+1 Island (SLD) 1131
+1 Island (SLD) 1400
+1 Island (SLD) 1469
+1 Island (SLD) 416
+1 Island (SLD) 673
+1 Island (SLP) 32
+1 Isochron Scepter (SLC) 9
+1 Kiora's Follower (PBNG) 150
+1 Kumena, Tyrant of Orazca (SLD) 1412★
+1 Lightning Greaves (SLD) 1493★
+1 Lotus Petal (SLD) 7031
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Mental Misstep (SLD) 1179
+1 Merchant Scroll (SLD) 2824
+1 Minamo, School at Water's Edge (LTC) 399
+1 Mistrise Village (PTDM) 261s
+1 Misty Rainforest (EXP) 25
+1 Mox Amber (PDOM) 224s
+1 Mox Diamond (V10) 10
+1 Muddle the Mixture (SLD) 1254
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Nature's Claim (SLD) 2297
+1 Otawara, Soaring City (NEO) 414
+1 Pact of Negation (MP2) 16
+1 Pemmin's Aura (PLST) SCG-45
+1 Ponder (SLD) 7119
+1 Pongify (SOA) 20
+1 Preordain (SLD) 1719
+1 Prismatic Vista (SPG) 38
+1 Rapid Hybridization (SLD) 1126
+1 Rhystic Study (WOT) 91
+1 Ripples of Potential (SLD) 2453
+1 Seafloor Oracle (PRIX) 51s
+1 Simic Growth Chamber (2X2) 412
+1 Simic Signet (SLD) 295
+1 Sol Ring (PIP) 887
+1 Survival of the Fittest (G09) 4
+1 Svyelun of Sea and Sky (MH2) 310
+1 Swan Song (SLD) 1591
+1 Swiftfoot Boots (SLD) 606
+1 Sylvan Library (SPG) 155
+1 Sylvan Safekeeper (CMA) 152
+1 Talisman of Curiosity (SLD) 1061
+1 Thassa's Oracle (SLD) 1280
+1 Thrasios, Triton Hero (SLD) 2742
+1 Tishana's Tidebinder (LCI) 335
+1 Training Grounds (TLE) 20
+1 Tropical Island (SUM) 288
+1 Urza's Saga (SLC) 48
+1 Veil of Summer (SOA) 60
+1 Walking Ballista (PIP) 880
+1 Waterlogged Grove (ACR) 116
+1 Whir of Invention (SPG) 96
+1 Worldly Tutor (TLE) 314
+1 Yavimaya, Cradle of Growth (LTC) 407

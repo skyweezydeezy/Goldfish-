@@ -25,7 +25,7 @@ const food = g => G.createTokens(g, { type: 'token', n: 1, creature: false, arti
 
 // ---- coverage
 const dev = deck.unique.flatMap(u => u.a.coverage.filter(x => x.tag === 'dev').map(x => u.name));
-check('at most 3 rules lines are still "in development" in the Loyalty Program deck (it was 25): the three emblem ultimates of Kaya, Vraska and Wrenn', dev.length <= 3, dev.join(', '));
+check('no rules line is left in development in the Loyalty Program deck (it was 25, then 3: the emblem ultimates of Kaya, Vraska and Wrenn)', dev.length === 0, dev.join(', '));
 check('no mis-tagged lines (ok lines carry no tag)', !deck.unique.some(u => u.a.coverage.some(x => x.status === 'ok' && x.tag)));
 
 // ---- planeswalker activations
@@ -142,6 +142,33 @@ check('Oath of Teferi (enter): flickers Eternal Witness, which returns at the en
 G.endTurn(g); check('...and it is back after the end step', g.battlefield.some(q => /Eternal Witness/.test(q.card.name)) && g.hand.some(i => /Sol Ring/.test(i.card.name)));
 
 // ---- whole games (all four decks, all pairings)
+// ---- the three ultimates
+{ const g = fresh(true); const v = put(g, 'Vraska'); v.loyalty = 9; const ev = [];
+  const ab = v.card.a.pwAbilities.find(x => x.cost === -9);
+  check('Vraska\'s -9 is parsed as a win', ab && ab.fx.some(f => f.type === 'poisonWin'));
+  G.applyEffects(g, ab.fx, v, ev, null); check('Vraska -9: the opponent has lost (nine poison counters)', g.opp.life <= 0 || G.matchOver(g), g.opp.life); }
+{ const g = fresh(); const v = put(g, 'Vraska'); v.loyalty = 9; G.useAbilities(g);
+  check('Vraska at 9 loyalty uses her ultimate on her own', g.killTurn != null || v.loyalty <= 0 || !g.battlefield.includes(v), `loyalty ${v.loyalty}`); }
+{ const g = fresh(); const v = put(g, 'Vraska'); v.loyalty = 5; G.useAbilities(g);
+  check('Vraska at 5 loyalty does not ultimate', g.killTurn == null && v.loyalty > 0); }
+{ const g = fresh(); g.battlefield = []; const k = put(g, 'Kaya the Inexorable'); k.loyalty = 7; const ab = k.card.a.pwAbilities.find(x => x.cost === -7);
+  check('Kaya -7 is parsed as the legendary-spell emblem', ab && ab.fx.some(f => f.type === 'kayaEmblem'));
+  G.applyEffects(g, ab.fx, k, [], null); g.hand = [inst(g, 'Atraxa, Grand')]; const lib = g.library.length; G.beginTurn(g);
+  check('Kaya\'s emblem casts a legendary spell from hand for free at upkeep', g.battlefield.some(p => /Atraxa, Grand/.test(p.card.name)) && !g.hand.some(i => /Atraxa, Grand/.test(i.card.name)), g.battlefield.map(p => p.card.name).join(',')); }
+{ const g = fresh(); g.battlefield = []; g.kayaEmblem = true; g.hand = [inst(g, 'Sol Ring')]; g.graveyard = []; G.beginTurn(g);
+  check('Kaya\'s emblem ignores non-legendary cards', !g.battlefield.some(p => p.card.name === 'Sol Ring')); }
+{ const g = fresh(); g.battlefield = []; g.kayaEmblem = true; g.hand = []; g.graveyard = [inst(g, 'Atraxa, Grand')]; G.beginTurn(g);
+  check('Kaya\'s emblem can cast a legendary spell from the graveyard', g.battlefield.some(p => /Atraxa, Grand/.test(p.card.name))); }
+{ const g = fresh(); g.battlefield = []; const w = put(g, 'Wrenn and'); const ab = w.card.a.pwAbilities.find(x => x.cost === -7);
+  check('Wrenn -7 is parsed as the graveyard emblem', ab && ab.fx.some(f => f.type === 'wrennEmblem'));
+  G.applyEffects(g, ab.fx, w, [], null); check('Wrenn\'s emblem is set', g.wrennEmblem === true);
+  g.hand = []; g.graveyard = [inst(g, 'Sol Ring')]; lands(g, 2); const e = G.castOne(g);
+  check('Wrenn\'s emblem lets you cast a permanent from the graveyard', !!e && g.battlefield.some(p => p.card.name === 'Sol Ring')); }
+{ const g = fresh(); g.battlefield = []; g.wrennEmblem = true; g.hand = []; g.graveyard = [inst(g, 'Island')]; G.landStep(g);
+  check('Wrenn\'s emblem plays a land from the graveyard', g.battlefield.some(p => p.card.name === 'Island')); }
+{ const g = fresh(); g.battlefield = []; g.hand = []; g.graveyard = [inst(g, 'Sol Ring')]; lands(g, 2); G.castOne(g);
+  check('without the emblem nothing is cast from the graveyard', !g.battlefield.some(p => p.card.name === 'Sol Ring')); }
+
 let thr = 0; for (let i = 0; i < 300; i++) { try { G.simulate(deck, O, 300 + i); } catch (e) { thr++; if (thr < 3) console.log(e.stack); } }
 check('300 goldfish games with the Loyalty Program deck run without errors', thr === 0, thr);
 const mc2 = G.monteCarlo(LP.cards, Object.assign({}, O, { turns: 10 }), 400, 5, null, LP.tokens);

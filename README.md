@@ -137,7 +137,7 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 
 The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Some of its subtler abilities (Kalitas and Gisa replacement effects, Sidisi, Dread Return flashback) are only partly modelled.
 
-All pairings of the decks play full mirror matches without errors, and every deck plays as a goldfish.
+All 25 pairings of the five decks play full mirror matches without errors, and every deck plays as a goldfish.
 
 ## Fan content, credits and donations
 

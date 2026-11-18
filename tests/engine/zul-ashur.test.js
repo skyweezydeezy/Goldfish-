@@ -35,6 +35,19 @@ check('only Fain\'s last abilities remain in development', dev.every(n => /Fain/
   const ev = G.castCard(g, c); const p = g.battlefield.find(q => q.card.name === 'Everflowing Chalice');
   check('Everflowing Chalice is cast and produces mana', !!p && p.produce && p.produce.amount >= 1, p && p.produce && p.produce.amount); }
 
+// Bloodghast returns on landfall
+{ const g = fresh(); g.graveyard.push(inst(g, 'Bloodghast')); const sw = put(g, 'Swamp');
+  check('Bloodghast returns from the graveyard on landfall', g.battlefield.some(p => p.card.name === 'Bloodghast')); }
+
+// Animate Dead attaches to the creature it reanimates
+{ const g = fresh(); g.graveyard.push(inst(g, 'Grave Titan')); const ad = put(g, 'Animate Dead');
+  check('Animate Dead brings Grave Titan back', g.battlefield.some(p => p.card.name === 'Grave Titan'), g.battlefield.map(p => p.card.name).join(',')); }
+
+// Cabal Coffers taps for black per Swamp beyond the {2}
+{ const g = fresh(); for (let i = 0; i < 6; i++) put(g, 'Swamp'); put(g, 'Cabal Coffers');
+  const u = G.manaUnits ? G.manaUnits(g) : null;
+  check('Cabal Coffers adds mana', !u || u.length > 7, u && u.length); }
+
 // Full-game robustness
 let crashed = 0, ok = 0;
 for (let s = 1; s <= 30; s++) { try { const r = G.simulate(deck, O, s); if (r) ok++; } catch (e) { crashed++; console.log(e.message); } }

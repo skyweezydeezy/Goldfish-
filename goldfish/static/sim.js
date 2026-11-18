@@ -2253,8 +2253,8 @@
       if (!bx) return -1;
       c.deluge = bx; s += 30;
     }
-    if (a.spellFx.some(f => f.type === 'xShrink')) {            // The Meathook Massacre: choose X to take more of their board than yours
-      let bx = 0, bs = g.opp ? 3 : -4;
+    if (a.spellFx.concat(a.triggers.flatMap(t => t.fx)).some(f => f.type === 'xShrink')) {            // The Meathook Massacre: choose X to take more of their board than yours
+      let bx = 0, bs = g.opp ? 1.5 : -1;
       const maxX = 1 + (c.extraX || 0);
       for (let X = 1; X <= Math.min(7, maxX); X++) {
         const gain = g.opp ? g.opp.battlefield.filter(p => isCreaturePerm(p) && toughnessOf(g.opp, p) <= X).reduce((t, p) => t + creatureValue(g.opp, p), 0) : 0;
@@ -2484,6 +2484,11 @@
       }
       if (a.castle && !p.tapped && p.asLand && g.library.length && g.hand.length <= 2 && g.life > (g.opp ? 20 : 12)) {   // Castle Locthwain: draw, then lose life equal to your hand size
         if (spend(p, { generic: 1, pips: [['B'], ['B']], x: 0 }, true)) { const ce = []; draw(g, 1, ce); g.life -= g.hand.length; ev.push(...ce); ev.push({ type: 'note', text: `${p.card.name}: drew a card and lost ${g.hand.length} life`, source: p }); checkDeath(g, ev); return; }
+      }
+      if (a.fain && !g.dry && ready(p)) {                                                                // Fain: put two counters on your best creature by sacrificing one that costs you nothing (a 1-power token, or something that comes back)
+        const fodder = fodderList(g, true).map(x => x.p).filter(q => q !== p && (q.token ? powerOf(g, q) <= 1 : (q.card.a.gyReturn || q.card.a.landfallReturn || q.card.a.yardActivate)));
+        const tgt = g.battlefield.filter(q => isCreaturePerm(q) && !fodder.includes(q)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0];
+        if (fodder[0] && tgt && powerOf(g, tgt) >= 3) { p.tapped = true; leavePerm(g, fodder[0], ev); addCounters(g, tgt, '+1/+1', 2, ev, p); flushLeaves(g, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${fodder[0].card.name} for two +1/+1 counters on ${tgt.card.name}`, source: p }); return; }
       }
       if (a.fain && !g.dry) {                                                                            // Fain: Inkling from a spare artifact, Treasure from a counter, or two counters from a spare creature (see sacOutlets)
         let acted = false;

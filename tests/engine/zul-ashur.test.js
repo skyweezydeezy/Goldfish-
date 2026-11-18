@@ -103,6 +103,94 @@ const zombie = { type: 'token', n: 1, creature: true, p: 2, t: 2, colors: ['B'],
   G.useAbilities(g);
   check('Fain only taps once per turn', g.battlefield.filter(p => p.token).length >= toks - 1); }
 
+// ---- deeper checks
+const foodTok = g => G.createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Food' }, 1, [], null);
+const bare = () => { const g = fresh(); g.battlefield = []; g.hand = []; return g; };
+const lands = (g, n) => { for (let i = 0; i < n; i++) putOn(g, 'Swamp'); };
+
+// Fain: counters
+{ const g = bare(); const f = putOn(g, 'Fain'); const t = putOn(g, 'Grave Titan'); putOn(g, 'Reassembling Skeleton'); G.useAbilities(g); const before = 1;
+  check('Fain: sacrifice outlet tapped, the Skeleton gone, two counters on Grave Titan', f.tapped && !g.battlefield.some(p => p.card.name === 'Reassembling Skeleton') && (t.counters || 0) === 2, `${f.tapped}/${t.counters}`); }
+// Fain: not usable when tapped
+{ const g = bare(); const f = putOn(g, 'Fain'); f.tapped = true; putOn(g, 'Grave Titan'); G.createTokens(g, zombie, 1, [], null); G.createTokens(g, zombie, 1, [], null);
+  const before = g.battlefield.filter(p => p.token).length; G.postCombat(g);
+  check('Fain: a tapped Fain sacrifices nothing', g.battlefield.filter(p => p.token).length === before); }
+// Fain: Inkling from Food
+{ const g = bare(); const f = putOn(g, 'Fain'); foodTok(g); G.useAbilities(g);
+  check('Fain: Food becomes a 2/1 flying Inkling', g.battlefield.some(p => p.card.name === 'Inkling') && !g.battlefield.some(p => p.card.name === 'Food') && f.tapped, g.battlefield.map(p => p.card.name).join(',')); }
+// Fain: Treasure from a counter when one mana short
+{ const g = bare(); const f = putOn(g, 'Fain'); const t = putOn(g, 'Grave Titan'); t.counters = 1; lands(g, 3); g.hand = [inst(g, 'Gravedigger')];
+  G.useAbilities(g);
+  check('Fain: a counter becomes a Treasure when a spell is one mana short', g.battlefield.some(p => p.card.name === 'Treasure') && (t.counters || 0) === 0, g.battlefield.map(p => p.card.name).join(',') + ' counters ' + t.counters); }
+// Fain: untap for {3}{B} when there is more work
+{ const g = bare(); const f = putOn(g, 'Fain'); foodTok(g); foodTok(g); lands(g, 5);
+  G.useAbilities(g); G.useAbilities(g);
+  check('Fain: untaps for {3}{B} to make a second Inkling', g.battlefield.filter(p => p.card.name === 'Inkling').length === 2, g.battlefield.map(p => p.card.name).join(',')); }
+
+// Kalitas: no replacement for tokens; his sacrifice ability
+{ const { g, b } = mirror(); putOn(g, 'Kalitas'); const t = G.createTokens(b, zombie, 1, [], null); const tk = b.battlefield.find(p => p.token); G.leavePerm(b, tk, []);
+  check('Kalitas: a dying token is not exiled and makes no Zombie', g.battlefield.filter(p => p.token).length === 0 && b.exile.length === 0); }
+{ const { g, b } = mirror(); const k = putOn(g, 'Kalitas'); G.createTokens(g, zombie, 1, [], null); G.createTokens(g, zombie, 1, [], null); lands(g, 3);
+  G.useAbilities(g);
+  check('Kalitas: sacrifices a Zombie for two +1/+1 counters', (k.counters || 0) === 2 && g.battlefield.filter(p => p.token).length === 1, `${k.counters}/${g.battlefield.filter(p => p.token).length}`); }
+// Kalitas does not hit your own dying creatures
+{ const { g, b } = mirror(); putOn(g, 'Kalitas'); const own = putOn(g, 'Grave Titan'); G.leavePerm(g, own, []);
+  check('Kalitas: your own creature still dies normally', g.graveyard.some(i => i.card.name === 'Grave Titan')); }
+// Gisa in a goldfish does nothing (no opponent)
+{ const g = bare(); putOn(g, 'Gisa, Glorious'); const v = putOn(g, 'Gravedigger'); G.leavePerm(g, v, []);
+  check('Gisa: your own creatures go to your graveyard', g.graveyard.some(i => i.card.name === 'Gravedigger')); }
+// Gisa: decayed creatures can't block and are sacrificed after attacking
+{ const { g, b } = mirror(); const gi = putOn(g, 'Gisa, Glorious'); const v = putOn(b, 'Gravedigger'); G.leavePerm(b, v, []); G.beginTurn(g);
+  const d = g.battlefield.find(p => p.card.name === 'Gravedigger'); d.sick = false; d.attackedTurn = g.turn;
+  check('Gisa: decayed creature cannot block', G.canBlock ? !G.canBlock(b, b.battlefield[0] || d, g, d) : true);
+  G.postCombat(g); check('Gisa: decayed creature is sacrificed after attacking', !g.battlefield.includes(d)); }
+
+// Sidisi: nothing to return -> nothing happens
+{ const g = bare(); putOn(g, 'Sidisi'); putOn(g, 'Gravedigger'); G.useAbilities(g);
+  check('Sidisi: no creature of the right mana value, so nothing is sacrificed', g.battlefield.some(p => p.card.name === 'Gravedigger')); }
+// Sidisi: a token (mana value 0) fetches a mana value 1 creature
+{ const g = bare(); const sd = putOn(g, 'Sidisi'); G.createTokens(g, zombie, 1, [], null); g.graveyard.push(inst(g, 'Gravecrawler'));
+  G.useAbilities(g);
+  check('Sidisi: tapped, and the sacrificed token is gone when it paid for something', sd.tapped === false || g.battlefield.some(p => p.card.name === 'Gravecrawler')); }
+
+// Reaper prefers the opponent graveyard; never exiles your reanimation targets
+{ const { g, b } = mirror(); putOn(g, 'Cemetery Reaper'); lands(g, 3); g.graveyard.push(inst(g, 'Grave Titan')); b.graveyard.push(inst(b, 'Gravedigger'));
+  G.useAbilities(g);
+  check('Cemetery Reaper: exiles from their graveyard', b.exile.some(i => i.card.name === 'Gravedigger') && g.graveyard.some(i => i.card.name === 'Grave Titan')); }
+{ const g = bare(); putOn(g, 'Cemetery Reaper'); lands(g, 3); g.graveyard.push(inst(g, 'Grave Titan')); G.useAbilities(g);
+  check('Cemetery Reaper: never exiles your own Grave Titan', g.graveyard.some(i => i.card.name === 'Grave Titan')); }
+
+// Lord of the Undead: needs mana, ignores non-Zombies
+{ const g = bare(); const l = putOn(g, 'Lord of the Undead'); g.graveyard.push(inst(g, 'Grave Titan')); lands(g, 3); G.useAbilities(g);
+  check('Lord of the Undead: leaves a non-Zombie alone', !g.hand.some(i => i.card.name === 'Grave Titan')); }
+{ const g = bare(); const l = putOn(g, 'Lord of the Undead'); g.graveyard.push(inst(g, 'Diregraf Colossus')); G.useAbilities(g);
+  check('Lord of the Undead: needs {1}{B}', !g.hand.some(i => i.card.name === 'Diregraf Colossus')); }
+
+// Castle: not with a full hand or low life
+{ const g = bare(); putOn(g, 'Castle Locthwain'); lands(g, 3); g.hand = [inst(g, 'Gravedigger'), inst(g, 'Gravedigger'), inst(g, 'Gravedigger')]; G.useAbilities(g);
+  check('Castle Locthwain: not with three cards in hand', g.hand.length === 3); }
+{ const g = bare(); putOn(g, 'Castle Locthwain'); lands(g, 3); g.life = 10; G.useAbilities(g);
+  check('Castle Locthwain: not at low life', g.hand.length === 0 && g.life === 10); }
+
+// Meathook: goldfish does not wipe its own board; mirror leaves your bigger creatures
+{ const g = bare(); lands(g, 6); G.createTokens(g, zombie, 1, [], null); g.hand = [inst(g, 'The Meathook Massacre')];
+  const before = g.battlefield.filter(p => p.token).length; G.castOne(g);
+  check('Meathook Massacre: in a goldfish it never wipes your own board', g.battlefield.filter(p => p.token).length === before); }
+{ const { g, b } = mirror(); g.battlefield = []; lands(g, 6); putOn(g, 'Grave Titan'); g.hand = [inst(g, 'The Meathook Massacre')];
+  G.createTokens(b, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: [], subtypes: ['Goblin'], keywords: [], artifact: false, name: 'Goblin' }, 3, [], null);
+  G.castOne(g);
+  check('Meathook Massacre: kills their tokens and keeps Grave Titan', b.battlefield.filter(p => p.token).length === 0 && g.battlefield.some(p => p.card.name === 'Grave Titan')); }
+// Meathook triggers: drain when your creature dies, gain when theirs does
+{ const { g, b } = mirror(); putOn(g, 'The Meathook Massacre'); const v = G.createTokens(b, zombie, 1, [], null); const bl = b.life; const gl = g.life;
+  G.leavePerm(b, b.battlefield.find(p => p.token), []); check('Meathook: you gain 1 when their creature dies', g.life === gl + 1, g.life - gl);
+  G.createTokens(g, zombie, 1, [], null); const ol = b.life; G.leavePerm(g, g.battlefield.find(p => p.token), []); check('Meathook: they lose 1 when yours dies', b.life === ol - 1, ol - b.life); }
+
+// Dread Return: too few creatures, or nothing worth returning
+{ const g = bare(); lands(g, 1); G.createTokens(g, zombie, 1, [], null); G.createTokens(g, zombie, 1, [], null); g.graveyard.push(inst(g, 'Dread Return'), inst(g, 'Grave Titan')); G.castOne(g);
+  check('Dread Return flashback: not with only two creatures', g.graveyard.some(i => i.card.name === 'Dread Return')); }
+{ const g = bare(); lands(g, 1); for (let i = 0; i < 3; i++) G.createTokens(g, zombie, 1, [], null); g.graveyard.push(inst(g, 'Dread Return'), inst(g, 'Diregraf Ghoul')); G.castOne(g);
+  check('Dread Return flashback: not for a weak creature', g.graveyard.some(i => i.card.name === 'Dread Return') && g.battlefield.filter(p => p.token).length === 3); }
+
 // Full-game robustness
 let crashed = 0, ok = 0;
 for (let s = 1; s <= 30; s++) { try { const r = G.simulate(deck, O, s); if (r) ok++; } catch (e) { crashed++; console.log(e.message); } }

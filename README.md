@@ -132,7 +132,7 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Frodo (old) | 94 | 183 | 154 | 24 | 4 | 1 | 0 |
 | Veyran | 100 | 149 | 110 | 31 | 4 | 3 | 1 (Desperate Ritual's splice) |
 | Second Breakfast | 100 | 161 | 138 | 17 | 4 | 2 | 0 |
-| Loyalty Program | 100 | 168 | 131 | 28 | 6 | 0 | 3 (the Kaya, Vraska and Wrenn emblem ultimates) |
+| Loyalty Program | 100 | 168 | 134 | 28 | 6 | 0 | 0 |
 | Zul Ashur (Zombie reanimator) | 100 | 134 | 113 | 17 | 4 | 0 | 0 |
 | Death Tax (Teysa Karlov) | 100 | 151 | 130 | 17 | 2 | 2 (Grim Haruspex's morph, Path of Ancestry's scry) | 0 |
 

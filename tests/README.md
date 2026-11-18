@@ -48,4 +48,5 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
 | ui/looks | Playmat and sleeve picker (browser test) |
+| ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |

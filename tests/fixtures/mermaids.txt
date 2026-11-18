@@ -1,0 +1,104 @@
+// Mermaids (Hakbal of the Surging Soul)
+// COMMANDER
+1 Hakbal of the Surging Soul
+
+// DECK
+1 An Offer You Can't Refuse
+1 Ancient Tomb
+1 Arcane Signet
+1 Barkchannel Pathway
+1 Benthic Biomancer
+1 Birds of Paradise
+1 Boseiju, Who Endures
+1 Botanical Sanctum
+1 Branching Evolution
+1 Breeding Pool
+1 Cavern of Souls
+1 Chrome Mox
+1 Cold-Eyed Selkie
+1 Cursecatcher
+1 Cyclonic Rift
+1 Deeproot Elite
+1 Deeproot Historian
+1 Deeproot Waters
+1 Doubling Season
+1 Eldritch Evolution
+1 Emperor Mihail II
+1 Fierce Guardianship
+1 Finale of Devastation
+1 Flooded Grove
+1 Flusterstorm
+1 Force of Negation
+1 Force of Will
+1 Forest
+1 Forest
+1 Forest
+1 Forest
+1 Green Sun's Zenith
+1 Hall of Echoes
+1 Hardened Scales
+1 Herald of Secret Streams
+1 Heroic Intervention
+1 Hinterland Harbor
+1 Inspiring Call
+1 Island
+1 Island
+1 Island
+1 Island
+1 Island
+1 Island
+1 Island
+1 Island
+1 Kindred Discovery
+1 Kiora's Follower
+1 Kopala, Warden of Waves
+1 Kumena, Tyrant of Orazca
+1 Lightning Greaves
+1 Lord of Atlantis
+1 Lotus Petal
+1 Mana Vault
+1 Master of the Pearl Trident
+1 Mental Misstep
+1 Merfolk Mistbinder
+1 Merfolk Skydiver
+1 Merfolk Sovereign
+1 Merrow Reejerey
+1 Metallic Mimic
+1 Minamo, School at Water's Edge
+1 Mistrise Village
+1 Misty Rainforest
+1 Mox Amber
+1 Mox Diamond
+1 Mystic Remora
+1 Mystical Tutor
+1 Nicanzil, Current Conductor
+1 Otawara, Soaring City
+1 Pact of Negation
+1 Rapid Hybridization
+1 Realmwalker
+1 Reflections of Littjara
+1 Rhystic Study
+1 Ripples of Potential
+1 Rogue's Passage
+1 Seafloor Oracle
+1 Simic Ascendancy
+1 Simic Growth Chamber
+1 Simic Signet
+1 Singer of Swift Rivers
+1 Sol Ring
+1 Stonybrook Banneret
+1 Survival of the Fittest
+1 Svyelun of Sea and Sky
+1 Swan Song
+1 Swiftfoot Boots
+1 Thieving Skydiver
+1 Tishana's Tidebinder
+1 Topography Tracker
+1 Tropical Island
+1 Unclaimed Territory
+1 Veil of Summer
+1 Vodalian Hexcatcher
+1 Vorel of the Hull Clade
+1 Waterlogged Grove
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth

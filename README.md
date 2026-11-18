@@ -136,6 +136,7 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Zul Ashur (Zombie reanimator) | 100 | 134 | 113 | 17 | 4 | 0 | 0 |
 | Death Tax (Teysa Karlov) | 100 | 151 | 130 | 17 | 2 | 2 (Grim Haruspex's morph, Path of Ancestry's scry) | 0 |
 | Soul Brokers (Teysa Karlov) | 100 | 141 | 124 | 15 | 0 | 2 (Grim Haruspex's morph, Path of Ancestry's scry) | 0 |
+| Mermaids (Hakbal) | 100 | 154 | 120 | 29 | 3 | 2 (Hall of Echoes and Kiora's Follower) | 0 (Otawara's channel and Minamo's untap have nothing to do alone) |
 
 The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Kalitas and Gisa exile opposing creatures instead of letting them die (Gisa's come back decayed at your upkeep and are sacrificed after attacking), Sidisi, Cemetery Reaper, Lord of the Undead, Castle Locthwain, Fain and Dread Return's flashback are played by simple rules of thumb (see the policy lab to tune them), and The Meathook Massacre picks the X that takes more of their board than yours.
 
@@ -143,7 +144,9 @@ The Death Tax list adds Teysa Karlov (a dying creature's triggers trigger twice,
 
 The Soul Brokers list shares most of its engine with Death Tax and adds Afterlife (Teysa doubles it), Morbid Opportunist's once-a-turn draw, Liesa (nontoken creatures that die return to hand at the end step, and opposing creatures are exiled instead of dying, with no return), Midnight Reaper's life cost and Syr Vondam's counter and life gain.
 
-All 49 pairings of the seven decks play full mirror matches without errors, and every deck plays as a goldfish.
+The Mermaids list adds explore (Hakbal, Topography Tracker doubling it, Nicanzil), Merfolk lords, the counter replacements (Hardened Scales, Branching Evolution and Doubling Season in the best order), casting Merfolk from the top of the library (Emperor Mihail II, Realmwalker), retrace, Kindred Discovery, Metallic Mimic, Reflections of Littjara, Merrow Reejerey, Kumena, Vorel, Survival of the Fittest and more. "Choose a creature type" cards always choose the deck's most common creature type (Merfolk). Kiora's Follower is counted as an extra mana source, and Hall of Echoes is never activated.
+
+All 64 pairings of the eight decks play full mirror matches without errors, and every deck plays as a goldfish.
 
 ## Fan content, credits and donations
 

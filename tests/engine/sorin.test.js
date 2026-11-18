@@ -39,7 +39,7 @@ G.applyEffects(g, [{ type: 'gainLife', n: 3 }], null, [], null); G.postCombat(g)
 check('Doubling Season doubles the loyalty it comes back with (3 -> 6, then -1)', s.loyalty === 5, s.loyalty);
 g = fresh(); s = put(g, 'Sorin'); G.applyEffects(g, [{ type: 'gainLife', n: 3 }], null, [], null);
 G.postCombat(g); G.beginTurn(g); G.applyEffects(g, [{ type: 'gainLife', n: 1 }], null, [], null); G.castPhase(g);
-check('next turn the planeswalker keeps working: only 1 life gained, so it takes the +2 Food (2 -> 4)', s.loyalty === 4 && s.pwUsed === g.turn, `loyalty ${s.loyalty}`);
+check('next turn the planeswalker keeps working: only 1 life gained, so it takes the +2 Food (2 -> 4)', s.loyalty === 4 && s.pwTurn === g.turn, `loyalty ${s.loyalty}`);
 
 // --- extort ---
 const swamps = () => { const gg = fresh(); const land = deck.unique.find(c => c.a.isLand && c.a.produce && c.a.produce.colors.has('B') && c.a.produce.colors.has('W') && !c.a.entersTapped && !c.a.tapCond && !c.a.fetch) || deck.unique.find(c => c.a.isLand && c.a.produce && c.a.produce.colors.has('B') && !c.a.entersTapped && !c.a.tapCond && !c.a.fetch); return { gg, land }; };

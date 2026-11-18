@@ -1,0 +1,107 @@
+// Loyalty Program
+
+// COMMANDER
+
+1 Atraxa, Praetors' Voice (2XM) 353
+
+// DECK
+
+1 Ajani, Sleeper Agent (DMU) 376
+1 Anguished Unmaking (OTP) 74 *F*
+1 Arcane Signet (SLD) 589
+1 Assassin's Trophy (SLD) 139
+1 Atraxa, Grand Unifier (ONE) 357 *F*
+1 Bayou (30A) 274
+1 Birds of Paradise (BLC) 81
+1 Botanical Sanctum (SLD) 1376
+1 Breeding Pool (EXP) 15 *F*
+1 Carth the Lion (PMH2) 189s *F*
+1 Chrome Mox (SPG) 102 *F*
+1 City of Brass (SCH) 41 *F*
+1 Command Tower (PIP) 888 *F*
+1 Concealed Courtyard (SLD) 1372
+1 Contagion Engine (OTP) 78 *F*
+1 Cyclonic Rift (RVR) 419
+1 Darkslick Shores (ONE) 372
+1 Delighted Halfling (HOC) 65 *F*
+1 Demonic Tutor (SLD) 1856
+1 Doubling Season (WOT) 101 *F*
+1 Elspeth, Knight-Errant (MED) GR1 *F*
+1 Elspeth, Storm Slayer (PTDM) 11p
+1 Elspeth, Sun's Champion (SLD) 1140
+1 Enlightened Tutor (TLE) 305
+1 Eternal Witness (SLD) 1522★ *F*
+1 Evolution Sage (SLD) 765 *F*
+1 Exotic Orchard (SLD) 1231
+1 Fellwar Stone (SLD) 1040
+1 Fierce Guardianship (SLC) 86 *F*
+1 Flooded Strand (EXP) 16 *F*
+1 Flux Channeler (CMM) 847
+1 Force of Will (MP2) 14 *F*
+1 Forest (J14) 5★ *F*
+1 Godless Shrine (EXP) 11 *F*
+1 Hallowed Fountain (EXP) 6 *F*
+1 Indatha Triome (IKO) 309
+1 Inexorable Tide (PIP) 988 *F*
+1 Island (J14) 2★ *F*
+1 Jace, the Mind Sculptor (BLC) 93 *F*
+1 Karn's Bastion (SLD) 1751
+1 Karn, the Great Creator (BLC) 73
+1 Kaya the Inexorable (KHM) 288
+1 Liliana of the Veil (DMU) 373
+1 Liliana, the Last Hope (2X2) 573 *F*
+1 Lotus Petal (SLD) 7031 *F*
+1 Mana Confluence (EXP) 42 *F*
+1 Mana Drain (OTP) 67 *F*
+1 Mana Vault (MPS) 17 *F*
+1 Marsh Flats (EXP) 21 *F*
+1 Misty Rainforest (EXP) 25 *F*
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Narset, Parter of Veils (SLD) 1141
+1 Nissa, Who Shakes the World (BLC) 96 *F*
+1 Noble Hierarch (2XM) 352
+1 Oath of Teferi (PDOM) 200s *F*
+1 Oko, Thief of Crowns (OTP) 77 *F*
+1 Overgrown Tomb (EXP) 13 *F*
+1 Path to Exile (SLD) 226
+1 Plains (PL26) 5 *F*
+1 Polluted Delta (EXP) 17 *F*
+1 Razorverge Thicket (ONE) 373
+1 Reflecting Pool (EOS) 171 *F*
+1 Rhystic Study (WOT) 91 *F*
+1 Savannah (30A) 276
+1 Scrubland (30A) 277
+1 Seachrome Coast (ONE) 374
+1 Smothering Tithe (WOT) 87 *F*
+1 Sol Ring (PIP) 887 *F*
+1 Spark Double (RVR) 421
+1 Spellseeker (SLD) 1165
+1 Swamp (J14) 3★ *F*
+1 Swan Song (SLD) 1591
+1 Swords to Plowshares (PF25) 12 *F*
+1 Sylvan Library (SPG) 155
+1 Tamiyo, Collector of Tales (PLST) WAR-220
+1 Teferi's Protection (STA) 11
+1 Teferi, Hero of Dominaria (MED) GR6 *F*
+1 Teferi, Master of Time (M21) 281
+1 Teferi, Time Raveler (BLC) 92
+1 Temple Garden (EXP) 10 *F*
+1 The Chain Veil (PLST) M15-215
+1 The One Ring (HOC) 84 *F*
+1 Thrummingbird (SLZ) 32
+1 Toxic Deluge (2XM) 345
+1 Tropical Island (30A) 279
+1 Tundra (30A) 280
+1 Underground Sea (30A) 281
+1 Vampiric Tutor (SOA) 35
+1 Veil of Summer (SOA) 60
+1 Verdant Catacombs (EXP) 23 *F*
+1 Vivien Reid (FDN) 421 *F*
+1 Vraska, Betrayal's Sting (ONE) 442 *F*
+1 Walking Ballista (PIP) 880 *F*
+1 Watery Grave (EXP) 7 *F*
+1 Windswept Heath (EXP) 20 *F*
+1 Worldly Tutor (TLE) 314
+1 Wrenn and Realmbreaker (MOM) 322
+1 Zagoth Triome (IKO) 313

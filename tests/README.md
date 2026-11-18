@@ -1,7 +1,7 @@
 # Tests
 
 Scenario tests for the simulation engine (`goldfish/static/sim.js`). They use a saved copy of the Frodo/Sam commander deck
-(`fixtures/frodo-loaded.json` and `fixtures/veyran-loaded.json` and `fixtures/second-breakfast-loaded.json`, real Scryfall data) so they run offline.
+(`fixtures/frodo-loaded.json` and `fixtures/veyran-loaded.json` and `fixtures/second-breakfast-loaded.json` and `fixtures/loyalty-program-loaded.json`, real Scryfall data) so they run offline.
 
 ```
 node tests/run.js          # engine tests: fast, no network
@@ -28,6 +28,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | spare-foods | Order in which spare Foods are spent |
 | policy | Policies and trial-and-error learning: holding fetch lands, comparePolicies, the Policy lab engine |
 | fetchlands | Fetch lands: cracking, life, graveyard, choosing the land, types, shuffle, landfall twice |
+| loyalty-program | The Atraxa planeswalker deck: multiple activations, proliferate, look-and-take, Oko, Nissa, Wrenn, Spark Double, Kaya, Teferi, Vraska, all 16 deck pairings |
 | second-breakfast | The Frodo + Sam Bracket 4 list: death triggers, outlets, Skullclamp, Sheoldred, Felidar, Reservoir, Necropotence, Sylvan Library, Deluge, Persist, Urborg... |
 | spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |

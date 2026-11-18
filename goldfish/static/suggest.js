@@ -149,6 +149,61 @@
     return { early: EARLY, quickWins: split(fastest(records, r => r.won, share)), quickLosses: split(fastest(records, r => r.lost, share)) };
   }
 
+
+  // ---------- tier A+: pairs ----------
+  // For two cards A and B, the four kinds of game (both drawn, only A, only B, neither) give four win rates.
+  // Synergy = WR(both) - WR(only A) - WR(only B) + WR(neither): how much better (or worse) the pair does than the two
+  // cards would do on their own. Drawing two given cards mostly happens in long games, so games are split into groups of
+  // similar length (STRATA) and the synergy is measured inside each group, then averaged (weighted by its precision).
+  // With thousands of pairs some look big by chance, so only |z| >= PAIR_Z is reported.
+  const PAIR_Z = 4, PAIR_MIN = 40, STRATA = 4;           // at z 4, shuffled results flag about 0.3 pairs per run (tests/engine/impact.test.js)
+  function matchPairs(deck, keep, records, zCut) {
+    const U = deck.unique.length, S = STRATA, ZC = zCut || PAIR_Z;
+    // length groups: quantiles of the game length
+    const turns = records.map(r => r.turn).sort((a, b) => a - b);
+    const cuts = []; for (let q = 1; q < S; q++) cuts.push(turns[Math.floor(q * turns.length / S)] || 0);
+    const stratum = t => { let k = 0; while (k < cuts.length && t > cuts[k]) k++; return k; };
+    const N = new Float64Array(S), W = new Float64Array(S), dN = new Float64Array(S * U), dW = new Float64Array(S * U);
+    const pN = new Float64Array(S * U * U), pW = new Float64Array(S * U * U);
+    for (const r of records) {
+      const st = stratum(r.turn), dr = r.drawn || [], o = st * U * U;
+      N[st]++; W[st] += r.won;
+      for (const u of dr) { dN[st * U + u]++; dW[st * U + u] += r.won; }
+      for (let x = 0; x < dr.length; x++) for (let y = x + 1; y < dr.length; y++) { const k = o + dr[x] * U + dr[y]; pN[k]++; pW[k] += r.won; }
+    }
+    // variance from a smoothed rate ((wins + 1) / (games + 2)) so a small group that went 8-0 does not look certain
+    const cell = (w, n) => { const q = (w + 1) / (n + 2); return { p: w / n, v: q * (1 - q) / n }; };
+    const out = [];
+    let tested = 0;
+    for (let i = 0; i < U; i++) {
+      if (!keep[i]) continue;
+      for (let j = i + 1; j < U; j++) {
+        if (!keep[j]) continue;
+        let num = 0, den = 0, both = 0, tb = 0, nb = 0, ta = 0, na = 0, tbb = 0, nbb = 0, t0 = 0, n0 = 0;
+        for (let st = 0; st < S; st++) {
+          const k = st * U * U + i * U + j, cb = pN[k], wb = pW[k];
+          const ci = dN[st * U + i] - cb, wi = dW[st * U + i] - wb, cj = dN[st * U + j] - cb, wj = dW[st * U + j] - wb;
+          const c0 = N[st] - dN[st * U + i] - dN[st * U + j] + cb, w0 = W[st] - dW[st * U + i] - dW[st * U + j] + wb;
+          both += cb;
+          if (cb < 10 || ci < 10 || cj < 10 || c0 < 10) continue;
+          const b = cell(wb, cb), a1 = cell(wi, ci), a2 = cell(wj, cj), z0 = cell(w0, c0);
+          const v = b.v + a1.v + a2.v + z0.v;
+          num += (b.p - a1.p - a2.p + z0.p) / v; den += 1 / v;
+          tb += wb; nb += cb; ta += wi; na += ci; tbb += wj; nbb += cj; t0 += w0; n0 += c0;
+        }
+        if (both < PAIR_MIN || !den) continue;
+        tested++;
+        const syn = num / den, z = syn * Math.sqrt(den);
+        if (Math.abs(z) >= ZC) out.push({ a: deck.unique[i].name, b: deck.unique[j].name, games: both, wrBoth: tb / nb, wrA: ta / na, wrB: tbb / nbb, wrNeither: t0 / n0, synergy: syn, z });
+      }
+    }
+    return {
+      tested, z: ZC, flagged: out.length,
+      best: out.filter(x => x.synergy > 0).sort((x, y) => y.synergy - x.synergy).slice(0, 6),
+      worst: out.filter(x => x.synergy < 0).sort((x, y) => x.synergy - y.synergy).slice(0, 6),
+    };
+  }
+
   // ---------- tier A+: which of your cards are linked to winning against a known opponent ----------
   // Replays the same matches as Goldfish.matchMonteCarlo (same seeds, same seats) and, for each of your cards, compares
   // your win rate in games where you drew it with games where you did not. Drawing more cards in longer games shifts every
@@ -159,6 +214,7 @@
     const U = deckA.unique.length;
     const drawnWin = new Float64Array(U), drawnN = new Float64Array(U);
     let games = 0, wins = 0;
+    const keep = deckA.unique.map(c => !(c.commander || (c.a.isLand && /Basic/.test(c.type_line || ''))));
     const records = [];
     for (let i = 0; i < n; i++) {
       const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
@@ -170,6 +226,7 @@
       for (const k of Object.keys(m.gA.drawTurn)) if (m.gA.drawTurn[k] <= EARLY) early.push(+k);
       records.push({ won, lost: m.match.winner === 1 ? 1 : 0, turn: m.match.turn == null ? opts.turns : m.match.turn, early, lands: m.gA.openingLands || 0, mulls: m.gA.mulligans || 0 });
       for (const k of Object.keys(m.gA.drawTurn)) { const u = +k; if (u >= 0 && u < U) { drawnN[u]++; drawnWin[u] += won; } }
+      records[records.length - 1].drawn = Object.keys(m.gA.drawTurn).map(Number).filter(u => u >= 0 && u < U && keep[u]).sort((a, b) => a - b);
       if (onProgress && i % 25 === 0) onProgress(i / n);
     }
     const rows = [];
@@ -185,7 +242,8 @@
     const mean = rows.reduce((s, r) => s + r.raw * r.games, 0) / wsum;
     rows.forEach(r => { r.gap = r.raw - mean; r.z = r.gap / r.se; delete r.raw; delete r.se; });
     rows.sort((a, b) => b.gap - a.gap);
-    return { n: games, base: games ? wins / games : 0, avgGap: mean, cards: rows, outliers: matchOutliers(records, deckA) };
+    return { n: games, base: games ? wins / games : 0, avgGap: mean, cards: rows, outliers: matchOutliers(records, deckA),
+      pairs: matchPairs(deckA, keep, records) };
   }
 
   // Cards whose gap is clearly bigger than the noise (|z| >= 2, seen in at least 30 games), split into best and worst.
@@ -195,7 +253,7 @@
     return { best: clear.filter(r => r.gap > 0).slice(0, max), worst: clear.filter(r => r.gap < 0).reverse().slice(0, max), tested: imp.cards.length };
   }
 
-  const api = { fromSim, deadCards, matchImpact, impactHighlights, matchOutliers };
+  const api = { fromSim, deadCards, matchImpact, impactHighlights, matchOutliers, matchPairs };
   root.Suggest = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

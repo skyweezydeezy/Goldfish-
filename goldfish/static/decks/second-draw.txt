@@ -1,0 +1,103 @@
+// Second Draw (Alandra)
+// COMMANDER
+1 Alandra, Sky Dreamer (J22) 9
+// DECK
+1 Academy Ruins (2XM) 369
+1 Aetherspouts (C21) 114
+1 Arcane Denial (CMR) 630
+1 Arcane Signet (SLD) 1641
+1 Archmage Emeritus (SPG) 150
+1 Blue Sun's Zenith (STA) 12
+1 Brainstorm (CMD) 40
+1 Brazen Borrower (SPG) 30
+1 Cackling Counterpart (ISD) 46
+1 Commander's Sphere (SLD) 315
+1 Consecrated Sphinx (SLD) 7023
+1 Consider (SLD) 1524
+1 Control Magic (DDM) 30
+1 Counterspell (SLD) 2664
+1 Cryptic Command (IMA) 48
+1 Cyclonic Rift (RVR) 419
+1 Deep Analysis (SOC) 194
+1 Dig Through Time (SLD) 97
+1 Echo of Eons (SLD) 821
+1 Everflowing Chalice (LCC) 111
+1 Fact or Fiction (CMM) 631
+1 Favorable Winds (AVR) 51
+1 Fellwar Stone (SLD) 1040
+1 Frantic Search (SLD) 228
+1 Hullbreaker Horror (PIP) 344
+1 Into the Roil (CMR) 397
+1 Jace Beleren (SLD) 746
+1 Jace's Archivist (PLST) M12-59
+1 Jace, the Mind Sculptor (BLC) 93
+1 Mana Drain (OTP) 67
+1 Memory Lapse (SLD) 2142
+1 Merchant Scroll (SLD) 2824
+1 Minamo, School at Water's Edge (LTC) 399
+1 Mind Spring (C20) 116
+1 Mind Stone (WHO) 244
+1 Mind's Eye (SLD) 2704
+1 Muddle the Mixture (SLD) 1254
+1 Mulldrifter (SLD) 374
+1 Murmuring Mystic (SPG) 151
+1 Mutavault (EOS) 163
+1 Mystic Confluence (MAR) 12
+1 Mystic Remora (SLD) 406
+1 Mystic Sanctuary (SLD) 2143
+1 Negate (PM20) 69
+1 Opt (PDOM) 60
+1 Ponder (P08) 6
+1 Preordain (J22) 63
+1 Pull from Tomorrow (SOC) 116
+1 Rapid Hybridization (SLD) 1126
+1 Reliquary Tower (SLD) 695
+1 Remand (F08) 1
+1 Repulse (OTP) 13
+1 Rhystic Study (WOT) 91
+1 Rite of Replication (MAR) 14
+1 Sensei's Divining Top (2X2) 398
+1 Snapcaster Mage (SLD) 808
+1 Sol Ring (MPS) 24
+1 Sphinx of the Final Word (POGW) 63s
+1 Stroke of Genius (PLST) USG-100
+1 Sublime Epiphany (PM21) 74s
+1 Swan Song (SLD) 1591
+1 Thought Scour (SLD) 2479
+1 Thought Vessel (SLD) 1495★
+1 Tidespout Tyrant (RVR) 422
+1 Time Spiral (PRM) 62221
+1 Torrential Gearhulk (MPS) 2
+1 Treachery (UDS) 50
+1 Treasure Cruise (TSR) 319
+1 Venser, Shaper Savant (FCA) 6
+1 Windfall (C15) 111
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Island (VOW) 409
+1 Island (SLD) 1131
+1 Island (SLD) 416
+1 Island (SLD) 1383
+1 Island (SLD) 255
+1 Island (SLZ) 369
+1 Island (PAL05) 2
+1 Island (SLD) 449
+1 Island (SLD) 1653
+1 Island (SLD) 1648
+1 Island (SLD) 1946
+1 Island (SLD) 1089
+1 Island (SLD) 889
+1 Island (SLD) 1479
+1 Island (SLD) 1191
+1 Island (SLD) 240
+1 Island (DFT) 513
+1 Island (SLD) 1951
+1 Island (SLD) 1940
+1 Island (SLD) 392
+1 Island (SLD) 2510
+1 Island (SLD) 386
+1 Island (SLD) 102

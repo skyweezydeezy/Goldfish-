@@ -1,0 +1,83 @@
+// Counter Culture (Rishkar, Peema Renegade)
+// COMMANDER
+1 Rishkar, Peema Renegade (SDS) 14
+// DECK
+1 Ancient Animus (CMR) 215
+1 Animation Module (PKLD) 194s
+1 Armorcraft Judge (KLD) 144
+1 Avenger of Zendikar (SLD) 1900
+1 Beast Whisperer (SLD) 1099
+1 Beast Within (SLD) 323
+1 Benefactor's Draught (C16) 21
+1 Bloodspore Thrinax (CMA) 93
+1 Boseiju, Who Endures (NEO) 412
+1 Bristly Bill, Spine Sower (SLD) 2621
+1 Castle Garenbrig (ELD) 388
+1 Champion of Lambholt (SLD) 2245
+1 Concordant Crossroads (2X2) 367
+1 Durable Handicraft (KLD) 153
+1 Duskwatch Recruiter (INR) 323
+1 Elvish Mystic (SLD) 805
+1 Evolution Sage (SLD) 765
+1 Fertilid (ARC) 54
+1 Finale of Devastation (CMM) 700
+5 Forest (J14) 5★
+4 Forest (P23) 10
+5 Forest (PL25) 6
+4 Forest (SLD) 1472
+4 Forest (SLD) 1949
+4 Forest (SLD) 395
+1 Forge of Heroes (CMM) 995
+1 Forgotten Ancient (PLST) SCG-120
+1 Fyndhorn Elves (PF26) 2
+1 Genesis Wave (FDN) 396
+1 Guardian Project (RVR) 433
+1 Gyre Sage (GK2) 112
+1 Hangarback Walker (PLG20) 2
+1 Helix Pinnacle (SLD) 1831
+1 Heroic Intervention (SLC) 97
+1 Hooded Hydra (C19) 172
+1 Incubation Druid (PRNA) 131s
+1 Innkeeper's Talent (SLP) 45
+1 Inscription of Abundance (PZNR) 186s
+1 Inspiring Call (SLD) 2328
+1 Ivy Lane Denizen (SLD) 769
+1 Kamahl, Fist of Krosa (DMR) 166
+1 Kami of Whispered Hopes (MOM) 383
+1 Karn's Bastion (SLD) 1751
+1 Kenrith's Transformation (ELD) 395
+1 Krosan Grip (STA) 53
+1 Lifecrafter's Bestiary (PAER) 162s
+1 Llanowar Elves (SLC) 12
+1 Llanowar Reborn (FUT) 171
+1 Loyal Guardian (NEC) 121
+1 Mosswort Bridge (LRW) 270
+1 Nature's Lore (SLD) 2278
+1 Nissa, Voice of Zendikar (PS16) 138
+1 Nykthos, Shrine to Nyx (PPRO) 2022-3
+1 Opal Palace (40K) 286★
+1 Oran-Rief, the Vastwood (C14) 305
+1 Overwhelming Stampede (M11) 189
+1 Path of Discovery (PRIX) 142s
+1 Pathbreaker Ibex (SPG) 101
+1 Rampant Growth (SLD) 1370
+1 Reclamation Sage (FDN) 340
+1 Renata, Called to the Hunt (PLST) THB-267
+1 Return of the Wildspeaker (SLD) 921
+1 Rishkar's Expertise (SLD) 2597
+1 Seedborn Muse (SLD) 907
+1 Snakeskin Veil (PCBB) 5
+1 Sol Ring (PIP) 887
+1 Stonecoil Serpent (SLD) 1226
+1 Tamiyo's Safekeeping (SLD) 2335
+1 The Great Henge (LTC) 378
+1 Thousand-Year Elixir (SPG) 148
+1 Three Visits (SLD) 1676
+1 Titania's Command (BRO) 349
+1 Tribute to the World Tree (PMOM) 211s
+1 Verdurous Gearhulk (MPS) 5
+1 Vitalize (6ED) 265
+1 Walking Ballista (PIP) 880
+1 War Room (PIP) 1068
+1 Wolfbriar Elemental (CNS) 182
+1 Worldly Tutor (TLE) 314

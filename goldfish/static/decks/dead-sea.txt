@@ -1,0 +1,103 @@
+// Dead Sea (Thrasios, Triton Hero)
+// COMMANDER
+1 Thrasios, Triton Hero (SLD) 2742
+// DECK
+1 Ancient Tomb (EXP) 36
+1 Arcane Signet (SLD) 589
+1 Back to Basics (SLD) 1718
+1 Basalt Monolith (CMA) 210
+1 Boseiju, Who Endures (NEO) 412
+1 Brainstorm (SLD) 7013
+1 Breeding Pool (EXP) 15
+1 Carpet of Flowers (FCA) 44
+1 Cavern of Souls (LCI) 410a
+1 Chrome Mox (SPG) 102
+1 Cursecatcher (SHM) 34
+1 Cyclonic Rift (RVR) 419
+1 Dispel (PLST) BFZ-76
+1 Dramatic Reversal (SLD) 1083
+1 Drift of Phantasms (RAV) 46
+1 Expropriate (SPG) 66
+1 Fierce Guardianship (SLC) 86
+1 Finale of Devastation (CMM) 700
+1 Flooded Grove (EXP) 35
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Freed from the Real (SLD) 2828
+1 Gaea's Cradle (JGP) 3
+1 Green Sun's Zenith (SPG) 127
+1 Grim Monolith (ULG) 126
+1 Gyre Engineer (RNA) 180
+1 Harbinger of the Seas (MAR) 55
+1 Herald of Secret Streams (PXLN) 59s
+1 Isochron Scepter (SLC) 9
+1 Kinnan, Bonder Prodigy (FCA) 55
+1 Kumena, Tyrant of Orazca (SLD) 1412★
+1 Lord of Atlantis (SPG) 1
+1 Lotus Petal (SLD) 7031
+1 Mana Breach (PLST) EXO-38
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Mana Vortex (DRK) 31
+1 Master of the Pearl Trident (TSR) 310
+1 Merchant Scroll (SLD) 2824
+1 Merfolk Mistbinder (RIX) 164
+1 Merfolk Sovereign (M10) 62
+1 Merrow Reejerey (F09) 4
+1 Mindslaver (OTP) 80
+1 Misty Rainforest (EXP) 25
+1 Mox Amber (PDOM) 224s
+1 Mox Diamond (V10) 10
+1 Mox Opal (2XM) 362
+1 Muddle the Mixture (SLD) 1254
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Narset, Parter of Veils (SLD) 1141
+1 Otawara, Soaring City (NEO) 414
+1 Pemmin's Aura (PLST) SCG-45
+1 Power Artifact (ATQ) 11
+1 Prismatic Vista (SPG) 38
+1 Rhystic Study (WOT) 91
+1 Rings of Brighthearth (LTC) 382
+1 Rising Waters (NEM) 38
+1 Simic Signet (SLD) 295
+1 Smokestack (SLC) 1998
+1 Sol Ring (PIP) 887
+1 Stasis (SLD) 1103
+1 Static Orb (MPS) 26
+1 Sunder (MP2) 36
+1 Survival of the Fittest (G09) 4
+1 Svyelun of Sea and Sky (MH2) 310
+1 Talisman of Curiosity (SLD) 1061
+1 Tangle Wire (SLD) 694
+1 Thassa's Oracle (SLD) 1280
+1 The One Ring (HOC) 84
+1 Tishana's Tidebinder (LCI) 335
+1 Tropical Island (30A) 279
+1 Tsunami (5ED) 334
+1 Urza's Saga (SLC) 48
+1 Veil of Summer (SOA) 60
+1 Vodalian Hexcatcher (DMU) 398
+1 Vorinclex, Voice of Hunger (MUL) 159
+1 Walking Ballista (PIP) 880
+1 Whir of Invention (SPG) 96
+1 Winter Moon (PMH3) 213s
+1 Winter Orb (SLD) 2400
+1 Forest (J14) 5★
+1 Forest (PL25) 6
+1 Forest (P23) 10
+1 Forest (SLD) 395
+1 Forest (SLD) 1949
+1 Forest (SLD) 1472
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Island (SLD) 1131
+1 Island (SLD) 416
+1 Island (SLD) 1383
+1 Island (SLD) 255
+1 Island (SLZ) 369

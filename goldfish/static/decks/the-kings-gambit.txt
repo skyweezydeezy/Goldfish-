@@ -1,0 +1,103 @@
+// The King's Gambit (Kenrith, the Returned King)
+// COMMANDER
+1 Kenrith, the Returned King (FCA) 23
+// DECK
+1 Ad Nauseam (SOA) 25
+1 An Offer You Can't Refuse (FDN) 311
+1 Ancient Tomb (EXP) 36
+1 Angel's Grace (SOA) 2
+1 Arcane Signet (SLD) 589
+1 Arid Mesa (EXP) 24
+1 Badlands (30A) 273
+1 Bayou (30A) 274
+1 Birds of Paradise (BLC) 81
+1 Bloodstained Mire (EXP) 18
+1 Boseiju, Who Endures (NEO) 412
+1 Brain Freeze (SLC) 29
+1 Cabal Ritual (V16) 2
+1 Chrome Mox (SPG) 102
+1 City of Brass (SCH) 41
+1 Command Tower (PIP) 888
+1 Dark Ritual (MP2) 21
+1 Daze (MP2) 12
+1 Deathrite Shaman (SLC) 2012
+1 Deflecting Swat (CMM) 698
+1 Demonic Consultation (SLC) 31
+1 Demonic Tutor (SLD) 1856
+1 Desperate Ritual (SLD) 1984
+1 Elvish Spirit Guide (SLD) 423
+1 Enlightened Tutor (TLE) 305
+1 Esper Sentinel (PMH2) 12s
+1 Faerie Mastermind (PMOM) 58s
+1 Fierce Guardianship (SLC) 86
+1 Flooded Strand (EXP) 16
+1 Flusterstorm (SOA) 18
+1 Force of Negation (2X2) 346
+1 Force of Will (MP2) 14
+1 Gamble (SLD) 188
+1 Gemstone Caverns (EOS) 151
+1 Gitaxian Probe (SLD) 2067
+1 Grand Abolisher (CMM) 625
+1 Grim Monolith (ULG) 126
+1 Hermit Druid (INR) 488
+1 Imperial Seal (2X2) 354
+1 Intuition (G03) 1
+1 Jace, Wielder of Mysteries (SLD) 1576
+1 Jeska's Will (SOA) 44
+1 Laboratory Maniac (SLD) 1394★
+1 Lion's Eye Diamond (MIR) 307
+1 Lotus Petal (SLD) 7031
+1 Mana Confluence (EXP) 42
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Manamorphose (SPG) 142
+1 Marsh Flats (EXP) 21
+1 Mental Misstep (SLD) 1179
+1 Merchant Scroll (SLD) 2824
+1 Mindbreak Trap (OTP) 68
+1 Misdirection (SLD) 1272
+1 Misty Rainforest (EXP) 25
+1 Mox Diamond (V10) 10
+1 Mox Opal (2XM) 362
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Necropotence (WOT) 94
+1 Noble Hierarch (2XM) 352
+1 Opposition Agent (SLC) 112
+1 Orcish Bowmasters (HOC) 59
+1 Pact of Negation (MP2) 16
+1 Plateau (30A) 275
+1 Polluted Delta (EXP) 17
+1 Pyretic Ritual (SLD) 1064
+1 Red Elemental Blast (A25) 147
+1 Rhystic Study (WOT) 91
+1 Rite of Flame (PLST) SS3-7
+1 Savannah (30A) 276
+1 Scalding Tarn (EXP) 22
+1 Scrubland (30A) 277
+1 Sensei's Divining Top (2X2) 398
+1 Silence (SLD) 881
+1 Simian Spirit Guide (SLD) 1548★
+1 Snuff Out (SLC) 110
+1 Sol Ring (PIP) 887
+1 Spell Pierce (MP2) 17
+1 Swan Song (SLD) 1591
+1 Taiga (30A) 278
+1 Tainted Pact (SLC) 90
+1 Teferi, Time Raveler (BLC) 92
+1 Tendrils of Agony (SLD) 2004
+1 Thassa's Oracle (SLD) 1280
+1 Tinder Wall (CST) 270
+1 Tropical Island (30A) 279
+1 Tundra (30A) 280
+1 Underground Sea (30A) 281
+1 Underworld Breach (SLD) 2045
+1 Vampiric Tutor (SOA) 35
+1 Veil of Summer (SOA) 60
+1 Verdant Catacombs (EXP) 23
+1 Volcanic Island (30A) 282
+1 Wheel of Fortune (G10) 7
+1 Windfall (SLD) 2182
+1 Wishclaw Talisman (PELD) 110s
+1 Worldly Tutor (TLE) 314
+1 Yawgmoth's Will (G07) 3

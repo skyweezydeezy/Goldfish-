@@ -1,0 +1,103 @@
+// Compound Interest (Atraxa, Praetors' Voice)
+// COMMANDER
+1 Atraxa, Praetors' Voice (2XM) 353
+// DECK
+1 Ajani, Sleeper Agent (DMU) 376
+1 Anguished Unmaking (OTP) 74
+1 Arcane Signet (SLD) 589
+1 Assassin's Trophy (SLD) 139
+1 Atraxa, Grand Unifier (ONE) 357
+1 Bayou (30A) 274
+1 Birds of Paradise (BLC) 81
+1 Botanical Sanctum (SLD) 1376
+1 Branching Evolution (PIP) 996
+1 Breeding Pool (EXP) 15
+1 Chrome Mox (SPG) 102
+1 City of Brass (SCH) 41
+1 Command Tower (PIP) 888
+1 Concealed Courtyard (SLD) 1372
+1 Contagion Engine (OTP) 78
+1 Corpsejack Menace (PIP) 742
+1 Cyclonic Rift (RVR) 419
+1 Darkslick Shores (ONE) 372
+1 Delighted Halfling (HOC) 65
+1 Demonic Tutor (SLD) 1856
+1 Doubling Season (WOT) 101
+1 Eladamri's Call (SLD) 1770
+1 Elspeth, Storm Slayer (PTDM) 11p
+1 Enlightened Tutor (TLE) 305
+1 Eternal Witness (SLD) 1522★
+1 Evolution Sage (SLD) 765
+1 Exotic Orchard (SLD) 1231
+1 Fellwar Stone (SLD) 1040
+1 Fierce Guardianship (SLC) 86
+1 Flooded Strand (EXP) 16
+1 Flux Channeler (CMM) 847
+1 Force of Will (MP2) 14
+1 Forest (J14) 5★
+1 Forgotten Ancient (PLST) SCG-120
+1 Ghave, Guru of Spores (SLD) 1137
+1 Godless Shrine (EXP) 11
+1 Green Sun's Zenith (SPG) 127
+1 Gwenna, Eyes of Gaea (PBRO) 185s
+1 Hallowed Fountain (EXP) 6
+1 Hangarback Walker (PLG20) 2
+1 Hardened Scales (SLD) 2365
+1 Indatha Triome (IKO) 309
+1 Inexorable Tide (PIP) 988
+1 Island (J14) 2★
+1 Kalonian Hydra (PLST) M14-181
+1 Karn's Bastion (SLD) 1751
+1 Kodama's Reach (SLD) 371
+1 Lotus Petal (SLD) 7031
+1 Mana Confluence (EXP) 42
+1 Mana Drain (OTP) 67
+1 Mana Vault (MPS) 17
+1 Managorger Hydra (SLD) 306
+1 Marsh Flats (EXP) 21
+1 Misty Rainforest (EXP) 25
+1 Mystic Remora (SLD) 406
+1 Mystical Tutor (SLD) 334
+1 Noble Hierarch (2XM) 352
+1 Oko, Thief of Crowns (OTP) 77
+1 Overgrown Tomb (EXP) 13
+1 Ozolith, the Shattered Spire (PMOM) 198s
+1 Path to Exile (SLD) 226
+1 Plains (PL26) 5
+1 Polluted Delta (EXP) 17
+1 Polukranos, Unchained (THB) 342
+1 Razorverge Thicket (ONE) 373
+1 Reflecting Pool (EOS) 171
+1 Rhystic Study (WOT) 91
+1 Roalesk, Apex Hybrid (PWAR) 213s
+1 Savannah (30A) 276
+1 Scrubland (30A) 277
+1 Seachrome Coast (ONE) 374
+1 Smothering Tithe (WOT) 87
+1 Sol Ring (PIP) 887
+1 Spark Double (RVR) 421
+1 Swamp (J14) 3★
+1 Swan Song (SLD) 1591
+1 Swords to Plowshares (PF25) 12
+1 Sylvan Library (SPG) 155
+1 Teferi's Protection (STA) 11
+1 Tekuthal, Inquiry Dominus (ONE) 349
+1 Temple Garden (EXP) 10
+1 Tendershoot Dryad (SLD) 1902
+1 The One Ring (HOC) 84
+1 Thrummingbird (SLZ) 32
+1 Tropical Island (30A) 279
+1 Tundra (30A) 280
+1 Underground Sea (30A) 281
+1 Vampiric Tutor (SOA) 35
+1 Veil of Summer (SOA) 60
+1 Verdant Catacombs (EXP) 23
+1 Vivien Reid (FDN) 421
+1 Vorinclex, Monstrous Raider (KHM) 407
+1 Vraska, Betrayal's Sting (ONE) 442
+1 Walking Ballista (PIP) 880
+1 Watery Grave (EXP) 7
+1 Winding Constrictor (SLD) 309
+1 Windswept Heath (EXP) 20
+1 Worldly Tutor (TLE) 314
+1 Zagoth Triome (IKO) 313

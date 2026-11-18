@@ -1,0 +1,103 @@
+// Zimone, Infinite Analyst
+// COMMANDER
+1 Zimone, Infinite Analyst (SOC) 10
+// DECK
+1 Alchemist's Refuge (SLD) 358
+1 Altered Ego (PSOI) 241s
+1 Animist's Awakening (C20) 166
+1 Applied Geometry (SOS) 172
+1 Arcane Signet (SLD) 589
+1 Astral Cornucopia (CM2) 172
+1 Beast Within (SLD) 323
+1 Benevolent Hydra (J22) 38
+1 Berta, Wise Extrapolator (PSOS) 175p
+1 Command Tower (PIP) 888
+1 Commander's Insight (C21) 350
+1 Craterhoof Behemoth (SLD) 376
+1 Cultivate (SLD) 2437
+1 Curse of the Swine (CLB) 716
+1 Cyclonic Rift (RVR) 419
+1 Decisive Denial (OTP) 42
+1 Deekah, Fractal Theorist (C21) 353
+1 Doubling Season (WOT) 101
+1 Elementalist's Palette (C21) 403
+1 Entrancing Melody (PXLN) 55p
+1 Exotic Orchard (SLD) 1231
+1 Fabled Passage (SLD) 471
+1 Finale of Devastation (CMM) 700
+1 Flooded Grove (EXP) 35
+1 Forest (J14) 5★
+1 Forest (P23) 10
+1 Forest (PL25) 6
+1 Forest (SLD) 1472
+1 Forest (SLD) 1949
+1 Forest (SLD) 395
+1 Forgotten Ancient (PLST) SCG-120
+1 Fractal Harness (C21) 388
+1 Geometer's Arthropod (SOS) 300
+1 Germination Practicum (SOS) 296
+1 Goldvein Hydra (POTJ) 167s
+1 Great Hall of the Biblioplex (PSOS) 257p
+1 Hangarback Walker (PLG20) 2
+1 Hardened Scales (SLD) 2365
+1 Hinterland Harbor (PIP) 1026
+1 Hydroid Krasis (SLD) 1332
+1 Island (J14) 2★
+1 Island (P23) 7
+1 Island (SLD) 1131
+1 Island (SLD) 1400
+1 Island (SLD) 1469
+1 Island (SLD) 673
+1 Island (SLP) 32
+1 Jadzi, Steward of Fate (SOS) 318
+1 Kami of Whispered Hopes (MOM) 383
+1 Kodama's Reach (SLD) 371
+1 Lifeblood Hydra (C14) 45
+1 Mathemagics (SOS) 320
+1 Mind into Matter (PSOS) 202p
+1 Nature's Lore (SLD) 2278
+1 Opal Palace (40K) 286★
+1 Open the Way (MAT) 73
+1 Oran-Rief, the Vastwood (C14) 305
+1 Overflowing Basin (PIP) 972
+1 Ozolith, the Shattered Spire (PMOM) 198s
+1 Paradox Gardens (SOS) 258
+1 Parallel Lives (WOT) 103
+1 Path of Ancestry (SLD) 914
+1 Pensive Professor (SOS) 321
+1 Primal Might (SLC) 73
+1 Primo, the Unbounded (SOC) 6
+1 Primordial Hydra (SLD) 1330
+1 Pull from Tomorrow (PAKH) 65s
+1 Quandrix Campus (SOC) 395
+1 Quandrix Command (PSTX) 217s
+1 Quandrix, the Proof (SOS) 286
+1 Rain-Slicked Copse (TRC) 396
+1 Reliquary Tower (SLD) 695
+1 Rhystic Study (WOT) 91
+1 Rogue's Passage (SLD) 607
+1 Seedborn Muse (SLD) 907
+1 Sodden Verdure (MSC) 494
+1 Sol Ring (PIP) 887
+1 Steelbane Hydra (NCC) 313
+1 Stonecoil Serpent (SLD) 1226
+1 Striding Shotcaller (SOC) 50
+1 Stroke of Genius (PLST) USG-100
+1 Sylvan Library (SPG) 155
+1 Tanazir Quandrix (STX) 284
+1 Tangled Islet (FIC) 434
+1 Temple of Mystery (PIP) 1050
+1 Temple of the False God (SLC) 47
+1 Terramorphic Expanse (WHO) 913
+1 The Goose Mother (WOE) 362
+1 The Great Henge (LTC) 378
+1 Three Visits (SLD) 1676
+1 Turbulent Wilderness (SOC) 107
+1 Unbound Flourishing (SLD) 1331
+1 Vineglimmer Snarl (WHO) 1123
+1 Vorinclex, Monstrous Raider (KHM) 407
+1 Vorinclex, Voice of Hunger (MUL) 159
+1 Yavimaya Bloomsage (SOC) 92
+1 Yavimaya Coast (DMU) 382
+1 Zimone, All-Questioning (DSK) 366
+1 Zimone, Quandrix Prodigy (SOC) 341

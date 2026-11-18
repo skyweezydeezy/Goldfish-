@@ -1,0 +1,103 @@
+// OTK (Bruna, Light of Alabaster)
+// COMMANDER
+1 Bruna, Light of Alabaster (SLD) 1221
+// DECK
+1 Adarkar Wastes (DMU) 377
+1 All That Glitters (CMM) 622
+1 Angelic Destiny (M12) 3
+1 Aqueous Form (PLST) THS-39
+1 Arcane Flight (DOM) 43
+1 Arcane Signet (SLD) 589
+1 Aura Thief (PLST) UDS-26
+1 Azorius Signet (SLD) 286
+1 Battle Mastery (DTK) 7
+1 Blind Obedience (SLD) 1030
+1 Eiganjo Castle (PLST) CHK-275
+1 Castle Vantress (ELD) 390
+1 Celestial Colonnade (EOS) 142
+1 Cleansing Meditation (TOR) 3
+1 Coldsteel Heart (J22) 94
+1 Command Tower (PIP) 888
+1 Corrupted Conscience (PLST) MBS-22
+1 Counterspell (SLD) 7117
+1 Darksteel Mutation (CMM) 623
+1 Daybreak Coronet (FUT) 21
+1 Diplomatic Immunity (MMQ) 75
+1 Eel Umbra (AFC) 83
+1 Eldrazi Conscription (SLD) 1218
+1 Emergence Zone (WAR) 245
+1 Enchanted Evening (SHM) 140
+1 Enlightened Tutor (TLE) 305
+1 Estrid's Invocation (C18) 8
+1 Ethereal Armor (PL23) 5
+1 Flickerform (C13) 12
+1 Generous Gift (SLD) 369
+1 Glacial Fortress (SLD) 456
+1 Greater Auramancy (WOT) 84
+1 Hall of Heliod's Generosity (H1R) 39
+1 Hallowed Fountain (EXP) 6
+1 Hallowed Haunting (SPG) 64
+1 Sword of Hearth and Home (LTC) 384
+1 High Market (EOS) 153
+1 Hyena Umbra (PC2) 8
+1 Idyllic Grange (ELD) 246
+1 Idyllic Tutor (SLD) 1636★
+1 Imprisoned in the Moon (SLD) 1102
+1 Irrigated Farmland (PAKH) 245s
+1 Kor Spiritdancer (PC2) 9
+1 Land Tax (WOT) 86
+1 Lightning Greaves (SLD) 1493★
+1 Mana Drain (OTP) 67
+1 Mantle of the Ancients (PIP) 980
+1 Marble Diamond (PLST) MIR-310
+1 Castle Ardenvale (LTC) 391
+1 Mesa Enchantress (SLD) 282
+1 Mind Stone (DCI) 11
+1 Mirrormade (PELD) 55s
+1 Mystic Gate (EXP) 26
+1 Oblivion Ring (F09) 11
+1 Open the Armory (SLD) 2089
+1 Otawara, Soaring City (NEO) 414
+1 Path to Exile (SLD) 226
+1 Port Town (WHO) 1098
+1 Prairie Stream (EXP) 1
+1 Rogue's Passage (SLD) 607
+1 Seachrome Coast (ONE) 374
+1 Seal Away (DOM) 31
+1 Sejiri Shelter (ZNR) 37
+1 Sky Diamond (KHC) 103
+1 Sky-Blessed Samurai (NEO) 37
+1 Smothering Tithe (WOT) 87
+1 Sol Ring (PIP) 887
+1 Spectra Ward (M15) 36
+1 Sram, Senior Edificer (FCA) 3
+1 Stasis Snare (PLST) PBFZ-50
+1 Steel of the Godhead (SHM) 150
+1 Supreme Verdict (2X2) 388
+1 Swan Song (SLD) 1591
+1 Swiftfoot Boots (SLD) 606
+1 Sword of Feast and Famine (2XM) 364
+1 Swords to Plowshares (PF25) 12
+1 Talisman of Progress (SLD) 1052
+1 Teferi's Protection (STA) 11
+1 Thought Vessel (SLD) 1495★
+1 Unquestioned Authority (C18) 78
+1 War Room (PIP) 1068
+1 Wash Away (DBL) 354
+1 Island (J14) 2★
+1 Island (SLP) 32
+1 Island (SLD) 1469
+1 Island (P23) 7
+1 Island (SLD) 1400
+1 Island (SLD) 673
+1 Plains (PL26) 5
+1 Plains (J14) 1★
+1 Plains (SLD) 1399
+1 Plains (SLZ) 366
+1 Plains (SLD) 1130
+1 Plains (SLD) 1088
+1 Plains (SLD) 1468
+1 Plains (P23) 6
+1 Plains (PIP) 845
+1 Plains (UNF) 491
+1 Plains (SLD) 547

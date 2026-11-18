@@ -169,6 +169,12 @@ Cards are kept in a database filed by release set: one file per set in `goldfish
 
 Card data and images are provided by [Scryfall](https://scryfall.com) and are not endorsed by Scryfall. Following Scryfall's and Wizards' policies, this app is **free to use with no sign-up or paywall**, card images are shown whole and unaltered, and the hosted version fetches everything from Scryfall directly instead of re-hosting it. Optional tips are welcome on Cash App at <https://cash.app/$SWDMark> and never unlock anything.
 
+## Built-in decks
+
+The deck menu on the Deck tab starts with a library of ready-made decks, grouped by color identity: five colors first, then four, three, two, one and colorless. Pick one and it loads straight into the simulator. The same decks are listed as opponents for the mirror match, so any deck can play any other.
+
+The lists live in `goldfish/static/decks/` as plain text (one deck per file, the first line is `// Deck name (Commander)`). To add or change a deck, edit or add a `.txt` file there and run `node tools/build-deck-index.js` (it looks up each commander's color identity on Scryfall and rewrites `decks/index.json`). `node tests/run.js` checks that every list parses and that the index matches the files.
+
 ## Saved decks
 
 Tap **Manage** on the Deck tab to rename, duplicate, copy, export or delete saved decks, and to back them all up to one file (**Export all**) or bring them back (**Import**). Decks live in your browser only, so export a backup before clearing browser data or switching devices.

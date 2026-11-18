@@ -1,0 +1,103 @@
+// Unified Misery (Jodah, the Unifier)
+// COMMANDER
+1 Jodah, the Unifier (SLD) 2839
+// DECK
+1 Sol Ring (PIP) 887
+1 Mana Vault (MPS) 17
+1 Arcane Signet (SLD) 589
+1 Chrome Mox (SPG) 102
+1 Mox Diamond (V10) 10
+1 Mox Amber (PDOM) 224s
+1 Birds of Paradise (BLC) 81
+1 Delighted Halfling (HOC) 65
+1 Bloom Tender (SLD) 284
+1 Relic of Legends (SLD) 7109
+1 Smothering Tithe (WOT) 87
+1 Nature's Lore (SLD) 2278
+1 Three Visits (SLD) 1676
+1 Farseek (SLD) 2698
+1 Rhystic Study (WOT) 91
+1 Mystic Remora (SLD) 406
+1 The One Ring (HOC) 84
+1 Esper Sentinel (PMH2) 12s
+1 Sylvan Library (SPG) 155
+1 The Great Henge (LTC) 378
+1 Tymna the Weaver (FCA) 18
+1 Demonic Tutor (SLD) 1856
+1 Vampiric Tutor (SOA) 35
+1 Worldly Tutor (TLE) 314
+1 Enlightened Tutor (TLE) 305
+1 Tergrid, God of Fright (PKHM) 112s
+1 Grand Arbiter Augustin IV (SLD) 1483★
+1 Vorinclex, Voice of Hunger (MUL) 159
+1 Jin-Gitaxias, Core Augur (MUL) 141
+1 Jin-Gitaxias, Progress Tyrant (NEO) 514
+1 Elesh Norn, Grand Cenobite (SLD) 811
+1 Elesh Norn, Mother of Machines (ONE) 419
+1 Sheoldred, the Apocalypse (DMU) 436
+1 Sheoldred, Whispering One (MUL) 146
+1 Toxrill, the Corrosive (SLD) 1929
+1 Hokori, Dust Drinker (SLD) 420
+1 Atraxa, Grand Unifier (ONE) 357
+1 Etali, Primal Conqueror (PMOM) 137s
+1 Maha, Its Feathers Night (BLB) 289
+1 Koma, Cosmos Serpent (SLD) 1765
+1 Avacyn, Angel of Hope (2XM) 335
+1 Emrakul, the Promised End (INR) 481
+1 Ulamog, the Defiler (MH3) 383
+1 Sen Triplets (SLD) 1198
+1 Linvala, Keeper of Silence (SLD) 1289
+1 Najeela, the Blade-Blossom (SLD) 1032
+1 Derevi, Empyrial Tactician (BLC) 87
+1 Armageddon (MP2) 31
+1 Ravages of War (PIP) 882
+1 Cataclysm (V14) 3
+1 Cyclonic Rift (RVR) 419
+1 Jokulhaups (DKM) 15
+1 Force of Will (MP2) 14
+1 Fierce Guardianship (SLC) 86
+1 Deflecting Swat (CMM) 698
+1 Mana Drain (OTP) 67
+1 Teferi's Protection (STA) 11
+1 Swords to Plowshares (PF25) 12
+1 Teferi, Time Raveler (BLC) 92
+1 Opposition Agent (SLC) 112
+1 Drannith Magistrate (TLE) 2
+1 Command Tower (PIP) 888
+1 City of Brass (SCH) 41
+1 Mana Confluence (EXP) 42
+1 Plaza of Heroes (EOS) 168
+1 Cavern of Souls (LCI) 410a
+1 Gaea's Cradle (JGP) 3
+1 Ancient Tomb (EXP) 36
+1 Boseiju, Who Endures (NEO) 412
+1 Otawara, Soaring City (NEO) 414
+1 Eiganjo, Seat of the Empire (NEO) 413
+1 Exotic Orchard (SLD) 1231
+1 Reflecting Pool (EOS) 171
+1 Wooded Foothills (EXP) 19
+1 Windswept Heath (EXP) 20
+1 Verdant Catacombs (EXP) 23
+1 Misty Rainforest (EXP) 25
+1 Bloodstained Mire (EXP) 18
+1 Polluted Delta (EXP) 17
+1 Flooded Strand (EXP) 16
+1 Marsh Flats (EXP) 21
+1 Savannah (30A) 276
+1 Bayou (30A) 274
+1 Tropical Island (30A) 279
+1 Tundra (30A) 280
+1 Underground Sea (30A) 281
+1 Scrubland (30A) 277
+1 Taiga (30A) 278
+1 Volcanic Island (30A) 282
+1 Temple Garden (EXP) 10
+1 Breeding Pool (EXP) 15
+1 Overgrown Tomb (EXP) 13
+1 Hallowed Fountain (EXP) 6
+1 Watery Grave (EXP) 7
+1 Godless Shrine (EXP) 11
+1 Zagoth Triome (IKO) 313
+1 Indatha Triome (IKO) 309
+1 Spara's Headquarters (SNC) 293
+1 Forest (J14) 5★

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>I See Fish: 4-player pod mockup</title>
+<style>
+:root{--bg:#08121a;--s1:#101e2a;--s2:#172a3a;--s3:#213a4f;--ice:#8fd8ff;--t:#eef7fd;--t2:#b9d0e0;--mu:#7f9bb0;--b:rgba(160,215,255,.16)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -10%,#12324a 0,var(--bg) 55%) fixed;color:var(--t);font:13px system-ui,-apple-system,"Segoe UI",sans-serif}
+.top{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--b);background:rgba(10,24,34,.95)}
+.top b{font-size:15px}.top .sp{flex:1}.btn{background:var(--s3);border:1px solid var(--b);border-radius:8px;padding:6px 10px;color:var(--t);font-size:12px}
+.btn.p{background:linear-gradient(180deg,#4db3f5,#2a82d6);border:0}
+.pod{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px}
+.opp{background:linear-gradient(180deg,rgba(23,42,58,.95),rgba(16,30,42,.95));border:1px solid var(--b);border-radius:12px;padding:8px;position:relative}
+.opp.active{box-shadow:0 0 0 2px #f5d17a,0 0 18px rgba(245,209,122,.35)}
+.oh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.av{width:34px;height:34px;border-radius:50%;background:conic-gradient(#b9aeaa 0 50%,#9bd3ae 0);border:2px solid var(--b)}
+.on{font-weight:700;font-size:12.5px;line-height:1.2}.on small{display:block;color:var(--mu);font-weight:400}
+.life{margin-left:auto;font-size:22px;font-weight:800}.life.low{color:#ff8a8a}
+.stats{display:flex;gap:8px;color:var(--t2);font-size:11px;margin-bottom:6px;flex-wrap:wrap}
+.stats span{background:rgba(255,255,255,.05);padding:1px 6px;border-radius:99px}
+.mini{display:flex;flex-wrap:wrap;gap:3px;min-height:58px}
+.c{width:34px;aspect-ratio:488/680;border-radius:3px;box-shadow:0 1px 3px #000a}
+.c.t{transform:rotate(90deg) scale(.85)}
+.W{background:linear-gradient(#f8f1d3,#cdbf8f)}.U{background:linear-gradient(#a9d4f0,#4b8bc0)}.B{background:linear-gradient(#8d8380,#3a3230)}.R{background:linear-gradient(#f19b7c,#b6492b)}.G{background:linear-gradient(#9bd3ae,#3b8a57)}.L{background:linear-gradient(#cbc5c0,#77706a)}.Gd{background:linear-gradient(#f1d27a,#a9842c)}
+.chip{font-size:10.5px;background:rgba(0,0,0,.35);border-radius:6px;padding:2px 5px;align-self:center;color:var(--t2)}
+.tag{position:absolute;right:8px;bottom:6px;font-size:10px;color:var(--ice)}
+.feed{margin:0 8px;display:flex;align-items:center;gap:10px;background:rgba(245,209,122,.08);border:1px solid rgba(245,209,122,.35);border-radius:10px;padding:6px 10px;font-size:12px}
+.feed .c{width:30px}
+.me{margin:8px;border-radius:14px;border:1px solid var(--b);padding:8px;background:radial-gradient(ellipse at 50% 0,#1b4d6b,#0f2d40 45%,#0a2030)}
+.row{display:flex;gap:6px;align-items:center;min-height:86px;padding:16px 6px 6px;border-radius:10px;background:rgba(214,241,255,.05);position:relative;margin-bottom:6px}
+.row .lbl{position:absolute;top:2px;left:8px;font-size:9.5px;letter-spacing:.08em;color:rgba(214,241,255,.4)}
+.row .c{width:52px}.row.l .c{width:44px}
+.hand{display:flex;justify-content:center;padding-top:6px}.hand .c{width:62px;margin:0 -8px;border:2px solid #7fdc7f}
+.hud{display:flex;gap:14px;align-items:center;padding:4px 8px;color:var(--t2);font-size:12px}.hud b{color:var(--t);font-size:18px}
+.ctl{display:flex;gap:6px;padding:0 8px 8px;flex-wrap:wrap}
+.note{color:var(--mu);font-size:11px;padding:0 10px 10px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none}
+/* phone */
+@media (max-width:600px){
+ .pod{grid-template-columns:1fr 1fr 1fr;gap:5px;padding:6px}
+ .opp{padding:6px}.av{width:24px;height:24px}.on small,.stats,.mini,.tag{display:none}.life{font-size:18px}.on{font-size:11px}
+ .oh{margin:0;flex-wrap:wrap;gap:4px}
+ .opp .phonehint{display:block!important;font-size:10px;color:var(--mu);margin-top:2px}
+ .row .c{width:40px}.row.l .c{width:34px}.hand .c{width:54px}
+}
+</style></head><body>
+<div class="top"><b>I See Fish</b><span class="chip">4-player pod · Turn 6</span><span class="sp"></span><button class="btn">⏸ Pause</button><button class="btn">⏭ Step</button><button class="btn">Speed: Normal</button></div>
+
+<div class="pod">
+  <div class="opp active">
+    <div class="oh"><div class="av"></div><div class="on">Teysa · Death Tax<small>AI · learned deck</small></div><div class="life">31</div></div>
+    <div class="stats"><span>✋ 4</span><span>📚 81</span><span>⚔ cmdr 0</span><span>☠ 0</span></div>
+    <div class="mini"><div class="c B"></div><div class="c W"></div><div class="c Gd"></div><div class="chip">Spirit ×6</div><div class="c L t"></div><div class="c L"></div><div class="c L"></div><div class="c L"></div></div>
+    <div class="phonehint" style="display:none">✋4 · tap to view</div>
+    <div class="tag">Tap to zoom ▸</div>
+  </div>
+  <div class="opp">
+    <div class="oh"><div class="av" style="background:conic-gradient(#f19b7c 0 50%,#a9d4f0 0)"></div><div class="on">Veyran · Spellslinger<small>AI · learned deck</small></div><div class="life low">12</div></div>
+    <div class="stats"><span>✋ 6</span><span>📚 77</span><span>⚔ cmdr 7</span><span>☠ 0</span></div>
+    <div class="mini"><div class="c R"></div><div class="c U"></div><div class="c Gd"></div><div class="c L"></div><div class="c L"></div><div class="c L t"></div></div>
+    <div class="phonehint" style="display:none">✋6 · tap to view</div>
+    <div class="tag">Tap to zoom ▸</div>
+  </div>
+  <div class="opp">
+    <div class="oh"><div class="av" style="background:conic-gradient(#b9aeaa 0 100%)"></div><div class="on">Zul Ashur · Reanimator<small>AI · learned deck</small></div><div class="life">38</div></div>
+    <div class="stats"><span>✋ 3</span><span>📚 70</span><span>⚔ cmdr 0</span><span>🪦 14</span></div>
+    <div class="mini"><div class="c B"></div><div class="c B"></div><div class="chip">Zombie ×4</div><div class="c L"></div><div class="c L"></div><div class="c L"></div></div>
+    <div class="phonehint" style="display:none">✋3 · tap to view</div>
+    <div class="tag">Tap to zoom ▸</div>
+  </div>
+</div>
+
+<div class="feed"><div class="c B"></div><div><b>Teysa</b> casts <b>Swords to Plowshares</b> → targets your <b>Frodo</b>. <span style="color:var(--mu)">The card pops up big for a moment, then lands in the log.</span></div><span class="sp" style="flex:1"></span><button class="btn">Respond…</button></div>
+
+<div class="me">
+  <div class="hud"><span>You · Frodo & Sam</span><b>34</b><span>life</span><span>💍 2×</span><span>Mana open ◐◐</span></div>
+  <div class="row"><span class="lbl">CREATURES</span><div class="c G"></div><div class="c W"></div><div class="c Gd"></div><div class="c G t"></div><div class="chip">Food ×5</div></div>
+  <div class="row l"><span class="lbl">LANDS</span><div class="c L"></div><div class="c L"></div><div class="c L t"></div><div class="c L t"></div><div class="c L"></div><div class="c L"></div></div>
+  <div class="hand"><div class="c W"></div><div class="c G"></div><div class="c Gd"></div><div class="c B"></div><div class="c L"></div></div>
+</div>
+<div class="ctl"><button class="btn p">Next turn ⟳</button><button class="btn">⚔ Attack…</button><button class="btn">Undo</button><button class="btn">Log</button></div>
+<div class="note">Mockup only: coloured blocks stand in for card images. Opponents sit in a strip of mini boards on top; your full board sits below. Tapping any card opens the full-screen viewer; tapping an opponent's panel swaps it into the big area.</div>
+</body></html>

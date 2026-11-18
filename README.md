@@ -38,7 +38,7 @@ Everything runs locally and only reads your files; nothing is uploaded.
 
 | Tab | What you see |
 |---|---|
-| **1 · Deck** | Load/save decklists. A *curve wall* of your actual cards stacked by mana value, piles of lands with the colors they make, and checks for card count, color identity, legality and missing images. |
+| **1 · Deck** | Load/save decklists. A **Strengths and weaknesses** box names what the deck does well and badly (ramp, card draw, removal, wipes, counters, protection, tutors, finishers, land count, color sources, and themes like spellslinger or graveyard) using common deckbuilding rules of thumb. A *curve wall* of your actual cards stacked by mana value, piles of lands with the colors they make, and checks for card count, color identity, legality and missing images. |
 | **2 · Opening Hands** | Fanned 7-card draws with London mulligans (the bottom picks are greyed out), 12 sample hands at once, and the exact odds of each land count in your opening 7. |
 | **3 · Goldfish Table** | A playable table. Click cards to play them (mana auto-taps from the right lands), click permanents to tap them, and right-click to move cards. Or let the autopilot play turns with animated draws, land drops, casts and attacks. Includes undo. |
 | **4 · Simulation** | Thousands of autopiloted games: mana by turn (median plus a 10–90% band), land-drop odds, commander cast turn, goldfish kill turn, and a heatmap of when every card gets played. You can replay a rough, typical or nut-draw game turn by turn with card images, then send it to the table. A **Suggestions** box reads the run and points out missed land drops, flood, low keep rates, a late commander, cards that are drawn but never cast, and how much of the deck isn't simulated yet. The **mirror match** plays your deck against itself or a saved deck, lists the cards linked to winning or losing that matchup, shows what your fastest wins and fastest losses have in common, and finds pairs of cards that do much better or worse together. |
@@ -130,7 +130,7 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Deck | Cards | Rules lines | Simulated | Mirror / opponent only | No solo effect | Approximated | Not built |
 |---|---|---|---|---|---|---|---|
 | Frodo (old) | 94 | 183 | 154 | 24 | 4 | 1 | 0 |
-| Veyran | 100 | 149 | 110 | 31 | 4 | 3 | 1 (Desperate Ritual's splice) |
+| Veyran | 100 | 149 | 111 | 31 | 4 | 3 | 0 |
 | Second Breakfast | 100 | 161 | 138 | 17 | 4 | 2 | 0 |
 | Loyalty Program | 100 | 168 | 134 | 28 | 6 | 0 | 0 |
 | Zul Ashur (Zombie reanimator) | 100 | 134 | 113 | 17 | 4 | 0 | 0 |

@@ -167,4 +167,16 @@ check('the goldfish kills with this deck by turn 10 in most games (spellslinger 
 const vf = G.matchMonteCarlo(V.cards, V.tokens, F.cards, F.tokens, O, 200, 9), vv = G.matchMonteCarlo(V.cards, V.tokens, V.cards, V.tokens, O, 100, 11);
 check('Veyran vs the Frodo deck and the Veyran mirror both finish without errors', vf.errors === 0 && vv.errors === 0, `errors ${vf.errors}/${vv.errors}`);
 check('the Veyran mirror is roughly even once seats alternate', vv.winA / 100 > 0.3 && vv.winA / 100 < 0.7, `${vv.winA}-${vv.winB}-${vv.none}`);
+
+// ---- Desperate Ritual: splice onto Arcane (the only Arcane card in the deck is Ritual itself, so a second copy is spliced onto the first)
+{ const g = fresh(); lands(g, 4); const first = inst(g, 'Desperate Ritual'), spliced = inst(g, 'Desperate Ritual'); g.hand = [first, spliced];
+  check('Desperate Ritual\'s splice line is parsed', !!by('Desperate Ritual').a.splice && by('Desperate Ritual').a.splice.onto === 'Arcane');
+  const before = g.floating.length; const ev = G.castCard(g, first, true);
+  check('splicing onto an Arcane spell adds the spliced card\'s {R}{R}{R} too (6 mana) and the card stays in hand', g.floating.length - before >= 6 && g.hand.includes(spliced) && ev.some(e => e.type === 'note' && /Spliced/.test(e.text)), g.floating.length - before); }
+{ const g = fresh(); g.battlefield = []; const first = inst(g, 'Desperate Ritual'), spliced = inst(g, 'Desperate Ritual'); g.hand = [first, spliced];
+  const before = g.floating.length; G.castCard(g, first, true);
+  check('without {1}{R} to pay, no splice: just {R}{R}{R}', g.floating.length - before === 3 && g.hand.includes(spliced), g.floating.length - before); }
+{ const g = fresh(); lands(g, 3); const bolt = inst(g, 'Lightning Bolt'), rit = inst(g, 'Desperate Ritual'); g.hand = [bolt, rit]; const before = g.floating.length; G.castCard(g, bolt, true);
+  check('a non-Arcane spell is never spliced onto', g.floating.length === before && g.hand.includes(rit)); }
+
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

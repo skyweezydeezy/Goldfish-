@@ -182,8 +182,28 @@
     const noImg = S.deck.unique.filter(c => !(c.images || []).length && !(c.remote_images || []).length);
     if (noImg.length) add('warn', `No local image for: ${noImg.map(c => esc(c.name)).join(', ')}`);
     renderDeck();
+    renderProfile();
     renderCoverage();
     $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = '';
+  }
+
+  // ---- strengths and weaknesses (profile.js): from the decklist, plus the kill speed once a simulation has run ----
+  function renderProfile(sim) {
+    const box = $('#deckProfile');
+    if (!S.deck || typeof Profile === 'undefined') { box.hidden = true; return; }
+    let p = Profile.analyze(S.deck, { format: $('#optFormat').value === 'commander' ? 'commander' : '60' });
+    if (sim) p = Profile.withSim(p, sim);
+    const KIND = { strength: 'good', weakness: 'warn', trait: '' }, LBL = { strength: 'Strengths', weakness: 'Weaknesses', trait: 'Traits' };
+    let html = '';
+    ['strength', 'weakness', 'trait'].forEach(k => {
+      const xs = p.ids.filter(x => x.kind === k);
+      if (!xs.length) return;
+      html += `<div class="sg ${KIND[k]}"><b>${LBL[k]}</b><ul>${xs.map(x => `<li><b>${esc(x.label)}</b>: ${esc(x.detail)}${x.cards ? `<br><span class="hint">${x.cards.map(esc).join(', ')}</span>` : ''}</li>`).join('')}</ul></div>`;
+    });
+    const c = p.counts, n = k => c[k] || 0;
+    html += `<p class="hint">Counted: ${n('land')} lands, ${n('ramp')} ramp, ${n('draw')} card draw, ${n('removal')} removal, ${n('wipe')} wipe${n('wipe') === 1 ? '' : 's'}, ${n('counter')} counterspell${n('counter') === 1 ? '' : 's'}, ${n('protection')} protection, ${n('tutor')} tutors, ${n('wincon')} finishers. Average mana value ${p.avgMv.toFixed(2)}. Rules-text matching can miss unusual wordings.</p>`;
+    $('#profileList').innerHTML = html || '<div class="empty-note">Nothing stands out.</div>';
+    box.hidden = false;
   }
 
   function deckCounts() {
@@ -1287,6 +1307,7 @@
       tile('Kept 7', pct(keep7), `avg ${avgM.toFixed(2)} mulligans`) +
       tile('Mana spent by T' + Math.min(6, T), r.agg.cumSpent[Math.min(6, T) - 1].mean.toFixed(1), 'avg total mana used');
     renderSuggestions(r, o);
+    renderProfile(r);
 
     const tl = i => 'T' + (i + 1);
     C.band($('#chartMana'), r.agg.manaAvail.map((a, i) => ({ label: tl(i), mid: a.p50, lo: a.p10, hi: a.p90, a, s: r.agg.cumSpent[i], l: r.agg.lands[i] })), {

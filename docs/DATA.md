@@ -64,7 +64,10 @@ Things to be careful about:
 - **The autopilot plays every deck the same way**, so a card can look weak only because the autopilot misplays it. The coverage flags help here.
 - **Speed:** thousands of matches take time in the browser, so this runs in the worker with a progress bar.
 
-### Tier B: one deck over time, on the device
+### Deck profile: strengths and weaknesses from the list itself
+**Status: built.** `goldfish/static/profile.js` sorts every card into roles from its rules text (ramp, fast mana, card draw, removal, board wipes, counterspells, protection, tutors, recursion, graveyard, tokens, sacrifice outlets, death payoffs, finishers...), then applies deckbuilding rules of thumb and names the result: for example *Plenty of ramp* (10 or more), *Light on removal* (fewer than 5), *No board wipes*, *Light on lands* (Frank Karsten's land-count formula), *Short on a color* (a color's share of mana sources well below its share of pips), and traits such as *Spellslinger*, *Superfriends*, *Sacrifice engine* or *Graveyard-reliant* with their risks. After a simulation it adds *Fast clock* or *Slow clock*. It shows on the Deck tab; `tests/engine/profile.test.js` checks the roles of well-known cards and the profile of all six test decks.
+
+ one deck over time, on the device
 Keep a small summary of each run (kill turn, cast turn, missed drops, dead cards) next to the saved deck, so the player can see **what changed when they swapped cards**: "kill turn went from 9.1 to 8.4 after you cut Card A for Card B."
 - Stored in `localStorage` like the saved decks, and removed with them.
 - Could suggest an A/B test: "try this list with one more land" runs both versions and compares them.

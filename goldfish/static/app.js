@@ -262,7 +262,7 @@
       tw.appendChild(h('div', 'hint', 'Tokens this deck makes (from ScryMirror):'));
       S.deck.tokens.forEach(t => {
         const fake = Object.assign({}, t, { uid: 'preview:' + t.name });
-        const el = h('div', 'tok'); const c = cardEl(fake); el.appendChild(c); el.appendChild(h('span', '', `${esc(t.name)}${t.power != null ? ` ${t.power}/${t.toughness}` : ''} · ${esc(t.made_by || '')}`)); tw.appendChild(el);
+        const el = h('div', 'tok'); const c = cardEl(fake); el.appendChild(c); el.appendChild(h('span', 'tok-name', `${esc(t.name)}${t.power != null ? ` ${t.power}/${t.toughness}` : ''}`)); if (t.made_by) el.appendChild(h('span', 'tok-from', esc(t.made_by))); tw.appendChild(el);
       });
     }
   }

@@ -37,6 +37,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | rules-batch6 | Most played cards, batch 6: Dark Confidant, Clues, Ojer Taq, Jaheira, Unearth, Coat of Arms, echo, Omniscience, Nyxbloom Ancient, clones, Wurmcoil Engine, Stoneforge Mystic, toxic, Titania, The Gitrog Monster and more. |
 | rules-batch7 | Most played cards, batch 7: Kinnan, Primal Vigor, Amulet of Vigor, Past in Flames, Valakut, Persist, Thassa, unearth, Mikaeus, Laelia, Ad Nauseam, Crime Novelist, All Will Be One and more. |
 | rules-batch8 | Most played cards, batch 8: flashback, Isshin, Dark Depths, Koma, Scourge of Valkas, Kher Keep, Eerie Ultimatum, Uro, Alesha, Deepglow Skate, The Scarab God and more. |
+| rules-batch9 | Most played cards, batch 9: Vehicles and crew, d20 Dragons, Mana Reflection, Nyx Lotus, Jin-Gitaxias, Korvold, One with the Multiverse, Arwen, Hellkite Courser, Wound Reflection, Birthing Pod and more. |
 | sets | The card database by set: every card's full record is stored once (in its first set), pointers lead to earlier sets, and the simulator reads every card without throwing. |
 | red-rum-raiders | The Admiral Beckett Brass Pirate list: Treasure engines, Pirate damage triggers, Kari Zev, Port Razer, dash, theft (Treachery, Insurrection, Captivating Crew, Hostage Taker, Admiral), Conspiracy, Protean Raider, 30 full games. |
 | mermaids | The Hakbal Merfolk list: explore, Merfolk lords, Hardened Scales / Branching Evolution / Doubling Season, casting from the top, retrace, Kindred Discovery, Metallic Mimic, Reflections, Kumena, Vorel, Survival, 30 full games. |
@@ -48,4 +49,5 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
 | ui/looks | Playmat and sleeve picker (browser test) |
+| ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |

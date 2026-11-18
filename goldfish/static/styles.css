@@ -665,3 +665,93 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
 
 .zoom-tags { max-width: 300px; margin-top: 4px; padding: 5px 8px; background: rgba(8,18,26,.92); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 11px; line-height: 1.4; }
 .zoom.two .zoom-tags { max-width: 608px; }
+
+/* =====================================================================
+   Goldfish Table on phones and tablets: the whole game on one screen, Arena style.
+   Battlefield rows share the height and the cards size themselves to fit; the hand sits along the bottom;
+   library, command zone, graveyard and exile are piles at the side like a home game; the log is a drawer.
+   ===================================================================== */
+.log-close { display: none; float: right; padding: 2px 10px; font-size: 12px; }
+@media (max-width: 1180px) {
+  :root { --hand-w: clamp(58px, 15.5vw, 112px); --pile-w: clamp(64px, 11vw, 110px); }
+  body[data-view=table] .site-footer { display: none; }
+  body[data-view=table] main { padding: 6px 6px 0; }
+  body[data-view=table] #tab-table.active { display: flex; flex-direction: column; gap: 6px; height: calc(100vh - var(--topbar-h, 64px) - 6px); height: calc(100dvh - var(--topbar-h, 64px) - 6px); }
+
+  /* one row of small buttons */
+  body[data-view=table] .table-controls { flex: none; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin: 0; padding: 0 0 2px; scrollbar-width: none; }
+  body[data-view=table] .table-controls::-webkit-scrollbar { display: none; }
+  body[data-view=table] .table-controls > * { flex: none; }
+  body[data-view=table] .table-controls button { padding: 6px 11px; min-height: 38px; }
+  body[data-view=table] .table-controls .hint { display: none; }
+  body[data-view=table] #tAutoToN { width: 46px; padding: 2px 4px; min-height: 0; }
+
+  /* grid: stats strip on top, battlefield on the left, piles on the right */
+  body[data-view=table] .table { flex: 1; min-height: 0; display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr) var(--pile-w); grid-template-rows: auto repeat(4, minmax(0, 1fr)); align-items: stretch; }
+  body[data-view=table] .table-side { display: contents; }
+  body[data-view=table] .hud { grid-column: 1 / -1; grid-row: 1; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 16px; padding: 5px 10px; scrollbar-width: none; }
+  body[data-view=table] .hud::-webkit-scrollbar { display: none; }
+  body[data-view=table] .hud-item { flex: none; display: flex; flex-direction: column; }
+  body[data-view=table] .hud-item .lbl { font-size: 10px; }
+  body[data-view=table] .hud-item .lbl small { display: none; }
+  body[data-view=table] .hud-item .big { font-size: 18px; }
+  body[data-view=table] #ringPanel { display: none !important; }   /* the HUD's Ring entry says the same in one line */
+
+  body[data-view=table] .table-main { grid-column: 1; grid-row: 2 / 6; order: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .9fr) auto; gap: 4px; padding: 6px; }
+  body[data-view=table] .bf-row { min-height: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 14px 6px 4px; gap: 6px; scrollbar-width: none; }
+  body[data-view=table] .bf-row::-webkit-scrollbar { display: none; }
+  body[data-view=table] .row-label { font-size: 9px; top: 2px; }
+  body[data-view=table] .stackgroup { flex: none; }
+  body[data-view=table] .bf-row .stackgroup .mtg + .mtg { margin-left: calc(var(--card-w) * -0.8); }
+
+  /* the hand along the bottom; tap a card for its menu or the full-screen viewer */
+  body[data-view=table] .hand-zone { margin: 0; min-height: 0; height: calc(var(--hand-w) * 1.3934 + 8px); padding: 4px 6px; align-items: flex-end; }
+  body[data-view=table] .hand-zone .mtg { --card-w: var(--hand-w); }
+
+  /* piles at the side: only the top card shows, with a stacked edge like a real pile */
+  body[data-view=table] .zone-pile { order: 0; grid-column: 2; min-height: 0; overflow: hidden; padding: 4px 3px; display: flex; flex-direction: column; align-items: center; }
+  body[data-view=table] #zLibrary { grid-row: 2; } body[data-view=table] #zCommand { grid-row: 3; }
+  body[data-view=table] #zGrave { grid-row: 4; } body[data-view=table] #zExile { grid-row: 5; }
+  body[data-view=table] .pile-label { font-size: 10px; text-align: center; margin-bottom: 3px; line-height: 1.15; }
+  body[data-view=table] #zLibrary .card-back { width: calc(var(--pile-w) - 22px); margin: 0 auto; }
+  body[data-view=table] .pile-cards { position: relative; flex-wrap: nowrap; justify-content: center; padding: 0 !important; min-height: 0; }
+  body[data-view=table] .pile-cards .mtg, body[data-view=table] #zCommand .pile-cards .mtg { --card-w: calc(var(--pile-w) - 22px); margin: 0; }
+  body[data-view=table] #zGrave .pile-cards .mtg:not(:last-child), body[data-view=table] #zExile .pile-cards .mtg:not(:last-child) { display: none; }
+  body[data-view=table] #zGrave .pile-cards:has(.mtg + .mtg) .mtg, body[data-view=table] #zExile .pile-cards:has(.mtg + .mtg) .mtg { box-shadow: 2px 2px 0 #0a2030, 4px 4px 0 #12324a, 5px 5px 8px rgba(0,0,0,.6); }
+
+  /* game log: a drawer from the bottom */
+  body[data-view=table] .table-log { display: block !important; position: fixed; left: 0; right: 0; bottom: 0; z-index: 280; max-height: 60vh; overflow: auto; border-radius: 16px 16px 0 0; padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .25s ease; box-shadow: 0 -10px 40px rgba(0,0,0,.6); }
+  body[data-view=table] .table-log.open { transform: none; }
+  body[data-view=table] .log-close { display: inline-block; }
+}
+/* cards size themselves to the row height (needs container queries: Safari 16+, recent Chrome) */
+@supports (height: 1cqh) {
+  @media (max-width: 1180px) {
+    body[data-view=table] .bf-row { container-type: size; }
+    body[data-view=table] .bf-row .mtg { --card-w: min(var(--bf-max, 98px), calc((100cqh - 20px) * 0.7176)); }
+    body[data-view=table] .bf-row.lands .mtg { --card-w: min(var(--bf-max-l, 86px), calc((100cqh - 20px) * 0.7176)); }
+  }
+}
+@media (max-width: 999px) { body[data-view=table] .table-controls .bl { display: none; } body[data-view=table] .table-controls button { font-size: 16px; } }   /* icons only until there is room for words */
+@media (max-width: 600px) {
+  body[data-view=table] .table-controls .bl { display: none; }     /* icons only on phones */
+  body[data-view=table] .table-controls button { padding: 6px 10px; font-size: 15px; }
+  body[data-view=table] .topbar .brand, body[data-view=table] .topbar .status-pill { display: none; }   /* more room for the table */
+}
+@media (min-width: 1181px) { #tLog { display: none; } }
+@media (max-width: 1180px) {
+  body[data-view=table] #zCommand .pile-cards .mtg + .mtg { margin-left: calc(var(--card-w) * -0.72); }   /* two commanders overlap like a small fan */
+}
+@media (max-width: 600px) {
+  body[data-view=table] .table-controls { gap: 4px; }
+  body[data-view=table] .table-controls button { padding: 6px 8px; font-size: 15px; }
+  body[data-view=table] #tAutoToN { width: 34px; font-size: 13px; }
+  body[data-view=table] .table-controls label.check { padding: 0 2px; }
+}
+@media (max-width: 1180px) and (min-width: 700px) { :root { --bf-max: 132px; --bf-max-l: 116px; } }   /* tablets: bigger cards when the rows have room */
+@media (max-width: 1180px) {
+  /* room for sideways (tapped) cards that grows with the card size */
+  body[data-view=table] .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0; }
+  body[data-view=table] .bf-row .stackgroup > .mtg.tapped:first-child { margin-left: calc(var(--card-w) * .16); }
+  body[data-view=table] .bf-row .stackgroup > .mtg.tapped:last-child { margin-right: calc(var(--card-w) * .16); }
+}

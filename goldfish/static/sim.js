@@ -3465,6 +3465,7 @@
         const theirs = g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand), k = f.n === 'max' ? Math.max(g.hand.length - 1, theirs) : f.n;
         const per = kind => g.battlefield.reduce((s, q) => s + q.card.a.triggers.filter(t => t.kinds.includes(kind)).reduce((a, t) => a + t.fx.reduce((b, x) => b + ((x.type === 'damage' || x.type === 'drain') ? (x.n || 1) : 0), 0), 0), 0);
         v += 1.5 * Math.max(0, k - (g.hand.length - 1)) + k * per('oppDraw') + (f.shuffle ? 0 : theirs * per('oppDiscard'));
+        if (g.opp) v -= 1.2 * Math.max(0, k - theirs);                                    // in a real match the other player refills too
       }
     }
     return v;

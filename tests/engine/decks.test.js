@@ -24,5 +24,19 @@ check('every color count from 5 down to 0 has at least one deck (as of the first
 check('known identities: Atraxa decks are WUBG, Teysa decks WB, Void Tax colorless', index.filter(d => /Atraxa/.test(d.name)).every(d => d.colors === 'WUBG') && index.filter(d => /Teysa/.test(d.name)).every(d => d.colors === 'WB') && index.find(d => /Void Tax/.test(d.name)).colors === '');
 check('section headers are exact (extra cards sit under a plain "// SIDEBOARD" line)', files.every(f => fs.readFileSync(path.join(dir, f), 'utf8').split(/\r?\n/).every(l => !/^\/\/\s*(sideboard|deck|mainboard|commander)\b/i.test(l) || /^\/\/\s*(SIDEBOARD|DECK|MAINBOARD|COMMANDER)\s*$/.test(l))));
 
+// every line of a deck file is either a "//" comment (the deck name, the commander note, section markers) or a card with a quantity
+const stray = [];
+files.forEach(f => fs.readFileSync(path.join(dir, f), 'utf8').split(/\r?\n/).forEach((l, i) => { if (l.trim() && !/^\/\//.test(l) && !/^\d+\s/.test(l)) stray.push(f + ':' + (i + 1) + ' ' + l); }));
+check('every line is a "//" comment or a card with a quantity (titles never read as cards)', stray.length === 0, stray.slice(0, 3).join(' | '));
+check('every deck file starts with its name as a "//" comment', files.every(f => /^\/\/ \S/.test(fs.readFileSync(path.join(dir, f), 'utf8'))));
+
+// pasting a list straight from a deck document: its title lines are skipped, not read as cards
+const names = t => Source.parseDecklist(t).map(e => e.name);
+check('"MERMAIDS — Commander: …" title line is not a card', JSON.stringify(names('MERMAIDS — Commander: Hakbal of the Surging Soul\n\n// COMMANDER\n1 Hakbal of the Surging Soul (LCC) 19\n// DECK\n1 Sol Ring')) === JSON.stringify(['Hakbal of the Surging Soul', 'Sol Ring']));
+check('"SECOND BREAKFAST — Commanders: … (Bracket 4)" title line is not a card', !names('SECOND BREAKFAST — Commanders: Frodo, Adventurous Hobbit + Sam, Loyal Attendant (Bracket 4)\n// COMMANDER\n1 Frodo, Adventurous Hobbit').some(n => /BREAKFAST/.test(n)));
+check('"About" and "Name …" header lines are not cards', JSON.stringify(names('About\nName Took\'s Adventure\n\nDeck\n4 Belladonna Took (HOB) 4\n20 Plains')) === JSON.stringify(['Belladonna Took', 'Plains']));
+check('"Deck: name" lines are not cards', !names('Deck: Red Rum Raiders (Admiral Beckett Brass)\n1 Sol Ring').some(n => /Red Rum/.test(n)));
+check('real cards are never skipped, with or without a quantity', JSON.stringify(names('Sol Ring\n1 Nameless Inversion\n1 Sword of Feast and Famine (2XM) 364')) === JSON.stringify(['Sol Ring', 'Nameless Inversion', 'Sword of Feast and Famine']));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

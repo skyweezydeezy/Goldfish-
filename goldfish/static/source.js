@@ -16,6 +16,9 @@
 
   // ---------- decklist parsing ----------
   const LINE_RE = /^\s*(?:(?<qty>\d+)\s*[xX]?\s+)?(?<name>.+?)(?:\s+\((?<set>[A-Za-z0-9]{2,6})\)(?:\s+(?<cn>[A-Za-z0-9\-★]+))?)?(?<tags>(?:\s+\*[^*]+\*|\s+\[[^\]]*\]|\s+#\S+)*)\s*$/;
+  // Title lines from saved deck documents that are not cards: "MERMAIDS — Commander: Hakbal…", "Deck: Name (Commander)", "About", "Name Took's Adventure".
+  // Only lines with no quantity in front count, so a real card line is never skipped.
+  const TITLE_RE = /^(?:[^0-9].*\s[—–-]\s*commanders?\s*:.*|deck\s*:.+|about|name\s+.+)$/i;
   const SECTION_RE = /^\s*(\/\/\s*)?(commander|commanders|deck|mainboard|main|sideboard|maybeboard|companion|tokens?|considering)\s*:?\s*(\(\d+\))?\s*$/i;
 
   function parseDecklist(text) {
@@ -33,7 +36,7 @@
         section = s.startsWith('commander') ? 'commander' : (s === 'deck' || s === 'mainboard' || s === 'main') ? 'main' : 'skip';
         continue;
       }
-      if (line.startsWith('//') || /^SB:/i.test(line)) continue;
+      if (line.startsWith('//') || /^SB:/i.test(line) || TITLE_RE.test(line)) continue;
       if (section === 'skip') continue;
       m = line.match(LINE_RE);
       if (!m) continue;

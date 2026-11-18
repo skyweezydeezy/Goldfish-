@@ -173,7 +173,7 @@ Card data and images are provided by [Scryfall](https://scryfall.com) and are no
 
 The deck menu on the Deck tab starts with a library of ready-made decks, grouped by color identity: five colors first, then four, three, two, one and colorless. Pick one and it loads straight into the simulator. The same decks are listed as opponents for the mirror match, so any deck can play any other.
 
-The lists live in `goldfish/static/decks/` as plain text (one deck per file, the first line is `// Deck name (Commander)`). To add or change a deck, edit or add a `.txt` file there and run `node tools/build-deck-index.js` (it looks up each commander's color identity on Scryfall and rewrites `decks/index.json`). `node tests/run.js` checks that every list parses and that the index matches the files.
+The lists live in `goldfish/static/decks/` as plain text (one deck per file; the first line is `// Deck name (Commander)`, and every line that is not a card, such as the deck name, notes and section markers, starts with `//` so it is never read as a card). To add or change a deck, edit or add a `.txt` file there and run `node tools/build-deck-index.js` (it looks up each commander's color identity on Scryfall and rewrites `decks/index.json`). `node tests/run.js` checks that every list parses and that the index matches the files.
 
 ## Saved decks
 

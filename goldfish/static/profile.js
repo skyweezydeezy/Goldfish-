@@ -93,6 +93,46 @@
     return r;
   }
 
+
+  // ---------- tribe: which creature type the deck is built around ----------
+  // For "choose a creature type" cards (Kindred Discovery, Cavern of Souls, Metallic Mimic...). Each type scores:
+  //   1 per creature of that type (0.5 for Human, which many creatures are by accident), 4 per commander of that type,
+  //   1 per Kindred card of that type, 1.5 per card that makes tokens of that type, 2 per card whose text names the type
+  //   (lords and payoffs such as "Other Merfolk you control get +1/+1"), and changelings count for every type.
+  // A deck is tribal when the best type scores at least 12 and has at least 5 creatures or commanders of that type
+  // (Humans also need 2 or more cards that name Humans, since so many creatures are Human by accident).
+  const PLURAL = { Elf: 'Elves', Dwarf: 'Dwarves', Wolf: 'Wolves', Werewolf: 'Werewolves', Merfolk: 'Merfolk', Fish: 'Fish', Sheep: 'Sheep', Ox: 'Oxen', Fungus: 'Fungi', Sphinx: 'Sphinxes', Fox: 'Foxes', Mouse: 'Mice', Octopus: 'Octopi', Ally: 'Allies', Fairy: 'Fairies' };
+  const plural = w => PLURAL[w] || w + 's';
+  const subtypes = c => { const f = String(c.type_line || '').split(' // ')[0]; return /\b(Creature|Kindred|Tribal)\b/.test(f) ? (f.split('—')[1] || '').trim().split(/\s+/).filter(Boolean) : []; };
+  function tribe(deck) {
+    const cards = cardsOf(deck);
+    const commanders = (deck.commanders || []).map(x => x.card || x).concat((deck.cards || []).filter(c => c.commander));
+    const score = {}, bodies = {}, why = {}, payoffs = {};
+    const add = (w, v, name, body) => { score[w] = (score[w] || 0) + v; if (body) bodies[w] = (bodies[w] || 0) + body; (why[w] = why[w] || new Set()).add(name); };
+    commanders.forEach(c => subtypes(c).forEach(w => add(w, 4, c.name, 1)));
+    cards.forEach(c => {
+      const q = c.qty || 1, isCre = /\bCreature\b/.test(String(c.type_line || '').split(' // ')[0]);
+      subtypes(c).forEach(w => add(w, (isCre ? (w === 'Human' ? 0.5 : 1) : 1) * q, c.name, isCre ? q : 0));
+    });
+    const types = Object.keys(score);
+    let changelings = 0;
+    cards.forEach(c => {
+      const t = text(c);
+      if (/\bchangeling\b/i.test(t) || /is every creature type/i.test(t)) { changelings += c.qty || 1; return; }
+      types.forEach(w => {
+        const re = new RegExp('\\b(' + w + '|' + plural(w) + ')\\b');
+        if (!re.test(t)) return;
+        if (new RegExp('create[^.]*\\b' + w + '\\b[^.]*token', 'i').test(t)) add(w, 1.5, c.name);
+        else { add(w, 2, c.name); payoffs[w] = (payoffs[w] || 0) + 1; }
+      });
+    });
+    types.forEach(w => { score[w] += changelings; bodies[w] = (bodies[w] || 0) + changelings; });
+    const ranked = types.map(w => ({ type: w, score: score[w], creatures: bodies[w] || 0, payoffs: payoffs[w] || 0, cards: [...why[w]] })).sort((a, b) => b.score - a.score);
+    const best = ranked[0];
+    const isTribal = !!best && best.score >= 12 && best.creatures >= 5 && (best.type !== 'Human' || best.payoffs >= 2);
+    return { type: isTribal ? best.type : null, best: best || null, ranked: ranked.slice(0, 5), changelings };
+  }
+
   // ---------- the whole deck ----------
   function cardsOf(deck) { return (deck.unique || deck.cards || []).filter(c => !c.commander); }
   function pipsOf(c) {
@@ -190,9 +230,13 @@
     const NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
     short.forEach(k => add('color-' + k, 'weakness', `Short on ${NAME[k]} sources`, `${pips[k]} ${NAME[k]} pips (${Math.round(100 * pips[k] / totalPips)}% of all pips) but only ${sources[k] || 0} of your ${totalSrc} colored mana sources make ${NAME[k]} (${Math.round(100 * (sources[k] || 0) / totalSrc)}%).`));
 
+    // tribe
+    const tr = tribe(deck);
+    if (tr.type) add('tribal', 'trait', `Tribal: ${tr.type}`, `${tr.best.creatures} ${tr.type} creatures and commanders${tr.changelings ? ` (with ${tr.changelings} changeling${tr.changelings === 1 ? '' : 's'})` : ''}, plus cards that name or make ${plural(tr.type)}. "Choose a creature type" cards should name ${tr.type}.`, tr.best.cards.slice(0, 12));
+
     const order = { strength: 0, weakness: 1, trait: 2 };
     ids.sort((a, b) => order[a.kind] - order[b.kind]);
-    return { format, size, counts, avgMv, lands, landTarget, cheap, colors: [...deckColors], pips, sources, ids };
+    return { format, size, counts, avgMv, lands, landTarget, cheap, colors: [...deckColors], pips, sources, ids, tribe: tr };
   }
 
   // Extra identifiers that need a Simulation run (Goldfish.monteCarlo result): how fast the deck kills a goldfish.
@@ -208,7 +252,7 @@
     return Object.assign({}, profile, { ids, killMedian: med });
   }
 
-  const api = { roles, analyze, withSim, text };
+  const api = { roles, analyze, withSim, text, tribe };
   root.Profile = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

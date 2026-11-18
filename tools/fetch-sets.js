@@ -2,6 +2,7 @@
 //
 //   node tools/fetch-sets.js cmm c21          fetch these whole sets from Scryfall (Scryfall set codes)
 //   node tools/fetch-sets.js --import-decks   add every card of the decks in tests/fixtures/*-loaded.json to the database
+//   node tools/fetch-sets.js --top 1000       file the 1,000 most played Commander cards (Scryfall's EDHREC rank) and list them in data/top-cards.json
 //   node tools/fetch-sets.js --report         re-check every card with the current engine and rebuild the index and the table
 // Where Node's fetch needs the proxy:  NODE_USE_ENV_PROXY=1 node tools/fetch-sets.js ...
 //
@@ -37,6 +38,7 @@ async function get(url) {
 }
 // how well does the simulator understand this card's rules text?
 function coverage(card) {
+  if (G.setTribe) G.setTribe('Merfolk');                                    // "of the chosen type" lines are read as if the deck's main type were chosen
   const a = G.analyze(card, ['W', 'U', 'B', 'R', 'G']);
   const lines = a.coverage || [];
   const unsupported = lines.filter(l => l.status === 'ignored').map(l => l.text);
@@ -104,6 +106,26 @@ async function fetchSet(code) {
   }
   saveCache();
   return s;
+}
+// the most played cards: Scryfall carries EDHREC's popularity rank on every card (1 = most played)
+async function fetchTop(n) {
+  const out = []; let url = `${API}/cards/search?q=${encodeURIComponent('f:commander game:paper -t:basic -t:token')}&unique=cards&order=edhrec&dir=asc`;
+  while (url && out.length < n) {
+    const page = await get(url);
+    for (const c of page.data) { if (out.length >= n) break; out.push(c); }
+    url = page.has_more ? page.next_page : null;
+  }
+  const list = [];
+  for (const c of out) {
+    const key = 'first:' + c.name; if (cache[key] === undefined && !c.reprint) cache[key] = c;
+    const first = c.reprint ? await firstPrinting(c.name) : c;
+    const code = (first && first.set) || c.set; const set = await ensureSet(code);
+    if (!hasFull(set, c.name)) { const e = slimCard(first || c); e.cov = coverage(e); put(set, e); }
+    list.push({ rank: c.edhrec_rank || null, name: c.name, set: code });
+    if (list.length % 100 === 0) { saveCache(); console.log('  filed', list.length); }
+  }
+  fs.writeFileSync(path.join(DIR, '..', 'top-cards.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: "Scryfall's edhrec_rank (EDHREC popularity, 1 = most played)", cards: list }));
+  return list.length;
 }
 async function importDecks() {
   const dir = path.join(ROOT, 'tests', 'fixtures');
@@ -176,10 +198,11 @@ function rebuild() {
   fs.mkdirSync(DIR, { recursive: true });
   const args = process.argv.slice(2);
   for (const f of fs.readdirSync(DIR)) if (/^[a-z0-9]+\.json$/.test(f) && f !== 'index.json') loadSet(f.replace('.json', ''));
-  for (const code of args.filter(a => !a.startsWith('--'))) {
+  for (const code of args.filter((a, i) => !a.startsWith('--') && !/^\d+$/.test(a))) {
     try { const s = await fetchSet(code.toLowerCase()); console.log('fetched', s.code, s.name, s.cards.length, 'cards,', s.cards.filter(c => c.ref).length, 'reprints'); }
     catch (e) { console.log('FAILED', code, e.message); }
   }
+  const ti = args.indexOf('--top'); if (ti >= 0) console.log('filed the top', await fetchTop(+args[ti + 1] || 1000), 'cards');
   if (args.includes('--import-decks')) console.log('imported', await importDecks(), 'deck cards');
   saveCache();
   const idx = rebuild();

@@ -159,6 +159,7 @@ Cards are kept in a database filed by release set: one file per set in `goldfish
 
 - **Add a set:** `node tools/fetch-sets.js <code> [<code> ...]` with Scryfall set codes, for example `node tools/fetch-sets.js cmm c21`. Reprinted cards are filed in the set of their first printing, which is created as a "partial" set (only those cards) until you fetch the whole set.
 - **File the cards of your decks:** `node tools/fetch-sets.js --import-decks` adds every card of the decks in `tests/fixtures/*-loaded.json` under the set it was first printed in. The deck fixtures themselves are left as they are, because the tests read them.
+- **The most played cards:** `node tools/fetch-sets.js --top 1000` files the 1,000 most played Commander cards (Scryfall carries EDHREC's popularity rank) and lists them in `goldfish/static/data/top-cards.json`. Rules work goes down that list from the most played card.
 - **Re-check after engine work:** `node tools/fetch-sets.js --report` re-reads every full record with the current engine and rebuilds the index and the table.
 - **Added so far:** Commander Masters, Commander Legends, Commander Legends: Battle for Baldur's Gate, Modern Horizons 2 and 3, Tales of Middle-earth Commander and Commander 2018 to 2021 as whole sets, plus the cards of all the decks in the tests under the sets they were first printed in. `tests/engine/sets.test.js` checks that every card is stored once, every pointer leads to a full record in an earlier set, and the simulator can read every card.
 

@@ -29,6 +29,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | policy | Policies and trial-and-error learning: holding fetch lands, comparePolicies, the Policy lab engine |
 | fetchlands | Fetch lands: cracking, life, graveyard, choosing the land, types, shuffle, landfall twice |
 | loyalty-program | The Atraxa planeswalker deck: multiple activations, proliferate, look-and-take, Oko, Nissa, Wrenn, Spark Double, Kaya, Teferi, Vraska, all 16 deck pairings |
+| soul-brokers | The white-black Teysa list: Afterlife, Morbid Opportunist, Liesa, Teysa doubling, Cathars' Crusade, Bastion of Remembrance, Mondrak, Syr Vondam, Midnight Reaper, Blight Mound, 30 full games. |
 | death-tax | The Teysa Karlov list: death-trigger doubling, token lifelink, Cruel Celebrant, Broodmoth, Reveillark, Sun Titan, Woe Strider escape, Bolas's Citadel, Yawgmoth, Priest, Warren, High Market, Phyrexian Altar, Deadly Dispute, 30 full games. |
 | zul-ashur | The Zombie reanimator list (47 checks): reanimation, Entomb, Snuff Out, Chalice, Coffers, Bloodghast, Kalitas and Gisa replacement, Sidisi, Reaper, Lord of the Undead, Castle, Fain (counters, Inkling, Treasure, untap), Dread Return flashback, Meathook X, 30 full games. |
 | second-breakfast | The Frodo + Sam Bracket 4 list: death triggers, outlets, Skullclamp, Sheoldred, Felidar, Reservoir, Necropotence, Sylvan Library, Deluge, Persist, Urborg... |

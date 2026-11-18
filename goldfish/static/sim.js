@@ -259,6 +259,7 @@
     if (/(each opponent|target opponent|target player|that player) loses that much life/i.test(text)) fx.push({ type: 'drain', n: 'THAT' });
     if ((m = text.match(new RegExp('\\byou lose ' + NRE + ' life\\b', 'i')))) fx.push({ type: 'loseLife', n: num(m[1]) });
     else if ((m = text.match(/\band lose (\d+) life\b/i)) && !/opponent|target player|each player/i.test(text)) fx.push({ type: 'loseLife', n: +m[1] });          // Phyrexian Arena          // Vampiric Tutor: "You lose 2 life."
+    if ((m = plain.match(/(?:~|this creature) deals (\d+) damage to you\b/i))) fx.push({ type: 'loseLife', n: +m[1] });          // Midnight Reaper
     if (/\byou gain that much life/i.test(plain)) fx.push({ type: 'gainLife', n: 'THAT' });
     else if (/gain 1 life for each spell you've cast this turn/i.test(text)) fx.push({ type: 'gainLife', n: 'SPELLS' });          // Aetherflux Reservoir
     else if ((m = plain.match(new RegExp('\\byou gain ' + NRE + ' life\\b', 'i')))) fx.push({ type: 'gainLife', n: num(m[1]) });
@@ -267,7 +268,7 @@
     // "that many" means the amount that triggered it (Treebeard: as many counters as the life you gained).
     m = text.match(new RegExp('put ' + NRE + ' (\\+1\\/\\+1|-1\\/-1|[a-z]+) counters? on ([^.,]+)', 'i'));
     if (m && m[2].toLowerCase() !== 'loyalty') {
-      const who = m[3].trim(), lw = who.toLowerCase();
+      const who = m[3].trim().replace(/\s+and you\b.*$/i, ''), lw = who.toLowerCase();          // "on ~ and you gain 1 life" (Syr Vondam)
       const scope = /target (player|opponent) controls|an opponent controls|opponents control/.test(lw) ? 'opp' : /^each\b/.test(lw) ? 'each' : (lw === '~' || lw === 'it') ? 'self' : 'target';
       const STOP = new Set(['each', 'other', 'another', 'target', 'up', 'to', 'one', 'two', 'three', 'creature', 'creatures', 'you', 'control', 'than', 'of', 'that', 'and', 'a', 'an', 'permanent', 'permanents', 'nontoken']);
       const types = lw.replace(/~/g, ' ').split(/[^a-z]+/).filter(w => w && !STOP.has(w));
@@ -339,6 +340,7 @@
     [/^whenever you play a land,?\s*/i, ['landfall']],
     [/^whenever (?:~|carth(?: the lion)?) enters or a planeswalker you control dies,\s*/i, ['etb', 'pwDies']],          // Carth the Lion
     [/^whenever a creature an opponent controls dies,?\s*/i, ['oppDies']],                                          // Massacre Wurm, The Meathook Massacre
+    [/^whenever (one or more other creatures) die,?\s*/i, ['dies']],                                         // Morbid Opportunist (once each turn)
     [/^when(?:ever)? (~ or another [a-z]+(?: or planeswalker)?(?: you control)?|another (?:nontoken )?creature you control|a (?:nontoken )?creature you control|a creature|another creature|equipped creature|~) dies,?\s*/i, ['dies']],          // Blood Artist, Zulaport Cutthroat, Grave Pact, Skullclamp
     [/^whenever an opponent draws a card,\s*(?:that player may pay \{(\d+)\}\. if (?:they|the player) don't,\s*|that player may pay \{(\d+)\}\. if the player doesn't,\s*)?/i, ['oppDraw']],          // Sheoldred, Smothering Tithe
     [/^whenever you cast or copy (?:a|an) ([a-z ,]*?)\s*spell[^,]*,\s*/i, ['cast']],                     // Magecraft (a copy is handled where spells are copied)
@@ -367,7 +369,7 @@
     a.triggers = []; a.spellFx = []; a.statics = { anthems: [], reducers: [], extraLands: 0, tokenRepl: [], counterDouble: false, selfPerColor: null, foodDiscount: 0 };
     a.pwAbilities = []; a.coverage = []; a.equip = null; a.attachBonus = null; a.sacMana = false; a.activated = [];
     const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    a.lordReturn = false; a.reaper = false; a.kalitasSac = false; a.kalitas = false; a.gisaR = false; a.sidisi = false; a.fain = false; a.castle = false; a.coffers = false; a.flashSac = 0; a.escape = null; a.splice = null; a.sacArtifactAlso = false; a.broodmoth = false; a.citadel = false; a.citadelSac = false; a.yawg = false; a.yawgProl = false; a.priest = false; a.tapSac = false; a.sacTreasure = false; a.morph = false; a.multikick = 0; a.chalice = false; a.lifeAlt = 0; a.cashInFree = false; a.bmc = false; a.zulAshur = false; a.reanimAura = false; a.landfallReturn = false; a.yardActivate = null; a.yardCastIfZombie = false; a.dieReturn = null; a.dieReanim = false; a.sacOutlet = false; a.sacCounter = false; a.discardZombie = false; a.zombieDraw = false; a.cumulative = false; a.sparkDouble = false; a.tapPain = 0; a.proliferateAb = null; a.chainVeil = false; a.masterTime = false; a.oath = false; a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.lordReturn = false; a.reaper = false; a.kalitasSac = false; a.kalitas = false; a.gisaR = false; a.sidisi = false; a.fain = false; a.castle = false; a.coffers = false; a.flashSac = 0; a.escape = null; a.exileOpp = false; a.liesa = false; a.afterlife = 0; a.splice = null; a.sacArtifactAlso = false; a.broodmoth = false; a.citadel = false; a.citadelSac = false; a.yawg = false; a.yawgProl = false; a.priest = false; a.tapSac = false; a.sacTreasure = false; a.morph = false; a.multikick = 0; a.chalice = false; a.lifeAlt = 0; a.cashInFree = false; a.bmc = false; a.zulAshur = false; a.reanimAura = false; a.landfallReturn = false; a.yardActivate = null; a.yardCastIfZombie = false; a.dieReturn = null; a.dieReanim = false; a.sacOutlet = false; a.sacCounter = false; a.discardZombie = false; a.zombieDraw = false; a.cumulative = false; a.sparkDouble = false; a.tapPain = 0; a.proliferateAb = null; a.chainVeil = false; a.masterTime = false; a.oath = false; a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     for (const raw of lines) {
       if (/^\/\/$/.test(raw)) { half = 2; continue; }            // the divider between two halves of a split card, not rules text
@@ -379,6 +381,8 @@
       if (/^if a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time/i.test(line)) { a.statics.deathDouble = (a.statics.deathDouble || 0) + 1; rec.status = 'ok'; continue; }          // Teysa Karlov
       if (/^whenever a creature you control without flying dies, return it to the battlefield under its owner's control with a flying counter on it/i.test(line)) { a.broodmoth = true; rec.status = 'ok'; continue; }          // Luminous Broodmoth
       { const sm = line.match(/^splice onto (\w+) ((?:\{[^}]+\})+)/i); if (sm) { a.splice = { onto: sm[1], cost: parseCost(sm[2]) }; rec.status = 'ok'; continue; } }          // Desperate Ritual
+      if (/^whenever another nontoken creature you control dies, return that card to its owner's hand at the beginning of the next end step/i.test(line)) { a.liesa = true; rec.status = 'ok'; continue; }          // Liesa, Forgotten Archangel
+      { const am = line.match(/^afterlife (\d+)/i); if (am) { a.afterlife = +am[1]; rec.status = 'ok'; continue; } }          // Ministrant of Obligation
       if (/^morph \{/i.test(line)) { a.morph = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }                                                              // Grim Haruspex: never cast face down
       if (/^escape—/i.test(line)) { const em = line.match(/^escape—((?:\{[^}]+\})+), exile (\w+) other cards? from your graveyard/i); if (em) { a.escape = { cost: parseCost(em[1]), n: NUM[em[2].toLowerCase()] || 4, counters: 0 }; rec.status = 'ok'; continue; } }          // Woe Strider
       if (/^(this creature|~) escapes with two \+1\/\+1 counters on it/i.test(line)) { if (a.escape) a.escape.counters = 2; rec.status = 'ok'; continue; }
@@ -469,7 +473,7 @@
       if (/^\{2\}\{b\}, \{t\}: exile target creature card from a graveyard\. create a 2\/2 black zombie creature token/i.test(line)) { a.reaper = true; rec.status = 'ok'; continue; }                  // Cemetery Reaper
       if (/^\{2\}\{b\}, sacrifice another vampire or zombie: put two \+1\/\+1 counters on ~/i.test(line)) { a.kalitasSac = true; rec.status = 'ok'; continue; }                                // Kalitas, Traitor of Ghet
       if (/^if a nontoken creature an opponent controls would die, instead exile that card and create a 2\/2 black zombie creature token/i.test(line)) { a.kalitas = true; rec.status = 'ok'; continue; }
-      if (/^if a creature an opponent controls would die, exile it instead/i.test(line)) { a.gisaR = true; rec.status = 'ok'; continue; }                                                      // Gisa, Glorious Resurrector
+      if (/^if a creature an opponent controls would die, exile it instead/i.test(line)) { a.exileOpp = true; rec.status = 'ok'; continue; }                                                      // Gisa, Glorious Resurrector
       if (/^at the beginning of your upkeep, put all creature cards exiled with ~ onto the battlefield under your control/i.test(line)) { a.gisaR = true; rec.status = 'ok'; continue; }
       if (/^\{t\}, sacrifice a creature you control with mana value x other than ~: return target creature card with mana value x plus 1/i.test(line)) { a.sidisi = true; rec.status = 'ok'; continue; }          // Sidisi, Regent of the Mire
       if (/^\{t\}, sacrifice a creature: put two \+1\/\+1 counters on target creature/i.test(line)) { a.fain = true; a.sacOutlet = true; rec.status = 'ok'; continue; }                         // Fain, the Broker
@@ -599,7 +603,7 @@
         r.fx.push(...thenFx);
         const t = { kinds: trig.kinds, fx: r.fx, text: raw, cond };
         const um = rest.match(/unless that player pays \{(\d+)\}/i); if (um) t.unless = +um[1];
-        if (trig.kinds[0] === 'dies') { t.who = (trig.m[1] || '~').toLowerCase(); t.nontoken = /nontoken/.test(t.who); const sm = t.who.match(/^~ or another ([a-z]+)(?: you control)?$/); if (sm && !/^creature$/.test(sm[1])) t.subtype = sm[1]; }
+        if (trig.kinds[0] === 'dies') { t.who = (trig.m[1] || '~').toLowerCase(); t.perTurn = /triggers only once each turn/i.test(raw); t.nontoken = /nontoken/.test(t.who); const sm = t.who.match(/^~ or another ([a-z]+)(?: you control)?$/); if (sm && !/^creature$/.test(sm[1])) t.subtype = sm[1]; }
         if (trig.kinds[0] === 'oppDraw') { const up = trig.m[1] || trig.m[2]; if (up) t.unlessPay = +up; }
         if (trig.kinds[0] === 'cast' && trig.m[1] != null) t.filter = (trig.m[1] || '').trim().toLowerCase();
         if (trig.kinds[0] === 'permEtb') { t.other = /other|another/i.test(trig.m[1]); t.nontoken = !!trig.m[2]; t.filter = ((trig.m[3] || '') + ' ' + (trig.m[4] || '')).trim(); }
@@ -1083,8 +1087,8 @@
     const pw = Math.max(0, powerOf(g, p)), wasCreature = isCreaturePerm(p), equippers = g.battlefield.filter(q => q.attachedTo === p.iid);
     let repl = null;                                                                                      // Kalitas / Gisa on the other side: the creature is exiled instead of dying
     if (wasCreature && g.opp && !g.dry && !p.card.commander && dest !== 'exile' && dest !== 'hand' && dest !== 'library3') {
-      const kq = !p.token && g.opp.battlefield.find(q => q.card.a.kalitas), gq = g.opp.battlefield.find(q => q.card.a.gisaR);
-      repl = kq ? { q: kq, kalitas: true } : gq ? { q: gq, gisa: true } : null;
+      const kq = !p.token && g.opp.battlefield.find(q => q.card.a.kalitas), gq = g.opp.battlefield.find(q => q.card.a.exileOpp);
+      repl = kq ? { q: kq, kalitas: true } : gq ? { q: gq, gisa: !!gq.card.a.gisaR } : null;
     }
     removePerm(g, p);
     if (repl) {
@@ -1112,6 +1116,11 @@
   // Relentless Dead: when it dies, pay {B} to return it to your hand, and {X} to return another Zombie with mana value X
   function dieAbilities(g, p, ev) {
     const a = p.card.a;
+    if (a.afterlife && !g.dry) {                                                                          // Afterlife N: N 1/1 white and black flying Spirits (Teysa doubles it)
+      const dd = 1 + g.battlefield.reduce((n, q) => n + (q.card.a.statics.deathDouble || 0), 0);
+      createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W', 'B'], subtypes: ['Spirit'], keywords: ['flying'], artifact: false, name: 'Spirit' }, a.afterlife * dd, ev, p);
+    }
+    if (!g.dry && !p.token && p.inst && g.battlefield.some(q => q.card.a.liesa && q !== p)) (g.liesaBack = g.liesaBack || []).push(p.inst);          // Liesa: back to hand at the next end step
     if (g.dry || !p.inst || p.token) return;
     if (a.dieReturn && g.graveyard.includes(p.inst) && canPay(a.dieReturn.cost, allUnits(g))) { pay(g, a.dieReturn.cost); g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); g.hand.push(p.inst); ev.push({ type: 'note', text: `${p.card.name} returns to your hand ({B})` }); }
     if (a.dieReanim) {
@@ -1131,10 +1140,11 @@
       if (t.who === 'equipped creature') { if (equippers.includes(q)) fireN(g, t, q, ev, p); continue; }
       if (t.nontoken && p.token) continue;                                                              // Open the Graves: nontoken creatures only
       if (t.subtype && !hasSubtype(p.card, [t.subtype])) continue;                                      // Rotlung Reanimator: Clerics
+      if (t.perTurn) { if (q.perTurnUsed === g.turn) continue; q.perTurnUsed = g.turn; fire(g, t, q, ev, p); continue; }          // Morbid Opportunist: only once each turn
       fireN(g, t, q, ev, p);
     }
     if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDies')) fireN(g.opp, t, q, ev, p);
-    if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('dies') && /^(a creature|another creature|~ or another creature)$/.test(t.who)) fireN(g.opp, t, q, ev, p);
+    if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('dies') && /^(a creature|another creature|~ or another creature|one or more other creatures)$/.test(t.who)) { if (t.perTurn) { if (q.perTurnUsed === g.opp.turn) continue; q.perTurnUsed = g.opp.turn; } fireN(g.opp, t, q, ev, p); }
   }
   // best card in the graveyard for "return target <kind> card from your graveyard to your hand"
   function gyTarget(g, f) {
@@ -3176,6 +3186,7 @@
 
   function endTurn(g) {
     g.extortOwed = 0;
+    if (g.liesaBack && g.liesaBack.length) for (const i of g.liesaBack.splice(0)) { const gi = g.graveyard.indexOf(i); if (gi >= 0) { g.graveyard.splice(gi, 1); g.hand.push(i); } }          // Liesa, Forgotten Archangel
     const necroEv = [];
     if (g.flickering && g.flickering.length) { for (const i of g.flickering.splice(0)) { const np = enterWithTriggers(g, i, {}, necroEv); np.sick = false; } }
     if (pol(g, 'fetchHold') === 'untilEnd' || pol(g, 'fetchHold') === 'whenShuffleHelps') crackHeld(g, necroEv); necroDig(g, necroEv);

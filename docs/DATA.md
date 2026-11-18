@@ -72,6 +72,14 @@ Keep a small summary of each run (kill turn, cast turn, missed drops, dead cards
 - Stored in `localStorage` like the saved decks, and removed with them.
 - Could suggest an A/B test: "try this list with one more land" runs both versions and compares them.
 
+### Tags: one vocabulary for everything the app knows about a card
+**Status: built.** `goldfish/static/tags.js` gives every card namespaced tags, so any of the data above can be recalled with a query. The namespaces are `type:` (land, creature, legendary...), `mv:`, `color:`, `tribe:` (the card's own creature types) and `tribe-support:` (names a type that is in your deck: lords and payoffs), `role:` (from `profile.js`), `trigger:` and `effect:` (from the engine's reading of the card: etb, attack, dies, landfall, upkeep... and draw, token, counters, drain, tutor...), `ability:` (mana, activated, loyalty, equip, anthem, cost-reducer, token-doubler...), `keyword:` (Scryfall's keywords), `engine:` (how well the simulator understands the card) and `my:` (tags you make yourself).
+- **Search:** the Deck tab has a Tags box. A space means AND, a comma means OR, `-tag` excludes, `trigger:` means any trigger, a bare word like `ramp` matches any tag with that name, and `name:foo` matches names. Click a chip to add it to the search, Shift-click to exclude it.
+- **Your own tags:** **Tag these…** saves the current result as `my:name`. They are kept in this browser by card name (`gf_tags`), so they follow a card into any deck.
+- **Where tags are used:** Draw Odds can select cards by tag, the hover zoom and the phone viewer list a card's tags (and a tag in the viewer searches the deck for it), and the mirror match reports which tags go with winning or losing (`Suggest.matchTags`: win rate when you had a card with the tag by turn 3 against when you did not). Card type, mana value, color and engine tags are left out of that list because they describe the deck's shape, not what a card does.
+- **Caveats:** tags are read from rules text and the engine, so unusual wordings can be missed. Tags overlap (a ramp spell is often also a mana ability), and the win-rate list is linked to winning, not the cause of it.
+- **Possible next steps:** per-run tag summaries over time, tags on tokens, and letting Policy lab choices (for example "sacrifice only with 8+ tokens") refer to a tag instead of a card name.
+
 ### Tier C: many decks from many players (needs a server and consent)
 Combining results across players would allow suggestions like "decks with this commander usually play 36-37 lands" or "players who cut this card saw their kill turn improve".
 This changes what the app is:

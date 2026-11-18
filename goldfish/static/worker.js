@@ -1,4 +1,4 @@
-importScripts('sim.js', 'suggest.js');
+importScripts('sim.js', 'suggest.js', 'profile.js', 'tags.js');
 self.onmessage = (e) => {
   if (e.data.learn) {                                   // Policy lab: compare options by playing many games with each
     const l = e.data.learn;

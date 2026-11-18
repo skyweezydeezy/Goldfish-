@@ -555,8 +555,8 @@ html.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px
 .suggest .sg.warn { border-left-color: var(--warning); }
 .suggest .sg.good { border-left-color: var(--good); }
 .suggest .sg p { margin: 2px 0 0; color: var(--text-secondary); font-size: 13px; }
-#mmImpact, #mmOutliers, #mmPairs { margin-top: 14px; }
-#mmImpact h3, #mmOutliers h3, #mmPairs h3 { margin: 0 0 4px; font-size: 15px; }
+#mmImpact, #mmOutliers, #mmPairs, #mmTags { margin-top: 14px; }
+#mmImpact h3, #mmOutliers h3, #mmPairs h3, #mmTags h3 { margin: 0 0 4px; font-size: 15px; }
 .suggest .sg > p + ul, .suggest .sg ul + p { margin-top: 4px; }
 .suggest .sg ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); }
 button.look-shop { background: none; border: 0; padding: 2px 4px; min-height: 0; cursor: pointer; font: inherit; font-size: 11px; color: var(--ice); }
@@ -648,3 +648,20 @@ select option, select optgroup { background-color: #0f1d2a; color: #eef7fd; }
 select option:checked, select option:hover { background-color: #2b6fb3; color: #ffffff; }
 select option:disabled { color: #7f9bb0; }
 select optgroup { color: var(--ice); font-weight: 700; }
+
+/* Tags */
+#tagQuery { flex: 1 1 280px; min-width: 0; }
+.tags-results { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; max-height: 360px; overflow-y: auto; }
+.tags-results .mtg { width: 92px; }
+.tag-chips { margin-top: 8px; }
+.tag-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; margin: 8px 0; }
+.tag-ns { font-size: 12px; color: var(--muted); min-width: 108px; }
+button.tag-chip { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 999px; padding: 2px 9px; min-height: 0; font: inherit; font-size: 12px; cursor: pointer; }
+button.tag-chip:hover { background: var(--surface-3); color: var(--text-primary); }
+button.tag-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.tag-chip.not { background: #5a2b2b; border-color: var(--critical); color: #fff; }
+button.tag-chip small { opacity: .7; margin-left: 3px; }
+.lb-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin: 6px 0 2px; max-width: 560px; }
+
+.zoom-tags { max-width: 300px; margin-top: 4px; padding: 5px 8px; background: rgba(8,18,26,.92); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 11px; line-height: 1.4; }
+.zoom.two .zoom-tags { max-width: 608px; }

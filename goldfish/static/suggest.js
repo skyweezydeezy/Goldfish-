@@ -204,6 +204,35 @@
     };
   }
 
+  // ---------- tier A+: tags ----------
+  // For each tag (role:ramp, trigger:etb, tribe:merfolk, effect:draw, my:combo...), the win rate in games where you had a card with
+  // that tag early (opening hand or drawn by turn EARLY) against games where you did not. Cards share tags (a ramp spell is often also
+  // a mana ability), so related tags move together; look at the top few, not every row. Tags of card types, mana values, colors and
+  // the simulator's own coverage are left out: they describe the deck's shape, not what a card does.
+  const TAG_Z = 3.5, TAG_MIN_GAMES = 40;
+  function matchTags(deck, records) {
+    const T = root.Tags || (typeof require !== 'undefined' ? require('./tags.js') : null);
+    if (!T) return null;
+    const ix = T.index(deck), rows = [];
+    ix.tags.forEach(tag => {
+      if (/^(type|mv|color|engine):/.test(tag)) return;
+      const cs = ix.cardsOf.get(tag), copies = ix.copies.get(tag);
+      if (copies < 3 || cs.every(c => /\bLand\b/.test(String(c.type_line || '').split(' // ')[0]))) return;
+      const uids = new Set(cs.map(c => c.uid));
+      let nh = 0, wh = 0, nn = 0, wn = 0;
+      for (const r of records) { if (r.early.some(u => uids.has(u))) { nh++; wh += r.won; } else { nn++; wn += r.won; } }
+      if (nh < TAG_MIN_GAMES || nn < TAG_MIN_GAMES) return;
+      const qh = (wh + 1) / (nh + 2), qn = (wn + 1) / (nn + 2), se = Math.sqrt(qh * (1 - qh) / nh + qn * (1 - qn) / nn);
+      rows.push({ tag, cards: cs.length, copies, games: nh, wrHad: wh / nh, wrNot: wn / nn, gap: wh / nh - wn / nn, z: (wh / nh - wn / nn) / se });
+    });
+    const clear = rows.filter(r => Math.abs(r.z) >= TAG_Z);
+    return {
+      tested: rows.length, z: TAG_Z, early: EARLY, flagged: clear.length,
+      best: clear.filter(r => r.gap > 0).sort((a, b) => b.z - a.z).slice(0, 6),
+      worst: clear.filter(r => r.gap < 0).sort((a, b) => a.z - b.z).slice(0, 6),
+    };
+  }
+
   // ---------- tier A+: which of your cards are linked to winning against a known opponent ----------
   // Replays the same matches as Goldfish.matchMonteCarlo (same seeds, same seats) and, for each of your cards, compares
   // your win rate in games where you drew it with games where you did not. Drawing more cards in longer games shifts every
@@ -243,7 +272,7 @@
     rows.forEach(r => { r.gap = r.raw - mean; r.z = r.gap / r.se; delete r.raw; delete r.se; });
     rows.sort((a, b) => b.gap - a.gap);
     return { n: games, base: games ? wins / games : 0, avgGap: mean, cards: rows, outliers: matchOutliers(records, deckA),
-      pairs: matchPairs(deckA, keep, records) };
+      pairs: matchPairs(deckA, keep, records), tags: matchTags(deckA, records) };
   }
 
   // Cards whose gap is clearly bigger than the noise (|z| >= 2, seen in at least 30 games), split into best and worst.
@@ -253,7 +282,7 @@
     return { best: clear.filter(r => r.gap > 0).slice(0, max), worst: clear.filter(r => r.gap < 0).reverse().slice(0, max), tested: imp.cards.length };
   }
 
-  const api = { fromSim, deadCards, matchImpact, impactHighlights, matchOutliers, matchPairs };
+  const api = { fromSim, deadCards, matchImpact, impactHighlights, matchOutliers, matchPairs, matchTags };
   root.Suggest = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

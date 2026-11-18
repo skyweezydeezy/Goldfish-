@@ -1,0 +1,4415 @@
+{
+ "updated": "2026-11-18",
+ "sets": [
+  {
+   "code": "30a",
+   "name": "30th Anniversary Edition",
+   "released_at": "2022-11-28",
+   "set_type": "memorabilia",
+   "icon": "https://svgs.scryfall.io/sets/30a.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 0,
+   "reprints": 6,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "afr",
+   "name": "Adventures in the Forgotten Realms",
+   "released_at": "2021-07-23",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/afr.svg?1794805200",
+   "partial": true,
+   "cards": 12,
+   "originals": 12,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 0,
+    "partial": 5,
+    "none": 0
+   }
+  },
+  {
+   "code": "aer",
+   "name": "Aether Revolt",
+   "released_at": "2017-01-20",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/aer.svg?1794805200",
+   "partial": true,
+   "cards": 22,
+   "originals": 22,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 1,
+    "partial": 3,
+    "none": 5
+   }
+  },
+  {
+   "code": "dft",
+   "name": "Aetherdrift",
+   "released_at": "2025-02-14",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dft.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "arb",
+   "name": "Alara Reborn",
+   "released_at": "2009-04-30",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/arb.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "all",
+   "name": "Alliances",
+   "released_at": "1996-06-10",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/all.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "akh",
+   "name": "Amonkhet",
+   "released_at": "2017-04-28",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/akh.svg?1794805200",
+   "partial": true,
+   "cards": 25,
+   "originals": 25,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 14,
+    "approx": 2,
+    "partial": 5,
+    "none": 4
+   }
+  },
+  {
+   "code": "mp2",
+   "name": "Amonkhet Invocations",
+   "released_at": "2017-04-28",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/mp2.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 2,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "atq",
+   "name": "Antiquities",
+   "released_at": "1994-03-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/atq.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "apc",
+   "name": "Apocalypse",
+   "released_at": "2001-06-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/apc.svg?1794805200",
+   "partial": true,
+   "cards": 11,
+   "originals": 11,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "arn",
+   "name": "Arabian Nights",
+   "released_at": "1993-12-17",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/arn.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "arc",
+   "name": "Archenemy",
+   "released_at": "2010-06-18",
+   "set_type": "archenemy",
+   "icon": "https://svgs.scryfall.io/sets/arc.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pal03",
+   "name": "Arena League 2003",
+   "released_at": "2003-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/parl.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pal04",
+   "name": "Arena League 2004",
+   "released_at": "2004-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/parl.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pal06",
+   "name": "Arena League 2006",
+   "released_at": "2006-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/parl.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "avr",
+   "name": "Avacyn Restored",
+   "released_at": "2012-05-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/avr.svg?1794805200",
+   "partial": true,
+   "cards": 21,
+   "originals": 21,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 14,
+    "approx": 0,
+    "partial": 4,
+    "none": 3
+   }
+  },
+  {
+   "code": "tle",
+   "name": "Avatar: The Last Airbender Eternal",
+   "released_at": "2025-11-21",
+   "set_type": "eternal",
+   "icon": "https://svgs.scryfall.io/sets/tle.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 1,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "bfz",
+   "name": "Battle for Zendikar",
+   "released_at": "2015-10-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/bfz.svg?1794805200",
+   "partial": true,
+   "cards": 31,
+   "originals": 31,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 20,
+    "approx": 0,
+    "partial": 8,
+    "none": 3
+   }
+  },
+  {
+   "code": "bbd",
+   "name": "Battlebond",
+   "released_at": "2018-06-08",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/bbd.svg?1794805200",
+   "partial": true,
+   "cards": 16,
+   "originals": 16,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 8,
+    "approx": 0,
+    "partial": 3,
+    "none": 5
+   }
+  },
+  {
+   "code": "bok",
+   "name": "Betrayers of Kamigawa",
+   "released_at": "2005-02-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/bok.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 5,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 3
+   }
+  },
+  {
+   "code": "blb",
+   "name": "Bloomburrow",
+   "released_at": "2024-08-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/blb.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "blc",
+   "name": "Bloomburrow Commander",
+   "released_at": "2024-08-02",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/blc.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 1,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "bng",
+   "name": "Born of the Gods",
+   "released_at": "2014-02-07",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/bng.svg?1794805200",
+   "partial": true,
+   "cards": 10,
+   "originals": 10,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 4,
+    "none": 1
+   }
+  },
+  {
+   "code": "pbng",
+   "name": "Born of the Gods Promos",
+   "released_at": "2014-02-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/bng.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 1,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "otp",
+   "name": "Breaking News",
+   "released_at": "2024-04-19",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/otp.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 0,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "chk",
+   "name": "Champions of Kamigawa",
+   "released_at": "2004-10-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/chk.svg?1794805200",
+   "partial": true,
+   "cards": 16,
+   "originals": 16,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 1,
+    "partial": 4,
+    "none": 1
+   }
+  },
+  {
+   "code": "pchk",
+   "name": "Champions of Kamigawa Promos",
+   "released_at": "2004-10-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/chk.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "csp",
+   "name": "Coldsnap",
+   "released_at": "2006-07-21",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/csp.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 5,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 4,
+    "none": 0
+   }
+  },
+  {
+   "code": "cmd",
+   "name": "Commander 2011",
+   "released_at": "2011-06-17",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/cmd.svg?1794805200",
+   "partial": true,
+   "cards": 19,
+   "originals": 19,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 14,
+    "approx": 0,
+    "partial": 2,
+    "none": 3
+   }
+  },
+  {
+   "code": "c13",
+   "name": "Commander 2013",
+   "released_at": "2013-11-01",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c13.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 1,
+    "partial": 4,
+    "none": 1
+   }
+  },
+  {
+   "code": "c14",
+   "name": "Commander 2014",
+   "released_at": "2014-11-07",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c14.svg?1794805200",
+   "partial": true,
+   "cards": 30,
+   "originals": 30,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 1,
+    "partial": 13,
+    "none": 3
+   }
+  },
+  {
+   "code": "c15",
+   "name": "Commander 2015",
+   "released_at": "2015-11-13",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c15.svg?1794805200",
+   "partial": true,
+   "cards": 30,
+   "originals": 30,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 20,
+    "approx": 0,
+    "partial": 8,
+    "none": 2
+   }
+  },
+  {
+   "code": "c16",
+   "name": "Commander 2016",
+   "released_at": "2016-11-11",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c16.svg?1794805200",
+   "partial": true,
+   "cards": 31,
+   "originals": 31,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 19,
+    "approx": 0,
+    "partial": 10,
+    "none": 2
+   }
+  },
+  {
+   "code": "c17",
+   "name": "Commander 2017",
+   "released_at": "2017-08-25",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c17.svg?1794805200",
+   "partial": true,
+   "cards": 26,
+   "originals": 26,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 3,
+    "partial": 9,
+    "none": 1
+   }
+  },
+  {
+   "code": "c18",
+   "name": "Commander 2018",
+   "released_at": "2018-08-10",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c18.svg?1794805200",
+   "partial": false,
+   "cards": 297,
+   "originals": 59,
+   "reprints": 238,
+   "missing": 0,
+   "coverage": {
+    "full": 185,
+    "approx": 2,
+    "partial": 80,
+    "none": 30
+   }
+  },
+  {
+   "code": "c19",
+   "name": "Commander 2019",
+   "released_at": "2019-08-23",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c19.svg?1794805200",
+   "partial": false,
+   "cards": 292,
+   "originals": 59,
+   "reprints": 233,
+   "missing": 0,
+   "coverage": {
+    "full": 163,
+    "approx": 13,
+    "partial": 82,
+    "none": 34
+   }
+  },
+  {
+   "code": "c20",
+   "name": "Commander 2020",
+   "released_at": "2020-04-17",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c20.svg?1794805200",
+   "partial": false,
+   "cards": 322,
+   "originals": 71,
+   "reprints": 251,
+   "missing": 0,
+   "coverage": {
+    "full": 201,
+    "approx": 4,
+    "partial": 97,
+    "none": 20
+   }
+  },
+  {
+   "code": "c21",
+   "name": "Commander 2021",
+   "released_at": "2021-04-23",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/c21.svg?1794805200",
+   "partial": false,
+   "cards": 329,
+   "originals": 81,
+   "reprints": 248,
+   "missing": 0,
+   "coverage": {
+    "full": 225,
+    "approx": 3,
+    "partial": 69,
+    "none": 32
+   }
+  },
+  {
+   "code": "cmr",
+   "name": "Commander Legends",
+   "released_at": "2020-11-20",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/cmr.svg?1794805200",
+   "partial": false,
+   "cards": 531,
+   "originals": 171,
+   "reprints": 360,
+   "missing": 0,
+   "coverage": {
+    "full": 329,
+    "approx": 11,
+    "partial": 133,
+    "none": 58
+   }
+  },
+  {
+   "code": "clb",
+   "name": "Commander Legends: Battle for Baldur's Gate",
+   "released_at": "2022-06-10",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/clb.svg?1794805200",
+   "partial": false,
+   "cards": 651,
+   "originals": 344,
+   "reprints": 307,
+   "missing": 0,
+   "coverage": {
+    "full": 375,
+    "approx": 21,
+    "partial": 189,
+    "none": 66
+   }
+  },
+  {
+   "code": "cmm",
+   "name": "Commander Masters",
+   "released_at": "2023-08-04",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/cmm.svg?1794805200",
+   "partial": false,
+   "cards": 737,
+   "originals": 40,
+   "reprints": 697,
+   "missing": 0,
+   "coverage": {
+    "full": 454,
+    "approx": 17,
+    "partial": 177,
+    "none": 89
+   }
+  },
+  {
+   "code": "con",
+   "name": "Conflux",
+   "released_at": "2009-02-06",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/con.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 14,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 3,
+    "none": 1
+   }
+  },
+  {
+   "code": "cns",
+   "name": "Conspiracy",
+   "released_at": "2014-06-06",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/cns.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 8,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "cn2",
+   "name": "Conspiracy: Take the Crown",
+   "released_at": "2016-08-26",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/cn2.svg?1794805200",
+   "partial": true,
+   "cards": 16,
+   "originals": 16,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 10,
+    "none": 2
+   }
+  },
+  {
+   "code": "m19",
+   "name": "Core Set 2019",
+   "released_at": "2018-07-13",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m19.svg?1794805200",
+   "partial": true,
+   "cards": 23,
+   "originals": 23,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 15,
+    "approx": 0,
+    "partial": 6,
+    "none": 2
+   }
+  },
+  {
+   "code": "m20",
+   "name": "Core Set 2020",
+   "released_at": "2019-07-12",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m20.svg?1794805200",
+   "partial": true,
+   "cards": 20,
+   "originals": 20,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 8,
+    "none": 2
+   }
+  },
+  {
+   "code": "m21",
+   "name": "Core Set 2021",
+   "released_at": "2020-07-03",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m21.svg?1794805200",
+   "partial": true,
+   "cards": 18,
+   "originals": 15,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 9,
+    "approx": 0,
+    "partial": 7,
+    "none": 2
+   }
+  },
+  {
+   "code": "dka",
+   "name": "Dark Ascension",
+   "released_at": "2012-02-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dka.svg?1794805200",
+   "partial": true,
+   "cards": 15,
+   "originals": 15,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 0,
+    "partial": 8,
+    "none": 0
+   }
+  },
+  {
+   "code": "pdka",
+   "name": "Dark Ascension Promos",
+   "released_at": "2012-01-28",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/dka.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "dst",
+   "name": "Darksteel",
+   "released_at": "2004-02-06",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dst.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 8,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "dis",
+   "name": "Dissension",
+   "released_at": "2006-05-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dis.svg?1794805200",
+   "partial": true,
+   "cards": 19,
+   "originals": 19,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 17,
+    "approx": 0,
+    "partial": 1,
+    "none": 1
+   }
+  },
+  {
+   "code": "dom",
+   "name": "Dominaria",
+   "released_at": "2018-04-27",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dom.svg?1794805200",
+   "partial": true,
+   "cards": 39,
+   "originals": 39,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 22,
+    "approx": 0,
+    "partial": 12,
+    "none": 5
+   }
+  },
+  {
+   "code": "dmr",
+   "name": "Dominaria Remastered",
+   "released_at": "2023-01-13",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/dmr.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "dmu",
+   "name": "Dominaria United",
+   "released_at": "2022-09-09",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dmu.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 7,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "dmc",
+   "name": "Dominaria United Commander",
+   "released_at": "2022-09-09",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/dmc.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "2xm",
+   "name": "Double Masters",
+   "released_at": "2020-08-07",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/2xm.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "2x2",
+   "name": "Double Masters 2022",
+   "released_at": "2022-07-08",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/2x2.svg?1794805200",
+   "partial": true,
+   "cards": 10,
+   "originals": 0,
+   "reprints": 10,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "dgm",
+   "name": "Dragon's Maze",
+   "released_at": "2013-05-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dgm.svg?1794805200",
+   "partial": true,
+   "cards": 11,
+   "originals": 11,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 9,
+    "approx": 1,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "pdgm",
+   "name": "Dragon's Maze Promos",
+   "released_at": "2013-04-27",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/dgm.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "dtk",
+   "name": "Dragons of Tarkir",
+   "released_at": "2015-03-27",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/dtk.svg?1794805200",
+   "partial": true,
+   "cards": 18,
+   "originals": 18,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 8,
+    "none": 4
+   }
+  },
+  {
+   "code": "gvl",
+   "name": "Duel Decks Anthology: Garruk vs. Liliana",
+   "released_at": "2014-12-05",
+   "set_type": "duel_deck",
+   "icon": "https://svgs.scryfall.io/sets/ddd.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ddl",
+   "name": "Duel Decks: Heroes vs. Monsters",
+   "released_at": "2013-09-06",
+   "set_type": "duel_deck",
+   "icon": "https://svgs.scryfall.io/sets/ddl.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "dds",
+   "name": "Duel Decks: Mind vs. Might",
+   "released_at": "2017-03-31",
+   "set_type": "duel_deck",
+   "icon": "https://svgs.scryfall.io/sets/dds.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "ddn",
+   "name": "Duel Decks: Speed vs. Cunning",
+   "released_at": "2014-09-05",
+   "set_type": "duel_deck",
+   "icon": "https://svgs.scryfall.io/sets/ddn.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ddp",
+   "name": "Duel Decks: Zendikar vs. Eldrazi",
+   "released_at": "2015-08-28",
+   "set_type": "duel_deck",
+   "icon": "https://svgs.scryfall.io/sets/ddp.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "pdp14",
+   "name": "Duels of the Planeswalkers 2014 Promos",
+   "released_at": "2013-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m14.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pdp15",
+   "name": "Duels of the Planeswalkers 2015 Promos",
+   "released_at": "2014-07-09",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m15.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "dsc",
+   "name": "Duskmourn: House of Horror Commander",
+   "released_at": "2024-09-27",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/dsc.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 0,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "eoe",
+   "name": "Edge of Eternities",
+   "released_at": "2025-08-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/eoe.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "eoc",
+   "name": "Edge of Eternities Commander",
+   "released_at": "2025-08-01",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/eoc.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "emn",
+   "name": "Eldritch Moon",
+   "released_at": "2016-07-22",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/emn.svg?1794805200",
+   "partial": true,
+   "cards": 18,
+   "originals": 18,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 1,
+    "partial": 5,
+    "none": 2
+   }
+  },
+  {
+   "code": "ema",
+   "name": "Eternal Masters",
+   "released_at": "2016-06-10",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/ema.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "eve",
+   "name": "Eventide",
+   "released_at": "2008-07-25",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/eve.svg?1794805200",
+   "partial": true,
+   "cards": 15,
+   "originals": 15,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 11,
+    "approx": 0,
+    "partial": 4,
+    "none": 0
+   }
+  },
+  {
+   "code": "exo",
+   "name": "Exodus",
+   "released_at": "1998-06-15",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/exo.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 1,
+    "none": 1
+   }
+  },
+  {
+   "code": "pip",
+   "name": "Fallout",
+   "released_at": "2024-03-08",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/pip.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "frf",
+   "name": "Fate Reforged",
+   "released_at": "2015-01-23",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/frf.svg?1794805200",
+   "partial": true,
+   "cards": 20,
+   "originals": 20,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 1,
+    "partial": 5,
+    "none": 1
+   }
+  },
+  {
+   "code": "5dn",
+   "name": "Fifth Dawn",
+   "released_at": "2004-06-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/5dn.svg?1794805200",
+   "partial": true,
+   "cards": 10,
+   "originals": 10,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 2,
+    "none": 3
+   }
+  },
+  {
+   "code": "afc",
+   "name": "Forgotten Realms Commander",
+   "released_at": "2021-07-23",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/afc.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 5,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "fdn",
+   "name": "Foundations",
+   "released_at": "2024-11-15",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/fdn.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 2,
+   "reprints": 11,
+   "missing": 0,
+   "coverage": {
+    "full": 12,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "j25",
+   "name": "Foundations Jumpstart",
+   "released_at": "2024-11-15",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/j25.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 0,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "f08",
+   "name": "Friday Night Magic 2008",
+   "released_at": "2008-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/dci.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "f11",
+   "name": "Friday Night Magic 2011",
+   "released_at": "2011-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "f14",
+   "name": "Friday Night Magic 2014",
+   "released_at": "2014-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "f16",
+   "name": "Friday Night Magic 2016",
+   "released_at": "2016-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "f17",
+   "name": "Friday Night Magic 2017",
+   "released_at": "2017-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "v11",
+   "name": "From the Vault: Legends",
+   "released_at": "2011-08-26",
+   "set_type": "from_the_vault",
+   "icon": "https://svgs.scryfall.io/sets/v11.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "fut",
+   "name": "Future Sight",
+   "released_at": "2007-05-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/fut.svg?1794805200",
+   "partial": true,
+   "cards": 9,
+   "originals": 9,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "gn2",
+   "name": "Game Night 2019",
+   "released_at": "2019-11-15",
+   "set_type": "box",
+   "icon": "https://svgs.scryfall.io/sets/gn2.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "gtc",
+   "name": "Gatecrash",
+   "released_at": "2013-02-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/gtc.svg?1794805200",
+   "partial": true,
+   "cards": 23,
+   "originals": 23,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 16,
+    "approx": 0,
+    "partial": 4,
+    "none": 3
+   }
+  },
+  {
+   "code": "pgtc",
+   "name": "Gatecrash Promos",
+   "released_at": "2013-01-26",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/gtc.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 1
+   }
+  },
+  {
+   "code": "gpt",
+   "name": "Guildpact",
+   "released_at": "2006-02-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/gpt.svg?1794805200",
+   "partial": true,
+   "cards": 12,
+   "originals": 12,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 12,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pgpt",
+   "name": "Guildpact Promos",
+   "released_at": "2006-02-03",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/gpt.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "grn",
+   "name": "Guilds of Ravnica",
+   "released_at": "2018-10-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/grn.svg?1794805200",
+   "partial": true,
+   "cards": 21,
+   "originals": 21,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 15,
+    "approx": 0,
+    "partial": 6,
+    "none": 0
+   }
+  },
+  {
+   "code": "pgrn",
+   "name": "Guilds of Ravnica Promos",
+   "released_at": "2018-10-05",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/grn.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "hou",
+   "name": "Hour of Devastation",
+   "released_at": "2017-07-14",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/hou.svg?1794805200",
+   "partial": true,
+   "cards": 21,
+   "originals": 21,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 1,
+    "partial": 5,
+    "none": 5
+   }
+  },
+  {
+   "code": "ice",
+   "name": "Ice Age",
+   "released_at": "1995-06-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ice.svg?1794805200",
+   "partial": true,
+   "cards": 11,
+   "originals": 11,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ima",
+   "name": "Iconic Masters",
+   "released_at": "2017-11-17",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/ima.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "iko",
+   "name": "Ikoria: Lair of Behemoths",
+   "released_at": "2020-04-24",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/iko.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 14,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 2,
+    "none": 2
+   }
+  },
+  {
+   "code": "isd",
+   "name": "Innistrad",
+   "released_at": "2011-09-30",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/isd.svg?1794805200",
+   "partial": true,
+   "cards": 39,
+   "originals": 39,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 25,
+    "approx": 0,
+    "partial": 10,
+    "none": 4
+   }
+  },
+  {
+   "code": "pisd",
+   "name": "Innistrad Promos",
+   "released_at": "2011-09-24",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/isd.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "inr",
+   "name": "Innistrad Remastered",
+   "released_at": "2025-01-24",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/inr.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "vow",
+   "name": "Innistrad: Crimson Vow",
+   "released_at": "2021-11-19",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/vow.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "mid",
+   "name": "Innistrad: Midnight Hunt",
+   "released_at": "2021-09-24",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mid.svg?1794805200",
+   "partial": true,
+   "cards": 11,
+   "originals": 11,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "inv",
+   "name": "Invasion",
+   "released_at": "2000-10-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/inv.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 1,
+    "partial": 3,
+    "none": 3
+   }
+  },
+  {
+   "code": "xln",
+   "name": "Ixalan",
+   "released_at": "2017-09-29",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/xln.svg?1794805200",
+   "partial": true,
+   "cards": 28,
+   "originals": 28,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 24,
+    "approx": 0,
+    "partial": 2,
+    "none": 2
+   }
+  },
+  {
+   "code": "jou",
+   "name": "Journey into Nyx",
+   "released_at": "2014-05-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/jou.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 8,
+    "approx": 0,
+    "partial": 3,
+    "none": 2
+   }
+  },
+  {
+   "code": "pjou",
+   "name": "Journey into Nyx Promos",
+   "released_at": "2014-04-26",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/jou.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 5,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "jud",
+   "name": "Judgment",
+   "released_at": "2002-05-27",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/jud.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 1,
+    "partial": 6,
+    "none": 1
+   }
+  },
+  {
+   "code": "jmp",
+   "name": "Jumpstart",
+   "released_at": "2020-07-17",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/jmp.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 10,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "j22",
+   "name": "Jumpstart 2022",
+   "released_at": "2022-12-02",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/j22.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "kld",
+   "name": "Kaladesh",
+   "released_at": "2016-09-30",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/kld.svg?1794805200",
+   "partial": true,
+   "cards": 27,
+   "originals": 27,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 19,
+    "approx": 0,
+    "partial": 4,
+    "none": 4
+   }
+  },
+  {
+   "code": "mps",
+   "name": "Kaladesh Inventions",
+   "released_at": "2016-09-30",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/mps.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "pkld",
+   "name": "Kaladesh Promos",
+   "released_at": "2016-09-30",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/kld.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "khm",
+   "name": "Kaldheim",
+   "released_at": "2021-02-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/khm.svg?1794805200",
+   "partial": true,
+   "cards": 21,
+   "originals": 21,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 12,
+    "approx": 2,
+    "partial": 7,
+    "none": 0
+   }
+  },
+  {
+   "code": "neo",
+   "name": "Kamigawa: Neon Dynasty",
+   "released_at": "2022-02-18",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/neo.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "ktk",
+   "name": "Khans of Tarkir",
+   "released_at": "2014-09-26",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ktk.svg?1794805200",
+   "partial": true,
+   "cards": 42,
+   "originals": 42,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 28,
+    "approx": 4,
+    "partial": 5,
+    "none": 5
+   }
+  },
+  {
+   "code": "leg",
+   "name": "Legends",
+   "released_at": "1994-06-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/leg.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 8,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "lgn",
+   "name": "Legions",
+   "released_at": "2003-02-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/lgn.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 14,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 5,
+    "partial": 2,
+    "none": 4
+   }
+  },
+  {
+   "code": "lea",
+   "name": "Limited Edition Alpha",
+   "released_at": "1993-08-05",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/lea.svg?1794805200",
+   "partial": true,
+   "cards": 32,
+   "originals": 32,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 29,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "leb",
+   "name": "Limited Edition Beta",
+   "released_at": "1993-10-04",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/leb.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "lrw",
+   "name": "Lorwyn",
+   "released_at": "2007-10-12",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/lrw.svg?1794805200",
+   "partial": true,
+   "cards": 32,
+   "originals": 32,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 14,
+    "approx": 0,
+    "partial": 14,
+    "none": 4
+   }
+  },
+  {
+   "code": "ecl",
+   "name": "Lorwyn Eclipsed",
+   "released_at": "2026-01-23",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ecl.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ecc",
+   "name": "Lorwyn Eclipsed Commander",
+   "released_at": "2026-01-23",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/ecc.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 0,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "g18",
+   "name": "M19 Gift Pack",
+   "released_at": "2018-11-16",
+   "set_type": "box",
+   "icon": "https://svgs.scryfall.io/sets/m19.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "m10",
+   "name": "Magic 2010",
+   "released_at": "2009-07-17",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m10.svg?1794805200",
+   "partial": true,
+   "cards": 15,
+   "originals": 15,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "m11",
+   "name": "Magic 2011",
+   "released_at": "2010-07-16",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m11.svg?1794805200",
+   "partial": true,
+   "cards": 18,
+   "originals": 18,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 12,
+    "approx": 0,
+    "partial": 2,
+    "none": 4
+   }
+  },
+  {
+   "code": "pm11",
+   "name": "Magic 2011 Promos",
+   "released_at": "2010-07-15",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m11.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "m12",
+   "name": "Magic 2012",
+   "released_at": "2011-07-15",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m12.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 3,
+    "none": 0
+   }
+  },
+  {
+   "code": "m13",
+   "name": "Magic 2013",
+   "released_at": "2012-07-13",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m13.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 14,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 11,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "pm13",
+   "name": "Magic 2013 Promos",
+   "released_at": "2012-07-12",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m13.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "m14",
+   "name": "Magic 2014",
+   "released_at": "2013-07-19",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m14.svg?1794805200",
+   "partial": true,
+   "cards": 21,
+   "originals": 20,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 16,
+    "approx": 0,
+    "partial": 2,
+    "none": 3
+   }
+  },
+  {
+   "code": "pm14",
+   "name": "Magic 2014 Promos",
+   "released_at": "2013-07-18",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m14.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "m15",
+   "name": "Magic 2015",
+   "released_at": "2014-07-18",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/m15.svg?1794805200",
+   "partial": true,
+   "cards": 17,
+   "originals": 17,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 2,
+    "partial": 3,
+    "none": 2
+   }
+  },
+  {
+   "code": "pm15",
+   "name": "Magic 2015 Promos",
+   "released_at": "2014-07-17",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m15.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ori",
+   "name": "Magic Origins",
+   "released_at": "2015-07-17",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/ori.svg?1794805200",
+   "partial": true,
+   "cards": 29,
+   "originals": 29,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 19,
+    "approx": 1,
+    "partial": 5,
+    "none": 4
+   }
+  },
+  {
+   "code": "p10",
+   "name": "Magic Player Rewards 2010",
+   "released_at": "2010-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/default.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "mom",
+   "name": "March of the Machine",
+   "released_at": "2023-04-21",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mom.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "msh",
+   "name": "Marvel Super Heroes",
+   "released_at": "2026-06-26",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/msh.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "msc",
+   "name": "Marvel Super Heroes Commander",
+   "released_at": "2026-06-26",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/msc.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 0,
+   "reprints": 5,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "a25",
+   "name": "Masters 25",
+   "released_at": "2018-03-16",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/a25.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pmei",
+   "name": "Media and Collaboration Promos",
+   "released_at": "1995-01-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/pmei.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "mmq",
+   "name": "Mercadian Masques",
+   "released_at": "1999-10-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mmq.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "mic",
+   "name": "Midnight Hunt Commander",
+   "released_at": "2021-09-24",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/mic.svg?1794805200",
+   "partial": true,
+   "cards": 5,
+   "originals": 2,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "mir",
+   "name": "Mirage",
+   "released_at": "1996-10-08",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mir.svg?1794805200",
+   "partial": true,
+   "cards": 17,
+   "originals": 17,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 15,
+    "approx": 0,
+    "partial": 0,
+    "none": 2
+   }
+  },
+  {
+   "code": "mrd",
+   "name": "Mirrodin",
+   "released_at": "2003-10-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mrd.svg?1794805200",
+   "partial": true,
+   "cards": 31,
+   "originals": 31,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 23,
+    "approx": 0,
+    "partial": 5,
+    "none": 3
+   }
+  },
+  {
+   "code": "mbs",
+   "name": "Mirrodin Besieged",
+   "released_at": "2011-02-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mbs.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 14,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 11,
+    "approx": 0,
+    "partial": 3,
+    "none": 0
+   }
+  },
+  {
+   "code": "pmbs",
+   "name": "Mirrodin Besieged Promos",
+   "released_at": "2011-02-03",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/mbs.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "mh1",
+   "name": "Modern Horizons",
+   "released_at": "2019-06-14",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/mh1.svg?1794805200",
+   "partial": true,
+   "cards": 24,
+   "originals": 23,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 16,
+    "approx": 2,
+    "partial": 5,
+    "none": 1
+   }
+  },
+  {
+   "code": "mh2",
+   "name": "Modern Horizons 2",
+   "released_at": "2021-06-18",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/mh2.svg?1794805200",
+   "partial": false,
+   "cards": 309,
+   "originals": 255,
+   "reprints": 54,
+   "missing": 0,
+   "coverage": {
+    "full": 159,
+    "approx": 6,
+    "partial": 105,
+    "none": 39
+   }
+  },
+  {
+   "code": "pmh2",
+   "name": "Modern Horizons 2 Promos",
+   "released_at": "2021-06-18",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/mh2.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 0,
+   "reprints": 6,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "mh3",
+   "name": "Modern Horizons 3",
+   "released_at": "2024-06-14",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/mh3.svg?1794805200",
+   "partial": false,
+   "cards": 309,
+   "originals": 256,
+   "reprints": 53,
+   "missing": 0,
+   "coverage": {
+    "full": 141,
+    "approx": 3,
+    "partial": 137,
+    "none": 28
+   }
+  },
+  {
+   "code": "mor",
+   "name": "Morningtide",
+   "released_at": "2008-02-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/mor.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 14,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 11,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "pmor",
+   "name": "Morningtide Promos",
+   "released_at": "2008-02-01",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/mor.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "mkc",
+   "name": "Murders at Karlov Manor Commander",
+   "released_at": "2024-02-09",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/mkc.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "med",
+   "name": "Mythic Edition",
+   "released_at": "2018-10-05",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/med.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "nem",
+   "name": "Nemesis",
+   "released_at": "2000-02-14",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/nem.svg?1794805200",
+   "partial": true,
+   "cards": 7,
+   "originals": 7,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 2,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "nec",
+   "name": "Neon Dynasty Commander",
+   "released_at": "2022-02-18",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/nec.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "nph",
+   "name": "New Phyrexia",
+   "released_at": "2011-05-13",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/nph.svg?1794805200",
+   "partial": true,
+   "cards": 16,
+   "originals": 16,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 4,
+    "none": 2
+   }
+  },
+  {
+   "code": "pnph",
+   "name": "New Phyrexia Promos",
+   "released_at": "2011-05-12",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/nph.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ogw",
+   "name": "Oath of the Gatewatch",
+   "released_at": "2016-01-22",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ogw.svg?1794805200",
+   "partial": true,
+   "cards": 25,
+   "originals": 25,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 16,
+    "approx": 0,
+    "partial": 8,
+    "none": 1
+   }
+  },
+  {
+   "code": "ody",
+   "name": "Odyssey",
+   "released_at": "2001-10-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ody.svg?1794805200",
+   "partial": true,
+   "cards": 25,
+   "originals": 25,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 19,
+    "approx": 1,
+    "partial": 3,
+    "none": 2
+   }
+  },
+  {
+   "code": "ons",
+   "name": "Onslaught",
+   "released_at": "2002-10-07",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ons.svg?1794805200",
+   "partial": true,
+   "cards": 31,
+   "originals": 31,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 23,
+    "approx": 0,
+    "partial": 5,
+    "none": 3
+   }
+  },
+  {
+   "code": "phel",
+   "name": "Open the Helvault",
+   "released_at": "2012-04-28",
+   "set_type": "memorabilia",
+   "icon": "https://svgs.scryfall.io/sets/avr.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "otj",
+   "name": "Outlaws of Thunder Junction",
+   "released_at": "2024-04-19",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/otj.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "otc",
+   "name": "Outlaws of Thunder Junction Commander",
+   "released_at": "2024-04-19",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/otc.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "one",
+   "name": "Phyrexia: All Will Be One",
+   "released_at": "2023-02-10",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/one.svg?1794805200",
+   "partial": true,
+   "cards": 7,
+   "originals": 4,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "plc",
+   "name": "Planar Chaos",
+   "released_at": "2007-02-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/plc.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 1,
+    "partial": 4,
+    "none": 4
+   }
+  },
+  {
+   "code": "hop",
+   "name": "Planechase",
+   "released_at": "2009-09-04",
+   "set_type": "planechase",
+   "icon": "https://svgs.scryfall.io/sets/hop.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 1,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "pc2",
+   "name": "Planechase 2012",
+   "released_at": "2012-06-01",
+   "set_type": "planechase",
+   "icon": "https://svgs.scryfall.io/sets/pc2.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "pls",
+   "name": "Planeshift",
+   "released_at": "2001-02-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/pls.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "por",
+   "name": "Portal",
+   "released_at": "1997-05-01",
+   "set_type": "starter",
+   "icon": "https://svgs.scryfall.io/sets/por.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "p02",
+   "name": "Portal Second Age",
+   "released_at": "1998-06-24",
+   "set_type": "starter",
+   "icon": "https://svgs.scryfall.io/sets/p02.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "ptk",
+   "name": "Portal Three Kingdoms",
+   "released_at": "1999-05-01",
+   "set_type": "starter",
+   "icon": "https://svgs.scryfall.io/sets/ptk.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 8,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "pcy",
+   "name": "Prophecy",
+   "released_at": "2000-06-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/pcy.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "rna",
+   "name": "Ravnica Allegiance",
+   "released_at": "2019-01-25",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/rna.svg?1794805200",
+   "partial": true,
+   "cards": 20,
+   "originals": 20,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 0,
+    "partial": 6,
+    "none": 1
+   }
+  },
+  {
+   "code": "rav",
+   "name": "Ravnica: City of Guilds",
+   "released_at": "2005-10-07",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/rav.svg?1794805200",
+   "partial": true,
+   "cards": 27,
+   "originals": 27,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 22,
+    "approx": 0,
+    "partial": 2,
+    "none": 3
+   }
+  },
+  {
+   "code": "fra",
+   "name": "Reality Fracture",
+   "released_at": "2026-10-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/fra.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 4,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "frc",
+   "name": "Reality Fracture Commander",
+   "released_at": "2026-10-02",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/frc.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "rtr",
+   "name": "Return to Ravnica",
+   "released_at": "2012-10-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/rtr.svg?1794805200",
+   "partial": true,
+   "cards": 32,
+   "originals": 32,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 20,
+    "approx": 1,
+    "partial": 8,
+    "none": 3
+   }
+  },
+  {
+   "code": "prtr",
+   "name": "Return to Ravnica Promos",
+   "released_at": "2012-10-05",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/rtr.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "roe",
+   "name": "Rise of the Eldrazi",
+   "released_at": "2010-04-23",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/roe.svg?1794805200",
+   "partial": true,
+   "cards": 26,
+   "originals": 26,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 19,
+    "approx": 0,
+    "partial": 6,
+    "none": 1
+   }
+  },
+  {
+   "code": "rix",
+   "name": "Rivals of Ixalan",
+   "released_at": "2018-01-19",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/rix.svg?1794805200",
+   "partial": true,
+   "cards": 31,
+   "originals": 30,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 22,
+    "approx": 0,
+    "partial": 6,
+    "none": 3
+   }
+  },
+  {
+   "code": "psal",
+   "name": "Salvat 2005",
+   "released_at": "2005-08-22",
+   "set_type": "box",
+   "icon": "https://svgs.scryfall.io/sets/phuk.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "ps14",
+   "name": "San Diego Comic-Con 2014",
+   "released_at": "2014-07-08",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/default.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "sok",
+   "name": "Saviors of Kamigawa",
+   "released_at": "2005-06-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/sok.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 4,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 2
+   }
+  },
+  {
+   "code": "som",
+   "name": "Scars of Mirrodin",
+   "released_at": "2010-10-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/som.svg?1794805200",
+   "partial": true,
+   "cards": 28,
+   "originals": 28,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 19,
+    "approx": 0,
+    "partial": 4,
+    "none": 5
+   }
+  },
+  {
+   "code": "psom",
+   "name": "Scars of Mirrodin Promos",
+   "released_at": "2010-09-30",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/som.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "scg",
+   "name": "Scourge",
+   "released_at": "2003-05-26",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/scg.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 8,
+    "approx": 0,
+    "partial": 4,
+    "none": 1
+   }
+  },
+  {
+   "code": "slc",
+   "name": "Secret Lair Countdown",
+   "released_at": "2022-11-01",
+   "set_type": "box",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 0,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "sld",
+   "name": "Secret Lair Drop",
+   "released_at": "2019-12-02",
+   "set_type": "box",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 24,
+   "originals": 4,
+   "reprints": 20,
+   "missing": 0,
+   "coverage": {
+    "full": 23,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "slp",
+   "name": "Secret Lair Promo",
+   "released_at": "2023-02-17",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "sos",
+   "name": "Secrets of Strixhaven",
+   "released_at": "2026-04-24",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/sos.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 1,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "soc",
+   "name": "Secrets of Strixhaven Commander",
+   "released_at": "2026-04-24",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/soc.svg?1794805200",
+   "partial": true,
+   "cards": 10,
+   "originals": 0,
+   "reprints": 10,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "soa",
+   "name": "Secrets of Strixhaven Mystical Archive",
+   "released_at": "2026-04-24",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/soa.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "shm",
+   "name": "Shadowmoor",
+   "released_at": "2008-05-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/shm.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 10,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "soi",
+   "name": "Shadows over Innistrad",
+   "released_at": "2016-04-08",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/soi.svg?1794805200",
+   "partial": true,
+   "cards": 35,
+   "originals": 35,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 26,
+    "approx": 0,
+    "partial": 5,
+    "none": 4
+   }
+  },
+  {
+   "code": "ala",
+   "name": "Shards of Alara",
+   "released_at": "2008-10-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ala.svg?1794805200",
+   "partial": true,
+   "cards": 24,
+   "originals": 24,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 18,
+    "approx": 0,
+    "partial": 6,
+    "none": 0
+   }
+  },
+  {
+   "code": "spg",
+   "name": "Special Guests",
+   "released_at": "2023-11-17",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/spg.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "trk",
+   "name": "Star Trek",
+   "released_at": "2026-11-13",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/trk.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "trc",
+   "name": "Star Trek Commander",
+   "released_at": "2026-11-13",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/trc.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "s99",
+   "name": "Starter 1999",
+   "released_at": "1999-07-01",
+   "set_type": "starter",
+   "icon": "https://svgs.scryfall.io/sets/s99.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "sch",
+   "name": "Store Championships",
+   "released_at": "2022-07-09",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "snc",
+   "name": "Streets of New Capenna",
+   "released_at": "2022-04-29",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/snc.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "psnc",
+   "name": "Streets of New Capenna Promos",
+   "released_at": "2022-04-29",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/snc.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "sta",
+   "name": "Strixhaven Mystical Archive",
+   "released_at": "2021-04-23",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/sta.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 1,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "stx",
+   "name": "Strixhaven: School of Mages",
+   "released_at": "2021-04-23",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/stx.svg?1794805200",
+   "partial": true,
+   "cards": 14,
+   "originals": 13,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 1,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "sth",
+   "name": "Stronghold",
+   "released_at": "1998-03-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/sth.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 8,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 6,
+    "approx": 0,
+    "partial": 1,
+    "none": 1
+   }
+  },
+  {
+   "code": "psth",
+   "name": "Stronghold Promos",
+   "released_at": "1998-03-02",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/sth.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "ltc",
+   "name": "Tales of Middle-earth Commander",
+   "released_at": "2023-06-23",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/ltc.svg?1794805200",
+   "partial": false,
+   "cards": 341,
+   "originals": 104,
+   "reprints": 237,
+   "missing": 0,
+   "coverage": {
+    "full": 215,
+    "approx": 10,
+    "partial": 91,
+    "none": 25
+   }
+  },
+  {
+   "code": "tdm",
+   "name": "Tarkir: Dragonstorm",
+   "released_at": "2025-04-11",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/tdm.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "tdc",
+   "name": "Tarkir: Dragonstorm Commander",
+   "released_at": "2025-04-11",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/tdc.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "tmp",
+   "name": "Tempest",
+   "released_at": "1997-10-14",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/tmp.svg?1794805200",
+   "partial": true,
+   "cards": 22,
+   "originals": 22,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 17,
+    "approx": 1,
+    "partial": 0,
+    "none": 4
+   }
+  },
+  {
+   "code": "tpr",
+   "name": "Tempest Remastered",
+   "released_at": "2015-05-06",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/tpr.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 0,
+   "reprints": 3,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "10e",
+   "name": "Tenth Edition",
+   "released_at": "2007-07-13",
+   "set_type": "core",
+   "icon": "https://svgs.scryfall.io/sets/10e.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "bro",
+   "name": "The Brothers' War",
+   "released_at": "2022-11-18",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/bro.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "drk",
+   "name": "The Dark",
+   "released_at": "1994-08-01",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/drk.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "hob",
+   "name": "The Hobbit",
+   "released_at": "2026-08-14",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/hob.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "hoc",
+   "name": "The Hobbit Eternal",
+   "released_at": "2026-08-14",
+   "set_type": "eternal",
+   "icon": "https://svgs.scryfall.io/sets/hoc.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 1,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "plst",
+   "name": "The List",
+   "released_at": "2020-09-26",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/planeswalker.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ltr",
+   "name": "The Lord of the Rings: Tales of Middle-earth",
+   "released_at": "2023-06-23",
+   "set_type": "draft_innovation",
+   "icon": "https://svgs.scryfall.io/sets/ltr.svg?1794805200",
+   "partial": true,
+   "cards": 13,
+   "originals": 13,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "lci",
+   "name": "The Lost Caverns of Ixalan",
+   "released_at": "2023-11-17",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/lci.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "lcc",
+   "name": "The Lost Caverns of Ixalan Commander",
+   "released_at": "2023-11-17",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/lcc.svg?1794805200",
+   "partial": true,
+   "cards": 36,
+   "originals": 9,
+   "reprints": 27,
+   "missing": 0,
+   "coverage": {
+    "full": 33,
+    "approx": 2,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "ths",
+   "name": "Theros",
+   "released_at": "2013-09-27",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ths.svg?1794805200",
+   "partial": true,
+   "cards": 25,
+   "originals": 25,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 16,
+    "approx": 2,
+    "partial": 5,
+    "none": 2
+   }
+  },
+  {
+   "code": "thb",
+   "name": "Theros Beyond Death",
+   "released_at": "2020-01-24",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/thb.svg?1794805200",
+   "partial": true,
+   "cards": 24,
+   "originals": 23,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 0,
+    "partial": 10,
+    "none": 1
+   }
+  },
+  {
+   "code": "pths",
+   "name": "Theros Promos",
+   "released_at": "2013-09-21",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/ths.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 0,
+    "approx": 0,
+    "partial": 2,
+    "none": 1
+   }
+  },
+  {
+   "code": "eld",
+   "name": "Throne of Eldraine",
+   "released_at": "2019-10-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/eld.svg?1794805200",
+   "partial": true,
+   "cards": 38,
+   "originals": 38,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 22,
+    "approx": 0,
+    "partial": 11,
+    "none": 5
+   }
+  },
+  {
+   "code": "tsp",
+   "name": "Time Spiral",
+   "released_at": "2006-10-06",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/tsp.svg?1794805200",
+   "partial": true,
+   "cards": 29,
+   "originals": 29,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 2,
+    "partial": 8,
+    "none": 6
+   }
+  },
+  {
+   "code": "tsb",
+   "name": "Time Spiral Timeshifted",
+   "released_at": "2006-10-06",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/tsp.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "tor",
+   "name": "Torment",
+   "released_at": "2002-02-04",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/tor.svg?1794805200",
+   "partial": true,
+   "cards": 9,
+   "originals": 9,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 5,
+    "approx": 0,
+    "partial": 4,
+    "none": 0
+   }
+  },
+  {
+   "code": "ugin",
+   "name": "Ugin's Fate",
+   "released_at": "2015-01-17",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/frf.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  },
+  {
+   "code": "puma",
+   "name": "Ultimate Box Topper",
+   "released_at": "2018-12-07",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/uma.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "uds",
+   "name": "Urza's Destiny",
+   "released_at": "1999-06-07",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/uds.svg?1794805200",
+   "partial": true,
+   "cards": 8,
+   "originals": 8,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 4,
+    "none": 2
+   }
+  },
+  {
+   "code": "ulg",
+   "name": "Urza's Legacy",
+   "released_at": "1999-02-15",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/ulg.svg?1794805200",
+   "partial": true,
+   "cards": 6,
+   "originals": 6,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "usg",
+   "name": "Urza's Saga",
+   "released_at": "1998-10-12",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/usg.svg?1794805200",
+   "partial": true,
+   "cards": 19,
+   "originals": 19,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 1,
+    "partial": 3,
+    "none": 2
+   }
+  },
+  {
+   "code": "vma",
+   "name": "Vintage Masters",
+   "released_at": "2014-06-16",
+   "set_type": "masters",
+   "icon": "https://svgs.scryfall.io/sets/vma.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 0,
+   "reprints": 2,
+   "missing": 0,
+   "coverage": {
+    "full": 2,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "vis",
+   "name": "Visions",
+   "released_at": "1997-02-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/vis.svg?1794805200",
+   "partial": true,
+   "cards": 7,
+   "originals": 7,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 7,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "war",
+   "name": "War of the Spark",
+   "released_at": "2019-05-03",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/war.svg?1794805200",
+   "partial": true,
+   "cards": 37,
+   "originals": 37,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 29,
+    "approx": 0,
+    "partial": 7,
+    "none": 1
+   }
+  },
+  {
+   "code": "wth",
+   "name": "Weatherlight",
+   "released_at": "1997-06-09",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/wth.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 2,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 1
+   }
+  },
+  {
+   "code": "woe",
+   "name": "Wilds of Eldraine",
+   "released_at": "2023-09-08",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/woe.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 3,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "wot",
+   "name": "Wilds of Eldraine: Enchanting Tales",
+   "released_at": "2023-09-08",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/wot.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "wwk",
+   "name": "Worldwake",
+   "released_at": "2010-02-05",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/wwk.svg?1794805200",
+   "partial": true,
+   "cards": 25,
+   "originals": 25,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 20,
+    "approx": 0,
+    "partial": 2,
+    "none": 3
+   }
+  },
+  {
+   "code": "zen",
+   "name": "Zendikar",
+   "released_at": "2009-10-02",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/zen.svg?1794805200",
+   "partial": true,
+   "cards": 31,
+   "originals": 31,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 27,
+    "approx": 2,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
+   "code": "exp",
+   "name": "Zendikar Expeditions",
+   "released_at": "2015-10-02",
+   "set_type": "masterpiece",
+   "icon": "https://svgs.scryfall.io/sets/exp.svg?1794805200",
+   "partial": true,
+   "cards": 4,
+   "originals": 0,
+   "reprints": 4,
+   "missing": 0,
+   "coverage": {
+    "full": 4,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "znr",
+   "name": "Zendikar Rising",
+   "released_at": "2020-09-25",
+   "set_type": "expansion",
+   "icon": "https://svgs.scryfall.io/sets/znr.svg?1794805200",
+   "partial": true,
+   "cards": 19,
+   "originals": 19,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 13,
+    "approx": 0,
+    "partial": 5,
+    "none": 1
+   }
+  },
+  {
+   "code": "znc",
+   "name": "Zendikar Rising Commander",
+   "released_at": "2020-09-25",
+   "set_type": "commander",
+   "icon": "https://svgs.scryfall.io/sets/znc.svg?1794805200",
+   "partial": true,
+   "cards": 2,
+   "originals": 1,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 1,
+    "none": 0
+   }
+  }
+ ]
+}

@@ -151,6 +151,15 @@ The Red Rum Raiders list adds control-changing effects in mirror matches (Treach
 
 All 81 pairings of the nine decks play full mirror matches without errors, and every deck plays as a goldfish.
 
+## Card database by set
+
+Cards are kept in a database filed by release set: one file per set in `goldfish/static/data/sets/` (`index.json` lists them all, [docs/SETS.md](docs/SETS.md) is the readable table). Each card's full record (rules text, types and the simulator's coverage report for it) is stored **once, in the set it was first printed in**. Every later set that reprints it lists only a small pointer (`name`, `set`, `cn`, `rarity` and `ref`, the set that holds the full record), so nothing is duplicated.
+
+- **Add a set:** `node tools/fetch-sets.js <code> [<code> ...]` with Scryfall set codes, for example `node tools/fetch-sets.js cmm c21`. Reprinted cards are filed in the set of their first printing, which is created as a "partial" set (only those cards) until you fetch the whole set.
+- **File the cards of your decks:** `node tools/fetch-sets.js --import-decks` adds every card of the decks in `tests/fixtures/*-loaded.json` under the set it was first printed in. The deck fixtures themselves are left as they are, because the tests read them.
+- **Re-check after engine work:** `node tools/fetch-sets.js --report` re-reads every full record with the current engine and rebuilds the index and the table.
+- **Added so far:** Commander Masters, Commander Legends, Commander Legends: Battle for Baldur's Gate, Modern Horizons 2 and 3, Tales of Middle-earth Commander and Commander 2018 to 2021 as whole sets, plus the cards of all the decks in the tests under the sets they were first printed in. `tests/engine/sets.test.js` checks that every card is stored once, every pointer leads to a full record in an earlier set, and the simulator can read every card.
+
 ## Fan content, credits and donations
 
 *I See Fish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*

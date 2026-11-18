@@ -1,7 +1,7 @@
 # Tests
 
 Scenario tests for the simulation engine (`goldfish/static/sim.js`). They use a saved copy of the Frodo/Sam commander deck
-(`fixtures/frodo-loaded.json` and `fixtures/veyran-loaded.json` and `fixtures/second-breakfast-loaded.json` and `fixtures/loyalty-program-loaded.json` and `fixtures/zul-ashur-loaded.json` and `fixtures/death-tax-loaded.json`, real Scryfall data) so they run offline.
+(`fixtures/frodo-loaded.json` and `fixtures/veyran-loaded.json` and `fixtures/second-breakfast-loaded.json` and `fixtures/loyalty-program-loaded.json` and `fixtures/zul-ashur-loaded.json` and `fixtures/death-tax-loaded.json`, and others, real Scryfall data) so they run offline.
 
 ```
 node tests/run.js          # engine tests: fast, no network

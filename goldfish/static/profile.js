@@ -104,7 +104,17 @@
   const PLURAL = { Elf: 'Elves', Dwarf: 'Dwarves', Wolf: 'Wolves', Werewolf: 'Werewolves', Merfolk: 'Merfolk', Fish: 'Fish', Sheep: 'Sheep', Ox: 'Oxen', Fungus: 'Fungi', Sphinx: 'Sphinxes', Fox: 'Foxes', Mouse: 'Mice', Octopus: 'Octopi', Ally: 'Allies', Fairy: 'Fairies' };
   const plural = w => PLURAL[w] || w + 's';
   const subtypes = c => { const f = String(c.type_line || '').split(' // ')[0]; return /\b(Creature|Kindred|Tribal)\b/.test(f) ? (f.split('—')[1] || '').trim().split(/\s+/).filter(Boolean) : []; };
+  // The scoring lives in the engine (Goldfish.tribeOf in sim.js), so the profile and the "choose a creature type" cards always agree.
   function tribe(deck) {
+    const G = root.Goldfish || (typeof require !== 'undefined' ? require('./sim.js') : null);
+    if (G && G.tribeOf) {
+      const all = deck.unique || deck.cards || [];
+      const r = G.tribeOf(all.map(c => Object.assign({}, c, { commander: c.commander || (deck.commanders || []).some(x => (x.card || x) === c) })));
+      return { type: r.type, best: r.best, ranked: r.ranked, changelings: r.changelings };
+    }
+    return tribeLocal(deck);
+  }
+  function tribeLocal(deck) {
     const cards = cardsOf(deck);
     const commanders = (deck.commanders || []).map(x => x.card || x).concat((deck.cards || []).filter(c => c.commander));
     const score = {}, bodies = {}, why = {}, payoffs = {};

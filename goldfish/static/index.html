@@ -62,6 +62,7 @@
       </div>
       <div class="deck-view">
         <div id="deckTiles" class="tiles"></div>
+        <div id="deckProfile" class="card-box suggest" hidden><div class="box-head"><h2>Strengths and weaknesses</h2><span class="hint">Read from the decklist with common deckbuilding rules of thumb. Run the simulation to add how fast it kills.</span></div><div id="profileList"></div></div>
         <div class="card-box">
           <div class="box-head"><h2>Curve wall</h2><span class="hint">Every non-land card stacked by mana value. Hover any card to zoom.</span></div>
           <div id="curveWall" class="curve-wall empty-note">Load a deck to see its curve.</div>
@@ -266,6 +267,7 @@
 <script src="source.js"></script>
 <script src="charts.js"></script>
 <script src="suggest.js"></script>
+<script src="profile.js"></script>
 <script src="app.js"></script>
 <script src="looks.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>

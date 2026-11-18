@@ -595,3 +595,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* every land column is as wide as the widest label (a five-colour land that enters tapped), so all piles share one centre line */
 .land-wall { --land-col: 120px; grid-template-columns: repeat(auto-fill, minmax(var(--land-col), 1fr)); }
 .land-wall .pile { margin: 0 auto; }
+/* land cards grow to fill their column when there is room (82px at the least, 150px at most) */
+.land-wall .pile .mtg { width: var(--land-card, 82px); }
+@supports (width: 1cqw) {
+  .land-wall .group { container-type: inline-size; }
+  .land-wall .pile { --land-card: clamp(82px, 100cqw - 24px, 150px); }
+}

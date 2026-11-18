@@ -130,7 +130,7 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Deck | Cards | Rules lines | Simulated | Mirror / opponent only | No solo effect | Approximated | Not built |
 |---|---|---|---|---|---|---|---|
 | Frodo (old) | 94 | 183 | 154 | 24 | 4 | 1 | 0 |
-| Veyran | 100 | 149 | 110 | 31 | 4 | 3 | 1 (Desperate Ritual's splice) |
+| Veyran | 100 | 149 | 111 | 31 | 4 | 3 | 0 |
 | Second Breakfast | 100 | 161 | 138 | 17 | 4 | 2 | 0 |
 | Loyalty Program | 100 | 168 | 134 | 28 | 6 | 0 | 0 |
 | Zul Ashur (Zombie reanimator) | 100 | 134 | 113 | 17 | 4 | 0 | 0 |

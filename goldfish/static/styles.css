@@ -592,3 +592,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .land-wall .cnt { gap: 1px; font-size: 11.5px; flex-wrap: nowrap; }
 .land-wall .cnt .pip { width: 17px; height: 17px; font-size: 9.5px; line-height: 17px; flex: none; }
+/* every land column is as wide as the widest label (a five-colour land that enters tapped), so all piles share one centre line */
+.land-wall { --land-col: 120px; grid-template-columns: repeat(auto-fill, minmax(var(--land-col), 1fr)); }
+.land-wall .pile { margin: 0 auto; }

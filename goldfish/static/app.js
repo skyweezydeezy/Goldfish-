@@ -229,6 +229,7 @@
     S.deck.unique.filter(c => c.a.isLand && !c.commander).sort((a, b) => b.qty - a.qty).forEach(c => {
       const g = h('div', 'group'); const p = h('div', 'pile');
       for (let j = 0; j < Math.min(c.qty, 5); j++) { const e = cardEl(c); e.style.left = j * 4 + 'px'; e.style.top = j * 4 + 'px'; p.appendChild(e); }
+      const n = Math.min(c.qty, 5); p.style.width = (82 + (n - 1) * 4) + 'px'; p.style.height = (114 + (n - 1) * 4) + 'px';   // the box covers the whole fanned stack, so it centres
       g.appendChild(p);
       const colors = [...c.a.produce.colors].map(x => `<span class="pip ${x}">${x}</span>`).join('');
       g.appendChild(h('div', 'cnt', `${c.qty}× ${colors}${c.a.entersTapped ? ' <span title="enters tapped">⤵</span>' : ''}`));

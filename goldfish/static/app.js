@@ -15,6 +15,7 @@
   // ======================= setup =======================
   $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
   function showTab(t) {
+    document.body.dataset.view = t;
     $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
     $$('.panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + t));
     if (t === 'hands' && S.deck) renderOpenLandsChart();
@@ -850,6 +851,17 @@
     $$('.mini-hand .cards').forEach(c => fitRow(c, 0.28));
   }
   window.addEventListener('resize', () => { clearTimeout(window._rz2); window._rz2 = setTimeout(refit, 120); });
+  // the one-screen table on phones and tablets is sized from what is left under the top bar
+  const topbar = $('.topbar');
+  const setTopbarH = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+  setTopbarH();
+  if (window.ResizeObserver) new ResizeObserver(() => { setTopbarH(); refit(); }).observe(topbar);
+  // game log: a drawer on phones and tablets
+  const logBox = $('.table-log');
+  const setLog = open => { logBox.classList.toggle('open', open); $('#tLog').setAttribute('aria-expanded', open); };
+  $('#tLog').addEventListener('click', e => { e.stopPropagation(); setLog(!logBox.classList.contains('open')); });
+  $('#tLogClose').addEventListener('click', e => { e.stopPropagation(); setLog(false); });
+  document.addEventListener('click', e => { if (logBox.classList.contains('open') && !e.target.closest('.table-log')) setLog(false); });
 
   // ---- touch: long-press and card viewer ----
   const lightbox = $('#lightbox');

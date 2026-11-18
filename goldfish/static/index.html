@@ -15,7 +15,7 @@
 <title>I See Fish</title>
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-view="deck">
 <header class="topbar">
   <div class="brand"><img class="logo" src="logo.svg" width="40" height="40" alt=""><span class="brand-text">I See <b>Fish</b></span></div>
   <nav class="tabs" role="tablist">
@@ -122,14 +122,15 @@
   <!-- ============ TABLE ============ -->
   <section id="tab-table" class="panel">
     <div class="table-controls row wrap">
-      <button id="tNew" class="primary">New game</button>
-      <button id="tAuto" title="Let the autopilot take this whole turn">▶ Autopilot turn</button>
-      <button id="tAutoTo">⏩ Autopilot to turn <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
-      <button id="tNext" title="Attack with everything, then untap and draw">Next turn ⟳</button>
-      <button id="tToken" title="Create a token">+ Token</button>
-      <button id="tUndo" class="ghost">Undo</button>
-      <button class="ghost open-looks" title="Choose a playmat and sleeves">🎨 Playmat &amp; sleeves</button>
-      <label class="check small"><input id="tFast" type="checkbox"> Fast animations</label>
+      <button id="tNew" class="primary" title="Start a new game">🎲<span class="bl"> New game</span></button>
+      <button id="tAuto" title="Let the autopilot take this whole turn">▶<span class="bl"> Autopilot turn</span></button>
+      <button id="tAutoTo" title="Let the autopilot play up to this turn">⏩<span class="bl"> Autopilot to turn</span> <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
+      <button id="tNext" title="Attack with everything, then untap and draw"><span class="bl">Next turn </span>⟳</button>
+      <button id="tToken" title="Create a token">＋<span class="bl"> Token</span></button>
+      <button id="tUndo" class="ghost" title="Undo">↶<span class="bl"> Undo</span></button>
+      <button id="tLog" class="ghost" title="Show the game log" aria-expanded="false">📜<span class="bl"> Log</span></button>
+      <button class="ghost open-looks" title="Choose a playmat and sleeves">🎨<span class="bl"> Playmat &amp; sleeves</span></button>
+      <label class="check small" title="Fast animations"><input id="tFast" type="checkbox"> ⚡<span class="bl"> Fast</span></label>
       <span class="hint">Click a hand card to play it (mana auto-taps and triggers fire). Click a permanent to tap or untap it. Right-click for counters, sacrifice, moving cards and more.</span>
     </div>
     <div class="table">
@@ -156,7 +157,7 @@
         <div class="bf-row lands" id="zLands"><span class="row-label">Lands</span></div>
         <div class="hand-zone" id="zHand"></div>
       </div>
-      <div class="table-log"><h3>Game log</h3><ol id="gameLog"></ol></div>
+      <div class="table-log"><h3>Game log <button id="tLogClose" class="ghost log-close">Close</button></h3><ol id="gameLog"></ol></div>
     </div>
   </section>
 

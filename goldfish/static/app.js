@@ -92,6 +92,8 @@
     const n = Math.max(1, (card.images || []).length || (card.remote_images || []).length);
     for (let i = 0; i < Math.min(2, n); i++) faces.appendChild(cardEl(card, { face: i }));
     zoom.appendChild(faces);
+    { const ts = S.tags && S.tags.ofCard.get(card.uid);                                     // the card's tags (tags.js), without the shape tags
+      if (ts) { const keep = [...ts].filter(t => !/^(mv|color|engine|type):/.test(t)); if (keep.length) zoom.appendChild(h('div', 'zoom-tags', keep.slice(0, 14).map(esc).join(' · '))); } }
     zoom.classList.toggle('two', n > 1);
     zoom.classList.add('show');
     placeZoom(e);
@@ -183,6 +185,7 @@
     if (noImg.length) add('warn', `No local image for: ${noImg.map(c => esc(c.name)).join(', ')}`);
     renderDeck();
     renderProfile();
+    buildTags(); renderTags();
     renderCoverage();
     $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = '';
   }
@@ -822,7 +825,7 @@
     ['cardkingdom', 'Card Kingdom', (c) => `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${enc(c.name)}`],
     ['manapool', 'ManaPool', (c, p) => (p || c.set) && (p ? p.cn : c.cn) ? `https://manapool.com/card/${enc((p ? p.set : c.set))}/${enc(p ? p.cn : c.cn)}/${slugOf(c.name)}` : `https://manapool.com/cards?q=${enc(c.name)}`],
   ];
-  const LB_SCOPE = '.table, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
+  const LB_SCOPE = '.table, .tags-results, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
   const lb = { list: [], i: 0, sel: null };
   const printCache = new Map();
   async function fetchPrints(card) {
@@ -873,6 +876,7 @@
     row.appendChild(nav('next', '›', 1));
     wrap.appendChild(row);
     wrap.appendChild(h('div', 'lb-name', esc(card.name)));
+    { const tg = cardTagChips(card); if (tg) wrap.appendChild(tg); }
     if (lb.list.length > 1) wrap.appendChild(h('div', 'hint lb-tip', 'Swipe the card, or use ‹ › (or the arrow keys), to move between cards'));
 
     // printings
@@ -1265,6 +1269,7 @@
     renderImpact(res.impact, nameB);
     renderOutliers(res.impact && res.impact.outliers, nameB);
     renderPairs(res.impact && res.impact.pairs, nameB, res.impact && res.impact.n);
+    renderTagImpact(res.impact && res.impact.tags, nameB, res.impact && res.impact.n);
     $('#mmLog').innerHTML = '';
     if (res.errors) $('#mmInfo').textContent += ` · ${res.errors} games hit an error`;
   }
@@ -1315,6 +1320,18 @@
     if (pr.worst.length) html += `<div class="sg warn"><b>Worse together</b><p>These may compete for the same job, or one may get in the other's way.</p><ul>${pr.worst.map(li).join('')}</ul></div>`;
     if (!pr.best.length && !pr.worst.length) html += `<div class="sg"><b>No pair stands out yet</b><p>After ${(n || 0).toLocaleString()} matches no pair is clearly better or worse together. Pairs need many games: try 3,000 matches.</p></div>`;
     else if ((n || 0) < 2000) html += `<p class="hint">With ${(n || 0).toLocaleString()} matches only the strongest pairs show up; 3,000 matches find more.</p>`;
+    box.innerHTML = html; box.hidden = false;
+  }
+  // tags linked to winning or losing this matchup (Suggest.matchTags, run in the worker)
+  function renderTagImpact(tr, oppName, n) {
+    const box = $('#mmTags');
+    if (!tr) { box.hidden = true; return; }
+    const pts = v => (v > 0 ? '+' : '') + (v * 100).toFixed(1) + ' points';
+    const li = x => `<li><b>${esc(x.tag)}</b>: ${pts(x.gap)} <span class="hint">(${x.cards} card${x.cards === 1 ? '' : 's'}; won ${pct(x.wrHad)} of the ${x.games} games where you had one by turn ${tr.early}, ${pct(x.wrNot)} of the rest)</span></li>`;
+    let html = `<h3>Tags against ${esc(oppName)}</h3><p class="hint">For each of the ${tr.tested} tags that have enough games, your win rate when you had a card with that tag early (in your opening hand or drawn by turn ${tr.early}) compared with when you didn't. Tags overlap, so related ones move together: look at the top few. "Goes with" is not "causes": a card type can look weak because the autopilot plays it badly, or because holding it early means a slower start.</p>`;
+    if (tr.best.length) html += `<div class="sg good"><b>Having these early goes with winning</b><ul>${tr.best.map(li).join('')}</ul></div>`;
+    if (tr.worst.length) html += `<div class="sg warn"><b>Having these early goes with losing</b><ul>${tr.worst.map(li).join('')}</ul></div>`;
+    if (!tr.best.length && !tr.worst.length) html += `<div class="sg"><b>No tag stands out yet</b><p>After ${(n || 0).toLocaleString()} matches no tag is clearly better or worse to have early. More matches can show smaller effects.</p></div>`;
     box.innerHTML = html; box.hidden = false;
   }
   function showMirrorLog(smp) {
@@ -1416,7 +1433,7 @@
     $$('#plOut [data-use]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.use, r = res.rows[i], op = dec.options[i];
       savePolicy(dec.key, i === 0 ? null : op.value, `${mode} ${n} games, score ${r.mean.toFixed(3)}`);
-      if (dec.key === 'tribe') { S.deck = G.buildDeck(S.cards, S.tokens, i === 0 ? null : op.value); S.byUid = S.deck.unique; }          // the next game on the table and in the hands uses the new type
+      if (dec.key === 'tribe') { S.deck = G.buildDeck(S.cards, S.tokens, i === 0 ? null : op.value); S.byUid = S.deck.unique; buildTags(); renderTags(); }          // the next game on the table and in the hands uses the new type
       toast(i === 0 ? 'Default choice restored' : `Saved: ${op.name}`);
     }));
   }
@@ -1573,6 +1590,93 @@
       s.addEventListener('mouseenter', e => { const fake = cardEl(getCard(s.dataset.uid)); zoom.innerHTML = ''; const f = h('div', 'faces'); f.appendChild(fake); zoom.appendChild(f); zoom.classList.remove('two'); zoom.classList.add('show'); placeZoom(e); });
       s.addEventListener('mouseleave', () => zoom.classList.remove('show'));
     });
+  }
+
+  // ======================= tags (tags.js) =======================
+  // Every card gets namespaced tags (role:ramp, trigger:etb, tribe:merfolk...). You can search them, send a result to Draw Odds,
+  // or save the result as your own tag (my:combo). Your tags are kept in this browser by card name, so they follow a card into any deck.
+  const getUserTags = () => { try { return JSON.parse(localStorage.getItem('gf_tags') || '{}') || {}; } catch (e) { return {}; } };
+  function putUserTags(all) { try { localStorage.setItem('gf_tags', JSON.stringify(all)); return true; } catch (e) { toast('Could not save: this browser is out of storage space'); return false; } }
+  function buildTags() {
+    if (!S.deck || typeof Tags === 'undefined') { S.tags = null; return; }
+    S.tags = Tags.index(S.deck, getUserTags());
+    $('#tagList').innerHTML = S.tags.tags.map(t => `<option value="${esc(t)}">`).join('');
+  }
+  const tagTerms = () => $('#tagQuery').value.trim().split(/\s+/).filter(Boolean);
+  function toggleTagTerm(tag, not) {
+    const terms = tagTerms(), pos = tag, neg = '-' + tag;
+    const i = terms.findIndex(t => t === pos || t === neg);
+    if (i >= 0) { const was = terms[i]; terms.splice(i, 1); if (not && was === pos) terms.push(neg); else if (!not && was === neg) terms.push(pos); }
+    else terms.push(not ? neg : pos);
+    $('#tagQuery').value = terms.join(' '); renderTags();
+  }
+  function renderTags() {
+    const box = $('#deckTags');
+    if (!S.tags) { box.hidden = true; return; }
+    box.hidden = false;
+    const ix = S.tags, terms = tagTerms();
+    // chips, grouped by namespace
+    const chips = h('div', '');
+    Tags.ORDER.filter(ns => ix.groups[ns]).forEach(ns => {
+      const g = h('div', 'tag-group'); g.appendChild(h('span', 'tag-ns', esc(Tags.NAMESPACES[ns] || ns)));
+      ix.groups[ns].slice().sort((a, b) => ns === 'mv' ? a.localeCompare(b, undefined, { numeric: true }) : (ix.copies.get(b) - ix.copies.get(a)) || a.localeCompare(b)).forEach(t => {
+        const on = terms.includes(t), not = terms.includes('-' + t);
+        const b = h('button', 'tag-chip' + (on ? ' on' : '') + (not ? ' not' : ''), `${esc(t.slice(ns.length + 1))}<small>${ix.copies.get(t)}</small>`);
+        b.title = `${t}: ${ix.copies.get(t)} card${ix.copies.get(t) === 1 ? '' : 's'}. Click to add to the search, Shift-click to exclude.`;
+        b.addEventListener('click', e => toggleTagTerm(t, e.shiftKey));
+        g.appendChild(b);
+      });
+      if (ns === 'my') { const note = h('span', 'hint', 'Shift-click to exclude'); g.appendChild(note); }
+      chips.appendChild(g);
+    });
+    if (!ix.groups.my) chips.appendChild(h('div', 'hint', 'No tags of your own yet: search for some cards, then press <b>Tag these…</b> to save them as <code>my:name</code>.'));
+    $('#tagChips').innerHTML = ''; $('#tagChips').appendChild(chips);
+    // results
+    const res = $('#tagResults'); res.innerHTML = '';
+    const q = Tags.query(ix, terms.join(' '));
+    S.tagResult = q.cards;
+    const total = Tags.copiesOf(q.cards);
+    $('#tagToOdds').disabled = $('#tagMake').disabled = !q.cards.length;
+    $('#tagHelp').innerHTML = !terms.length ? `${ix.tags.length} tags across ${ix.cards.length} different cards. A space means AND, a comma means OR, <code>-tag</code> excludes, <code>trigger:</code> means any trigger, and a bare word like <code>ramp</code> matches any tag of that name.`
+      : `${q.cards.length} different card${q.cards.length === 1 ? '' : 's'} (${total} in the deck)${q.cards.length ? '' : ': nothing has all of those tags'}`;
+    q.cards.forEach(c => res.appendChild(cardEl(c, { badge: c.qty > 1 ? '×' + c.qty : null })));
+  }
+  $('#tagQuery').addEventListener('input', renderTags);
+  $('#tagClear').addEventListener('click', () => { $('#tagQuery').value = ''; renderTags(); });
+  $('#tagToOdds').addEventListener('click', () => { (S.tagResult || []).forEach(c => { if (!c.commander) S.oddsSel.add(c.uid); }); renderOdds(); showTab('odds'); toast('Sent to Draw Odds'); });
+  $('#tagMake').addEventListener('click', () => {
+    const cards = (S.tagResult || []).filter(c => !c.commander); if (!cards.length) return;
+    const raw = window.prompt(`Name for your new tag (it will be saved as my:name on these ${cards.length} card${cards.length === 1 ? '' : 's'}). Use the same name again to add to an existing tag; type - first to remove these cards from it.`, '');
+    if (!raw) return;
+    const remove = raw.trim().startsWith('-'), name = Tags.kebab(raw.replace(/^\s*-/, '').replace(/^my:/i, ''));
+    if (!name) return;
+    const all = getUserTags(), cur = new Set(all[name] || []);
+    cards.forEach(c => remove ? cur.delete(c.name) : cur.add(c.name));
+    if (cur.size) all[name] = [...cur]; else delete all[name];
+    if (!putUserTags(all)) return;
+    buildTags();
+    $('#tagQuery').value = cur.size ? 'my:' + name : ''; renderTags();
+    toast(remove ? `Removed from my:${name}` : `Saved my:${name} (${cur.size} card${cur.size === 1 ? '' : 's'})`);
+  });
+  $('#oddsTagGo').addEventListener('click', applyOddsTag);
+  $('#oddsTag').addEventListener('keydown', e => { if (e.key === 'Enter') applyOddsTag(); });
+  function applyOddsTag() {
+    if (!S.tags) return;
+    const q = Tags.query(S.tags, $('#oddsTag').value);
+    if (!q.cards.length) return toast('No cards have all of those tags');
+    q.cards.forEach(c => { if (!c.commander) S.oddsSel.add(c.uid); });
+    renderOdds(); toast(`Selected ${q.cards.length} card${q.cards.length === 1 ? '' : 's'}`);
+  }
+  // tag chips for one card (used in the lightbox): click one to search for it on the Deck tab
+  function cardTagChips(card) {
+    const set = S.tags && S.tags.ofCard.get(card.uid); if (!set) return null;
+    const wrap = h('div', 'lb-tags');
+    [...set].filter(t => !/^(mv|color|engine):/.test(t)).sort((a, b) => Tags.ORDER.indexOf(a.split(':')[0]) - Tags.ORDER.indexOf(b.split(':')[0]) || a.localeCompare(b)).forEach(t => {
+      const b = h('button', 'tag-chip', esc(t)); b.title = 'Search the deck for this tag';
+      b.addEventListener('click', () => { lbClose(); $('#tagQuery').value = t; showTab('deck'); renderTags(); $('#deckTags').scrollIntoView({ block: 'start' }); });
+      wrap.appendChild(b);
+    });
+    return wrap;
   }
 
   // ======================= odds =======================

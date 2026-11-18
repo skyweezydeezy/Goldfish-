@@ -186,6 +186,7 @@
     renderDeck();
     renderProfile();
     buildTags(); renderTags();
+    fillLabChoices();
     renderCoverage();
     $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = '';
   }
@@ -1357,16 +1358,28 @@
     ranked.filter(r => r.type !== detected).slice(0, 4).forEach(r => opts.push({ name: r.type, value: r.type }));
     return opts;
   }
-  const DECISIONS = {
-    tribe: { label: 'Creature type for "choose a creature type" cards', key: 'tribe', dynamic: true, options: [{ name: 'Detected tribe', value: 'auto' }] },
-    fetch: { label: 'Fetch land timing', key: 'fetchHold', options: [{ name: 'Crack at once', value: 'never' }, { name: 'Hold when a shuffle helps', value: 'whenShuffleHelps' }, { name: 'Hold until needed', value: 'untilNeeded' }, { name: 'Hold until the end of the turn', value: 'untilEnd' }] },
-    keep: { label: 'Opening hand: how many lands to keep', key: 'keepLands', options: [{ name: 'Your setting (Hands tab)', value: 'default' }, { name: 'Keep 3 or 4 lands', value: '3-4' }, { name: 'Keep 2 to 4 lands', value: '2-4' }, { name: 'Keep 3 to 5 lands', value: '3-5' }, { name: 'Keep 2 to 6 lands', value: '2-6' }] },
-    necro: { label: 'Necropotence: how full to refill the hand', key: 'necroGoal', options: [{ name: 'Refill to 7 (9 above 30 life)', value: 'current' }, { name: 'Refill to 6', value: '6' }, { name: 'Refill to 9', value: '9' }, { name: 'Refill to 11', value: '11' }] },
-    sac: { label: 'Sacrificing tokens for Blood Artist and friends', key: 'sacMode', options: [{ name: 'Two triggers, a wide board or lethal', value: 'current' }, { name: 'Whenever there is a token', value: 'always' }, { name: 'Only for lethal', value: 'lethalOnly' }, { name: 'Never', value: 'never' }, { name: 'Only with 8+ tokens or lethal', value: 'wide' }, { name: 'Only with two triggers or lethal', value: 'two' }] },
-    counters: { label: 'Holding mana for counterspells', key: 'holdCounters', mirrorOnly: true, options: [{ name: 'Only counter with spare mana (learned default)', value: 'no' }, { name: 'Hold mana open', value: 'yes' }] },
-    attack: { label: 'Attacking when they could kill you next turn', key: 'attackCaution', mirrorOnly: true, options: [{ name: 'Stay home when their power covers your life', value: '1' }, { name: 'More aggressive (half)', value: '0.5' }, { name: 'More careful (1.5x)', value: '1.5' }, { name: 'Very careful (2x)', value: '2' }] },
-  };
-  $('#plDecision').innerHTML = Object.entries(DECISIONS).map(([k, d]) => `<option value="${k}">${d.label}${d.mirrorOnly ? ' (mirror match)' : ''}</option>`).join('');
+  // The lab's choices come from the engine (LAB_CHOICES in sim.js). They describe what cards do, not card names, and only the ones
+  // this deck can use are offered: each needs at least one card that works that way (a sacrifice outlet, a counterspell...).
+  const DECISIONS = {};
+  G.LAB_CHOICES.forEach(c => { DECISIONS[c.id] = Object.assign({}, c, { options: c.options.slice() }); });
+  let labApplies = [];
+  function fillLabChoices() {
+    const sel = $('#plDecision'), cur = sel.value;
+    labApplies = S.deck ? G.labChoices(S.deck) : G.LAB_CHOICES.map(c => Object.assign({}, c, { applies: !!c.always, because: [], missing: [] }));
+    const ok = labApplies.filter(c => c.applies), off = labApplies.filter(c => !c.applies);
+    sel.innerHTML = ok.map(c => `<option value="${c.id}">${esc(c.label)}${c.mirrorOnly ? ' (mirror match)' : ''}</option>`).join('');
+    if (ok.some(c => c.id === cur)) sel.value = cur;
+    $('#plSkipped').innerHTML = off.length && S.deck ? `<details><summary>${off.length} other choice${off.length === 1 ? '' : 's'} hidden: no card in this deck uses ${off.length === 1 ? 'it' : 'them'}</summary><ul>${off.map(c => `<li>${esc(c.label)}: needs ${esc(c.missing.join(' and '))}</li>`).join('')}</ul></details>` : '';
+    showLabWhy();
+  }
+  function showLabWhy() {
+    const c = labApplies.find(x => x.id === $('#plDecision').value);
+    if (!c) { $('#plWhy').textContent = ''; return; }
+    const list = (names, max) => names.slice(0, max).map(esc).join(', ') + (names.length > max ? ` and ${names.length - max} more` : '');
+    $('#plWhy').innerHTML = c.always ? 'Applies to every deck.' : 'Applies because this deck has ' + c.because.map(b => `${esc(b.what)} (${list(b.cards, 4)})`).join(', ') + '.';
+  }
+  $('#plDecision').addEventListener('change', showLabWhy);
+  fillLabChoices();
   const deckSig = () => S.cards.map(c => c.name + ':' + (c.commander ? 'c' : '')).sort().join('|');
   const sigHash = str => { let x = 5381; for (let i = 0; i < str.length; i++) x = ((x << 5) + x + str.charCodeAt(i)) >>> 0; return x.toString(36); };
   const getPolicies = () => { try { return JSON.parse(localStorage.getItem('gf_policy') || '{}') || {}; } catch (e) { return {}; } };
@@ -1392,7 +1405,9 @@
   async function runLab() {
     if (!need()) return;
     const btn = $('#plRun'); btn.disabled = true;
-    const dec = DECISIONS[$('#plDecision').value], mode = dec.mirrorOnly ? 'mirror' : $('#plMode').value;
+    const dec = DECISIONS[$('#plDecision').value];
+    if (!dec) { $('#plInfo').textContent = 'Load a deck first.'; btn.disabled = false; return; }
+    const mode = dec.mirrorOnly ? 'mirror' : $('#plMode').value;
     if (dec.dynamic) dec.options = tribeOptions();
     if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
     const n = Math.max(50, Math.min(3000, +$('#plN').value || 400));

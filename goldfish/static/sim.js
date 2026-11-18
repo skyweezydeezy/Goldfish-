@@ -3658,6 +3658,48 @@
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
   const DEFAULT_POLICY = { tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  // ---------- Policy lab choices ----------
+  // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
+  // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
+  // means nothing to a +1/+1 counters deck). always: offered to every deck (every deck has an opening hand).
+  const isDeathPayoff = a => a.triggers.some(t => t.kinds.includes('dies') && t.who !== '~' && t.who !== 'equipped creature' && t.fx.some(f => ['drain', 'damage', 'edict', 'draw', 'token', 'gainLife'].includes(f.type)));
+  const makesTokens = a => a.triggers.some(t => t.fx.some(f => f.type === 'token' || f.type === 'kariToken' || f.type === 'amass')) || a.spellFx.some(f => f.type === 'token' || f.type === 'copyToken') || (a.pwAbilities || []).some(p => (p.fx || []).some(f => f.type === 'token'));
+  const LAB_CHOICES = [
+    { id: 'tribe', key: 'tribe', label: 'Creature type for cards that name one', dynamic: true,
+      needs: [{ what: 'a card that chooses a creature type', test: (a, c) => /choose a creature type|the chosen type|chosen creature type/i.test(c.oracle_text || '') }],
+      options: [{ name: 'Detected tribe', value: 'auto' }] },
+    { id: 'keep', key: 'keepLands', label: 'Opening hand: how many lands to keep', always: true,
+      options: [{ name: 'Your setting (Hands tab)', value: 'default' }, { name: 'Keep 3 or 4 lands', value: '3-4' }, { name: 'Keep 2 to 4 lands', value: '2-4' }, { name: 'Keep 3 to 5 lands', value: '3-5' }, { name: 'Keep 2 to 6 lands', value: '2-6' }] },
+    { id: 'fetch', key: 'fetchHold', label: 'When to crack lands that search for a land',
+      needs: [{ what: 'a land that sacrifices itself to search for a land', test: a => !!a.fetchSpec }],
+      options: [{ name: 'Crack at once', value: 'never' }, { name: 'Hold when a shuffle helps', value: 'whenShuffleHelps' }, { name: 'Hold until needed', value: 'untilNeeded' }, { name: 'Hold until the end of the turn', value: 'untilEnd' }] },
+    { id: 'necro', key: 'necroGoal', label: 'Paying life for cards: how full to refill the hand',
+      needs: [{ what: 'a card that turns life into cards', test: a => !!a.necroDig }],
+      options: [{ name: 'Refill to 7 (9 above 30 life)', value: 'current' }, { name: 'Refill to 6', value: '6' }, { name: 'Refill to 9', value: '9' }, { name: 'Refill to 11', value: '11' }] },
+    { id: 'sac', key: 'sacMode', label: 'Sacrificing tokens to "whenever a creature dies" payoffs',
+      needs: [{ what: 'a sacrifice outlet', test: a => !!(a.altar || a.sacScry || a.sacOutlet) }, { what: 'a "whenever a creature dies" payoff', test: isDeathPayoff }, { what: 'a token maker', test: makesTokens }],
+      options: [{ name: 'Two payoffs out, a wide board or lethal', value: 'current' }, { name: 'Whenever there is a token', value: 'always' }, { name: 'Only for lethal', value: 'lethalOnly' }, { name: 'Never', value: 'never' }, { name: 'Only with 8+ tokens or lethal', value: 'wide' }, { name: 'Only with two payoffs out or lethal', value: 'two' }] },
+    { id: 'counters', key: 'holdCounters', label: 'Holding mana open for counterspells', mirrorOnly: true,
+      needs: [{ what: 'a counterspell', test: a => !!a.counter }],
+      options: [{ name: 'Only counter with spare mana (learned default)', value: 'no' }, { name: 'Hold mana open', value: 'yes' }] },
+    { id: 'attack', key: 'attackCaution', label: 'Attacking when the opponent could kill you next turn', mirrorOnly: true,
+      needs: [{ what: 'a creature', test: a => !!a.isCreature }],
+      options: [{ name: 'Stay home when their power covers your life', value: '1' }, { name: 'More aggressive (half)', value: '0.5' }, { name: 'More careful (1.5x)', value: '1.5' }, { name: 'Very careful (2x)', value: '2' }] },
+  ];
+  // Which choices this deck can use, with the cards that make each one apply. Returns [{ ...choice, applies, because: [{ what, cards }], missing: [what] }].
+  function labChoices(deck) {
+    const cards = deck.unique || [];
+    return LAB_CHOICES.map(ch => {
+      if (ch.always) return Object.assign({}, ch, { applies: true, because: [], missing: [] });
+      const because = [], missing = [];
+      for (const nd of ch.needs) {
+        const hits = cards.filter(c => c.a && nd.test(c.a, c)).map(c => c.name);
+        if (hits.length) because.push({ what: nd.what, cards: hits }); else missing.push(nd.what);
+      }
+      return Object.assign({}, ch, { applies: !missing.length, because, missing });
+    });
+  }
+
   function pol(g, key) { const p = g.opts && g.opts.policy; return p && p[key] != null ? p[key] : DEFAULT_POLICY[key]; }
   // a held fetch land: crack it when mana is needed, after a library-reordering effect (Brainstorm, Sylvan Library: the shuffle sends the put-back cards away) or at the end of the turn
   function heldFetches(g) { return g.battlefield.filter(p => p.heldFetch && p.card.a.fetchSpec); }
@@ -4436,7 +4478,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
+    pay, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

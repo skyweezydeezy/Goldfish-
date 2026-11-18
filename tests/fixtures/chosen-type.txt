@@ -1,0 +1,40 @@
+// "Choose a creature type" cards, for tests/engine/chosen-type.test.js
+1 Kindred Discovery
+1 Metallic Mimic
+1 Cavern of Souls
+1 Vanquisher's Banner
+1 Herald's Horn
+1 Urza's Incubator
+1 Unclaimed Territory
+1 Secluded Courtyard
+1 Three Tree City
+1 Roaming Throne
+1 Door of Destinies
+1 Patchwork Banner
+1 Icon of Ancestry
+1 Obelisk of Urd
+1 Adaptive Automaton
+1 Pillar of Origins
+1 Radiant Destiny
+1 Brass Herald
+1 Distant Melody
+1 Kindred Summons
+1 Patriarch's Bidding
+1 Kindred Dominance
+1 Kindred Charge
+1 Arcane Adaptation
+1 Reflections of Littjara
+1 Realmwalker
+1 Morophon, the Boundless
+1 Coat of Arms
+1 Steely Resolve
+1 Kindred Boon
+1 Merfolk Sovereign
+1 Lord of Atlantis
+1 Master of the Pearl Trident
+1 Merrow Reejerey
+1 Silvergill Adept
+1 Merfolk Trickster
+1 Svyelun of Sea and Sky
+1 Deeproot Waters
+1 Island

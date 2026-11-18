@@ -246,6 +246,10 @@
       if (m[3]) fx.push({ type: 'gyReturn', filter: m[3].toLowerCase() });                                      // Liliana, the Last Hope
     }
     if ((m = text.match(/distribute (\w+) \+1\/\+1 counters among up to (\w+) target creatures/i))) fx.push({ type: 'distribute', n: num(m[1]), max: num(m[2]), keywords: kwList((text.match(/they gain ([a-z ,]+?) until end of turn/i) || [])[1]) });          // Ajani, Sleeper Agent
+    {                                                                                                    // wheels (see wheel())
+      const wm = text.match(/each player (discards (?:their|his or her) hand|shuffles (?:their|his or her) hand and graveyard into (?:their|his or her) library),? (?:and |then )*draws (seven|that many|cards equal to the greatest number of cards a player discarded this way)/i);
+      if (wm) { for (let i = fx.length - 1; i >= 0; i--) if (fx[i].type === 'draw') fx.splice(i, 1); fx.push({ type: 'wheel', n: /seven/i.test(wm[2]) ? 7 : 'max', shuffle: /^shuffles/i.test(wm[1]) }); }
+    }
     if (/each player discards a card/i.test(text)) fx.push({ type: 'eachDiscard' });                          // Liliana of the Veil
     if (/return target card from your graveyard to your hand/i.test(text) && !/target [a-z]+ card from your graveyard/i.test(text.replace(/target card/i, ''))) fx.push({ type: 'gyReturn', filter: 'any' });          // Eternal Witness, Tamiyo
     if (/put target nonland permanent into its owner's library third from the top/i.test(text)) fx.push({ type: 'removal', how: 'tuck', what: 'nonland' });          // Teferi, Hero of Dominaria
@@ -376,7 +380,8 @@
     [/^whenever an opponent draws a card,\s*(?:that player may pay \{(\d+)\}\. if (?:they|the player) don't,\s*|that player may pay \{(\d+)\}\. if the player doesn't,\s*)?/i, ['oppDraw']],          // Sheoldred, Smothering Tithe
     [/^whenever you cast or copy (?:a|an) ([a-z ,]*?)\s*spell[^,]*,\s*/i, ['cast']],                     // Magecraft (a copy is handled where spells are copied)
     [/^whenever a player casts (?:a|an) ([a-z ,]*?)\s*spell[^,]*,\s*/i, ['cast', 'castAnyOpp']],           // Niv-Mizzet, Parun: your spells and the other player's
-    [/^whenever an opponent casts a spell,\s*/i, ['oppCast']],                                              // Rhystic Study
+    [/^whenever an opponent casts a spell,\s*/i, ['oppCast']],
+    [/^whenever an opponent discards a card,\s*/i, ['oppDiscard']],                                       // Megrim, Liliana's Caress                                              // Rhystic Study
     [/^whenever enchanted creature deals damage to (?:an opponent|a player),?\s*/i, ['enchDamage']],        // Curiosity
     [/^whenever you cast (?:a|an|your first) ?([a-z ,]*?)\s*spell[^,]*,\s*/i, ['cast']],
     [/^whenever (another|a|an|one or more other|one or more) (nontoken )?([a-z ]*?)\s*(creatures?|permanents?|artifacts?|enchantments?)(?: you control)? enters?(?: the battlefield)?(?: under your control)?,?\s*/i, ['permEtb']],
@@ -1023,6 +1028,7 @@
         else if ((im = rest.match(/^each opponent dealt combat damage this game by a creature named ~ loses life equal to/i))) { cond = { kind: 'dealtBy' }; rest = 'each opponent loses life equal to' + rest.slice(im[0].length); }       // Gollum
         const tm2 = rest.match(/(?:\.\s*)?Then if ~ is your Ring-bearer and the Ring has tempted you (\w+) or more times this game, (.*)$/i);
         if (tm2) { thenFx = parseEffects(tm2[2]).fx.map(f => Object.assign({}, f, { cond: { kind: 'ringBearerSelf', min: num(tm2[1]) } })); rest = rest.slice(0, tm2.index); }
+        if (trig.kinds[0] === 'oppDiscard' || trig.kinds[0] === 'oppDraw') rest = rest.replace(/that player loses/ig, 'each opponent loses');
         const r = parseEffects(rest);
         r.fx.push(...thenFx);
         const t = { kinds: trig.kinds, fx: r.fx, text: raw, cond };
@@ -2541,7 +2547,8 @@
           for (const c of pool.slice(0, 30)) { if (g.battlefield.length >= 250) break; c.y.splice(c.y.indexOf(c.i), 1); const np = enterWithTriggers(g, c.i, {}, ev); if (c.y !== g.graveyard) { np.owner = g.opp; np.stolen = true; } }
           ev.push({ type: 'note', text: `${pool.length} creature cards return to the battlefield under your control`, source }); break;
         }
-        case 'eachDraw': if (g.library.length) draw(g, 1, ev); if (g.opp && g.opp.library.length) draw(g.opp, 1, []); break;
+        case 'eachDraw': if (g.library.length) draw(g, 1, ev); if (g.opp && g.opp.library.length) draw(g.opp, 1, []); else ghostDraws(g, 1, ev); break;
+        case 'wheel': wheel(g, f, ev); break;
         case 'etali': {                                                                                        // Etali: the top card of each library is exiled; cast the nonland ones for free
           const libs = [{ g, own: true }].concat(g.opp ? [{ g: g.opp, own: false }] : []);
           for (const L of libs) { if (f.dig) while (L.g.library[0] && L.g.library[0].card.a.isLand) L.g.exile.push(L.g.library.shift()); const top = L.g.library[0]; if (!top) continue; if (top.card.a.isLand) { L.g.library.shift(); L.g.exile.push(top); continue; }
@@ -3454,6 +3461,11 @@
       if (f.type === 'poisonWin') v += 1000;
       if (f.type === 'emblem') v += 1.5 * (f.p || 0) * Math.max(1, g.battlefield.filter(isCreaturePerm).length);   // worth more the wider your board is
       if (f.type === 'mana') v += 0.5;
+      if (f.type === 'wheel') {                                                          // worth the cards it refills, plus every punisher that fires on the other player's draws and discards
+        const theirs = g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand), k = f.n === 'max' ? Math.max(g.hand.length - 1, theirs) : f.n;
+        const per = kind => g.battlefield.reduce((s, q) => s + q.card.a.triggers.filter(t => t.kinds.includes(kind)).reduce((a, t) => a + t.fx.reduce((b, x) => b + ((x.type === 'damage' || x.type === 'drain') ? (x.n || 1) : 0), 0), 0), 0);
+        v += 1.5 * Math.max(0, k - (g.hand.length - 1)) + k * per('oppDraw') + (f.shuffle ? 0 : theirs * per('oppDiscard'));
+      }
     }
     return v;
   }
@@ -4197,11 +4209,57 @@
     for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes(kind) && g.battlefield.includes(q)) fire(g, t, q, ev, null);
   }
 
+  // ---------- The goldfish opponent's hand (goldfish games only: a mirror match has a real opponent) ----------
+  // The goldfish never interacts, but cards that punish its draws and discards (Nekusar, Underworld Dreams, Sheoldred, Megrim,
+  // Smothering Tithe) need it to draw and discard. It starts with 7 cards, draws in its own draw step (plus one for each
+  // "each player draws an additional card" permanent), plays about one card a turn, and wheels make it discard and redraw.
+  // It never pays "unless that player pays" taxes (it has no mana to spare in this model).
+  function extraDrawEach(p) { const k = p.card.a; if (k._xd == null) k._xd = /at the beginning of each player's draw step,(?: if [^,]+,)? that player draws an additional card/i.test(p.card.oracle_text || ''); return k._xd && !(/if [^,]+ is untapped/i.test(p.card.oracle_text || '') && p.tapped); }
+  function ghostDraws(g, n, ev) {
+    if (g.opp || g.dry || n <= 0) return;
+    g.oppHand = (g.oppHand == null ? 7 : g.oppHand) + n;
+    for (let i = 0; i < n && g.killTurn == null; i++) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDraw') && g.battlefield.includes(q)) fire(g, t, q, ev, null);
+  }
+  function ghostDiscards(g, n, ev) {
+    if (g.opp || g.dry || n <= 0) return;
+    g.oppHand = Math.max(0, (g.oppHand == null ? 7 : g.oppHand) - n);
+    for (let i = 0; i < n && g.killTurn == null; i++) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDiscard') && g.battlefield.includes(q)) fire(g, t, q, ev, null);
+  }
+  // Wheels: "each player discards their hand, then draws seven" (Wheel of Fortune, Reforge the Soul), "...draws cards equal to the
+  // greatest number discarded" (Windfall, Whispering Madness), "each player shuffles their hand and graveyard into their library,
+  // then draws seven" (Timetwister, Echo of Eons). Both players: you, and the other player (the mirror opponent or the goldfish).
+  function wheel(g, f, ev) {
+    const mine = g.hand.slice(), theirs = g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand);
+    const n = f.n === 'max' ? Math.max(mine.length, theirs) : f.n;
+    g.hand = [];
+    if (f.shuffle) { g.library.push(...mine, ...g.graveyard.splice(0)); shuffle(g.library, g.rnd); }
+    else g.graveyard.push(...mine);
+    draw(g, n, ev);
+    if (g.opp) {
+      const oh = g.opp.hand.splice(0);
+      if (f.shuffle) { g.opp.library.push(...oh, ...g.opp.graveyard.splice(0)); shuffle(g.opp.library, g.opp.rnd); } else g.opp.graveyard.push(...oh);
+      draw(g.opp, n, ev);
+    } else {
+      if (!f.shuffle) ghostDiscards(g, theirs, ev); else g.oppHand = 0;
+      g.oppHand = 0; ghostDraws(g, n, ev);
+    }
+    ev.push({ type: 'note', text: `Wheel: each player ${f.shuffle ? 'shuffled their hand and graveyard away' : 'discarded their hand'} and drew ${n}` });
+  }
+  function ghostTurn(g, ev) {
+    if (g.opp || g.dry) return;
+    if (g.oppHand == null) g.oppHand = 7;
+    if (g.turn <= 1) return;                                                            // its first turn: no draw (or it has not had a turn yet)
+    const extra = g.battlefield.filter(extraDrawEach).length;
+    ghostDraws(g, 1 + extra, ev);
+    g.oppHand = Math.max(0, g.oppHand - 1);                                             // it plays a card
+  }
+
   function beginTurn(g) {
     g.turn++;
     g.pirateHits = 0; g.attackedThisTurn = false; g._extraAtk = []; g.oppLostTurn = 0;
     g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0; g.combatDone = false; g.isCast = 0; g.pwBonus = 0;
     const ev = [{ type: 'untap' }];
+    ghostTurn(g, ev);                                                                     // the goldfish opponent's turn happened just before this one
     g.battlefield.forEach(p => { if (!p.card.a.noUntap) p.tapped = false; if (p.enteredTurn < g.turn) p.sick = false; });
     for (const p of g.battlefield) {                                                                      // Mana Vault: pay {4} to untap it when there is mana to spare; it hurts while tapped
       if (p.card.a.vaultUntap && p.tapped) { const vc = { generic: 4, pips: [], x: 0 }; if (allUnits(g).length >= 7 && canPay(vc, allUnits(g))) { pay(g, vc); p.tapped = false; ev.push({ type: 'note', text: `Paid {4} to untap ${p.card.name}`, source: p }); } }
@@ -5024,7 +5082,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
+    pay, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

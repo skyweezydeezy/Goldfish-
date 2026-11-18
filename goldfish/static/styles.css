@@ -601,3 +601,43 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .land-wall .group { container-type: inline-size; }
   .land-wall .pile { --land-card: clamp(82px, 100cqw - 24px, 150px); }
 }
+
+/* ---------- card menu: opens on tap, big targets, a Back button, no accidental text selection ---------- */
+.ctx-menu { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; max-height: 80vh; overflow-y: auto; }
+.ctx-backdrop { position: fixed; inset: 0; z-index: 299; display: none; background: transparent; }
+.ctx-backdrop.show { display: block; }
+.ctx-title { font-weight: 700; font-size: 13px; color: var(--ice-2); padding: 6px 10px 4px; overflow-wrap: anywhere; }
+.ctx-menu button.primary { background: linear-gradient(180deg, #4db3f5, #2a82d6); color: #fff; font-weight: 650; margin-bottom: 2px; }
+.ctx-menu button.primary:hover { background: linear-gradient(180deg, #6cc3fa, #3a92e6); }
+.ctx-menu button.ctx-cancel { margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; color: var(--text-secondary); text-align: center; }
+@media (pointer: coarse) {
+  .ctx-backdrop { background: rgba(4,10,16,.6); }
+  .ctx-menu { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: 100%; max-height: 72vh; border-radius: 16px 16px 0 0; padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,.6); }
+  .ctx-menu button { padding: 14px 14px; }
+}
+
+/* ---------- card viewer: previous / next, printings, shop ---------- */
+.lb-inner { justify-content: flex-start; padding-top: calc(10px + env(safe-area-inset-top)); }
+.lb-bar { width: min(96vw, 560px); display: flex; align-items: center; justify-content: space-between; }
+.lb-count { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.lb-x { padding: 8px 14px; }
+.lb-row { display: flex; align-items: center; justify-content: center; gap: 4px; width: min(100vw, 560px); }
+.lb-faces { touch-action: pan-y; flex: 0 1 auto; flex-wrap: nowrap; min-width: 0; }
+.lb-faces .mtg { width: min(70vw, 340px); }
+.lb-faces .mtg:only-child { width: min(70vw, 340px); }
+.lb-nav { flex: none; width: 42px; height: 84px; border-radius: 12px; font-size: 30px; line-height: 1; padding: 0; background: rgba(255,255,255,.08); }
+.lb-nav:disabled { opacity: .25; }
+.lb-name { font-weight: 700; font-size: 16px; text-align: center; max-width: 92vw; overflow-wrap: anywhere; }
+.lb-tip { text-align: center; }
+.lb-sec { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+.lb-prints, .lb-shop { width: min(94vw, 560px); }
+.lb-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.lb-print { flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px; border-radius: 10px; background: var(--surface-2); border: 2px solid transparent; font-size: 11px; color: var(--text-secondary); }
+.lb-print img { width: 100%; border-radius: 4px; display: block; aspect-ratio: 488 / 680; object-fit: cover; background: #222; }
+.lb-print small { color: var(--ice); font-weight: 650; }
+.lb-print.on { border-color: var(--ice); color: var(--text-primary); }
+.lb-use { margin-top: 6px; width: 100%; }
+.lb-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.lb-buy { flex: 1 1 120px; text-align: center; padding: 11px 12px; border-radius: 10px; background: var(--surface-3); color: var(--text-primary); text-decoration: none; font-weight: 650; box-shadow: inset 0 0 0 1px var(--border); }
+.lb-buy:hover { background: #2c4c66; }
+.lb-cov { width: min(94vw, 560px); }

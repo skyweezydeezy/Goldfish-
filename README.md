@@ -17,7 +17,9 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 - **iPhone / iPad (Safari):** Share button -> **Add to Home Screen**.
 - **Android (Chrome):** menu -> **Install app** / **Add to Home screen**.
 
-**Touch controls:** tap a hand card to play it, tap a permanent to tap it, **long-press** any card for the menu (counters, sacrifice, move zones, view card). Outside the table, tap a card to see it large, with how the engine reads its rules text.
+**Touch controls:** tap any card on the table and its menu opens as a sheet at the bottom of the screen: the main action (Cast, Play land, Tap or Untap) comes first, then View card, counters, sacrifice and moving between zones. Tap outside the sheet or **Back** to close it; nothing happens to the card. Elsewhere, tapping a card opens the card viewer.
+
+**Card viewer:** swipe the card (or use the ‹ › buttons or arrow keys) to move to the next or previous card around it, pick another **printing** (with prices) and choose **Use this printing in my deck** to switch the art for this visit, and shop for it at **TCGplayer, Card Kingdom or ManaPool**. The shop links are plain links for now; affiliate parameters can be added in `AFFILIATE` near the top of the viewer code in `app.js`. The viewer also shows how the engine reads the card.
 
 **Same Wi-Fi only, using your PC's ScryMirror images:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
 

@@ -768,6 +768,8 @@
   // ---- interactions ----
   $('.table').addEventListener('click', e => {
     const m = e.target.closest('.mtg'); if (!m || S.busy || !S.game || m.dataset.iid == null) return;
+    // touch screens: a tap opens the card's menu (play / tap first), so nothing happens by accident
+    if (!canHover) { e.stopPropagation(); const r = m.getBoundingClientRect(); openCtx(m, r.left, r.top); return; }
     const g = S.game, iid = +m.dataset.iid;
     const inHand = g.hand.find(i => i.iid === iid), inCmd = g.command.find(i => i.iid === iid), perm = g.battlefield.find(p => p.iid === iid);
     if (inHand || inCmd) playFromHand(inHand || inCmd, e.shiftKey, m);
@@ -810,26 +812,139 @@
 
   // ---- touch: long-press and card viewer ----
   const lightbox = $('#lightbox');
-  function showLightbox(card) {
-    if (!card) return;
+  // Card viewer: move between the cards around the one you opened, change printing, and shop for it.
+  // Shop links are plain links for now; to earn from them later, add each store's affiliate parameters in AFFILIATE below.
+  const enc = encodeURIComponent;
+  const AFFILIATE = { tcgplayer: u => u, cardkingdom: u => u, manapool: u => u };
+  const slugOf = n => n.toLowerCase().replace(/\s*\/\/.*$/, '').replace(/['’,.:!?"]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const SHOPS = [
+    ['tcgplayer', 'TCGplayer', (c, p) => p && p.tcg ? `https://www.tcgplayer.com/product/${p.tcg}` : `https://www.tcgplayer.com/search/magic/product?productLineName=magic&q=${enc(c.name)}`],
+    ['cardkingdom', 'Card Kingdom', (c) => `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${enc(c.name)}`],
+    ['manapool', 'ManaPool', (c, p) => (p || c.set) && (p ? p.cn : c.cn) ? `https://manapool.com/card/${enc((p ? p.set : c.set))}/${enc(p ? p.cn : c.cn)}/${slugOf(c.name)}` : `https://manapool.com/cards?q=${enc(c.name)}`],
+  ];
+  const LB_SCOPE = '.table, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
+  const lb = { list: [], i: 0, sel: null };
+  const printCache = new Map();
+  async function fetchPrints(card) {
+    if (printCache.has(card.name)) return printCache.get(card.name);
+    const get = async q => {
+      const r = await fetch(`https://api.scryfall.com/cards/search?q=${enc(q)}&unique=prints&order=released&dir=desc`, { headers: { Accept: 'application/json;q=0.9,*/*;q=0.8' } });
+      return r.ok ? r.json() : null;
+    };
+    let d = null;
+    try { d = await get(`!"${card.name}" game:paper`) || await get(`!"${card.name}"`); } catch (e) { d = null; }
+    const out = ((d && d.data) || []).map(x => {
+      const faces = x.card_faces || [];
+      const pick = k => x.image_uris ? [x.image_uris[k]] : faces.map(f => f.image_uris && f.image_uris[k]);
+      return { id: x.id, set: x.set, setName: x.set_name, cn: x.collector_number, date: x.released_at, tcg: x.tcgplayer_id, usd: (x.prices && (x.prices.usd || x.prices.usd_foil)) || null,
+        imgs: pick('normal').filter(Boolean), thumb: (pick('small')[0]) || null };
+    }).filter(p => p.imgs.length);
+    printCache.set(card.name, out);
+    return out;
+  }
+  const isRealCard = c => c && c.id && !String(c.uid).startsWith('t:') && !String(c.uid).startsWith('b:') && !String(c.uid).startsWith('preview:');
+  function applyPrinting(card, p) {
+    card.id = p.id; card.set = p.set; card.cn = p.cn; card.images = []; card.remote_images = p.imgs;
+    elCache.clear(); renderDeck(); if (S.game) render();
+    toast(`Now using the ${p.setName} printing`);
+  }
+  function lbClose() { lightbox.classList.remove('show'); document.body.classList.remove('modal-open'); }
+  function lbGo(d) { if (lb.list.length < 2) return; lb.i = (lb.i + d + lb.list.length) % lb.list.length; lb.sel = null; paintLb(); lightbox.scrollTop = 0; }
+  function paintLb() {
+    const card = lb.list[lb.i]; if (!card) return;
+    const sel = lb.sel;
     lightbox.innerHTML = '';
     const wrap = h('div', 'lb-inner');
+    const bar = h('div', 'lb-bar');
+    bar.appendChild(h('span', 'lb-count', lb.list.length > 1 ? `${lb.i + 1} / ${lb.list.length}` : ''));
+    const x = h('button', 'lb-x', '✕ Close'); x.addEventListener('click', lbClose); bar.appendChild(x);
+    wrap.appendChild(bar);
+    const row = h('div', 'lb-row');
+    const nav = (cls, label, d) => { const b = h('button', 'lb-nav ' + cls, label); b.setAttribute('aria-label', d < 0 ? 'Previous card' : 'Next card'); b.disabled = lb.list.length < 2; b.addEventListener('click', () => lbGo(d)); return b; };
+    row.appendChild(nav('prev', '‹', -1));
     const faces = h('div', 'lb-faces');
-    const n = Math.max(1, Math.min(2, (card.images || []).length || (card.remote_images || []).length));
-    for (let i = 0; i < n; i++) faces.appendChild(cardEl(card, { face: i }));
-    wrap.appendChild(faces);
+    const shown = sel ? Object.assign({}, card, { images: [], remote_images: sel.imgs }) : card;
+    const n = Math.max(1, Math.min(2, (shown.images || []).length || (shown.remote_images || []).length));
+    for (let i = 0; i < n; i++) faces.appendChild(cardEl(shown, { face: i }));
+    let sx = null, sy = null;
+    faces.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
+    faces.addEventListener('pointerup', e => { if (sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 55 && Math.abs(dy) < 60) lbGo(dx < 0 ? 1 : -1); });
+    row.appendChild(faces);
+    row.appendChild(nav('next', '›', 1));
+    wrap.appendChild(row);
+    wrap.appendChild(h('div', 'lb-name', esc(card.name)));
+    if (lb.list.length > 1) wrap.appendChild(h('div', 'hint lb-tip', 'Swipe the card, or use ‹ › (or the arrow keys), to move between cards'));
+
+    // printings
+    const pr = h('div', 'lb-prints'); wrap.appendChild(pr);
+    const shop = h('div', 'lb-shop'); wrap.appendChild(shop);
+    const paintShop = p => {
+      shop.innerHTML = '';
+      shop.appendChild(h('div', 'lb-sec', p ? `Buy ${esc(p.setName)} #${esc(p.cn)}` : 'Buy this card'));
+      const links = h('div', 'lb-links');
+      SHOPS.forEach(([key, label, url]) => {
+        const a = h('a', 'lb-buy', esc(label) + ' ↗'); a.href = AFFILIATE[key](url(card, p)); a.target = '_blank'; a.rel = 'noopener sponsored'; links.appendChild(a);
+      });
+      shop.appendChild(links);
+    };
+    const cur = sel || null;
+    paintShop(cur);
+    if (isRealCard(card)) {
+      pr.appendChild(h('div', 'lb-sec', 'Printings'));
+      const strip = h('div', 'lb-strip', '<span class="hint">Loading printings…</span>'); pr.appendChild(strip);
+      fetchPrints(card).then(list => {
+        if (lb.list[lb.i] !== card) return;
+        if (!list.length) { strip.innerHTML = '<span class="hint">Printings are not available right now.</span>'; return; }
+        const have = list.findIndex(p => p.set === card.set && String(p.cn) === String(card.cn));
+        strip.innerHTML = '';
+        list.forEach((p, idx) => {
+          const on = sel ? sel.id === p.id : idx === have;
+          const b = h('button', 'lb-print' + (on ? ' on' : ''), `<img alt="" loading="lazy" src="${esc(p.thumb || p.imgs[0])}"><span>${esc(p.set.toUpperCase())} · ${esc(p.cn)}</span><small>${p.usd ? '$' + esc(p.usd) : '—'}</small>`);
+          b.title = `${p.setName} (${p.date})`;
+          b.addEventListener('click', () => { lb.sel = idx === have && !sel ? null : p; const sc = lightbox.scrollTop, st = strip.scrollLeft; paintLb(); lightbox.scrollTop = sc; const s2 = lightbox.querySelector('.lb-strip'); if (s2) s2.scrollLeft = st; });
+          strip.appendChild(b);
+          if (on && sel) paintShop(p);
+        });
+        if (have < 0 && !sel) paintShop(null);
+        if (sel && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {
+          const use = h('button', 'primary lb-use', `Use this printing in my deck`);
+          use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
+          pr.appendChild(use);
+        }
+        const t = strip.querySelector('.on'); if (t && t.scrollIntoView) t.scrollIntoView({ inline: 'center', block: 'nearest' });
+      });
+    }
     if (card.a && card.a.coverage && card.a.coverage.length) {
       const cov = h('div', 'lb-cov');
       cov.appendChild(h('div', 'hint', 'How the engine reads this card'));
       card.a.coverage.forEach(x => cov.appendChild(h('div', 'cl ' + x.status, pillHtml(x) + esc(x.text))));
       wrap.appendChild(cov);
     }
-    wrap.appendChild(h('div', 'hint', 'Tap anywhere to close'));
     lightbox.appendChild(wrap);
-    lightbox.classList.add('show');
   }
-  lightbox.addEventListener('click', () => lightbox.classList.remove('show'));
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.remove('show'); });
+  function showLightbox(card, scopeEl) {
+    if (!card) return;
+    let list = [card];
+    const sc = scopeEl && scopeEl.closest ? scopeEl.closest(LB_SCOPE) : null;
+    if (sc) {
+      const seen = new Set(), l = [];
+      sc.querySelectorAll('.mtg[data-uid]').forEach(e => {
+        if (e.closest('#lightbox') || seen.has(e.dataset.uid)) return;
+        seen.add(e.dataset.uid); const c = getCard(e.dataset.uid); if (c) l.push(c);
+      });
+      if (l.indexOf(card) >= 0) list = l;
+    }
+    lb.list = list; lb.i = list.indexOf(card); lb.sel = null;
+    paintLb(); lightbox.scrollTop = 0;
+    lightbox.classList.add('show'); document.body.classList.add('modal-open');
+  }
+  lightbox.addEventListener('click', e => { if (e.target === lightbox || e.target.classList.contains('lb-inner')) lbClose(); });
+  document.addEventListener('keydown', e => {
+    if (!lightbox.classList.contains('show')) return;
+    if (e.key === 'Escape') lbClose();
+    else if (e.key === 'ArrowRight') lbGo(1);
+    else if (e.key === 'ArrowLeft') lbGo(-1);
+  });
 
   let lp = null, suppressClick = false;
   document.addEventListener('pointerdown', e => {
@@ -840,7 +955,7 @@
     me.t = setTimeout(() => {
       me.fired = true;
       if (navigator.vibrate) navigator.vibrate(15);
-      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(getCard(m.dataset.uid));
+      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(getCard(m.dataset.uid), m);
     }, 480);
   });
   document.addEventListener('pointermove', e => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) { clearTimeout(lp.t); lp = null; } });
@@ -857,12 +972,18 @@
     if (canHover) return;
     const m = e.target.closest('.mtg');
     if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand') || m.dataset.uid == null) return;
-    showLightbox(getCard(m.dataset.uid));
+    showLightbox(getCard(m.dataset.uid), m);
   });
 
   // context menu
   const ctx = $('#ctxMenu');
-  document.addEventListener('click', () => { ctx.style.display = 'none'; });
+  const ctxBack = h('div', 'ctx-backdrop'); document.body.appendChild(ctxBack);
+  function closeCtx() { ctx.style.display = 'none'; ctxBack.classList.remove('show'); }
+  // tapping anywhere off the menu closes it, and only closes it (the tap does not reach the card underneath)
+  ctxBack.addEventListener('click', e => { e.stopPropagation(); closeCtx(); });
+  ctxBack.addEventListener('contextmenu', e => { e.preventDefault(); closeCtx(); });
+  document.addEventListener('click', closeCtx);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCtx(); });
   $('.table').addEventListener('contextmenu', e => {
     const m = e.target.closest('.mtg'); if (!m || !S.game || m.dataset.iid == null) return;
     e.preventDefault();
@@ -876,7 +997,7 @@
     for (const [z, arr] of Object.entries(zones)) { const f = arr.find(x => x.iid === iid); if (f) { zone = z; obj = f; } }
     if (!obj) return;
     const inst = zone === 'battlefield' ? obj.inst : obj;
-    const items = [['🔍 View card', () => showLightbox(inst.card)]];
+    const items = [];
     const act = fn => () => { snap(); fn(); G.touch(g); render(); };
     const move = (to, top) => act(() => {
       if (zone === 'battlefield') G.removePerm(g, obj); else zones[zone].splice(zones[zone].indexOf(obj), 1);
@@ -887,13 +1008,15 @@
       else zones[to].push(inst);
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
     });
+    if (zone === 'hand' || zone === 'command') items.push([inst.card.a.isLand ? '▶ Play land' : '▶ Cast', () => playFromHand(inst, false, m), 'primary']);
+    if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; }), 'primary']);
+    items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
       if (inst.card.a.mdfcLand) items.push(['Play as land (back face)', () => playFromHand(inst, true, m, true)]);
       items.push(['Cast (ignore mana)', () => playFromHand(inst, true, m)]);
       items.push(['Put onto battlefield', move('battlefield')]);
     }
     if (zone === 'battlefield') {
-      items.push([obj.tapped ? 'Untap' : 'Tap', act(() => { obj.tapped = !obj.tapped; })]);
       if (G.isCreaturePerm(obj)) {
         items.push(['💍 The Ring tempts you: make this the Ring-bearer', act(() => {
           const ring = g.ring = Object.assign({ tempts: 0, bearer: null }, g.ring);
@@ -913,8 +1036,11 @@
     if (zone !== 'battlefield' && zone !== 'hand') items.push(['Move to battlefield', move('battlefield')]);
     if (!inst.card.isToken) items.push(['Put on top of library', move('library', true)], ['Put on bottom of library', move('library', false)]);
     ctx.innerHTML = '';
-    items.forEach(([label, fn]) => { const b = h('button', '', label); b.addEventListener('click', ev => { ev.stopPropagation(); ctx.style.display = 'none'; fn(); }); ctx.appendChild(b); });
-    ctx.style.display = 'block';
+    ctx.appendChild(h('div', 'ctx-title', esc(inst.card.name)));
+    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', label); b.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); fn(); }); ctx.appendChild(b); });
+    const cancel = h('button', 'ctx-cancel', 'Back'); cancel.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); }); ctx.appendChild(cancel);
+    ctxBack.classList.add('show');
+    ctx.style.display = 'block'; ctx.scrollTop = 0;
     ctx.style.left = Math.max(8, Math.min(cx, innerWidth - ctx.offsetWidth - 8)) + 'px'; ctx.style.top = Math.max(8, Math.min(cy, innerHeight - ctx.offsetHeight - 10)) + 'px';
   }
 
@@ -1430,7 +1556,7 @@
     });
     // hover name -> zoom (reuse .mtg zoom by a proxy element)
     hm.querySelectorAll('.mtg-ref').forEach(s => {
-      s.addEventListener('click', () => { if (!canHover) showLightbox(getCard(s.dataset.uid)); });
+      s.addEventListener('click', () => { if (!canHover) showLightbox(getCard(s.dataset.uid), s); });
       s.addEventListener('mouseenter', e => { const fake = cardEl(getCard(s.dataset.uid)); zoom.innerHTML = ''; const f = h('div', 'faces'); f.appendChild(fake); zoom.appendChild(f); zoom.classList.remove('two'); zoom.classList.add('show'); placeZoom(e); });
       s.addEventListener('mouseleave', () => zoom.classList.remove('show'));
     });

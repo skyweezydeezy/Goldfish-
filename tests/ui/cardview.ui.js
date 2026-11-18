@@ -1,0 +1,60 @@
+// Phone tap menu and card viewer: one tap opens the menu, tapping outside or Back closes it, and the viewer
+// moves between cards, lists printings and links to shops. Runs as an iPhone (touch, no hover).
+const { chromium, devices } = require('playwright');
+const fs = require('fs'), path = require('path');
+let pass = 0, fail = 0;
+const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
+  await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
+    const q = route.request();
+    const c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+    if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: c });
+    try {
+      const res = await fetch(q.url(), { method: q.method(), headers: { 'User-Agent': 'goldfish-calc-test/0.1', 'Accept': 'application/json;q=0.9,*/*;q=0.8', ...(q.method() === 'POST' ? { 'Content-Type': 'application/json' } : {}) }, body: q.method() === 'POST' ? q.postData() : undefined });
+      route.fulfill({ status: res.status, headers: { ...c, 'content-type': res.headers.get('content-type') || '' }, body: Buffer.from(await res.arrayBuffer()) });
+    } catch (e) { route.abort(); }
+  });
+  const p = await ctx.newPage();
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('http://127.0.0.1:8800/');
+  await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8'));
+  await p.click('#loadDeck');
+  await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
+  await p.waitForTimeout(2500);
+  await p.tap('[data-tab=table]'); await p.check('#tFast'); await p.fill('#tAutoToN', '3'); await p.tap('#tAutoTo'); await p.waitForTimeout(8000);
+  const hand = await p.$('#zHand .mtg'); await hand.scrollIntoViewIfNeeded();
+  const nHand = () => p.$$eval('#zHand .mtg', x => x.length), n0 = await nHand();
+  const edge = { position: { x: 10, y: 60 } };   // hand cards overlap; tap the visible left edge
+  await hand.tap(edge); await p.waitForTimeout(400);
+  check('one tap on a card opens its menu, and plays nothing', await p.isVisible('#ctxMenu') && n0 === await nHand());
+  check('the menu leads with the main action and ends with Back', /Cast|Play land/.test(await p.$eval('#ctxMenu button', e => e.textContent)) && await p.$eval('#ctxMenu button:last-child', e => e.textContent) === 'Back');
+  check('the menu is a full-width sheet at the bottom of the screen', await p.$eval('#ctxMenu', e => { const r = e.getBoundingClientRect(); return Math.abs(r.width - innerWidth) < 2 && Math.abs(r.bottom - innerHeight) < 2; }));
+  await p.tap('.ctx-backdrop', { position: { x: 100, y: 100 } }); await p.waitForTimeout(300);
+  check('tapping outside closes it and does nothing else', !(await p.isVisible('#ctxMenu')) && n0 === await nHand());
+  await hand.tap(edge); await p.waitForTimeout(300); await p.tap('#ctxMenu .ctx-cancel'); await p.waitForTimeout(200);
+  check('Back closes it', !(await p.isVisible('#ctxMenu')));
+  await hand.tap(edge); await p.waitForTimeout(300); await p.tap('#ctxMenu button:has-text("View card")'); await p.waitForTimeout(3000);
+  const name0 = await p.textContent('.lb-name'), count0 = await p.textContent('.lb-count');
+  check('View card opens the viewer with a position count', /^\d+ \/ \d+$/.test(count0), name0 + ' ' + count0);
+  await p.tap('.lb-nav.next'); await p.waitForTimeout(300);
+  check('next moves to another card', (await p.textContent('.lb-name')) !== name0);
+  await p.tap('.lb-nav.prev'); await p.waitForTimeout(300);
+  check('previous moves back', (await p.textContent('.lb-name')) === name0);
+  await p.waitForTimeout(1500);
+  const nPrint = await p.$$eval('.lb-print', x => x.length);
+  check('printings are listed with prices', nPrint > 1, nPrint + ' printings');
+  const shop = await p.$$eval('.lb-buy', x => x.map(a => a.href));
+  check('shop links for TCGplayer, Card Kingdom and ManaPool', shop.length === 3 && /tcgplayer\.com/.test(shop[0]) && /cardkingdom\.com/.test(shop[1]) && /manapool\.com/.test(shop[2]));
+  const pr = await p.$$('.lb-print'); await pr[1].tap(); await p.waitForTimeout(700);
+  check('choosing a printing offers to use it, and its shop links follow it', await p.isVisible('.lb-use') && /tcgplayer\.com\/product\/\d+/.test(await p.$eval('.lb-buy', a => a.href)));
+  await p.tap('.lb-use'); await p.waitForTimeout(400);
+  check('using it confirms with a message', /Now using/.test(await p.textContent('#toast')));
+  await p.tap('.lb-x'); await p.waitForTimeout(200);
+  check('Close closes the viewer', !(await p.isVisible('#lightbox.show')));
+  check('no page errors', errs.length === 0, errs.join(' | '));
+  await b.close();
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})();

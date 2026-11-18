@@ -1,0 +1,104 @@
+// Red Rum Raiders (Admiral Beckett Brass)
+// COMMANDER
+1 Admiral Beckett Brass
+
+// DECK
+1 Underground Sea
+1 Volcanic Island
+1 Badlands
+1 Watery Grave
+1 Blood Crypt
+1 Steam Vents
+1 Polluted Delta
+1 Bloodstained Mire
+1 Scalding Tarn
+1 Misty Rainforest
+1 Dragonskull Summit
+1 Sulfur Falls
+1 Drowned Catacomb
+1 Xander's Lounge
+1 Command Tower
+1 Mana Confluence
+1 City of Brass
+1 Cavern of Souls
+1 Ancient Tomb
+1 Creeping Tar Pit
+1 Blightstep Pathway
+1 Shipwreck Marsh
+1 Sunken Ruins
+1 Graven Cairns
+1 Island
+1 Swamp
+1 Mountain
+1 Mountain
+1 Sol Ring
+1 Mana Vault
+1 Chrome Mox
+1 Mox Diamond
+1 Lotus Petal
+1 Arcane Signet
+1 Talisman of Dominance
+1 Talisman of Indulgence
+1 Talisman of Creativity
+1 Demonic Tutor
+1 Vampiric Tutor
+1 Mystical Tutor
+1 Imperial Seal
+1 Brainstorm
+1 Ponder
+1 Preordain
+1 Gitaxian Probe
+1 Force of Will
+1 Mana Drain
+1 Counterspell
+1 Fierce Guardianship
+1 Pact of Negation
+1 Deflecting Swat
+1 Lightning Bolt
+1 Chain Lightning
+1 Fatal Push
+1 Cut Down
+1 Arcane Adaptation
+1 Conspiracy
+1 Aggravated Assault
+1 Treachery
+1 Insurrection
+1 Rhystic Study
+1 Ragavan, Nimble Pilferer
+1 Captain Lannery Storm
+1 Malcolm, Keen-Eyed Navigator
+1 Breeches, Brazen Plunderer
+1 Kari Zev, Skyship Raider
+1 Francisco, Fowl Marauder
+1 Ramirez DePietro, Pillager
+1 Malcolm, the Eyes
+1 Don Andres, the Renegade
+1 Pitiless Plunderer
+1 Siren Stormtamer
+1 Hostage Taker
+1 Spectral Sailor
+1 Greedy Freebooter
+1 Dire Fleet Daredevil
+1 Kitesail Larcenist
+1 Corsair Captain
+1 Gemcutter Buccaneer
+1 Skeleton Crew
+1 Corsairs of Umbar
+1 Warkite Marauder
+1 Forerunner of the Coalition
+1 Spyglass Siren
+1 Fearless Swashbuckler
+1 Storm Fleet Sprinter
+1 Fathom Fleet Captain
+1 Dire Fleet Neckbreaker
+1 Kitesail Freebooter
+1 Daring Saboteur
+1 Port Razer
+1 Coercive Recruiter
+1 Protean Raider
+1 Reckless Lackey
+1 Changeling Outcast
+1 Taurean Mauler
+1 Lightning-Rig Crew
+1 Departed Deckhand
+1 Captivating Crew

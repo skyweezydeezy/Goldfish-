@@ -29,6 +29,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | policy | Policies and trial-and-error learning: holding fetch lands, comparePolicies, the Policy lab engine |
 | fetchlands | Fetch lands: cracking, life, graveyard, choosing the land, types, shuffle, landfall twice |
 | loyalty-program | The Atraxa planeswalker deck: multiple activations, proliferate, look-and-take, Oko, Nissa, Wrenn, Spark Double, Kaya, Teferi, Vraska, all 16 deck pairings |
+| red-rum-raiders | The Admiral Beckett Brass Pirate list: Treasure engines, Pirate damage triggers, Kari Zev, Port Razer, dash, theft (Treachery, Insurrection, Captivating Crew, Hostage Taker, Admiral), Conspiracy, Protean Raider, 30 full games. |
 | mermaids | The Hakbal Merfolk list: explore, Merfolk lords, Hardened Scales / Branching Evolution / Doubling Season, casting from the top, retrace, Kindred Discovery, Metallic Mimic, Reflections, Kumena, Vorel, Survival, 30 full games. |
 | soul-brokers | The white-black Teysa list: Afterlife, Morbid Opportunist, Liesa, Teysa doubling, Cathars' Crusade, Bastion of Remembrance, Mondrak, Syr Vondam, Midnight Reaper, Blight Mound, 30 full games. |
 | death-tax | The Teysa Karlov list: death-trigger doubling, token lifelink, Cruel Celebrant, Broodmoth, Reveillark, Sun Titan, Woe Strider escape, Bolas's Citadel, Yawgmoth, Priest, Warren, High Market, Phyrexian Altar, Deadly Dispute, 30 full games. |

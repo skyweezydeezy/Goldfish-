@@ -137,6 +137,7 @@ Every rules line of the four lists used to test the engine (the old Frodo list, 
 | Death Tax (Teysa Karlov) | 100 | 151 | 130 | 17 | 2 | 2 (Grim Haruspex's morph, Path of Ancestry's scry) | 0 |
 | Soul Brokers (Teysa Karlov) | 100 | 141 | 124 | 15 | 0 | 2 (Grim Haruspex's morph, Path of Ancestry's scry) | 0 |
 | Mermaids (Hakbal) | 100 | 154 | 120 | 29 | 3 | 2 (Hall of Echoes and Kiora's Follower) | 0 (Otawara's channel and Minamo's untap have nothing to do alone) |
+| Red Rum Raiders (Admiral Beckett Brass) | 100 | 165 | 137 | 22 | 5 | 1 (Gemcutter Buccaneer's Treasure Equipment) | 0 |
 
 The Zul Ashur list adds reanimation (Reanimate, Animate Dead, Necromancy, Dread Return, Victimize), Entomb, Bloodghast, Gravecrawler, Reassembling Skeleton, Relentless Dead, Zombie lords, Snuff Out's life cost, Everflowing Chalice kicker and Cabal Coffers. Kalitas and Gisa exile opposing creatures instead of letting them die (Gisa's come back decayed at your upkeep and are sacrificed after attacking), Sidisi, Cemetery Reaper, Lord of the Undead, Castle Locthwain, Fain and Dread Return's flashback are played by simple rules of thumb (see the policy lab to tune them), and The Meathook Massacre picks the X that takes more of their board than yours.
 
@@ -146,7 +147,9 @@ The Soul Brokers list shares most of its engine with Death Tax and adds Afterlif
 
 The Mermaids list adds explore (Hakbal, Topography Tracker doubling it, Nicanzil), Merfolk lords, the counter replacements (Hardened Scales, Branching Evolution and Doubling Season in the best order), casting Merfolk from the top of the library (Emperor Mihail II, Realmwalker), retrace, Kindred Discovery, Metallic Mimic, Reflections of Littjara, Merrow Reejerey, Kumena, Vorel, Survival of the Fittest and more. "Choose a creature type" cards always choose the deck's most common creature type (Merfolk). Kiora's Follower is counted as an extra mana source, and Hall of Echoes is never activated.
 
-All 64 pairings of the eight decks play full mirror matches without errors, and every deck plays as a goldfish.
+The Red Rum Raiders list adds control-changing effects in mirror matches (Treachery, Insurrection, Captivating Crew, Coercive Recruiter, Hostage Taker, Admiral Beckett Brass; stolen creatures go back to their owner's graveyard or hand, and Don Andres buffs them), Kari Zev's Ragavan token, Port Razer and Aggravated Assault's extra combats, dash, the Pirate damage triggers (Treasure, explore, and Breeches, Ragavan and Ramirez exiling the top card of the opponent's library to cast it), Conspiracy and Arcane Adaptation, Protean Raider and more. In a goldfish game with no opponent, "exile the top card of their library" uses the top card of your own library as a stand-in. Gemcutter Buccaneer's Treasure Equipment line is not simulated.
+
+All 81 pairings of the nine decks play full mirror matches without errors, and every deck plays as a goldfish.
 
 ## Fan content, credits and donations
 

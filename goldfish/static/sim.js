@@ -203,6 +203,9 @@
     if (/put target creature card from a graveyard onto the battlefield under your control/i.test(text)) fx.push({ type: 'reanimate', from: 'any', lose: /you lose life equal to that card's mana value/i.test(text) });
     else if (/return enchanted creature card to the battlefield under your control/i.test(text)) fx.push({ type: 'reanimate', from: 'any', aura: true });                       // Animate Dead
     else if (/^return target creature card from your graveyard to the battlefield/i.test(text) || /(?:^|\. )return target creature card from your graveyard to the battlefield/i.test(text)) fx.push({ type: 'reanimate', from: 'own', zombie: /black zombie/i.test(text) });
+    if (/emblem with "at the beginning of your upkeep, you may cast a legendary spell from your hand, from your graveyard, or from among cards you own in exile without paying its mana cost/i.test(withQuotes)) fx.push({ type: 'kayaEmblem' });          // Kaya the Inexorable
+    if (/emblem with "you may play lands and cast permanent spells from your graveyard/i.test(withQuotes)) fx.push({ type: 'wrennEmblem' });          // Wrenn and Realmbreaker
+    if (/if target player has fewer than nine poison counters, they get a number of poison counters equal to the difference/i.test(text)) fx.push({ type: 'poisonWin' });          // Vraska, Betrayal's Sting: nine poison counters lose the game
     if (/return up to two target creature cards with power 2 or less from your graveyard to the battlefield/i.test(text)) fx.push({ type: 'reanimate', from: 'own', n: 2, maxPower: 2 });          // Reveillark
     if (/return target permanent card with mana value 3 or less from your graveyard to the battlefield/i.test(text)) fx.push({ type: 'reanimate', from: 'own', permanent: true, maxMv: 3 });          // Sun Titan
     if (/choose two target creature cards in your graveyard\. sacrifice a creature\. if you do, return the chosen cards to the battlefield tapped/i.test(text)) fx.push({ type: 'reanimate', from: 'own', n: 2, sacrifice: true, tapped: true });   // Victimize
@@ -1649,6 +1652,9 @@
           g.battlefield.forEach(p => { if (f.what === 'permanents' || (f.what === 'lands' && p.asLand) || (f.what === 'creatures' && isCreaturePerm(p)) || (f.what === 'nonland' && !p.asLand)) p.tapped = false; });
           ev.push({ type: 'note', text: 'Untapped ' + f.what, source });
           break;
+        case 'kayaEmblem': g.kayaEmblem = true; ev.push({ type: 'note', text: 'Emblem: each upkeep you may cast a legendary spell for free', source }); break;
+        case 'wrennEmblem': g.wrennEmblem = true; ev.push({ type: 'note', text: 'Emblem: you may play lands and cast permanents from your graveyard', source }); break;
+        case 'poisonWin': ev.push({ type: 'note', text: 'Vraska: the opponent gets nine poison counters and loses', source }); damageOpp(g, Math.max(1, oppLifeLeft(g)) + 1000, ev, source); break;
         case 'emblem': (g.emblems = g.emblems || []).push({ p: f.p, t: f.t, keywords: f.keywords || [] }); touch(g); ev.push({ type: 'note', text: `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;
         case 'proliferate':                                              // one more of each kind of counter already there
           for (const p of g.battlefield.slice()) {
@@ -2256,7 +2262,8 @@
     else if (inst.escaping && g.graveyard.includes(inst)) {                                                                       // Woe Strider: escape, exiling four other cards
       n = pay(g, inst.card.a.escape.cost);
       if (n != null) { const others = g.graveyard.filter(i => i !== inst).sort((x, y) => escapeKeep(g, x) - escapeKeep(g, y)).slice(0, inst.card.a.escape.n); others.forEach(i => { g.graveyard.splice(g.graveyard.indexOf(i), 1); g.exile.push(i); }); ev.push({ type: 'note', text: `Escape: exiled ${others.map(i => i.card.name).join(', ')}` }); inst.escapedNow = true; }
-    } else n = pay(g, effectiveCost(g, inst));
+    } else if (inst.freeCast) { n = 0; }
+    else n = pay(g, effectiveCost(g, inst));
     if (flashVictims) for (const v of flashVictims) leavePerm(g, v, ev);
     if (n == null && !force && snuffAlt(g, inst)) {                                                  // Snuff Out: pay 4 life instead of mana
       g.life -= inst.card.a.lifeAlt; ev.push({ type: 'note', text: `Paid ${inst.card.a.lifeAlt} life for ${inst.card.name}` }); n = 0;
@@ -2381,7 +2388,7 @@
     if (!units.length && !(g.library[0] && g.battlefield.some(q => q.card.a.citadel))) return null;
     const isZ = p => /\bZombie\b/.test((p.card.type_line || '')) || p.zombie;
     const hasZ = g.battlefield.some(isZ);
-    const cands = g.hand.filter(c => !c.card.a.isLand).concat(g.command).concat(g.graveyard.filter(i => (i.card.a.yardCastIfZombie && hasZ) || i.zulCast === g.turn || (i.card.a.flashSac && fodderList(g, true).length >= i.card.a.flashSac) || (i.card.a.escape && g.graveyard.length > i.card.a.escape.n)))
+    const cands = g.hand.filter(c => !c.card.a.isLand).concat(g.command).concat(g.graveyard.filter(i => (i.card.a.yardCastIfZombie && hasZ) || i.zulCast === g.turn || (i.card.a.flashSac && fodderList(g, true).length >= i.card.a.flashSac) || (i.card.a.escape && g.graveyard.length > i.card.a.escape.n) || (g.wrennEmblem && i.card.a.isPermanent && !i.card.a.isLand && !i.card.commander)))
       .concat(g.battlefield.some(q => q.card.a.citadel) && g.library[0] && !g.library[0].card.a.isLand && !g.library[0].card.a.cost.x && g.life > g.library[0].card.a.castMv + (g.opp ? 14 : 10) ? [g.library[0]] : []);          // Bolas's Citadel: the top card, paid for with life          // Gravecrawler, Zul Ashur: cast from the graveyard
     let best = null, bestScore = -1, altarK = 0;
     for (const c of cands) {
@@ -2468,6 +2475,9 @@
       if (f.type === 'lookTake') v += 1.5 * (f.take || 1);
       if (f.type === 'tutor') v += 3;
       if (f.type === 'pumpAll') v += 3;
+      if (f.type === 'kayaEmblem') v += 20;
+      if (f.type === 'wrennEmblem') v += 12;
+      if (f.type === 'poisonWin') v += 1000;
       if (f.type === 'emblem') v += 1.5 * (f.p || 0) * Math.max(1, g.battlefield.filter(isCreaturePerm).length);   // worth more the wider your board is
       if (f.type === 'mana') v += 0.5;
     }
@@ -3025,6 +3035,11 @@
       if (canPay(pc, allUnits(g))) { pay(g, pc); ev.push({ type: 'note', text: 'Paid for Pact of Negation' }); } else if (g.opp) setWinner(g.opp, ev, 'pact');
     }
     eachTrigger(g, 'upkeep', ev);
+    if (g.kayaEmblem && !g.dry) {                                                                       // Kaya's emblem: cast a legendary spell from hand, graveyard or exile for free
+      const cands = g.hand.concat(g.graveyard, g.exile).filter(i => i.card.a.isLegendary && !i.card.a.isLand && !i.card.commander && !i.card.a.isInstantSorcery).sort((x, y) => y.card.a.mv - x.card.a.mv);
+      const c = cands.find(i => !(i.card.a.isPlaneswalker && g.battlefield.some(q => q.card.name === i.card.name)) && !(i.card.a.isLegendary && g.battlefield.some(q => q.card.name === i.card.name)));
+      if (c) { const gi = g.exile.indexOf(c); if (gi >= 0) { g.exile.splice(gi, 1); g.graveyard.push(c); } c.freeCast = true; const ce = castCard(g, c, true); if (ce) ev.push({ type: 'note', text: `Kaya's emblem: ${c.card.name} cast for free` }, ...ce); c.freeCast = false; }
+    }
     if (!(g.turn === 1 && g.opts.onPlay) && !g.battlefield.some(p => p.card.a.skipDraw)) {                       // Necropotence skips the draw step
       draw(g, 1, ev);
       if (g.battlefield.some(p => p.card.a.sylvan)) sylvanLibrary(g, ev);
@@ -3035,6 +3050,7 @@
   }
 
   function landStep(g) {
+    if (g.wrennEmblem && !g.hand.some(i => i.card.a.isLand) && g.landsPlayedThisTurn < landsAllowed(g)) { const gl = g.graveyard.find(i => i.card.a.isLand); if (gl) { g.graveyard.splice(g.graveyard.indexOf(gl), 1); g.hand.push(gl); } }          // Wrenn's emblem: play a land from the graveyard
     if (g.battlefield.some(q => q.card.a.citadel) && g.library[0] && g.library[0].card.a.isLand && !g.hand.some(i => i.card.a.isLand) && g.landsPlayedThisTurn < landsAllowed(g)) g.hand.push(g.library.shift());          // Bolas's Citadel: play a land from the top of the library
     const le = playLand(g);
     g.manaAvailThisTurn = allUnits(g).length;

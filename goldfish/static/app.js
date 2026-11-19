@@ -324,6 +324,15 @@
     if (!r.ok) throw new Error(`could not load "${d.name}" (${r.status})`);
     return r.text();
   }
+  // A built-in deck can come with choices the Policy lab learned for it (decks/index.json "policy"). They are used unless you have saved your own.
+  function applyBuiltinPolicy(b) {
+    if (!b || !b.policy || !S.cards || !S.cards.length || Object.keys(currentPolicy()).length) return;
+    const keys = Object.keys(b.policy); if (!keys.length) return;
+    keys.forEach(k => savePolicy(k, b.policy[k], 'learned in the lab (built in)'));
+    if (b.policy.tribe) { S.deck = G.buildDeck(S.cards, S.tokens, b.policy.tribe); S.byUid = S.deck.unique; buildTags(); renderTags(); }
+    fillLabChoices();
+    toast(`Using ${keys.length} choice${keys.length === 1 ? '' : 's'} the lab learned for this deck`);
+  }
   async function loadBuiltinIndex() {
     try {
       const r = await fetch('decks/index.json');
@@ -357,7 +366,10 @@
     const v = e.target.value, b = builtinByValue(v);
     if (b) {
       try { $('#deckText').value = await builtinText(b); } catch (err) { return toast('Could not open the deck: ' + err.message); }
-      localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); return;
+      localStorage.setItem('gf_last', $('#deckText').value);
+      await loadDeck();
+      applyBuiltinPolicy(b);
+      return;
     }
     const all = getDecks();
     if (all[v] != null) { $('#deckText').value = all[v]; localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); }
@@ -1260,7 +1272,7 @@
   }
   async function mirrorOpponent() {
     const value = $('#mmOpp').value, b = builtinByValue(value), name = b ? b.name : value;
-    if (!value) return { cards: S.cards, tokens: S.tokens, name: 'Your deck (mirror)' };
+    if (!value) return { cards: S.cards, tokens: S.tokens, name: 'Your deck (mirror)', policy: currentPolicy() };
     if (!mmCache.has(value)) {
       $('#mmInfo').textContent = `Loading "${name}"…`;
       await Source.init();
@@ -1268,7 +1280,7 @@
       const r = await Source.loadDeck(text, m => { $('#mmInfo').textContent = m; });
       mmCache.set(value, { cards: markCommander(r.cards), tokens: r.tokens || [] });
     }
-    return Object.assign({ name }, mmCache.get(value));
+    return Object.assign({ name, policy: (b && b.policy) || {} }, mmCache.get(value));
   }
   let mmWorker = null, mmState = null;
   async function runMirror() {
@@ -1278,6 +1290,7 @@
     try { opp = await mirrorOpponent(); } catch (err) { $('#mmInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; }
     if (!opp.cards.length) { $('#mmInfo').textContent = 'That deck has no cards.'; btn.disabled = false; return; }
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
+    o.policyB = opp.policy || {};                                                          // the opponent plays with its own learned choices
     const n = Math.max(20, Math.min(3000, +$('#mmN').value || 400));
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');

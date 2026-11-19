@@ -1449,7 +1449,8 @@
 
   function mulligan(g) {
     const kl = pol(g, 'keepLands');
-    const o = kl && kl !== 'default' ? Object.assign({}, g.opts, { minLands: +kl.split('-')[0], maxLands: +kl.split('-')[1] }) : g.opts;
+    let o = kl && kl !== 'default' ? Object.assign({}, g.opts, { minLands: +kl.split('-')[0], maxLands: +kl.split('-')[1] }) : g.opts;
+    const mt = pol(g, 'mullTo'); if (mt && mt !== 'default') o = Object.assign({}, o, { minHandSize: +mt });
     for (let attempt = 0; ; attempt++) {
       g.hand = [];
       draw(g, 7);
@@ -2019,7 +2020,7 @@
       case 'basicLands': return lands.filter(p => /\bBasic\b/.test(p.card.type_line || '')).length < tc.min;
       case 'fewLands': return lands.length > tc.max;                                          // fast lands
       case 'reveal': return !g.hand.some(c => hasType(c.card.type_line, tc.types));           // reveal lands (Snarls, Bosk)
-      case 'shock': if (g.life > tc.life) { g.life -= tc.life; return false; } return true;   // pay the life: untapped
+      case 'shock': if (g.life - tc.life >= lifeFloor(g, 1)) { g.life -= tc.life; return false; } return true;   // pay the life: untapped
     }
     return !!a.entersTapped;
   }
@@ -3374,6 +3375,9 @@
     if (a.triggers.length && !a.isCreature) s += 20;
     if (a.castMv > ctx.mana + 3) s -= (a.castMv - ctx.mana - 3) * 25;               // too expensive to cast any time soon
     if (a.sacCreatureCost) s -= 40;
+    const tf = pol(g, 'tutorFocus');
+    if (tf === 'mana' && !a.comboRole && (a.produce || a.rampLands || a.statics.reducers.length) && ctx.mana < 7) s += 160;          // ramp first, payoffs later
+    else if (tf === 'payoff' && !a.isLand && !a.produce && !a.rampLands) s += a.castMv * 12 + (a.isCreature ? Math.max(0, a.power) * 6 : 0);   // the biggest threat you can reach
     return s;
   }
   function tutorContext(g) {
@@ -3506,22 +3510,22 @@
     let s = a.castMv;
     if (a.produce || a.rampLands || a.statics.extraLands) s += 100 - a.castMv;
     else if (a.statics.reducers.length) s += 80 - a.castMv;
-    else if (c.card.commander && g.opts.prioritizeCommander) s += 50;
+    else if (c.card.commander && commanderBonus(g)) s += commanderBonus(g);
     else if (a.draw) s += 0.5;
-    if (a.spellFx.some(f => f.type === 'pumpAll')) s -= 30;  // Overrun-style effects wait until the board is built
+    if (a.spellFx.some(f => f.type === 'pumpAll')) { const pt = pol(g, 'pumpTiming'); if (pt === 'wait') s -= 30; else if (pt === 'lethal' && !pumpLethal(g, a)) return -1; }  // Overrun-style effects wait until the board is built (or until they are lethal)
     if (a.isAura && !bestCreature(g)) return -1;
     if (a.sacCreatureCost && !pickSacrifice(g, a)) return -1;     // nothing cheap to sacrifice
     const sd = a.spellFx.find(f => f.type === 'sweepDamage');
     if (sd) {                                                  // Anger of the Gods: only when it takes more of their board than yours
       const val = game => game.battlefield.filter(p => isCreaturePerm(p) && toughnessOf(game, p) <= sd.n).reduce((t, p) => t + creatureValue(game, p), 0);
       const gain = g.opp ? val(g.opp) : 0, loss = val(g);
-      if (gain - loss < 3) return -1;
+      if (gain - loss < +pol(g, 'wipeMargin')) return -1;
       s += 20;
     }
     if (a.delugeCost) {                                         // Toxic Deluge: only in a mirror match, only when it takes more of their board than yours
       if (!g.opp) return -1;
-      let bx = 0, bs = 3;
-      for (let X = 1; X <= Math.min(7, g.life - 12); X++) {
+      let bx = 0, bs = +pol(g, 'wipeMargin');
+      for (let X = 1; X <= Math.min(7, g.life - lifeFloor(g, 12)); X++) {
         const gain = g.opp.battlefield.filter(p => isCreaturePerm(p) && toughnessOf(g.opp, p) <= X).reduce((t, p) => t + creatureValue(g.opp, p), 0);
         const loss = g.battlefield.filter(p => isCreaturePerm(p) && toughnessOf(g, p) <= X).reduce((t, p) => t + creatureValue(g, p), 0);
         const sc = gain - loss - X * 0.8; if (sc > bs) { bs = sc; bx = X; }
@@ -3866,7 +3870,7 @@
           ev.push({ type: 'note', text: `${p.card.name}: sacrificed two creatures: drain 2, an edict, {B}{B} and a card`, source: p }); return;
         }
       }
-      if (a.yawg && !g.dry && g.life > 12 && g.library.length && g.hand.length < 6 && (p.yawgTurn !== g.turn || (p.yawgN || 0) < 6)) {      // Yawgmoth: pay 1 life and sacrifice a token (or something that comes back) to draw a card
+      if (a.yawg && !g.dry && g.life > lifeFloor(g, 12) && g.library.length && g.hand.length < 6 && (p.yawgTurn !== g.turn || (p.yawgN || 0) < 6)) {      // Yawgmoth: pay 1 life and sacrifice a token (or something that comes back) to draw a card
         const fl = fodderList(g, true).map(x => x.p).filter(q => q !== p && (q.token || q.card.a.gyReturn || q.card.a.landfallReturn || q.card.a.yardActivate));
         if (fl[0]) {
           p.yawgN = (p.yawgTurn === g.turn ? p.yawgN || 0 : 0) + 1; p.yawgTurn = g.turn;
@@ -3986,13 +3990,13 @@
       }
       if (a.landPut && !p.tapped && g.hand.some(i => i.card.a.isLand) && g.landsPlayedThisTurn >= landsAllowed(g) && sp(p, a.landPut.cost)) { applyEffects(g, [{ type: 'landFromHand', tapped: a.landPut.tapped }], p, ev, null); return; }          // Horizon of Progress
       if (a.creaturePut && !p.tapped) { const c = g.hand.filter(i => i.card.a.isCreature && (i.card.a.mv || 0) >= 4 && !i.card.commander).sort((x, y) => y.card.a.mv - x.card.a.mv)[0]; if (c && sp(p, a.creaturePut.cost)) { g.hand.splice(g.hand.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: ${c.card.name} onto the battlefield`, source: p }); return; } }          // Monster Manual
-      if (a.pod && !p.tapped && !g.combatDone && g.life > 12) {                                           // Birthing Pod: sacrifice a creature for one that costs one more
+      if (a.pod && !p.tapped && !g.combatDone && g.life > lifeFloor(g, 12)) {                                           // Birthing Pod: sacrifice a creature for one that costs one more
         let best = null, bs = 0.3;
         for (const f of g.battlefield) { if (!isCreaturePerm(f) || f.card.commander) continue; const x = f.token ? 0 : (f.card.a.mv || 0);
           for (const i of g.library) { if (!i.card.a.isCreature || (i.card.a.mv || 0) !== x + 1) continue; const sc = reanimateValue(g, i) - creatureValue(g, f); if (sc > bs) { bs = sc; best = { f, i }; } } }
         if (best && sp(p, { generic: 1, pips: [], x: 0 })) { g.life -= 2; leavePerm(g, best.f, ev); flushLeaves(g, ev); g.library.splice(g.library.indexOf(best.i), 1); shuffle(g.library, g.rnd); enterWithTriggers(g, best.i, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: ${best.f.card.name} becomes ${best.i.card.name}`, source: p }); return; }
       }
-      if (a.forgeExile && !p.tapped && g.library[0] && g.life > 12 && !topCastOk(g) && !g.library[0].card.a.isLand) { p.tapped = true; g.life -= 1; g.exile.push(g.library.shift()); ev.push({ type: 'note', text: `${p.card.name}: exiled the top card`, source: p }); return; }          // Mystic Forge: dig to a castable card
+      if (a.forgeExile && !p.tapped && g.library[0] && g.life > lifeFloor(g, 12) && !topCastOk(g) && !g.library[0].card.a.isLand) { p.tapped = true; g.life -= 1; g.exile.push(g.library.shift()); ev.push({ type: 'note', text: `${p.card.name}: exiled the top card`, source: p }); return; }          // Mystic Forge: dig to a castable card
     }
     for (const i of g.hand.slice()) {                                                                    // Transmute: trade the card for one with the same mana value
       const tm = i.card.a.transmute; if (!tm || g.dry || !canPay(tm.cost, allUnits(g))) continue;
@@ -4090,7 +4094,7 @@
           const c = ab.x ? -Math.max(0, p.loyalty - 1) : ab.cost;
           if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
           if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
-          let v = fxValue(g, ab.fx) + c * 0.6;
+          let v = fxValue(g, ab.fx) + c * (+pol(g, 'pwLoyalty') || 0);
           if (ab.fx.some(f => f.n === 'GYCREATURES') && g.graveyard.filter(i => i.card.a.isCreature).length >= oppLifeLeft(g)) v += 1000;         // Grist's -5 as the finisher
           if (v > bs) { bs = v; best = ab; }
         }
@@ -4398,7 +4402,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.6', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -4411,6 +4415,23 @@
       options: [{ name: 'Detected tribe', value: 'auto' }] },
     { id: 'keep', key: 'keepLands', label: 'Opening hand: how many lands to keep', always: true,
       options: [{ name: 'Your setting (Hands tab)', value: 'default' }, { name: 'Keep 3 or 4 lands', value: '3-4' }, { name: 'Keep 2 to 4 lands', value: '2-4' }, { name: 'Keep 3 to 5 lands', value: '3-5' }, { name: 'Keep 2 to 6 lands', value: '2-6' }] },
+    { id: 'mull', key: 'mullTo', label: 'Mulligans: smallest hand you will keep', always: true,
+      options: [{ name: 'Your setting (Hands tab)', value: 'default' }, { name: 'Keep any 6 (one mulligan at most)', value: '6' }, { name: 'Go down to 5', value: '5' }, { name: 'Go down to 4', value: '4' }] },
+    { id: 'commander', key: 'commanderTiming', label: 'When to cast the commander',
+      needs: [{ what: 'a commander', test: (a, c) => !!c.commander }],
+      options: [{ name: 'Your setting (Hands tab)', value: 'setting' }, { name: 'As soon as it can be cast, even before ramp', value: 'first' }, { name: 'Right after ramp', value: 'afterRamp' }, { name: 'Like any other spell', value: 'normal' }] },
+    { id: 'life', key: 'lifeFloor', label: 'Paying life for value: the lowest life you go to',
+      needs: [{ what: 'a card that pays life for mana, cards or untapped lands', test: a => !!((a.tapCond && a.tapCond.kind === 'shock') || a.yawg || a.pod || a.forgeExile || a.delugeCost) }],
+      options: [{ name: "Each card's own default", value: 'current' }, { name: 'Down to 5 life', value: '5' }, { name: 'Down to 10 life', value: '10' }, { name: 'Keep 20 life', value: '20' }] },
+    { id: 'pw', key: 'pwLoyalty', label: 'Planeswalkers: building loyalty or using it',
+      needs: [{ what: 'a planeswalker with loyalty abilities', test: a => !!(a.isPlaneswalker && (a.pwAbilities || []).length) }],
+      options: [{ name: 'Balanced (best value, loyalty counts a little)', value: '0.6' }, { name: 'Build loyalty (prefer + abilities)', value: '1.5' }, { name: 'Strongly build toward the ultimate', value: '3' }, { name: 'Spend loyalty freely (prefer - abilities)', value: '0.1' }] },
+    { id: 'pump', key: 'pumpTiming', label: 'Spells that pump all your creatures until end of turn',
+      needs: [{ what: 'a spell that pumps all your creatures', test: a => a.spellFx.some(f => f.type === 'pumpAll') }],
+      options: [{ name: 'Wait until the board is built', value: 'wait' }, { name: 'Cast it like any other spell', value: 'now' }, { name: 'Only when it is lethal', value: 'lethal' }] },
+    { id: 'tutorFocus', key: 'tutorFocus', label: 'What tutors look for (when no combo piece is needed)',
+      needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) }],
+      options: [{ name: 'Best card for the moment', value: 'best' }, { name: 'Mana first (ramp and cost reducers)', value: 'mana' }, { name: 'The biggest payoff', value: 'payoff' }] },
     { id: 'fetch', key: 'fetchHold', label: 'When to crack lands that search for a land',
       needs: [{ what: 'a land that sacrifices itself to search for a land', test: a => !!a.fetchSpec }],
       options: [{ name: 'Crack at once', value: 'never' }, { name: 'Hold when a shuffle helps', value: 'whenShuffleHelps' }, { name: 'Hold until needed', value: 'untilNeeded' }, { name: 'Hold until the end of the turn', value: 'untilEnd' }] },
@@ -4429,6 +4450,9 @@
     { id: 'counters', key: 'holdCounters', label: 'Holding mana open for counterspells', mirrorOnly: true,
       needs: [{ what: 'a counterspell', test: a => !!a.counter }],
       options: [{ name: 'Only counter with spare mana (learned default)', value: 'no' }, { name: 'Hold mana open', value: 'yes' }] },
+    { id: 'wipe', key: 'wipeMargin', label: 'Board wipes: how far ahead the wipe must put you', mirrorOnly: true,
+      needs: [{ what: 'a board wipe that weighs both boards', test: a => !!(a.delugeCost || a.spellFx.some(f => f.type === 'sweepDamage')) }],
+      options: [{ name: 'Clearly ahead (learned default)', value: '3' }, { name: 'Any gain', value: '1' }, { name: 'Only a big swing', value: '6' }] },
     { id: 'attack', key: 'attackCaution', label: 'Attacking when the opponent could kill you next turn', mirrorOnly: true,
       needs: [{ what: 'a creature', test: a => !!a.isCreature }],
       options: [{ name: 'Stay home when their power covers your life', value: '1' }, { name: 'More aggressive (half)', value: '0.5' }, { name: 'More careful (1.5x)', value: '1.5' }, { name: 'Very careful (2x)', value: '2' }] },
@@ -4447,6 +4471,20 @@
     });
   }
 
+  // Commander timing: 'setting' follows the Hands tab, 'first' casts the commander even ahead of ramp, 'afterRamp' right after ramp, 'normal' like any other spell
+  function commanderBonus(g) {
+    const t = pol(g, 'commanderTiming');
+    if (t === 'first') return 150; if (t === 'afterRamp') return 50; if (t === 'normal') return 0;
+    return g.opts.prioritizeCommander ? 50 : 0;
+  }
+  // The lowest life the autopilot pays life down to (shock lands, Yawgmoth, Birthing Pod...). 'current' keeps each card's own default.
+  function lifeFloor(g, dflt) { const v = pol(g, 'lifeFloor'); return v === 'current' ? dflt : +v; }
+  // An Overrun-style spell is lethal when the untapped, unsick creatures with the pump reach the opponent's life
+  function pumpLethal(g, a) {
+    const f = a.spellFx.find(x => x.type === 'pumpAll'), att = g.battlefield.filter(p => isCreaturePerm(p) && !p.tapped && (!p.sick || hasKw(g, p, 'haste')));
+    const tr = (f.keywords || []).includes('trample');
+    return att.reduce((t, p) => t + Math.max(0, powerOf(g, p) + (+f.p || 0)), 0) >= oppLifeLeft(g) && (tr || !g.opp || att.length > g.opp.battlefield.filter(isCreaturePerm).length);
+  }
   function pol(g, key) { const p = g.opts && g.opts.policy; return p && p[key] != null ? p[key] : DEFAULT_POLICY[key]; }
   // a held fetch land: crack it when mana is needed, after a library-reordering effect (Brainstorm, Sylvan Library: the shuffle sends the put-back cards away) or at the end of the turn
   function heldFetches(g) { return g.battlefield.filter(p => p.heldFetch && p.card.a.fetchSpec); }
@@ -4473,7 +4511,7 @@
     const a = inst.card.a; let sc = 0;
     a.produce.colors.forEach(c => { if (c !== 'C') sc += (have.has(c) ? 0.3 : 2.5) * (1 + (need.get(c) || 0)); });          // colours you do not have yet, weighted by what your hand wants
     sc += a.produce.colors.size * 0.3;
-    if (!spec.tapped) { if (a.tapCond && a.tapCond.kind === 'shock') sc -= g.life > 12 ? 0.2 : 2; else if (a.entersTapped) sc -= 2.5; }
+    if (!spec.tapped) { if (a.tapCond && a.tapCond.kind === 'shock') sc -= g.life > lifeFloor(g, 12) ? 0.2 : 2; else if (a.entersTapped) sc -= 2.5; }
     return sc;
   }
   function crackFetch(g, perm, ev) {
@@ -5525,7 +5563,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, madness, fxValue, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
+    pay, madness, fxValue, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
   };

@@ -28,6 +28,7 @@ HERE = Path(__file__).resolve().parent
 MANIFEST = ".goldfish-install.json"
 STAGING = ".goldfish-update-tmp"
 MAX_ZIP = 300 * 1024 * 1024
+WIN_BAD = re.compile(r"^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$", re.I)   # device names: not usable as file names on Windows
 
 
 def install_root(here=HERE):
@@ -72,6 +73,8 @@ def safe_rel(rel):
     parts = rel.split("/")
     if not rel or rel.startswith("/") or "\\" in rel or ":" in rel or any(p in ("", ".", "..") for p in parts):
         raise RuntimeError("unsafe path in download: %r" % rel)
+    if any(WIN_BAD.match(p) or p[-1] in ". " or re.search(r'[<>"|?*\x00-\x1f]', p) for p in parts):
+        raise RuntimeError("the download has a file name Windows cannot use: %r" % rel)
     return rel
 
 

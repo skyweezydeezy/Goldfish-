@@ -236,6 +236,17 @@ class RealAppTests(unittest.TestCase):
             srv.terminate()
             srv.wait(timeout=10)
 
+    def test_every_file_can_exist_on_windows(self):
+        """A file named con.json (or with ? : * in its name) breaks both git and the zip on Windows."""
+        files = subprocess.run(["git", "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True).stdout.split("\n")
+        files = [f for f in files if f] or [str(p.relative_to(REPO_ROOT)).replace(os.sep, "/") for p in (REPO_ROOT / "goldfish").rglob("*") if p.is_file()]
+        self.assertGreater(len(files), 50)
+        for f in files:
+            update.safe_rel(f)
+        for bad in ("goldfish/static/data/sets/con.json", "a/NUL", "a/com1.txt", "a/b?.js", "a/trailing."):
+            with self.assertRaises(RuntimeError):
+                update.safe_rel(bad)
+
     def test_launchers_run_the_updater_first(self):
         for bat in ("goldfish/start.bat", "goldfish/start-lan.bat"):
             text = (REPO_ROOT / bat).read_text()

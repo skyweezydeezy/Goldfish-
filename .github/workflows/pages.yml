@@ -1,7 +1,8 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [main, master, 'claude/**']
+    # only the main line publishes the site; other branches are not allowed to deploy and would just fail
+    branches: [main, master, 'claude/visual-goldfish-calculator-1ztks5']
   workflow_dispatch:
 permissions:
   contents: read

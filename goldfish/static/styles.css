@@ -846,3 +846,30 @@ select { max-width: 100%; text-overflow: ellipsis; }
 }
 .tab-short { display: none; }
 @media (max-width: 420px) { .tab-full { display: none; } .tab-short { display: inline; } }
+
+/* ---------- Tags panel: folding groups, an even grid of same-width tiles, short lists ---------- */
+details.tag-group { display: block; margin: 0; border-top: 1px solid var(--border); }
+details.tag-group:last-of-type { border-bottom: 1px solid var(--border); }
+details.tag-group > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 11px 4px; cursor: pointer; user-select: none; }
+details.tag-group > summary::-webkit-details-marker { display: none; }
+details.tag-group > summary::before { content: '▸'; color: var(--muted); width: 12px; transition: transform .15s; }
+details.tag-group[open] > summary::before { transform: rotate(90deg); }
+details.tag-group .tag-ns { flex: 1; font-weight: 650; color: var(--text-primary); font-size: 14px; }
+details.tag-group .tag-ns-n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; padding: 0 4px 10px 26px; }
+.tag-grid button.tag-chip { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; border-radius: 8px; padding: 7px 10px; font-size: 13px; text-align: left; }
+.tag-grid button.tag-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-grid button.tag-chip small { flex: none; margin: 0; opacity: .65; font-variant-numeric: tabular-nums; }
+.tag-more { margin: 0 0 12px 26px; padding: 5px 12px; font-size: 12.5px; }
+.tag-how { display: inline; }
+.tag-how > summary { display: inline; cursor: pointer; color: var(--ice); margin-left: 6px; }
+.tag-how[open] { display: block; margin-top: 6px; }
+@media (max-width: 600px) {
+  .tag-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 4px; }
+  .tag-more { margin-left: 4px; }
+}
+@media (max-width: 600px) {
+  #deckTags .row.wrap { gap: 6px; }
+  #deckTags .row.wrap #tagQuery { flex: 1 1 100%; }
+  #deckTags .row.wrap button { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}

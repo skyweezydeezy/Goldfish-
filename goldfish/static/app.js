@@ -1729,23 +1729,39 @@
     else terms.push(not ? neg : pos);
     $('#tagQuery').value = terms.join(' '); renderTags();
   }
+  const tagOpen = new Set(['role']), tagAll = new Set();          // which tag groups are open / fully shown (kept while you search)
   function renderTags() {
     const box = $('#deckTags');
     if (!S.tags) { box.hidden = true; return; }
     box.hidden = false;
     const ix = S.tags, terms = tagTerms();
     // chips, grouped by namespace
+    // calmer layout: each group folds open and shut (Role open to start), tags sit in an even grid of same-width tiles,
+    // and a group shows its 8 most common tags until you ask for all of them
     const chips = h('div', '');
+    const TOP = 8;
     Tags.ORDER.filter(ns => ix.groups[ns]).forEach(ns => {
-      const g = h('div', 'tag-group'); g.appendChild(h('span', 'tag-ns', esc(Tags.NAMESPACES[ns] || ns)));
-      ix.groups[ns].slice().sort((a, b) => ns === 'mv' ? a.localeCompare(b, undefined, { numeric: true }) : (ix.copies.get(b) - ix.copies.get(a)) || a.localeCompare(b)).forEach(t => {
+      const list = ix.groups[ns].slice().sort((a, b) => ns === 'mv' ? a.localeCompare(b, undefined, { numeric: true }) : (ix.copies.get(b) - ix.copies.get(a)) || a.localeCompare(b));
+      const active = list.some(t => terms.includes(t) || terms.includes('-' + t));
+      const g = h('details', 'tag-group');
+      g.open = tagOpen.has(ns) || active;
+      g.addEventListener('toggle', () => { g.open ? tagOpen.add(ns) : tagOpen.delete(ns); });
+      g.appendChild(h('summary', '', `<span class="tag-ns">${esc(Tags.NAMESPACES[ns] || ns)}</span><span class="tag-ns-n">${list.length}</span>`));
+      const grid = h('div', 'tag-grid');
+      const showAll = tagAll.has(ns) || list.length <= TOP + 2;
+      (showAll ? list : list.slice(0, TOP)).forEach(t => {
         const on = terms.includes(t), not = terms.includes('-' + t);
-        const b = h('button', 'tag-chip' + (on ? ' on' : '') + (not ? ' not' : ''), `${esc(t.slice(ns.length + 1))}<small>${ix.copies.get(t)}</small>`);
+        const b = h('button', 'tag-chip' + (on ? ' on' : '') + (not ? ' not' : ''), `<span>${esc(t.slice(ns.length + 1).replace(/-/g, ' '))}</span><small>${ix.copies.get(t)}</small>`);
         b.title = `${t}: ${ix.copies.get(t)} card${ix.copies.get(t) === 1 ? '' : 's'}. Click to add to the search, Shift-click to exclude.`;
         b.addEventListener('click', e => toggleTagTerm(t, e.shiftKey));
-        g.appendChild(b);
+        grid.appendChild(b);
       });
-      if (ns === 'my') { const note = h('span', 'hint', 'Shift-click to exclude'); g.appendChild(note); }
+      g.appendChild(grid);
+      if (list.length > TOP + 2) {
+        const more = h('button', 'ghost tag-more', tagAll.has(ns) ? 'Show fewer' : `Show all ${list.length}`);
+        more.addEventListener('click', () => { tagAll.has(ns) ? tagAll.delete(ns) : tagAll.add(ns); renderTags(); });
+        g.appendChild(more);
+      }
       chips.appendChild(g);
     });
     if (!ix.groups.my) chips.appendChild(h('div', 'hint', 'No tags of your own yet: search for some cards, then press <b>Tag these…</b> to save them as <code>my:name</code>.'));
@@ -1756,7 +1772,7 @@
     S.tagResult = q.cards;
     const total = Tags.copiesOf(q.cards);
     $('#tagToOdds').disabled = $('#tagMake').disabled = !q.cards.length;
-    $('#tagHelp').innerHTML = !terms.length ? `${ix.tags.length} tags across ${ix.cards.length} different cards. A space means AND, a comma means OR, <code>-tag</code> excludes, <code>trigger:</code> means any trigger, and a bare word like <code>ramp</code> matches any tag of that name.`
+    $('#tagHelp').innerHTML = !terms.length ? `${ix.tags.length} tags across ${ix.cards.length} cards. Tap a tag to find its cards. <details class="tag-how"><summary>How to search</summary>A space means AND, a comma means OR, <code>-tag</code> excludes (or Shift-click a tag), <code>trigger:</code> means any trigger, and a bare word like <code>ramp</code> matches any tag of that name.</details>`
       : `${q.cards.length} different card${q.cards.length === 1 ? '' : 's'} (${total} in the deck)${q.cards.length ? '' : ': nothing has all of those tags'}`;
     q.cards.forEach(c => res.appendChild(cardEl(c, { badge: c.qty > 1 ? '×' + c.qty : null })));
   }

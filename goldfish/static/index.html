@@ -67,11 +67,11 @@
         <div id="deckTiles" class="tiles"></div>
         <div id="deckProfile" class="card-box suggest" hidden><div class="box-head"><h2>Strengths and weaknesses</h2><span class="hint">Read from the decklist with common deckbuilding rules of thumb. Run the simulation to add how fast it kills.</span></div><div id="profileList"></div></div>
         <div id="deckTags" class="card-box" hidden>
-          <div class="box-head"><h2>Tags</h2><span class="hint">Every card is tagged with its roles, triggers, effects, abilities, keywords and creature types. Search them, or make your own.</span></div>
+          <div class="box-head"><h2>Tags</h2><span class="hint">What each card does, sorted into groups. Open a group and tap a tag to see those cards.</span></div>
           <div class="row wrap">
             <input id="tagQuery" type="text" list="tagList" autocomplete="off" spellcheck="false" placeholder="e.g. role:ramp -type:land   ·   trigger:etb tribe:merfolk   ·   draw,tutor">
             <button id="tagClear" class="ghost">Clear</button>
-            <button id="tagToOdds" class="ghost">Draw odds for these</button>
+            <button id="tagToOdds" class="ghost" title="Send these cards to the Draw Odds tab">Draw odds</button>
             <button id="tagMake" class="ghost">Tag these…</button>
           </div>
           <datalist id="tagList"></datalist>

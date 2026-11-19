@@ -1,6 +1,6 @@
 /* Card data source.
  * Two modes, same pipeline:
- *   "local"    - the Python server reads your ScryMirror folder (card JSON + local image files).
+ *   "local"    - the Python server reads a local folder of Scryfall data (card JSON + local image files).
  *   "scryfall" - the browser asks Scryfall's public API directly and shows images from Scryfall's servers.
  * The hosted (phone / iPad) version always runs in "scryfall" mode. Card data is cached on the device for 7 days
  * (Scryfall asks clients to cache for at least 24 hours) and requests are paced under their rate limit.

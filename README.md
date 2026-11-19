@@ -1,6 +1,6 @@
 # ICEYFISH
 
-Paste a decklist and watch it goldfish. It uses your own card images from **ScryMirror**, plus exact draw math and a Monte Carlo simulation.
+Paste a decklist and watch it goldfish. Card data and images come from [Scryfall](https://scryfall.com), plus exact draw math and a Monte Carlo simulation.
 
 ## Use it on your phone or iPad (hosted version)
 
@@ -23,19 +23,19 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 
 **Card viewer:** swipe the card (or use the ‹ › buttons or arrow keys) to move to the next or previous card around it, pick another **printing** (with prices) and choose **Use this printing in my deck** to switch the art for this visit, and shop for it at **TCGplayer, Card Kingdom or ManaPool**. The shop links are plain links for now; affiliate parameters can be added in `AFFILIATE` near the top of the viewer code in `app.js`. The viewer also shows how the engine reads the card.
 
-**Same Wi-Fi only, using your PC's ScryMirror images:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
+**Same Wi-Fi only, using card images stored on your PC:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
 
-## Run it on your PC with your own ScryMirror (Windows)
+## Run it on your PC with a local copy of Scryfall data (Windows)
 
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
 2. Double-click `start.bat` (in the top folder, or the one inside `goldfish`). Keep the whole downloaded folder together; the launcher needs `server.py` and `static` beside it. Your browser opens at <http://127.0.0.1:8765>.
 
-It reads `%USERPROFILE%\Documents\ScryMirror` by default:
+It reads a folder of Scryfall card data and images that you keep on your PC (auto-detected under `Documents`, or pass `--data-dir`):
 
 - `data\scryfall.sqlite` for card data (Oracle text, mana cost, types, printings)
 - `data\images\normal\<set>\<cn>_en[_<face>].jpg` for the card images
 
-Different location: `start.bat --scrymirror "D:\path\to\ScryMirror"` (or `python server.py --scrymirror ...`).
+Different location: `start.bat --data-dir "D:\path\to\folder"` (or `python server.py --data-dir ...`).
 Everything runs locally and only reads your files; nothing is uploaded.
 
 ## The five tabs
@@ -56,7 +56,7 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 - **Mana:** colored costs, hybrid, Phyrexian, X, taplands and check lands, fetches, MDFC land backs, rocks and dorks (with summoning sickness), Treasure, rituals and triggered mana, cost reducers ("Creature spells you cast cost {1} less"), extra land drops (Exploration, Burgeoning-style "put a land from your hand"), and commander tax.
 - **Triggers:** enters the battlefield, attacks, Landfall, "whenever you cast a (noncreature / instant or sorcery / creature…) spell", "whenever another creature / Elf / artifact enters", upkeep, beginning of combat, end step, combat damage to a player, and "whenever you draw".
 - **Effects:**
-  - creature tokens with power/toughness, colors and keywords, using the real token art from ScryMirror
+  - creature tokens with power/toughness, colors and keywords, using the real token art from Scryfall
   - **token replacement effects:** Doubling Season, Parallel Lives, Mondrak and Elspeth, Storm Slayer (they stack), Divine Visitation (creature tokens become Angels), Chatterfang and Peregrin Took (extra Squirrels or a Food), Academy Manufactor and Bilbo (Clue, Food and Treasure). Order used: conversions, then additions, then doublers. Doubling Season also doubles counters and starting/+ loyalty.
   - **token triggers:** "whenever a token enters / you create a token / a token leaves", including Belladonna Took's first-second-third-time-this-turn ability, Rosie Cotton, Mirkwood Bats, Nadier's Nightblade, Gyome, and Rapacious Guest's combat Food
   - **Food economy:** spends spare mana and Foods on "sacrifice a Food" abilities (Greta's cards and counters, Savvy Hunter and Peregrin Took's draws), with the payoffs: Nuka-Cola's Treasure, Rapacious Guest's counters, Mirkwood Bats and Nadier's Nightblade. Cabbage Merchant turns pairs of Foods into mana.

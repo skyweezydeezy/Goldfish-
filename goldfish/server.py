@@ -2,13 +2,13 @@
 """
 ICEYFISH - local server.
 
-Reads card data and images straight from a local ScryMirror folder:
-    <ScryMirror>/data/scryfall.sqlite
-    <ScryMirror>/data/images/normal/<set>/<cn>_en[_<face>].jpg
+Reads card data and images straight from a local folder of Scryfall data:
+    <folder>/data/scryfall.sqlite
+    <folder>/data/images/normal/<set>/<cn>_en[_<face>].jpg
 
 Standard library only. Run:
-    python server.py                       (auto-detects ~/Documents/ScryMirror)
-    python server.py --scrymirror "D:\\ScryMirror" --port 8765
+    python server.py                       (auto-detects the folder under ~/Documents)
+    python server.py --data-dir "D:\\path\\to\\folder" --port 8765
 """
 import argparse
 import json
@@ -38,7 +38,7 @@ def norm(name):
 
 
 class Mirror:
-    """Read-only access to a ScryMirror database + image tree."""
+    """Read-only access to a local Scryfall database + image tree."""
 
     def __init__(self, root):
         self.root = Path(root) if root else None
@@ -335,7 +335,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return self._json({"error": "bad json"}, 400)
         if u.path == "/api/collection":
-            # Same shape as Scryfall's POST /cards/collection, answered from the local ScryMirror.
+            # Same shape as Scryfall's POST /cards/collection, answered from the local data.
             # Identifiers may also carry a "name" (the browser always sends one) so set+number lookups can fall back to it.
             data, not_found = [], []
             for ident in payload.get("identifiers", []):
@@ -366,14 +366,15 @@ def default_root():
 
 def main():
     ap = argparse.ArgumentParser(description="ICEYFISH")
-    ap.add_argument("--scrymirror", help="Path to the ScryMirror folder (default: ~/Documents/ScryMirror)")
+    ap.add_argument("--scrymirror", dest="data_dir", help=argparse.SUPPRESS)
+    ap.add_argument("--data-dir", dest="data_dir", help="Path to the local Scryfall data folder (default: auto-detect under ~/Documents)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
     ap.add_argument("--lan", action="store_true", help="Let other devices on your Wi-Fi (phone, iPad) open the app")
     a = ap.parse_args()
-    root = Path(a.scrymirror) if a.scrymirror else default_root()
+    root = Path(a.data_dir) if a.data_dir else default_root()
     if not root:
-        print("!! ScryMirror folder not found. Pass --scrymirror \"C:\\path\\to\\ScryMirror\"")
+        print("!! Local card data folder not found. Pass --data-dir \"C:\\path\\to\\folder\"")
     mirror = Mirror(root)
     if mirror.error:
         print("!! " + mirror.error)

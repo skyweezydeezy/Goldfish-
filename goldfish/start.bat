@@ -1,7 +1,7 @@
 @echo off
 REM ICEYFISH - double-click to start.
-REM Uses %USERPROFILE%\Documents\ScryMirror by default. To use another folder:
-REM   start.bat --scrymirror "D:\ScryMirror"
+REM Auto-detects your local Scryfall data folder. To use another folder:
+REM   start.bat --data-dir "D:\path\to\folder"
 cd /d "%~dp0"
 if not exist "server.py" (
   echo server.py was not found in: %cd%

@@ -5,7 +5,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js'));
 const D = path.join(ROOT, 'goldfish', 'static', 'data', 'sets');
 const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8')), store = {};
-idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, s.code + '.json'), 'utf8')); });
+idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => (x.name === n || x.name.split(' // ')[0] === n) && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Sphere of Resistance', 'Thalia, Guardian of Thraben', 'Stony Silence', 'Torpor Orb', 'Rest in Peace', "Grafdigger's Cage", 'Mana Breach', 'Favorable Winds', 'Hand of the Praetors', 'Jodah, the Unifier',

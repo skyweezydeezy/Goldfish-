@@ -6,6 +6,7 @@ Scenario tests for the simulation engine (`goldfish/static/sim.js`). They use a 
 ```
 node tests/run.js          # engine tests: fast, no network
 node tests/run.js --ui     # browser tests: needs `npm i playwright`, a Chromium, and internet (Scryfall); starts its own static server on :8800
+python tests/launch/test_launch.py   # launch tests: the self-updater and the local server; no internet (a local server plays GitHub)
 ```
 
 Each file builds a small board (for example Sorin plus three Soldiers), triggers one rule and checks the result, then plays 400-600 full

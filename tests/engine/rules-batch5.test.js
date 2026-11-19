@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path');
 const G = require('../../goldfish/static/sim.js');
 const D = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8'));
-const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, s.code + '.json'), 'utf8')); });
+const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ["Mirari's Wake", 'Urza, Lord High Artificer', 'Howling Mine', 'Chimil, the Inner Sun', 'Whip of Erebos', 'High Tide', 'Fiery Emancipation', 'Intangible Virtue', 'Mentor of the Meek', "Tocasia's Welcome", 'Ancient Greenwarden', 'Purphoros, God of the Forge', 'Rancor', 'Xorn', 'Wonder', 'Ashaya, Soul of the Wild', 'Rishkar, Peema Renegade', 'Mossborn Hydra', 'Spelunking', 'Forsaken Monument', 'Myr Retriever', 'Life from the Loam', 'Sculpting Steel', 'Delney, Streetwise Lookout', 'Thousand-Year Elixir', 'Bristly Bill, Spine Sower', 'Mindless Automaton', 'Sol Ring', 'Lightning Bolt', 'Grave Titan'];

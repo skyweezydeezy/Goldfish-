@@ -370,6 +370,7 @@ def main():
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
     ap.add_argument("--lan", action="store_true", help="Let other devices on your Wi-Fi (phone, iPad) open the app")
+    ap.add_argument("--no-update", action="store_true", help="Used by start.bat: start without checking for a new version")
     a = ap.parse_args()
     root = Path(a.scrymirror) if a.scrymirror else default_root()
     if not root:

@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path');
 const G = require('../../goldfish/static/sim.js');
 const D = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8'));
-const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, s.code + '.json'), 'utf8')); });
+const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Kinnan, Bonder Prodigy', 'Primal Vigor', 'Amulet of Vigor', 'Astral Cornucopia', 'Wight of the Reliquary', "Duelist's Heritage", 'Past in Flames', 'Valakut, the Molten Pinnacle', 'Persist', 'Peer into the Abyss', 'Thassa, Deep-Dwelling', 'Molten Gatekeeper', 'Mikaeus, the Unhallowed', 'Laelia, the Blade Reforged', 'Ad Nauseam', 'Crime Novelist', 'All Will Be One', 'Chromatic Orrery', 'Goldvein Hydra', 'Bulk Up', 'Light Up the Stage', 'Shiny Impetus', 'Archaeomancer', 'Mindless Automaton', 'Sol Ring', 'Lightning Bolt', 'Grave Titan'];

@@ -293,7 +293,9 @@
     let next; try { next = await fn(gm, gm.games[gm.human]); } finally { gm.acting = false; }
     if (typeof next === 'function') next(); else render(mode);
   })());
-  const castable = (g, i) => G.canPay(G.effectiveCost(g, i), G.allUnits(g));
+  // a counterspell is not cast from your hand in your main phase (there is nothing to counter): you are asked when an opponent casts a spell
+  const reply = i => !!i.card.a.counter && !i.card.a.spellFx.length;
+  const castable = (g, i) => !reply(i) && G.canPay(G.effectiveCost(g, i), G.allUnits(g));
   const playCard = (mode, iid, asLand) => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
     const find = gs => gs[g.pid].hand.concat(gs[g.pid].command).find(i => i.iid === iid), inst = find(gm.games); if (!inst) return;
@@ -533,6 +535,7 @@
       e.classList.add('vs-card'); e.dataset.iid = i.iid;
       if (mull) { e.classList.add(need ? 'can' : 'show'); if (gm.bottom.has(i.iid)) { e.classList.add('pick'); e.appendChild(h('span', 'tag', 'to the bottom')); } }
       else if (quick ? quick.has(i) : mine && (a.isLand ? landOk : castable(g, i))) e.classList.add('can');
+      if (human && reply(i)) e.title = 'A counterspell: you are asked when an opponent casts a spell.'; else e.removeAttribute('title');
       slot.appendChild(e);
       if (mine && a.mdfcLand && !a.isLand && landOk) { const b = h('button', 'ghost vs-asland', 'Play as land'); b.dataset.iid = i.iid; slot.appendChild(b); }
       box.appendChild(slot);

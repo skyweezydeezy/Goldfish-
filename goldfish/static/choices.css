@@ -15,7 +15,7 @@
 .ch-main { display: flex; gap: 12px; min-height: 0; }
 .ch-spell { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; --card-w: clamp(84px, 14vw, 150px); }
 .ch-spell small { color: var(--muted); }
-.ch-opts { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; align-content: start; padding: 3px; -webkit-overflow-scrolling: touch; }
+.ch-opts { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; align-content: start; grid-auto-rows: max-content; padding: 3px; -webkit-overflow-scrolling: touch; }          /* max-content rows: a tile is never squeezed to the height of a button */
 .ch-opt { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 5px; border-radius: 10px; background: var(--surface-2, #172a3a);
   border: 2px solid transparent; color: var(--text-primary, #eef7fd); font: inherit; font-size: 12px; text-align: center; cursor: pointer; }
 .ch-opt[hidden] { display: none; }
@@ -26,7 +26,7 @@
 .ch-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ch-opt.text .ch-name { white-space: normal; overflow-wrap: anywhere; }
 .ch-name i { color: var(--muted); font-style: normal; }
-.ch-note { color: var(--text-secondary, #b9d0e0); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-note { color: var(--text-secondary, #b9d0e0); max-width: 100%; overflow-wrap: anywhere; line-height: 1.25; }   /* whose it is and its size: wraps, so "Copy of your deck #2" is never cut to "Copy of you…" */
 .ch-star { position: absolute; left: 4px; top: 4px; z-index: 3; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 700; color: #1b1405; background: #f5d17a; }
 .ch-zoom { position: absolute; right: 4px; top: 4px; z-index: 3; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
   background: rgba(4,10,16,.82); box-shadow: 0 0 0 1px rgba(143,216,255,.5); cursor: zoom-in; }

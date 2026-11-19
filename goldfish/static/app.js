@@ -1804,11 +1804,54 @@
     S.deck.unique.forEach(c => { if (c.commander) return; const a = c.a; if ((role === 'land' && a.isLand) || (role === 'ramp' && a.role === 'ramp') || (role === 'draw' && a.draw) || (role === 'creature' && a.isCreature && !a.isLand)) S.oddsSel.add(c.uid); });
     e.target.value = ''; renderOdds();
   });
-  $('#oddsClear').addEventListener('click', () => { S.oddsSel.clear(); renderOdds(); });
+  $('#oddsClear').addEventListener('click', () => { S.oddsSel.clear(); catActive = null; renderOdds(); });
   $('#oddsK').addEventListener('input', () => renderOdds(true));
+
+  // ---- odds by category: every role tag (ramp, draw, removal...) plus lands, at least one seen after N cards ----
+  const CAT_NAME = { ramp: 'Ramp', 'fast-mana': 'Fast mana', draw: 'Card draw', removal: 'Removal', wipe: 'Board wipes', counter: 'Counterspells',
+    protection: 'Protection', tutor: 'Tutors', recursion: 'Recursion', 'graveyard-hate': 'Graveyard hate', 'grave-hate': 'Graveyard hate', graveyard: 'Graveyard synergy',
+    finisher: 'Finishers', wincon: 'Win conditions', anthem: 'Anthems', tokens: 'Token makers', 'sac-outlet': 'Sacrifice outlets', superfriends: 'Planeswalker support',
+    lifegain: 'Lifegain', stax: 'Stax', discard: 'Discard', theft: 'Theft' };
+  const CAT_SKIP = new Set(['instant-speed']);              // a speed, not a kind of card
+  const catName = r => CAT_NAME[r] || (r.charAt(0).toUpperCase() + r.slice(1)).replace(/-/g, ' ');
+  let catActive = null;
+  function categories() {
+    const lib = c => !c.commander;
+    const out = [{ key: 'land', name: 'Lands', cards: S.deck.unique.filter(c => lib(c) && c.a.isLand) }];
+    if (S.tags) S.tags.tags.filter(t => t.startsWith('role:') && !CAT_SKIP.has(t.slice(5))).forEach(t => {
+      const cards = (S.tags.cardsOf.get(t) || []).filter(lib);
+      if (cards.length) out.push({ key: t, name: catName(t.slice(5)), cards });
+    });
+    else [['ramp', c => c.a.role === 'ramp'], ['draw', c => c.a.draw]].forEach(([k, f]) => out.push({ key: 'role:' + k, name: catName(k), cards: S.deck.unique.filter(c => lib(c) && f(c)) }));
+    return out.map(c => Object.assign(c, { qty: c.cards.reduce((s, x) => s + (x.qty || 1), 0) })).filter(c => c.qty)
+      .sort((a, b) => (a.key === 'land' ? -1 : b.key === 'land' ? 1 : a.name.localeCompare(b.name)));
+  }
+  function renderCatOdds() {
+    if (!S.deck) return;
+    const N = S.deck.library.length, box = $('#catN');
+    const n = Math.max(1, Math.min(N, Math.round(+box.value || 7)));
+    if (+box.value !== n) box.value = n;
+    const onPlay = opts().onPlay, extra = n - 7, turn = extra + (onPlay ? 1 : 0);
+    $('#catWhen').textContent = n === 7 ? '= your opening hand' : n < 7 ? '(fewer than an opening hand)' : `≈ by turn ${turn}, ${onPlay ? 'on the play' : 'on the draw'} (natural draws only)`;
+    const body = $('#catBody'); body.innerHTML = '';
+    categories().forEach(cat => {
+      const p = G.hyperAtLeast(N, cat.qty, Math.min(N, n), 1);
+      const tr = h('tr', 'cat-row' + (catActive === cat.key ? ' on' : ''), `<td>${esc(cat.name)}</td><td class="num">${cat.qty}</td><td class="num"><span class="cat-bar" style="--p:${(p * 100).toFixed(1)}%"></span><b>${Math.round(p * 100)}%</b></td>`);
+      tr.title = `${cat.qty} card${cat.qty === 1 ? '' : 's'} in ${N}: at least one in ${n} cards drawn is ${pct(p)}. Tap to pick them below.`;
+      tr.addEventListener('click', () => {
+        catActive = cat.key; S.oddsSel = new Set(cat.cards.map(c => c.uid)); renderOdds();
+        const t = $('#oddsTitle'); if (t && t.scrollIntoView && !canHover) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      body.appendChild(tr);
+    });
+  }
+  $('#catN').addEventListener('input', renderCatOdds);
+  $('#catMinus').addEventListener('click', () => { $('#catN').value = Math.max(1, (+$('#catN').value || 7) - 1); renderCatOdds(); });
+  $('#catPlus').addEventListener('click', () => { $('#catN').value = (+$('#catN').value || 7) + 1; renderCatOdds(); });
 
   function renderOdds(skipPicker) {
     if (!S.deck) return;
+    renderCatOdds();
     if (!skipPicker) {
       const pk = $('#oddsPicker'); pk.innerHTML = '';
       S.deck.unique.filter(c => !c.commander).sort((a, b) => (a.a.isLand - b.a.isLand) || a.a.mv - b.a.mv || a.name.localeCompare(b.name)).forEach(c => {

@@ -23,7 +23,7 @@
     <button class="tab active" data-tab="deck"><span class="tab-n">1 · </span>Deck</button>
     <button class="tab" data-tab="hands"><span class="tab-n">2 · </span>Opening Hands</button>
     <button class="tab" data-tab="table"><span class="tab-n">3 · </span>Goldfish Table</button>
-    <button class="tab" data-tab="sim"><span class="tab-n">4 · </span>Simulation</button>
+    <button class="tab" data-tab="sim"><span class="tab-n">4 · </span><span class="tab-full">Simulation</span><span class="tab-short">Sim</span></button>
     <button class="tab" data-tab="odds"><span class="tab-n">5 · </span>Draw Odds</button>
     <button class="tab" data-tab="duel"><span class="tab-n">6 · </span>1v1</button>
     <button class="tab" data-tab="pod"><span class="tab-n">7 · </span>Pod</button>
@@ -234,6 +234,17 @@
 
   <!-- ============ ODDS ============ -->
   <section id="tab-odds" class="panel">
+    <div class="card-box" id="catOdds">
+      <div class="box-head"><h2>Odds by category</h2><span class="hint">The chance you have seen at least one card of each kind. Tap a row to pick those cards and see their turn-by-turn odds below.</span></div>
+      <div class="cat-ctl">
+        <span class="cat-lbl">Having drawn</span>
+        <input id="catN" type="number" min="1" max="60" value="7" aria-label="Cards drawn">
+        <span class="cat-lbl">cards</span>
+        <span class="cat-step"><button id="catMinus" class="ghost" aria-label="One card fewer">−</button><button id="catPlus" class="ghost" aria-label="One card more">+</button></span>
+        <span id="catWhen" class="hint"></span>
+      </div>
+      <table class="cat-table"><thead><tr><th>Category</th><th>Qty</th><th>Odds</th></tr></thead><tbody id="catBody"></tbody></table>
+    </div>
     <div class="two-col">
       <div class="card-box">
         <h2>Draw odds (exact math)</h2>

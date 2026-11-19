@@ -59,6 +59,7 @@ for (const title of fs.readdirSync(dir).filter(f => /\.txt$/i.test(f)).sort()) {
       } else out.same.push(name);
     } else { fs.writeFileSync(dest, header + '\n' + body.trim() + '\n'); out.updated.push(name); }
   } else { fs.writeFileSync(dest, header + '\n' + body.trim() + '\n'); out.added.push(name); }
+  for (const t of Object.keys(sync.files)) if (t !== title && sync.files[t].deck === file) delete sync.files[t];     // a renamed or re-uploaded list replaces the old record
   sync.files[title] = Object.assign({ deck: file, bracket }, meta[title] || {}, { importedAt: new Date().toISOString() });
 }
 sync.checkedAt = new Date().toISOString();

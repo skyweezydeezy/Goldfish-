@@ -4184,14 +4184,14 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/sok.svg?1794805200",
    "partial": true,
-   "cards": 7,
-   "originals": 7,
+   "cards": 8,
+   "originals": 8,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 5,
     "approx": 0,
-    "partial": 1,
+    "partial": 2,
     "none": 1
    }
   },

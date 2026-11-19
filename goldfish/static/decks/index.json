@@ -512,6 +512,16 @@
    "learnedVs": "field"
   },
   {
+   "file": "nothing-personal.txt",
+   "name": "Nothing Personal (Ultima, Origin of Oblivion)",
+   "commanders": [
+    "Ultima, Origin of Oblivion"
+   ],
+   "colors": "",
+   "cards": 100,
+   "bracket": 4
+  },
+  {
    "file": "void-tax.txt",
    "name": "Void Tax (Zhulodok, Void Gorger)",
    "commanders": [

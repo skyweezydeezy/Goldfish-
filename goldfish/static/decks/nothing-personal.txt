@@ -1,0 +1,93 @@
+// Nothing Personal (Ultima, Origin of Oblivion)
+// Bracket 4
+// COMMANDER
+1 Ultima, Origin of Oblivion
+// DECK
+1 Ancient Tomb
+1 City of Traitors
+1 Urza's Saga
+1 Inventors' Fair
+1 Eye of Ugin
+1 Eldrazi Temple
+1 Sanctum of Ugin
+1 Temple of the False God
+1 Gemstone Caverns
+1 Cavern of Souls
+1 Reliquary Tower
+1 Myriad Landscape
+1 Buried Ruin
+1 Command Beacon
+1 Strip Mine
+1 Wasteland
+1 Field of Ruin
+1 Rogue's Passage
+1 Maze of Ith
+1 Mishra's Factory
+1 Karn's Bastion
+1 The Mycosynth Gardens
+1 Urza's Cave
+1 Shrine of the Forsaken Gods
+12 Wastes
+1 Sol Ring
+1 Mana Vault
+1 Grim Monolith
+1 Basalt Monolith
+1 Mox Diamond
+1 Mox Opal
+1 Lotus Petal
+1 Thran Dynamo
+1 Worn Powerstone
+1 Everflowing Chalice
+1 Mind Stone
+1 Thought Vessel
+1 Palladium Myr
+1 Arcane Signet
+1 Hedron Archive
+1 Fellwar Stone
+1 Gilded Lotus
+1 Forsaken Monument
+1 Walking Ballista
+1 Staff of Domination
+1 Mystic Forge
+1 Moonsilver Key
+1 Sensei's Divining Top
+1 Skullclamp
+1 Commander's Plate
+1 Chimil, the Inner Sun
+1 Cloud Key
+1 The One Ring
+1 Mind's Eye
+1 Karn, Scion of Urza
+1 Karn Liberated
+1 Ugin, the Ineffable
+1 Ugin, the Spirit Dragon
+1 Ugin, Eye of the Storms
+1 All Is Dust
+1 Steel Hellkite
+1 Meteor Golem
+1 Cityscape Leveler
+1 Warping Wail
+1 Spatial Contortion
+1 Pithing Needle
+1 Phyrexian Revoker
+1 Winter Orb
+1 Kuldotha Forgemaster
+1 Conduit of Ruin
+1 Glaring Fleshraker
+1 It That Heralds the End
+1 Solemn Simulacrum
+1 Burnished Hart
+1 Stonecoil Serpent
+1 Hangarback Walker
+1 Wurmcoil Engine
+1 Myr Battlesphere
+1 Platinum Angel
+1 Oblivion Sower
+1 Artisan of Kozilek
+1 Void Winnower
+1 Kozilek, the Great Distortion
+1 Kozilek, Butcher of Truth
+1 Ulamog, the Ceaseless Hunger
+1 Ulamog, the Infinite Gyre
+1 Blightsteel Colossus
+1 Emrakul, the Promised End

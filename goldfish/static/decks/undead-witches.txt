@@ -1,4 +1,5 @@
 // Undead Witches (Zul Ashur)
+// Bracket 3
 // COMMANDER
 1 Zul Ashur, Lich Lord (FDN) 389
 // DECK

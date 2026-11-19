@@ -1,4 +1,5 @@
 // Hatsune Miku (Trostani, Selesnya's Voice)
+// Bracket 4
 // COMMANDER
 1 Trostani, Selesnya's Voice (SLD) 2429
 // DECK

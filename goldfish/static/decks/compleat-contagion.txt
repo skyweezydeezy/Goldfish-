@@ -1,4 +1,5 @@
 // Compleat Contagion (Atraxa, Praetors' Voice)
+// Bracket 4
 // COMMANDER
 1 Atraxa, Praetors' Voice (2XM) 353
 // DECK

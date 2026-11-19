@@ -1,4 +1,5 @@
 // Zimone, Infinite Analyst
+// Bracket 4
 // COMMANDER
 1 Zimone, Infinite Analyst (SOC) 10
 // DECK

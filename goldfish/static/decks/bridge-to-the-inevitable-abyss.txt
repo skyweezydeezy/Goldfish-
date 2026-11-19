@@ -1,4 +1,5 @@
 // Bridge to the Inevitable Abyss (Esika, God of the Tree)
+// Bracket 4
 // COMMANDER
 1 Esika, God of the Tree (SLD) 1155
 // DECK

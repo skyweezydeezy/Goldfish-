@@ -320,12 +320,20 @@
   const COLOR_GROUP = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
   const COLOR_ORDER = 'WUBRG';
   const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
+  // Decks with a Commander bracket (the [B1]…[B5] of the ManaBox lists, see tools/import-decks.js) are grouped by bracket, highest first;
+  // within a bracket by number of colors, then name. Decks without a bracket keep the color grouping after them.
+  const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
+  const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
+  const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket : ''}</option>`;
   function builtinOptions() {
     let html = '';
+    for (let b = 5; b >= 1; b--) {
+      const ds = BUILTIN.filter(d => d.bracket === b).sort(byColors);
+      if (ds.length) html += `<optgroup label="Bracket ${b} · ${BRACKET_NAME[b]}">` + ds.map(opt).join('') + '</optgroup>';
+    }
     for (let k = 5; k >= 0; k--) {
-      const ds = BUILTIN.filter(d => d.colors.length === k).sort((a, b) => colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name));
-      if (!ds.length) continue;
-      html += `<optgroup label="${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}</option>`).join('') + '</optgroup>';
+      const ds = BUILTIN.filter(d => !d.bracket && d.colors.length === k).sort(byColors);
+      if (ds.length) html += `<optgroup label="No bracket · ${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(opt).join('') + '</optgroup>';
     }
     return html;
   }

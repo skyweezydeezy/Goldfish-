@@ -5220,14 +5220,15 @@
 
   // Many matches. Seats alternate (A on the play in even games), so a mirror of the same deck comes out even.
   function matchMonteCarlo(cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) {
-    const deckA = buildDeck(cardsA, tokensA, (opts.policy && opts.policy.tribe)), deckB = buildDeck(cardsB, tokensB);
+    const deckA = buildDeck(cardsA, tokensA, (opts.policy && opts.policy.tribe)), deckB = buildDeck(cardsB, tokensB, (opts.policyB && opts.policyB.tribe));
+    const optsB = Object.assign({}, opts, { policy: opts.policyB || {} });                 // the other deck plays with its own learned choices (or the defaults)
     const T = opts.turns;
     const res = { n, turns: T, winA: 0, winB: 0, none: 0, histA: new Array(T + 2).fill(0), histB: new Array(T + 2).fill(0), reasons: { life: 0, commander: 0, empty: 0 },
       playWins: 0, drawWins: 0, errors: 0, firstError: null, games: [], lifeA: 0, lifeB: 0 };
     for (let i = 0; i < n; i++) {
       const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
       try {
-        const m = playMatch(deckA, deckB, opts, s, aOnPlay);
+        const m = playMatch(deckA, deckB, opts, s, aOnPlay, null, optsB);
         const w = m.match.winner;
         if (w == null) res.none++;
         else {

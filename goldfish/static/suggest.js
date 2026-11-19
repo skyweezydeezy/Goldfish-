@@ -248,7 +248,7 @@
     for (let i = 0; i < n; i++) {
       const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
       let m;
-      try { m = G.playMatch(deckA, deckB, opts, s, aOnPlay); } catch (err) { continue; }
+      try { m = G.playMatch(deckA, deckB, opts, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policyB || {} })); } catch (err) { continue; }
       const won = m.match.winner === 0 ? 1 : 0;
       games++; wins += won;
       const early = [];

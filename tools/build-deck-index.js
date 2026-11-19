@@ -49,6 +49,10 @@ async function identities(names) {
       cards: d.entries.reduce((s, e) => s + (e.qty || 1), 0),
     };
   }).sort((a, b) => b.colors.length - a.colors.length || a.name.localeCompare(b.name));
+  // keep what the Policy lab learned for each deck (tools/learn-deck-policies.js writes "policy" and "learned")
+  let old = {};
+  try { (JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8')).decks || []).forEach(d => { old[d.file] = d; }); } catch (e) { /* first build */ }
+  index.forEach(d => { const o = old[d.file]; if (o && o.policy) { d.policy = o.policy; if (o.learned) d.learned = o.learned; } });
   fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ about: 'Built-in decks. Rebuild with: node tools/build-deck-index.js', decks: index }, null, 1) + '\n');
   index.forEach(d => console.log(String(d.colors.length).padStart(2), (d.colors || 'C').padEnd(6), d.cards, d.name));
 })().catch(e => { console.error(e); process.exit(1); });

@@ -476,15 +476,6 @@
    "learnedVs": "field"
   },
   {
-   "file": "tooks-adventure.txt",
-   "name": "Took's Adventure (Mono-White Tokens)",
-   "commanders": [],
-   "colors": "W",
-   "cards": 60,
-   "learnedAt": "2026-11-19",
-   "learnedVs": "mirror"
-  },
-  {
    "file": "undead-witches.txt",
    "name": "Undead Witches (Zul Ashur)",
    "commanders": [

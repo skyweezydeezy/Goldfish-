@@ -5224,13 +5224,13 @@
 
   function playTurn(g) {
     const ev = beginTurn(g);
-    const le = landStep(g);
+    const le = matchOver(g) ? null : landStep(g);                                                          // won at the upkeep or the draw step: nothing more is played
     if (le) ev.push(le, ...le.ev);
     comboLines(g, ev);
     ev.push(...castPhase(g).ev);
     comboLines(g, ev);
-    ev.push(...combat(g));
-    ev.push(...postCombat(g));
+    if (!matchOver(g)) ev.push(...combat(g));                                                             // a game that is won (or a player who is out) stops there: no attack, no second main phase
+    if (!matchOver(g)) ev.push(...postCombat(g));
     ev.push(...endTurn(g));
     return ev;
   }
@@ -5730,14 +5730,14 @@
   function podTurnPre(g, target) {
     if (g.dead || g.match.winner != null) return [];
     podFocus(g, target);
-    const ev = beginTurn(g), le = landStep(g);
+    const ev = beginTurn(g), le = matchOver(g) ? null : landStep(g);
     if (le) ev.push(le, ...le.ev);
     comboLines(g, ev); ev.push(...castPhase(g).ev); comboLines(g, ev);
     return ev;
   }
   function podTurnPost(g) {
     const ev = [], m = g.match;
-    ev.push(...combat(g)); ev.push(...postCombat(g)); ev.push(...endTurn(g));
+    if (!matchOver(g)) ev.push(...combat(g)); if (!matchOver(g)) ev.push(...postCombat(g)); ev.push(...endTurn(g));
     for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;

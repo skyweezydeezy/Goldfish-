@@ -82,6 +82,25 @@ check('Approach of the Second Sun, first cast: 7 life, no win, and it goes seven
 g.library.splice(6, 1); g.hand.push(ap); g.battlefield.forEach(p => { p.tapped = false; }); g.floating = []; G.castCard(g, ap);
 check('...second cast: you win', won(g));
 
+// ---- once the game is won, the turn stops: no attack, no land, no second main phase ----
+{ const pair = () => { const pod = G.newPod([deck, deck], [O, O], 5, ['A', 'B'], 0); pod.games.forEach(x => { x.turn = 5; x.command = []; x.hand = []; x.battlefield = []; x.library = basics(x).slice(0, 30); }); return pod; };
+  let { games: [a, b], match } = pair();
+  lands(a, 3, 'Island'); lands(a, 2, 'Swamp'); put(a, 'Birds of Paradise'); put(a, 'Walking Ballista').counters = 3; hand(a, 'Thassa\'s Oracle'); hand(a, 'Demonic Consultation');
+  let ev = G.podTurn(a, null, b);
+  check('a combo win before combat: the game is over and nobody attacks afterwards', match.winner === 0 && !ev.some(e => e.type === 'declare' || e.type === 'attack') && b.life === 40, `winner ${match.winner}, life ${b.life}`);
+  check('...and the log line ends with the win', G.turnSummary(a, ev).slice(-1)[0] === '☠ WINS', G.turnSummary(a, ev).join('; '));
+  ({ games: [a, b], match } = pair());
+  lands(a, 3, 'Island'); lands(a, 2, 'Swamp'); put(a, 'Birds of Paradise'); hand(a, 'Thassa\'s Oracle'); hand(a, 'Demonic Consultation');
+  ev = G.podTurnPre(a, b).concat(G.podTurnPost(a));
+  check('the same in a turn played in two halves (a person in the game)', match.winner === 0 && !ev.some(e => e.type === 'declare' || e.type === 'attack') && b.life === 40);
+  ({ games: [a, b], match } = pair());
+  put(a, 'Laboratory Maniac'); a.library = []; hand(a, 'Island'); put(a, 'Birds of Paradise');
+  ev = G.podTurn(a, null, b);
+  check('a win at the draw step (Laboratory Maniac, empty library): no land is played and nobody attacks', match.winner === 0 && !ev.some(e => e.type === 'land' || e.type === 'declare'), G.turnSummary(a, ev).join('; '));
+  ({ games: [a, b], match } = pair());
+  lands(a, 2, 'Island'); const bird = put(a, 'Birds of Paradise'); ev = G.podTurn(a, null, b);
+  check('a turn with no win still goes to combat', match.winner == null && a.turn === 6 && ev.some(e => e.type === 'draw'), G.turnSummary(a, ev).join('; ')); }
+
 // ---- nothing else changed: full games run clean and an unconditional "you win the game" still wins ----
 g = fresh(); G.applyEffects(g, [{ type: 'win' }], null, [], null); check('a plain "you win the game" effect still wins', won(g));
 check('unconditional text is still read as a plain win', JSON.stringify(G.parseEffects('You win the game.').fx) === JSON.stringify([{ type: 'win' }]));

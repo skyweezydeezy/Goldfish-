@@ -170,3 +170,4 @@ html.sleeved .vs-seat.opp .card-back.pile { box-shadow: 2px 2px 0 #0a2030, 4px 4
   .vs-game > .speed-bar { grid-column: 2; grid-row: 1; }
   .vs-game > .vs-arena, .vs-game > .card-box { grid-column: 1 / -1; }
 }
+@media (max-width: 600px) { .vs-mid { padding-bottom: 0; border-bottom: 4px solid transparent; } }   /* clip exactly at two lines: no sliver of a third */

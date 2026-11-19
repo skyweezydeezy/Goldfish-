@@ -1,7 +1,7 @@
 {
-  "name": "I See Fish",
-  "short_name": "I See Fish",
-  "description": "I See Fish: goldfish any Magic deck and watch it play out with real card images. Unofficial Fan Content.",
+  "name": "ICEYFISH",
+  "short_name": "ICEYFISH",
+  "description": "ICEYFISH: goldfish any Magic deck and watch it play out with real card images. Unofficial Fan Content.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

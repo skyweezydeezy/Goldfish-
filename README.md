@@ -1,4 +1,4 @@
-# I See Fish
+# ICEYFISH
 
 Paste a decklist and watch it goldfish. It uses your own card images from **ScryMirror**, plus exact draw math and a Monte Carlo simulation.
 
@@ -169,7 +169,7 @@ Cards are kept in a database filed by release set: one file per set in `goldfish
 
 ## Fan content, credits and donations
 
-*I See Fish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
+*ICEYFISH is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
 
 Card data and images are provided by [Scryfall](https://scryfall.com) and are not endorsed by Scryfall. Following Scryfall's and Wizards' policies, this app is **free to use with no sign-up or paywall**, card images are shown whole and unaltered, and the hosted version fetches everything from Scryfall directly instead of re-hosting it. Optional tips are welcome on Cash App at <https://cash.app/$SWDMark> and never unlock anything.
 

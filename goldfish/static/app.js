@@ -1,4 +1,4 @@
-/* I See Fish - UI */
+/* ICEYFISH - UI */
 (function () {
   'use strict';
   const G = window.Goldfish, C = window.Charts;
@@ -428,7 +428,7 @@
   $('#dmExportAll').addEventListener('click', () => {
     const all = getDecks();
     if (!Object.keys(all).length) return toast('Nothing to export yet');
-    download('i-see-fish-decks.json', JSON.stringify({ app: 'I See Fish', version: 1, exported: new Date().toISOString(), decks: all }, null, 2), 'application/json');
+    download('iceyfish-decks.json', JSON.stringify({ app: 'ICEYFISH', version: 1, exported: new Date().toISOString(), decks: all }, null, 2), 'application/json');
   });
   $('#dmImport').addEventListener('click', () => $('#dmFile').click());
   $('#dmFile').addEventListener('change', async e => {

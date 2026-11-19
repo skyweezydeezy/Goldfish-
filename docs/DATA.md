@@ -1,6 +1,6 @@
 # Data: what we keep, and how it could make better suggestions
 
-This page is for working out how I See Fish uses data, and whether the data a deck produces can give the player useful suggestions. Nothing here is built yet. Add notes, questions and decisions under **Open questions** and **Decisions log**.
+This page is for working out how ICEYFISH uses data, and whether the data a deck produces can give the player useful suggestions. Nothing here is built yet. Add notes, questions and decisions under **Open questions** and **Decisions log**.
 
 ## 1. What the app keeps today
 

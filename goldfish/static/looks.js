@@ -18,7 +18,7 @@
 
   const MATS = [
     { id: 'frozen', name: 'Frozen pond', css: '' },   // '' = the built-in look
-    // I See Fish originals (matching sets: each playmat has a sleeve of the same name)
+    // ICEYFISH originals (matching sets: each playmat has a sleeve of the same name)
     { id: 'prism', name: 'Prism Nexus', image: 'looks/mat-prism.jpg', shop: '' },
     { id: 'tide', name: 'Sunken Gate', image: 'looks/mat-tide.jpg', shop: '' },
     { id: 'eclipse', name: 'Eclipse Spires', image: 'looks/mat-eclipse.jpg', shop: '' },

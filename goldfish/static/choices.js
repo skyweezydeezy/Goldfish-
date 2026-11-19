@@ -96,12 +96,16 @@
     });
   }
 
-  // the steps of a turn as a strip: the one being played is lit
-  function stepsHtml(D, step, who) {
-    if (!step) return '';
-    const short = { untap: 'Untap', upkeep: 'Upkeep', draw: 'Draw', main1: 'Main', combat: 'Combat', main2: 'Main 2', end: 'End' };
-    return `<span class="vs-steps" title="${esc(who ? who + ': ' : '')}${esc(D.STEP_NAME[step] || step)} step">${D.STEPS.map(s => `<i class="${s === step ? 'on' : ''}" data-step="${s}">${short[s]}</i>`).join('')}</span>`;
+  // The steps of a turn as a strip in the bar above the table. The strip is written once and the step being played is lit in place
+  // (lightStep), so the buttons beside it are not rebuilt at every step: a click on Pause always lands.
+  const SHORT = { untap: 'Untap', upkeep: 'Upkeep', draw: 'Draw', main1: 'Main', combat: 'Combat', main2: 'Main 2', end: 'End' };
+  function stepsHtml(D) { return `<span class="vs-steps" hidden>${D.STEPS.map(s => `<i data-step="${s}">${SHORT[s]}</i>`).join('')}</span>`; }
+  function lightStep(strip, D, step, who) {
+    if (!strip) return;
+    strip.hidden = !step;
+    strip.title = step ? `${who ? who + ': ' : ''}${D.STEP_NAME[step]} step` : '';
+    strip.querySelectorAll('i').forEach(i => i.classList.toggle('on', i.dataset.step === step));
   }
 
-  window.__isfChoices = { ask, close, CANCELLED, stepsHtml, current: () => (open ? open.q : null) };
+  window.__isfChoices = { ask, close, CANCELLED, stepsHtml, lightStep, current: () => (open ? open.q : null) };
 })();

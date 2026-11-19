@@ -34,7 +34,14 @@
 .ch-auto small { color: var(--muted); font-size: 11.5px; }
 .ch-sheet.mode .ch-opts { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 
+/* what is asked and what is not, under the setup row */
+.vs-what { margin-top: 6px; }
+.vs-what summary { cursor: pointer; color: var(--text-secondary, #b9d0e0); }
+.vs-what p { margin: 6px 0 0; max-width: 110ch; }
+.vs-what b { color: var(--text-primary, #eef7fd); }
+
 /* ---------- the steps of the turn, in the bar above the table ---------- */
+.vs-steps[hidden] { display: none; }
 .vs-steps { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 2px 3px; border-radius: 99px; background: rgba(4,12,20,.55); box-shadow: inset 0 0 0 1px rgba(160,215,255,.14); }
 .vs-steps i { font-style: normal; font-size: 11px; line-height: 1.5; padding: 0 7px; border-radius: 99px; color: var(--muted); white-space: nowrap; }
 .vs-steps i.on { color: #1b1405; background: #f5d17a; font-weight: 700; }

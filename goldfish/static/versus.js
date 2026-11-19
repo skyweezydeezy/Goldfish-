@@ -31,6 +31,10 @@
           <label>Max rounds <input class="vs-rounds" type="number" min="5" max="40" value="25"></label>
           <button class="primary vs-new">New game</button>
         </div>
+        <details class="vs-what hint"><summary>What you are asked when you play, and what the autopilot still decides</summary>
+          <p><b>Asked:</b> library searches (which card); the target of removal, bounce and burn, in a pod at any opponent; which of your creatures gets counters, a pump or an Aura; the modes of "choose one" spells; which card to discard; which creature to sacrifice; whether to counter a spell an opponent casts; your blocks; and, at the end of each opponent's turn, instants, cards with flash and abilities. The autopilot's pick is marked ★ and "Let the autopilot decide" is always there.</p>
+          <p><b>Not offered yet (the autopilot decides):</b> this is not a stack: you cannot respond to abilities or triggers, or to a spell with anything but a counterspell, and nobody answers your spells with instants. Which abilities to use and when, land searches (fetch lands, ramp), cards returning from a graveyard, divided damage, theft and clone targets, the order of triggers and how mana is paid are the autopilot's. Burn only offers creatures it kills, and a single legal option is taken without asking.</p>
+        </details>
         <div class="vs-info hint"></div>
       </div>
       <div class="vs-game" hidden>
@@ -487,7 +491,7 @@
     if (gm.choice) return `<div class="vs-ask"><b>${esc(gm.choice.title)}</b> <span class="hint">Your choice is open in the sheet over the table. The table shows the game at this moment.</span></div>`;
     if (gm.phase === 'respond' && gm.respond) {
       const who = esc(gm.match.names[gm.respond.g.pid]), n = D.instants(g).length;
-      return `<div class="vs-ask"><b>End of ${who}'s turn</b> <span class="hint">${n ? `You may cast the glowing card${n === 1 ? '' : 's'} (instants and cards with flash) with the mana you left untapped: <b>${G.allUnits(g).length}</b>.` : 'No instant or flash card you can pay for.'} Counterspells are asked when a spell is cast.${gm.respond.abil ? '' : ' No ability to use right now.'}</span></div>
+      return `<div class="vs-ask"><b>End of ${who}'s turn</b> <span class="hint">${n ? `You may cast the glowing card${n === 1 ? '' : 's'} (instants and cards with flash) with your ${G.allUnits(g).length} untapped mana.` : 'No instant or flash card you can pay for.'} Counterspells are asked when a spell is cast.${gm.respond.abil ? '' : ' No ability to use right now.'}</span></div>
         <div class="row wrap">${gm.respond.abil ? `<button class="vs-abil" title="The autopilot's ability pass, without loyalty abilities and equipping (those are sorcery speed)"><span class="wide">Use </span>abilities</button>` : ''}<button class="primary vs-pass">Pass</button><button class="ghost vs-nostop" title="Do not stop at the end of the other players' turns again in this game">Pass<span class="wide">, and do not stop here again</span></button></div>`;
     }
     if (gm.phase === 'mull') {
@@ -555,7 +559,7 @@
     const st = V[mode], gm = st.game, q = st.q; if (!gm) return;
     st.used = new Set();
     if (st.table !== gm) {                                    // a new game: lay the table once
-      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {};
+      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.bar = null;
       st.seats = gm.games.map(() => h('div', 'vs-seat'));
       const opps = h('div', 'vs-opps n' + (gm.games.length - 1));
       opps.append(...st.seats.slice(1));
@@ -568,11 +572,14 @@
     for (const k of [...st.nodes.keys()]) if (!st.used.has(k)) st.nodes.delete(k);
     st.drawn = true;
     const who = esc(gm.match.names[cur(gm).pid]);
-    q('.vs-bar').innerHTML = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + (gm.over ? '' : C.stepsHtml(D, gm.step, gm.match.names[cur(gm).pid])) + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null
+    // the bar is rewritten only when it changes (the step of the turn is lit in place), so its buttons stay put while a game plays itself
+    const bar = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + C.stepsHtml(D) + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
       : `<span class="hint">${gm.choice ? 'Your choice' : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
+    if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
+    C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
   }
   function wire(mode) {
     const root = V[mode].root;

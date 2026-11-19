@@ -873,3 +873,18 @@ details.tag-group .tag-ns-n { color: var(--muted); font-size: 12px; font-variant
   #deckTags .row.wrap #tagQuery { flex: 1 1 100%; }
   #deckTags .row.wrap button { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* ---- sound (audio.js): the 🔊 button and its panel ---- */
+.top-sound { padding: 5px 9px; font-size: 16px; line-height: 1; border-radius: 99px; }
+.table-sound { display: none; }
+.sound-card { max-width: 460px; }
+.sound-row { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
+.sound-row > label { flex: 0 0 190px; }
+.sound-row input[type=range], .sound-row select { flex: 1; min-width: 0; }
+.sound-row input[type=range]:disabled { opacity: .35; }
+@media (max-width: 900px) { .top-sound { order: 3; margin-left: auto; } }
+@media (max-width: 600px) {
+  body[data-view=table] .top-sound { display: none; }           /* the topbar is only the tabs here; the button moves into the table's toolbar */
+  body[data-view=table] .table-sound { display: inline-block; }
+  .sound-row > label { flex-basis: 150px; }
+}

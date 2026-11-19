@@ -567,7 +567,22 @@
    ],
    "colors": "G",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 2.6,
+     "confirmZ": 2.4,
+     "gain": 1.5,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "ice-age-engine.txt",

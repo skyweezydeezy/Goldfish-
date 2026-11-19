@@ -874,6 +874,11 @@ details.tag-group .tag-ns-n { color: var(--muted); font-size: 12px; font-variant
   #deckTags .row.wrap button { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
+/* ---------- the imprinted card: tucked behind its permanent on the Goldfish Table ---------- */
+.stackgroup.imprint .mtg.imprinted-card { filter: brightness(.82) saturate(.9); transform: rotate(-5deg) translateY(-3%); cursor: zoom-in; }
+body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(var(--card-w) * -0.52); }
+.mtg.imprinted-card .tag { background: rgba(90,74,160,.96); }
+
 /* ---- sound (audio.js): the 🔊 button and its panel ---- */
 .top-sound { padding: 5px 9px; font-size: 16px; line-height: 1; border-radius: 99px; }
 .table-sound { display: none; }

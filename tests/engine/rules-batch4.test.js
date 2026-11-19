@@ -25,10 +25,10 @@ const tok = { type: 'token', n: 1, creature: true, p: 2, t: 2, colors: [], subty
 
 for (const n of NAMES.filter(n => !['Mindless Automaton', 'Sol Ring', 'Lightning Bolt', 'Voice of Victory', 'Marionette Apprentice'].includes(n))) check(`${n}: no rules line is ignored`, ignored(n).length === 0, ignored(n).join(' | '));
 // Urza's Saga
-{ const g = bare(); g.library = [inst(g, 'Sol Ring')].concat(g.library.slice(0, 20)); const us = putOn(g, "Urza's Saga"); us.enteredTurn = g.turn;
+{ const g = bare(); g.library = g.library.filter(i => i.card.name !== 'Sol Ring').slice(0, 20); g.library.splice(8, 0, inst(g, 'Sol Ring')); const us = putOn(g, "Urza's Saga"); us.enteredTurn = g.turn;
   check("Urza's Saga taps for {C} (chapter I)", G.manaUnits(g).some(u => u.src === us)); g.turn++; G.beginTurn(g); lands(g, 2); G.useAbilities(g);
   check("...chapter II makes a Construct that counts artifacts", g.battlefield.some(p => p.token && /Construct/.test(p.card.name)) && G.powerOf(g, g.battlefield.find(p => p.token && /Construct/.test(p.card.name))) >= 1);
-  g.turn++; G.beginTurn(g); check("...chapter III fetches a 0- or 1-cost artifact and the Saga is sacrificed", g.battlefield.some(p => p.card.name === 'Sol Ring') && !g.battlefield.includes(us)); }
+  g.turn++; G.beginTurn(g); check("...chapter III fetches a 0- or 1-cost artifact and the Saga is sacrificed", g.battlefield.some(p => p.card.a.isArtifact && !p.token && /^\{[01]\}$/.test(p.card.mana_cost || '')) && !g.battlefield.includes(us), g.battlefield.map(p => p.card.name).join(', ')); }
 // Panharmonicon doubles enter triggers
 { const g = bare(); putOn(g, 'Panharmonicon'); g.library = g.library.slice(0, 20); const h = g.hand.length; putOn(g, 'Archaeomancer'); g.graveyard = [inst(g, 'Lightning Bolt'), inst(g, 'Lightning Bolt')];
   const g2 = bare(); putOn(g2, 'Panharmonicon'); g2.graveyard = [inst(g2, 'Lightning Bolt'), inst(g2, 'Lightning Bolt')]; putOn(g2, 'Archaeomancer');
@@ -45,7 +45,7 @@ for (const n of NAMES.filter(n => !['Mindless Automaton', 'Sol Ring', 'Lightning
 { const g = bare(); const cmd = deck.unique.find(c => c.commander); if (cmd) { const ci = { iid: g.nextIid++, card: cmd }; g.command = [ci]; g.cmdrCasts[ci.iid] = 2; putOn(g, 'Command Beacon'); G.useAbilities(g);
   check('Command Beacon puts a taxed commander into your hand', g.hand.includes(ci)); check('...and casting it from hand has no tax', G.effectiveCost(g, ci).generic === cmd.a.cost.generic); } else check('Command Beacon is parsed', !!by('Command Beacon').a.beacon); }
 // hideaway
-{ const g = bare(); g.library = [inst(g, 'Sol Ring')].concat(g.library.slice(0, 20)); const mb = putOn(g, 'Mosswort Bridge'); check('Hideaway exiles a card under the land', !!mb.hidden, mb.hidden && mb.hidden.card.name);
+{ const g = bare(); g.library = g.library.filter(i => i.card.name !== 'Sol Ring').slice(0, 20); g.library.splice(8, 0, inst(g, 'Sol Ring')); const mb = putOn(g, 'Mosswort Bridge'); check('Hideaway exiles a card under the land', !!mb.hidden, mb.hidden && mb.hidden.card.name);
   G.createTokens(g, Object.assign({}, tok, { p: 10, t: 10 }), 1, [], null); lands(g, 2); const hid = mb.hidden; for (let k = 0; k < 4 && mb.hidden; k++) G.useAbilities(g); check('...and plays it for free once the creatures have 10 power', hid && !mb.hidden && (g.battlefield.some(p => p.card.name === hid.card.name) || g.graveyard.includes(hid)), hid && hid.card.name); }
 // Sword of the Animist
 { const g = bare(); const sw = putOn(g, 'Sword of the Animist'); const c = putOn(g, 'Mindless Automaton'); sw.attachedTo = c.iid; G.touch(g); g.library = [inst(g, 'Mountain')].concat(g.library.slice(0, 10)); const l0 = g.battlefield.filter(p => p.asLand).length; G.combat(g);

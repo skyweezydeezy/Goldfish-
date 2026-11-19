@@ -173,13 +173,6 @@
   .vs-blocks { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* wide screens: the round / Play buttons and the speed slider share one line, so the table gets the height */
-@media (min-width: 1000px) {
-  .vs-game:not([hidden]) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; align-items: center; }
-  .vs-game > .vs-bar { grid-column: 1; grid-row: 1; margin: 0 0 10px; flex-wrap: nowrap; white-space: nowrap; }
-  .vs-game > .speed-bar { grid-column: 2; grid-row: 1; }
-  .vs-game > .vs-arena, .vs-game > .card-box { grid-column: 1 / -1; }
-}
 @media (max-width: 600px) { .vs-mid { padding-bottom: 0; border-bottom: 4px solid transparent; } }   /* clip exactly at two lines: no sliver of a third */
 @media (max-width: 600px) { .vs-set { display: none; } .vs-plate { padding-left: 8px; } }
 /* text that sits straight on a playmat stays readable */
@@ -190,3 +183,105 @@
 .vs-who { flex: 1 100 auto; min-width: 4.6em; }   /* the name gives way first, down to a few letters; then a long turn label */
 .vs-turn { flex: 0 1 auto; min-width: 3.2em; overflow: hidden; text-overflow: ellipsis; }
 .vs-life { margin-left: 0; }
+
+/* ---------- the imprinted card: tucked behind its permanent (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) ---------- */
+.vs-stack.imprint > .mtg.vs-imp { filter: brightness(.82) saturate(.9); transform: rotate(-5deg) translateY(-3%); cursor: zoom-in; }
+.vs-stack.imprint > .mtg.vs-imp + .mtg { margin-left: calc(var(--vc) * -0.52); }
+.vs-imp .tag { left: 2px; bottom: 2px; font-size: 9px; padding: 0 5px; background: rgba(90,74,160,.96); }
+
+/* ---------- the game screen: toolbar and speed slider on top, the table under them ---------- */
+.vs-screen { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.vs-screen > .vs-arena { margin-bottom: 0; }
+.vs-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+.vs-top > .vs-bar { flex: 0 1 auto; min-width: 0; margin: 0; }
+.vs-top > .speed-bar { flex: 1 1 240px; margin: 0; }
+.vs-bar .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-foot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vs-stack { min-width: calc(var(--vc) * .16); }   /* a crowded row squeezes its cards together rather than pushing any out of sight */
+@media (min-width: 1000px) { .vs-top > .vs-bar { flex-wrap: nowrap; white-space: nowrap; } }
+@media (max-width: 600px) {
+  .vs-game .vs-bar { margin-bottom: 0; }
+  .vs-game .wide { display: none; }
+  .vs-top { gap: 5px 8px; }
+  .vs-top > .speed-bar { flex: 1 1 150px; padding: 4px 10px; gap: 6px; }
+  .vs-top .speed-txt { display: none; }
+  /* more room for the table: the logo row gives way on these two tabs, as on the Goldfish Table */
+  body[data-view=duel] .topbar .brand, body[data-view=duel] .topbar .status-pill, body[data-view=pod] .topbar .brand, body[data-view=pod] .topbar .status-pill { display: none; }
+}
+
+/* =====================================================================
+   One screen: every player's cards in play are always in view.
+   The table fills the screen under the top bar. Each player's two rows share the height they are given and the cards
+   size themselves to their row, so nothing in play is ever scrolled away; tap any card to see it full size.
+   (Needs container queries: Safari 16+, recent Chrome. Older browsers keep the scrolling table.)
+   ===================================================================== */
+@supports (height: 1cqh) {
+  .vs-screen { height: calc(100vh - var(--topbar-h, 64px) - 12px); height: calc(100dvh - var(--topbar-h, 64px) - 12px); min-height: 430px; }
+  .vs-screen > .vs-arena { flex: 1 1 0; min-height: 0; overflow: hidden auto; --vc-max: 84px; --pc-max: 52px; --hc: clamp(46px, min(15vw, 11.5vh), 96px); }
+  .vs-arena.pod .vs-opps .vs-seat { --vc-max: 60px; --pc-max: 40px; }
+  .vs-opps { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+  .vs-arena > .vs-seat.me { flex: 1.15 1 auto; min-height: 0; }
+  .vs-seat { min-height: 0; }
+  .vs-plate, .vs-foot, .vs-mid { flex: none; }
+  .vs-board { flex: 1 1 0; min-height: 40px; container-type: size; align-items: stretch; }
+  .vs-field { container-type: size; min-height: 0; }
+  .vs-row { flex: 1 1 0; min-height: 0; padding-top: 3px; padding-bottom: 3px; --vc: min(var(--vc-max), calc((50cqh - 9px) * 0.7176)); }
+  .vs-piles { --pc: min(var(--pc-max), calc((50cqh - 20px) * 0.7176)); align-content: center; }
+  .vs-screen .vs-mid { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; padding: 3px 12px; border-bottom: 0; font-size: 12.5px; }
+  .vs-hand { padding: 6px 4px 0; }
+  .vs-me { max-height: 30vh; overflow: auto; }
+
+  /* wide screens: your buttons sit beside your hand instead of above it */
+  @media (min-width: 1000px) {
+    .vs-foot { flex-direction: row; align-items: flex-end; gap: 12px; }
+    .vs-foot > .vs-me { flex: 0 1 440px; max-height: 24vh; }
+    .vs-foot > .vs-hand { flex: 1 1 0; }
+  }
+  /* a pod on a tablet or phone: the three opponents side by side, each with a strip of small piles under their cards */
+  @media (max-width: 1000px) {
+    .vs-arena.pod .vs-opps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+    .vs-arena.pod .vs-opps .vs-seat { padding: 4px 5px; gap: 4px; }
+    .vs-arena.pod .vs-opps .vs-board { display: flex; flex-direction: column; gap: 4px; }
+    .vs-arena.pod .vs-opps .vs-field { flex: 1 1 0; }
+    .vs-arena.pod .vs-opps .vs-piles { flex: none; --pc: clamp(15px, 3.6vw, 30px); grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+    .vs-arena.pod .vs-opps .vs-pile { flex-direction: column-reverse; gap: 1px; }
+    .vs-arena.pod .vs-opps .vs-plbl .lw, .vs-arena.pod .vs-opps .vs-plbl .ls { display: none; }
+    .vs-arena.pod .vs-opps .vs-plbl { font-size: 10px; min-height: 12px; }
+    .vs-arena.pod .vs-opps .vs-plate { flex-wrap: wrap; gap: 2px 5px; padding: 2px 4px 2px 7px; min-height: 0; border-radius: 12px; }
+    .vs-arena.pod .vs-opps .vs-who { flex: 1 1 40%; min-width: 0; font-size: 12px; }
+    .vs-arena.pod .vs-opps .vs-who small { display: none; }
+    .vs-arena.pod .vs-opps .vs-life { min-width: 28px; height: 28px; font-size: 14px; order: 1; }
+    .vs-arena.pod .vs-opps .vs-turn { order: 2; font-size: 10px; padding: 1px 6px; }
+    .vs-arena.pod .vs-opps .vs-backs { order: 3; } .vs-arena.pod .vs-opps .vs-cd { order: 4; font-size: 10px; padding: 1px 5px; }
+    .vs-arena.pod .vs-opps .vs-backs i { width: 9px; height: 13px; margin-left: -5px; }
+    .vs-arena.pod .vs-opps .vs-backs b { font-size: 11px; margin-left: 4px; }
+    .vs-arena.pod .vs-opps .vs-row { padding-left: 3px; padding-right: 3px; gap: 3px; }
+    .vs-arena.pod .vs-opps .vs-none { font-size: 10px; padding: 0 2px; }
+  }
+  @media (max-width: 600px) {
+    .vs-screen { gap: 5px; height: calc(100dvh - var(--topbar-h, 64px) - 6px); }
+    .vs-screen > .vs-arena { padding: 5px; gap: 5px; }
+    .vs-seat { gap: 4px; padding: 4px 5px; }
+    .vs-plate { min-height: 30px; padding: 1px 3px 1px 8px; }
+    .vs-life { min-width: 30px; height: 30px; font-size: 16px; }
+    .vs-ask.main { display: none; }                        /* the glowing cards and the buttons say it */
+    .vs-ask.main + .row { margin-top: 0; flex-wrap: nowrap; gap: 5px; }
+    .vs-ask.main + .row button { flex: 1 1 auto; padding: 7px 4px; font-size: 12.5px; white-space: nowrap; }
+    .vs-me { padding: 5px 6px; }
+    .vs-hand { padding: 4px 2px 0; }
+    .vs-foot { gap: 4px; }
+  }
+}
+/* small cards get small badges */
+@media (max-width: 1000px) {
+  .vs-arena.pod .vs-opps .mtg .pt { font-size: 9px; padding: 0 3px; right: 1px; bottom: 1px; border-radius: 4px; }
+  .vs-arena.pod .vs-opps .mtg .ctr { font-size: 8px; padding: 0 3px; top: 10px; left: 1px; }
+  .vs-arena.pod .vs-opps .vs-cnt { font-size: 9px; padding: 0 4px; right: -2px; top: -4px; }
+  .vs-arena.pod .vs-opps .mtg.sick::after { font-size: 8px; left: 1px; top: 1px; }
+  .vs-arena.pod .vs-opps .vs-imp .tag { display: none; }
+}
+@media (max-width: 600px) {
+  .vs-hand .mtg::after { width: 18px; height: 18px; font-size: 9px; top: 2px; left: 2px; opacity: .8; }
+  .vs-arena .mtg .pt { font-size: 10.5px; padding: 0 4px; }
+  .vs-cnt { font-size: 10px; padding: 0 5px; }
+}

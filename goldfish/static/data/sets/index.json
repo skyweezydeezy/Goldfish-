@@ -2569,10 +2569,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 20,
+    "full": 21,
     "approx": 0,
     "partial": 3,
-    "none": 1
+    "none": 0
    }
   },
   {
@@ -3014,15 +3014,15 @@
    "set_type": "draft_innovation",
    "icon": "https://svgs.scryfall.io/sets/mh1.svg?1794805200",
    "partial": true,
-   "cards": 56,
-   "originals": 55,
+   "cards": 57,
+   "originals": 56,
    "reprints": 1,
    "missing": 0,
    "coverage": {
     "full": 42,
     "approx": 4,
     "partial": 7,
-    "none": 3
+    "none": 4
    }
   },
   {

@@ -19,9 +19,11 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 
 **Touch controls:** tap any card on the table and its menu opens as a sheet at the bottom of the screen: the main action (Cast, Play land, Tap or Untap) comes first, then View card, counters, sacrifice and moving between zones. Tap outside the sheet or **Back** to close it; nothing happens to the card. Elsewhere, tapping a card opens the card viewer.
 
+**Autopilot speed:** the 🐢 … 🐇 slider on the Goldfish Table slows the autopilot down to 5× slower; 🐇 is the original speed, and ⚡ Fast still speeds it up on top. Your choice is remembered.
+
 **Phones and iPads:** the Goldfish Table fits on one screen, Arena style. Battlefield rows share the height and the cards size themselves to fit, your hand sits along the bottom, and the library, command zone, graveyard and exile are piles beside the battlefield like a home game (tap one to see its cards). The buttons become one row of icons (🎲 new game, ▶ autopilot turn, ⏩ autopilot to turn, ⟳ next turn, ＋ token, ↶ undo, 📜 log, 🎨 playmat, ⚡ fast), and 📜 opens the game log as a drawer.
 
-**Card viewer:** swipe the card (or use the ‹ › buttons or arrow keys) to move to the next or previous card around it, pick another **printing** (with prices) and choose **Use this printing in my deck** to switch the art for this visit, and shop for it at **TCGplayer, Card Kingdom or ManaPool**. The shop links are plain links for now; affiliate parameters can be added in `AFFILIATE` near the top of the viewer code in `app.js`. The viewer also shows how the engine reads the card.
+**Card viewer:** on a PC, click any card outside the table (the curve wall, lands, tokens, sample hands...) to open it; on the table, right-click and choose View card. On phones, tap. Swipe the card (or use the ‹ › buttons or arrow keys) to move to the next or previous card around it, pick another **printing** (with prices) and choose **Use this printing in my deck** to switch the art for this visit, and shop for it at **TCGplayer, Card Kingdom or ManaPool**. The shop links are plain links for now; affiliate parameters can be added in `AFFILIATE` near the top of the viewer code in `app.js`. The viewer also shows how the engine reads the card.
 
 **Same Wi-Fi only, using your PC's ScryMirror images:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
 

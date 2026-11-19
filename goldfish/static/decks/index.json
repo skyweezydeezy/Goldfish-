@@ -45,7 +45,8 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "the-kings-gambit.txt",
@@ -621,7 +622,22 @@
    "commanders": [],
    "colors": "W",
    "cards": 60,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 4.1,
+     "confirmZ": 2.2,
+     "gain": 2.6,
+     "games": 600,
+     "against": "mirror"
+    }
+   ],
+   "learnedVs": "mirror"
   },
   {
    "file": "undead-witches.txt",

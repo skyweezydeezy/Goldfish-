@@ -20,6 +20,11 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the picker opens from the Goldfish Table', await p.isVisible('#lookPicker'));
   const nMats = await p.$$eval('#lkMats .look-sw', x => x.length), nSleeves = await p.$$eval('#lkSleeves .look-sw', x => x.length);
   check('it lists playmats and sleeves', nMats >= 6 && nSleeves >= 6, nMats + ' mats, ' + nSleeves + ' sleeves');
+  const ids = await p.$$eval('#lkMats .look-sw', x => x.map(b => b.dataset.mat));
+  check('every playmat has its own id (none shares one with another)', new Set(ids).size === ids.length, ids.join(','));
+  await p.click('[data-mat=tidepool]'); const bgTidePool = await bg();
+  await p.click('[data-mat=tide]'); const bgSunken = await bg();
+  check('Tide pool and Sunken Gate are two different playmats', bgTidePool !== bgSunken && /mat-tide\.jpg/.test(bgSunken) && !/mat-tide\.jpg/.test(bgTidePool));
   await p.click('[data-mat=crimson]');
   await p.click('[data-sleeve=green]');
   check('choosing a playmat changes the table background', (await bg()) !== bg0);

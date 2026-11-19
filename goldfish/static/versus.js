@@ -101,6 +101,7 @@
       pod.match.round = 1;
       st.game = { games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, phase: human ? 'mull' : null, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false };
       st.nodes = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
+      st.game.looks = dealLooks(ps.length);                   // every player gets a random playmat-and-sleeves set
       q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
       say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.order[0].pid === 0 ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
       render(mode);
@@ -325,6 +326,34 @@
     if (ex.length > 1) pile('exile deep', 'Exile', 'Exile', ex.length, top(ex, 'x')); else pile('exile', 'Exile', 'Exile', ex.length, top(ex, 'x'));
     return box;
   }
+  // ---------- playmats and sleeves: a random set for every player (looks.js) ----------
+  // Your own seat shows the playmat and sleeves you picked with 🎨, if you picked any; otherwise you are dealt a random set like everyone else.
+  const myLook = () => { const L = window.__isfLooks, l = L && L.get(); return l && (l.mat !== 'frozen' || l.sleeve !== 'none') ? l : null; };
+  function dealLooks(n) {
+    const L = window.__isfLooks; if (!L) return [];
+    const mine = myLook(), avoid = mine ? L.SETS.filter(s => s.mat === mine.mat || s.sleeve === mine.sleeve).map(s => s.id) : [];
+    const deal = L.dealSets(n, avoid);
+    return mine ? [deal[n - 1]].concat(deal.slice(0, n - 1)) : deal;      // with your own pick, the opponents get first choice of the rest
+  }
+  // you picked a set an opponent was dealt: that opponent takes the set you were dealt instead, so no two players match
+  function settleLooks(gm) {
+    const mine = myLook(); if (!mine || !gm.looks || !gm.looks.length) return;
+    let i = gm.looks.findIndex((x, k) => k > 0 && x && x.mat === mine.mat);
+    if (i < 0) i = gm.looks.findIndex((x, k) => k > 0 && x && x.sleeve === mine.sleeve);
+    if (i > 0) { const t = gm.looks[0]; gm.looks[0] = gm.looks[i]; gm.looks[i] = t; }
+  }
+  function dressSeat(st, gm, seat, pid) {
+    const L = window.__isfLooks; if (!L || !gm.looks) return;
+    const look = (pid === 0 && myLook()) || gm.looks[pid]; if (!look) return;
+    const key = look.mat + '|' + look.sleeve;
+    if (st.lookKey[pid] !== key) {                            // only when it changes: the picture is set once and never reloads
+      const s = L.styleOf(look);
+      Object.keys(s.vars).forEach(k => seat.style.setProperty(k, s.vars[k]));
+      st.lookKey[pid] = key; st.lookOn[pid] = s.sleeved; st.lookName[pid] = s.name;
+    }
+    seat.classList.toggle('sleeved', !!st.lookOn[pid]);
+    seat.dataset.set = st.lookName[pid] || '';
+  }
   function plateEl(st, gm, g, mine) {
     const m = gm.match, active = !gm.over && cur(gm) === g;
     const cmd = g.deck.commanders.map(c => c.card.name.split(',')[0]).join(' + ');
@@ -334,7 +363,8 @@
     const flash = prev == null || g.dead ? '' : g.life < prev ? ' down' : g.life > prev ? ' up' : '';
     const backs = mine ? '' : `<span class="vs-backs" title="${g.hand.length} card${g.hand.length === 1 ? '' : 's'} in hand">${'<i></i>'.repeat(Math.min(g.hand.length, 7))}<b>${g.hand.length}</b></span>`;
     const turn = !active ? '' : `<span class="vs-turn">▶ ${g.opp && !g.opp.dead && m.players.length > 2 ? 'attacking ' + esc(m.names[g.opp.pid]) : 'turn ' + (g.turn || 1)}</span>`;
-    return h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}` +
+    const set = st.lookName[g.pid] ? `<span class="vs-set" title="Playmat and sleeves: ${esc(st.lookName[g.pid])}">🎨 ${esc(st.lookName[g.pid])}</span>` : '';
+    return h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
       `${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
   }
   // what you can do right now: mulligan, block, pick attackers, or the buttons of your main phase
@@ -386,32 +416,42 @@
     if (!g.hand.length) box.appendChild(h('i', '', 'No cards in hand.'));
     return box;
   }
-  function seatEl(st, mode, gm, g, mine) {
-    const active = !gm.over && cur(gm) === g;
-    const seat = h('div', `vs-seat ${mine ? 'me' : 'opp'} ${SEAT[g.pid]}${active ? ' active' : ''}${g.dead ? ' out' : ''}`);
+  // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.
+  function fillSeat(st, mode, gm, g, mine) {
+    const active = !gm.over && cur(gm) === g, seat = st.seats[g.pid];
+    seat.className = `vs-seat ${mine ? 'me' : 'opp'} ${SEAT[g.pid]}${active ? ' active' : ''}${g.dead ? ' out' : ''}`;
     seat.dataset.pid = g.pid;
+    dressSeat(st, gm, seat, g.pid);
     const board = h('div', 'vs-board');
     if (g.dead) board.appendChild(h('div', 'vs-gone', 'Out of the game')); else board.append(fieldEl(st, gm, g, mine), pilesEl(st, gm, g, mine));
     const plate = plateEl(st, gm, g, mine);
-    if (!mine) { seat.append(plate, board); return seat; }
-    seat.append(board, plate);
-    if (gm.human === g.pid) seat.appendChild(h('div', 'vs-me', ctlHtml(mode, gm)));
-    if (!g.dead) seat.appendChild(handEl(st, gm, g));
-    return seat;
+    if (!mine) return seat.replaceChildren(plate, board);
+    const parts = [board, plate];
+    if (gm.human === g.pid) parts.push(h('div', 'vs-me', ctlHtml(mode, gm)));
+    if (!g.dead) parts.push(handEl(st, gm, g));
+    seat.replaceChildren(...parts);
   }
   function render(mode) {
     const st = V[mode], gm = st.game, q = st.q; if (!gm) return;
     st.used = new Set();
-    const opps = h('div', 'vs-opps n' + (gm.games.length - 1));
-    gm.games.slice(1).forEach(g => opps.appendChild(seatEl(st, mode, gm, g, false)));
-    const mid = h('div', 'vs-mid' + (st.last && st.last.pid != null ? ' ' + SEAT[st.last.pid] : ''), st.last ? (st.last.who ? `<b>${esc(st.last.who)}</b> ` : '') + esc(st.last.text) : '');
-    q('.vs-arena').replaceChildren(opps, mid, seatEl(st, mode, gm, gm.games[0], true));
+    if (st.table !== gm) {                                    // a new game: lay the table once
+      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {};
+      st.seats = gm.games.map(() => h('div', 'vs-seat'));
+      const opps = h('div', 'vs-opps n' + (gm.games.length - 1));
+      opps.append(...st.seats.slice(1));
+      st.mid = h('div', 'vs-mid');
+      q('.vs-arena').replaceChildren(opps, st.mid, st.seats[0]);
+    }
+    gm.games.forEach(g => fillSeat(st, mode, gm, g, g.pid === 0));
+    st.mid.className = 'vs-mid' + (st.last && st.last.pid != null ? ' ' + SEAT[st.last.pid] : '');
+    st.mid.innerHTML = st.last ? (st.last.who ? `<b>${esc(st.last.who)}</b> ` : '') + esc(st.last.text) : '';
     for (const k of [...st.nodes.keys()]) if (!st.used.has(k)) st.nodes.delete(k);
     st.drawn = true;
     const who = esc(gm.match.names[cur(gm).pid]);
     q('.vs-bar').innerHTML = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
       : `<span class="hint">${gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
+      `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
   }
   function wire(mode) {
@@ -427,6 +467,7 @@
         if (list.length) { e.stopPropagation(); A.viewCard(list[0], list); }
         return;
       }
+      if (hit('vs-looks')) { if (window.__isfLooks) window.__isfLooks.open(); return; }
       if (hit('vs-play')) {                                   // watch the game at the speed of the 🐢…🐇 slider, or pause it
         if (gm.playing) { gm.playing = false; render(mode); } else if (gm.busy) gm.playing = true; else advance(mode, 9999, true);
         return;
@@ -515,5 +556,7 @@
   }
 
   for (const mode of Object.keys(MODES)) { build(mode); wire(mode); }
+  // you changed your playmat or sleeves with 🎨: redraw your seat on any table in play
+  window.addEventListener('isf-look', () => { for (const mode of Object.keys(MODES)) { const st = V[mode]; if (st.game && st.table) { settleLooks(st.game); st.lookKey[0] = null; render(mode); } } });
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { if (MODES[b.dataset.tab]) fill(b.dataset.tab); }));
 })();

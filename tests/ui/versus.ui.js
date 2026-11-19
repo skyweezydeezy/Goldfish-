@@ -185,6 +185,23 @@ const shot = process.env.VERSUS_SHOTS;
   await until('pod', () => { const g = window.__isfVersus.pod.game; return g.phase === 'main' || !!g.over; });
   check('a pod game has four seats: three opponents across the top, you at the bottom', (await p.$$('#tab-pod .vs-seat')).length === 4 && (await p.$$('#tab-pod .vs-opps .vs-seat.opp')).length === 3 && !!(await p.$('#tab-pod .vs-arena > .vs-seat.me')));
   check('the pod table has the speed slider too', !!(await p.$('#tab-pod .speed-bar input[type=range]')));
+  // playmats and sleeves: every player is dealt a random set, all different; your own pick goes on your seat
+  const seatLooks = () => p.$$eval('#tab-pod .vs-seat', ss => ss.map(s => ({ me: s.classList.contains('me'), set: s.dataset.set, sleeved: s.classList.contains('sleeved'),
+    mat: getComputedStyle(s).backgroundImage, sleeve: s.style.getPropertyValue('--sleeve'), back: getComputedStyle(s.querySelector('.card-back')).backgroundImage })));
+  const lk = await seatLooks(), originals = ['Prism Nexus', 'Sunken Gate', 'Eclipse Spires'];
+  check('every player in the pod has a playmat-and-sleeves set', lk.length === 4 && lk.every(x => x.set && x.sleeved && x.mat !== 'none' && x.sleeve), lk.map(x => (x.me ? 'You: ' : '') + x.set).join(' | '));
+  check('no two players have the same set', new Set(lk.map(x => x.set)).size === 4 && new Set(lk.map(x => x.mat)).size === 4);
+  check('the three original designs are all on the table', originals.every(n => lk.some(x => x.set === n)));
+  check('each library shows that player\'s own sleeve back', new Set(lk.map(x => x.back)).size === 4);
+  const oppSet = lk.find(x => !x.me).set, oppId = { 'Prism Nexus': 'prism', 'Sunken Gate': 'tide', 'Eclipse Spires': 'eclipse' }[oppSet] || 'prism';
+  await p.evaluate(id => window.__isfLooks.set({ mat: id, sleeve: id }), oppId);          // you pick the set the first opponent was dealt
+  await p.waitForTimeout(300);
+  const lk2 = await seatLooks();
+  check('picking your own playmat and sleeves puts them on your seat', lk2.find(x => x.me).set === oppSet, lk2.map(x => (x.me ? 'You: ' : '') + x.set).join(' | '));
+  check('...and the opponent who had that set takes another, so all four still differ', new Set(lk2.map(x => x.set)).size === 4);
+  await p.evaluate(() => window.__isfLooks.set({ mat: 'frozen', sleeve: 'none' }));       // back to no pick of your own
+  await p.waitForTimeout(300);
+  check('with no pick of your own you are dealt a random set again', (await seatLooks()).every(x => x.set && x.sleeved));
   for (let k = 0; k < 3; k++) {
     if (await p.evaluate(() => !!window.__isfVersus.pod.game.over || window.__isfVersus.pod.game.games[0].dead)) break;
     await p.evaluate(() => document.querySelector('#tab-pod .vs-autoturn').click());

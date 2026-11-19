@@ -8,6 +8,8 @@
  *            { id, name, image }          an image file in this folder, e.g. 'mats/partner-dragon.jpg'
  *   sleeves: { id, name, color }          the sleeve colour; the card back is drawn from it, or
  *            { id, name, color, back }    'back' = an image file for the card back
+ *   A playmat and the sleeve with the same id are a set (dealt together to players on the 1v1 and Pod tables);
+ *   a plain playmat is paired with a sleeve colour in PAIR below. Give every playmat its own id.
  *   Optional on either: shop: 'https://...'  shows a "Shop →" link under the design.
  *                       shop: ''             a placeholder "Shop · coming soon" button; paste the URL in later.
  *                       partner: { name: 'Brand', url: 'https://...' }  shows "Shop at Brand →" instead
@@ -27,7 +29,7 @@
     { id: 'royal', name: 'Royal violet', css: 'radial-gradient(ellipse at 50% 0%, #563585 0%, #321e55 50%, #180f2e 100%)' },
     { id: 'slate', name: 'Slate', css: 'repeating-linear-gradient(115deg, rgba(255,255,255,.025) 0 2px, transparent 2px 9px), radial-gradient(ellipse at 50% 0%, #46505a 0%, #2a3038 50%, #15181c 100%)' },
     { id: 'dusk', name: 'Dusk', css: 'radial-gradient(ellipse at 80% 0%, rgba(255,140,90,.35), transparent 45%), linear-gradient(165deg, #5b2a4c 0%, #2b2152 55%, #0e1a33 100%)' },
-    { id: 'tide', name: 'Tide pool', css: 'repeating-radial-gradient(circle at 30% 120%, rgba(143,216,255,.05) 0 3px, transparent 3px 26px), radial-gradient(ellipse at 50% 0%, #136a72 0%, #0b4249 50%, #062227 100%)' },
+    { id: 'tidepool', name: 'Tide pool', css: 'repeating-radial-gradient(circle at 30% 120%, rgba(143,216,255,.05) 0 3px, transparent 3px 26px), radial-gradient(ellipse at 50% 0%, #136a72 0%, #0b4249 50%, #062227 100%)' },
     { id: 'stars', name: 'Starfield', css: 'radial-gradient(1.5px 1.5px at 20% 30%, #fff8, transparent), radial-gradient(1px 1px at 70% 60%, #fff7, transparent), radial-gradient(1.5px 1.5px at 40% 80%, #cdf6, transparent), radial-gradient(1px 1px at 85% 20%, #fff6, transparent), radial-gradient(ellipse at 50% 0%, #1d2550 0%, #0f1430 55%, #070a18 100%)', size: '180px 180px, 230px 230px, 260px 260px, 140px 140px, cover' },
     { id: 'sand', name: 'Desert', css: 'radial-gradient(ellipse at 50% 0%, #8a6a3e 0%, #5c4325 50%, #2d200f 100%)' },
   ];
@@ -97,6 +99,31 @@
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(look)); } catch (e) { /* storage full or blocked: the look still applies for this visit */ }
     apply(); render();
+    window.dispatchEvent(new Event('isf-look'));            // the 1v1 and Pod tables redraw your seat
+  }
+
+  // ---- sets: a playmat with its matching sleeves. The 1v1 and Pod tables deal one to every player. ----
+  // The original designs pair with the sleeve of the same name; each plain playmat pairs with a sleeve colour that suits it.
+  const PAIR = { felt: 'green', crimson: 'red', royal: 'purple', slate: 'black', dusk: 'orange', tidepool: 'ice', stars: 'sapphire', sand: 'gold' };
+  const SETS = MATS.filter(m => m.id !== 'frozen').map(m => {
+    const s = SLEEVES.find(x => x.id === m.id && x.color) || SLEEVES.find(x => x.id === PAIR[m.id]);
+    return s ? { id: m.id, name: m.name, mat: m.id, sleeve: s.id, art: !!m.image } : null;
+  }).filter(Boolean);
+  // n different sets in random order, original designs first; `avoid` = set ids to leave for last (the one you chose yourself)
+  function dealSets(n, avoid) {
+    const mixUp = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const skip = new Set(avoid || []), pool = mixUp(SETS.filter(s => s.art)).concat(mixUp(SETS.filter(s => !s.art)));
+    const order = pool.filter(s => !skip.has(s.id)).concat(pool.filter(s => skip.has(s.id)));
+    return Array.from({ length: n }, (_, i) => order[i % order.length]);
+  }
+  // the CSS variables that draw one look ({ mat, sleeve }) on an element, e.g. one player's seat
+  function styleOf(l) {
+    const m = MATS.find(x => x.id === l.mat) || (l.mat === 'custom' ? { id: 'custom' } : null), mb = matBackground(m);
+    const s = SLEEVES.find(x => x.id === l.sleeve), on = !!(s && s.color);
+    const set = SETS.find(x => x.mat === l.mat && x.sleeve === l.sleeve);
+    return { sleeved: on, name: set ? set.name : [m && m.name, on && s.name + ' sleeves'].filter(Boolean).join(' · '),
+      vars: { '--mat': mb ? mb.bg : 'initial', '--mat-size': mb ? mb.size : 'initial', '--sleeve': on ? s.color : 'initial', '--sleeve-dark': on ? mix(s.color, 'b', .55) : 'initial',
+        '--sleeve-mid': on ? mix(s.color, 'b', .3) : 'initial', '--sleeve-back': on ? sleeveBack(s) : 'initial' } };
   }
 
   // ---- picker ----
@@ -182,5 +209,5 @@
   document.querySelectorAll('.open-looks').forEach(b => b.addEventListener('click', open));
 
   apply();
-  window.__isfLooks = { MATS, SLEEVES, get: () => Object.assign({}, look), set: (o) => { Object.assign(look, o); save(); }, open, close };
+  window.__isfLooks = { MATS, SLEEVES, SETS, dealSets, styleOf, get: () => Object.assign({}, look), set: (o) => { Object.assign(look, o); save(); }, open, close };
 })();

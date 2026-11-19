@@ -5,10 +5,13 @@ const G = require('../../goldfish/static/sim.js');
 const DIR = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+const WIN_RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
+const fileOf = code => (WIN_RESERVED.test(code) ? code + '_' : code) + '.json';
 const index = JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8'));
 check('the index lists at least ten sets', index.sets.length >= 10, index.sets.length);
 check('the sets include the most played Commander sets', ['cmm', 'cmr', 'clb', 'c21', 'c20', 'c19', 'c18'].every(c => index.sets.some(s => s.code === c && !s.partial)));
-const files = {}; for (const s of index.sets) files[s.code] = JSON.parse(fs.readFileSync(path.join(DIR, s.code + '.json'), 'utf8'));
+const files = {}; for (const s of index.sets) files[s.code] = JSON.parse(fs.readFileSync(path.join(DIR, fileOf(s.code)), 'utf8'));
+check('no file in the app has a name Windows forbids (con, prn, aux, nul, com1-9, lpt1-9)', !fs.readdirSync(DIR).some(f => WIN_RESERVED.test(f.split('.')[0])));
 const owner = new Map();                                                    // name -> set code holding the full record
 let dup = 0, total = 0;
 for (const f of Object.values(files)) for (const c of f.cards) if (!c.ref) { if (owner.has(c.name)) dup++; owner.set(c.name, f.code); }

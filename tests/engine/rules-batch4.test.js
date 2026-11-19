@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path');
 const G = require('../../goldfish/static/sim.js');
 const D = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8'));
-const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, s.code + '.json'), 'utf8')); });
+const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ["Urza's Saga", 'Panharmonicon', 'War Room', 'Mystic Sanctuary', 'Command Beacon', 'Mosswort Bridge', 'Sword of the Animist', 'Enduring Vitality', 'Academy Ruins', 'Simian Spirit Guide', 'Voice of Victory', 'Field of the Dead', 'Underworld Breach', 'Marionette Apprentice', 'Fanatic of Rhonas', 'Kessig Wolf Run', 'Beastmaster Ascension', 'Anger', 'Wizard Class', 'Return of the Wildspeaker', "Rishkar's Expertise", 'Archaeomancer', 'Burnished Hart', 'Mindless Automaton', 'Sol Ring', 'Lightning Bolt', 'Gemstone Caverns', 'Leyline of Anticipation'];

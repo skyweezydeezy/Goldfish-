@@ -5,7 +5,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js')), Source = require(path.join(ROOT, 'goldfish', 'static', 'source.js'));
 const D = path.join(ROOT, 'goldfish', 'static', 'data', 'sets'), DECKS = path.join(ROOT, 'goldfish', 'static', 'decks');
 const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8')), byName = new Map();
-idx.sets.forEach(s => { for (const c of JSON.parse(fs.readFileSync(path.join(D, s.code + '.json'), 'utf8')).cards) if (!c.ref) { byName.set(c.name, c); const f = c.name.split(' // ')[0]; if (!byName.has(f)) byName.set(f, c); } });
+idx.sets.forEach(s => { for (const c of JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')).cards) if (!c.ref) { byName.set(c.name, c); const f = c.name.split(' // ')[0]; if (!byName.has(f)) byName.set(f, c); } });
 const index = JSON.parse(fs.readFileSync(path.join(DECKS, 'index.json'), 'utf8'));
 const O = { turns: 10, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;

@@ -30,7 +30,16 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 ## Run it on your PC with your own ScryMirror (Windows)
 
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
-2. Double-click `start.bat` (in the top folder, or the one inside `goldfish`). Keep the whole downloaded folder together; the launcher needs `server.py` and `static` beside it. Your browser opens at <http://127.0.0.1:8765>.
+2. Get the folder once: on GitHub choose **Code -> Download ZIP** and unzip it anywhere.
+3. Double-click `start.bat` (in the top folder, or the one inside `goldfish`). Keep the whole downloaded folder together; the launcher needs `server.py` and `static` beside it. Your browser opens at <http://127.0.0.1:8765>.
+
+**It keeps itself up to date.** Every time you double-click `start.bat` it first asks GitHub for the newest version and, if there is one, downloads it over the folder before the app starts. You never need to download the zip again or use git. Details:
+
+- Your own files in the folder are left alone; only files that belong to the app are replaced, and files that were dropped from the app are removed.
+- No internet, or GitHub is down: it says so and starts the version you have.
+- If the folder is a git checkout, it runs `git pull --ff-only` instead of downloading.
+- To start without checking: `start.bat --no-update`.
+- The check that this works (download the zip, run `start.bat` on Windows, the app answers) runs on GitHub after every push: see **Actions -> Launch check**.
 
 It reads `%USERPROFILE%\Documents\ScryMirror` by default:
 

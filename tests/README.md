@@ -53,6 +53,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | second-breakfast | The Frodo + Sam Bracket 4 list: death triggers, outlets, Skullclamp, Sheoldred, Felidar, Reservoir, Necropotence, Sylvan Library, Deluge, Persist, Urborg... |
 | spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
+| second-card | "Whenever you draw your second card each turn" (Alandra, Sky Dreamer; Jolrael; Gavi) fires once a turn, on the second card: wheels, the draw step, both players' counts in a match, 200 full games; "whenever you draw a card" still fires for every card. |
 | win-conditions | "You win the game" keeps its condition: Laboratory Maniac and Jace, Wielder of Mysteries (a draw from an empty library, Jace's -8), Hellkite Tyrant, Revel in Riches, Triskaidekaphile, Mechanized Production, Twenty-Toed Toad, Felidar Sovereign, Approach of the Second Sun (second cast, seventh from the top); conditions the engine cannot check never win; once a game is won the turn stops (no land, attack or second main phase afterwards). |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
 | ui/versus | Tabs 6 (1v1) and 7 (Pod): a played game (mulligan and bottom, land, attack chooser, block chooser, end turn, autopilot the rest), an all-autopilot game, the many-games runner and sample logs (browser test) |

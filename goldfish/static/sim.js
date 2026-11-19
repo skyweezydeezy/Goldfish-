@@ -39,6 +39,26 @@
     for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
     return arr;
   }
+  // "You win the game" keeps the condition written next to it. A condition the engine cannot check never comes true, so a card
+  // never wins a game it would not win on the table. The replacement effect of Laboratory Maniac and Jace, Wielder of Mysteries
+  // ("if you would draw a card while your library has no cards in it") is a static ability, handled in draw().
+  const BIGNUM = Object.assign({ eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50 }, NUM);
+  const DRAW_WIN = /if you would draw a card while your library has no cards in it, you win the game instead/i;
+  function winFx(text) {
+    if (DRAW_WIN.test(text)) return null;
+    const s = (text.match(/[^.]*\byou win the game\b[^.]*/i) || [''])[0].toLowerCase();          // the sentence that wins
+    if (!/\b(if|unless|instead|as long as|when|only)\b/.test(s)) return { type: 'win' };
+    const n = w => /^\d+$/.test(w) ? +w : BIGNUM[w];
+    const cond = c => (Object.values(c).some(v => v === undefined) ? { type: 'win', cond: { kind: 'never' } } : { type: 'win', cond: c });
+    let m;
+    if (/if your library has no cards in it, you win the game/.test(s)) return cond({ kind: 'libraryEmpty' });                                    // Jace, Wielder of Mysteries -8
+    if ((m = s.match(/if you control (\w+) or more artifacts with the same name as one another, you win the game/))) return cond({ kind: 'sameName', min: n(m[1]) });          // Mechanized Production
+    if ((m = s.match(/if you control (\w+) or more ([a-z]+?)s?, you win the game/))) return cond({ kind: 'control', what: m[2], min: n(m[1]) });   // Hellkite Tyrant, Revel in Riches
+    if ((m = s.match(/if you have exactly (\w+) cards in your hand, you win the game/))) return cond({ kind: 'handExactly', n: n(m[1]) });         // Triskaidekaphile
+    if ((m = s.match(/you win the game if there are (\w+) or more counters on (?:it|~|this creature) or you have (\w+) or more cards in (?:your )?hand/))) return cond({ kind: 'countersOrHand', counters: n(m[1]), hand: n(m[2]) });          // Twenty-Toed Toad
+    if (/if (?:this spell|~) was cast from your hand and you've cast another spell named [^,]+ this game, you win the game/.test(s)) return cond({ kind: 'secondCast' });          // Approach of the Second Sun
+    return { type: 'win', cond: { kind: 'never' } };
+  }
   function num(s) {
     if (s == null) return 1;
     s = String(s).toLowerCase().trim();
@@ -202,7 +222,7 @@
     if ((m = text.match(/look at the top three cards of your library\. put one of them into your hand, put one of them on the bottom of your library, and exile one of them/i))) fx.push({ type: 'lookTake', look: 3, take: 2 });   // Expressive Iteration (approximated: the exiled card is playable this turn)
     if (/look at the top three cards of your library, then put them back in any order/i.test(text)) fx.push({ type: 'scry', n: 3 });                                                  // Ponder
     if (/deals (\d+) damage to each creature\b/i.test(text) && !/each creature (?:you don't|and each)/i.test(text)) { const dm = text.match(/deals (\d+) damage to each creature\b/i); fx.push({ type: 'sweepDamage', n: +dm[1] }); }   // Anger of the Gods
-    if (/\byou win the game\b/i.test(text)) fx.push({ type: 'win' });
+    if (/\byou win the game\b/i.test(text)) { const wf = winFx(text); if (wf) fx.push(wf); }
     if (/enters with a \+1\/\+1 counter on it for each zombie card in your graveyard/i.test(text)) fx.push({ type: 'counters', kind: '+1/+1', n: 'ZGY', scope: 'self', types: [] });          // Diregraf Colossus
     if ((m = text.match(/return a zombie card at random from your graveyard to your hand/i))) fx.push({ type: 'gyReturn', filter: 'zombie', random: true });                                       // Ghoulraiser
     if (/you may put target creature card from your graveyard on top of your library/i.test(text)) fx.push({ type: 'yardToTop' });                                                                 // Mortuary Mire, Witch's Cottage
@@ -1140,6 +1160,7 @@
         } else rec.status = r.neutral ? 'neutral' : 'ignored';
         continue;
       }
+      if (DRAW_WIN.test(line)) { a.statics.drawWin = true; rec.status = 'ok'; continue; }          // Laboratory Maniac, Jace, Wielder of Mysteries: see draw()
       const r = parseEffects(line);
       if (/^(when|whenever|at the beginning|at end)/i.test(line)) { rec.status = r.neutral && !r.fx.length ? 'neutral' : 'ignored'; continue; }
       if (r.fx.length) { a.triggers.push({ kinds: ['etbStatic'], fx: r.fx, text: raw }); rec.status = 'partial'; }
@@ -1183,6 +1204,8 @@
     a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb' || k === 'countersPut'));
     // lifeWatch: pays off for EVERY point of life you gain (Sanguine Bond, Treebeard). lifeThreshold: only needs N life once a turn (Frodo: 3).
     a.lifeWatch = a.triggers.some(t => t.kinds.includes('lifeGain'));
+    // a win whose condition the engine cannot check never happens: the coverage report says so instead of calling the line understood
+    for (const t of a.triggers.concat(a.pwAbilities)) if (t.fx.some(f => f.type === 'win' && f.cond && f.cond.kind === 'never')) { const cr = a.coverage.find(r => r.text === t.text); if (cr) cr.status = t.fx.length > 1 ? 'partial' : 'ignored'; }
     a.lifeThreshold = Math.max(0, ...a.triggers.filter(t => t.cond && t.cond.kind === 'lifeGained').map(t => t.cond.min));
     // the two halves of the life loop: "opponent loses life -> you gain that much" (blood) and "you gain life -> opponent loses that much" (bond)
     a.comboRole = a.triggers.some(t => t.kinds.includes('oppLoseLife') && t.fx.some(f => f.type === 'gainLife')) ? 'blood'
@@ -1434,6 +1457,10 @@
         if (t.unlessPay && canPay({ generic: t.unlessPay, pips: [], x: 0 }, allUnits(g))) { pay(g, { generic: t.unlessPay, pips: [], x: 0 }); ev.push({ type: 'note', text: `Paid ${t.unlessPay} to ${q.card.name}` }); } else fire(g.opp, t, q, ev, null);
       }
       if (ev) { ev.push({ type: 'draw', inst: c }); if (!g.dry) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('onDraw') && g.battlefield.includes(q)) fire(g, t, q, ev, null, 1); }
+    }
+    if (out.length < n && !g.library.length && !g.dry) {                                 // a draw from an empty library: Laboratory Maniac and Jace, Wielder of Mysteries win the game instead
+      const lm = g.battlefield.find(q => q.card.a.statics.drawWin);
+      if (lm) { const we = ev || []; we.push({ type: 'note', text: `${lm.card.name}: you would draw from an empty library, so you win the game`, source: lm }); applyEffects(g, [{ type: 'win' }], lm, we, null); }
     }
     return out;
   }
@@ -1900,6 +1927,14 @@
       case 'lifeAtLeast': return g.life >= c.min;
       case 'dealtBy': return !!(g.combatNames && source && g.combatNames[source.card.name]);
       case 'ringBearerSelf': return !!(g.ring && source && g.ring.bearer === source.iid && g.ring.tempts >= c.min);
+      // conditions on "you win the game" (see winFx)
+      case 'libraryEmpty': return g.library.length === 0;
+      case 'control': return g.battlefield.filter(q => c.what === 'creature' ? isCreaturePerm(q) : c.what === 'artifact' ? q.card.a.isArtifact : c.what === 'land' ? !!q.asLand : c.what === 'permanent' ? true : new RegExp('\\b' + c.what + '\\b', 'i').test(q.card.type_line || '')).length >= c.min;
+      case 'sameName': { const k = {}; let best = 0; for (const q of g.battlefield) if (q.card.a.isArtifact) best = Math.max(best, (k[q.card.name] = (k[q.card.name] || 0) + 1)); return best >= c.min; }
+      case 'handExactly': return g.hand.length === c.n;
+      case 'countersOrHand': return !!(source && (source.counters || 0) >= c.counters) || g.hand.length >= c.hand;
+      case 'secondCast': return (g.winSpellCasts || 0) >= 1;
+      case 'never': return false;
     }
     return true;
   }
@@ -2354,7 +2389,7 @@
 
   function applyEffects(g, fx, source, ev, subject) {
     for (const f of fx) {
-      if (f.cond && !condMet(g, f.cond, source)) continue;             // e.g. Frodo's draw only while he is the Ring-bearer
+      if (f.cond && !condMet(g, f.cond, source)) { if (f.cond.kind === 'secondCast' && !g.dry) g.winSpellCasts = (g.winSpellCasts || 0) + 1; continue; }             // e.g. Frodo's draw only while he is the Ring-bearer; Approach of the Second Sun remembers its first cast
       let n = f.n;
       if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
       else if (n === 'THAT') n = g.thatMuch || 0;                       // "that much life"
@@ -3405,7 +3440,10 @@
       }
       if (!g.dry && g.copyNext && g.copyNext.turn === g.turn && g.copyNext.n > 0 && a.spellFx.length && !a.counter) { g.copyNext.n--; for (let k = 0; k < g.copyNext.times; k++) { ev.push({ type: 'note', text: `A copy of ${inst.card.name} resolves` }); applyEffects(g, a.spellFx, null, ev, null); } }
       if (!g.dry && g.battlefield.some(q => q.card.a.statics.copyAIS) && a.spellFx.length && !a.counter) { ev.push({ type: 'note', text: `A copy of ${inst.card.name} resolves (Jin-Gitaxias)` }); applyEffects(g, a.spellFx, null, ev, null); }
-      applyEffects(g, a.spellFx, null, ev, null); (inst.exileInstead ? g.exile : inst.foreign && g.opp ? g.opp.graveyard : g.graveyard).push(inst); if (a.isInstantSorcery && !g.dry && !a.counter) copyHook(g, inst, ev); }
+      applyEffects(g, a.spellFx, null, ev, null);
+      const seventh = !g.dry && !inst.exileInstead && !inst.foreign && g.killTurn == null && !matchOver(g) && a.spellFx.some(f => f.cond && f.cond.kind === 'secondCast');          // Approach of the Second Sun, first cast: it goes into the library seventh from the top
+      if (seventh) g.library.splice(Math.min(6, g.library.length), 0, inst); else (inst.exileInstead ? g.exile : inst.foreign && g.opp ? g.opp.graveyard : g.graveyard).push(inst);
+      if (a.isInstantSorcery && !g.dry && !a.counter) copyHook(g, inst, ev); }
   }
 
   // ---------- Tutors ----------
@@ -3809,7 +3847,7 @@
       if (f.type === 'untapArtifacts') v += 1.5 * Math.min(f.n, g.battlefield.filter(q => q.tapped && q.card.a.isArtifact && q.produce).reduce((t, q) => t + q.produce.amount, 0));
       if (f.type === 'animateArtifacts' && !g.combatDone) { const k = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.asLand && !q.tapped && !q.sick).length; v += k >= 2 ? k * 4 : 0; }
       if (f.type === 'revealToBf') v += 5;
-      if (f.type === 'win' && !(f.unlessOppLegend && g.opp && g.opp.battlefield.some(q => q.card.a.isLegendary && (isCreaturePerm(q) || q.card.a.isPlaneswalker)))) v += 1000;
+      if (f.type === 'win' && !(f.unlessOppLegend && g.opp && g.opp.battlefield.some(q => q.card.a.isLegendary && (isCreaturePerm(q) || q.card.a.isPlaneswalker))) && (!f.cond || condMet(g, f.cond, null) || (f.cond.kind === 'libraryEmpty' && g.library.length <= fx.slice(0, fx.indexOf(f)).reduce((t, x) => t + (x.type === 'draw' && typeof x.n === 'number' ? x.n : 0), 0)))) v += 1000;          // a conditional win counts only when it would happen (Jace's -8: when the cards it draws empty the library)
       if (f.type === 'damage' || f.type === 'drain') v += n;
       if (f.type === 'counters') v += n * (f.scope === 'each' ? 2 : 1);
       if (f.type === 'ramp') v += 2;

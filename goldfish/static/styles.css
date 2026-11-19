@@ -771,3 +771,22 @@ select { max-width: 100%; text-overflow: ellipsis; }
 .speed { display: inline-flex; align-items: center; gap: 4px; font-size: 16px; white-space: nowrap; }
 .speed input[type=range] { width: 96px; accent-color: #4db3f5; min-height: 0; padding: 0; border: 0; background: transparent; }
 @media (max-width: 600px) { .speed input[type=range] { width: 70px; } }
+
+/* ---------- card viewer on wide screens: the card on the left, price / shops / printings beside it, no scrolling ---------- */
+@media (min-width: 960px) {
+  .lightbox { background: rgba(4,10,16,.94); backdrop-filter: blur(4px); }
+  .lb-inner { display: grid; grid-template-columns: auto minmax(340px, 480px); column-gap: 32px; row-gap: 12px; justify-content: center; align-content: start; align-items: start; padding: 24px 24px 40px; }
+  .lb-bar { grid-column: 1 / -1; width: 100%; }
+  .lb-row { grid-column: 1; grid-row: 2 / span 6; width: auto; position: sticky; top: 16px; }
+  .lb-faces .mtg, .lb-faces .mtg:only-child { width: min(34vw, 400px, calc((100vh - 120px) * .7176)); }
+  .lb-faces .mtg:not(:only-child) { width: min(22vw, 300px, calc((100vh - 120px) * .7176)); }
+  .lb-name, .lb-tags, .lb-tip, .lb-shop, .lb-prints, .lb-cov { grid-column: 2; width: 100%; max-width: none; text-align: left; }
+  .lb-name { grid-row: 2; font-size: 22px; }
+  .lb-shop { grid-row: 3; }
+  .lb-prints { grid-row: 4; }
+  .lb-tags { grid-row: 5; justify-content: flex-start; }
+  .lb-cov { grid-row: 6; }
+  .lb-tip { grid-row: 7; }
+  .lb-strip { flex-wrap: wrap; overflow: visible; max-height: 330px; overflow-y: auto; }
+}
+.table-controls label.speed, label.speed { flex-direction: row; display: inline-flex; align-items: center; }

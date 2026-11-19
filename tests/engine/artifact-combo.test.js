@@ -10,7 +10,7 @@ const find = n => { for (const f of Object.values(store)) { const c = f.cards.fi
 const base = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const ESIKA = 'Esika, God of the Tree // The Prismatic Bridge';
 const NAMES = ['Krark-Clan Ironworks', 'Lithoform Engine', 'Rings of Brighthearth', 'Scrap Trawler', 'Scroll Rack', 'Strionic Resonator', 'Emrakul, the World Anew', ESIKA, 'Nicol Bolas, Dragon-God', 'Paradox Haze', 'Sphinx of the Second Sun',
-  'Tezzeret the Seeker', "Ugin's Labyrinth", 'Ultima, Origin of Oblivion', 'Vesuva', 'Grave Titan', 'Sol Ring', 'Lightning Bolt', 'Arcane Signet', 'Mind Stone', 'Ancient Tomb', 'Wastes', 'Kiki-Jiki, Mirror Breaker', 'Phyrexian Arena', 'Jace, Wielder of Mysteries'];
+  'Tezzeret the Seeker', "Ugin's Labyrinth", 'Ultima, Origin of Oblivion', 'Vesuva', 'Grave Titan', 'Sol Ring', 'Lightning Bolt', 'Arcane Signet', 'Mind Stone', 'Ancient Tomb', 'Wastes', 'Kiki-Jiki, Mirror Breaker', 'Phyrexian Arena', 'Jace, Wielder of Mysteries', 'Urza, Lord High Artificer'];
 const cards = base.cards.filter(c => !NAMES.includes(c.name)).slice(0, 46).concat(NAMES.map(n => base.cards.find(c => c.name === n) || find(n)));
 const deck = G.buildDeck(cards, base.tokens);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
@@ -61,6 +61,8 @@ for (const n of NAMES.slice(0, 15)) check(n + ': every line is read', by(n).a.co
   check('Scroll Rack swaps a card far out of reach for the top of the library', g.hand.includes(top) && g.library[0] === e, g.hand.map(i => i.card.name).join(', ')); }
 { const g = bare(); const e = inst(g, 'Emrakul, the World Anew'); g.hand = [e, inst(g, 'Sol Ring')]; for (let i = 0; i < 6; i++) g.floating.push({ src: null, colors: new Set(['C']), floating: true }); g.hand.splice(0, 1); g.graveyard.push(e); G.madness(g, e, []);
   check('Emrakul: madness for six colorless mana', g.battlefield.some(p => /Emrakul/.test(p.card.name)), g.floating.length); }
+{ const g = bare(); putOn(g, 'Sol Ring'); putOn(g, 'Arcane Signet'); putOn(g, 'Urza, Lord High Artificer'); const c = g.battlefield.filter(p => p.card.name === 'Construct');
+  check('Urza makes one Construct however many artifacts you control, and it counts them', c.length === 1 && G.powerOf(g, c[0]) === 3, `${c.length} token(s), power ${c[0] && G.powerOf(g, c[0])}`); }
 { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 60, 5); check('sixty games with these cards run clean', !!r); }
 { const r = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 10, 7); check('ten mirror matches with these cards run clean', !!r); }
 

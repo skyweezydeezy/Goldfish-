@@ -31,7 +31,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   await p.evaluate(text => { localStorage.setItem('gf_decks', JSON.stringify({ 'Copy of the deck': text })); }, deckText);
   await p.click('[data-tab=sim]');
   const opts = await p.$$eval('#mmOpp option', os => os.map(o => o.textContent));
-  check('the Mirror match card lists the mirror option and your saved decks', opts.length === 2 && /mirror/i.test(opts[0]) && opts[1] === 'Copy of the deck', opts.join(' | '));
+  check('the Mirror match card lists the mirror option and your saved decks', opts.length >= 2 && /mirror/i.test(opts[0]) && opts[opts.length - 1] === 'Copy of the deck', opts.length + ' options');
   await p.fill('#mmN', '60'); await p.fill('#mmT', '15');
   await p.click('#mmRun');
   await p.waitForSelector('#mmTiles .tile', { timeout: 120000 });

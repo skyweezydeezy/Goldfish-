@@ -41,6 +41,9 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | sagas | Sagas: every Saga in the database has all its chapters read; lore counters, one chapter per turn, sacrifice after the last (History of Benalia, Rite of Belzenlok, The Flame of Keld, Song of Freyalise, Elspeth Conquers Death, The Eldest Reborn, Summon: Bahamut and more); Sagas that become creatures (Fable of the Mirror-Breaker); Praetors that become Sagas and return (Sheoldred). |
 | five-color | Najeela (attacking Warrior tokens, extra combat), Sisay (color count, legendary tutor), Derevi (command zone ability), Zur the Enchanter (attack tutor), Relic of Legends (legendary creatures tap for mana). |
 | stax-wheels | Tangle Wire and fading, Trinisphere, Teferi's Puzzle Box (with Underworld Dreams), Sulfuric Vortex, Pestilence, miracle (Reforge the Soul), Molten Psyche with metalcraft, Mindslaver; goldfish games and mirror matches run clean. |
+| artifact-combo | Krark-Clan Ironworks, Lithoform Engine, Rings of Brighthearth, Strionic Resonator (copying The Prismatic Bridge), Scrap Trawler, Scroll Rack, Paradox Haze, Sphinx of the Second Sun, Esika, Nicol Bolas Dragon-God, Tezzeret the Seeker, Ugin's Labyrinth, Ultima, Vesuva, Emrakul's madness; goldfish games and mirror matches run clean. |
+| thief-splendor-toxrill | Notion Thief with wheels, Howling Mine and Teferi's Puzzle Box (goldfish hand and mirror match); Overwhelming Splendor and Toxrill, the Corrosive in mirror matches. |
+| pod | Pods of two, three and four players: focused opponent, burn to each opponent, combat damage to one, eliminations and the last player standing, commander damage per player, chosen attackers and targets, "you win the game". |
 | sets | The card database by set: every card's full record is stored once (in its first set), pointers lead to earlier sets, and the simulator reads every card without throwing. |
 | red-rum-raiders | The Admiral Beckett Brass Pirate list: Treasure engines, Pirate damage triggers, Kari Zev, Port Razer, dash, theft (Treachery, Insurrection, Captivating Crew, Hostage Taker, Admiral), Conspiracy, Protean Raider, 30 full games. |
 | mermaids | The Hakbal Merfolk list: explore, Merfolk lords, Hardened Scales / Branching Evolution / Doubling Season, casting from the top, retrace, Kindred Discovery, Metallic Mimic, Reflections, Kumena, Vorel, Survival, 30 full games. |
@@ -51,7 +54,9 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
+| ui/versus | Tabs 6 (1v1) and 7 (Pod): a played game (land, attack chooser, end turn, autopilot the rest), an all-autopilot game, the many-games runner and sample logs (browser test) |
 | ui/looks | Playmat and sleeve picker (browser test) |
 | ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer (browser test) |
+| ui/viewer-everywhere | Every card on every tab opens in the card viewer: click, 🔍 corner or right-click (browser test) |
 | ui/desktop-viewer | PC: clicking a card opens the viewer (price, previous / next); the autopilot speed slider (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |

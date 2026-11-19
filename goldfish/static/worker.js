@@ -6,6 +6,11 @@ self.onmessage = (e) => {
     self.postMessage({ result: res });
     return;
   }
+  if (e.data.pod) {                                     // 1v1 and Pod tabs: every seat on autopilot
+    const res = self.Goldfish.podMonteCarlo(e.data.pod.players, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p }));
+    self.postMessage({ result: res });
+    return;
+  }
   if (e.data.match) {                                   // mirror match: two decks play each other
     const m = e.data.match;
     const res = self.Goldfish.matchMonteCarlo(m.cardsA, m.tokensA, m.cardsB, m.tokensB, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p / 2 }));

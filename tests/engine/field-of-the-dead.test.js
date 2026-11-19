@@ -5,7 +5,7 @@ const G = require('../../goldfish/static/sim.js');
 const DIR = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 const WANT = ['Field of the Dead', 'Island', 'Forest', 'Swamp', 'Mountain', 'Plains', 'Command Tower', 'Reliquary Tower'];
 const cards = [];
-for (const s of JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8')).sets) for (const c of JSON.parse(fs.readFileSync(path.join(DIR, s.code + '.json'), 'utf8')).cards) if (!c.ref && WANT.includes(c.name) && !cards.some(x => x.name === c.name)) cards.push(Object.assign({}, c, { qty: /^(Island|Forest)$/.test(c.name) ? 20 : 1, commander: false }));
+for (const s of JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8')).sets) for (const c of JSON.parse(fs.readFileSync(path.join(DIR, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')).cards) if (!c.ref && WANT.includes(c.name) && !cards.some(x => x.name === c.name)) cards.push(Object.assign({}, c, { qty: /^(Island|Forest)$/.test(c.name) ? 20 : 1, commander: false }));
 const deck = G.buildDeck(cards, []);
 const O = { turns: 10, onPlay: false, minLands: 0, maxLands: 9, freeMulligan: true, minHandSize: 5, oppLife: 40, policy: {} };
 let pass = 0, fail = 0;

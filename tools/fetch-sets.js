@@ -1,4 +1,4 @@
-// The card database by set: goldfish/static/data/sets/<code>.json, one file per set, listed in index.json and docs/SETS.md.
+// The card database by set: goldfish/static/data/sets/<code>.json (con_.json for the set "con": Windows forbids con.json), one file per set, listed in index.json and docs/SETS.md.
 //
 //   node tools/fetch-sets.js cmm c21          fetch these whole sets from Scryfall (Scryfall set codes)
 //   node tools/fetch-sets.js --import-decks   add every card of the decks in tests/fixtures/*-loaded.json to the database
@@ -17,6 +17,10 @@ const G = require('../goldfish/static/sim.js');
 const ROOT = path.join(__dirname, '..');
 const DIR = path.join(ROOT, 'goldfish', 'static', 'data', 'sets');
 const CACHE = path.join(os.tmpdir(), 'goldfish-sets-cache.json');
+// Windows cannot have files named con, prn, aux, nul, com1-9 or lpt1-9 (whatever the extension), so those set codes get a trailing "_": con_.json
+const fileOf = code => (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(code) ? code + '_' : code) + '.json';
+const SET_FILE = /^[a-z0-9]+_?\.json$/;
+const codeOf = f => f.replace(/_?\.json$/, '');
 const API = 'https://api.scryfall.com';
 const H = { 'User-Agent': 'goldfish-calc-sets/0.2', Accept: 'application/json;q=0.9,*/*;q=0.8' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -55,7 +59,7 @@ const pointer = (s, ref) => ({ name: s.name, id: s.id, set: s.set, cn: s.cn, rar
 const sets = {};                                                           // code -> set file (loaded lazily)
 function loadSet(code) {
   if (sets[code]) return sets[code];
-  const f = path.join(DIR, code + '.json');
+  const f = path.join(DIR, fileOf(code));
   sets[code] = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null;
   return sets[code];
 }
@@ -205,14 +209,14 @@ function normalizeOwners() {
 }
 // re-check every full record with the current engine, write the files, the index and the table
 function rebuild() {
-  for (const f of fs.readdirSync(DIR)) if (/^[a-z0-9]+\.json$/.test(f) && f !== 'index.json') loadSet(f.replace('.json', ''));
+  for (const f of fs.readdirSync(DIR)) if (SET_FILE.test(f) && f !== 'index.json') loadSet(codeOf(f));
   normalizeOwners();
   const full = new Map();                                                    // name -> full record
   Object.values(sets).filter(Boolean).forEach(s => s.cards.forEach(c => { if (!c.ref) { c.cov = coverage(c); full.set(c.name, c); } }));
   const index = [];
   for (const s of Object.values(sets).filter(Boolean)) {
     s.cards.sort((a, b) => String(a.cn).localeCompare(String(b.cn), undefined, { numeric: true }));
-    fs.writeFileSync(path.join(DIR, s.code + '.json'), JSON.stringify(s));
+    fs.writeFileSync(path.join(DIR, fileOf(s.code)), JSON.stringify(s));
     const cov = { full: 0, approx: 0, partial: 0, none: 0 }; let orig = 0, re = 0, missing = 0;
     for (const c of s.cards) { const r = c.ref ? full.get(c.name) : c; if (!r) { missing++; continue; } cov[r.cov.status]++; if (c.ref) re++; else orig++; }
     index.push({ code: s.code, name: s.name, released_at: s.released_at, set_type: s.set_type, icon: s.icon, partial: !!s.partial, cards: s.cards.length, originals: orig, reprints: re, missing, coverage: cov });
@@ -230,7 +234,7 @@ function rebuild() {
 (async () => {
   fs.mkdirSync(DIR, { recursive: true });
   const args = process.argv.slice(2);
-  for (const f of fs.readdirSync(DIR)) if (/^[a-z0-9]+\.json$/.test(f) && f !== 'index.json') loadSet(f.replace('.json', ''));
+  for (const f of fs.readdirSync(DIR)) if (SET_FILE.test(f) && f !== 'index.json') loadSet(codeOf(f));
   for (const code of args.filter((a, i) => !a.startsWith('--') && !/^\d+$/.test(a) && args[i - 1] !== '--query' && args[i - 1] !== '--import-builtin')) {
     try { const s = await fetchSet(code.toLowerCase()); console.log('fetched', s.code, s.name, s.cards.length, 'cards,', s.cards.filter(c => c.ref).length, 'reprints'); }
     catch (e) { console.log('FAILED', code, e.message); }

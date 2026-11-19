@@ -6,7 +6,7 @@ const R = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'com
 const DIR = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 const WANT = ['Alandra, Sky Dreamer', 'Jolrael, Mwonvuli Recluse', 'Gavi, Nest Warden', 'Niv-Mizzet, Parun'];
 const extra = [];
-for (const s of JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8')).sets) for (const c of JSON.parse(fs.readFileSync(path.join(DIR, s.code + '.json'), 'utf8')).cards) if (!c.ref && WANT.includes(c.name) && !extra.some(x => x.name === c.name)) extra.push(c);
+for (const s of JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8')).sets) for (const c of JSON.parse(fs.readFileSync(path.join(DIR, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')).cards) if (!c.ref && WANT.includes(c.name) && !extra.some(x => x.name === c.name)) extra.push(c);
 const cards = R.cards.concat(extra).map(c => Object.assign({}, c, { commander: false, qty: /^(Island|Forest|Swamp|Mountain)$/.test(c.name) ? 12 : 1 }));
 const deck = G.buildDeck(cards, []);
 const O = { turns: 12, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, policy: {} };

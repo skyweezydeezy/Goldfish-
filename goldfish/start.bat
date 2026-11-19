@@ -1,7 +1,8 @@
 @echo off
-REM I See Fish - double-click to start.
+REM I See Fish - double-click to start. It first gets the newest version, then opens the app.
 REM Uses %USERPROFILE%\Documents\ScryMirror by default. To use another folder:
 REM   start.bat --scrymirror "D:\ScryMirror"
+REM To start without checking for a new version:  start.bat --no-update
 cd /d "%~dp0"
 if not exist "server.py" (
   echo server.py was not found in: %cd%
@@ -9,8 +10,13 @@ if not exist "server.py" (
   pause
   exit /b 1
 )
-where py >nul 2>nul && (py -3 server.py %* & goto :end)
-where python >nul 2>nul && (python server.py %* & goto :end)
-echo Python 3 was not found. Install it from https://www.python.org/downloads/ and tick "Add to PATH".
-:end
-pause
+set "PY="
+where py >nul 2>nul && set "PY=py -3"
+if not defined PY where python >nul 2>nul && set "PY=python"
+if not defined PY (
+  echo Python 3 was not found. Install it from https://www.python.org/downloads/ and tick "Add to PATH".
+  pause
+  exit /b 1
+)
+REM Keep the next line as ONE line: the update may replace this file while it runs.
+if exist "update.py" (%PY% update.py %* & %PY% server.py %* & pause & exit /b) else (%PY% server.py %* & pause & exit /b)

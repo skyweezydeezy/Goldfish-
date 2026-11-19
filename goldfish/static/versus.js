@@ -24,7 +24,7 @@
     for (let i = 1; i < M.seats; i++) opp += `<label>Opponent${M.seats > 2 ? ' ' + i : ''} <select class="vs-opp" data-seat="${i}"></select></label>`;
     root.innerHTML = `
       <div class="card-box">
-        <div class="box-head"><h2>${M.title} <span class="pill approx">beta</span></h2><span class="hint">${M.blurb} Computer players use the same autopilot as the simulation. When you play, you choose your lands, spells, attackers and who to attack; triggers, targets and blocks are handled for you.</span></div>
+        <div class="box-head"><h2>${M.title} <span class="pill approx">beta</span></h2><span class="hint">${M.blurb} Computer players use the same autopilot as the simulation. When you play, you choose your mulligans, lands, spells, attackers, who to attack and your blocks; triggers, targets and ability choices are handled for you.</span></div>
         <div class="row wrap">${opp}
           <label>Your seat <select class="vs-you"><option value="human">I play my deck</option><option value="auto">Autopilot plays my deck</option></select></label>
           <label>Max rounds <input class="vs-rounds" type="number" min="5" max="40" value="25"></label>
@@ -95,13 +95,14 @@
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));
       const seed = (Math.random() * 0x7fffffff) >>> 0, first = Math.floor(Math.random() * ps.length);
-      const pod = G.newPod(decks, optsList, seed, ps.map(p => p.name), first);
+      const human = q('.vs-you').value === 'human';
+      const pod = G.newPod(decks, optsList, seed, ps.map(p => p.name), first, human ? [0] : null);
       pod.match.round = 1;
-      st.game = { games: pod.games, match: pod.match, idx: 0, human: q('.vs-you').value === 'human' ? 0 : null, phase: null, rounds: o.turns, over: null, busy: false, token: {} };
+      st.game = { games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, phase: human ? 'mull' : null, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {} };
       q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
       say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.order[0].pid === 0 ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
       render(mode);
-      advance(mode);
+      if (!human) advance(mode);
     } finally { q('.vs-new').disabled = false; }
   }
   const cur = gm => gm.match.order[gm.idx];
@@ -117,6 +118,33 @@
     const gm = V[mode].game, ev = G.podTurn(g, null);
     say(mode, g, G.turnSummary(g, ev).join('; ') || 'nothing happens');
   }
+  // A computer player's turn while a person is in the game. If it attacks the person and they have a creature that could block, the turn
+  // stops after the attackers are known and waits for the blocks (returns true).
+  function computerTurnVsHuman(mode, g) {
+    const gm = V[mode].game, me = gm.games[gm.human];
+    const pre = G.podTurnPre(g);
+    if (!finished(gm) && !g.dead && !me.dead && g.opp === me) {
+      const pv = G.previewAttack(g); pre.push(...pv.ev);
+      if (!finished(gm) && pv.attackers.length && me.battlefield.some(b => pv.attackers.some(a => G.canBlock(g, a, me, b)))) {
+        g.forceAttackers = pv.attackers.map(p => p.iid);
+        gm.phase = 'block'; gm.block = { g, attackers: pv.attackers, sug: G.chooseBlocks(me, g, pv.attackers) };
+        const t = G.turnSummary(g, pre); if (t.length) say(mode, g, t.join('; '));
+        say(mode, g, `attacks you with ${pv.attackers.map(p => p.card.name).join(', ')}. Choose your blocks.`);
+        return true;
+      }
+    }
+    const ev = pre.concat(G.podTurnPost(g));
+    say(mode, g, G.turnSummary(g, ev).join('; ') || 'nothing happens');
+    return false;
+  }
+  function confirmBlocks(mode, map) {
+    const gm = V[mode].game, me = gm.games[gm.human], g = gm.block.g;
+    me.forcedBlocks = map;
+    let ev; try { ev = G.podTurnPost(g); } finally { g.forceAttackers = null; me.forcedBlocks = null; }
+    gm.phase = null; gm.block = null;
+    say(mode, g, G.turnSummary(g, ev).filter(t => !/^attacks /.test(t)).join('; ') || 'no damage');
+    step(gm); render(mode); advance(mode);
+  }
   // run computer seats until it is the human's turn (or one turn at a time when everything is on autopilot)
   async function advance(mode, howMany) {
     const st = V[mode], gm = st.game; if (!gm || gm.busy) return;
@@ -128,18 +156,19 @@
         if (g.dead) { step(gm); continue; }
         if (g.pid === gm.human) { startHuman(mode, g); break; }
         if (n <= 0) break;
-        computerTurn(mode, g); n--; step(gm); render(mode);
+        if (gm.human != null && !gm.games[gm.human].dead) { if (computerTurnVsHuman(mode, g)) break; } else computerTurn(mode, g);
+        n--; step(gm); render(mode);
         if (gm.human != null || howMany > 1) await sleep(gm.human != null ? 350 : 30);
         if (token !== gm.token) return;
       }
     } finally { gm.busy = false; }
-    if (finished(gm)) say(mode, null, '🏁 ' + gm.over);
+    if (finished(gm) && !gm.said) { gm.said = true; say(mode, null, '🏁 ' + gm.over); }
     render(mode);
   }
   function say(mode, g, text) {
     const st = V[mode], gm = st.game, box = st.q('.vs-log');
     const row = h('div', 'vs-line' + (g ? ' ' + SEAT[g.pid] : ' sys'));
-    row.innerHTML = g ? `<b>${esc(gm.match.names[g.pid])}</b> <span class="vs-t">turn ${g.turn}</span> ${esc(text)}` : esc(text);
+    row.innerHTML = g ? `<b>${esc(gm.match.names[g.pid])}</b> <span class="vs-t">${g.turn ? 'turn ' + g.turn : 'opening hand'}</span> ${esc(text)}` : esc(text);
     box.appendChild(row); box.scrollTop = box.scrollHeight;
   }
 
@@ -156,7 +185,7 @@
     const gm = V[mode].game, g = gm.games[gm.human];
     const t = G.turnSummary(g, ev || []);
     if (t.length) say(mode, g, t.join('; '));
-    if (finished(gm)) { gm.phase = null; say(mode, null, '🏁 ' + gm.over); }
+    if (finished(gm)) { gm.phase = null; if (!gm.said) { gm.said = true; say(mode, null, '🏁 ' + gm.over); } }
     render(mode);
   }
   const castable = (g, i) => G.canPay(G.effectiveCost(g, i), G.allUnits(g));
@@ -223,6 +252,26 @@
   function meHtml(mode, gm) {
     const g = gm.games[gm.human], mine = gm.phase === 'main' && !gm.over;
     if (g.dead) return '<div class="hint">You are out of the game. The other players finish it.</div>';
+    const cardHtml = (i, cls, sub) => { const img = A.imgFor(i.card); return `<div class="vs-card${cls}" data-iid="${i.iid}" title="${esc(i.card.name + '\n' + (i.card.type_line || '') + '\n' + (i.card.oracle_text || ''))}">${img ? `<img loading="lazy" src="${esc(img)}" alt="">` : ''}<span class="vs-name">${esc(i.card.name)}</span><span class="vs-cost">${sub}</span></div>`; };
+    if (gm.phase === 'mull') {
+      const need = G.mullCost(g), next = G.mullCost(g, true), lands = g.hand.filter(i => i.card.a.isLand).length, canMull = (g.mulligans || 0) < 6 && 7 - next >= 1;
+      [...gm.bottom].forEach(id => { if (!g.hand.some(i => i.iid === id)) gm.bottom.delete(id); });
+      return `<div class="box-head"><h2>Your opening hand</h2><span class="hint">${g.hand.length} cards, ${lands} land${lands === 1 ? '' : 's'}. ${need ? `Click ${need} card${need === 1 ? '' : 's'} to put on the bottom of your library (${gm.bottom.size}/${need}), then keep.` : 'Keep this hand or take a mulligan.'}</span></div>
+        <div class="row wrap"><button class="primary vs-keep"${need && gm.bottom.size !== need ? ' disabled' : ''}>Keep${need ? ' ' + (7 - need) : ''}</button>${canMull ? `<button class="vs-mull">Mulligan (${next === need ? 'free' : 'keep ' + (7 - next)})</button>` : ''}<button class="ghost vs-mull-auto">Let the autopilot decide</button></div>
+        <div class="vs-hand">${g.hand.map(i => cardHtml(i, (need ? ' can' : ' show') + (gm.bottom.has(i.iid) ? ' pick' : ''), gm.bottom.has(i.iid) ? 'to the bottom' : (i.card.a.isLand ? 'Land' : (i.card.a.mv || 0) + ' mana'))).join('')}</div>`;
+    }
+    if (gm.phase === 'block' && gm.block) {
+      const atk = gm.block.g, as = gm.block.attackers, KW = ['flying', 'menace', 'trample', 'deathtouch', 'first strike', 'double strike', 'lifelink', 'reach', 'indestructible'];
+      const kws = (gg, p) => { const k = KW.filter(x => G.hasKw(gg, p, x)); return k.length ? ' · ' + k.join(', ') : ''; };
+      const label = (a, k) => `${a.card.name}${as.filter(x => x.card.name === a.card.name).length > 1 ? ' #' + (as.filter(x => x.card.name === a.card.name).indexOf(a) + 1) : ''} ${pt(atk, a)}`;
+      const incoming = as.reduce((t, a) => t + Math.max(0, G.powerOf(atk, a)) * (G.hasKw(atk, a, 'double strike') ? 2 : 1), 0);
+      const mineB = g.battlefield.filter(b => as.some(a => G.canBlock(atk, a, g, b)));
+      const pick = b => { for (const [a, bl] of gm.block.sug) if (bl.includes(b)) return a.iid; return ''; };
+      return `<div class="box-head"><h2>${esc(gm.match.names[atk.pid])} attacks you</h2><span class="hint">You are at <b>${g.life}</b> life. Unblocked, this is <b>${incoming}</b> damage. The menus start on what the autopilot would do. A creature with menace needs two blockers.</span></div>
+        <div class="vs-row"><span class="vs-lbl">Attackers</span>${as.map(a => `<span class="vs-perm${a.card.commander ? ' cmdr' : ''}" title="${esc((a.card.type_line || '') + '\n' + (a.card.oracle_text || ''))}">${esc(label(a))}${esc(kws(atk, a))}</span>`).join('')}</div>
+        <div class="vs-blocks">${mineB.map(b => { const cur = pick(b); return `<label class="vs-blockrow"><span><b>${esc(b.card.name)}</b> ${pt(g, b)}${esc(kws(g, b))}</span><select class="vs-blk" data-iid="${b.iid}"><option value="">Does not block</option>${as.filter(a => G.canBlock(atk, a, g, b)).map(a => `<option value="${a.iid}"${a.iid === cur ? ' selected' : ''}>blocks ${esc(label(a))}</option>`).join('')}</select></label>`; }).join('')}</div>
+        <div class="row wrap"><button class="primary vs-block-go">Confirm blocks</button><button class="vs-block-none">No blocks</button></div>`;
+    }
     if (gm.picking) {
       const can = g.battlefield.filter(p => G.canAttack(g, p)), rec = new Set(G.chooseAttackers(g, can.slice()).map(p => p.iid));
       const opps = G.podAlive(g), def = g.opp && !g.opp.dead ? g.opp.pid : (opps[0] && opps[0].pid);
@@ -246,7 +295,7 @@
     q('.vs-seats').className = 'vs-seats n' + gm.games.length;
     q('.vs-seats').innerHTML = gm.games.map(g => seatHtml(gm, g)).join('');
     const bar = q('.vs-bar');
-    bar.innerHTML = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null ? '<button class="vs-next primary">Next turn</button><button class="vs-nextround">Next round</button><button class="vs-toend">Play to the end</button>' : `<span class="hint">${cur(gm).pid === gm.human ? 'Your turn' : esc(gm.match.names[cur(gm).pid]) + ' is playing…'}</span>`);
+    bar.innerHTML = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null ? '<button class="vs-next primary">Next turn</button><button class="vs-nextround">Next round</button><button class="vs-toend">Play to the end</button>' : `<span class="hint">${gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? esc(gm.match.names[cur(gm).pid]) + ' is attacking you' : cur(gm).pid === gm.human ? 'Your turn' : esc(gm.match.names[cur(gm).pid]) + ' is playing…'}</span>`);
     const me = q('.vs-me');
     me.hidden = gm.human == null;
     if (gm.human != null) me.innerHTML = meHtml(mode, gm);
@@ -266,6 +315,20 @@
         if (hit('vs-attack-none')) return boxes.forEach(b => { b.checked = false; });
         if (hit('vs-attack-cancel')) { gm.picking = null; return render(mode); }
         if (hit('vs-attack-go')) return attack(mode, boxes.filter(b => b.checked).map(b => +b.value), +root.querySelector('.vs-target').value);
+        return;
+      }
+      if (gm.phase === 'mull') {
+        const g = gm.games[gm.human], need = G.mullCost(g);
+        const keep = bottom => { G.keepOpening(g, bottom); gm.phase = null; gm.bottom.clear(); say(mode, g, `You keep ${g.hand.length} cards${g.mulligans ? ' after ' + g.mulligans + ' mulligan' + (g.mulligans === 1 ? '' : 's') : ''}.`); advance(mode); };
+        if (hit('vs-keep')) { if (gm.bottom.size === need) keep(g.hand.filter(i => gm.bottom.has(i.iid))); return; }
+        if (hit('vs-mull')) { G.dealOpening(g, true); gm.bottom.clear(); say(mode, g, 'You take a mulligan.'); return render(mode); }
+        if (hit('vs-mull-auto')) { g.library.push(...g.hand); g.hand = []; G.shuffle(g.library, g.rnd); G.mulligan(g); gm.phase = null; gm.bottom.clear(); say(mode, g, `The autopilot keeps ${g.hand.length} cards for you.`); return advance(mode); }
+        if (hit('vs-card') && need) { const id = +hit('vs-card').dataset.iid; if (gm.bottom.has(id)) gm.bottom.delete(id); else if (gm.bottom.size < need) gm.bottom.add(id); return render(mode); }
+        return;
+      }
+      if (gm.phase === 'block') {
+        if (hit('vs-block-none')) return confirmBlocks(mode, {});
+        if (hit('vs-block-go')) { const map = {}; root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) (map[sel.value] = map[sel.value] || []).push(+sel.dataset.iid); }); return confirmBlocks(mode, map); }
         return;
       }
       if (gm.phase !== 'main') return;

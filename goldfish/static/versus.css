@@ -35,3 +35,8 @@
 .vs-line small { color: var(--muted); display: block; }
 .vs-t { color: var(--muted); margin-right: 4px; }
 @media (max-width: 760px) { .vs-seats { grid-template-columns: 1fr; } .vs-card { width: 86px; } }
+.vs-card.show { opacity: 1; }
+.vs-card.pick { border-color: var(--warning, #fab219); box-shadow: 0 0 0 2px var(--warning, #fab219); opacity: .75; }
+.vs-blocks { display: grid; gap: 6px; margin: 8px 0; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.vs-blockrow { display: flex; flex-direction: column; gap: 3px; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; }
+.vs-blockrow select { width: 100%; }

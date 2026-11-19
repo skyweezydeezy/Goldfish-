@@ -1454,6 +1454,22 @@
     return out;
   }
 
+  // A person's mulligan: dealOpening deals seven (again, after shuffling the hand back, when it is a mulligan); mullCost says how many cards
+  // the hand kept now would have to put on the bottom; keepOpening puts the chosen cards there.
+  function mullCost(g, after) { const n = (g.mulligans || 0) + (after ? 1 : 0); return Math.max(0, n - (g.opts.freeMulligan && n >= 1 ? 1 : 0)); }
+  function dealOpening(g, again) {
+    if (again) { g.library.push(...g.hand); g.hand = []; shuffle(g.library, g.rnd); g.mulligans = (g.mulligans || 0) + 1; } else g.mulligans = 0;
+    g.hand = []; draw(g, 7);
+    return g.hand;
+  }
+  function keepOpening(g, bottom) {
+    const need = mullCost(g);
+    let b = (bottom || []).filter(c => g.hand.includes(c)).slice(0, need);
+    if (b.length < need) b = b.concat(chooseBottom(g.hand.filter(c => !b.includes(c)), need - b.length, g.opts));
+    b.forEach(c => { g.hand.splice(g.hand.indexOf(c), 1); g.library.push(c); });
+    g.bottomed = b;
+    openingExtras(g);
+  }
   function mulligan(g) {
     const kl = pol(g, 'keepLands');
     let o = kl && kl !== 'default' ? Object.assign({}, g.opts, { minLands: +kl.split('-')[0], maxLands: +kl.split('-')[1] }) : g.opts;
@@ -1474,6 +1490,11 @@
       g.library.push(...g.hand); g.hand = [];
       shuffle(g.library, g.rnd);
     }
+    openingExtras(g);
+    return true;
+  }
+  // After the opening hand is kept: cards that start on the battlefield (Leylines) and the record of the kept hand
+  function openingExtras(g) {
     for (const i of g.hand.slice()) { const os = i.card.a.openStart; if (os && (os === 'any' || !g.opts.onPlay)) { g.hand.splice(g.hand.indexOf(i), 1); const p = enter(g, i, {}); p.tapped = false; p.enteredTurn = 0;          // Leylines, Gemstone Caverns: begin the game on the battlefield
       if (os === 'draw' && g.hand.length) { const ex = g.hand.slice().sort((x, y) => discardValue(g, x) - discardValue(g, y))[0]; g.hand.splice(g.hand.indexOf(ex), 1); g.exile.push(ex); } } }
     g.openingHand = g.hand.slice();
@@ -4864,22 +4885,37 @@
     return powerOf(g, p) > 0 || p.card.a.triggers.some(t => t.kinds.includes('attack'));
   }
 
-  function combat(g) {
+  // The start of combat (haste enablers, "at the beginning of combat" triggers) and crewing Vehicles. previewAttack runs them early so a
+  // player who is about to be attacked can see the attackers and choose blocks; combat() then skips what was already done.
+  function combatStart(g, ev) {
     g.combatDone = true;
     for (const q of g.battlefield) if (q.card.a.hasteAll && !q.tapped && g.battlefield.some(c => isCreaturePerm(c) && c.sick)) { q.tapped = true; g.battlefield.forEach(c => { if (isCreaturePerm(c)) c.sick = false; }); }          // Crashing Drawbridge
     for (const q of g.battlefield) { const hg = q.card.a.hasteGive; if (hg && !q.tapped) { const t = g.battlefield.filter(c => isCreaturePerm(c) && c.sick && !c.tapped && powerOf(g, c) >= 2).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t && canPay(hg.cost, allUnits(g).filter(u => u.src !== q))) { q.tapped = true; pay(g, hg.cost); t.sick = false; t.eotP = (t.eotP || 0) + hg.p; } } }          // Slayers' Stronghold
     g._wonder = g.graveyard.some(i => i.card.a.wonderFly) && g.battlefield.some(q => q.asLand && /\bIsland\b/.test(q.card.type_line || ''));
     g._anger = g.graveyard.some(i => i.card.a.angerHaste) && g.battlefield.some(q => q.asLand && /\bMountain\b/.test(q.card.type_line || ''));
-    const ev = [];
     eachTrigger(g, 'combat', ev);
+  }
+  function crewVehicles(g, ev) {
+    if (!g.dry) for (const v of g.battlefield.filter(q => q.card.a.crew && !q.animated && !q.tapped && !isCreaturePerm(q))) {          // Crew: tap creatures with enough power (the weakest that will do) to turn the Vehicle into a creature
+      const vp = +v.card.power || 0; const crew = g.battlefield.filter(c => isCreaturePerm(c) && !c.tapped).sort((x, y) => powerOf(g, x) - powerOf(g, y)); const pick = []; let sum = 0;
+      for (const c of crew) { if (sum >= v.card.a.crew) break; pick.push(c); sum += Math.max(0, powerOf(g, c)); }
+      const lost = pick.filter(c => !(c.sick && !hasKw(g, c, 'haste'))).reduce((t, c) => t + Math.max(0, powerOf(g, c)), 0);
+      if (sum >= v.card.a.crew && vp > lost && v.enteredTurn < g.turn) { pick.forEach(c => { c.tapped = true; }); v.animated = { p: vp, t: +v.card.toughness || 0, kw: [...(v.card.a.kw || [])] }; v.sick = false; touch(g); ev.push({ type: 'note', text: `${v.card.name} is crewed by ${pick.map(c => c.card.name).join(', ')}`, source: v }); }
+    }
+  }
+  function previewAttack(g) {
+    const ev = [];
+    combatStart(g, ev); crewVehicles(g, ev); g.combatPre = g.turn;
+    let attackers = g.battlefield.filter(p => canAttack(g, p));
+    if (g.opp) attackers = chooseAttackers(g, attackers);
+    return { attackers, ev };
+  }
+  function combat(g) {
+    const ev = [];
+    if (g.combatPre === g.turn) { g.combatPre = null; g.combatDone = true; } else combatStart(g, ev);
     let phases = 1;
     for (let ph = 0; ph < phases && ph < 6; ph++) {
-      if (!g.dry) for (const v of g.battlefield.filter(q => q.card.a.crew && !q.animated && !q.tapped && !isCreaturePerm(q))) {          // Crew: tap creatures with enough power (the weakest that will do) to turn the Vehicle into a creature
-        const vp = +v.card.power || 0; const crew = g.battlefield.filter(c => isCreaturePerm(c) && !c.tapped).sort((x, y) => powerOf(g, x) - powerOf(g, y)); const pick = []; let sum = 0;
-        for (const c of crew) { if (sum >= v.card.a.crew) break; pick.push(c); sum += Math.max(0, powerOf(g, c)); }
-        const lost = pick.filter(c => !(c.sick && !hasKw(g, c, 'haste'))).reduce((t, c) => t + Math.max(0, powerOf(g, c)), 0);
-        if (sum >= v.card.a.crew && vp > lost && v.enteredTurn < g.turn) { pick.forEach(c => { c.tapped = true; }); v.animated = { p: vp, t: +v.card.toughness || 0, kw: [...(v.card.a.kw || [])] }; v.sick = false; touch(g); ev.push({ type: 'note', text: `${v.card.name} is crewed by ${pick.map(c => c.card.name).join(', ')}`, source: v }); }
-      }
+      crewVehicles(g, ev);
       let attackers = g.battlefield.filter(p => canAttack(g, p));
       if (g.forceAttackers) attackers = attackers.filter(p => g.forceAttackers.includes(p.iid));          // a human chose the attackers
       else if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
@@ -5261,6 +5297,17 @@
     return { aDies: bKills, bDies: aKills };
   }
 
+  // Blocks chosen by a person: d.forcedBlocks = { attackerIid: [blockerIid, ...] }. Illegal ones are dropped (a creature that cannot block that
+  // attacker, a blocker used twice, a lone blocker against menace). Used for one combat.
+  function forcedBlockMap(d, g, attackers) {
+    const fb = d.forcedBlocks, res = new Map(), used = new Set(); d.forcedBlocks = null;
+    for (const a of attackers) {
+      const bl = (fb[a.iid] || []).map(id => d.battlefield.find(b => b.iid === id)).filter(b => b && !used.has(b) && canBlock(g, a, d, b));
+      if (!bl.length || (hasKw(g, a, 'menace') && bl.length < 2)) continue;
+      bl.forEach(b => used.add(b)); res.set(a, bl);
+    }
+    return res;
+  }
   // The defender (game d) chooses blockers against the attackers of game g. Returns Map(attacker -> [blockers]).
   function chooseBlocks(d, g, attackers) {
     const res = new Map();
@@ -5319,7 +5366,7 @@
   // Combat damage between the attackers of game g and the blockers of game d. Returns what reached the player.
   function resolveCombatVs(g, attackers, ev) {
     const d = g.opp;
-    const blocks = chooseBlocks(d, g, attackers);
+    const blocks = d.forcedBlocks ? forcedBlockMap(d, g, attackers) : chooseBlocks(d, g, attackers);
     const blockedSet = new Set(blocks.keys());
     blocks.forEach((bl, a) => ev.push({ type: 'note', text: `${bl.map(b => b.card.name).join(' + ')} blocks ${a.card.name}`, source: bl[0] }));
     let dmg = 0, ll = 0, llD = 0; const hitters = [];
@@ -5641,10 +5688,26 @@
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
   }
-  function newPod(decks, optsList, seed, names, first) {
+  // A pod turn in two halves, so a player who is attacked can choose blocks in between: everything before combat, then combat to the end of turn.
+  function podTurnPre(g, target) {
+    if (g.dead || g.match.winner != null) return [];
+    podFocus(g, target);
+    const ev = beginTurn(g), le = landStep(g);
+    if (le) ev.push(le, ...le.ev);
+    comboLines(g, ev); ev.push(...castPhase(g).ev); comboLines(g, ev);
+    return ev;
+  }
+  function podTurnPost(g) {
+    const ev = [], m = g.match;
+    ev.push(...combat(g)); ev.push(...postCombat(g)); ev.push(...endTurn(g));
+    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
+    if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
+    return ev;
+  }
+  function newPod(decks, optsList, seed, names, first, manual) {
     const games = decks.map((d, i) => newGame(d, Object.assign({}, optsList[i], { onPlay: decks.length === 2 && i === (first || 0) % decks.length }), (seed + i * 0x9e3779b9) >>> 0));          // in a multiplayer game the first player draws too; in a two-player game they do not
     const m = linkPod(games, names);
-    games.forEach(mulligan);
+    games.forEach((x, i) => { if (manual && manual.includes(i)) dealOpening(x); else mulligan(x); });          // a seat played by a person mulligans by hand
     m.order = games.map((x, i) => games[(i + (first || 0)) % games.length]);
     return { games, match: m };
   }
@@ -5720,7 +5783,7 @@
     pay, madness, fxValue, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
-    linkPod, newPod, podTurn, podFocus, pickTarget, podAlive, playPod, podMonteCarlo, podLog, turnSummary, eliminate, canAttack, chooseAttackers, matchOver, checkKill,
+    linkPod, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, canBlock, chooseBlocks, dealOpening, keepOpening, mullCost, podFocus, pickTarget, podAlive, playPod, podMonteCarlo, podLog, turnSummary, eliminate, canAttack, chooseAttackers, matchOver, checkKill,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

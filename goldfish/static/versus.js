@@ -10,6 +10,12 @@
   const V = { duel: {}, pod: {} };
   const cache = new Map();
   const SEAT = ['a', 'b', 'c', 'd'];
+  // sound effects (audio.js); silent when sound is off, and during a run to the end with every seat on autopilot
+  const sfx = (name, at) => { if (window.__isfAudio) window.__isfAudio.play(name, at); };
+  function sfxEv(mode, ev) {
+    const gm = V[mode].game; if (!window.__isfAudio || !gm || gm.quiet) return;
+    window.__isfAudio.events(ev, { win: gm.human == null || gm.match.winner === gm.human ? 'win' : 'lose' });
+  }
   window.__isfVersus = V;                                   // read-only handle for automated UI tests
 
   // ---------- setup ----------
@@ -123,6 +129,7 @@
       st.nodes = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
       st.game.looks = dealLooks(ps.length);                   // every player gets a random playmat-and-sleeves set
       q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
+      sfx('shuffle'); if (human) sfx('deal', 0.4);
       say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.order[0].pid === 0 ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
       render(mode);
       { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
@@ -166,6 +173,7 @@
   // the events of one step as one line of the log, under that step's name. Returns how many things it had to say.
   function tell(mode, g, stepKey, ev, lead) {
     const t = sum(g, ev || []);
+    sfxEv(mode, ev);
     if (t.length || lead) say(mode, g, (lead ? lead + (t.length ? ' ' : '') : '') + t.join('; '), stepKey);
     return t.length + (lead ? 1 : 0);
   }
@@ -222,6 +230,7 @@
     return new Promise(done => {
       gm.phase = 'block'; gm.block = { g, attackers: pv.attackers, sug: G.chooseBlocks(me, g, pv.attackers), done };
       say(mode, g, `attacks you with ${pv.attackers.map(p => p.card.name).join(', ')}. Choose your blocks.`, 'combat');
+      sfx('declare');
       render(mode);
     });
   }
@@ -247,6 +256,7 @@
   async function advanceRun(mode, howMany, pace) {
     const st = V[mode], gm = st.game; if (!gm || gm.busy) return;
     gm.busy = true; gm.playing = !!pace;
+    gm.quiet = gm.human == null && !pace && howMany > 1;       // every seat on autopilot, played out at once: no sound
     try {
       let n = howMany == null ? (gm.human == null ? 0 : 999) : howMany;
       if (pace) render(mode);
@@ -263,7 +273,7 @@
         if (st.game !== gm) return;
         if (pace && !gm.playing) break;
       }
-    } finally { gm.busy = false; gm.playing = false; }
+    } finally { gm.busy = false; gm.playing = false; gm.quiet = false; }
     if (st.game !== gm) return;
     announce(mode);
     render(mode);
@@ -274,6 +284,7 @@
   async function startHuman(mode, g) {
     const gm = V[mode].game;
     gm.phase = null; gm.step = 'untap'; gm.attacked = false; gm.picking = null;
+    sfx('turn');
     const ev = await act(mode, gs => D.turn.begin(gs[g.pid]));
     tellBegin(mode, g, ev);
     gm.phase = 'main'; gm.step = 'main1';
@@ -300,13 +311,13 @@
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
     const find = gs => gs[g.pid].hand.concat(gs[g.pid].command).find(i => i.iid === iid), inst = find(gm.games); if (!inst) return;
     const a = inst.card.a;
-    if (resp) { if (!D.instants(g).includes(inst)) return info(mode, `${inst.card.name} cannot be cast now: only instants and cards with flash.`); }
+    if (resp) { if (!D.instants(g).includes(inst)) return sfx('error'), info(mode, `${inst.card.name} cannot be cast now: only instants and cards with flash.`); }
     else if (a.isLand || asLand) {
-      if (!G.canPlayLand(g)) return info(mode, 'You have already played your land for this turn.');
+      if (!G.canPlayLand(g)) return sfx('error'), info(mode, 'You have already played your land for this turn.');
       const ev = await act(mode, gs => { const r = G.playLandCard(gs[g.pid], find(gs), !a.isLand); return [r].concat(r.ev || []); });
       info(mode, ''); return humanDone(mode, ev);
     }
-    if (!castable(g, inst)) return info(mode, `Not enough mana for ${inst.card.name}.`);
+    if (!castable(g, inst)) return sfx('error'), info(mode, `Not enough mana for ${inst.card.name}.`);
     const ev = await act(mode, gs => G.castCard(gs[g.pid], find(gs)));
     if (!ev) return info(mode, `${inst.card.name} was not cast.`);
     info(mode, ''); humanDone(mode, ev);
@@ -580,6 +591,7 @@
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
       : `<span class="hint">${gm.choice ? 'Your choice' : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
+        `<button class="ghost open-sound" title="Music and sound effects"><span class="sound-ic">${window.__isfAudio && !(window.__isfAudio.get().sfx || window.__isfAudio.get().music) ? '🔇' : '🔊'}</span><span class="wide"> Sound</span></button>` +
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
@@ -626,6 +638,7 @@
           e.stopPropagation();
           const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id));
           ids.forEach(id => { if (all) gm.pick.delete(id); else gm.pick.add(id); });
+          sfx('tap');
           render(mode);
         }
         return;
@@ -634,10 +647,10 @@
         const need = G.mullCost(g);
         const keep = bottom => { G.keepOpening(g, bottom); gm.phase = null; gm.bottom.clear(); say(mode, g, `You keep ${g.hand.length} cards${g.mulligans ? ' after ' + g.mulligans + ' mulligan' + (g.mulligans === 1 ? '' : 's') : ''}.`); advance(mode); };
         if (hit('vs-keep')) { if (gm.bottom.size === need) keep(g.hand.filter(i => gm.bottom.has(i.iid))); return; }
-        if (hit('vs-mull')) { G.dealOpening(g, true); gm.bottom.clear(); say(mode, g, 'You take a mulligan.'); return render(mode); }
+        if (hit('vs-mull')) { G.dealOpening(g, true); gm.bottom.clear(); sfx('shuffle'); sfx('deal', 0.35); say(mode, g, 'You take a mulligan.'); return render(mode); }
         if (hit('vs-mull-auto')) { g.library.push(...g.hand); g.hand = []; G.shuffle(g.library, g.rnd); G.mulligan(g); gm.phase = null; gm.bottom.clear(); say(mode, g, `The autopilot keeps ${g.hand.length} cards for you.`); return advance(mode); }
         const c = t.closest('.vs-hand .vs-card');
-        if (c && need) { e.stopPropagation(); const id = +c.dataset.iid; if (gm.bottom.has(id)) gm.bottom.delete(id); else if (gm.bottom.size < need) gm.bottom.add(id); return render(mode); }
+        if (c && need) { e.stopPropagation(); const id = +c.dataset.iid; if (gm.bottom.has(id)) gm.bottom.delete(id); else if (gm.bottom.size < need) gm.bottom.add(id); sfx('tap'); return render(mode); }
         return;
       }
       if (gm.phase === 'block') {

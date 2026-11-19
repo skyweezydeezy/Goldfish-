@@ -4483,7 +4483,7 @@
       if (a.counter && !a.spellFx.some(f => f.type === 'removal')) return -1;
       const fxs = a.spellFx.filter(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage');
       if (fxs.length && a.isInstantSorcery) {
-        const hit = fxs.some(f => f.type === 'removal' ? !!pickRemovalTarget(g, f) : f.type === 'divideDamage' ? g.opp.battlefield.some(q => isCreaturePerm(q) && targetable(g.opp, q) && toughnessOf(g.opp, q) <= f.n && threat(g.opp, g, q) > 2.2) : f.type === 'burnCreature' ? !!burnTarget(g, f.n, true)
+        const hit = fxs.some(f => f.type === 'removal' ? !!pickRemovalTarget(g, f) : f.type === 'divideDamage' ? g.opp.battlefield.some(q => isCreaturePerm(q) && targetable(g.opp, q) && toughnessOf(g.opp, q) <= f.n && threat(g.opp, g, q) > removalBar(g)) : f.type === 'burnCreature' ? !!burnTarget(g, f.n, true)
           : f.type === 'edict' ? g.opp.battlefield.filter(isCreaturePerm).length > 0 && g.opp.battlefield.filter(isCreaturePerm).length <= 2
           : g.opp.battlefield.some(p => isCreaturePerm(p) && targetable(g.opp, p) && threat(g.opp, g, p) > 3.5));
         if (!hit && a.spellFx.every(f => fxs.includes(f))) return -1;
@@ -5355,7 +5355,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -5406,6 +5406,12 @@
     { id: 'wipe', key: 'wipeMargin', label: 'Board wipes: how far ahead the wipe must put you', mirrorOnly: true,
       needs: [{ what: 'a board wipe that weighs both boards', test: a => !!(a.delugeCost || a.spellFx.some(f => f.type === 'sweepDamage')) }],
       options: [{ name: 'Clearly ahead (learned default)', value: '3' }, { name: 'Any gain', value: '1' }, { name: 'Only a big swing', value: '6' }] },
+    { id: 'removal', key: 'removalBar', label: 'Removal: how big a threat must be before you spend removal on it', mirrorOnly: true,
+      needs: [{ what: 'a spell or ability that removes, bounces or burns an opposing creature', test: a => a.spellFx.concat(a.triggers.flatMap(t => t.fx)).some(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || (f.type === 'damage' && f.any)) }],
+      options: [{ name: 'Anything worth more than a small token (default)', value: 'default' }, { name: 'Anything at all, as soon as possible', value: '0.5' }, { name: 'Save it for real threats', value: '4' }, { name: 'Only for the biggest threats', value: '7' }] },
+    { id: 'counterWorth', key: 'counterWorth', label: 'Countering: which spells are worth a counter', mirrorOnly: true,
+      needs: [{ what: 'a counterspell', test: a => !!a.counter }],
+      options: [{ name: 'Mana value 3 or more, or a key card (default)', value: 'default' }, { name: 'Mana value 2 or more', value: 'two' }, { name: 'Also every creature', value: 'creatures' }, { name: 'Also cheap engines (noncreature permanents with triggers)', value: 'engines' }, { name: 'Only commanders, combo pieces and big spells', value: 'big' }] },
     { id: 'attack', key: 'attackCaution', label: 'Attacking when the opponent could kill you next turn', mirrorOnly: true,
       needs: [{ what: 'a creature', test: a => !!a.isCreature }],
       options: [{ name: 'Stay home only when their power covers twice your life (learned default)', value: '0.5' }, { name: 'Stay home when their power covers your life', value: '1' }, { name: 'More careful (1.5x)', value: '1.5' }, { name: 'Very careful (2x)', value: '2' }] },
@@ -6408,8 +6414,9 @@
     return out;
   }
   const MIN_THREAT = 2.2;                                  // do not spend premium removal on a 1/1 token
+  const removalBar = g => { const v = pol(g, 'removalBar'); return v === 'default' ? MIN_THREAT : +v; };        // the Policy lab can lower or raise it
   function pickRemovalTarget(g, f) {
-    let best = null, bs = MIN_THREAT;
+    let best = null, bs = removalBar(g);
     for (const p of removalTargets(g, f)) { const sc = threat(g.opp, g, p); if (sc > bs) { bs = sc; best = p; } }
     return best;
   }
@@ -6430,7 +6437,7 @@
   }
   function doBounce(g, f, source, ev) {
     const d = g.opp;
-    let best = null, bs = MIN_THREAT;
+    let best = null, bs = removalBar(g);
     for (const p of d.battlefield) {
       if (!(f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) || !targetable(d, p) || p.token && false) continue;
       const sc = threat(d, g, p) + (p.token ? 1.5 : 0) - (p.card.a.castMv <= 1 ? 1 : 0);
@@ -6449,7 +6456,7 @@
   function burnTarget(g, n, creatureOnly) {
     const d = g.opp;
     if (!d || (!creatureOnly && d.life <= n)) return null;
-    let best = null, bs = 2.5;
+    let best = null, bs = pol(g, 'removalBar') === 'default' ? 2.5 : +pol(g, 'removalBar');
     for (const p of d.battlefield) {
       if (!isCreaturePerm(p) || !targetable(d, p) || indestructible(d, p) && false) continue;
       if (toughnessOf(d, p) - (p.dmg || 0) > n) continue;
@@ -6474,7 +6481,8 @@
     const d = by || g.opp, a = inst.card.a;
     if (!d || !d.hand.length) return false;
     const big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.statics.tokenRepl.length || a.statics.counterDouble || a.castMv >= 4;
-    const worth = big || a.castMv >= 3;
+    const cw = pol(d, 'counterWorth');                                                                 // the Policy lab: which spells deserve a counterspell
+    const worth = cw === 'big' ? big : cw === 'two' ? (big || a.castMv >= 2) : cw === 'creatures' ? (big || a.castMv >= 3 || a.isCreature) : cw === 'engines' ? (big || a.castMv >= 3 || (!a.isCreature && a.isPermanent && a.triggers.length > 0)) : (big || a.castMv >= 3);
     if (!worth && !d.ask) return false;
     const person = !!d.ask && !g.dry, units = manaUnits(d), ways = [];          // a person sees every counterspell they could use; the autopilot takes the first
     for (const c of d.hand) {

@@ -4468,7 +4468,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '1', keepLands: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.6', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -4491,7 +4491,7 @@
       options: [{ name: "Each card's own default", value: 'current' }, { name: 'Down to 5 life', value: '5' }, { name: 'Down to 10 life', value: '10' }, { name: 'Keep 20 life', value: '20' }] },
     { id: 'pw', key: 'pwLoyalty', label: 'Planeswalkers: building loyalty or using it',
       needs: [{ what: 'a planeswalker with loyalty abilities', test: a => !!(a.isPlaneswalker && (a.pwAbilities || []).length) }],
-      options: [{ name: 'Balanced (best value, loyalty counts a little)', value: '0.6' }, { name: 'Build loyalty (prefer + abilities)', value: '1.5' }, { name: 'Strongly build toward the ultimate', value: '3' }, { name: 'Spend loyalty freely (prefer - abilities)', value: '0.1' }] },
+      options: [{ name: 'Spend loyalty freely, prefer - abilities (learned default)', value: '0.1' }, { name: 'Balanced (loyalty counts a little)', value: '0.6' }, { name: 'Build loyalty (prefer + abilities)', value: '1.5' }, { name: 'Strongly build toward the ultimate', value: '3' }] },
     { id: 'pump', key: 'pumpTiming', label: 'Spells that pump all your creatures until end of turn',
       needs: [{ what: 'a spell that pumps all your creatures', test: a => a.spellFx.some(f => f.type === 'pumpAll') }],
       options: [{ name: 'Wait until the board is built', value: 'wait' }, { name: 'Cast it like any other spell', value: 'now' }, { name: 'Only when it is lethal', value: 'lethal' }] },
@@ -4521,7 +4521,7 @@
       options: [{ name: 'Clearly ahead (learned default)', value: '3' }, { name: 'Any gain', value: '1' }, { name: 'Only a big swing', value: '6' }] },
     { id: 'attack', key: 'attackCaution', label: 'Attacking when the opponent could kill you next turn', mirrorOnly: true,
       needs: [{ what: 'a creature', test: a => !!a.isCreature }],
-      options: [{ name: 'Stay home when their power covers your life', value: '1' }, { name: 'More aggressive (half)', value: '0.5' }, { name: 'More careful (1.5x)', value: '1.5' }, { name: 'Very careful (2x)', value: '2' }] },
+      options: [{ name: 'Stay home only when their power covers twice your life (learned default)', value: '0.5' }, { name: 'Stay home when their power covers your life', value: '1' }, { name: 'More careful (1.5x)', value: '1.5' }, { name: 'Very careful (2x)', value: '2' }] },
   ];
   // Which choices this deck can use, with the cards that make each one apply. Returns [{ ...choice, applies, because: [{ what, cards }], missing: [what] }].
   function labChoices(deck) {

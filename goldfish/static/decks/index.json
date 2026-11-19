@@ -21,20 +21,6 @@
    "colors": "WUBRG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "pwLoyalty": "0.1"
-   },
-   "learned": [
-    {
-     "choice": "Planeswalkers: building loyalty or using it",
-     "picked": "Spend loyalty freely (prefer - abilities)",
-     "z": 2.2,
-     "confirmZ": 3.8,
-     "gain": 1.9,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -57,20 +43,6 @@
    "colors": "WUBRG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "pwLoyalty": "0.1"
-   },
-   "learned": [
-    {
-     "choice": "Planeswalkers: building loyalty or using it",
-     "picked": "Spend loyalty freely (prefer - abilities)",
-     "z": 2.7,
-     "confirmZ": 2.5,
-     "gain": 1.7,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -107,20 +79,6 @@
    "colors": "WUBRG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "pwLoyalty": "0.1"
-   },
-   "learned": [
-    {
-     "choice": "Planeswalkers: building loyalty or using it",
-     "picked": "Spend loyalty freely (prefer - abilities)",
-     "z": 4.7,
-     "confirmZ": 3.3,
-     "gain": 3.1,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -165,20 +123,6 @@
    ],
    "colors": "WUBG",
    "cards": 100,
-   "policy": {
-    "pwLoyalty": "0.1"
-   },
-   "learned": [
-    {
-     "choice": "Planeswalkers: building loyalty or using it",
-     "picked": "Spend loyalty freely (prefer - abilities)",
-     "z": 3.6,
-     "confirmZ": 4.7,
-     "gain": 3.6,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -202,20 +146,6 @@
    "colors": "WUB",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "pwLoyalty": "0.1"
-   },
-   "learned": [
-    {
-     "choice": "Planeswalkers: building loyalty or using it",
-     "picked": "Spend loyalty freely (prefer - abilities)",
-     "z": 2,
-     "confirmZ": 3.2,
-     "gain": 1.5,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -355,20 +285,6 @@
    "colors": "WR",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 3.4,
-     "confirmZ": 3.9,
-     "gain": 2.3,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -381,8 +297,7 @@
    "cards": 100,
    "learnedAt": "2026-11-19",
    "policy": {
-    "tutorFocus": "payoff",
-    "attackCaution": "0.5"
+    "tutorFocus": "payoff"
    },
    "learned": [
     {
@@ -391,15 +306,6 @@
      "z": 3.9,
      "confirmZ": 2.6,
      "gain": 3.6,
-     "games": 600,
-     "against": "35 decks"
-    },
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 2.1,
-     "confirmZ": 2.9,
-     "gain": 1.4,
      "games": 600,
      "against": "35 decks"
     }
@@ -415,20 +321,6 @@
    "colors": "UG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 2.4,
-     "confirmZ": 2.1,
-     "gain": 1.1,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -474,8 +366,7 @@
    "cards": 100,
    "learnedAt": "2026-11-19",
    "policy": {
-    "tutorFocus": "payoff",
-    "attackCaution": "0.5"
+    "tutorFocus": "payoff"
    },
    "learned": [
     {
@@ -484,15 +375,6 @@
      "z": 2.9,
      "confirmZ": 1.9,
      "gain": 2.6,
-     "games": 600,
-     "against": "35 decks"
-    },
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 3.1,
-     "confirmZ": 2.3,
-     "gain": 1.7,
      "games": 600,
      "against": "35 decks"
     }
@@ -534,8 +416,7 @@
    "cards": 100,
    "learnedAt": "2026-11-19",
    "policy": {
-    "commanderTiming": "first",
-    "attackCaution": "0.5"
+    "commanderTiming": "first"
    },
    "learned": [
     {
@@ -544,15 +425,6 @@
      "z": 3.8,
      "confirmZ": 2.6,
      "gain": 3.1,
-     "games": 600,
-     "against": "35 decks"
-    },
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 4.7,
-     "confirmZ": 3.2,
-     "gain": 3.2,
      "games": 600,
      "against": "35 decks"
     }
@@ -568,20 +440,6 @@
    "colors": "G",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 2.6,
-     "confirmZ": 2.4,
-     "gain": 1.5,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -615,20 +473,6 @@
    "colors": "W",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 3,
-     "confirmZ": 2.6,
-     "gain": 1.5,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -638,20 +482,6 @@
    "colors": "W",
    "cards": 60,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 4.1,
-     "confirmZ": 2.2,
-     "gain": 2.6,
-     "games": 600,
-     "against": "mirror"
-    }
-   ],
    "learnedVs": "mirror"
   },
   {
@@ -663,20 +493,6 @@
    "colors": "B",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 2.3,
-     "confirmZ": 2.8,
-     "gain": 1.5,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   },
   {
@@ -688,20 +504,6 @@
    "colors": "",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "policy": {
-    "attackCaution": "0.5"
-   },
-   "learned": [
-    {
-     "choice": "Attacking when the opponent could kill you next turn",
-     "picked": "More aggressive (half)",
-     "z": 2.7,
-     "confirmZ": 2.1,
-     "gain": 1.2,
-     "games": 600,
-     "against": "35 decks"
-    }
-   ],
    "learnedVs": "field"
   }
  ]

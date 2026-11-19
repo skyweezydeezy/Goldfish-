@@ -106,6 +106,22 @@ check('the board wipe choice is for matches only', G.LAB_CHOICES.find(c => c.id 
   check('one opponent in field mode works too', solo.errors === 0 && solo.opponents === 1);
 }
 
+// ---- removal and counterspell thresholds (matches only) ----
+{
+  const bolt = card('Homebrew Bolt', 'Instant', 'Homebrew Bolt deals 3 damage to any target.', { mana_cost: '{R}', cmc: 1, colors: ['R'] });
+  const deny = card('Homebrew Denial', 'Instant', 'Counter target spell.', { mana_cost: '{U}{U}', cmc: 2, colors: ['U'] });
+  check('a burn spell brings in the removal threshold choice; bears do not', applies(tiny([bolt]), 'removal') && !applies(tiny([]), 'removal'));
+  check('a counterspell brings in the "which spells are worth countering" choice', applies(tiny([deny]), 'counterWorth') && !applies(tiny([]), 'counterWorth'));
+  check('both are for matches only', ['removal', 'counterWorth'].every(id => G.LAB_CHOICES.find(c => c.id === id).mirrorOnly === true));
+  const ld = n => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', n + '-loaded.json'), 'utf8'));
+  const me = ld('veyran'), opp = ld('mermaids');
+  for (const id of ['removal', 'counterWorth']) {
+    const ch = G.LAB_CHOICES.find(c => c.id === id);
+    const res = G.comparePolicies(me.cards, me.tokens, Object.assign({}, O, { turns: 14 }), ch.options.map(o => ({ name: o.name, policy: { [ch.key]: o.value } })), 8, 5, 'field', [opp]);
+    check(`every "${ch.label}" option plays a match without errors`, res.errors === 0 && res.rows.length === ch.options.length, res.errors);
+  }
+}
+
 // ---- the lab runs the new choices end to end ----
 {
   const r = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'soul-brokers-loaded.json'), 'utf8'));

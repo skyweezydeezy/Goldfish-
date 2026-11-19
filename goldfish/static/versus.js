@@ -33,8 +33,10 @@
         <div class="vs-info hint"></div>
       </div>
       <div class="vs-game" hidden>
-        <div class="row wrap vs-bar"></div>
-        <div class="vs-arena ${mode}"></div>
+        <div class="vs-screen">
+          <div class="vs-top"><div class="row wrap vs-bar"></div></div>
+          <div class="vs-arena ${mode}"></div>
+        </div>
         <div class="card-box"><div class="box-head"><h2>Game log</h2><span class="hint">Newest at the bottom</span></div><div class="vs-log"></div></div>
       </div>
       <div class="card-box">
@@ -45,7 +47,7 @@
     const q = s => root.querySelector(s);
     st.q = q; st.root = root; st.mode = mode;
     st.nodes = new Map(); st.life = {};
-    q('.vs-game').insertBefore(A.speedBar(), q('.vs-bar'));      // the same 🐢…🐇 speed setting as the Goldfish Table
+    q('.vs-top').appendChild(A.speedBar());                       // the same 🐢…🐇 speed setting as the Goldfish Table
     q('.vs-new').addEventListener('click', () => newGame(mode).catch(e => info(mode, 'Could not start: ' + (e.message || e))));
     q('.vs-run').addEventListener('click', () => runSeries(mode).catch(e => { q('.vs-sinfo').textContent = 'Could not run: ' + (e.message || e); q('.vs-run').disabled = false; }));
     fill(mode);
@@ -120,7 +122,7 @@
   }
   function computerTurn(mode, g) {
     const gm = V[mode].game, ev = G.podTurn(g, null);
-    say(mode, g, G.turnSummary(g, ev).join('; ') || 'nothing happens');
+    say(mode, g, sum(g, ev).join('; ') || 'nothing happens');
   }
   // A computer player's turn while a person is in the game. If it attacks the person and they have a creature that could block, the turn
   // stops after the attackers are known and waits for the blocks (returns true).
@@ -132,13 +134,13 @@
       if (!finished(gm) && pv.attackers.length && me.battlefield.some(b => pv.attackers.some(a => G.canBlock(g, a, me, b)))) {
         g.forceAttackers = pv.attackers.map(p => p.iid);
         gm.phase = 'block'; gm.block = { g, attackers: pv.attackers, sug: G.chooseBlocks(me, g, pv.attackers) };
-        const t = G.turnSummary(g, pre); if (t.length) say(mode, g, t.join('; '));
+        const t = sum(g, pre); if (t.length) say(mode, g, t.join('; '));
         say(mode, g, `attacks you with ${pv.attackers.map(p => p.card.name).join(', ')}. Choose your blocks.`);
         return true;
       }
     }
     const ev = pre.concat(G.podTurnPost(g));
-    say(mode, g, G.turnSummary(g, ev).join('; ') || 'nothing happens');
+    say(mode, g, sum(g, ev).join('; ') || 'nothing happens');
     return false;
   }
   function confirmBlocks(mode, map) {
@@ -146,7 +148,7 @@
     me.forcedBlocks = map;
     let ev; try { ev = G.podTurnPost(g); } finally { g.forceAttackers = null; me.forcedBlocks = null; }
     gm.phase = null; gm.block = null;
-    say(mode, g, G.turnSummary(g, ev).filter(t => !/^attacks /.test(t)).join('; ') || 'no damage');
+    say(mode, g, sum(g, ev).filter(t => !/^attacks /.test(t)).join('; ') || 'no damage');
     step(gm); render(mode); advance(mode);
   }
   // run computer seats until it is the human's turn (or one turn at a time when everything is on autopilot).
@@ -187,11 +189,11 @@
     const ev = G.beginTurn(g);
     gm.phase = 'main'; gm.attacked = false; gm.picking = null;
     const drew = ev.filter(e => e.type === 'draw').map(e => e.inst.card.name);
-    say(mode, g, 'Your turn.' + (drew.length ? ' You drew ' + drew.join(', ') + '.' : '') + (G.turnSummary(g, ev).length ? ' ' + G.turnSummary(g, ev).join('; ') : ''));
+    say(mode, g, 'Your turn.' + (drew.length ? ' You drew ' + drew.join(', ') + '.' : '') + (sum(g, ev).length ? ' ' + sum(g, ev).join('; ') : ''));
   }
   function humanDone(mode, ev) {                              // after any action of yours: log it, check for the end of the game
     const gm = V[mode].game, g = gm.games[gm.human];
-    const t = G.turnSummary(g, ev || []);
+    const t = sum(g, ev || []);
     if (t.length) say(mode, g, t.join('; '));
     if (finished(gm)) { gm.phase = null; if (!gm.said) { gm.said = true; say(mode, null, '🏁 ' + gm.over); } }
     render(mode);
@@ -272,18 +274,29 @@
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
     return e;
   }
+  // The card exiled with a permanent by imprint (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) is drawn tucked behind that
+  // permanent, labelled, and opens like any card. app.js knows which card it is (imprintOf) and reads the engine's notes (noteImprints).
+  const { imprintOf, noteImprints } = A;
+  const sum = (g, ev) => { noteImprints(g, ev); return G.turnSummary(g, ev); };
   // identical lands and tokens in the same state share a stack (up to three pictures and a ×N count)
   function stacks(st, gm, g, perms) {
     const picking = !!gm.picking && gm.human === g.pid, groups = new Map();
     perms.forEach(p => {
-      const cre = G.isCreaturePerm(p);
-      const k = (p.asLand || p.token) ? [p.card.uid, p.card.name, p.tapped ? 1 : 0, p.mdfc ? 1 : 0, cre ? pt(g, p) + (p.sick ? 's' : '') + (p.counters || 0) : '',
+      const cre = G.isCreaturePerm(p), im = imprintOf(p);
+      const k = (p.asLand || p.token) && !im ? [p.card.uid, p.card.name, p.tapped ? 1 : 0, p.mdfc ? 1 : 0, cre ? pt(g, p) + (p.sick ? 's' : '') + (p.counters || 0) : '',
         attacking(gm, g, p) ? 'a' : '', picking && cre ? (G.canAttack(g, p) ? (gm.pick.has(p.iid) ? 'P' : 'c') : 'n') : ''].join('|') : 'solo' + p.iid;
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(p);
     });
     return [...groups.values()].map(ps => {
       const s = h('div', 'vs-stack' + (ps.length > 1 ? ' many' : ''));
+      const im = ps.length === 1 ? imprintOf(ps[0]) : null;
+      if (im) {                                               // the imprinted card peeks out from behind its permanent
+        const e = node(st, `i${g.pid}:${im.iid}`, im.card);
+        e.classList.add('vs-imp'); e.appendChild(h('span', 'tag', 'Imprint'));
+        e.title = `${im.card.name}: imprinted on ${ps[0].card.name}`;
+        s.classList.add('imprint'); s.appendChild(e);
+      }
       ps.slice(0, 3).forEach(p => s.appendChild(permEl(st, gm, g, p)));
       if (ps.length > 1) s.appendChild(h('span', 'vs-cnt', '×' + ps.length));
       if (picking) {
@@ -397,8 +410,8 @@
           <button class="primary vs-attack-go">Attack</button><button class="ghost vs-attack-all">All</button><button class="ghost vs-attack-none">None</button><button class="ghost vs-attack-cancel">Cancel</button></div>`;
     }
     const units = G.allUnits(g).length;
-    return `<div class="vs-ask"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : 'Waiting for the other players…')}</span></div>
-      ${mine ? `<div class="row wrap"><button class="vs-abil">Use abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn">Autopilot the rest of my turn</button></div>` : ''}`;
+    return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : 'Waiting for the other players…')}</span></div>
+      ${mine ? `<div class="row wrap"><button class="vs-abil"><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
   function handEl(st, gm, g) {
@@ -426,10 +439,10 @@
     if (g.dead) board.appendChild(h('div', 'vs-gone', 'Out of the game')); else board.append(fieldEl(st, gm, g, mine), pilesEl(st, gm, g, mine));
     const plate = plateEl(st, gm, g, mine);
     if (!mine) return seat.replaceChildren(plate, board);
-    const parts = [board, plate];
-    if (gm.human === g.pid) parts.push(h('div', 'vs-me', ctlHtml(mode, gm)));
-    if (!g.dead) parts.push(handEl(st, gm, g));
-    seat.replaceChildren(...parts);
+    const foot = h('div', 'vs-foot');
+    if (gm.human === g.pid) foot.appendChild(h('div', 'vs-me', ctlHtml(mode, gm)));
+    if (!g.dead) foot.appendChild(handEl(st, gm, g));
+    seat.replaceChildren(board, plate, foot);
   }
   function render(mode) {
     const st = V[mode], gm = st.game, q = st.q; if (!gm) return;

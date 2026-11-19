@@ -56,6 +56,8 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | spellslinger | Veyran deck: magecraft, Niv-Mizzet + Curiosity, X spells, extra turns, card selection, copying, flashback, free/pitch counterspells |
 | interaction | Mirror match: removal, exile, bounce, burn, edicts, sweepers, counterspells, holding mana |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
+| ui/versus-fit | 1v1 and Pod on a PC, an iPad and an iPhone: the whole table fits the screen; every permanent and pile of every player, your hand and your buttons are inside it |
+| ui/imprint | The imprinted card is shown with its permanent: Isochron Scepter and Chrome Mox on the Goldfish Table (real casts), Isochron Scepter on the 1v1 table; clicking it opens the card |
 | ui/versus | Tabs 6 (1v1) and 7 (Pod): a played game (mulligan and bottom, land, attack chooser, block chooser, end turn, autopilot the rest), an all-autopilot game, the many-games runner and sample logs (browser test); the Arena-style table (every permanent a card picture, piles in order, card backs for hidden hands, card viewer on an opponent's card) and the shared speed slider pacing Play / Pause; a random playmat-and-sleeves set for every player (all different, your own pick on your seat) |
 | ui/looks | Playmat and sleeve picker (browser test) |
 | ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer (browser test) |

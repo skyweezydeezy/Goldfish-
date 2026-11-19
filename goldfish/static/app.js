@@ -760,6 +760,7 @@
 
   const nm = p => esc(p && p.card ? p.card.name : 'Spell');
   function describe(ev) {
+    noteImprints(S.game, ev);                               // remember which card a Chrome Mox exiled
     // With token doublers one effect can make dozens of tokens and fire the same trigger dozens of times:
     // group those into one log line ("created 8 × Soldier", "⚡ Belladonna Took ×8") instead of one line each.
     const items = [], seen = new Map();
@@ -850,7 +851,9 @@
 
   // ---- interactions ----
   $('.table').addEventListener('click', e => {
-    const m = e.target.closest('.mtg'); if (!m || S.busy || !S.game || m.dataset.iid == null) return;
+    const m = e.target.closest('.mtg');
+    if (m && m.classList.contains('imprinted-card')) { e.stopPropagation(); return showLightbox(cardOf(m), m); }   // the card imprinted on a permanent: just read it
+    if (!m || S.busy || !S.game || m.dataset.iid == null) return;
     // touch screens: a tap opens the card's menu (play / tap first), so nothing happens by accident
     // a click or tap opens the card's menu (play / tap first, View card for prices and shops), the same on PC and phone.
     // On a PC, Ctrl/⌘-click plays or taps at once, and Shift-click casts ignoring mana, as before.
@@ -1175,6 +1178,27 @@
     if (!e) { e = cardEl(card, { iid, face, eager: true }); elCache.set(key, e); }
     return e;
   }
+  // The card exiled with a permanent by imprint. Isochron Scepter and Ugin's Labyrinth: the engine keeps it on the permanent.
+  // Chrome Mox: the engine only says so in a note, so the note is read here (noteImprints) and remembered per permanent.
+  const moxImprint = new WeakMap();
+  function noteImprints(g, ev) {
+    (ev || []).forEach(e => {
+      const m = e && e.type === 'note' && e.source && /^Imprint: exiled (.+) \(Chrome Mox/.exec(e.text || ''); if (!m || !g) return;
+      const inst = (g.exile || []).slice().reverse().find(i => i.card.name === m[1]);
+      if (inst) moxImprint.set(e.source, inst);
+    });
+  }
+  const imprintOf = p => (p && (p.imprinted || moxImprint.get(p))) || null;
+  // its picture on the Goldfish Table: tucked behind the permanent, labelled; a click opens it in the card viewer
+  function imprintEl(p, used) {
+    const im = imprintOf(p), key = 'imp:' + im.iid + ':' + im.card.uid;
+    used.add(key);
+    let e = elCache.get(key);
+    if (!e) { e = cardEl(im.card, { eager: true }); elCache.set(key, e); }
+    clearState(e);
+    e.classList.add('imprinted-card'); e.appendChild(h('span', 'tag', 'Imprint')); e.title = `${im.card.name}: imprinted on ${p.card.name}`;
+    return e;
+  }
   function clearState(e) {
     e.style.marginLeft = ''; e.style.marginRight = '';
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
@@ -1196,13 +1220,14 @@
       // stack identical permanents (lands, and tokens in the same state) so big boards stay readable
       const groups = new Map();
       list.forEach(p => {
-        const stackable = id === 'zLands' || p.token;
-        const k = stackable ? p.card.uid + '|' + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : '') + '|' + (p.sick ? 's' : '') + '|' + (p.counters || 0) : 'solo' + p.iid;
+        const stackable = (id === 'zLands' || p.token) && !imprintOf(p);
+        const k = stackable ?p.card.uid + '|' + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : '') + '|' + (p.sick ? 's' : '') + '|' + (p.counters || 0) : 'solo' + p.iid;
         if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p);
       });
       const nodes = [label];
       for (const ps of groups.values()) {
         const sg = h('div', 'stackgroup');
+        if (ps.length === 1 && imprintOf(ps[0])) { sg.classList.add('imprint'); sg.appendChild(imprintEl(ps[0], used)); }
         (ps.length > 4 ? ps.slice(0, 4) : ps).forEach(p => sg.appendChild(permEl(p, used)));   // a big stack shows 4 cards and a count, not 100 images
         if (ps.length > 4) sg.appendChild(h('span', 'stack-count', '×' + ps.length));
         nodes.push(sg);
@@ -1914,5 +1939,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, viewCard: showLightbox, slow, speedBar, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, viewCard: showLightbox, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

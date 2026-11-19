@@ -3,6 +3,7 @@
 //   node tools/fetch-sets.js cmm c21          fetch these whole sets from Scryfall (Scryfall set codes)
 //   node tools/fetch-sets.js --import-decks   add every card of the decks in tests/fixtures/*-loaded.json to the database
 //   node tools/fetch-sets.js --top 1000       file the 1,000 most played Commander cards (Scryfall's EDHREC rank) and list them in data/top-cards.json
+//   node tools/fetch-sets.js --query "t:saga"  file every card matching a Scryfall search
 //   node tools/fetch-sets.js --report         re-check every card with the current engine and rebuild the index and the table
 // Where Node's fetch needs the proxy:  NODE_USE_ENV_PROXY=1 node tools/fetch-sets.js ...
 //
@@ -127,6 +128,21 @@ async function fetchTop(n) {
   fs.writeFileSync(path.join(DIR, '..', 'top-cards.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: "Scryfall's edhrec_rank (EDHREC popularity, 1 = most played)", cards: list }));
   return list.length;
 }
+// file every card that matches a Scryfall search (for example --query "t:saga"), each under the set of its first printing
+async function fetchQuery(q) {
+  let url = `${API}/cards/search?q=${encodeURIComponent(q + ' game:paper -t:token')}&unique=cards&order=released&dir=asc`; let n = 0;
+  while (url) {
+    const page = await get(url); if (!page) break;
+    for (const c of page.data) {
+      if (c.layout === 'token' || c.layout === 'art_series') continue;
+      const key = 'first:' + c.name; if (cache[key] === undefined && !c.reprint) cache[key] = c;
+      const first = c.reprint ? await firstPrinting(c.name) : c; const code = (first && first.set) || c.set; const set = await ensureSet(code);
+      if (!hasFull(set, c.name)) { const e = slimCard(first || c); e.cov = coverage(e); put(set, e); } n++;
+    }
+    url = page.has_more ? page.next_page : null;
+  }
+  saveCache(); return n;
+}
 async function importDecks() {
   const dir = path.join(ROOT, 'tests', 'fixtures');
   const seen = new Set(); let n = 0;
@@ -198,10 +214,11 @@ function rebuild() {
   fs.mkdirSync(DIR, { recursive: true });
   const args = process.argv.slice(2);
   for (const f of fs.readdirSync(DIR)) if (/^[a-z0-9]+\.json$/.test(f) && f !== 'index.json') loadSet(f.replace('.json', ''));
-  for (const code of args.filter((a, i) => !a.startsWith('--') && !/^\d+$/.test(a))) {
+  for (const code of args.filter((a, i) => !a.startsWith('--') && !/^\d+$/.test(a) && args[i - 1] !== '--query')) {
     try { const s = await fetchSet(code.toLowerCase()); console.log('fetched', s.code, s.name, s.cards.length, 'cards,', s.cards.filter(c => c.ref).length, 'reprints'); }
     catch (e) { console.log('FAILED', code, e.message); }
   }
+  const qi = args.indexOf('--query'); if (qi >= 0) console.log('filed', await fetchQuery(args[qi + 1]), 'cards for the query', args[qi + 1]);
   const ti = args.indexOf('--top'); if (ti >= 0) console.log('filed the top', await fetchTop(+args[ti + 1] || 1000), 'cards');
   if (args.includes('--import-decks')) console.log('imported', await importDecks(), 'deck cards');
   saveCache();

@@ -130,7 +130,8 @@
    ],
    "colors": "WUBG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "compound-interest.txt",
@@ -188,7 +189,8 @@
    ],
    "colors": "UBR",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "nights-curfew.txt",
@@ -245,7 +247,8 @@
    ],
    "colors": "UBR",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "second-breakfast.txt",

@@ -2,6 +2,7 @@
 //
 //   node tools/fetch-sets.js cmm c21          fetch these whole sets from Scryfall (Scryfall set codes)
 //   node tools/fetch-sets.js --import-decks   add every card of the decks in tests/fixtures/*-loaded.json to the database
+//   node tools/fetch-sets.js --import-builtin [cacheDir]   add every card of the built-in decks (goldfish/static/decks)
 //   node tools/fetch-sets.js --top 1000       file the 1,000 most played Commander cards (Scryfall's EDHREC rank) and list them in data/top-cards.json
 //   node tools/fetch-sets.js --query "t:saga"  file every card matching a Scryfall search
 //   node tools/fetch-sets.js --report         re-check every card with the current engine and rebuild the index and the table
@@ -143,11 +144,25 @@ async function fetchQuery(q) {
   }
   saveCache(); return n;
 }
-async function importDecks() {
+// The built-in decks (goldfish/static/decks): each deck's cards, from a cache folder of loaded decks when there is one, else from Scryfall.
+async function builtinDecks(cacheDir) {
+  const dir = path.join(ROOT, 'goldfish', 'static', 'decks'), out = [];
+  const index = JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8'));
+  await Source.init();
+  for (const d of index.decks) {
+    const cf = cacheDir && path.join(cacheDir, d.file.replace(/\.txt$/, '.json'));
+    if (cf && fs.existsSync(cf)) { out.push(JSON.parse(fs.readFileSync(cf, 'utf8'))); continue; }
+    const r = await Source.loadDeck(fs.readFileSync(path.join(dir, d.file), 'utf8'), () => {});
+    if (cf) { fs.mkdirSync(cacheDir, { recursive: true }); fs.writeFileSync(cf, JSON.stringify({ cards: r.cards, tokens: r.tokens || [] })); }
+    out.push({ cards: r.cards });
+  }
+  return out;
+}
+async function importDecks(decks) {
   const dir = path.join(ROOT, 'tests', 'fixtures');
   const seen = new Set(); let n = 0;
-  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('-loaded.json'))) {
-    const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+  for (const j of decks || fs.readdirSync(dir).filter(f => f.endsWith('-loaded.json')).map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))) {
+    {
     for (const c of j.cards) {
       if (seen.has(c.name)) continue; seen.add(c.name);
       // is it in the database already (as a full record or a pointer)?
@@ -159,7 +174,9 @@ async function importDecks() {
       const e = first ? slimCard(first) : Object.assign({}, c, { rarity: undefined }); delete e.images; delete e.qty; delete e.commander; delete e.input_name;
       e.cov = coverage(e); put(s, e); n++;
       // the printing the deck used, if it is a different set: a pointer there
+      if (n % 50 === 0) saveCache();
       if (c.set && c.set !== code) { const ps = await ensureSet(c.set); put(ps, pointer(slimCard(Object.assign({}, c, { rarity: undefined, set: c.set, collector_number: c.cn, id: c.id, images: undefined, card_faces: undefined, oracle_text: c.oracle_text })), code)); }
+    }
     }
   }
   saveCache();
@@ -214,13 +231,14 @@ function rebuild() {
   fs.mkdirSync(DIR, { recursive: true });
   const args = process.argv.slice(2);
   for (const f of fs.readdirSync(DIR)) if (/^[a-z0-9]+\.json$/.test(f) && f !== 'index.json') loadSet(f.replace('.json', ''));
-  for (const code of args.filter((a, i) => !a.startsWith('--') && !/^\d+$/.test(a) && args[i - 1] !== '--query')) {
+  for (const code of args.filter((a, i) => !a.startsWith('--') && !/^\d+$/.test(a) && args[i - 1] !== '--query' && args[i - 1] !== '--import-builtin')) {
     try { const s = await fetchSet(code.toLowerCase()); console.log('fetched', s.code, s.name, s.cards.length, 'cards,', s.cards.filter(c => c.ref).length, 'reprints'); }
     catch (e) { console.log('FAILED', code, e.message); }
   }
   const qi = args.indexOf('--query'); if (qi >= 0) console.log('filed', await fetchQuery(args[qi + 1]), 'cards for the query', args[qi + 1]);
   const ti = args.indexOf('--top'); if (ti >= 0) console.log('filed the top', await fetchTop(+args[ti + 1] || 1000), 'cards');
   if (args.includes('--import-decks')) console.log('imported', await importDecks(), 'deck cards');
+  const bi = args.indexOf('--import-builtin'); if (bi >= 0) console.log('imported', await importDecks(await builtinDecks(args[bi + 1] && !args[bi + 1].startsWith('--') ? args[bi + 1] : null)), 'cards of the built-in decks');
   saveCache();
   const idx = rebuild();
   idx.forEach(s => console.log(s.code.padEnd(5), s.name.slice(0, 44).padEnd(44), String(s.cards).padStart(4), `orig ${s.originals} re ${s.reprints}`, s.partial ? 'partial' : ''));

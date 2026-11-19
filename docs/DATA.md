@@ -103,3 +103,4 @@ This changes what the app is:
 |---|---|---|
 | 2026-11-17 | Build tier A first, on the device only | It uses numbers the simulation already makes and keeps the "nothing is uploaded" promise. |
 | 2026-11-17 | Card impact runs in every match mode (mirror or a saved deck), not the solo goldfish | A known opponent gives win rates, which say more than goldfish speed. |
+| 2026-11-19 | Built-in decks learn their lab choices against the field of other built-in decks, not the goldfish, and a winner must hold up on fresh games | Goldfish-learned choices barely moved win rates against real decks (within 1 point), and one (Court of Ruin's 3-5 land keep) made the deck worse. |

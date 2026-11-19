@@ -53,6 +53,15 @@ check('the board wipe choice is for matches only', G.LAB_CHOICES.find(c => c.id 
   check('"down to 5": still pays at 8 life, not at 6', !enters('5', 8).tapped && enters('5', 6).tapped);
 }
 
+{
+  const fetch = card('Homebrew Foothills', 'Land', '{T}, Pay 1 life, Sacrifice Homebrew Foothills: Search your library for a Forest card, put it onto the battlefield, then shuffle.', { mana_cost: '', cmc: 0, colors: [] });
+  const deck = G.buildDeck(forest(30).concat([fetch]), []);
+  check('a fetch land that costs life brings in the life floor choice', applies(deck, 'life'), deck.unique.find(c => c.name === 'Homebrew Foothills').a.fetchSpec && deck.unique.find(c => c.name === 'Homebrew Foothills').a.fetchSpec.life);
+  const crack = (floor, life) => { const g = G.newGame(deck, withPol({ lifeFloor: floor }), 6); g.life = life; const inst = g.library.find(i => i.card.name === 'Homebrew Foothills'); g.library.splice(g.library.indexOf(inst), 1); const p = G.enter(g, inst, {}); const np = G.crackFetch(g, p, []); return { cracked: !!np, life: g.life }; };
+  check('default: a fetch land cracks at 3 life', crack('current', 3).cracked && crack('current', 3).life === 2);
+  check('"down to 5": the fetch land stays uncracked at 5 life, cracks at 6', !crack('5', 5).cracked && crack('5', 5).life === 5 && crack('5', 6).cracked);
+}
+
 // ---- planeswalker loyalty ----
 {
   const deck = G.buildDeck(forest(30).concat([walker]), []);
@@ -83,6 +92,18 @@ check('the board wipe choice is for matches only', G.LAB_CHOICES.find(c => c.id 
   const pick = tf => { const g = G.newGame(deck, withPol({ tutorFocus: tf }), 5); g.turn = 4; g.library.filter(i => i.card.a.isLand).slice(0, 4).forEach(i => G.enter(g, i, {})); return G.bestTutorTarget(g, { filters: [] }).inst.card.name; };
   check('"mana first" fetches the mana rock', pick('mana') === 'Homebrew Rock', pick('mana'));
   check('"the biggest payoff" fetches the fatty', pick('payoff') === 'Homebrew Titan', pick('payoff'));
+}
+
+// ---- field mode: the lab against a rotation of real opponents ----
+{
+  const ld = n => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', n + '-loaded.json'), 'utf8'));
+  const me = ld('soul-brokers'), opps = ['frodo', 'zul-ashur', 'veyran'].map(ld);
+  const cands = [{ name: 'Default', policy: {} }, { name: 'Same again', policy: {} }];
+  const res = G.comparePolicies(me.cards, me.tokens, Object.assign({}, O, { turns: 14 }), cands, 12, 3, 'field', opps);
+  check('field mode plays the opponents in rotation without errors', res.errors === 0 && res.opponents === 3 && res.mode === 'field', res.errors + ' errors, ' + res.opponents + ' opponents');
+  check('field mode is paired: the same option twice scores exactly the same', res.rows[1].diff === 0 && res.rows[0].mean === res.rows[1].mean, res.rows.map(r => r.mean.toFixed(2)).join(' / '));
+  const solo = G.comparePolicies(me.cards, me.tokens, Object.assign({}, O, { turns: 14 }), cands.slice(0, 1), 3, 3, 'field', opps.slice(0, 1));
+  check('one opponent in field mode works too', solo.errors === 0 && solo.opponents === 1);
 }
 
 // ---- the lab runs the new choices end to end ----

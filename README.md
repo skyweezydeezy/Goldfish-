@@ -127,6 +127,8 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 
 **Playmat & sleeves:** the 🎨 button on the Goldfish Table and Opening Hands tabs picks a playmat (or your own image) and a sleeve colour. It is saved in your browser. Card images are never covered: sleeves only colour the card edge and the card backs. To add a design, add an entry to the list at the top of `goldfish/static/looks.js` (it can take an image file and a shop link for a licensed partner).
 
+**Music and sound effects:** the 🔊 button (top bar, and on the Goldfish Table, 1v1 and Pod toolbars) opens the Sound panel: background music on or off with its own volume and a choice of three calm tracks, sound effects on or off with their own volume, and one button to turn everything off. Effects play for dealing and shuffling, lands, spells, triggers, tokens, counters, life gain, attacks, damage, a new turn, undo, a move that is not allowed, and winning or losing. Nothing is a recording: the music and every effect are made in the browser by `goldfish/static/audio.js` (Web Audio), so there are no audio files, nothing to license or credit, and it works offline. Sound starts after your first tap or key press (browsers require that), stops while the app is in the background, and stays silent when a 1v1 or Pod game is played straight to the end. The setting is saved in this browser.
+
 **Manual tools** on the Goldfish Table handle anything the engine doesn't:
 - **+ Token** creates any token, including the ones your deck makes.
 - Right-click a card to add or remove +1/+1 counters, change loyalty, sacrifice it, toggle summoning sickness, attach it, or move it between zones.

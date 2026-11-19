@@ -2185,7 +2185,7 @@
     if (amount > 0 && g.depth > 18 && g.killTurn == null) {
       // A trigger loop that keeps feeding itself with a non-zero amount (Exquisite Blood + Sanguine Bond) never ends: the goldfish is drained.
       ev.push({ type: 'note', text: `Infinite loop (${source ? source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null });
-      g.damage = Math.max(g.damage, g.opts.oppLife); if (g.opp) g.opp.life = 0; g.infinite = true; checkKill(g, ev);
+      g.damage = Math.max(g.damage, g.opts.oppLife); if (g.opp) (isPod(g) ? podAlive(g) : [g.opp]).forEach(o => { o.life = 0; }); g.infinite = true; checkKill(g, ev);
     } else if (g.depth <= 25) {
       const prevThat = g.thatMuch; g.thatMuch = amount;
       let fx = trig.fx;
@@ -2203,17 +2203,54 @@
   }
 
   // ---- mirror match links (g.opp is the other player's game; goldfish games have none) ----
-  function matchOver(g) { return !!(g.match && g.match.winner != null); }
+  function matchOver(g) { return !!(g.match && (g.match.winner != null || g.dead)); }
+  // ---- pods: more than two players (also used for a played 1v1 game). Each player has one focused opponent (g.opp): the one it attacks
+  // this turn and the one whose blockers, counterspells and removal it meets. Non-combat damage and life loss hit every opponent.
+  const isPod = g => !!(g.match && g.match.pod);
+  function podAlive(g) { return g.match.players.filter(x => !x.dead && x !== g); }
+  function threatOf(o) { return o.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(o, q)), 0) + o.hand.length * 0.6 + o.battlefield.filter(q => q.produce).length * 0.4; }
+  function pickTarget(g) {                                                                                 // the biggest threat, leaning towards a player who is nearly out
+    const os = podAlive(g); if (!os.length) return null;
+    const mine = g.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
+    const score = o => threatOf(o) + (40 - Math.min(40, o.life)) * 0.25 + (o.life <= mine ? 30 : 0) - o.pid * 0.001;
+    return os.sort((x, y) => score(y) - score(x))[0];
+  }
+  function eliminate(x, by, ev, why) {
+    const m = x.match; if (!m || x.dead || m.winner != null) return;
+    x.dead = true; m.out.push({ pid: x.pid, by: by ? by.pid : null, why, round: m.round || 0 });
+    (ev || []).push({ type: 'note', text: `☠ ${m.names[x.pid]} is out of the game (${why === 'life' ? 'life total' : why === 'commander' ? 'commander damage' : why === 'empty' ? 'no cards left' : why})`, out: x.pid });
+    const left = m.players.filter(q => !q.dead);
+    if (left.length <= 1) { const w = left[0] || by || x; m.winner = w.pid; m.reason = why; m.turn = w.turn; w.killTurn = w.turn; (ev || []).push({ type: 'kill', cmdr: why === 'commander', mirror: true }); return; }
+    for (const q of left) if (q.opp === x) q.opp = pickTarget(q);
+  }
+  function loseGame(g, ev, why) { if (isPod(g)) eliminate(g, g.opp, ev, why); else if (g.opp) setWinner(g.opp, ev || [], why); }          // this player loses (life, Pact of Negation)
+  function linkPod(games, names) {
+    const m = { winner: null, reason: null, turn: null, pod: true, players: games, out: [], round: 0, names: names || games.map((x, i) => 'Player ' + (i + 1)) };
+    games.forEach((x, i) => { x.pid = i; x.match = m; x.dead = false; });
+    games.forEach(x => { x.opp = pickTarget(x); });
+    return m;
+  }
+  function podFocus(g, target) { const t = target && !target.dead && target !== g ? target : pickTarget(g); if (t) { g.opp = t; t.opp = g; } return t; }          // the attacked player answers this player for the turn
   function setWinner(g, ev, why) {
     if (!g.match || g.match.winner != null) return;
+    if (g.match.pod) {
+      if (why === 'life' || why === 'commander') { if (g.opp) eliminate(g.opp, g, ev, why); }
+      else { for (const o of podAlive(g)) { o.dead = true; g.match.out.push({ pid: o.pid, by: g.pid, why, round: g.match.round || 0 }); } g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: false, mirror: true }); }
+      return;
+    }
     g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn;
     ev.push({ type: 'kill', cmdr: why === 'commander', mirror: true });
   }
-  function checkDeath(g, ev) { if (g.opp && g.life <= 0) setWinner(g.opp, ev || [], 'life'); }          // you lost your last life point: the other player wins
+  function checkDeath(g, ev) { if (g.opp && g.life <= 0) loseGame(g, ev || [], 'life'); }          // you lost your last life point: the other player wins
   function oppLifeLeft(g) { return g.opp ? g.opp.life : g.opts.oppLife - g.damage; }
-  function dealToOpp(g, n) { const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm; g.oppLostTurn = (g.oppLostTurn || 0) + n; g.damage += n; if (g.opp) g.opp.life -= n; }          // Bloodletter of Aclazotz, Fiery Emancipation
+  function dealToOpp(g, n, combat) { const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm; g.oppLostTurn = (g.oppLostTurn || 0) + n; g.damage += n; if (g.opp) { if (isPod(g) && !combat) podAlive(g).forEach(o => { o.life -= n; }); else g.opp.life -= n; } }          // Bloodletter of Aclazotz, Fiery Emancipation
   function checkKill(g, ev) {
     if (g.killTurn != null) return;
+    if (isPod(g)) {                                                                                       // a pod: anyone at 0 life is out; commander damage counts per player
+      for (const o of podAlive(g)) if (o.life <= 0) eliminate(o, g, ev, 'life');
+      if (g.opp && !g.opp.dead && g.opts.cmdrDamage !== false && Object.keys(g.cmdrDamage).some(k => k.endsWith('>' + g.opp.pid) && g.cmdrDamage[k] >= 21)) eliminate(g.opp, g, ev, 'commander');
+      return;
+    }
     if (g.opp) {
       const ck = g.opts.cmdrDamage !== false && Object.values(g.cmdrDamage).some(v => v >= 21);
       if (g.opp.life <= 0) setWinner(g, ev, 'life'); else if (ck) setWinner(g, ev, 'commander');
@@ -4775,7 +4812,7 @@
     if (g.pactDue) {                                                                                      // Pact of Negation: pay {3}{U}{U} this upkeep or lose
       g.pactDue = false;
       const pc = { generic: 3, pips: [['U'], ['U']], x: 0 };
-      if (canPay(pc, allUnits(g))) { pay(g, pc); ev.push({ type: 'note', text: 'Paid for Pact of Negation' }); } else if (g.opp) setWinner(g.opp, ev, 'pact');
+      if (canPay(pc, allUnits(g))) { pay(g, pc); ev.push({ type: 'note', text: 'Paid for Pact of Negation' }); } else if (g.opp) loseGame(g, ev, 'pact');
     }
     for (const p of g.battlefield.slice()) if (p.echoDue != null && p.echoDue < g.turn && !g.dry) { p.echoDue = null; if (canPay(p.card.a.echo, allUnits(g))) { pay(g, p.card.a.echo); ev.push({ type: 'note', text: `Paid echo for ${p.card.name}`, source: p }); } else { leavePerm(g, p, ev); ev.push({ type: 'note', text: `${p.card.name} is sacrificed (echo)`, source: p }); } }
     lockUpkeep(g, ev);
@@ -4844,7 +4881,8 @@
         if (sum >= v.card.a.crew && vp > lost && v.enteredTurn < g.turn) { pick.forEach(c => { c.tapped = true; }); v.animated = { p: vp, t: +v.card.toughness || 0, kw: [...(v.card.a.kw || [])] }; v.sick = false; touch(g); ev.push({ type: 'note', text: `${v.card.name} is crewed by ${pick.map(c => c.card.name).join(', ')}`, source: v }); }
       }
       let attackers = g.battlefield.filter(p => canAttack(g, p));
-      if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
+      if (g.forceAttackers) attackers = attackers.filter(p => g.forceAttackers.includes(p.iid));          // a human chose the attackers
+      else if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
       if (!attackers.length) break;
       attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) p.tapped = true; p.attacking = true; p.attackedTurn = g.turn; });
       ev.push({ type: 'declare', attackers });
@@ -4883,10 +4921,10 @@
         if (pw <= 0) continue;
         dmg += pw; hitters.push(p);
         g.combatNames = Object.assign({}, g.combatNames, { [p.card.name]: true });          // "each opponent dealt combat damage this game by a creature named Gollum"
-        if (p.card.commander) g.cmdrDamage[p.iid] = (g.cmdrDamage[p.iid] || 0) + pw;
+        if (p.card.commander) { const ck = isPod(g) ? p.iid + '>' + g.opp.pid : p.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + pw; }
       }
       if (dmg) {
-        dealToOpp(g, dmg);
+        dealToOpp(g, dmg, true);
         ev.push({ type: 'attack', attackers: hitters, dmg, total: g.damage });
         checkKill(g, ev);
         oppLostLife(g, dmg, ev);                                         // Exquisite Blood: combat damage is life loss too
@@ -5311,7 +5349,7 @@
         if (m.to === 'player') {
           dmg += m.n; if (!hitters.includes(m.from)) hitters.push(m.from);
           g.combatNames = Object.assign({}, g.combatNames, { [m.from.card.name]: true });
-          if (m.from.card.commander) g.cmdrDamage[m.from.iid] = (g.cmdrDamage[m.from.iid] || 0) + m.n;
+          if (m.from.card.commander) { const ck = isPod(g) ? m.from.iid + '>' + d.pid : m.from.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + m.n; }
         } else { m.to.dmg = (m.to.dmg || 0) + m.n; if (deathtouch(m.game, m.from)) m.to.dt = true; }
         if (hasKw(m.game, m.from, 'lifelink')) { if (m.game === g) ll += m.n; else llD += m.n; }
       }
@@ -5592,6 +5630,82 @@
     return { lines, winner: m.match.winner, reason: m.match.reason, turn: m.match.turn, lifeA: m.gA.life, lifeB: m.gB.life };
   }
 
+  // ---------- Pods: three or four players (and any played game) ----------
+  // One turn of a pod: the active player picks who it attacks (or is told), then plays a normal turn against that player.
+  function podTurn(g, hook, target) {
+    const m = g.match; if (g.dead || m.winner != null) return [];
+    podFocus(g, target);
+    const ev = playTurn(g);
+    if (hook) hook(g, ev);
+    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
+    if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
+    return ev;
+  }
+  function newPod(decks, optsList, seed, names, first) {
+    const games = decks.map((d, i) => newGame(d, Object.assign({}, optsList[i], { onPlay: false }), (seed + i * 0x9e3779b9) >>> 0));          // in a multiplayer game the first player draws too
+    const m = linkPod(games, names);
+    games.forEach(mulligan);
+    m.order = games.map((x, i) => games[(i + (first || 0)) % games.length]);
+    return { games, match: m };
+  }
+  function playPod(decks, optsList, seed, names, first, hook) {
+    const pod = newPod(decks, optsList, seed, names, first), m = pod.match, T = optsList[0].turns;
+    for (let t = 0; t < T && m.winner == null; t++) { m.round = t + 1; for (const g of m.order) { if (m.winner != null) break; podTurn(g, hook); } }
+    return pod;
+  }
+  // Many pod games. players: [{ cards, tokens, policy, name }]. The first seat rotates so no deck always starts.
+  function podMonteCarlo(players, opts, n, seed, onProgress) {
+    const decks = players.map(p => buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
+    const optsList = players.map(p => Object.assign({}, opts, { policy: p.policy || {} }));
+    const names = players.map((p, i) => p.name || 'Player ' + (i + 1)), P = players.length, T = opts.turns;
+    const res = { n, turns: T, players: P, names, wins: new Array(P).fill(0), none: 0, firstOut: new Array(P).fill(0), place: new Array(P).fill(0), hist: players.map(() => new Array(T + 2).fill(0)),
+      reasons: {}, errors: 0, firstError: null, games: [], life: new Array(P).fill(0), seatWins: new Array(P).fill(0) };
+    for (let i = 0; i < n; i++) {
+      const s = (seed + i * 7919) >>> 0, first = i % P;
+      try {
+        const pod = playPod(decks, optsList, s, names, first), m = pod.match, w = m.winner;
+        if (w == null) res.none++;
+        else { res.wins[w]++; res.hist[w][Math.min(T + 1, m.round)]++; res.reasons[m.reason || 'empty'] = (res.reasons[m.reason || 'empty'] || 0) + 1; res.seatWins[(w - first + P) % P]++; }
+        if (m.out[0]) res.firstOut[m.out[0].pid]++;
+        pod.games.forEach((x, k) => { res.life[k] += x.dead ? 0 : Math.max(0, x.life); });
+        res.games.push({ seed: s, first, winner: w, round: m.round });
+      } catch (err) { res.errors++; if (!res.firstError) res.firstError = String(err && err.stack || err); }
+      if (onProgress && i % 10 === 0) onProgress(i / n);
+    }
+    const ok = Math.max(1, n - res.errors);
+    res.life = res.life.map(v => v / ok);
+    res.avgRound = res.games.reduce((a, x) => a + x.round, 0) / Math.max(1, res.games.length);
+    const sorted = res.games.slice().sort((a, b) => a.round - b.round);
+    const pick = q => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1)))] : null;
+    res.samples = { quick: pick(0.1), median: pick(0.5), long: pick(0.9) };
+    res.commanders = decks.map(d => (d.commanders[0] || {}).card ? d.commanders[0].card.name : null);
+    return res;
+  }
+  // What happened in a turn, as short lines (used by the pod log and the played game)
+  function turnSummary(g, ev) {
+    const items = [];
+    for (const e of ev) {
+      if (e.type === 'cast') items.push('cast ' + e.inst.card.name);
+      else if (e.type === 'land') items.push('land ' + e.inst.card.name);
+      else if (e.type === 'declare') items.push('attacks ' + (g.opp && g.match ? (g.match.names ? g.match.names[g.opp.pid] : 'the opponent') : '') + ' with ' + e.attackers.map(p => p.card.name).join(', '));
+      else if (e.type === 'note' && (e.out != null || /blocks|dies in combat|Extort|transform|Ring|Wheel|Miracle|copy|copied|is out of the game/.test(e.text))) items.push(e.text);
+      else if (e.type === 'attack') items.push(e.dmg + ' combat damage got through');
+      else if (e.type === 'damage' && e.n > 0) items.push(e.n + ' damage' + (isPod(g) ? ' to each opponent' : '') + (e.source && e.source.card ? ' (' + e.source.card.name + ')' : ''));
+      else if (e.type === 'kill') items.push('☠ WINS');
+    }
+    return items;
+  }
+  function podLog(players, opts, seed, first) {
+    const decks = players.map(p => buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
+    const optsList = players.map(p => Object.assign({}, opts, { policy: p.policy || {} }));
+    const names = players.map((p, i) => p.name || 'Player ' + (i + 1)), lines = [];
+    const pod = playPod(decks, optsList, seed, names, first, (g, ev) => {
+      const creatures = g.battlefield.filter(isCreaturePerm), power = creatures.reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
+      lines.push({ turn: g.turn, pid: g.pid, who: names[g.pid], life: g.match.players.map(x => x.dead ? null : x.life), text: turnSummary(g, ev), board: `${creatures.length} creatures, ${power} power, ${g.battlefield.filter(q => q.asLand).length} lands, hand ${g.hand.length}` });
+    });
+    return { lines, names, winner: pod.match.winner, reason: pod.match.reason, round: pod.match.round, out: pod.match.out, life: pod.games.map(x => x.dead ? null : x.life) };
+  }
+
   // ---------- Exact hypergeometric ----------
   const LF = [0]; for (let i = 1; i <= 400; i++) LF.push(LF[i - 1] + Math.log(i));
   function choose(n, k) { if (k < 0 || k > n) return 0; return Math.exp(LF[n] - LF[k] - LF[n - k]); }
@@ -5606,6 +5720,7 @@
     pay, madness, fxValue, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
+    linkPod, newPod, podTurn, podFocus, pickTarget, podAlive, playPod, podMonteCarlo, podLog, turnSummary, eliminate, canAttack, chooseAttackers, matchOver, checkKill,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

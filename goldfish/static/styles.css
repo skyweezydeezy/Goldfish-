@@ -755,3 +755,11 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
   body[data-view=table] .bf-row .stackgroup > .mtg.tapped:first-child { margin-left: calc(var(--card-w) * .16); }
   body[data-view=table] .bf-row .stackgroup > .mtg.tapped:last-child { margin-right: calc(var(--card-w) * .16); }
 }
+
+/* ---------- dropdowns never wider than the screen; long choices are cut with "…" instead ---------- */
+select { max-width: 100%; text-overflow: ellipsis; }
+.row > label { max-width: 100%; min-width: 0; }
+@media (max-width: 600px) {
+  .row > label:has(select) { flex: 1 1 100%; display: flex; flex-direction: column; gap: 4px; }
+  .row > label:has(select) select { width: 100%; }
+}

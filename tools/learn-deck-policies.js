@@ -14,7 +14,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   fs.mkdirSync(cache, { recursive: true });
   await Source.init();
   const file = path.join(dir, 'index.json'), index = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const again = process.argv.includes('--again');
   for (const d of index.decks) {
+    if (!again && d.learnedAt) continue;
     const cf = path.join(cache, d.file.replace(/\.txt$/, '.json'));
     if (!fs.existsSync(cf)) {
       for (let t = 0; t < 4; t++) { try { const r = await Source.loadDeck(fs.readFileSync(path.join(dir, d.file), 'utf8'), () => {}); fs.writeFileSync(cf, JSON.stringify({ cards: r.cards, tokens: r.tokens || [] })); break; } catch (e) { console.log('  retrying', d.name, e.message); await sleep(60000); } }
@@ -32,7 +34,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       if (best) { learned[ch.key] = options[best.i].value; notes.push({ choice: ch.label, picked: options[best.i].name, z: +best.x.z.toFixed(1), games: N }); }
     }
     if (Object.keys(learned).length) { d.policy = learned; d.learned = notes; } else { delete d.policy; delete d.learned; }
+    d.learnedAt = new Date().toISOString().slice(0, 10);
     console.log(d.name.padEnd(58), notes.map(n => `${n.choice}: ${n.picked} (z ${n.z})`).join(' | ') || '(defaults are best)');
+    fs.writeFileSync(file, JSON.stringify(index, null, 1) + '\n');          // saved after every deck, so an interrupted run keeps what it learned
   }
-  fs.writeFileSync(file, JSON.stringify(index, null, 1) + '\n');
 })().catch(e => { console.error(e); process.exit(1); });

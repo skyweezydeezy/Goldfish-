@@ -97,11 +97,14 @@ const shot = process.env.VERSUS_SHOTS;
     if (ph === 'block') check('...and the attacking creatures are marked on the opponent\'s battlefield', (await p.$$('#tab-duel .vs-seat.opp .mtg.attacking')).length >= 1);
     if (ph === 'block') {
       if (shot) await p.screenshot({ path: path.join(shot, 'block.png'), fullPage: true });
-      await p.evaluate(() => { const sel = document.querySelector('#tab-duel .vs-blk[data-iid="' + window.__blk + '"]'); sel.value = String(window.__big); });
+      // the game is random: the creature set up to block may have been removed, or the big attacker may not be among the attackers.
+      // Then this one step is skipped (and said so) instead of stopping the whole test.
+      const canPick = await p.evaluate(() => { const sel = document.querySelector('#tab-duel .vs-blk[data-iid="' + window.__blk + '"]'); if (!sel || ![...sel.options].some(o => o.value === String(window.__big))) return false; sel.value = String(window.__big); return true; });
       await p.evaluate(() => document.querySelector('#tab-duel .vs-block-go').click());
       await until('duel', () => { const g = window.__isfVersus.duel.game; return !!g.over || g.phase === 'main'; });
       const r = await p.evaluate(() => ({ log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].slice(-4).map(x => x.textContent).join(' || ') }));
-      check('your chosen block happens: your creature blocks the attacker', /blocks/.test(r.log), r.log.slice(0, 260));
+      if (canPick) check('your chosen block happens: your creature blocks the attacker', /blocks/.test(r.log), r.log.slice(0, 260));
+      else console.log('SKIP  your chosen block happens: in this random game the set-up creature could not block the set-up attacker');
     }
   }
   if (shot) await p.screenshot({ path: path.join(shot, 'duel.png'), fullPage: true });

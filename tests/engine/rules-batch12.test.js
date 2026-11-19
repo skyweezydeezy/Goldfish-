@@ -1,0 +1,112 @@
+// Rules batch 12: the next 25 most played cards that still had unread lines (vanishing, warp, spectacle, outlast, cycling Shark Typhoon,
+// Goblin Engineer, Magda, Sephiroth, Forge Anew, Tarrian's Soulcleaver, Full Throttle, Hedge Shredder, Skirk Prospector, Cleric Class and more).
+// Every card comes from the set database; each rule is checked by what it does.
+const fs = require('fs'), path = require('path');
+const ROOT = path.join(__dirname, '..', '..');
+const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js'));
+const D = path.join(ROOT, 'goldfish', 'static', 'data', 'sets');
+const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8')), store = {};
+idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
+const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => (x.name === n || x.name.split(' // ')[0] === n) && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
+const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
+const NAMES = ['Dreamtide Whale', 'Goblin Engineer', 'Kediss, Emberclaw Familiar', 'Sephiroth, Fabled SOLDIER', 'Magda, Brazen Outlaw', 'Forge Anew', "Tarrian's Soulcleaver", 'Shark Typhoon', 'Exalted Sunborn', 'Weftstalker Ardent',
+  'Haliya, Guided by Light', 'Light Up the Stage', 'Starfield Mystic', 'Wight of the Reliquary', 'Full Throttle', 'Hedge Shredder', 'Undying Malice', 'Valgavoth, Terror Eater', 'Alexios, Deimos of Kosmos', 'Key to the City', 'Skirk Prospector',
+  'Abzan Falconer', 'Cleric Class', 'Forensic Gadgeteer', 'Ominous Seas'];
+const HELPERS = ['Grave Titan', 'Llanowar Elves', 'Forest', 'Island', 'Mountain', 'Sol Ring', 'Opt', 'Lightning Bolt', 'Rhystic Study', 'Arcane Signet', 'Swiftfoot Boots', 'Goblin Chieftain', 'Krenko, Mob Boss', 'Shivan Dragon', 'Wrath of God'];
+const all = NAMES.concat(HELPERS);
+const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n)));
+const deck = G.buildDeck(cards, base.tokens);
+const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
+let pass = 0, fail = 0;
+const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+const by = n => { const c = deck.unique.find(c => c.name === n || c.name.split(' // ')[0] === n); if (!c) throw new Error('card not in the test deck: ' + n); return c; };
+const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.hand = []; g.battlefield = []; g.graveyard = []; g.exile = []; g.command = []; g.library = g.library.slice(0, 40); return g; };
+const mirror = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return { g, b }; };
+const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
+const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
+const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
+const total = c => c.generic + c.pips.length;
+const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t, colors: colors || [], subtypes: [name], keywords: [], artifact: false, name });
+const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
+
+{ const bad = []; for (const n of NAMES) { const c = by(n); for (const x of [c].concat(c.a.backCard ? [c.a.backCard] : [])) for (const v of x.a.coverage) if (v.status === 'ignored') bad.push(n + ': ' + v.text.slice(0, 50)); }
+  check('every rules line of the 25 cards is read', bad.length === 0, bad.slice(0, 4).join(' || ')); }
+T('vanishing', () => { const g = bare(); const w = putOn(g, 'Dreamtide Whale'); check('Dreamtide Whale enters with two time counters', w.other && w.other.time === 2, JSON.stringify(w.other));
+  G.beginTurn(g); check('...one is removed at the upkeep', g.battlefield.includes(w) && w.other.time === 1, JSON.stringify(w.other)); G.endTurn(g); G.beginTurn(g); check('...and it is sacrificed when the last one goes', !g.battlefield.includes(w));
+  const g2 = bare(); const w2 = putOn(g2, 'Dreamtide Whale'); G.applyEffects(g2, [{ type: 'proliferate' }], w2, [], null); check('...proliferate adds a time counter', w2.other.time === 3, JSON.stringify(w2.other)); });
+T('engineer', () => { const g = bare(); const e = putOn(g, 'Goblin Engineer'); G.createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Clue' }, 1, [], null); const sr = inst(g, 'Arcane Signet'); g.graveyard = [sr, inst(g, 'Grave Titan')]; g.library = []; mana(g, 1, 'R'); G.useAbilities(g);
+  check('Goblin Engineer: {R}, tap and a Clue return Arcane Signet from the graveyard', g.battlefield.some(p => p.card.name === 'Arcane Signet') && !g.battlefield.some(p => p.card.name === 'Clue') && e.tapped, g.battlefield.map(p => p.card.name).join(', '));
+  const g2 = bare(); putOn(g2, 'Goblin Engineer'); G.createTokens(g2, { type: 'token', n: 1, creature: false, artifact: true, name: 'Clue' }, 1, [], null); g2.graveyard = [inst(g2, 'Hedge Shredder')]; g2.library = []; mana(g2, 1, 'R'); G.useAbilities(g2);
+  check('...but not an artifact with mana value above 3', !g2.battlefield.some(p => p.card.name === 'Hedge Shredder')); });
+T('sephiroth', () => { const g = bare(); g.library = g.library.slice(0, 20); for (let i = 0; i < 5; i++) G.createTokens(g, tok('Zombie', 2, 2, ['B']), 1, [], null); const h0 = g.hand.length; const s = putOn(g, 'Sephiroth, Fabled SOLDIER');
+  const zs = () => g.battlefield.filter(p => p.card.name === 'Zombie').length;
+  check('Sephiroth enters: one creature sacrificed for one card, and its death drains 1', zs() === 4 && g.hand.length === h0 + 1 && g.damage === 1 && !s.transformed, `${zs()} zombies, hand ${g.hand.length - h0}, dmg ${g.damage}`);
+  for (let i = 0; i < 2; i++) { G.leavePerm(g, g.battlefield.find(p => p.card.name === 'Zombie'), []); G.flushLeaves(g, []); }
+  check('...three deaths: three drains, still not transformed', g.damage === 3 && !s.transformed, g.damage);
+  G.leavePerm(g, g.battlefield.find(p => p.card.name === 'Zombie'), []); G.flushLeaves(g, []);
+  check('...the fourth resolution this turn transforms it and gives the emblem', s.transformed && /One-Winged/.test(s.card.name) && g.novaEmblem === 1 && g.damage === 4, `${s.card.name} dmg ${g.damage} emblem ${g.novaEmblem}`);
+  const d0 = g.damage, l0 = g.life; G.leavePerm(g, g.battlefield.find(p => p.card.name === 'Zombie'), []); G.flushLeaves(g, []);
+  check('...the emblem drains 1 whenever a creature dies', g.damage === d0 + 1 && g.life === l0 + 1, `${g.damage - d0} / ${g.life - l0}`);
+  const g2 = bare(); g2.library = g2.library.slice(0, 20); const h1 = g2.hand.length; putOn(g2, 'Sephiroth, Fabled SOLDIER'); check('...with no other creature nothing is sacrificed and no card is drawn', g2.hand.length === h1); });
+T('magda', () => { const g = bare(); putOn(g, 'Magda, Brazen Outlaw'); G.combat(g); check('Magda: a Dwarf tapped to attack makes a Treasure', g.battlefield.filter(p => p.card.name === 'Treasure').length === 1, g.battlefield.map(p => p.card.name).join(', '));
+  const g2 = bare(); putOn(g2, 'Magda, Brazen Outlaw'); G.createTokens(g2, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 5, [], null); g2.library = [inst(g2, 'Opt'), inst(g2, 'Shivan Dragon'), inst(g2, 'Forest')]; G.useAbilities(g2);
+  check('...five Treasures fetch a Dragon onto the battlefield', g2.battlefield.some(p => p.card.name === 'Shivan Dragon') && !g2.battlefield.some(p => p.card.name === 'Treasure'), g2.battlefield.map(p => p.card.name).join(', ')); });
+T('forge anew', () => { const g = bare(); g.graveyard = [inst(g, 'Swiftfoot Boots')]; putOn(g, 'Forge Anew'); const b = g.battlefield.find(p => p.card.name === 'Swiftfoot Boots'); check('Forge Anew returns an Equipment from the graveyard', !!b && !g.graveyard.length);
+  const t = putOn(g, 'Grave Titan'); g.library = []; G.useAbilities(g); check('...and the first equip of the turn costs {0}', b && b.attachedTo === t.iid && g.freeEquipTurn === g.turn, b && b.attachedTo); });
+T('soulcleaver', () => { const g = bare(); const sc = putOn(g, "Tarrian's Soulcleaver"); const t = putOn(g, 'Grave Titan'); sc.attachedTo = t.iid; const e = putOn(g, 'Llanowar Elves'); const sr = putOn(g, 'Sol Ring'); const c0 = t.counters || 0;
+  G.leavePerm(g, e, []); G.leavePerm(g, sr, []); check("Tarrian's Soulcleaver: a creature and an artifact go to the graveyard, two counters on the equipped creature", (t.counters || 0) - c0 === 2, (t.counters || 0) - c0);
+  const f = putOn(g, 'Forest'); G.leavePerm(g, f, []); check('...not for a land', (t.counters || 0) - c0 === 2); });
+T('shark', () => { const g = bare(); for (let i = 0; i < 5; i++) putOn(g, 'Island'); const st = inst(g, 'Shark Typhoon'); g.hand = [st]; g.library = [inst(g, 'Forest'), inst(g, 'Forest')]; G.useAbilities(g); const sh = g.battlefield.find(p => p.card.name === 'Shark');
+  check('Shark Typhoon is cycled with five lands for X = 3: a card and a 3/3 flying Shark', !!sh && G.powerOf(g, sh) === 3 && G.hasKw(g, sh, 'flying') && g.graveyard.includes(st) && g.hand.length === 1, sh ? G.powerOf(g, sh) : 'no shark'); });
+T('warp', () => { const g = bare(); const w = inst(g, 'Weftstalker Ardent'); g.hand = [w]; g.library = g.library.slice(0, 10); mana(g, 1, 'R'); G.castOne(g); const p = g.battlefield.find(q => q.card.name === 'Weftstalker Ardent');
+  check('Weftstalker Ardent is cast for its warp cost {R} when {2}{R} is out of reach', !!p && p.warped === true); G.endTurn(g);
+  check('...exiled at the end of the turn', !g.battlefield.some(q => q.card.name === 'Weftstalker Ardent') && g.exile.includes(w) && w.warpCast === true);
+  mana(g, 3, 'R'); G.castOne(g); const p2 = g.battlefield.find(q => q.card.name === 'Weftstalker Ardent'); check('...and cast again from exile for its full cost, to stay', !!p2 && !p2.warped && !g.exile.includes(w)); G.endTurn(g); check('...it stays this time', g.battlefield.includes(p2));
+  const g2 = bare(); g2.hand = [inst(g2, 'Weftstalker Ardent')]; mana(g2, 3, 'R'); G.castOne(g2); const p3 = g2.battlefield.find(q => q.card.name === 'Weftstalker Ardent'); check('...with the full cost available it is cast normally', !!p3 && !p3.warped); });
+T('spectacle', () => { const g = bare(); const l = inst(g, 'Light Up the Stage'); g.hand = [l]; check('Light Up the Stage costs {2}{R} before an opponent loses life', total(G.effectiveCost(g, l)) === 3);
+  G.damageOpp(g, 1, [], null); check('...and {R} (spectacle) after', total(G.effectiveCost(g, l)) === 1, total(G.effectiveCost(g, l))); });
+T('mystic', () => { const g = bare(); const m = putOn(g, 'Starfield Mystic'); const fa = putOn(g, 'Forge Anew'); G.leavePerm(g, fa, []); check('Starfield Mystic: an enchantment goes to the graveyard, a +1/+1 counter', (m.counters || 0) === 1, m.counters);
+  G.leavePerm(g, putOn(g, 'Sol Ring'), []); check('...not for an artifact', (m.counters || 0) === 1); });
+T('wight', () => { const g = bare(); const w = putOn(g, 'Wight of the Reliquary'); G.createTokens(g, tok('Zombie', 2, 2, ['B']), 1, [], null); g.library = [inst(g, 'Opt'), inst(g, 'Forest'), inst(g, 'Opt')]; G.useAbilities(g); const f = g.battlefield.find(p => p.card.name === 'Forest');
+  check('Wight of the Reliquary taps and sacrifices a token for a tapped land', !!f && f.tapped && w.tapped && !g.battlefield.some(p => p.card.name === 'Zombie'), g.battlefield.map(p => p.card.name).join(', '));
+  check('...and grows with the creature card... tokens do not count', G.powerOf(g, w) === 2, G.powerOf(g, w)); });
+T('full throttle', () => { const g = bare(); putOn(g, 'Grave Titan'); G.applyEffects(g, by('Full Throttle').a.spellFx, null, [], null); const ev = G.combat(g); const hits = ev.filter(e => e.type === 'attack').reduce((t, e) => t + e.dmg, 0);
+  check('Full Throttle: three combats this turn and the attackers untap for each (Grave Titan hits three times)', hits >= 18, hits);
+  const fx = by('Full Throttle').a.spellFx; check('...read as two extra combats', fx.filter(f => f.type === 'extraCombat').length === 2 && fx.some(f => f.type === 'throttle'), fx.map(f => f.type).join(',')); });
+T('shredder', () => { const g = bare(); putOn(g, 'Hedge Shredder'); g.library = [inst(g, 'Forest'), inst(g, 'Opt'), inst(g, 'Sol Ring')]; G.applyEffects(g, [{ type: 'mill', n: 2 }], null, [], null); const f = g.battlefield.find(p => p.card.name === 'Forest');
+  check('Hedge Shredder: a milled land enters tapped, the other card goes to the graveyard', !!f && f.tapped && g.graveyard.length === 1 && g.graveyard[0].card.name === 'Opt', g.graveyard.map(i => i.card.name).join(','));
+  const g2 = bare(); const hs = putOn(g2, 'Hedge Shredder'); putOn(g2, 'Llanowar Elves'); g2.library = [inst(g2, 'Forest'), inst(g2, 'Forest'), inst(g2, 'Opt')]; G.combat(g2);
+  check('...crewed, it attacks and mills two lands onto the battlefield', g2.battlefield.filter(p => p.card.name === 'Forest').length === 2, g2.battlefield.map(p => p.card.name).join(', '));
+  const g3 = bare(); g3.library = [inst(g3, 'Forest'), inst(g3, 'Opt')]; G.applyEffects(g3, [{ type: 'mill', n: 2 }], null, [], null); check('...without it milled lands stay in the graveyard', g3.graveyard.length === 2); });
+T('alexios', () => { const g = bare(); const a = putOn(g, 'Alexios, Deimos of Kosmos'); a.tapped = true; const c0 = a.counters || 0; G.beginTurn(g); check('Alexios: a +1/+1 counter at each player\'s upkeep (the opponent\'s, then yours) and it is untapped', (a.counters || 0) === c0 + 2 && !a.tapped, a.counters); });
+T('key', () => { const g = bare(); const k = putOn(g, 'Key to the City'); for (let i = 0; i < 6; i++) putOn(g, 'Forest'); g.landsPlayedThisTurn = 9; const f = inst(g, 'Forest'); g.hand = [f]; g.library = g.library.slice(0, 10); G.useAbilities(g);
+  check('Key to the City: taps and discards a land you cannot play', k.tapped && g.graveyard.includes(f), g.hand.length); const lib = g.library.length; G.endTurn(g); G.beginTurn(g);
+  check('...and when it untaps you pay {2} for a card (two draws this turn)', lib - g.library.length === 2 && !k.keyTapped, lib - g.library.length); });
+T('prospector', () => { const g = bare(); putOn(g, 'Skirk Prospector'); for (let i = 0; i < 3; i++) G.createTokens(g, tok('Goblin', 1, 1, ['R']), 1, [], null); const t = inst(g, 'Shivan Dragon'); g.hand = [t]; mana(g, 3, 'R'); G.castOne(g);
+  check('Skirk Prospector: three Goblin tokens are sacrificed to finish paying for a six-drop', g.battlefield.some(p => p.card.name === 'Shivan Dragon') && g.battlefield.filter(p => p.card.name === 'Goblin').length === 0, g.battlefield.map(p => p.card.name).join(', '));
+  const g2 = bare(); putOn(g2, 'Skirk Prospector'); for (let i = 0; i < 3; i++) G.createTokens(g2, tok('Zombie', 2, 2, ['B']), 1, [], null); g2.hand = [inst(g2, 'Shivan Dragon')]; mana(g2, 3, 'R'); G.castOne(g2);
+  check('...only Goblins count', !g2.battlefield.some(p => p.card.name === 'Shivan Dragon')); });
+T('outlast', () => { const g = bare(); const f = putOn(g, 'Abzan Falconer'); g.combatDone = true; mana(g, 1, 'W'); G.useAbilities(g); check('Abzan Falconer: outlast {W} taps it for a +1/+1 counter after combat', (f.counters || 0) === 1 && f.tapped, f.counters);
+  const g2 = bare(); const f2 = putOn(g2, 'Abzan Falconer'); mana(g2, 1, 'W'); G.useAbilities(g2); check('...not before combat, when it could still attack', (f2.counters || 0) === 0); });
+T('cleric', () => { const g = bare(); putOn(g, 'Cleric Class'); const l0 = g.life; G.applyEffects(g, [{ type: 'gainLife', n: 3 }], null, [], null); check('Cleric Class: gaining 3 life gains 4', g.life - l0 === 4, g.life - l0);
+  const g2 = bare(); const l1 = g2.life; G.applyEffects(g2, [{ type: 'gainLife', n: 3 }], null, [], null); check('...without it, 3', g2.life - l1 === 3); });
+T('gadgeteer', () => { const g = bare(); putOn(g, 'Forensic Gadgeteer'); G.createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Clue' }, 1, [], null); g.library = g.library.slice(0, 10); g.hand = []; mana(g, 1); G.useAbilities(g);
+  check('Forensic Gadgeteer: a Clue is cracked for {1}', g.hand.length === 1 && !g.battlefield.some(p => p.card.name === 'Clue'), g.hand.length);
+  const g2 = bare(); G.createTokens(g2, { type: 'token', n: 1, creature: false, artifact: true, name: 'Clue' }, 1, [], null); g2.library = g2.library.slice(0, 10); mana(g2, 1); G.useAbilities(g2); check('...without it {1} is not enough', g2.hand.length === 0); });
+T('seas', () => { const g = bare(); const s = putOn(g, 'Ominous Seas'); g.library = g.library.slice(0, 20); G.draw(g, 8, []); check('Ominous Seas: eight draws, eight foreshadow counters', s.other && s.other.foreshadow === 8, JSON.stringify(s.other)); g.hand = []; G.useAbilities(g);
+  const k = g.battlefield.find(p => p.card.name === 'Kraken'); check('...removed for an 8/8 Kraken', !!k && G.powerOf(g, k) === 8 && s.other.foreshadow === 0, JSON.stringify(s.other)); });
+T('kediss', () => { const cd = G.buildDeck(cards.map(c => Object.assign({}, c, { commander: c.name === 'Grave Titan' })), base.tokens);
+  const pod = G.newPod([cd, cd, cd, cd], [O, O, O, O], 5, ['a', 'b', 'c', 'd'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; });
+  const g = pod.games[0]; const ct = cd.unique.find(c => c.name === 'Grave Titan'), kc = cd.unique.find(c => c.name === 'Kediss, Emberclaw Familiar');
+  for (const c of [kc, ct]) { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: c }, {}, []); p.sick = false; p.enteredTurn = 1; } g.battlefield.forEach(p => { if (p.card.name === 'Kediss, Emberclaw Familiar') p.tapped = true; });
+  const t = G.podFocus(g, pod.games[1]); const before = pod.games.map(x => x.life); G.combat(g); const lost = pod.games.map((x, i) => before[i] - x.life);
+  check('Kediss in a pod: the commander hits one opponent and the same damage goes to each other opponent', lost[1] >= 6 && lost[2] === 6 && lost[3] === 6 && lost[0] === 0, lost.join(',')); });
+T('labels', () => { const lab = (n, re) => { const c = by(n); return [c].concat(c.a.backCard ? [c.a.backCard] : []).flatMap(x => x.a.coverage).find(v => re.test(v.text)); };
+  const um = lab('Undying Malice', /gains/), va = lab('Valgavoth, Terror Eater', /play cards exiled/), ke = lab('Kediss, Emberclaw Familiar', /each other opponent/);
+  check('Undying Malice and Valgavoth\'s exile-play line say "Needs opponent", not "Mirror matches only"', um.tag === 'opp' && !um.mirror && va.tag === 'opp' && !va.mirror, JSON.stringify([um.tag, um.mirror, va.tag, va.mirror]));
+  check('Kediss is labelled for games with opponents', ke.tag === 'opp' && ke.mirror === true); });
+T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+  const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
+
+console.log(`\n${pass} passed, ${fail} failed`);
+if (fail) process.exit(1);

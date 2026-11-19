@@ -2212,7 +2212,7 @@
   function pickTarget(g) {                                                                                 // the biggest threat, leaning towards a player who is nearly out
     const os = podAlive(g); if (!os.length) return null;
     const mine = g.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
-    const score = o => threatOf(o) + (40 - Math.min(40, o.life)) * 0.25 + (o.life <= mine ? 30 : 0) - o.pid * 0.001;
+    const score = o => threatOf(o) + (40 - Math.min(40, o.life)) * 0.25 + (o.life <= mine ? 30 : 0) - ((o.pid - g.pid + g.match.players.length) % g.match.players.length) * 0.001;          // ties: the next player around the table
     return os.sort((x, y) => score(y) - score(x))[0];
   }
   function eliminate(x, by, ev, why) {
@@ -2235,7 +2235,7 @@
     if (!g.match || g.match.winner != null) return;
     if (g.match.pod) {
       if (why === 'life' || why === 'commander') { if (g.opp) eliminate(g.opp, g, ev, why); }
-      else { for (const o of podAlive(g)) { o.dead = true; g.match.out.push({ pid: o.pid, by: g.pid, why, round: g.match.round || 0 }); } g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: false, mirror: true }); }
+      else { for (const o of podAlive(g)) { o.dead = true; g.match.out.push({ pid: o.pid, by: g.pid, why, round: g.match.round || 0, tie: true }); } g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: false, mirror: true }); }
       return;
     }
     g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn;
@@ -2247,7 +2247,7 @@
   function checkKill(g, ev) {
     if (g.killTurn != null) return;
     if (isPod(g)) {                                                                                       // a pod: anyone at 0 life is out; commander damage counts per player
-      for (const o of podAlive(g)) if (o.life <= 0) eliminate(o, g, ev, 'life');
+      const np = g.match.players.length; for (const o of podAlive(g).sort((x, y) => ((x.pid - g.pid + np) % np) - ((y.pid - g.pid + np) % np))) if (o.life <= 0) eliminate(o, g, ev, 'life');
       if (g.opp && !g.opp.dead && g.opts.cmdrDamage !== false && Object.keys(g.cmdrDamage).some(k => k.endsWith('>' + g.opp.pid) && g.cmdrDamage[k] >= 21)) eliminate(g.opp, g, ev, 'commander');
       return;
     }
@@ -5642,7 +5642,7 @@
     return ev;
   }
   function newPod(decks, optsList, seed, names, first) {
-    const games = decks.map((d, i) => newGame(d, Object.assign({}, optsList[i], { onPlay: false }), (seed + i * 0x9e3779b9) >>> 0));          // in a multiplayer game the first player draws too
+    const games = decks.map((d, i) => newGame(d, Object.assign({}, optsList[i], { onPlay: decks.length === 2 && i === (first || 0) % decks.length }), (seed + i * 0x9e3779b9) >>> 0));          // in a multiplayer game the first player draws too; in a two-player game they do not
     const m = linkPod(games, names);
     games.forEach(mulligan);
     m.order = games.map((x, i) => games[(i + (first || 0)) % games.length]);
@@ -5666,7 +5666,7 @@
         const pod = playPod(decks, optsList, s, names, first), m = pod.match, w = m.winner;
         if (w == null) res.none++;
         else { res.wins[w]++; res.hist[w][Math.min(T + 1, m.round)]++; res.reasons[m.reason || 'empty'] = (res.reasons[m.reason || 'empty'] || 0) + 1; res.seatWins[(w - first + P) % P]++; }
-        if (m.out[0]) res.firstOut[m.out[0].pid]++;
+        if (m.out[0] && !m.out[0].tie) res.firstOut[m.out[0].pid]++;                                  // everyone losing at once ("you win the game") is nobody going out first
         pod.games.forEach((x, k) => { res.life[k] += x.dead ? 0 : Math.max(0, x.life); });
         res.games.push({ seed: s, first, winner: w, round: m.round });
       } catch (err) { res.errors++; if (!res.firstError) res.firstError = String(err && err.stack || err); }

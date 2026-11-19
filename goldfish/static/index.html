@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>I See Fish</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="versus.css">
 </head>
 <body data-view="deck">
 <header class="topbar">
@@ -24,6 +25,8 @@
     <button class="tab" data-tab="table"><span class="tab-n">3 · </span>Goldfish Table</button>
     <button class="tab" data-tab="sim"><span class="tab-n">4 · </span>Simulation</button>
     <button class="tab" data-tab="odds"><span class="tab-n">5 · </span>Draw Odds</button>
+    <button class="tab" data-tab="duel"><span class="tab-n">6 · </span>1v1</button>
+    <button class="tab" data-tab="pod"><span class="tab-n">7 · </span>Pod</button>
   </nav>
   <div id="mirrorStatus" class="status-pill">checking ScryMirror…</div>
 </header>
@@ -253,6 +256,9 @@
       </div>
     </div>
   </section>
+  <!-- ============ 1v1 and POD (versus.js) ============ -->
+  <section id="tab-duel" class="panel"></section>
+  <section id="tab-pod" class="panel"></section>
 </main>
 
 <footer class="site-footer">
@@ -290,6 +296,7 @@
 <script src="profile.js"></script>
 <script src="tags.js"></script>
 <script src="app.js"></script>
+<script src="versus.js"></script>
 <script src="looks.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>

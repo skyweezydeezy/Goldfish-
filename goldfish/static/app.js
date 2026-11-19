@@ -1812,4 +1812,6 @@
   }
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
+  // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

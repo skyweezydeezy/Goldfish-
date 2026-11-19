@@ -118,9 +118,14 @@
     if (x.status === 'ok' || !x.tag) return side;
     return side + `<span class="pill ${x.tag}" title="${esc(TAG_HELP[x.tag] || '')}">${TAG_LABEL[x.tag] || ''}</span> `;
   }
+  // Any element with class "mtg" and a data-uid this function knows is a viewable card: on every page, now and later,
+  // clicking it opens the card viewer (price, printings, shops), unless the click already means something else there
+  // (the Goldfish Table, the Draw Odds picker, the sample hands): then the 🔍 in its corner, right-click or a long press opens it.
+  const previewCards = new Map();
   function getCard(uid) {
     if (!S.deck) return null;
     const s = String(uid);
+    if (s.startsWith('preview:')) return previewCards.get(s) || null;
     if (s.startsWith('t:')) return S.deck.tokenCache[uid];
     if (s.startsWith('b:')) { const f = S.deck.unique[+s.slice(2)]; return f && f.a.backCard; }          // the back face of a transformed card
     return S.deck.unique[+uid];
@@ -288,6 +293,7 @@
       tw.appendChild(h('div', 'hint', 'Tokens this deck makes (from ScryMirror):'));
       S.deck.tokens.forEach(t => {
         const fake = Object.assign({}, t, { uid: 'preview:' + t.name });
+        previewCards.set(fake.uid, fake);           // so the card viewer can open token pictures too
         const el = h('div', 'tok'); const c = cardEl(fake); el.appendChild(c); el.appendChild(h('span', 'tok-name', `${esc(t.name)}${t.power != null ? ` ${t.power}/${t.toughness}` : ''}`)); if (t.made_by) el.appendChild(h('span', 'tok-from', esc(t.made_by))); tw.appendChild(el);
       });
     }
@@ -615,7 +621,11 @@
   const speedBox = $('#tSpeed');
   const slow = () => 6 - (+speedBox.value || 5);          // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
   speedBox.value = localStorage.getItem('isf_speed') || 5;
-  speedBox.addEventListener('input', () => { localStorage.setItem('isf_speed', speedBox.value); speedBox.title = `Autopilot speed: ${slow() === 1 ? 'full speed' : slow() + '× slower'}`; });
+  speedBox.addEventListener('input', () => {
+    localStorage.setItem('isf_speed', speedBox.value);
+    const txt = slow() === 1 ? 'Full speed' : slow() === 5 ? '5× slower (slowest)' : slow() + '× slower';
+    speedBox.title = 'Autopilot speed: ' + txt; $('#tSpeedTxt').textContent = txt;
+  });
   speedBox.dispatchEvent(new Event('input'));
   const delay = () => ($('#tFast').checked ? 140 : 520) * slow();
   $('#tNew').addEventListener('click', () => newTableGame());
@@ -1048,6 +1058,22 @@
   }));
   document.addEventListener('click', e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
   document.addEventListener('contextmenu', e => { if (e.target.closest('.mtg') && !canHover) e.preventDefault(); });
+  // where a click already means something else (picking cards for the odds, picking a sample hand), the 🔍 in the card's
+  // top-right corner opens the viewer instead; runs before the card's own click handler
+  const ZOOM_CORNER = '#oddsPicker .mtg, .mini-hand .mtg';
+  document.addEventListener('click', e => {
+    const m = e.target.closest(ZOOM_CORNER); if (!m || m.dataset.uid == null) return;
+    const r = m.getBoundingClientRect(), c = getCard(m.dataset.uid);
+    const left = !!m.closest('.mini-hand');                 // sample-hand cards overlap from the right, so their 🔍 sits top-left
+    const inX = left ? e.clientX <= r.left + 34 : e.clientX >= r.right - 34;
+    if (c && inX && e.clientY <= r.top + 34) { e.stopPropagation(); e.preventDefault(); showLightbox(c, m); }
+  }, true);
+  // right-click any card off the table (PC) opens the viewer
+  document.addEventListener('contextmenu', e => {
+    const m = e.target.closest('.mtg'); if (!m || m.closest('.table, #lightbox') || m.dataset.uid == null) return;
+    const c = getCard(m.dataset.uid); if (!c) return;
+    e.preventDefault(); showLightbox(c, m);
+  });
   // clicking or tapping a card anywhere except the table / odds picker opens the viewer (PC and touch alike)
   document.addEventListener('click', e => {
     const m = e.target.closest('.mtg');

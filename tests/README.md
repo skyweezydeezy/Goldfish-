@@ -57,5 +57,6 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | ui/versus | Tabs 6 (1v1) and 7 (Pod): a played game (land, attack chooser, end turn, autopilot the rest), an all-autopilot game, the many-games runner and sample logs (browser test) |
 | ui/looks | Playmat and sleeve picker (browser test) |
 | ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer (browser test) |
+| ui/viewer-everywhere | Every card on every tab opens in the card viewer: click, 🔍 corner or right-click (browser test) |
 | ui/desktop-viewer | PC: clicking a card opens the viewer (price, previous / next); the autopilot speed slider (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |

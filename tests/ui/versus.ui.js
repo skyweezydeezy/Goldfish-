@@ -29,10 +29,15 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForTimeout(1000);
 
   let blockAsks = 0;
-  const until = async (mode, cond, arg, ms) => {                      // wait for a game state; confirm blocks whenever the game asks for them
+  // wait for a game state. On the way: confirm blocks whenever the game asks for them, take the autopilot's pick on every question
+  // (a search, a target, a counterspell...) and pass at the end of the other players' turns. keepBlock: stop at a block instead.
+  const until = async (mode, cond, arg, ms, keepBlock) => {
     const t0 = Date.now();
     while (Date.now() - t0 < (ms || 90000)) {
-      if (await p.evaluate(m => { const g = window.__isfVersus[m].game; return !!g && g.phase === 'block'; }, mode)) { blockAsks++; await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-block-go').click(), mode); }
+      const ask = await p.evaluate(m => { const g = window.__isfVersus[m].game; return !g ? '' : g.choice ? 'choice' : g.phase === 'block' ? 'block' : g.phase === 'respond' ? 'respond' : ''; }, mode);
+      if (ask === 'choice') await p.evaluate(() => { const b = document.querySelector('.ch-sheet .ch-auto'); if (b) b.click(); });
+      else if (ask === 'respond') await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-pass').click(), mode);
+      else if (ask === 'block' && !keepBlock) { blockAsks++; await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-block-go').click(), mode); }
       if (await p.evaluate(cond, arg)) return true;
       await p.waitForTimeout(150);
     }
@@ -91,7 +96,7 @@ const shot = process.env.VERSUS_SHOTS;
       op.battlefield.forEach(q => { if (q !== big && G.isCreaturePerm(q)) q.tapped = true; });
     });
     await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
-    await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g.over || g.phase === 'block' || (g.phase === 'main' && g.games[0].turn >= 4); }, null, { timeout: 60000 });
+    await until('duel', () => { const g = window.__isfVersus.duel.game; return g.over || g.phase === 'block' || (g.phase === 'main' && g.games[0].turn >= 4); }, null, 60000, true);
     const ph = await p.evaluate(() => window.__isfVersus.duel.game.phase);
     check('when the computer attacks you and you can block, the game stops and asks for your blocks', ph === 'block' && (await p.$$('#tab-duel .vs-blk')).length >= 1, ph);
     if (ph === 'block') check('...and the attacking creatures are marked on the opponent\'s battlefield', (await p.$$('#tab-duel .vs-seat.opp .mtg.attacking')).length >= 1);

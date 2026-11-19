@@ -829,7 +829,14 @@
   $('.table').addEventListener('click', e => {
     const m = e.target.closest('.mtg'); if (!m || S.busy || !S.game || m.dataset.iid == null) return;
     // touch screens: a tap opens the card's menu (play / tap first), so nothing happens by accident
-    if (!canHover) { e.stopPropagation(); const r = m.getBoundingClientRect(); openCtx(m, r.left, r.top); return; }
+    // a click or tap opens the card's menu (play / tap first, View card for prices and shops), the same on PC and phone.
+    // On a PC, Ctrl/⌘-click plays or taps at once, and Shift-click casts ignoring mana, as before.
+    const quick = canHover && (e.ctrlKey || e.metaKey || e.shiftKey);
+    if (!quick) {
+      e.stopPropagation();
+      if (canHover) openCtx(m, e.clientX, e.clientY); else { const r = m.getBoundingClientRect(); openCtx(m, r.left, r.top); }
+      return;
+    }
     const g = S.game, iid = +m.dataset.iid;
     const inHand = g.hand.find(i => i.iid === iid), inCmd = g.command.find(i => i.iid === iid), perm = g.battlefield.find(p => p.iid === iid);
     if (inHand || inCmd) playFromHand(inHand || inCmd, e.shiftKey, m);

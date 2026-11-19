@@ -45,8 +45,27 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   check('Escape closes it', !(await p.isVisible('#lightbox.show')));
 
-  // autopilot speed: time one autopilot turn at full speed, then at turtle speed (same seeded game)
+  // on a wide screen the price and the three shop buttons are on screen without scrolling
+  await card.click(); await p.waitForTimeout(400);
+  await p.waitForSelector('.lb-price', { timeout: 15000 }).catch(() => {});
+  const shopOnScreen = await p.$$eval('.lb-buy', as => as.length === 3 && as.every(a => a.getBoundingClientRect().bottom <= innerHeight));
+  check('price and TCGplayer / Card Kingdom / ManaPool buttons show beside the card without scrolling', shopOnScreen);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+
+  // on the Goldfish Table a click opens the card's menu (as on phones); View card opens the viewer with shop links
   await p.click('[data-tab=table]');
+  await p.waitForTimeout(1200);
+  const nHand = await p.$$eval('#zHand .mtg', x => x.length);
+  await p.click('#zHand .mtg', { position: { x: 12, y: 60 } }); await p.waitForTimeout(400);
+  check('a click on a table card opens its menu and plays nothing', await p.isVisible('#ctxMenu') && nHand === await p.$$eval('#zHand .mtg', x => x.length));
+  await p.click('#ctxMenu button:has-text("View card")'); await p.waitForTimeout(600);
+  check('View card from the table opens the viewer with the shop links', await p.isVisible('#lightbox.show') && (await p.$$eval('.lb-buy', x => x.length)) === 3);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#zHand .mtg', { position: { x: 12, y: 60 }, modifiers: ['Control'] }); await p.waitForTimeout(1500);
+  check('Ctrl-click acts at once (play or tap) instead of opening the menu', !(await p.isVisible('#ctxMenu')));
+  await p.keyboard.press('Escape');
+
+  // autopilot speed: time one autopilot turn at full speed, then at turtle speed (same seeded game)
   const timeTurn = async v => {
     await p.$eval('#tSpeed', (e, v) => { e.value = v; e.dispatchEvent(new Event('input')); }, String(v));
     await p.click('#tNew'); await p.waitForTimeout(800);

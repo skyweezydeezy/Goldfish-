@@ -4421,7 +4421,7 @@
       needs: [{ what: 'a commander', test: (a, c) => !!c.commander }],
       options: [{ name: 'Your setting (Hands tab)', value: 'setting' }, { name: 'As soon as it can be cast, even before ramp', value: 'first' }, { name: 'Right after ramp', value: 'afterRamp' }, { name: 'Like any other spell', value: 'normal' }] },
     { id: 'life', key: 'lifeFloor', label: 'Paying life for value: the lowest life you go to',
-      needs: [{ what: 'a card that pays life for mana, cards or untapped lands', test: a => !!((a.tapCond && a.tapCond.kind === 'shock') || a.yawg || a.pod || a.forgeExile || a.delugeCost) }],
+      needs: [{ what: 'a card that pays life for mana, cards or lands', test: a => !!((a.tapCond && a.tapCond.kind === 'shock') || (a.fetchSpec && a.fetchSpec.life) || a.yawg || a.pod || a.forgeExile || a.delugeCost) }],
       options: [{ name: "Each card's own default", value: 'current' }, { name: 'Down to 5 life', value: '5' }, { name: 'Down to 10 life', value: '10' }, { name: 'Keep 20 life', value: '20' }] },
     { id: 'pw', key: 'pwLoyalty', label: 'Planeswalkers: building loyalty or using it',
       needs: [{ what: 'a planeswalker with loyalty abilities', test: a => !!(a.isPlaneswalker && (a.pwAbilities || []).length) }],
@@ -4517,6 +4517,7 @@
   function crackFetch(g, perm, ev) {
     const spec = perm.card.a.fetchSpec;
     if (!spec || !g.battlefield.includes(perm)) return null;
+    if (spec.life && pol(g, 'lifeFloor') !== 'current' && g.life - spec.life < lifeFloor(g, 1)) return null;          // the Policy lab's life floor: a fetch land stays uncracked below it
     const cands = fetchCandidates(g, spec);
     if (!cands.length) return null;
     const have = new Set(); g.battlefield.forEach(p => { if (p.produce) p.produce.colors.forEach(c => have.add(c)); });
@@ -5493,7 +5494,12 @@
   // another one wins only if it beats the baseline by more than chance would explain (z > 1.64, about 95% one-sided).
   // goldfish: score = how early you win (1 = turn 1, 0 = no win). mirror: 1 for a win, 0.5 for no winner, 0 for a loss, against the same deck or another one.
   function comparePolicies(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, onProgress) {
+    // mode 'field': cardsB is a list of opponents [{ cards, tokens, policy? }]; game i is played against opponent i mod M (seats swapped every
+    // other round), so every option meets the same opponents with the same shuffles. Opponents play with their own policy, else opts.policyB, else the defaults.
+    const field = mode === 'field' && Array.isArray(cardsB) && cardsB.length > 0;
+    const decksB = field ? cardsB.map(o => buildDeck(o.cards, o.tokens, o.policy && o.policy.tribe)) : null, M = field ? decksB.length : 1;
     const deckB = mode === 'mirror' ? buildDeck(cardsB || cardsA, tokensB || tokensA) : null;
+    const optsB = field ? Object.assign({}, opts, { policy: opts.policyB || {} }) : Object.assign({}, opts, { policy: opts.policy });
     // one deck per candidate: the "tribe" choice changes how the cards are read, so each option gets its own build
     const tribeFor = cd => (cd.policy && cd.policy.tribe) || (opts.policy && opts.policy.tribe) || 'auto';
     const builds = {}; const deckFor = cd => builds[tribeFor(cd)] || (builds[tribeFor(cd)] = buildDeck(cardsA, tokensA, tribeFor(cd)));
@@ -5502,12 +5508,12 @@
     const scores = candidates.map(() => new Float64Array(n)), kills = new Array(K).fill(0), killSum = new Array(K).fill(0), wins = new Array(K).fill(0);
     let errors = 0;
     for (let i = 0; i < n; i++) {
-      const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
+      const s = (seed + i * 7919) >>> 0, aOnPlay = field ? Math.floor(i / M) % 2 === 0 : i % 2 === 0;
       for (let c = 0; c < K; c++) {
         const o = Object.assign({}, opts, { policy: Object.assign({}, opts.policy, candidates[c].policy) });
         try {
-          if (mode === 'mirror') {
-            const m = playMatch(decksA[c], deckB, o, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policy }));
+          if (mode === 'mirror' || field) {
+            const m = playMatch(decksA[c], field ? decksB[i % M] : deckB, o, s, aOnPlay, null, field && cardsB[i % M].policy ? Object.assign({}, optsB, { policy: cardsB[i % M].policy }) : optsB);
             const w = m.match.winner; scores[c][i] = w == null ? 0.5 : w === 0 ? 1 : 0; if (w === 0) wins[c]++;
           } else {
             const g = simulate(decksA[c], o, s);
@@ -5527,7 +5533,7 @@
     });
     let best = 0;
     rows.forEach((r, c) => { if (c > 0 && r.z > 1.64 && r.diff > 0 && (best === 0 || r.mean > rows[best].mean)) best = c; });
-    return { mode: mode || 'goldfish', n, turns: T, errors, rows, best };
+    return { mode: mode || 'goldfish', n, turns: T, errors, rows, best, opponents: M };
   }
 
   // One match as a readable turn-by-turn log (for the sample replay).

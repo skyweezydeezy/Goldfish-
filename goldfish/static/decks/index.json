@@ -8,7 +8,8 @@
     "Esika, God of the Tree"
    ],
    "colors": "WUBRG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "captains-lockdown.txt",
@@ -17,7 +18,8 @@
     "Sisay, Weatherlight Captain"
    ],
    "colors": "WUBRG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "scorched-sky.txt",
@@ -26,7 +28,8 @@
     "The Ur-Dragon"
    ],
    "colors": "WUBRG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "the-kings-gambit.txt",
@@ -35,7 +38,8 @@
     "Kenrith, the Returned King"
    ],
    "colors": "WUBRG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "ulalek-titanstorm.txt",
@@ -44,7 +48,8 @@
     "Ulalek, Fused Atrocity"
    ],
    "colors": "WUBRG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "unified-misery.txt",
@@ -53,7 +58,8 @@
     "Jodah, the Unifier"
    ],
    "colors": "WUBRG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "compleat-contagion.txt",
@@ -62,7 +68,8 @@
     "Atraxa, Praetors' Voice"
    ],
    "colors": "WUBG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "compound-interest.txt",
@@ -71,7 +78,8 @@
     "Atraxa, Praetors' Voice"
    ],
    "colors": "WUBG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "loyalty-program.txt",
@@ -80,7 +88,8 @@
     "Atraxa, Praetors' Voice"
    ],
    "colors": "WUBG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "tidewoven.txt",
@@ -90,7 +99,19 @@
     "Tymna the Weaver"
    ],
    "colors": "WUBG",
-   "cards": 100
+   "cards": 100,
+   "policy": {
+    "scepterHold": "yes"
+   },
+   "learned": [
+    {
+     "choice": "Waiting to imprint an untap-all instant on a copy-an-instant artifact",
+     "picked": "Hold it until the untap-all instant is in hand (up to turn 8)",
+     "z": 2.7,
+     "games": 500
+    }
+   ],
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "court-of-ruin.txt",
@@ -99,7 +120,19 @@
     "Kefka, Court Mage"
    ],
    "colors": "UBR",
-   "cards": 100
+   "cards": 100,
+   "policy": {
+    "keepLands": "3-5"
+   },
+   "learned": [
+    {
+     "choice": "Opening hand: how many lands to keep",
+     "picked": "Keep 3 to 5 lands",
+     "z": 2.1,
+     "games": 500
+    }
+   ],
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "nights-curfew.txt",
@@ -108,7 +141,8 @@
     "Y'shtola, Night's Blessed"
    ],
    "colors": "WUB",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "odds-and-ends.txt",
@@ -117,7 +151,19 @@
     "Yennett, Cryptic Sovereign"
    ],
    "colors": "WUB",
-   "cards": 100
+   "cards": 100,
+   "policy": {
+    "necroGoal": "11"
+   },
+   "learned": [
+    {
+     "choice": "Paying life for cards: how full to refill the hand",
+     "picked": "Refill to 11",
+     "z": 2.1,
+     "games": 500
+    }
+   ],
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "red-rum-raiders.txt",
@@ -126,7 +172,8 @@
     "Admiral Beckett Brass"
    ],
    "colors": "UBR",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "salt-mine.txt",
@@ -135,7 +182,8 @@
     "Nekusar, the Mindrazer"
    ],
    "colors": "UBR",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "second-breakfast.txt",
@@ -145,7 +193,8 @@
     "Sam, Loyal Attendant"
    ],
    "colors": "WBG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "black-mage-blackout.txt",
@@ -154,7 +203,8 @@
     "Vivi Ornitier"
    ],
    "colors": "UR",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "dead-sea.txt",
@@ -163,7 +213,8 @@
     "Thrasios, Triton Hero"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "death-tax.txt",
@@ -172,7 +223,19 @@
     "Teysa Karlov"
    ],
    "colors": "WB",
-   "cards": 100
+   "cards": 100,
+   "policy": {
+    "sacMode": "always"
+   },
+   "learned": [
+    {
+     "choice": "Sacrificing tokens to \"whenever a creature dies\" payoffs",
+     "picked": "Whenever there is a token",
+     "z": 3.3,
+     "games": 500
+    }
+   ],
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "double-down.txt",
@@ -181,7 +244,8 @@
     "Veyran, Voice of Duality"
    ],
    "colors": "UR",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "finale-of-the-floodborn.txt",
@@ -190,7 +254,8 @@
     "Hakbal of the Surging Soul"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "gnome-alone.txt",
@@ -199,7 +264,8 @@
     "Anim Pakal, Thousandth Moon"
    ],
    "colors": "WR",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "hatsune-miku.txt",
@@ -208,7 +274,8 @@
     "Trostani, Selesnya's Voice"
    ],
    "colors": "WG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "mermaids.txt",
@@ -217,7 +284,8 @@
     "Hakbal of the Surging Soul"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "otk.txt",
@@ -226,7 +294,8 @@
     "Bruna, Light of Alabaster"
    ],
    "colors": "WU",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "permafrost-prodigy.txt",
@@ -235,7 +304,8 @@
     "Kinnan, Bonder Prodigy"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "soul-brokers.txt",
@@ -244,7 +314,8 @@
     "Teysa Karlov"
    ],
    "colors": "WB",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "tidal-loop.txt",
@@ -253,7 +324,8 @@
     "Hakbal of the Surging Soul"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "tidecaller.txt",
@@ -262,7 +334,19 @@
     "Thrasios, Triton Hero"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "policy": {
+    "scepterHold": "yes"
+   },
+   "learned": [
+    {
+     "choice": "Waiting to imprint an untap-all instant on a copy-an-instant artifact",
+     "picked": "Hold it until the untap-all instant is in hand (up to turn 8)",
+     "z": 2,
+     "games": 500
+    }
+   ],
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "zimone-infinite-analyst.txt",
@@ -271,7 +355,8 @@
     "Zimone, Infinite Analyst"
    ],
    "colors": "UG",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "counter-culture.txt",
@@ -280,7 +365,8 @@
     "Rishkar, Peema Renegade"
    ],
    "colors": "G",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "ice-age-engine.txt",
@@ -289,7 +375,8 @@
     "Urza, Lord High Artificer"
    ],
    "colors": "U",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "second-draw.txt",
@@ -298,7 +385,8 @@
     "Alandra, Sky Dreamer"
    ],
    "colors": "U",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "sodium-seraphim.txt",
@@ -307,14 +395,16 @@
     "Gisela, the Broken Blade"
    ],
    "colors": "W",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "tooks-adventure.txt",
    "name": "Took's Adventure (Mono-White Tokens)",
    "commanders": [],
    "colors": "W",
-   "cards": 60
+   "cards": 60,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "undead-witches.txt",
@@ -323,7 +413,8 @@
     "Zul Ashur, Lich Lord"
    ],
    "colors": "B",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   },
   {
    "file": "void-tax.txt",
@@ -332,7 +423,8 @@
     "Zhulodok, Void Gorger"
    ],
    "colors": "",
-   "cards": 100
+   "cards": 100,
+   "learnedAt": "2026-11-19"
   }
  ]
 }

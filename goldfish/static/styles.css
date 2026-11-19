@@ -763,3 +763,11 @@ select { max-width: 100%; text-overflow: ellipsis; }
   .row > label:has(select) { flex: 1 1 100%; display: flex; flex-direction: column; gap: 4px; }
   .row > label:has(select) select { width: 100%; }
 }
+
+.lb-price { font-size: 22px; font-weight: 800; margin: 0 0 8px; color: var(--ice-2); }
+.lb-price small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+
+/* autopilot speed slider: turtle (5x slower) to rabbit (full speed) */
+.speed { display: inline-flex; align-items: center; gap: 4px; font-size: 16px; white-space: nowrap; }
+.speed input[type=range] { width: 96px; accent-color: #4db3f5; min-height: 0; padding: 0; border: 0; background: transparent; }
+@media (max-width: 600px) { .speed input[type=range] { width: 70px; } }

@@ -40,6 +40,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | rules-batch9 | Most played cards, batch 9: Vehicles and crew, d20 Dragons, Mana Reflection, Nyx Lotus, Jin-Gitaxias, Korvold, One with the Multiverse, Arwen, Hellkite Courser, Wound Reflection, Birthing Pod and more. |
 | sagas | Sagas: every Saga in the database has all its chapters read; lore counters, one chapter per turn, sacrifice after the last (History of Benalia, Rite of Belzenlok, The Flame of Keld, Song of Freyalise, Elspeth Conquers Death, The Eldest Reborn, Summon: Bahamut and more); Sagas that become creatures (Fable of the Mirror-Breaker); Praetors that become Sagas and return (Sheoldred). |
 | five-color | Najeela (attacking Warrior tokens, extra combat), Sisay (color count, legendary tutor), Derevi (command zone ability), Zur the Enchanter (attack tutor), Relic of Legends (legendary creatures tap for mana). |
+| stax-wheels | Tangle Wire and fading, Trinisphere, Teferi's Puzzle Box (with Underworld Dreams), Sulfuric Vortex, Pestilence, miracle (Reforge the Soul), Molten Psyche with metalcraft, Mindslaver; goldfish games and mirror matches run clean. |
 | sets | The card database by set: every card's full record is stored once (in its first set), pointers lead to earlier sets, and the simulator reads every card without throwing. |
 | red-rum-raiders | The Admiral Beckett Brass Pirate list: Treasure engines, Pirate damage triggers, Kari Zev, Port Razer, dash, theft (Treachery, Insurrection, Captivating Crew, Hostage Taker, Admiral), Conspiracy, Protean Raider, 30 full games. |
 | mermaids | The Hakbal Merfolk list: explore, Merfolk lords, Hardened Scales / Branching Evolution / Doubling Season, casting from the top, retrace, Kindred Discovery, Metallic Mimic, Reflections, Kumena, Vorel, Survival, 30 full games. |
@@ -52,4 +53,5 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |
 | ui/looks | Playmat and sleeve picker (browser test) |
 | ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer (browser test) |
+| ui/desktop-viewer | PC: clicking a card opens the viewer (price, previous / next); the autopilot speed slider (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |

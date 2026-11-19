@@ -86,7 +86,7 @@
   document.addEventListener('mouseover', e => {
     if (!canHover) return;
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('.zoom') || m.dataset.uid == null) return;
+    if (!m || m.closest('.zoom, #lightbox') || m.dataset.uid == null) return;
     const card = getCard(m.dataset.uid); if (!card) return;
     zoom.innerHTML = '';
     const faces = h('div', 'faces');
@@ -611,7 +611,13 @@
   }
 
   // ======================= goldfish table =======================
-  const delay = () => $('#tFast').checked ? 140 : 520;
+  // autopilot speed: the 🐢…🐇 slider slows everything down up to 5× (🐇 = the original speed); ⚡ Fast still applies on top
+  const speedBox = $('#tSpeed');
+  const slow = () => 6 - (+speedBox.value || 5);          // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
+  speedBox.value = localStorage.getItem('isf_speed') || 5;
+  speedBox.addEventListener('input', () => { localStorage.setItem('isf_speed', speedBox.value); speedBox.title = `Autopilot speed: ${slow() === 1 ? 'full speed' : slow() + '× slower'}`; });
+  speedBox.dispatchEvent(new Event('input'));
+  const delay = () => ($('#tFast').checked ? 140 : 520) * slow();
   $('#tNew').addEventListener('click', () => newTableGame());
   $('#tNext').addEventListener('click', () => guard(nextTurn));
   $('#tAuto').addEventListener('click', () => guard(autoTurn));
@@ -901,7 +907,7 @@
     const out = ((d && d.data) || []).map(x => {
       const faces = x.card_faces || [];
       const pick = k => x.image_uris ? [x.image_uris[k]] : faces.map(f => f.image_uris && f.image_uris[k]);
-      return { id: x.id, set: x.set, setName: x.set_name, cn: x.collector_number, date: x.released_at, tcg: x.tcgplayer_id, usd: (x.prices && (x.prices.usd || x.prices.usd_foil)) || null,
+      return { id: x.id, set: x.set, setName: x.set_name, cn: x.collector_number, date: x.released_at, tcg: x.tcgplayer_id, usd: (x.prices && (x.prices.usd || x.prices.usd_foil)) || null, foilOnly: !!(x.prices && !x.prices.usd && x.prices.usd_foil),
         imgs: pick('normal').filter(Boolean), thumb: (pick('small')[0]) || null };
     }).filter(p => p.imgs.length);
     printCache.set(card.name, out);
@@ -947,6 +953,7 @@
     const paintShop = p => {
       shop.innerHTML = '';
       shop.appendChild(h('div', 'lb-sec', p ? `Buy ${esc(p.setName)} #${esc(p.cn)}` : 'Buy this card'));
+      if (p) shop.appendChild(h('div', 'lb-price', p.usd ? `$${esc(p.usd)} <small>TCGplayer market price${p.foilOnly ? ' (foil)' : ''}, via Scryfall</small>` : '<small>No price listed for this printing</small>'));
       const links = h('div', 'lb-links');
       SHOPS.forEach(([key, label, url]) => {
         const a = h('a', 'lb-buy', esc(label) + ' ↗'); a.href = AFFILIATE[key](url(card, p)); a.target = '_blank'; a.rel = 'noopener sponsored'; links.appendChild(a);
@@ -971,7 +978,7 @@
           strip.appendChild(b);
           if (on && sel) paintShop(p);
         });
-        if (have < 0 && !sel) paintShop(null);
+        if (!sel) paintShop(have >= 0 ? list[have] : null);
         if (sel && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {
           const use = h('button', 'primary lb-use', `Use this printing in my deck`);
           use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
@@ -1000,6 +1007,7 @@
       });
       if (l.indexOf(card) >= 0) list = l;
     }
+    zoom.classList.remove('show');   // the hover preview would sit on top of the viewer
     lb.list = list; lb.i = list.indexOf(card); lb.sel = null;
     paintLb(); lightbox.scrollTop = 0;
     lightbox.classList.add('show'); document.body.classList.add('modal-open');
@@ -1033,9 +1041,8 @@
   }));
   document.addEventListener('click', e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
   document.addEventListener('contextmenu', e => { if (e.target.closest('.mtg') && !canHover) e.preventDefault(); });
-  // on touch screens, tapping a card anywhere except the table / odds picker opens the viewer
+  // clicking or tapping a card anywhere except the table / odds picker opens the viewer (PC and touch alike)
   document.addEventListener('click', e => {
-    if (canHover) return;
     const m = e.target.closest('.mtg');
     if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand') || m.dataset.uid == null) return;
     showLightbox(getCard(m.dataset.uid), m);
@@ -1185,7 +1192,7 @@
     if (!units.length) mp.innerHTML = '<span class="hint">none</span>';
 
     if (first) return;
-    const dur = $('#tFast').checked ? 200 : 420;
+    const dur = ($('#tFast').checked ? 200 : 420) * slow();
     $$('.table [data-iid]').forEach(e => {
       const r = e.getBoundingClientRect();
       const old = before.get(e.dataset.iid);
@@ -1665,7 +1672,7 @@
     });
     // hover name -> zoom (reuse .mtg zoom by a proxy element)
     hm.querySelectorAll('.mtg-ref').forEach(s => {
-      s.addEventListener('click', () => { if (!canHover) showLightbox(getCard(s.dataset.uid), s); });
+      s.addEventListener('click', () => showLightbox(getCard(s.dataset.uid), s));
       s.addEventListener('mouseenter', e => { const fake = cardEl(getCard(s.dataset.uid)); zoom.innerHTML = ''; const f = h('div', 'faces'); f.appendChild(fake); zoom.appendChild(f); zoom.classList.remove('two'); zoom.classList.add('show'); placeZoom(e); });
       s.addEventListener('mouseleave', () => zoom.classList.remove('show'));
     });

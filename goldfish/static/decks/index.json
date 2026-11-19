@@ -307,17 +307,21 @@
    "colors": "WB",
    "cards": 100,
    "policy": {
-    "sacMode": "always"
+    "tutorFocus": "mana"
    },
    "learned": [
     {
-     "choice": "Sacrificing tokens to \"whenever a creature dies\" payoffs",
-     "picked": "Whenever there is a token",
-     "z": 3.3,
-     "games": 500
+     "choice": "What tutors look for (when no combo piece is needed)",
+     "picked": "Mana first (ramp and cost reducers)",
+     "z": 2.2,
+     "confirmZ": 3.4,
+     "gain": 2.9,
+     "games": 600,
+     "against": "35 decks"
     }
    ],
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "double-down.txt",
@@ -374,7 +378,32 @@
    ],
    "colors": "WG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "tutorFocus": "payoff",
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "What tutors look for (when no combo piece is needed)",
+     "picked": "The biggest payoff",
+     "z": 3.9,
+     "confirmZ": 2.6,
+     "gain": 3.6,
+     "games": 600,
+     "against": "35 decks"
+    },
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 2.1,
+     "confirmZ": 2.9,
+     "gain": 1.4,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "mermaids.txt",
@@ -431,7 +460,8 @@
    ],
    "colors": "WB",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "tidal-loop.txt",

@@ -8,6 +8,8 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const pct = C.pct;
+  const sfx = (name, at) => { if (window.__isfAudio) window.__isfAudio.play(name, at); };          // sound effects (audio.js); silent when sound is off
+  const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); };
 
   const S = { cards: [], deck: null, byUid: [], game: null, undo: [], sim: null, oddsSel: new Set(), busy: false };
   window.__isf = S;                                  // read-only handle for automated UI tests
@@ -483,7 +485,7 @@
   $('#drawHand').addEventListener('click', () => { if (!need()) return; H = { g: G.newGame(S.deck, opts(), rseed()), mulls: 0 }; dealHand(); });
   $('#mullHand').addEventListener('click', () => {
     if (!H) return $('#drawHand').click();
-    H.g.library.push(...H.g.hand); H.g.hand = []; G.shuffle(H.g.library, H.g.rnd); H.mulls++;
+    H.g.library.push(...H.g.hand); H.g.hand = []; G.shuffle(H.g.library, H.g.rnd); H.mulls++; sfx('shuffle');
     clearSampleSelection();
     dealHand();
   });
@@ -502,6 +504,7 @@
   function dealHand(alreadyDrawn) {
     const g = H.g, o = opts();
     if (!alreadyDrawn) G.draw(g, 7);
+    sfx('deal', H.mulls ? 0.35 : 0);
     const k = bottomCount(H.mulls, o);
     H.bottom = k ? chooseBottom(g.hand, k, o) : [];
     const stage = $('#handStage'); stage.innerHTML = '';
@@ -646,13 +649,13 @@
   $('#tAuto').addEventListener('click', () => guard(autoTurn));
   $('#tAutoTo').addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; guard(async () => { const n = +$('#tAutoToN').value; while (S.game && S.game.turn < n || (S.game.turn === n && !S.game.turnDone)) await autoTurn(); }); });
   $('#tUndo').addEventListener('click', undo);
-  $('#zLibrary .card-back').addEventListener('click', () => { const g = S.game; if (!g || S.busy) return; snap(); const d = G.draw(g, 1); d.forEach(c => log(`Drew ${esc(c.card.name)}`)); render(); });
+  $('#zLibrary .card-back').addEventListener('click', () => { const g = S.game; if (!g || S.busy) return; snap(); const d = G.draw(g, 1); d.forEach(c => log(`Drew ${esc(c.card.name)}`)); if (d.length) sfx('draw'); render(); });
   $('#hLife').addEventListener('click', () => {
     const g = S.game; if (!g || S.busy) return;
     const v = prompt('Deal how much damage to the goldfish? (negative to undo)', '1');
     const n = parseInt(v, 10); if (!n) return;
     snap(); const ev = []; if (n > 0) G.damageOpp(g, n, ev, null); else g.damage = Math.max(0, g.damage + n);
-    describe(ev); render();
+    describe(ev); sfxEv(ev); render();
   });
   $('#tToken').addEventListener('click', () => {
     const g = S.game; if (!g || S.busy) return;
@@ -671,7 +674,7 @@
       const name = words.filter(w => !kws.includes(w.toLowerCase())).join(' ') || 'Token';
       spec = pm ? { name, creature: true, p: +pm[1], t: +pm[2], subtypes: [name], colors: [], keywords: kws } : { name: name[0].toUpperCase() + name.slice(1), creature: false, artifact: true };
     }
-    snap(); const ev = []; G.createTokens(g, spec, n, ev, null); describe(ev); render();
+    snap(); const ev = []; G.createTokens(g, spec, n, ev, null); describe(ev); sfxEv(ev); render();
   });
 
   async function guard(fn) { if (S.busy || !S.game) return; S.busy = true; try { await fn(); } finally { S.busy = false; render(); } }
@@ -685,6 +688,7 @@
   function startTableGame(g) {
     S.game = g; S.undo = []; g.turnDone = false; elCache.clear();
     $('#gameLog').innerHTML = '';
+    sfx('shuffle');
     log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => esc(c.card.name)).join(', ')}`);
     beginTurnUI();
     render(true);
@@ -694,6 +698,7 @@
     const ev = G.beginTurn(g); g.turnDone = false;
     logTurn(g.turn);
     describe(ev);
+    if (g.turn > 1) sfx('turn');
   }
   async function nextTurn() {
     const g = S.game; snap();
@@ -703,6 +708,7 @@
   async function play(ev) {
     // animate a batch of events: highlight sources, float damage, then re-render
     describe(ev);
+    sfxEv(ev);
     render();
     for (const e of ev) {
       if (e.type === 'damage' || e.type === 'attack') floatDamage(e.n || e.dmg);
@@ -726,7 +732,7 @@
     for (const e of ev) {
       batch.push(e);
       if (e.type === 'declare') {
-        describe(batch); batch = [];
+        describe(batch); sfxEv(batch); batch = [];
         render();
         e.attackers.forEach(p => { const el = document.querySelector(`.bf-row [data-iid="${p.iid}"]`); if (el) { el.classList.remove('attacking'); void el.offsetWidth; el.classList.add('attacking'); } });
         await sleep(delay() * 0.7);
@@ -846,7 +852,7 @@
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
       floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems, ring: s.ring }, s.scal);
     G.touch(g);
-    $('#gameLog').innerHTML = s.log; render();
+    $('#gameLog').innerHTML = s.log; sfx('undo'); render();
   }
 
   // ---- interactions ----
@@ -866,7 +872,7 @@
     const g = S.game, iid = +m.dataset.iid;
     const inHand = g.hand.find(i => i.iid === iid), inCmd = g.command.find(i => i.iid === iid), perm = g.battlefield.find(p => p.iid === iid);
     if (inHand || inCmd) playFromHand(inHand || inCmd, e.shiftKey, m);
-    else if (perm) { snap(); perm.tapped = !perm.tapped; render(); }
+    else if (perm) { snap(); perm.tapped = !perm.tapped; sfx('tap'); render(); }
   });
   function playFromHand(inst, force, el, asLand) {
     const g = S.game, a = inst.card.a;
@@ -879,7 +885,7 @@
     }
     snap();
     const ev = G.castCard(g, inst, force);
-    if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
+    if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); sfx('error'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
     play(ev);
   }
 
@@ -1128,13 +1134,13 @@
       if (zone === 'battlefield') G.removePerm(g, obj); else zones[zone].splice(zones[zone].indexOf(obj), 1);
       if (inst.card.isToken && to !== 'battlefield') { log(`${esc(inst.card.name)} token ceases to exist`); return; }
       if (to === 'library') top ? g.library.unshift(inst) : g.library.push(inst);
-      else if (to === 'battlefield') { const ev = []; G.enterWithTriggers(g, inst, {}, ev); describe(ev); }
+      else if (to === 'battlefield') { const ev = []; G.enterWithTriggers(g, inst, {}, ev); describe(ev); sfxEv(ev); }
       else if (inst.card.commander && (to === 'graveyard' || to === 'exile')) { g.command.push(inst); log(`${esc(inst.card.name)} → command zone (tax now +${2 * (g.cmdrCasts[inst.iid] || 0)})`); return; }
       else zones[to].push(inst);
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
     });
     if (zone === 'hand' || zone === 'command') items.push([inst.card.a.isLand ? '▶ Play land' : '▶ Cast', () => playFromHand(inst, false, m), 'primary']);
-    if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; }), 'primary']);
+    if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary']);
     items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
       if (inst.card.a.mdfcLand) items.push(['Play as land (back face)', () => playFromHand(inst, true, m, true)]);
@@ -1147,7 +1153,7 @@
           const ring = g.ring = Object.assign({ tempts: 0, bearer: null }, g.ring);
           ring.tempts++; ring.bearer = obj.iid;
           const e = { type: 'tempt', n: ring.tempts, level: Math.min(4, ring.tempts), bearer: obj, ability: G.RING_TEXT[Math.min(4, ring.tempts) - 1] };
-          describe([e]); ringBanner(e);
+          describe([e]); sfxEv([e]); ringBanner(e);
         })]);
         items.push(['+1/+1 counter', act(() => { G.addCounters(g, obj, '+1/+1', 1, [], null); })]);
         items.push(['−1/−1 counter', act(() => { G.addCounters(g, obj, '-1/-1', 1, [], null); })]);

@@ -285,3 +285,6 @@
   .vs-arena .mtg .pt { font-size: 10.5px; padding: 0 4px; }
   .vs-cnt { font-size: 10px; padding: 0 5px; }
 }
+/* the 🔊 button: on tablets the one in the top bar is right there; on phones the top bar is only the tabs on these two tabs, so it sits in the game toolbar */
+@media (min-width: 601px) and (max-width: 760px) { .vs-bar .open-sound { display: none; } }
+@media (max-width: 600px) { body[data-view=duel] .top-sound, body[data-view=pod] .top-sound { display: none; } }

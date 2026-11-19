@@ -223,18 +223,8 @@
    ],
    "colors": "WUB",
    "cards": 100,
-   "policy": {
-    "necroGoal": "11"
-   },
-   "learned": [
-    {
-     "choice": "Paying life for cards: how full to refill the hand",
-     "picked": "Refill to 11",
-     "z": 2.1,
-     "games": 500
-    }
-   ],
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "red-rum-raiders.txt",
@@ -244,7 +234,8 @@
    ],
    "colors": "UBR",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "salt-mine.txt",
@@ -265,7 +256,8 @@
    ],
    "colors": "WBG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "black-mage-blackout.txt",
@@ -275,7 +267,8 @@
    ],
    "colors": "UR",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "dead-sea.txt",
@@ -285,7 +278,22 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "tutorFocus": "payoff"
+   },
+   "learned": [
+    {
+     "choice": "What tutors look for (when no combo piece is needed)",
+     "picked": "The biggest payoff",
+     "z": 3.7,
+     "confirmZ": 4.1,
+     "gain": 5.5,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "death-tax.txt",
@@ -316,7 +324,8 @@
    ],
    "colors": "UR",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "finale-of-the-floodborn.txt",
@@ -326,7 +335,8 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "gnome-alone.txt",
@@ -336,7 +346,22 @@
    ],
    "colors": "WR",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 3.4,
+     "confirmZ": 3.9,
+     "gain": 2.3,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "hatsune-miku.txt",
@@ -356,7 +381,22 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 2.4,
+     "confirmZ": 2.1,
+     "gain": 1.1,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "otk.txt",
@@ -366,7 +406,8 @@
    ],
    "colors": "WU",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "permafrost-prodigy.txt",
@@ -376,7 +417,8 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "soul-brokers.txt",
@@ -396,7 +438,32 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "tutorFocus": "payoff",
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "What tutors look for (when no combo piece is needed)",
+     "picked": "The biggest payoff",
+     "z": 2.9,
+     "confirmZ": 1.9,
+     "gain": 2.6,
+     "games": 600,
+     "against": "35 decks"
+    },
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 3.1,
+     "confirmZ": 2.3,
+     "gain": 1.7,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "tidecaller.txt",
@@ -407,17 +474,21 @@
    "colors": "UG",
    "cards": 100,
    "policy": {
-    "scepterHold": "yes"
+    "tutorFocus": "payoff"
    },
    "learned": [
     {
-     "choice": "Waiting to imprint an untap-all instant on a copy-an-instant artifact",
-     "picked": "Hold it until the untap-all instant is in hand (up to turn 8)",
-     "z": 2,
-     "games": 500
+     "choice": "What tutors look for (when no combo piece is needed)",
+     "picked": "The biggest payoff",
+     "z": 2.3,
+     "confirmZ": 1.8,
+     "gain": 2.7,
+     "games": 600,
+     "against": "35 decks"
     }
    ],
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "zimone-infinite-analyst.txt",
@@ -427,7 +498,32 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "commanderTiming": "first",
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "When to cast the commander",
+     "picked": "As soon as it can be cast, even before ramp",
+     "z": 3.8,
+     "confirmZ": 2.6,
+     "gain": 3.1,
+     "games": 600,
+     "against": "35 decks"
+    },
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 4.7,
+     "confirmZ": 3.2,
+     "gain": 3.2,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "counter-culture.txt",
@@ -447,7 +543,8 @@
    ],
    "colors": "U",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "second-draw.txt",
@@ -457,7 +554,8 @@
    ],
    "colors": "U",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "sodium-seraphim.txt",
@@ -467,7 +565,22 @@
    ],
    "colors": "W",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 3,
+     "confirmZ": 2.6,
+     "gain": 1.5,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "tooks-adventure.txt",
@@ -485,7 +598,22 @@
    ],
    "colors": "B",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 2.3,
+     "confirmZ": 2.8,
+     "gain": 1.5,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   },
   {
    "file": "void-tax.txt",
@@ -495,7 +623,22 @@
    ],
    "colors": "",
    "cards": 100,
-   "learnedAt": "2026-11-19"
+   "learnedAt": "2026-11-19",
+   "policy": {
+    "attackCaution": "0.5"
+   },
+   "learned": [
+    {
+     "choice": "Attacking when the opponent could kill you next turn",
+     "picked": "More aggressive (half)",
+     "z": 2.7,
+     "confirmZ": 2.1,
+     "gain": 1.2,
+     "games": 600,
+     "against": "35 decks"
+    }
+   ],
+   "learnedVs": "field"
   }
  ]
 }

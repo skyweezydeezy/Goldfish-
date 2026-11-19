@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path');
 const G = require('../../goldfish/static/sim.js');
 const R = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'combo-pieces-loaded.json'), 'utf8'));
 const DIR = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
-const WANT = ['Hellkite Tyrant', 'Revel in Riches', 'Mechanized Production', 'Triskaidekaphile', 'Approach of the Second Sun', 'Simic Ascendancy', 'Chance Encounter', 'Felidar Sovereign', 'Twenty-Toed Toad', 'Knuckles the Echidna'];
+const WANT = ['Hellkite Tyrant', 'Revel in Riches', 'Mechanized Production', 'Triskaidekaphile', 'Approach of the Second Sun', 'Simic Ascendancy', 'Chance Encounter', 'Felidar Sovereign', 'Twenty-Toed Toad', 'Knuckles the Echidna', 'Helix Pinnacle'];
 const extra = [];
 for (const s of JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8')).sets) for (const c of JSON.parse(fs.readFileSync(path.join(DIR, s.code + '.json'), 'utf8')).cards) if (!c.ref && WANT.includes(c.name) && !extra.some(x => x.name === c.name)) extra.push(c);
 const deck = G.buildDeck(R.cards.concat(extra).map(c => Object.assign({}, c, { commander: false, qty: /^(Island|Forest|Swamp|Mountain)$/.test(c.name) ? 10 : 1 })), []);
@@ -69,7 +69,12 @@ check('...exactly thirteen at upkeep: you win', won(g), g.hand.length);
 g = fresh(); put(g, 'Mechanized Production'); upkeep(g);
 check('Mechanized Production alone: no win at upkeep', !won(g));
 g = fresh(); put(g, 'Knuckles the Echidna'); upkeep(g); check('Knuckles the Echidna without thirty artifacts: no win', !won(g));
-for (const n of ['Simic Ascendancy', 'Chance Encounter']) { g = fresh(); put(g, n); upkeep(g); upkeep(g); check(`${n}: its counters are not tracked, so it never wins by itself`, !won(g)); }
+for (const [n, kind, min] of [['Simic Ascendancy', 'growth', 20], ['Chance Encounter', 'luck', 10], ['Helix Pinnacle', 'tower', 100]]) {
+  g = fresh(); const p = put(g, n); upkeep(g); upkeep(g); check(`${n} with no ${kind} counters: no win at upkeep`, !won(g));
+  G.addCounters(g, p, kind, min - 1, [], p, true); upkeep(g); check(`...${min - 1} ${kind} counters: not yet`, !won(g), (p.other || {})[kind]);
+  G.addCounters(g, p, kind, 1, [], p, true); upkeep(g); check(`...${min} ${kind} counters: you win`, won(g), (p.other || {})[kind]); }
+{ g = fresh(); const sa = put(g, 'Simic Ascendancy'), bird = put(g, 'Birds of Paradise'); G.addCounters(g, bird, '+1/+1', 3, [], null, true);
+  check('Simic Ascendancy: +1/+1 counters put on your creature become growth counters', (sa.other || {}).growth === 3, JSON.stringify(sa.other)); }
 g = fresh(); put(g, 'Felidar Sovereign'); g.life = 39; upkeep(g); check('Felidar Sovereign at 39 life: no win', !won(g));
 g.life = 40; upkeep(g); check('...at 40 life: you win (unchanged)', won(g));
 { const toad = by('Twenty-Toed Toad').a.triggers.find(t => t.fx.some(f => f.type === 'win')); check('Twenty-Toed Toad: the win needs twenty counters or twenty cards in hand', toad.fx.find(f => f.type === 'win').cond.kind === 'countersOrHand');

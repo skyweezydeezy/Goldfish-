@@ -62,6 +62,7 @@
     o = o || {};
     const e = h('div', 'mtg');
     e.dataset.uid = card.uid;
+    e._card = card;                                         // the card itself: hover preview and viewer use this, so cards of other decks (1v1, Pod) work too
     if (o.iid != null) e.dataset.iid = o.iid;
     const src = imgFor(card, o.face);
     const fb = () => { e.innerHTML = `<div class="fallback"><b>${esc(card.name)}</b><span>${esc(card.mana_cost)}</span><span>${esc(card.type_line)}</span></div>`; addExtras(); };
@@ -86,14 +87,14 @@
   document.addEventListener('mouseover', e => {
     if (!canHover) return;
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('.zoom, #lightbox') || m.dataset.uid == null) return;
-    const card = getCard(m.dataset.uid); if (!card) return;
+    if (!m || m.closest('.zoom, #lightbox')) return;
+    const card = cardOf(m); if (!card) return;
     zoom.innerHTML = '';
     const faces = h('div', 'faces');
     const n = Math.max(1, (card.images || []).length || (card.remote_images || []).length);
     for (let i = 0; i < Math.min(2, n); i++) faces.appendChild(cardEl(card, { face: i }));
     zoom.appendChild(faces);
-    { const ts = S.tags && S.tags.ofCard.get(card.uid);                                     // the card's tags (tags.js), without the shape tags
+    { const ts = S.tags && isDeckCard(card) && S.tags.ofCard.get(card.uid);                 // the card's tags (tags.js), without the shape tags
       if (ts) { const keep = [...ts].filter(t => !/^(mv|color|engine|type):/.test(t)); if (keep.length) zoom.appendChild(h('div', 'zoom-tags', keep.slice(0, 14).map(esc).join(' · '))); } }
     zoom.classList.toggle('two', n > 1);
     zoom.classList.add('show');
@@ -122,6 +123,8 @@
   // clicking it opens the card viewer (price, printings, shops), unless the click already means something else there
   // (the Goldfish Table, the Draw Odds picker, the sample hands): then the 🔍 in its corner, right-click or a long press opens it.
   const previewCards = new Map();
+  const cardOf = m => m ? (m._card || (m.dataset.uid != null ? getCard(m.dataset.uid) : null)) : null;      // the card a picture shows
+  const isDeckCard = c => !!(S.deck && c && S.deck.unique[+c.uid] && S.deck.unique[+c.uid].name === c.name);   // false for an opponent's card whose number collides
   function getCard(uid) {
     if (!S.deck) return null;
     const s = String(uid);
@@ -618,15 +621,25 @@
 
   // ======================= goldfish table =======================
   // autopilot speed: the 🐢…🐇 slider slows everything down up to 5× (🐇 = the original speed); ⚡ Fast still applies on top
-  const speedBox = $('#tSpeed');
-  const slow = () => 6 - (+speedBox.value || 5);          // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
-  speedBox.value = localStorage.getItem('isf_speed') || 5;
-  speedBox.addEventListener('input', () => {
-    localStorage.setItem('isf_speed', speedBox.value);
+  // One setting for the whole app: every 🐢…🐇 slider (Goldfish Table, 1v1, Pod) shows and changes the same speed.
+  let speedVal = Math.max(1, Math.min(5, +localStorage.getItem('isf_speed') || 5));
+  const slow = () => 6 - speedVal;                        // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
+  const speedBars = [];
+  function paintSpeed() {
     const txt = slow() === 1 ? 'Full speed' : slow() === 5 ? '5× slower (slowest)' : slow() + '× slower';
-    speedBox.title = 'Autopilot speed: ' + txt; $('#tSpeedTxt').textContent = txt;
-  });
-  speedBox.dispatchEvent(new Event('input'));
+    speedBars.forEach(([box, lbl]) => { box.value = speedVal; box.title = 'Autopilot speed: ' + txt; if (lbl) lbl.textContent = txt; });
+  }
+  function bindSpeed(box, lbl) {
+    speedBars.push([box, lbl]);
+    box.addEventListener('input', () => { speedVal = Math.max(1, Math.min(5, +box.value || 5)); localStorage.setItem('isf_speed', speedVal); paintSpeed(); });
+  }
+  function speedBar() {                                   // a new speed bar for another tab, already wired to the shared setting
+    const bar = h('div', 'speed-bar', '<span class="speed-name">Autopilot speed</span><label class="speed" title="Autopilot speed"><span aria-hidden="true">🐢</span>' +
+      '<input type="range" min="1" max="5" step="0.5" value="5" aria-label="Autopilot speed, turtle to rabbit"><span aria-hidden="true">🐇</span></label><span class="speed-txt"></span>');
+    bindSpeed(bar.querySelector('input'), bar.querySelector('.speed-txt')); paintSpeed();
+    return bar;
+  }
+  bindSpeed($('#tSpeed'), $('#tSpeedTxt')); paintSpeed();
   const delay = () => ($('#tFast').checked ? 140 : 520) * slow();
   $('#tNew').addEventListener('click', () => newTableGame());
   $('#tNext').addEventListener('click', () => guard(nextTurn));
@@ -910,7 +923,7 @@
     ['cardkingdom', 'Card Kingdom', (c) => `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${enc(c.name)}`],
     ['manapool', 'ManaPool', (c, p) => (p || c.set) && (p ? p.cn : c.cn) ? `https://manapool.com/card/${enc((p ? p.set : c.set))}/${enc(p ? p.cn : c.cn)}/${slugOf(c.name)}` : `https://manapool.com/cards?q=${enc(c.name)}`],
   ];
-  const LB_SCOPE = '.table, .tags-results, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
+  const LB_SCOPE = '.table, .vs-seat, .tags-results, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
   const lb = { list: [], i: 0, sel: null };
   const printCache = new Map();
   async function fetchPrints(card) {
@@ -996,7 +1009,7 @@
           if (on && sel) paintShop(p);
         });
         if (!sel) paintShop(have >= 0 ? list[have] : null);
-        if (sel && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {
+        if (sel && S.deck && S.deck.unique.includes(card) && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {   // only for cards of the loaded deck
           const use = h('button', 'primary lb-use', `Use this printing in my deck`);
           use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
           pr.appendChild(use);
@@ -1016,11 +1029,13 @@
     if (!card) return;
     let list = [card];
     const sc = scopeEl && scopeEl.closest ? scopeEl.closest(LB_SCOPE) : null;
-    if (sc) {
+    if (Array.isArray(scopeEl)) { if (scopeEl.indexOf(card) >= 0) list = scopeEl.filter((c, i) => scopeEl.indexOf(c) === i); }   // an explicit list, e.g. a whole graveyard
+    else if (sc) {
       const seen = new Set(), l = [];
-      sc.querySelectorAll('.mtg[data-uid]').forEach(e => {
-        if (e.closest('#lightbox') || seen.has(e.dataset.uid)) return;
-        seen.add(e.dataset.uid); const c = getCard(e.dataset.uid); if (c) l.push(c);
+      sc.querySelectorAll('.mtg').forEach(e => {
+        const c = cardOf(e);
+        if (!c || e.closest('#lightbox') || seen.has(c)) return;
+        seen.add(c); l.push(c);
       });
       if (l.indexOf(card) >= 0) list = l;
     }
@@ -1041,12 +1056,12 @@
   document.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse') return;
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('#lightbox') || m.dataset.uid == null) return;
+    if (!m || m.closest('#lightbox') || !cardOf(m)) return;
     const me = lp = { m, x: e.clientX, y: e.clientY, fired: false };
     me.t = setTimeout(() => {
       me.fired = true;
       if (navigator.vibrate) navigator.vibrate(15);
-      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(getCard(m.dataset.uid), m);
+      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(cardOf(m), m);
     }, 480);
   });
   document.addEventListener('pointermove', e => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) { clearTimeout(lp.t); lp = null; } });
@@ -1060,25 +1075,26 @@
   document.addEventListener('contextmenu', e => { if (e.target.closest('.mtg') && !canHover) e.preventDefault(); });
   // where a click already means something else (picking cards for the odds, picking a sample hand), the 🔍 in the card's
   // top-right corner opens the viewer instead; runs before the card's own click handler
-  const ZOOM_CORNER = '#oddsPicker .mtg, .mini-hand .mtg';
+  const ZOOM_CORNER = '#oddsPicker .mtg, .mini-hand .mtg, .vs-hand .mtg';
   document.addEventListener('click', e => {
-    const m = e.target.closest(ZOOM_CORNER); if (!m || m.dataset.uid == null) return;
-    const r = m.getBoundingClientRect(), c = getCard(m.dataset.uid);
-    const left = !!m.closest('.mini-hand');                 // sample-hand cards overlap from the right, so their 🔍 sits top-left
+    const m = e.target.closest(ZOOM_CORNER); if (!m) return;
+    const r = m.getBoundingClientRect(), c = cardOf(m);
+    const left = !!m.closest('.mini-hand, .vs-hand');       // these cards overlap from the right, so their 🔍 sits top-left
+    const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;     // a real click on the card, not a scripted one
     const inX = left ? e.clientX <= r.left + 34 : e.clientX >= r.right - 34;
-    if (c && inX && e.clientY <= r.top + 34) { e.stopPropagation(); e.preventDefault(); showLightbox(c, m); }
+    if (c && inside && inX && e.clientY <= r.top + 34) { e.stopPropagation(); e.preventDefault(); showLightbox(c, m); }
   }, true);
   // right-click any card off the table (PC) opens the viewer
   document.addEventListener('contextmenu', e => {
-    const m = e.target.closest('.mtg'); if (!m || m.closest('.table, #lightbox') || m.dataset.uid == null) return;
-    const c = getCard(m.dataset.uid); if (!c) return;
+    const m = e.target.closest('.mtg'); if (!m || m.closest('.table, #lightbox')) return;
+    const c = cardOf(m); if (!c) return;
     e.preventDefault(); showLightbox(c, m);
   });
   // clicking or tapping a card anywhere except the table / odds picker opens the viewer (PC and touch alike)
   document.addEventListener('click', e => {
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand') || m.dataset.uid == null) return;
-    showLightbox(getCard(m.dataset.uid), m);
+    if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand')) return;
+    showLightbox(cardOf(m), m);
   });
 
   // context menu
@@ -1804,7 +1820,7 @@
   }
   // tag chips for one card (used in the lightbox): click one to search for it on the Deck tab
   function cardTagChips(card) {
-    const set = S.tags && S.tags.ofCard.get(card.uid); if (!set) return null;
+    const set = S.tags && isDeckCard(card) && S.tags.ofCard.get(card.uid); if (!set) return null;
     const wrap = h('div', 'lb-tags');
     [...set].filter(t => !/^(mv|color|engine):/.test(t)).sort((a, b) => Tags.ORDER.indexOf(a.split(':')[0]) - Tags.ORDER.indexOf(b.split(':')[0]) || a.localeCompare(b)).forEach(t => {
       const b = h('button', 'tag-chip', esc(t)); b.title = 'Search the deck for this tag';
@@ -1898,5 +1914,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, viewCard: showLightbox, slow, speedBar, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

@@ -42,7 +42,12 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('next moves to another card', (await p.textContent('.lb-name')) !== name0);
   await p.tap('.lb-nav.prev'); await p.waitForTimeout(300);
   check('previous moves back', (await p.textContent('.lb-name')) === name0);
-  await p.waitForTimeout(1500);
+  // printings come live from Scryfall: wait for them rather than a fixed time; if this card has a single printing, step to one with more
+  for (let k = 0; k < 6; k++) {
+    await p.waitForFunction(() => document.querySelectorAll('.lb-print').length > 0 || /not available/.test((document.querySelector('.lb-strip') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+    if ((await p.$$eval('.lb-print', x => x.length)) > 1) break;
+    await p.tap('.lb-nav.next'); await p.waitForTimeout(300);
+  }
   const nPrint = await p.$$eval('.lb-print', x => x.length);
   check('printings are listed with prices', nPrint > 1, nPrint + ' printings');
   const shop = await p.$$eval('.lb-buy', x => x.map(a => a.href));

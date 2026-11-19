@@ -62,6 +62,7 @@
     o = o || {};
     const e = h('div', 'mtg');
     e.dataset.uid = card.uid;
+    e._card = card;                                         // the card itself: hover preview and viewer use this, so cards of other decks (1v1, Pod) work too
     if (o.iid != null) e.dataset.iid = o.iid;
     const src = imgFor(card, o.face);
     const fb = () => { e.innerHTML = `<div class="fallback"><b>${esc(card.name)}</b><span>${esc(card.mana_cost)}</span><span>${esc(card.type_line)}</span></div>`; addExtras(); };
@@ -86,14 +87,14 @@
   document.addEventListener('mouseover', e => {
     if (!canHover) return;
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('.zoom, #lightbox') || m.dataset.uid == null) return;
-    const card = getCard(m.dataset.uid); if (!card) return;
+    if (!m || m.closest('.zoom, #lightbox')) return;
+    const card = cardOf(m); if (!card) return;
     zoom.innerHTML = '';
     const faces = h('div', 'faces');
     const n = Math.max(1, (card.images || []).length || (card.remote_images || []).length);
     for (let i = 0; i < Math.min(2, n); i++) faces.appendChild(cardEl(card, { face: i }));
     zoom.appendChild(faces);
-    { const ts = S.tags && S.tags.ofCard.get(card.uid);                                     // the card's tags (tags.js), without the shape tags
+    { const ts = S.tags && isDeckCard(card) && S.tags.ofCard.get(card.uid);                 // the card's tags (tags.js), without the shape tags
       if (ts) { const keep = [...ts].filter(t => !/^(mv|color|engine|type):/.test(t)); if (keep.length) zoom.appendChild(h('div', 'zoom-tags', keep.slice(0, 14).map(esc).join(' · '))); } }
     zoom.classList.toggle('two', n > 1);
     zoom.classList.add('show');
@@ -122,6 +123,8 @@
   // clicking it opens the card viewer (price, printings, shops), unless the click already means something else there
   // (the Goldfish Table, the Draw Odds picker, the sample hands): then the 🔍 in its corner, right-click or a long press opens it.
   const previewCards = new Map();
+  const cardOf = m => m ? (m._card || (m.dataset.uid != null ? getCard(m.dataset.uid) : null)) : null;      // the card a picture shows
+  const isDeckCard = c => !!(S.deck && c && S.deck.unique[+c.uid] && S.deck.unique[+c.uid].name === c.name);   // false for an opponent's card whose number collides
   function getCard(uid) {
     if (!S.deck) return null;
     const s = String(uid);
@@ -618,15 +621,25 @@
 
   // ======================= goldfish table =======================
   // autopilot speed: the 🐢…🐇 slider slows everything down up to 5× (🐇 = the original speed); ⚡ Fast still applies on top
-  const speedBox = $('#tSpeed');
-  const slow = () => 6 - (+speedBox.value || 5);          // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
-  speedBox.value = localStorage.getItem('isf_speed') || 5;
-  speedBox.addEventListener('input', () => {
-    localStorage.setItem('isf_speed', speedBox.value);
+  // One setting for the whole app: every 🐢…🐇 slider (Goldfish Table, 1v1, Pod) shows and changes the same speed.
+  let speedVal = Math.max(1, Math.min(5, +localStorage.getItem('isf_speed') || 5));
+  const slow = () => 6 - speedVal;                        // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
+  const speedBars = [];
+  function paintSpeed() {
     const txt = slow() === 1 ? 'Full speed' : slow() === 5 ? '5× slower (slowest)' : slow() + '× slower';
-    speedBox.title = 'Autopilot speed: ' + txt; $('#tSpeedTxt').textContent = txt;
-  });
-  speedBox.dispatchEvent(new Event('input'));
+    speedBars.forEach(([box, lbl]) => { box.value = speedVal; box.title = 'Autopilot speed: ' + txt; if (lbl) lbl.textContent = txt; });
+  }
+  function bindSpeed(box, lbl) {
+    speedBars.push([box, lbl]);
+    box.addEventListener('input', () => { speedVal = Math.max(1, Math.min(5, +box.value || 5)); localStorage.setItem('isf_speed', speedVal); paintSpeed(); });
+  }
+  function speedBar() {                                   // a new speed bar for another tab, already wired to the shared setting
+    const bar = h('div', 'speed-bar', '<span class="speed-name">Autopilot speed</span><label class="speed" title="Autopilot speed"><span aria-hidden="true">🐢</span>' +
+      '<input type="range" min="1" max="5" step="0.5" value="5" aria-label="Autopilot speed, turtle to rabbit"><span aria-hidden="true">🐇</span></label><span class="speed-txt"></span>');
+    bindSpeed(bar.querySelector('input'), bar.querySelector('.speed-txt')); paintSpeed();
+    return bar;
+  }
+  bindSpeed($('#tSpeed'), $('#tSpeedTxt')); paintSpeed();
   const delay = () => ($('#tFast').checked ? 140 : 520) * slow();
   $('#tNew').addEventListener('click', () => newTableGame());
   $('#tNext').addEventListener('click', () => guard(nextTurn));
@@ -747,6 +760,7 @@
 
   const nm = p => esc(p && p.card ? p.card.name : 'Spell');
   function describe(ev) {
+    noteImprints(S.game, ev);                               // remember which card a Chrome Mox exiled
     // With token doublers one effect can make dozens of tokens and fire the same trigger dozens of times:
     // group those into one log line ("created 8 × Soldier", "⚡ Belladonna Took ×8") instead of one line each.
     const items = [], seen = new Map();
@@ -837,7 +851,9 @@
 
   // ---- interactions ----
   $('.table').addEventListener('click', e => {
-    const m = e.target.closest('.mtg'); if (!m || S.busy || !S.game || m.dataset.iid == null) return;
+    const m = e.target.closest('.mtg');
+    if (m && m.classList.contains('imprinted-card')) { e.stopPropagation(); return showLightbox(cardOf(m), m); }   // the card imprinted on a permanent: just read it
+    if (!m || S.busy || !S.game || m.dataset.iid == null) return;
     // touch screens: a tap opens the card's menu (play / tap first), so nothing happens by accident
     // a click or tap opens the card's menu (play / tap first, View card for prices and shops), the same on PC and phone.
     // On a PC, Ctrl/⌘-click plays or taps at once, and Shift-click casts ignoring mana, as before.
@@ -910,7 +926,7 @@
     ['cardkingdom', 'Card Kingdom', (c) => `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${enc(c.name)}`],
     ['manapool', 'ManaPool', (c, p) => (p || c.set) && (p ? p.cn : c.cn) ? `https://manapool.com/card/${enc((p ? p.set : c.set))}/${enc(p ? p.cn : c.cn)}/${slugOf(c.name)}` : `https://manapool.com/cards?q=${enc(c.name)}`],
   ];
-  const LB_SCOPE = '.table, .tags-results, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
+  const LB_SCOPE = '.table, .vs-seat, .tags-results, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
   const lb = { list: [], i: 0, sel: null };
   const printCache = new Map();
   async function fetchPrints(card) {
@@ -996,7 +1012,7 @@
           if (on && sel) paintShop(p);
         });
         if (!sel) paintShop(have >= 0 ? list[have] : null);
-        if (sel && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {
+        if (sel && S.deck && S.deck.unique.includes(card) && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {   // only for cards of the loaded deck
           const use = h('button', 'primary lb-use', `Use this printing in my deck`);
           use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
           pr.appendChild(use);
@@ -1016,11 +1032,13 @@
     if (!card) return;
     let list = [card];
     const sc = scopeEl && scopeEl.closest ? scopeEl.closest(LB_SCOPE) : null;
-    if (sc) {
+    if (Array.isArray(scopeEl)) { if (scopeEl.indexOf(card) >= 0) list = scopeEl.filter((c, i) => scopeEl.indexOf(c) === i); }   // an explicit list, e.g. a whole graveyard
+    else if (sc) {
       const seen = new Set(), l = [];
-      sc.querySelectorAll('.mtg[data-uid]').forEach(e => {
-        if (e.closest('#lightbox') || seen.has(e.dataset.uid)) return;
-        seen.add(e.dataset.uid); const c = getCard(e.dataset.uid); if (c) l.push(c);
+      sc.querySelectorAll('.mtg').forEach(e => {
+        const c = cardOf(e);
+        if (!c || e.closest('#lightbox') || seen.has(c)) return;
+        seen.add(c); l.push(c);
       });
       if (l.indexOf(card) >= 0) list = l;
     }
@@ -1041,12 +1059,12 @@
   document.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse') return;
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('#lightbox') || m.dataset.uid == null) return;
+    if (!m || m.closest('#lightbox') || !cardOf(m)) return;
     const me = lp = { m, x: e.clientX, y: e.clientY, fired: false };
     me.t = setTimeout(() => {
       me.fired = true;
       if (navigator.vibrate) navigator.vibrate(15);
-      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(getCard(m.dataset.uid), m);
+      if (m.closest('.table') && m.dataset.iid != null) openCtx(m, me.x, me.y); else showLightbox(cardOf(m), m);
     }, 480);
   });
   document.addEventListener('pointermove', e => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) { clearTimeout(lp.t); lp = null; } });
@@ -1060,25 +1078,26 @@
   document.addEventListener('contextmenu', e => { if (e.target.closest('.mtg') && !canHover) e.preventDefault(); });
   // where a click already means something else (picking cards for the odds, picking a sample hand), the 🔍 in the card's
   // top-right corner opens the viewer instead; runs before the card's own click handler
-  const ZOOM_CORNER = '#oddsPicker .mtg, .mini-hand .mtg';
+  const ZOOM_CORNER = '#oddsPicker .mtg, .mini-hand .mtg, .vs-hand .mtg';
   document.addEventListener('click', e => {
-    const m = e.target.closest(ZOOM_CORNER); if (!m || m.dataset.uid == null) return;
-    const r = m.getBoundingClientRect(), c = getCard(m.dataset.uid);
-    const left = !!m.closest('.mini-hand');                 // sample-hand cards overlap from the right, so their 🔍 sits top-left
+    const m = e.target.closest(ZOOM_CORNER); if (!m) return;
+    const r = m.getBoundingClientRect(), c = cardOf(m);
+    const left = !!m.closest('.mini-hand, .vs-hand');       // these cards overlap from the right, so their 🔍 sits top-left
+    const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;     // a real click on the card, not a scripted one
     const inX = left ? e.clientX <= r.left + 34 : e.clientX >= r.right - 34;
-    if (c && inX && e.clientY <= r.top + 34) { e.stopPropagation(); e.preventDefault(); showLightbox(c, m); }
+    if (c && inside && inX && e.clientY <= r.top + 34) { e.stopPropagation(); e.preventDefault(); showLightbox(c, m); }
   }, true);
   // right-click any card off the table (PC) opens the viewer
   document.addEventListener('contextmenu', e => {
-    const m = e.target.closest('.mtg'); if (!m || m.closest('.table, #lightbox') || m.dataset.uid == null) return;
-    const c = getCard(m.dataset.uid); if (!c) return;
+    const m = e.target.closest('.mtg'); if (!m || m.closest('.table, #lightbox')) return;
+    const c = cardOf(m); if (!c) return;
     e.preventDefault(); showLightbox(c, m);
   });
   // clicking or tapping a card anywhere except the table / odds picker opens the viewer (PC and touch alike)
   document.addEventListener('click', e => {
     const m = e.target.closest('.mtg');
-    if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand') || m.dataset.uid == null) return;
-    showLightbox(getCard(m.dataset.uid), m);
+    if (!m || m.closest('.table, #oddsPicker, #lightbox, .mini-hand')) return;
+    showLightbox(cardOf(m), m);
   });
 
   // context menu
@@ -1159,6 +1178,27 @@
     if (!e) { e = cardEl(card, { iid, face, eager: true }); elCache.set(key, e); }
     return e;
   }
+  // The card exiled with a permanent by imprint. Isochron Scepter and Ugin's Labyrinth: the engine keeps it on the permanent.
+  // Chrome Mox: the engine only says so in a note, so the note is read here (noteImprints) and remembered per permanent.
+  const moxImprint = new WeakMap();
+  function noteImprints(g, ev) {
+    (ev || []).forEach(e => {
+      const m = e && e.type === 'note' && e.source && /^Imprint: exiled (.+) \(Chrome Mox/.exec(e.text || ''); if (!m || !g) return;
+      const inst = (g.exile || []).slice().reverse().find(i => i.card.name === m[1]);
+      if (inst) moxImprint.set(e.source, inst);
+    });
+  }
+  const imprintOf = p => (p && (p.imprinted || moxImprint.get(p))) || null;
+  // its picture on the Goldfish Table: tucked behind the permanent, labelled; a click opens it in the card viewer
+  function imprintEl(p, used) {
+    const im = imprintOf(p), key = 'imp:' + im.iid + ':' + im.card.uid;
+    used.add(key);
+    let e = elCache.get(key);
+    if (!e) { e = cardEl(im.card, { eager: true }); elCache.set(key, e); }
+    clearState(e);
+    e.classList.add('imprinted-card'); e.appendChild(h('span', 'tag', 'Imprint')); e.title = `${im.card.name}: imprinted on ${p.card.name}`;
+    return e;
+  }
   function clearState(e) {
     e.style.marginLeft = ''; e.style.marginRight = '';
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
@@ -1180,13 +1220,14 @@
       // stack identical permanents (lands, and tokens in the same state) so big boards stay readable
       const groups = new Map();
       list.forEach(p => {
-        const stackable = id === 'zLands' || p.token;
-        const k = stackable ? p.card.uid + '|' + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : '') + '|' + (p.sick ? 's' : '') + '|' + (p.counters || 0) : 'solo' + p.iid;
+        const stackable = (id === 'zLands' || p.token) && !imprintOf(p);
+        const k = stackable ?p.card.uid + '|' + (p.tapped ? 't' : 'u') + (p.mdfc ? 'm' : '') + '|' + (p.sick ? 's' : '') + '|' + (p.counters || 0) : 'solo' + p.iid;
         if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p);
       });
       const nodes = [label];
       for (const ps of groups.values()) {
         const sg = h('div', 'stackgroup');
+        if (ps.length === 1 && imprintOf(ps[0])) { sg.classList.add('imprint'); sg.appendChild(imprintEl(ps[0], used)); }
         (ps.length > 4 ? ps.slice(0, 4) : ps).forEach(p => sg.appendChild(permEl(p, used)));   // a big stack shows 4 cards and a count, not 100 images
         if (ps.length > 4) sg.appendChild(h('span', 'stack-count', '×' + ps.length));
         nodes.push(sg);
@@ -1729,23 +1770,39 @@
     else terms.push(not ? neg : pos);
     $('#tagQuery').value = terms.join(' '); renderTags();
   }
+  const tagOpen = new Set(['role']), tagAll = new Set();          // which tag groups are open / fully shown (kept while you search)
   function renderTags() {
     const box = $('#deckTags');
     if (!S.tags) { box.hidden = true; return; }
     box.hidden = false;
     const ix = S.tags, terms = tagTerms();
     // chips, grouped by namespace
+    // calmer layout: each group folds open and shut (Role open to start), tags sit in an even grid of same-width tiles,
+    // and a group shows its 8 most common tags until you ask for all of them
     const chips = h('div', '');
+    const TOP = 8;
     Tags.ORDER.filter(ns => ix.groups[ns]).forEach(ns => {
-      const g = h('div', 'tag-group'); g.appendChild(h('span', 'tag-ns', esc(Tags.NAMESPACES[ns] || ns)));
-      ix.groups[ns].slice().sort((a, b) => ns === 'mv' ? a.localeCompare(b, undefined, { numeric: true }) : (ix.copies.get(b) - ix.copies.get(a)) || a.localeCompare(b)).forEach(t => {
+      const list = ix.groups[ns].slice().sort((a, b) => ns === 'mv' ? a.localeCompare(b, undefined, { numeric: true }) : (ix.copies.get(b) - ix.copies.get(a)) || a.localeCompare(b));
+      const active = list.some(t => terms.includes(t) || terms.includes('-' + t));
+      const g = h('details', 'tag-group');
+      g.open = tagOpen.has(ns) || active;
+      g.addEventListener('toggle', () => { g.open ? tagOpen.add(ns) : tagOpen.delete(ns); });
+      g.appendChild(h('summary', '', `<span class="tag-ns">${esc(Tags.NAMESPACES[ns] || ns)}</span><span class="tag-ns-n">${list.length}</span>`));
+      const grid = h('div', 'tag-grid');
+      const showAll = tagAll.has(ns) || list.length <= TOP + 2;
+      (showAll ? list : list.slice(0, TOP)).forEach(t => {
         const on = terms.includes(t), not = terms.includes('-' + t);
-        const b = h('button', 'tag-chip' + (on ? ' on' : '') + (not ? ' not' : ''), `${esc(t.slice(ns.length + 1))}<small>${ix.copies.get(t)}</small>`);
+        const b = h('button', 'tag-chip' + (on ? ' on' : '') + (not ? ' not' : ''), `<span>${esc(t.slice(ns.length + 1).replace(/-/g, ' '))}</span><small>${ix.copies.get(t)}</small>`);
         b.title = `${t}: ${ix.copies.get(t)} card${ix.copies.get(t) === 1 ? '' : 's'}. Click to add to the search, Shift-click to exclude.`;
         b.addEventListener('click', e => toggleTagTerm(t, e.shiftKey));
-        g.appendChild(b);
+        grid.appendChild(b);
       });
-      if (ns === 'my') { const note = h('span', 'hint', 'Shift-click to exclude'); g.appendChild(note); }
+      g.appendChild(grid);
+      if (list.length > TOP + 2) {
+        const more = h('button', 'ghost tag-more', tagAll.has(ns) ? 'Show fewer' : `Show all ${list.length}`);
+        more.addEventListener('click', () => { tagAll.has(ns) ? tagAll.delete(ns) : tagAll.add(ns); renderTags(); });
+        g.appendChild(more);
+      }
       chips.appendChild(g);
     });
     if (!ix.groups.my) chips.appendChild(h('div', 'hint', 'No tags of your own yet: search for some cards, then press <b>Tag these…</b> to save them as <code>my:name</code>.'));
@@ -1756,7 +1813,7 @@
     S.tagResult = q.cards;
     const total = Tags.copiesOf(q.cards);
     $('#tagToOdds').disabled = $('#tagMake').disabled = !q.cards.length;
-    $('#tagHelp').innerHTML = !terms.length ? `${ix.tags.length} tags across ${ix.cards.length} different cards. A space means AND, a comma means OR, <code>-tag</code> excludes, <code>trigger:</code> means any trigger, and a bare word like <code>ramp</code> matches any tag of that name.`
+    $('#tagHelp').innerHTML = !terms.length ? `${ix.tags.length} tags across ${ix.cards.length} cards. Tap a tag to find its cards. <details class="tag-how"><summary>How to search</summary>A space means AND, a comma means OR, <code>-tag</code> excludes (or Shift-click a tag), <code>trigger:</code> means any trigger, and a bare word like <code>ramp</code> matches any tag of that name.</details>`
       : `${q.cards.length} different card${q.cards.length === 1 ? '' : 's'} (${total} in the deck)${q.cards.length ? '' : ': nothing has all of those tags'}`;
     q.cards.forEach(c => res.appendChild(cardEl(c, { badge: c.qty > 1 ? '×' + c.qty : null })));
   }
@@ -1788,7 +1845,7 @@
   }
   // tag chips for one card (used in the lightbox): click one to search for it on the Deck tab
   function cardTagChips(card) {
-    const set = S.tags && S.tags.ofCard.get(card.uid); if (!set) return null;
+    const set = S.tags && isDeckCard(card) && S.tags.ofCard.get(card.uid); if (!set) return null;
     const wrap = h('div', 'lb-tags');
     [...set].filter(t => !/^(mv|color|engine):/.test(t)).sort((a, b) => Tags.ORDER.indexOf(a.split(':')[0]) - Tags.ORDER.indexOf(b.split(':')[0]) || a.localeCompare(b)).forEach(t => {
       const b = h('button', 'tag-chip', esc(t)); b.title = 'Search the deck for this tag';
@@ -1804,11 +1861,54 @@
     S.deck.unique.forEach(c => { if (c.commander) return; const a = c.a; if ((role === 'land' && a.isLand) || (role === 'ramp' && a.role === 'ramp') || (role === 'draw' && a.draw) || (role === 'creature' && a.isCreature && !a.isLand)) S.oddsSel.add(c.uid); });
     e.target.value = ''; renderOdds();
   });
-  $('#oddsClear').addEventListener('click', () => { S.oddsSel.clear(); renderOdds(); });
+  $('#oddsClear').addEventListener('click', () => { S.oddsSel.clear(); catActive = null; renderOdds(); });
   $('#oddsK').addEventListener('input', () => renderOdds(true));
+
+  // ---- odds by category: every role tag (ramp, draw, removal...) plus lands, at least one seen after N cards ----
+  const CAT_NAME = { ramp: 'Ramp', 'fast-mana': 'Fast mana', draw: 'Card draw', removal: 'Removal', wipe: 'Board wipes', counter: 'Counterspells',
+    protection: 'Protection', tutor: 'Tutors', recursion: 'Recursion', 'graveyard-hate': 'Graveyard hate', 'grave-hate': 'Graveyard hate', graveyard: 'Graveyard synergy',
+    finisher: 'Finishers', wincon: 'Win conditions', anthem: 'Anthems', tokens: 'Token makers', 'sac-outlet': 'Sacrifice outlets', superfriends: 'Planeswalker support',
+    lifegain: 'Lifegain', stax: 'Stax', discard: 'Discard', theft: 'Theft' };
+  const CAT_SKIP = new Set(['instant-speed']);              // a speed, not a kind of card
+  const catName = r => CAT_NAME[r] || (r.charAt(0).toUpperCase() + r.slice(1)).replace(/-/g, ' ');
+  let catActive = null;
+  function categories() {
+    const lib = c => !c.commander;
+    const out = [{ key: 'land', name: 'Lands', cards: S.deck.unique.filter(c => lib(c) && c.a.isLand) }];
+    if (S.tags) S.tags.tags.filter(t => t.startsWith('role:') && !CAT_SKIP.has(t.slice(5))).forEach(t => {
+      const cards = (S.tags.cardsOf.get(t) || []).filter(lib);
+      if (cards.length) out.push({ key: t, name: catName(t.slice(5)), cards });
+    });
+    else [['ramp', c => c.a.role === 'ramp'], ['draw', c => c.a.draw]].forEach(([k, f]) => out.push({ key: 'role:' + k, name: catName(k), cards: S.deck.unique.filter(c => lib(c) && f(c)) }));
+    return out.map(c => Object.assign(c, { qty: c.cards.reduce((s, x) => s + (x.qty || 1), 0) })).filter(c => c.qty)
+      .sort((a, b) => (a.key === 'land' ? -1 : b.key === 'land' ? 1 : a.name.localeCompare(b.name)));
+  }
+  function renderCatOdds() {
+    if (!S.deck) return;
+    const N = S.deck.library.length, box = $('#catN');
+    const n = Math.max(1, Math.min(N, Math.round(+box.value || 7)));
+    if (+box.value !== n) box.value = n;
+    const onPlay = opts().onPlay, extra = n - 7, turn = extra + (onPlay ? 1 : 0);
+    $('#catWhen').textContent = n === 7 ? '= your opening hand' : n < 7 ? '(fewer than an opening hand)' : `≈ by turn ${turn}, ${onPlay ? 'on the play' : 'on the draw'} (natural draws only)`;
+    const body = $('#catBody'); body.innerHTML = '';
+    categories().forEach(cat => {
+      const p = G.hyperAtLeast(N, cat.qty, Math.min(N, n), 1);
+      const tr = h('tr', 'cat-row' + (catActive === cat.key ? ' on' : ''), `<td>${esc(cat.name)}</td><td class="num">${cat.qty}</td><td class="num"><span class="cat-bar" style="--p:${(p * 100).toFixed(1)}%"></span><b>${Math.round(p * 100)}%</b></td>`);
+      tr.title = `${cat.qty} card${cat.qty === 1 ? '' : 's'} in ${N}: at least one in ${n} cards drawn is ${pct(p)}. Tap to pick them below.`;
+      tr.addEventListener('click', () => {
+        catActive = cat.key; S.oddsSel = new Set(cat.cards.map(c => c.uid)); renderOdds();
+        const t = $('#oddsTitle'); if (t && t.scrollIntoView && !canHover) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      body.appendChild(tr);
+    });
+  }
+  $('#catN').addEventListener('input', renderCatOdds);
+  $('#catMinus').addEventListener('click', () => { $('#catN').value = Math.max(1, (+$('#catN').value || 7) - 1); renderCatOdds(); });
+  $('#catPlus').addEventListener('click', () => { $('#catN').value = (+$('#catN').value || 7) + 1; renderCatOdds(); });
 
   function renderOdds(skipPicker) {
     if (!S.deck) return;
+    renderCatOdds();
     if (!skipPicker) {
       const pk = $('#oddsPicker'); pk.innerHTML = '';
       S.deck.unique.filter(c => !c.commander).sort((a, b) => (a.a.isLand - b.a.isLand) || a.a.mv - b.a.mv || a.name.localeCompare(b.name)).forEach(c => {
@@ -1839,5 +1939,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, viewCard: showLightbox, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

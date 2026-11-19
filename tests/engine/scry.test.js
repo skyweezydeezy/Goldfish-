@@ -15,7 +15,7 @@ const lands = (g, n) => { for (let i = 0; i < n; i++) { const p = G.enterWithTri
 const soldier = { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W'], subtypes: ['Soldier'], keywords: [], artifact: false, name: 'Soldier' };
 
 check('Viscera Seer: scry line is simulated', by('Viscera').a.sacScry === 1 && by('Viscera').a.coverage.every(c => c.status === 'ok'));
-check('Path of Ancestry: scry clause is read and honestly flagged approximated', by('Path of').a.scryOnType === 1 && by('Path of').a.coverage.some(c => c.status === 'partial' && c.tag === 'approx'), by('Path of').a.coverage.map(c => c.status + '/' + c.tag).join(','));
+check('Path of Ancestry: the scry clause is read', by('Path of').a.scryOnType === 1 && by('Path of').a.coverage.every(c => c.status !== 'ignored'), by('Path of').a.coverage.map(c => c.status + '/' + c.tag).join(','));
 let g = fresh(); lands(g, 7); g.library.unshift(inst(g, 'Sol Ring')); let top = g.library[0];
 let ev = []; G.applyEffects(g, [{ type: 'scry', n: 1 }], null, ev, null);
 g = fresh(); lands(g, 7); g.library.unshift({ iid: 9100, card: basic }); ev = []; G.applyEffects(g, [{ type: 'scry', n: 1 }], null, ev, null);

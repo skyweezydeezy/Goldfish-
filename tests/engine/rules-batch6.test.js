@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path');
 const G = require('../../goldfish/static/sim.js');
 const D = path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'sets');
 const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8'));
-const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, s.code + '.json'), 'utf8')); });
+const store = {}; idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Dark Confidant', 'Tireless Tracker', 'Thopter Spy Network', 'Jaheira, Friend of the Forest', 'Unearth', 'Eidolon of Blossoms', 'Phyrexian Reclamation', 'Coat of Arms', 'Karmic Guide', 'Serra Ascendant', 'Omniscience', 'Nyxbloom Ancient', 'Mirrormade', 'Wurmcoil Engine', 'Stoneforge Mystic', 'Skrelv, Defector Mite', 'Cathartic Reunion', 'Kalonian Hydra', 'Titania, Protector of Argoth', 'The Gitrog Monster', 'Kambal, Profiteering Mayor', 'Crashing Drawbridge', 'Ghalta, Stampede Tyrant', 'Sea Gate Restoration // Sea Gate, Reborn', 'Sword of the Animist', 'Mindless Automaton', 'Sol Ring', 'Grave Titan'];

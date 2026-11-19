@@ -1,9 +1,10 @@
 /* Service worker: lets the app open offline and keeps card images you've already seen. */
-const VERSION = 'isf-v27';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'versus.js', 'versus.css', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'profile.js', 'tags.js', 'decks/index.json', 'looks.js', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
+const VERSION = 'isf-v39';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'versus.js', 'versus.css', 'decide.js', 'choices.js', 'choices.css', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'profile.js', 'tags.js', 'decks/index.json', 'looks.js', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const IMG = 'gf-img-v1';
 const MAX_IMAGES = 600;
+const LOCAL = location.hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -37,6 +38,8 @@ self.addEventListener('fetch', e => {
     e.respondWith(caches.open(VERSION).then(async cache => {
       const hit = await cache.match(req, { ignoreSearch: true });
       const net = fetch(req).then(res => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => hit);
+      // run from your own PC (start.bat): always show the files on disk, so an update shows up at once
+      if (LOCAL) return net;
       return hit || net;
     }));
   }

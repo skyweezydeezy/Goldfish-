@@ -1,37 +1,287 @@
-/* 1v1 and Pod tabs */
-.vs-seats { display: grid; gap: 10px; margin-bottom: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.vs-seat { background: var(--surface-1); border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+/* 1v1 and Pod tabs: an Arena-style table. Opponents across the top, you at the bottom, the playmat behind everyone. */
+
+/* ---------- the table ---------- */
+.vs-bar { margin: 0 0 10px; align-items: center; }
+.vs-round { margin-right: 8px; }
+.vs-note { color: #f7cf6f; }
+.vs-arena {
+  --vc: clamp(38px, min(5.6vw, 7vh), 84px);        /* a card on the battlefield: sized so a whole 1v1 table fits one screen */
+  --hc: calc(var(--vc) * 1.3);                      /* a card in your hand */
+  --pc: max(30px, calc(var(--vc) * .62));           /* a card on a pile */
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; margin-bottom: 14px; border-radius: 16px; border: 1px solid var(--border);
+  background: repeating-linear-gradient(92deg, rgba(255,255,255,.012) 0 3px, transparent 3px 11px), radial-gradient(ellipse at 50% 40%, #1d1a17 0%, #0f0d0c 75%);
+  box-shadow: inset 0 0 90px rgba(0,0,0,.5);
+}
+.vs-arena.pod .vs-opps .vs-seat { --vc: clamp(30px, min(3.7vw, 6vh), 56px); }
+.vs-opps { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.vs-opps.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vs-opps.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ---------- one player ---------- */
+.vs-seat { position: relative; isolation: isolate; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; border-radius: 12px;
+  background-image: var(--mat, radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%)); background-size: var(--mat-size, cover); background-position: center;
+  border: 1px solid rgba(160,215,255,.14); border-left: 4px solid var(--muted); transition: box-shadow .2s; }
+.vs-seat::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: rgba(4,12,20,.14); pointer-events: none; }
 .vs-seat.a, .vs-line.a { border-left-color: var(--ice, #8fd8ff); }
 .vs-seat.b, .vs-line.b { border-left-color: #f7cf6f; }
 .vs-seat.c, .vs-line.c { border-left-color: #7fd69a; }
 .vs-seat.d, .vs-line.d { border-left-color: #e79ad0; }
-.vs-seat.active { box-shadow: 0 0 0 2px var(--accent); }
-.vs-seat.out { opacity: .45; }
-.vs-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.vs-head small { display: block; color: var(--muted); font-size: 12px; }
-.vs-life { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.vs-stats { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
-.vs-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; font-size: 12.5px; }
-.vs-row i, .vs-hand i, .vs-attackers i { color: var(--muted); }
+.vs-seat.active { box-shadow: 0 0 0 2px #f5d17a, 0 0 22px rgba(245,209,122,.35); }
+.vs-seat.out { opacity: .5; }
+.vs-gone { grid-column: 1 / -1; padding: 18px; text-align: center; color: var(--muted); }
+
+/* name, hand (card backs), commander damage, life */
+.vs-plate { display: flex; align-items: center; gap: 10px; min-height: 40px; min-width: 0; padding: 2px 4px 2px 10px; border-radius: 99px; background: rgba(4,12,20,.62); }
+.vs-set { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-secondary); }
+.vs-arena.pod .vs-opps .vs-set { display: none; }
+.vs-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.vs-who b, .vs-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-who small { color: var(--text-secondary); font-size: 11.5px; }
+.vs-turn { flex: none; font-size: 11.5px; font-weight: 700; color: #1b1405; background: #f5d17a; border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.vs-backs { flex: none; display: inline-flex; align-items: center; padding-left: 7px; }
+.vs-backs i { width: 13px; height: 18px; margin-left: -7px; border-radius: 2px; border: 1px solid #0a2030; background: radial-gradient(ellipse at 50% 50%, #bfe9ff 0 18%, #4aa6e0 19% 34%, #12324a 35% 100%); box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.vs-backs b { margin-left: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.vs-cd { flex: none; font-size: 11.5px; color: #ffb0b0; background: rgba(208,59,59,.2); border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+.vs-life { flex: none; margin-left: auto; min-width: 42px; height: 42px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center; font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: radial-gradient(circle at 50% 30%, #2b4f6b, #0c1a26); box-shadow: 0 0 0 2px rgba(143,216,255,.5), 0 2px 8px rgba(0,0,0,.5); }
+.vs-life.down { animation: vslife-down .7s ease-out; }
+.vs-life.up { animation: vslife-up .7s ease-out; }
+@keyframes vslife-down { 0% { box-shadow: 0 0 0 4px #ff5a5a, 0 0 22px #ff5a5a; color: #ffb0b0; transform: scale(1.18); } }
+@keyframes vslife-up { 0% { box-shadow: 0 0 0 4px #7fdc7f, 0 0 22px #7fdc7f; color: #c9f5c9; transform: scale(1.18); } }
+
+/* ---------- battlefield: creatures in the front row, lands and the rest in the back row; piles beside it ---------- */
+.vs-board { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.vs-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vs-row { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: calc(var(--vc) * 1.3934 + 10px); padding: 5px 8px; border-radius: 10px;
+  background: rgba(214,241,255,.05); box-shadow: inset 0 0 0 1px rgba(143,216,255,.07); }
+.vs-row.front { justify-content: center; }
+.vs-row.back { justify-content: space-between; }
+.vs-grp { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; }
+.vs-none { color: rgba(214,241,255,.32); font-size: 11.5px; padding: 0 6px; white-space: nowrap; }
+/* a card or a stack of identical cards. When a row is too full the stacks squeeze together and the cards overlap, like a crowded table */
+.vs-stack { position: relative; display: flex; align-items: center; flex: 0 1 auto; min-width: calc(var(--vc) * .34); transition: transform .15s; }
+.vs-stack:last-child { flex-shrink: 0; }
+.vs-stack:hover { z-index: 5; }
+.vs-stack .mtg { --card-w: var(--vc); flex: none; }
+.vs-stack > .mtg + .mtg { margin-left: calc(var(--vc) * -0.84); }
+.vs-cnt { position: absolute; right: -3px; top: -5px; z-index: 6; background: rgba(4,10,16,.92); color: #fff; font-weight: 800; font-size: 11px; padding: 1px 6px; border-radius: 99px; box-shadow: 0 0 0 1px rgba(143,216,255,.5); }
+/* tapped the Arena way: turned a little and dimmed, so a tapped card never covers its neighbours */
+.vs-arena .mtg.tapped { transform: rotate(13deg) scale(.92); filter: brightness(.66) saturate(.8); }
+.vs-arena .mtg.vs-new { animation: vsnew .35s ease-out; }
+@keyframes vsnew { from { transform: scale(.55); opacity: 0; } }
+.vs-seat.opp .mtg.attacking { translate: 0 10px; box-shadow: 0 0 0 3px #ff6b4a, 0 0 18px rgba(255,107,74,.85); }
+/* choosing attackers: your creatures that can attack have an orange edge; the ones you send step forward */
+.vs-stack.pickable { cursor: pointer; }
+.vs-stack.pickable .mtg { box-shadow: 0 0 0 2px rgba(255,179,71,.75); }
+.vs-stack.picked { transform: translateY(-10px); }
+.vs-stack.picked .mtg { box-shadow: 0 0 0 3px #ff6b4a, 0 0 18px rgba(255,107,74,.85); }
+.vs-arena.pod .vs-opps .mtg .pt { font-size: 10px; padding: 0 4px; right: 2px; bottom: 2px; }
+.vs-arena.pod .vs-opps .mtg .ctr { font-size: 9px; top: 14px; left: 2px; }
+.vs-arena.pod .vs-opps .mtg.sick::after { font-size: 10px; }
+
+/* library, command zone, graveyard, exile */
+.vs-piles { display: grid; grid-template-columns: repeat(2, minmax(var(--pc), auto)); gap: 6px 8px; align-content: center; justify-items: center; }
+.vs-pile { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.vs-plbl { font-size: 9.5px; letter-spacing: .03em; color: var(--text-secondary); white-space: nowrap; }
+.vs-plbl b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.vs-plbl .ls { display: none; }
+.vs-arena.pod .vs-opps .vs-plbl .lw { display: none; } .vs-arena.pod .vs-opps .vs-plbl .ls { display: inline; }
+.vs-pile .mtg { --card-w: var(--pc); }
+.vs-pile .card-back { width: var(--pc); border-width: 2px; }
+.vs-pile.deep > .mtg { box-shadow: 2px 2px 0 #0a2030, 4px 4px 0 #12324a, 5px 5px 8px rgba(0,0,0,.6); }
+.vs-pile.grave, .vs-pile.exile { cursor: pointer; }
+.vs-empty { width: var(--pc); aspect-ratio: 488 / 680; border-radius: 6%; border: 1px dashed rgba(160,215,255,.24); }
+.vs-czone { display: flex; }
+.vs-czone .mtg + .mtg { margin-left: calc(var(--pc) * -0.62); }
+/* sleeves: every player has their own (set per seat). The edge colour on their cards, the art on their library and on the backs of a hidden hand */
+:where(.vs-seat.sleeved) .mtg { box-shadow: 0 0 0 2px var(--sleeve), 0 2px 6px rgba(0,0,0,.55); }
+.vs-seat.sleeved .card-back { background: var(--sleeve-back); border-color: var(--sleeve-dark); }
+.vs-seat.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px 0 var(--sleeve-mid), 6px 6px 8px rgba(0,0,0,.6); }
+.vs-seat.sleeved .vs-backs i { background: var(--sleeve-back); border-color: var(--sleeve-dark); }
+.vs-seat.sleeved .vs-pile.deep > .mtg { box-shadow: 0 0 0 2px var(--sleeve), 2px 2px 0 var(--sleeve-dark), 4px 4px 0 var(--sleeve-mid), 5px 5px 8px rgba(0,0,0,.6); }
+/* a player without sleeves keeps the plain card back, whatever you chose for yourself */
+.vs-seat:not(.sleeved) .card-back { background: radial-gradient(ellipse at 50% 50%, #bfe9ff 0 16%, #4aa6e0 17% 30%, #12324a 31% 100%), repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px); border-color: #0a2030; }
+.vs-seat:not(.sleeved) .card-back.pile { box-shadow: 2px 2px 0 #0a2030, 4px 4px 0 #12324a, 6px 6px 8px rgba(0,0,0,.6); }
+
+/* ---------- the newest thing that happened, in the middle of the table ---------- */
+.vs-mid { align-self: center; max-width: 100%; min-height: 28px; padding: 5px 14px; border-radius: 14px; font-size: 13px; text-align: center; color: var(--text-primary);
+  background: rgba(4,12,20,.72); box-shadow: inset 0 0 0 1px rgba(160,215,255,.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vs-mid:empty { visibility: hidden; }
+.vs-mid.a b { color: var(--ice, #8fd8ff); } .vs-mid.b b { color: #f7cf6f; } .vs-mid.c b { color: #7fd69a; } .vs-mid.d b { color: #e79ad0; }
+
+/* ---------- you: what you can do now, and your hand ---------- */
+.vs-me { padding: 8px 10px; border-radius: 10px; background: rgba(4,12,20,.62); box-shadow: inset 0 0 0 1px rgba(160,215,255,.12); }
+.vs-me .row { margin: 6px 0 0; }
+.vs-ask b { color: var(--ice-2, #d6f1ff); margin-right: 4px; }
+.vs-hand { display: flex; justify-content: center; align-items: flex-end; gap: 6px; min-width: 0; padding: 12px 4px 2px; }
+.vs-hand i { color: var(--muted); }
+.vs-slot { position: relative; flex: 0 1 auto; min-width: calc(var(--hc) * .3); display: flex; }
+.vs-slot:last-child { flex-shrink: 0; }
+.vs-slot:hover { z-index: 5; }
+.vs-slot .mtg { --card-w: var(--hc); flex: none; }
+.vs-card { transition: transform .15s; }
+.vs-hand .vs-card { cursor: zoom-in; }
+.vs-card.can { cursor: pointer; box-shadow: 0 0 0 2px #7fdc7f, 0 0 14px rgba(12,163,12,.65); }
+.vs-hand .vs-card.can:hover { transform: translateY(-10px); }
+.vs-card.pick { box-shadow: 0 0 0 2px var(--warning, #fab219); filter: grayscale(.7) brightness(.6); }
+.vs-asland { position: absolute; left: 3px; bottom: 3px; z-index: 6; padding: 3px 7px; min-height: 0; font-size: 11px; background: rgba(4,12,20,.92); }
+.vs-hand .mtg::after { content: '🔍'; position: absolute; top: 4px; left: 4px; z-index: 5; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
+  background: rgba(4,10,16,.78); box-shadow: 0 0 0 1px rgba(143,216,255,.5); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.vs-hand .mtg:hover::after { opacity: 1; }
+@media (hover: none) { .vs-hand .mtg::after { opacity: .92; } }
+
+/* blocks */
+.vs-atkline { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; font-size: 12.5px; }
 .vs-lbl { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); width: 66px; flex: none; }
 .vs-perm { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px 7px; white-space: nowrap; }
-.vs-perm.tapped { opacity: .55; font-style: italic; }
 .vs-perm.cmdr { border-color: #f7cf6f; }
-.vs-bar { margin: 0 0 10px; }
-.vs-round { margin-right: 8px; }
-.vs-hand { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.vs-card { width: 112px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 4px; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px; opacity: .6; }
-.vs-card img { width: 100%; border-radius: 6px; display: block; aspect-ratio: 5 / 7; object-fit: cover; }
-.vs-card.can { opacity: 1; cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.vs-card.can:hover { transform: translateY(-3px); }
-.vs-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vs-cost { color: var(--muted); }
-.vs-attackers { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
-.vs-atk { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; }
+.vs-blocks { display: grid; gap: 6px; margin: 8px 0; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.vs-blockrow { display: flex; flex-direction: column; gap: 3px; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; }
+.vs-blockrow select { width: 100%; }
+
+/* ---------- logs ---------- */
 .vs-log, .vs-slog { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow: auto; margin-top: 8px; }
 .vs-slog:empty { display: none; }
 .vs-line { padding: 4px 8px; border-left: 3px solid var(--muted); border-radius: 8px; background: var(--surface-2); font-size: 12.5px; }
 .vs-line.sys { border-left-color: transparent; color: var(--text-secondary, var(--muted)); }
 .vs-line small { color: var(--muted); display: block; }
 .vs-t { color: var(--muted); margin-right: 4px; }
-@media (max-width: 760px) { .vs-seats { grid-template-columns: 1fr; } .vs-card { width: 86px; } }
+
+/* ---------- tablets and phones ---------- */
+@media (max-width: 900px) {
+  .vs-arena.pod .vs-opps .vs-seat { --vc: clamp(28px, 4.4vw, 44px); padding: 5px 6px; }
+  .vs-plbl .lw { display: none; } .vs-plbl .ls { display: inline; }
+}
+@media (max-width: 600px) {
+  .vs-arena { --vc: clamp(36px, 11.2vw, 52px); --hc: clamp(56px, 17.5vw, 82px); --pc: 30px; padding: 6px; gap: 6px; }
+  .vs-arena.pod .vs-opps { grid-template-columns: minmax(0, 1fr); }
+  .vs-arena.pod .vs-opps .vs-seat { --vc: 36px; --pc: 26px; }
+  .vs-seat { padding: 5px 6px; }
+  .vs-board { gap: 6px; }
+  .vs-piles { gap: 4px 6px; }
+  .vs-row { padding: 4px 5px; gap: 4px; } .vs-grp { gap: 4px; }
+  .vs-life { min-width: 36px; height: 36px; font-size: 18px; }
+  .vs-plate { gap: 7px; min-height: 36px; }
+  .vs-mid { font-size: 12px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; padding: 4px 10px; }
+  .vs-game .vs-bar { gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
+  .vs-bar::-webkit-scrollbar { display: none; }
+  .vs-bar > * { flex: none; }
+  .vs-bar button { padding: 8px 8px; font-size: 12.5px; }
+  .vs-bar .vs-round { margin-right: 2px; font-size: 13px; }
+  .vs-bar .wide { display: none; }
+  .vs-me .row button { padding: 8px 10px; }
+  .vs-blocks { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) { .vs-mid { padding-bottom: 0; border-bottom: 4px solid transparent; } }   /* clip exactly at two lines: no sliver of a third */
+@media (max-width: 600px) { .vs-set { display: none; } .vs-plate { padding-left: 8px; } }
+/* text that sits straight on a playmat stays readable */
+.vs-plbl, .vs-none { text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,.8); }
+.vs-none { color: rgba(238,247,253,.55); }
+.vs-row { background: rgba(4,12,20,.26); box-shadow: inset 0 0 0 1px rgba(214,241,255,.1); }
+/* a long 'attacking ...' label gives way before the player's name does */
+.vs-who { flex: 1 100 auto; min-width: 4.6em; }   /* the name gives way first, down to a few letters; then a long turn label */
+.vs-turn { flex: 0 1 auto; min-width: 3.2em; overflow: hidden; text-overflow: ellipsis; }
+.vs-life { margin-left: 0; }
+
+/* ---------- the imprinted card: tucked behind its permanent (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) ---------- */
+.vs-stack.imprint > .mtg.vs-imp { filter: brightness(.82) saturate(.9); transform: rotate(-5deg) translateY(-3%); cursor: zoom-in; }
+.vs-stack.imprint > .mtg.vs-imp + .mtg { margin-left: calc(var(--vc) * -0.52); }
+.vs-imp .tag { left: 2px; bottom: 2px; font-size: 9px; padding: 0 5px; background: rgba(90,74,160,.96); }
+
+/* ---------- the game screen: toolbar and speed slider on top, the table under them ---------- */
+.vs-screen { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.vs-screen > .vs-arena { margin-bottom: 0; }
+.vs-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+.vs-top > .vs-bar { flex: 0 1 auto; min-width: 0; margin: 0; }
+.vs-top > .speed-bar { flex: 1 1 240px; margin: 0; }
+.vs-bar .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-foot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vs-stack { min-width: calc(var(--vc) * .16); }   /* a crowded row squeezes its cards together rather than pushing any out of sight */
+@media (min-width: 1000px) { .vs-top > .vs-bar { flex-wrap: nowrap; white-space: nowrap; } }
+@media (max-width: 600px) {
+  .vs-game .vs-bar { margin-bottom: 0; }
+  .vs-game .wide { display: none; }
+  .vs-top { gap: 5px 8px; }
+  .vs-top > .speed-bar { flex: 1 1 150px; padding: 4px 10px; gap: 6px; }
+  .vs-top .speed-txt { display: none; }
+  /* more room for the table: the logo row gives way on these two tabs, as on the Goldfish Table */
+  body[data-view=duel] .topbar .brand, body[data-view=duel] .topbar .status-pill, body[data-view=pod] .topbar .brand, body[data-view=pod] .topbar .status-pill { display: none; }
+}
+
+/* =====================================================================
+   One screen: every player's cards in play are always in view.
+   The table fills the screen under the top bar. Each player's two rows share the height they are given and the cards
+   size themselves to their row, so nothing in play is ever scrolled away; tap any card to see it full size.
+   (Needs container queries: Safari 16+, recent Chrome. Older browsers keep the scrolling table.)
+   ===================================================================== */
+@supports (height: 1cqh) {
+  .vs-screen { height: calc(100vh - var(--topbar-h, 64px) - 12px); height: calc(100dvh - var(--topbar-h, 64px) - 12px); min-height: 430px; }
+  .vs-screen > .vs-arena { flex: 1 1 0; min-height: 0; overflow: hidden auto; --vc-max: 84px; --pc-max: 52px; --hc: clamp(46px, min(15vw, 11.5vh), 96px); }
+  .vs-arena.pod .vs-opps .vs-seat { --vc-max: 60px; --pc-max: 40px; }
+  .vs-opps { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+  .vs-arena > .vs-seat.me { flex: 1.15 1 auto; min-height: 0; }
+  .vs-seat { min-height: 0; }
+  .vs-plate, .vs-foot, .vs-mid { flex: none; }
+  .vs-board { flex: 1 1 0; min-height: 40px; container-type: size; align-items: stretch; }
+  .vs-field { container-type: size; min-height: 0; }
+  .vs-row { flex: 1 1 0; min-height: 0; padding-top: 3px; padding-bottom: 3px; --vc: min(var(--vc-max), calc((50cqh - 9px) * 0.7176)); }
+  .vs-piles { --pc: min(var(--pc-max), calc((50cqh - 20px) * 0.7176)); align-content: center; }
+  .vs-screen .vs-mid { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; padding: 3px 12px; border-bottom: 0; font-size: 12.5px; }
+  .vs-hand { padding: 6px 4px 0; }
+  .vs-me { max-height: 30vh; overflow: auto; }
+
+  /* wide screens: your buttons sit beside your hand instead of above it */
+  @media (min-width: 1000px) {
+    .vs-foot { flex-direction: row; align-items: flex-end; gap: 12px; }
+    .vs-foot > .vs-me { flex: 0 1 440px; max-height: 24vh; }
+    .vs-foot > .vs-hand { flex: 1 1 0; }
+  }
+  /* a pod on a tablet or phone: the three opponents side by side, each with a strip of small piles under their cards */
+  @media (max-width: 1000px) {
+    .vs-arena.pod .vs-opps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+    .vs-arena.pod .vs-opps .vs-seat { padding: 4px 5px; gap: 4px; }
+    .vs-arena.pod .vs-opps .vs-board { display: flex; flex-direction: column; gap: 4px; }
+    .vs-arena.pod .vs-opps .vs-field { flex: 1 1 0; }
+    .vs-arena.pod .vs-opps .vs-piles { flex: none; --pc: clamp(15px, 3.6vw, 30px); grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+    .vs-arena.pod .vs-opps .vs-pile { flex-direction: column-reverse; gap: 1px; }
+    .vs-arena.pod .vs-opps .vs-plbl .lw, .vs-arena.pod .vs-opps .vs-plbl .ls { display: none; }
+    .vs-arena.pod .vs-opps .vs-plbl { font-size: 10px; min-height: 12px; }
+    .vs-arena.pod .vs-opps .vs-plate { flex-wrap: wrap; gap: 2px 5px; padding: 2px 4px 2px 7px; min-height: 0; border-radius: 12px; }
+    .vs-arena.pod .vs-opps .vs-who { flex: 1 1 40%; min-width: 0; font-size: 12px; }
+    .vs-arena.pod .vs-opps .vs-who small { display: none; }
+    .vs-arena.pod .vs-opps .vs-life { min-width: 28px; height: 28px; font-size: 14px; order: 1; }
+    .vs-arena.pod .vs-opps .vs-turn { order: 2; font-size: 10px; padding: 1px 6px; }
+    .vs-arena.pod .vs-opps .vs-backs { order: 3; } .vs-arena.pod .vs-opps .vs-cd { order: 4; font-size: 10px; padding: 1px 5px; }
+    .vs-arena.pod .vs-opps .vs-backs i { width: 9px; height: 13px; margin-left: -5px; }
+    .vs-arena.pod .vs-opps .vs-backs b { font-size: 11px; margin-left: 4px; }
+    .vs-arena.pod .vs-opps .vs-row { padding-left: 3px; padding-right: 3px; gap: 3px; }
+    .vs-arena.pod .vs-opps .vs-none { font-size: 10px; padding: 0 2px; }
+  }
+  @media (max-width: 600px) {
+    .vs-screen { gap: 5px; height: calc(100dvh - var(--topbar-h, 64px) - 6px); }
+    .vs-screen > .vs-arena { padding: 5px; gap: 5px; }
+    .vs-seat { gap: 4px; padding: 4px 5px; }
+    .vs-plate { min-height: 30px; padding: 1px 3px 1px 8px; }
+    .vs-life { min-width: 30px; height: 30px; font-size: 16px; }
+    .vs-ask.main { display: none; }                        /* the glowing cards and the buttons say it */
+    .vs-ask.main + .row { margin-top: 0; flex-wrap: nowrap; gap: 5px; }
+    .vs-ask.main + .row button { flex: 1 1 auto; padding: 7px 4px; font-size: 12.5px; white-space: nowrap; }
+    .vs-me { padding: 5px 6px; }
+    .vs-hand { padding: 4px 2px 0; }
+    .vs-foot { gap: 4px; }
+  }
+}
+/* small cards get small badges */
+@media (max-width: 1000px) {
+  .vs-arena.pod .vs-opps .mtg .pt { font-size: 9px; padding: 0 3px; right: 1px; bottom: 1px; border-radius: 4px; }
+  .vs-arena.pod .vs-opps .mtg .ctr { font-size: 8px; padding: 0 3px; top: 10px; left: 1px; }
+  .vs-arena.pod .vs-opps .vs-cnt { font-size: 9px; padding: 0 4px; right: -2px; top: -4px; }
+  .vs-arena.pod .vs-opps .mtg.sick::after { font-size: 8px; left: 1px; top: 1px; }
+  .vs-arena.pod .vs-opps .vs-imp .tag { display: none; }
+}
+@media (max-width: 600px) {
+  .vs-hand .mtg::after { width: 18px; height: 18px; font-size: 9px; top: 2px; left: 2px; opacity: .8; }
+  .vs-arena .mtg .pt { font-size: 10.5px; padding: 0 4px; }
+  .vs-cnt { font-size: 10px; padding: 0 5px; }
+}

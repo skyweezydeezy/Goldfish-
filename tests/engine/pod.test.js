@@ -38,5 +38,22 @@ const putOn = (g, card) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++
 { const pod = G.newPod(decks, optsList, 9, P.map(p => p.name), 2); check('the first seat can be chosen', pod.match.order[0] === pod.games[2] && pod.games.every(g => g.hand.length >= 5));
   const ev = G.podTurn(pod.match.order[0], null, pod.games[0]); check('a pod turn against a chosen player', pod.match.order[0].opp === pod.games[0] && ev.length > 0 && pod.match.order[0].turn === 1); }
 
+// ---- a person in a seat: chosen blocks, the attack preview, the turn in two halves, mulligans by hand
+{ const { games } = fresh(2); const [a, b] = games; const titan = putOn(a, by(a, /Grave Titan/)); const z1 = putOn(b, by(a, /Grave Titan/)); G.podFocus(a, b);
+  const pv = G.previewAttack(a); check('the attack preview lists the attackers before combat', pv.attackers.includes(titan), pv.attackers.map(p => p.card.name).join(', '));
+  const blocker = b.battlefield.find(p => p.token); b.forcedBlocks = { [titan.iid]: [blocker.iid] }; a.forceAttackers = pv.attackers.map(p => p.iid); const l0 = b.life; const ev = G.combat(a); a.forceAttackers = null;
+  check('a chosen block is used: the token chump-blocks the Titan and no damage gets through from it', !b.battlefield.includes(blocker) && b.forcedBlocks == null && ev.some(e => e.type === 'note' && /blocks Grave Titan/.test(e.text)), l0 - b.life); }
+{ const { games } = fresh(2); const [a, b] = games; const titan = putOn(a, by(a, /Grave Titan/)); const blk = putOn(b, by(a, /Grave Titan/)); blk.tapped = true; G.podFocus(a, b); b.forcedBlocks = { [titan.iid]: [blk.iid, 999999] }; a.forceAttackers = [titan.iid]; const l0 = b.life; G.combat(a); a.forceAttackers = null;
+  check('an illegal chosen block (a tapped creature) is dropped', b.life === l0 - 6 && b.battlefield.includes(blk), l0 - b.life); }
+{ const A = G.newPod(decks.slice(0, 2), optsList.slice(0, 2), 77, ['x', 'y'], 0), B = G.newPod(decks.slice(0, 2), optsList.slice(0, 2), 77, ['x', 'y'], 0);
+  for (let t = 0; t < 6; t++) for (let k = 0; k < 2; k++) { if (A.match.winner != null) break; G.podTurn(A.match.order[k]); const g = B.match.order[k]; G.podTurnPre(g); G.previewAttack(g); G.podTurnPost(g); }
+  const snap = P2 => P2.games.map(g => [g.life, g.hand.length, g.battlefield.length, g.library.length].join(',')).join(' | ');
+  check('a turn played in two halves with the attack preview in between gives the same game', snap(A) === snap(B), snap(A) + '  vs  ' + snap(B)); }
+{ const pod = G.newPod(decks.slice(0, 2), optsList.slice(0, 2), 5, ['x', 'y'], 0, [0]); const g = pod.games[0];
+  check('a seat that mulligans by hand is dealt seven and nothing is decided for it', g.hand.length === 7 && g.mulligans === 0 && G.mullCost(g) === 0 && pod.games[1].openingHand.length >= 5);
+  const first = g.hand.slice(); G.dealOpening(g, true); check('a mulligan shuffles the hand back and deals seven new cards; the first one is free', g.hand.length === 7 && g.library.length === 100 - 1 - 7 - (g.deck.commanders.length - 1) && G.mullCost(g) === 0 && G.mullCost(g, true) === 1, g.library.length);
+  G.dealOpening(g, true); const bottom = [g.hand[2]]; G.keepOpening(g, bottom);
+  check('keeping after a second mulligan puts the chosen card on the bottom', g.hand.length === 6 && g.library[g.library.length - 1] === bottom[0] && g.openingHand.length === 6, g.hand.length); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

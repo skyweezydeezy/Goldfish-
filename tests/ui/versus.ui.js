@@ -28,6 +28,21 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
   await p.waitForTimeout(1000);
 
+  let blockAsks = 0;
+  // wait for a game state. On the way: confirm blocks whenever the game asks for them, take the autopilot's pick on every question
+  // (a search, a target, a counterspell...) and pass at the end of the other players' turns. keepBlock: stop at a block instead.
+  const until = async (mode, cond, arg, ms, keepBlock) => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < (ms || 90000)) {
+      const ask = await p.evaluate(m => { const g = window.__isfVersus[m].game; return !g ? '' : g.choice ? 'choice' : g.phase === 'block' ? 'block' : g.phase === 'respond' ? 'respond' : ''; }, mode);
+      if (ask === 'choice') await p.evaluate(() => { const b = document.querySelector('.ch-sheet .ch-auto'); if (b) b.click(); });
+      else if (ask === 'respond') await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-pass').click(), mode);
+      else if (ask === 'block' && !keepBlock) { blockAsks++; await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-block-go').click(), mode); }
+      if (await p.evaluate(cond, arg)) return true;
+      await p.waitForTimeout(150);
+    }
+    throw new Error('timed out waiting for the game');
+  };
   const tabs = await p.$$eval('.tab', ts => ts.map(t => t.textContent.trim()));
   check('the tab bar has 6 · 1v1 and 7 · Pod', tabs.length === 7 && /6 · 1v1/.test(tabs[5]) && /7 · Pod/.test(tabs[6]), tabs.join(' | '));
 
@@ -36,10 +51,27 @@ const shot = process.env.VERSUS_SHOTS;
   check('1v1: one opponent menu, with a copy of your deck first', (await p.$$('#tab-duel .vs-opp')).length === 1 && /copy/i.test(await p.$eval('#tab-duel .vs-opp option', o => o.textContent)));
   await p.selectOption('#tab-duel .vs-opp', '');
   await p.click('#tab-duel .vs-new');
-  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'main'; }, null, { timeout: 60000 });
-  check('a new 1v1 game shows two seats at 40 life and waits for you on your turn', (await p.$$('#tab-duel .vs-seat')).length === 2 && (await p.$$eval('#tab-duel .vs-life', ls => ls.map(l => l.textContent))).every(t => +t <= 40 && +t > 0));
-  const hand0 = (await p.$$('#tab-duel .vs-card')).length;
-  check('your hand is shown as cards, with the playable ones highlighted', hand0 >= 6 && (await p.$$('#tab-duel .vs-card.can')).length >= 1, hand0);
+  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 60000 });
+  check('a new game starts with your opening hand: seven cards, Keep and a free Mulligan', (await p.$$('#tab-duel .vs-hand .mtg.vs-card')).length === 7 && !!(await p.$('#tab-duel .vs-keep')) && /free/.test(await p.$eval('#tab-duel .vs-mull', b => b.textContent)));
+  const h1 = await p.evaluate(() => window.__isfVersus.duel.game.games[0].hand.map(i => i.iid).join(','));
+  await p.click('#tab-duel .vs-mull');
+  const m1 = await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; return { hand: g.hand.map(i => i.iid).join(','), n: g.hand.length, mull: g.mulligans }; });
+  check('Mulligan deals seven new cards', m1.n === 7 && m1.mull === 1 && m1.hand !== h1 && /keep 6/.test(await p.$eval('#tab-duel .vs-mull', b => b.textContent)));
+  await p.click('#tab-duel .vs-mull');
+  check('after a second mulligan Keep waits until you pick a card for the bottom', await p.$eval('#tab-duel .vs-keep', b => b.disabled));
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-hand .vs-card').click());
+  check('...clicking a card marks it', (await p.$$('#tab-duel .vs-card.pick')).length === 1 && !(await p.$eval('#tab-duel .vs-keep', b => b.disabled)));
+  await p.click('#tab-duel .vs-keep');
+  await until('duel', () => { const g = window.__isfVersus.duel.game; return g.phase === 'main'; });
+  check('...and you keep six', await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; return g.openingHand.length === 6 && g.bottomed.length === 1; }));
+  check('the game shows two seats at 40 life and waits for you on your turn', (await p.$$('#tab-duel .vs-seat')).length === 2 && (await p.$$eval('#tab-duel .vs-life', ls => ls.map(l => l.textContent))).every(t => +t <= 40 && +t > 0));
+  // the deal is random: make sure there is a land in hand (so something is playable), then redraw by opening and closing the attacker chooser
+  if (await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; if (g.hand.some(i => i.card.a.isLand)) return false; const k = g.library.findIndex(i => i.card.a.isLand); g.hand.push(g.library.splice(k, 1)[0]); return true; })) {
+    await p.evaluate(() => document.querySelector('#tab-duel .vs-attack').click());
+    await p.evaluate(() => document.querySelector('#tab-duel .vs-attack-cancel').click());
+  }
+  const hand0 = (await p.$$('#tab-duel .vs-hand .vs-card')).length;
+  check('your hand is shown as card pictures, with the playable ones glowing', hand0 >= 5 && (await p.$$('#tab-duel .vs-hand .mtg img')).length >= 1 && (await p.$$('#tab-duel .vs-card.can')).length >= 1, hand0);
   const lands0 = await p.evaluate(() => window.__isfVersus.duel.game.games[0].battlefield.filter(x => x.asLand).length);
   await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; const l = g.hand.find(i => i.card.a.isLand); if (l) document.querySelector('#tab-duel .vs-card[data-iid="' + l.iid + '"]').click(); });
   const lands1 = await p.evaluate(() => window.__isfVersus.duel.game.games[0].battlefield.filter(x => x.asLand).length);
@@ -47,13 +79,39 @@ const shot = process.env.VERSUS_SHOTS;
   await p.click('#tab-duel .vs-attack');
   check('Attack… opens the attacker chooser', !!(await p.$('#tab-duel .vs-attack-go')));
   await p.click('#tab-duel .vs-attack-go');
-  await p.click('#tab-duel .vs-end');
-  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g.over || (g.phase === 'main' && g.games[0].turn === 2); }, null, { timeout: 60000 });
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
+  await until('duel', () => { const g = window.__isfVersus.duel.game; return !!g.over || (g.phase === 'main' && g.games[0].turn === 2); });
   const st = await p.evaluate(() => { const g = window.__isfVersus.duel.game; return { my: g.games[0].turn, opp: g.games[1].turn, log: document.querySelectorAll('#tab-duel .vs-log .vs-line').length }; });
   check('End turn: the computer plays its turn and it is your turn again', st.my === 2 && st.opp >= 1 && st.log >= 4, JSON.stringify(st));
-  await p.click('#tab-duel .vs-autoturn');
-  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g.over || (g.phase === 'main' && g.games[0].turn === 3); }, null, { timeout: 60000 });
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-autoturn').click());
+  await until('duel', () => { const g = window.__isfVersus.duel.game; return !!g.over || (g.phase === 'main' && g.games[0].turn === 3); });
   check('"Autopilot the rest of my turn" finishes the turn', await p.evaluate(() => { const g = window.__isfVersus.duel.game; return !!g.over || g.games[0].turn === 3; }));
+  // a constructed attack: the opponent gets its biggest creature, you get a small one, and you end the turn
+  if (await p.evaluate(() => { const g = window.__isfVersus.duel.game; return !g.over && g.phase === 'main'; })) {
+    await p.evaluate(() => {
+      const G = window.Goldfish, gm = window.__isfVersus.duel.game, me = gm.games[0], op = gm.games[1];
+      const cs = me.deck.unique.filter(c => c.a.isCreature && !c.a.kw.has('flying') && !c.a.kw.has('menace')).sort((x, y) => (y.a.power || 0) - (x.a.power || 0));
+      const big = G.enterWithTriggers(op, { iid: op.nextIid++, card: cs[0] }, {}, []); big.sick = false; big.enteredTurn = 0; big.counters = 6;
+      const small = G.enterWithTriggers(me, { iid: me.nextIid++, card: cs[cs.length - 1] }, {}, []); small.sick = false; small.tapped = false; window.__blk = small.iid; window.__big = big.iid;
+      op.battlefield.forEach(q => { if (q !== big && G.isCreaturePerm(q)) q.tapped = true; });
+    });
+    await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
+    await until('duel', () => { const g = window.__isfVersus.duel.game; return g.over || g.phase === 'block' || (g.phase === 'main' && g.games[0].turn >= 4); }, null, 60000, true);
+    const ph = await p.evaluate(() => window.__isfVersus.duel.game.phase);
+    check('when the computer attacks you and you can block, the game stops and asks for your blocks', ph === 'block' && (await p.$$('#tab-duel .vs-blk')).length >= 1, ph);
+    if (ph === 'block') check('...and the attacking creatures are marked on the opponent\'s battlefield', (await p.$$('#tab-duel .vs-seat.opp .mtg.attacking')).length >= 1);
+    if (ph === 'block') {
+      if (shot) await p.screenshot({ path: path.join(shot, 'block.png'), fullPage: true });
+      // the game is random: the creature set up to block may have been removed, or the big attacker may not be among the attackers.
+      // Then this one step is skipped (and said so) instead of stopping the whole test.
+      const canPick = await p.evaluate(() => { const sel = document.querySelector('#tab-duel .vs-blk[data-iid="' + window.__blk + '"]'); if (!sel || ![...sel.options].some(o => o.value === String(window.__big))) return false; sel.value = String(window.__big); return true; });
+      await p.evaluate(() => document.querySelector('#tab-duel .vs-block-go').click());
+      await until('duel', () => { const g = window.__isfVersus.duel.game; return !!g.over || g.phase === 'main'; });
+      const r = await p.evaluate(() => ({ log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].slice(-4).map(x => x.textContent).join(' || ') }));
+      if (canPick) check('your chosen block happens: your creature blocks the attacker', /blocks/.test(r.log), r.log.slice(0, 260));
+      else console.log('SKIP  your chosen block happens: in this random game the set-up creature could not block the set-up attacker');
+    }
+  }
   if (shot) await p.screenshot({ path: path.join(shot, 'duel.png'), fullPage: true });
 
   // ---- 1v1, all autopilot ----
@@ -62,9 +120,58 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForSelector('#tab-duel .vs-toend', { timeout: 30000 });
   await p.click('#tab-duel .vs-next');
   await p.waitForTimeout(300);
-  check('autopilot game: Next turn plays one turn', await p.evaluate(() => window.__isfVersus.duel.game.games.reduce((t, g) => t + g.turn, 0)) === 1);
-  await p.click('#tab-duel .vs-toend');
+  check('autopilot game: +1 turn plays one turn', await p.evaluate(() => window.__isfVersus.duel.game.games.reduce((t, g) => t + g.turn, 0)) === 1);
+  // the table itself: card pictures for everything in play, stacks, piles in order, card backs for hidden hands
+  for (let i = 0; i < 11; i++) { await p.click('#tab-duel .vs-next'); await p.waitForTimeout(40); }
+  const tbl = await p.evaluate(() => {
+    const gm = window.__isfVersus.duel.game, root = document.querySelector('#tab-duel');
+    const seats = [...root.querySelectorAll('.vs-seat')];
+    const per = gm.games.map(g => {
+      const seat = root.querySelector('.vs-seat[data-pid="' + g.pid + '"]');
+      const shown = [...seat.querySelectorAll('.vs-stack')].reduce((t, st) => t + (st.querySelector('.vs-cnt') ? +st.querySelector('.vs-cnt').textContent.slice(1) : 1), 0);
+      return { perms: g.battlefield.length, shown, piles: [...seat.querySelectorAll('.vs-pile')].map(x => x.className.replace('vs-pile ', '').split(' ')[0]),
+        lib: +seat.querySelector('.vs-pile.lib b').textContent, libReal: g.library.length, grave: +seat.querySelector('.vs-pile.grave b').textContent, graveReal: g.graveyard.length,
+        backs: seat.querySelectorAll('.vs-backs i').length, handReal: g.hand.length, faceUp: seat.querySelectorAll('.vs-hand .mtg').length };
+    });
+    return { order: seats.map(x => x.classList.contains('opp') ? 'opp' : 'me'), per };
+  });
+  check('the opponent sits at the top of the table and you at the bottom', tbl.order.join(',') === 'opp,me');
+  check('every permanent in play is shown as a card picture (stacks counted)', tbl.per.every(x => x.shown === x.perms && x.perms >= 3), tbl.per.map(x => x.shown + '/' + x.perms).join(' , '));
+  check('each player has library, command, graveyard and exile piles in that order', tbl.per.every(x => x.piles.join(',') === 'lib,cmd,grave,exile'), tbl.per[0].piles.join(','));
+  check('pile counts match the game (library and graveyard)', tbl.per.every(x => x.lib === x.libReal && x.grave === x.graveReal), tbl.per.map(x => x.lib + ' lib, ' + x.grave + ' grave').join(' | '));
+  check('the opponent\'s hand is card backs; your hand is face up', tbl.per[1].backs === Math.min(7, tbl.per[1].handReal) && tbl.per[1].faceUp === 0 && tbl.per[0].faceUp === tbl.per[0].handReal);
+  const openedViewer = await p.evaluate(() => { document.querySelector('#tab-duel .vs-seat.opp .vs-stack .mtg').click(); return document.querySelector('#lightbox').classList.contains('show') && document.querySelectorAll('.lb-buy').length === 3; });
+  check('clicking an opponent\'s card opens it in the card viewer', openedViewer);
+  await p.keyboard.press('Escape');
+  // the speed slider: one setting shared with the Goldfish Table, and it paces Play
+  check('the 1v1 table has the turtle-to-rabbit speed slider', !!(await p.$('#tab-duel .speed-bar input[type=range]')));
+  const setSpeed = v => p.$eval('#tab-duel .speed-bar input', (e, v) => { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }, String(v));
+  await setSpeed(3);
+  check('moving it also moves the Goldfish Table\'s slider (one shared setting)', (await p.$eval('#tSpeed', e => e.value)) === '3' && /3× slower/.test(await p.$eval('#tab-duel .speed-txt', e => e.textContent)));
+  const timePlay = async v => {
+    await setSpeed(v);
+    const n0 = await p.evaluate(() => window.__isfVersus.duel.game.games.reduce((t, g) => t + g.turn, 0)), t0 = Date.now();
+    await p.click('#tab-duel .vs-play');
+    await p.waitForFunction(n => { const g = window.__isfVersus.duel.game; return !!g.over || g.games.reduce((t, x) => t + x.turn, 0) >= n + 3; }, n0, { timeout: 60000 });
+    const ms = Date.now() - t0;
+    if (await p.evaluate(() => window.__isfVersus.duel.game.playing)) await p.click('#tab-duel .vs-play');
+    await p.waitForFunction(() => !window.__isfVersus.duel.game.busy, null, { timeout: 30000 });
+    return ms;
+  };
+  if (shot) await p.screenshot({ path: path.join(shot, 'duel-table.png') });
+  // time it on a fresh game, so the game cannot end in the middle of the measurement
+  await p.click('#tab-duel .vs-new');
+  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && !g.over && g.games.reduce((t, x) => t + x.turn, 0) === 0; }, null, { timeout: 30000 });
+  await p.waitForSelector('#tab-duel .vs-play', { timeout: 30000 });
+  {
+    const fast = await timePlay(5), slowT = await timePlay(1);
+    check('Play runs the game by itself, and the turtle end is clearly slower than the rabbit end', slowT > fast * 2.5, `3 turns: rabbit ${fast} ms, turtle ${slowT} ms`);
+    check('Pause stops it', !(await p.evaluate(() => window.__isfVersus.duel.game.busy)));
+  }
+  await setSpeed(5);
+  if (!(await p.evaluate(() => !!window.__isfVersus.duel.game.over))) await p.click('#tab-duel .vs-toend');
   await p.waitForFunction(() => window.__isfVersus.duel.game.over, null, { timeout: 120000 });
+
   check('Play to the end finishes the game with a result line', /win|No winner/.test(await p.evaluate(() => window.__isfVersus.duel.game.over)), await p.evaluate(() => window.__isfVersus.duel.game.over));
 
   // ---- 1v1, many games ----
@@ -81,20 +188,40 @@ const shot = process.env.VERSUS_SHOTS;
   check('Pod: three opponent menus', (await p.$$('#tab-pod .vs-opp')).length === 3);
   for (const sel of await p.$$('#tab-pod .vs-opp')) await sel.selectOption('');
   await p.click('#tab-pod .vs-new');
-  await p.waitForFunction(() => { const g = window.__isfVersus.pod.game; return g && (g.phase === 'main' || g.over); }, null, { timeout: 90000 });
-  check('a pod game has four seats', (await p.$$('#tab-pod .vs-seat')).length === 4);
+  await p.waitForFunction(() => { const g = window.__isfVersus.pod.game; return g && g.phase === 'mull'; }, null, { timeout: 90000 });
+  await p.evaluate(() => document.querySelector('#tab-pod .vs-keep').click());
+  await until('pod', () => { const g = window.__isfVersus.pod.game; return g.phase === 'main' || !!g.over; });
+  check('a pod game has four seats: three opponents across the top, you at the bottom', (await p.$$('#tab-pod .vs-seat')).length === 4 && (await p.$$('#tab-pod .vs-opps .vs-seat.opp')).length === 3 && !!(await p.$('#tab-pod .vs-arena > .vs-seat.me')));
+  check('the pod table has the speed slider too', !!(await p.$('#tab-pod .speed-bar input[type=range]')));
+  // playmats and sleeves: every player is dealt a random set, all different; your own pick goes on your seat
+  const seatLooks = () => p.$$eval('#tab-pod .vs-seat', ss => ss.map(s => ({ me: s.classList.contains('me'), set: s.dataset.set, sleeved: s.classList.contains('sleeved'),
+    mat: getComputedStyle(s).backgroundImage, sleeve: s.style.getPropertyValue('--sleeve'), back: getComputedStyle(s.querySelector('.card-back')).backgroundImage })));
+  const lk = await seatLooks(), originals = ['Prism Nexus', 'Sunken Gate', 'Eclipse Spires'];
+  check('every player in the pod has a playmat-and-sleeves set', lk.length === 4 && lk.every(x => x.set && x.sleeved && x.mat !== 'none' && x.sleeve), lk.map(x => (x.me ? 'You: ' : '') + x.set).join(' | '));
+  check('no two players have the same set', new Set(lk.map(x => x.set)).size === 4 && new Set(lk.map(x => x.mat)).size === 4);
+  check('the three original designs are all on the table', originals.every(n => lk.some(x => x.set === n)));
+  check('each library shows that player\'s own sleeve back', new Set(lk.map(x => x.back)).size === 4);
+  const oppSet = lk.find(x => !x.me).set, oppId = { 'Prism Nexus': 'prism', 'Sunken Gate': 'tide', 'Eclipse Spires': 'eclipse' }[oppSet] || 'prism';
+  await p.evaluate(id => window.__isfLooks.set({ mat: id, sleeve: id }), oppId);          // you pick the set the first opponent was dealt
+  await p.waitForTimeout(300);
+  const lk2 = await seatLooks();
+  check('picking your own playmat and sleeves puts them on your seat', lk2.find(x => x.me).set === oppSet, lk2.map(x => (x.me ? 'You: ' : '') + x.set).join(' | '));
+  check('...and the opponent who had that set takes another, so all four still differ', new Set(lk2.map(x => x.set)).size === 4);
+  await p.evaluate(() => window.__isfLooks.set({ mat: 'frozen', sleeve: 'none' }));       // back to no pick of your own
+  await p.waitForTimeout(300);
+  check('with no pick of your own you are dealt a random set again', (await seatLooks()).every(x => x.set && x.sleeved));
   for (let k = 0; k < 3; k++) {
     if (await p.evaluate(() => !!window.__isfVersus.pod.game.over || window.__isfVersus.pod.game.games[0].dead)) break;
-    await p.click('#tab-pod .vs-autoturn');
-    await p.waitForFunction(n => { const g = window.__isfVersus.pod.game; return g.over || (g.phase === 'main' && g.games[0].turn === n) || g.games[0].dead; }, k + 2, { timeout: 90000 });
+    await p.evaluate(() => document.querySelector('#tab-pod .vs-autoturn').click());
+    await until('pod', n => { const g = window.__isfVersus.pod.game; return !!g.over || (g.phase === 'main' && g.games[0].turn === n) || g.games[0].dead; }, k + 2);
   }
   const pod = await p.evaluate(() => { const g = window.__isfVersus.pod.game; return { turns: g.games.map(x => x.turn), over: g.over }; });
   check('in a pod the three computer players each take a turn between yours', !!pod.over || pod.turns.every(t => t >= 3), JSON.stringify(pod));
   if (!pod.over && await p.evaluate(() => window.__isfVersus.pod.game.phase === 'main')) {
-    await p.click('#tab-pod .vs-attack');
+    await p.evaluate(() => document.querySelector('#tab-pod .vs-attack').click());
     const targets = (await p.$$('#tab-pod .vs-target option')).length;
     check('the attacker chooser lets you pick which player to attack', targets >= 2, targets);
-    await p.click('#tab-pod .vs-attack-cancel');
+    await p.evaluate(() => document.querySelector('#tab-pod .vs-attack-cancel').click());
   }
   if (shot) await p.screenshot({ path: path.join(shot, 'pod.png'), fullPage: true });
   await p.fill('#tab-pod .vs-n', '30');

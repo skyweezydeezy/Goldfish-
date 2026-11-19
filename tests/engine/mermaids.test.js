@@ -94,7 +94,7 @@ const isMer = p => /Merfolk/.test(p.card.type_line || '');
 { const g = bare(); putOn(g, 'Deeproot Historian'); rl(g, 5); g.graveyard.push(inst(g, 'Merfolk Mistbinder')); g.hand = []; G.castOne(g);
   check('Retrace needs a land card to discard', !g.battlefield.some(p => /Mistbinder/.test(p.card.name))); }
 // Kiora's Follower, Yavimaya, Skydiver, Vorel, Survival, Kumena
-{ const g = bare(); const f = putOn(g, 'Kiora'); check('Kiora\'s Follower counts as a mana source', G.manaUnits(g).length === 1, G.manaUnits(g).length); }
+{ const g = bare(); const f = putOn(g, 'Kiora'); const n0 = G.manaUnits(g).length; const land = G.enterWithTriggers(g, { iid: g.nextIid++, card: deck.unique.find(c => c.a.isLand && c.a.produce && !c.a.entersTapped && !c.a.tapCond && !c.a.fetch) }, {}, []); land.tapped = false; const u = G.manaUnits(g); check('Kiora\'s Follower untaps your best other mana permanent: no mana alone, that permanent\'s mana again with one', n0 === 0 && u.filter(x => x.src === f).length === u.filter(x => x.src === land).length && u.some(x => x.src === f), `${n0} -> ${u.length}`); }
 { const g = bare(); putOn(g, 'Yavimaya'); const is = putOn(g, 'Island'); const u = G.manaUnits(g); check('Yavimaya: an Island also taps for {G}', u.some(x => x.src === is && x.colors.has('G')), u.length); }
 { const g = bare(); const sk = putOn(g, 'Merfolk Skydiver'); sk.counters = 1; rl(g, 5); G.useAbilities(g);
   check('Merfolk Skydiver proliferates for {3}{G}{U}', sk.counters === 2, sk.counters); }

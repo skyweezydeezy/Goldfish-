@@ -423,7 +423,7 @@
         while (lines0[i + 1] && /^•/.test(lines0[i + 1])) { i++; let b = lines0[i].replace(/^•\s*/, ''); const nm = b.match(/^([A-Z][^—]{2,40}) — (.*)$/); if (nm && nm[1].split(' ').length <= 5) b = nm[2]; lines.push(hm[1] + b + '\u2063' + gid); }
       } else lines.push(lines0[i]);
     }
-    a.lordReturn = false; a.reaper = false; a.kalitasSac = false; a.kalitas = false; a.gisaR = false; a.sidisi = false; a.fain = false; a.castle = false; a.coffers = false; a.flashSac = 0; a.escape = null; a.kci = false; a.trigCopy = null; a.lithoform = false; a.rings = false; a.trawler = false; a.scrollRack = false; a.bolasAll = false; a.extraUpkeep = false; a.extraBeginning = false; a.labyrinth = false; a.cloneLand = false; a.fading = 0; a.tangle = false; a.trini = false; a.puzzleBox = false; a.upkeepBurn = 0; a.noLifeGain = false; a.pestilence = null; a.miracle = null; a.sisay = null; a.cmdPut = null; a.saga = null; a.crew = 0; a.dsGive = null; a.creaturePut = null; a.pod = null; a.equipMana = false; a.flashback = null; a.darkDepths = false; a.landPut = null; a.sacUnlessEscaped = false; a.cornucopia = false; a.perEach = null; a.hasteGive = null; a.valakut = false; a.unearth = null; a.staffDraw = null; a.echo = null; a.lifeBuff = null; a.mirrorEntity = false; a.stoneforge = false; a.reclaim = null; a.hasteAll = false; a.toxic = 0; a.muldrotha = false; a.teamPump = null; a.transmute = null; a.whip = false; a.urzaSpin = false; a.rancor = false; a.billDouble = null; a.angerHaste = false; a.powerMana = false; a.levels = null; a.levelFx = null; a.wishclaw = false; a.urzaSaga = false; a.lifeDraw = null; a.openStart = null; a.hideaway = null; a.enduring = false; a.yardTopAb = null; a.handMana = null; a.mobilize = 0; a.breach = false; a.fabricate = 0; a.eternalize = null; a.wolfRun = null; a.questAnthem = null; a.fieldDead = false; a.equipZero = false; a.beacon = false; a.forgeExile = false; a.discardCost = false; a.condReduce = null; a.nykthos = null; a.enchantLand = false; a.landAura = null; a.cloneOf = null; a.sacAb = null; a.modular = 0; a.madness = null; a.typecycle = null; a.pumpAb = null; a.dynReduce = null; a.cda = null; a.sacTutor = null; a.sacFetch = null; a.dash = null; a.allTribe = null; a.attackBuff = null; a.fathom = false; a.warkite = false; a.aggravated = null; a.sacDraw = null; a.threatenAb = null; a.attackOnce = false; a.protean = false; a.treachery = false; a.unblockAb = null; a.topCast = null; a.retrace = null; a.kioraUntap = false; a.vorel = false; a.survival = false; a.adapt = null; a.kumena = false; a.exileOpp = false; a.liesa = false; a.afterlife = 0; a.splice = null; a.sacArtifactAlso = false; a.broodmoth = false; a.citadel = false; a.citadelSac = false; a.yawg = false; a.yawgProl = false; a.priest = false; a.tapSac = false; a.sacTreasure = false; a.morph = false; a.multikick = 0; a.chalice = false; a.lifeAlt = 0; a.cashInFree = false; a.bmc = false; a.zulAshur = false; a.reanimAura = false; a.landfallReturn = false; a.yardActivate = null; a.yardCastIfZombie = false; a.dieReturn = null; a.dieReanim = false; a.sacOutlet = false; a.sacCounter = false; a.discardZombie = false; a.zombieDraw = false; a.cumulative = false; a.sparkDouble = false; a.tapPain = 0; a.proliferateAb = null; a.chainVeil = false; a.masterTime = false; a.oath = false; a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
+    a.lordReturn = false; a.reaper = false; a.kalitasSac = false; a.kalitas = false; a.gisaR = false; a.sidisi = false; a.fain = false; a.castle = false; a.coffers = false; a.flashSac = 0; a.escape = null; a.notionThief = false; a.splendor = false; a.toxrill = false; a.slugDraw = null; a.kci = false; a.trigCopy = null; a.lithoform = false; a.rings = false; a.trawler = false; a.scrollRack = false; a.bolasAll = false; a.extraUpkeep = false; a.extraBeginning = false; a.labyrinth = false; a.cloneLand = false; a.fading = 0; a.tangle = false; a.trini = false; a.puzzleBox = false; a.upkeepBurn = 0; a.noLifeGain = false; a.pestilence = null; a.miracle = null; a.sisay = null; a.cmdPut = null; a.saga = null; a.crew = 0; a.dsGive = null; a.creaturePut = null; a.pod = null; a.equipMana = false; a.flashback = null; a.darkDepths = false; a.landPut = null; a.sacUnlessEscaped = false; a.cornucopia = false; a.perEach = null; a.hasteGive = null; a.valakut = false; a.unearth = null; a.staffDraw = null; a.echo = null; a.lifeBuff = null; a.mirrorEntity = false; a.stoneforge = false; a.reclaim = null; a.hasteAll = false; a.toxic = 0; a.muldrotha = false; a.teamPump = null; a.transmute = null; a.whip = false; a.urzaSpin = false; a.rancor = false; a.billDouble = null; a.angerHaste = false; a.powerMana = false; a.levels = null; a.levelFx = null; a.wishclaw = false; a.urzaSaga = false; a.lifeDraw = null; a.openStart = null; a.hideaway = null; a.enduring = false; a.yardTopAb = null; a.handMana = null; a.mobilize = 0; a.breach = false; a.fabricate = 0; a.eternalize = null; a.wolfRun = null; a.questAnthem = null; a.fieldDead = false; a.equipZero = false; a.beacon = false; a.forgeExile = false; a.discardCost = false; a.condReduce = null; a.nykthos = null; a.enchantLand = false; a.landAura = null; a.cloneOf = null; a.sacAb = null; a.modular = 0; a.madness = null; a.typecycle = null; a.pumpAb = null; a.dynReduce = null; a.cda = null; a.sacTutor = null; a.sacFetch = null; a.dash = null; a.allTribe = null; a.attackBuff = null; a.fathom = false; a.warkite = false; a.aggravated = null; a.sacDraw = null; a.threatenAb = null; a.attackOnce = false; a.protean = false; a.treachery = false; a.unblockAb = null; a.topCast = null; a.retrace = null; a.kioraUntap = false; a.vorel = false; a.survival = false; a.adapt = null; a.kumena = false; a.exileOpp = false; a.liesa = false; a.afterlife = 0; a.splice = null; a.sacArtifactAlso = false; a.broodmoth = false; a.citadel = false; a.citadelSac = false; a.yawg = false; a.yawgProl = false; a.priest = false; a.tapSac = false; a.sacTreasure = false; a.morph = false; a.multikick = 0; a.chalice = false; a.lifeAlt = 0; a.cashInFree = false; a.bmc = false; a.zulAshur = false; a.reanimAura = false; a.landfallReturn = false; a.yardActivate = null; a.yardCastIfZombie = false; a.dieReturn = null; a.dieReanim = false; a.sacOutlet = false; a.sacCounter = false; a.discardZombie = false; a.zombieDraw = false; a.cumulative = false; a.sparkDouble = false; a.tapPain = 0; a.proliferateAb = null; a.chainVeil = false; a.masterTime = false; a.oath = false; a.fetchSpec = null; a.reservoir = false; a.skipDraw = false; a.necroDig = false; a.sylvan = false; a.delugeCost = false; a.moxDiamond = false; a.sacRamp = false; a.fauna = false; a.devotionCreature = null; a.oneRing = false; a.deathrite = false; a.clamp = false; a.confluence = false; a.jeska = false; a.chooseOne = false; a.noUntap = false; a.vaultUntap = false; a.vaultDamage = false; a.imprint = null; a.scepter = false; a.cashIn = 0; a.copyOne = null; a.pingCounter = false; a.pact = false; a.pitch = null; a.freeIfCommander = false; a.freeIfThree = false; a.counter = null; a.cantBlock = /(^|\n)~ can't block/i.test(text); a.sacScry = 0; a.scryOnType = 0; a.sacTempt = false; a.animate = null; a.terrace = false; a.transformAbility = false; a.aftermath = /^aftermath\b/im.test(text); a.aftermathFx = []; a.gyReturn = null; a.altar = null;
     let half = 1;                                  // Dusk // Dawn: after the divider the lines belong to the aftermath half, cast from the graveyard
     let curGid = null, gStart = 0, modeStarts = [];
     const mergeModal = () => {
@@ -595,6 +595,11 @@
       if (/^\{1\}, \{t\}, remove a wish counter from ~: search your library for a card, put it into your hand/i.test(line)) { a.wishclaw = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Wishclaw: used once (the opponent never hands it back)
       { const mr = line.match(/^whenever another creature or artifact you control is put into a graveyard from the battlefield, (.*)$/i); if (mr) { const r = parseEffects(mr[1]); if (r.fx.length) { a.triggers.push({ kinds: ['dies'], who: 'another creature you control', fx: r.fx, text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; } } }          // Marionette Apprentice: counted for creatures only
       { const tx = line.match(/^(?:[A-Za-z' ]+ — )?((?:\{[^}]+\})+)(, \{t\})?(?:, sacrifice three other creatures)?: exile ~, then return (?:it|her|him) to the battlefield transformed under (?:its|her|his) owner's control\. activate only as a sorcery(.*)$/i); if (tx) { a.activated.push({ cost: parseCost(tx[1]), tap: !!tx[2], fx: [{ type: 'transform' }], text: raw }); rec.status = /only if|sacrifice three/i.test(line) ? 'partial' : 'ok'; if (rec.status === 'partial') rec.tag = 'approx'; continue; } }          // Praetors and Dominants: transform into their Saga
+      // ---- Notion Thief, Overwhelming Splendor, Toxrill
+      if (/^if an opponent would draw a card except the first one they draw in each of their draw steps, instead that player skips that draw and you draw a card/i.test(line)) { a.notionThief = true; rec.status = 'ok'; continue; }
+      if (/^creatures enchanted player controls lose all abilities and have base power and toughness 1\/1/i.test(line) || /^enchanted player can't activate abilities that aren't mana abilities or loyalty abilities/i.test(line)) { a.splendor = true; rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; }          // Overwhelming Splendor (on the other player)
+      if (/^at the beginning of each end step, put a slime counter on each creature you don't control/i.test(line) || /^creatures you don't control get -1\/-1 for each slime counter on them/i.test(line) || /^whenever a creature you don't control with a slime counter on it dies, create a 1\/1 black slug creature token/i.test(line)) { a.toxrill = true; rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; }          // Toxrill, the Corrosive
+      { const sd = line.match(/^((?:\{[^}]+\})+), sacrifice a slug: draw a card/i); if (sd) { a.slugDraw = { cost: parseCost(sd[1]) }; rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; } }
       // ---- artifact combo and extra upkeeps (Krark-Clan Ironworks, Lithoform Engine, Rings, Resonator, Scrap Trawler, Scroll Rack, Emrakul, Esika, Bolas, Paradox Haze, Sphinx, Ugin's Labyrinth, Ultima, Vesuva)
       if (/^sacrifice an artifact: add \{c\}\{c\}/i.test(line)) { a.kci = true; rec.status = 'ok'; continue; }
       if (/^\{2\}, \{t\}: copy target (?:activated or )?triggered ability you control/i.test(line)) { a.trigCopy = { cost: { generic: 2, pips: [], x: 0 }, act: /activated or/i.test(line) }; rec.status = 'ok'; continue; }          // Strionic Resonator, Lithoform Engine
@@ -1418,6 +1423,7 @@
   }
 
   function draw(g, n, ev) {
+    if (g.opp && g.opp.thiefSeen && n > 0 && !g._firstDraw && !g.dry && g.opp.battlefield.some(q => q.card.a.notionThief) && !g.battlefield.some(q => q.card.a.notionThief)) { if (ev) ev.push({ type: 'note', text: `Notion Thief: the other player draws ${n} card${n === 1 ? '' : 's'} instead` }); draw(g.opp, n, ev); return []; }
     if (n > 0) g.drawnTurnN = (g.drawnTurnN || 0) + n;
     const out = [];
     for (let i = 0; i < n && g.library.length; i++) {
@@ -1607,21 +1613,33 @@
     return n * info.coat;
   }
   function isCreaturePerm(p) { return (p.card.a.isCreature && !p.asLand && !p.noCreature) || !!p.animated; }          // a manland (Restless Cottage) is a creature while animated
+  const splendored = g => !!g.opp && g.opp.battlefield.some(q => q.card.a.splendor);                         // Overwhelming Splendor sits on the other side, enchanting this player
+  const slimeOn = (g, p) => (g.opp && g.opp.battlefield.some(q => q.card.a.toxrill)) ? p.slime : 0;          // Toxrill: -1/-1 for each slime counter while it is out
+  const SLUG = { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['B'], subtypes: ['Slug'], keywords: [], artifact: false, name: 'Slug' };
+  function toxrillEnd(g, ev) {                                                                              // each end step: a slime counter on each creature the Toxrill player does not control
+    if (!g.opp || g.dry) return;
+    for (const [me, them] of [[g, g.opp], [g.opp, g]]) {
+      const n = me.battlefield.filter(q => q.card.a.toxrill).length; if (!n) continue;
+      const cs = them.battlefield.filter(isCreaturePerm); cs.forEach(q => { q.slime = (q.slime || 0) + n; }); touch(them);
+      for (const q of cs) if (toughnessOf(them, q) <= 0) { ev.push({ type: 'note', text: `${q.card.name} dies to its slime counters` }); leavePerm(them, q, ev); }
+      flushLeaves(them, ev);
+    }
+  }
   function legendColors(g, p) { const cs = new Set(); for (const q of g.battlefield) if (q !== p && q.card.a.isLegendary) (q.card.colors || []).forEach(c => cs.add(c)); return cs.size; }          // Sisay: colors among other legendary permanents
   function powerOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor, spa = p.card.a.statics.selfPerArtifact;
     const cda = p.card.a.cda, lbf = p.card.a.lifeBuff, pe = p.card.a.perEach;
-    return condAnthem(g, p, 'p') + (pe ? pe.p * countWhat(g, pe.what, p) : 0) + (spa ? spa.p * g.battlefield.filter(q => q.card.a.isArtifact).length : 0) + (lbf && g.life >= lbf.min ? lbf.p : 0) + coatBonus(g, p) + (cda ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.p : (p.card.a.power || 0)) + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotP || 0) + g.eot.p;
+    return condAnthem(g, p, 'p') + (pe ? pe.p * countWhat(g, pe.what, p) : 0) + (spa ? spa.p * g.battlefield.filter(q => q.card.a.isArtifact).length : 0) + (lbf && g.life >= lbf.min ? lbf.p : 0) + coatBonus(g, p) + (cda ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.p : (g.opp && g.opp.splendorSeen && splendored(g) ? 1 : (p.card.a.power || 0))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotP || 0) + g.eot.p;
   }
   function toughnessOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor, spa = p.card.a.statics.selfPerArtifact;
     const cda = p.card.a.cda, lbf = p.card.a.lifeBuff, pe = p.card.a.perEach;
-    return condAnthem(g, p, 't') + (pe ? pe.t * countWhat(g, pe.what, p) : 0) + (spa ? spa.t * g.battlefield.filter(q => q.card.a.isArtifact).length : 0) + (lbf && g.life >= lbf.min ? lbf.t : 0) + coatBonus(g, p) + (cda && cda.t ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.t : (p.card.a.toughness || 0)) + (p.counters || 0) + anthemsFor(g, p).dt + (pc ? pc.t * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotT || 0) + g.eot.t;
+    return condAnthem(g, p, 't') + (pe ? pe.t * countWhat(g, pe.what, p) : 0) + (spa ? spa.t * g.battlefield.filter(q => q.card.a.isArtifact).length : 0) + (lbf && g.life >= lbf.min ? lbf.t : 0) + coatBonus(g, p) + (cda && cda.t ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.t : (g.opp && g.opp.splendorSeen && splendored(g) ? 1 : (p.card.a.toughness || 0))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) + anthemsFor(g, p).dt + (pc ? pc.t * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotT || 0) + g.eot.t;
   }
   function hasKw(g, p, k) {
-    if (p.card.a.kw && p.card.a.kw.has(k)) return true;
+    if (p.card.a.kw && p.card.a.kw.has(k) && !(g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g))) return true;
     if (p.eotKw && p.eotKw.has(k)) return true;
     if (k === 'flying' && p.flyCounter) return true;
     if (p.card.a.lifeBuff && g.life >= p.card.a.lifeBuff.min && p.card.a.lifeBuff.kw.includes(k)) return true;          // Serra Ascendant
@@ -1650,7 +1668,8 @@
     const units = [];
     const info = bfInfo(g);
     for (const p of info.producers) {
-      if (p.tapped || p.held || !p.produce) continue;                  // held: kept untapped for a counterspell
+      if (p.tapped || p.held || !p.produce) continue;
+      if (g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g)) continue;                  // held: kept untapped for a counterspell
       if (p.sick && isCreaturePerm(p) && !info.abilityHaste && !hasKw(g, p, 'haste')) continue;
       if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
       const cols = (info.landsAnyColor && p.asLand) ? ANY_COLOR : (info.allSwamps && p.asLand && !p.produce.colors.has('B')) ? new Set([...p.produce.colors, 'B', ...(info.allForests ? ['G'] : [])]) : (info.allForests && p.asLand && !p.produce.colors.has('G')) ? new Set([...p.produce.colors, 'G']) : p.produce.colors;          // Urborg: every land also taps for {B}; Wrenn: any colour
@@ -1728,6 +1747,7 @@
   function leavePerm(g, p, ev, dest) {
     if (!g.battlefield.includes(p)) return;
     if (g.trawlerSeen && !g.dry && p.card.a.isArtifact && dest == null && (!p.token || p.card.a.trawler)) scrapTrawl(g, p, ev);
+    if (p.slime && g.opp && !g.dry && dest == null && isCreaturePerm(p)) { const k = g.opp.battlefield.filter(q => q.card.a.toxrill).length; if (k) createTokens(g.opp, SLUG, k, ev || [], null); }          // Toxrill: a slimed creature died
     const hadFly = hasKw(g, p, 'flying');
     p.lastPower = isCreaturePerm(p) ? Math.max(0, powerOf(g, p)) : 0;
     const undyingBy = bfInfo(g).undying;
@@ -2098,6 +2118,8 @@
     }
     if (g.nextCreatureCounter === g.turn && !g.dry && isCreaturePerm(perm) && !perm.token) { g.nextCreatureCounter = null; addCounters(g, perm, '+1/+1', 1, ev, perm); }          // "the next creature spell enters with an additional counter"
     if (a.fading) perm.fade = a.fading;
+    if (a.splendor) g.splendorSeen = true;
+    if (a.notionThief) g.thiefSeen = true;
     if (a.trini) g.triniSeen = true;
     if (a.noLifeGain) { g.noGainSeen = true; if (g.opp) g.opp.noGainSeen = true; }
     if (a.echo) perm.echoDue = g.turn;                                                                    // Echo: pay again at your next upkeep or sacrifice it
@@ -2157,12 +2179,13 @@
   function etbMult(g, perm) { let m = 1; for (const q of g.battlefield) { const ed = q.card.a.statics.etbDouble; if (ed && (ed === 'permanent' || (ed === 'land' ? perm.asLand : (perm.card.a.isArtifact || isCreaturePerm(perm))))) m++; } return m; }          // Panharmonicon, Elesh Norn
   function fireOnce(g, trig, source, ev, subject, amount) {
     if (g.match && g.match.winner != null) return;                         // the match is over: nothing else happens
+    if (g.opp && g.opp.splendorSeen && source && source.card && g.battlefield.includes(source) && isCreaturePerm(source) && splendored(g)) return;          // Overwhelming Splendor: this player's creatures have no abilities
     if (trig.cond && !condMet(g, trig.cond, source)) return;           // an "if you gained 3 or more life this turn" trigger that does not apply
     g.depth = (g.depth || 0) + 1;
     if (amount > 0 && g.depth > 18 && g.killTurn == null) {
       // A trigger loop that keeps feeding itself with a non-zero amount (Exquisite Blood + Sanguine Bond) never ends: the goldfish is drained.
       ev.push({ type: 'note', text: `Infinite loop (${source ? source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null });
-      g.damage = Math.max(g.damage, g.opts.oppLife); if (g.opp) g.opp.life = 0; g.infinite = true; checkKill(g, ev);
+      g.damage = Math.max(g.damage, g.opts.oppLife); if (g.opp) (isPod(g) ? podAlive(g) : [g.opp]).forEach(o => { o.life = 0; }); g.infinite = true; checkKill(g, ev);
     } else if (g.depth <= 25) {
       const prevThat = g.thatMuch; g.thatMuch = amount;
       let fx = trig.fx;
@@ -2180,17 +2203,54 @@
   }
 
   // ---- mirror match links (g.opp is the other player's game; goldfish games have none) ----
-  function matchOver(g) { return !!(g.match && g.match.winner != null); }
+  function matchOver(g) { return !!(g.match && (g.match.winner != null || g.dead)); }
+  // ---- pods: more than two players (also used for a played 1v1 game). Each player has one focused opponent (g.opp): the one it attacks
+  // this turn and the one whose blockers, counterspells and removal it meets. Non-combat damage and life loss hit every opponent.
+  const isPod = g => !!(g.match && g.match.pod);
+  function podAlive(g) { return g.match.players.filter(x => !x.dead && x !== g); }
+  function threatOf(o) { return o.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(o, q)), 0) + o.hand.length * 0.6 + o.battlefield.filter(q => q.produce).length * 0.4; }
+  function pickTarget(g) {                                                                                 // the biggest threat, leaning towards a player who is nearly out
+    const os = podAlive(g); if (!os.length) return null;
+    const mine = g.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
+    const score = o => threatOf(o) + (40 - Math.min(40, o.life)) * 0.25 + (o.life <= mine ? 30 : 0) - o.pid * 0.001;
+    return os.sort((x, y) => score(y) - score(x))[0];
+  }
+  function eliminate(x, by, ev, why) {
+    const m = x.match; if (!m || x.dead || m.winner != null) return;
+    x.dead = true; m.out.push({ pid: x.pid, by: by ? by.pid : null, why, round: m.round || 0 });
+    (ev || []).push({ type: 'note', text: `☠ ${m.names[x.pid]} is out of the game (${why === 'life' ? 'life total' : why === 'commander' ? 'commander damage' : why === 'empty' ? 'no cards left' : why})`, out: x.pid });
+    const left = m.players.filter(q => !q.dead);
+    if (left.length <= 1) { const w = left[0] || by || x; m.winner = w.pid; m.reason = why; m.turn = w.turn; w.killTurn = w.turn; (ev || []).push({ type: 'kill', cmdr: why === 'commander', mirror: true }); return; }
+    for (const q of left) if (q.opp === x) q.opp = pickTarget(q);
+  }
+  function loseGame(g, ev, why) { if (isPod(g)) eliminate(g, g.opp, ev, why); else if (g.opp) setWinner(g.opp, ev || [], why); }          // this player loses (life, Pact of Negation)
+  function linkPod(games, names) {
+    const m = { winner: null, reason: null, turn: null, pod: true, players: games, out: [], round: 0, names: names || games.map((x, i) => 'Player ' + (i + 1)) };
+    games.forEach((x, i) => { x.pid = i; x.match = m; x.dead = false; });
+    games.forEach(x => { x.opp = pickTarget(x); });
+    return m;
+  }
+  function podFocus(g, target) { const t = target && !target.dead && target !== g ? target : pickTarget(g); if (t) { g.opp = t; t.opp = g; } return t; }          // the attacked player answers this player for the turn
   function setWinner(g, ev, why) {
     if (!g.match || g.match.winner != null) return;
+    if (g.match.pod) {
+      if (why === 'life' || why === 'commander') { if (g.opp) eliminate(g.opp, g, ev, why); }
+      else { for (const o of podAlive(g)) { o.dead = true; g.match.out.push({ pid: o.pid, by: g.pid, why, round: g.match.round || 0 }); } g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: false, mirror: true }); }
+      return;
+    }
     g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn;
     ev.push({ type: 'kill', cmdr: why === 'commander', mirror: true });
   }
-  function checkDeath(g, ev) { if (g.opp && g.life <= 0) setWinner(g.opp, ev || [], 'life'); }          // you lost your last life point: the other player wins
+  function checkDeath(g, ev) { if (g.opp && g.life <= 0) loseGame(g, ev || [], 'life'); }          // you lost your last life point: the other player wins
   function oppLifeLeft(g) { return g.opp ? g.opp.life : g.opts.oppLife - g.damage; }
-  function dealToOpp(g, n) { const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm; g.oppLostTurn = (g.oppLostTurn || 0) + n; g.damage += n; if (g.opp) g.opp.life -= n; }          // Bloodletter of Aclazotz, Fiery Emancipation
+  function dealToOpp(g, n, combat) { const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm; g.oppLostTurn = (g.oppLostTurn || 0) + n; g.damage += n; if (g.opp) { if (isPod(g) && !combat) podAlive(g).forEach(o => { o.life -= n; }); else g.opp.life -= n; } }          // Bloodletter of Aclazotz, Fiery Emancipation
   function checkKill(g, ev) {
     if (g.killTurn != null) return;
+    if (isPod(g)) {                                                                                       // a pod: anyone at 0 life is out; commander damage counts per player
+      for (const o of podAlive(g)) if (o.life <= 0) eliminate(o, g, ev, 'life');
+      if (g.opp && !g.opp.dead && g.opts.cmdrDamage !== false && Object.keys(g.cmdrDamage).some(k => k.endsWith('>' + g.opp.pid) && g.cmdrDamage[k] >= 21)) eliminate(g.opp, g, ev, 'commander');
+      return;
+    }
     if (g.opp) {
       const ck = g.opts.cmdrDamage !== false && Object.values(g.cmdrDamage).some(v => v >= 21);
       if (g.opp.life <= 0) setWinner(g, ev, 'life'); else if (ck) setWinner(g, ev, 'commander');
@@ -3919,6 +3979,10 @@
     for (const p of g.battlefield.slice()) {
       const a = p.card.a;
       if (!g.battlefield.includes(p) || g.dry) continue;
+      if (a.slugDraw && g.hand.length < 7 && g.library.length) {                                             // Toxrill: {U}{B}, sacrifice a Slug: draw a card
+        const sl = g.battlefield.find(q => q.token && q.card.name === 'Slug');
+        if (sl && canPay(a.slugDraw.cost, allUnits(g)) && pay(g, a.slugDraw.cost) != null) { sacEvent(g, sl, ev); leavePerm(g, sl, ev); flushLeaves(g, ev); draw(g, 1, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed a Slug to draw a card`, source: p }); return true; }
+      }
       if (a.scrollRack && !p.tapped && p.rackTurn !== g.turn) {                                              // Scroll Rack: swap dead cards (spare lands, spells far out of reach) for the top of the library
         const landsOn = g.battlefield.filter(q => q.asLand).length, reach = allUnits(g).length + 3;
         const dead = g.hand.filter(i => i.card.a.isLand ? landsOn >= 6 : (i.card.a.castMv || 0) > reach && !i.card.commander).slice(0, 3);
@@ -4111,6 +4175,7 @@
         }
       }
     }
+    if (g.opp && g.opp.splendorSeen && splendored(g)) return ev;                                            // Overwhelming Splendor: only mana and loyalty abilities
     for (const p of g.battlefield.slice()) {
       if (!p.card.a.isEquipment || !p.card.a.equip || p.card.a.clamp) continue;
       if (p.attachedTo != null && g.battlefield.some(q => q.iid === p.attachedTo)) continue;
@@ -4647,8 +4712,12 @@
   // "each player draws an additional card" permanent), plays about one card a turn, and wheels make it discard and redraw.
   // It never pays "unless that player pays" taxes (it has no mana to spare in this model).
   function extraDrawEach(p) { const k = p.card.a; if (k._xd == null) k._xd = /at the beginning of each player's draw step,(?: if [^,]+,)? that player draws an additional card/i.test(p.card.oracle_text || ''); return k._xd && !(/if [^,]+ is untapped/i.test(p.card.oracle_text || '') && p.tapped); }
-  function ghostDraws(g, n, ev) {
+  function ghostDraws(g, n, ev, first) {
     if (g.opp || g.dry || n <= 0) return;
+    if (g.thiefSeen && g.battlefield.some(q => q.card.a.notionThief)) {                                       // Notion Thief: every draw but the first of its draw step is yours instead
+      const st = n - (first ? 1 : 0); if (st > 0) { ev.push({ type: 'note', text: `Notion Thief: you draw ${st} card${st === 1 ? '' : 's'} instead of the opponent` }); draw(g, st, ev); }
+      n = first ? 1 : 0; if (!n) return;
+    }
     g.oppHand = (g.oppHand == null ? 7 : g.oppHand) + n; g.oppDrawnTurn = (g.oppDrawnTurn || 0) + n;
     for (let i = 0; i < n && g.killTurn == null; i++) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDraw') && g.battlefield.includes(q)) fire(g, t, q, ev, null);
   }
@@ -4712,8 +4781,8 @@
     if (g.oppHand == null) g.oppHand = 7;
     if (g.turn <= 1) return;                                                            // its first turn: no draw (or it has not had a turn yet)
     const extra = g.battlefield.filter(extraDrawEach).length;
-    ghostDraws(g, 1 + extra, ev);
-    for (const b of g.battlefield) if (b.card.a.puzzleBox && g.oppHand > 0) { ev.push({ type: 'note', text: `${b.card.name}: the opponent redraws ${g.oppHand} cards`, source: b }); ghostDraws(g, g.oppHand, ev); g.oppHand /= 2; }          // Teferi's Puzzle Box on its draw step (ghostDraws adds, so halve back)
+    ghostDraws(g, 1 + extra, ev, true);
+    for (const b of g.battlefield) if (b.card.a.puzzleBox && g.oppHand > 0) { ev.push({ type: 'note', text: `${b.card.name}: the opponent redraws ${g.oppHand} cards`, source: b }); const oh = g.oppHand; g.oppHand = 0; ghostDraws(g, oh, ev); }          // Teferi's Puzzle Box on its draw step (ghostDraws adds, so halve back)
     for (const v of g.battlefield.slice()) if (v.card.a.upkeepBurn && g.killTurn == null) { ev.push({ type: 'note', text: `${v.card.name} deals ${v.card.a.upkeepBurn} damage to the opponent in their upkeep`, source: v }); damageOpp(g, v.card.a.upkeepBurn, ev, v); }          // Sulfuric Vortex in its upkeep
     g.oppHand = Math.max(0, g.oppHand - 1);                                             // it plays a card
   }
@@ -4743,7 +4812,7 @@
     if (g.pactDue) {                                                                                      // Pact of Negation: pay {3}{U}{U} this upkeep or lose
       g.pactDue = false;
       const pc = { generic: 3, pips: [['U'], ['U']], x: 0 };
-      if (canPay(pc, allUnits(g))) { pay(g, pc); ev.push({ type: 'note', text: 'Paid for Pact of Negation' }); } else if (g.opp) setWinner(g.opp, ev, 'pact');
+      if (canPay(pc, allUnits(g))) { pay(g, pc); ev.push({ type: 'note', text: 'Paid for Pact of Negation' }); } else if (g.opp) loseGame(g, ev, 'pact');
     }
     for (const p of g.battlefield.slice()) if (p.echoDue != null && p.echoDue < g.turn && !g.dry) { p.echoDue = null; if (canPay(p.card.a.echo, allUnits(g))) { pay(g, p.card.a.echo); ev.push({ type: 'note', text: `Paid echo for ${p.card.name}`, source: p }); } else { leavePerm(g, p, ev); ev.push({ type: 'note', text: `${p.card.name} is sacrificed (echo)`, source: p }); } }
     lockUpkeep(g, ev);
@@ -4766,7 +4835,7 @@
       if (c) { const gi = g.exile.indexOf(c); if (gi >= 0) { g.exile.splice(gi, 1); g.graveyard.push(c); } c.freeCast = true; const ce = castCard(g, c, true); if (ce) ev.push({ type: 'note', text: `Kaya's emblem: ${c.card.name} cast for free` }, ...ce); c.freeCast = false; }
     }
     if (!(g.turn === 1 && g.opts.onPlay) && !g.battlefield.some(p => p.card.a.skipDraw)) {                       // Necropotence skips the draw step
-      const h0 = new Set(g.hand); draw(g, 1, ev); staxDraw(g, ev, g.hand.find(i => !h0.has(i)));
+      const h0 = new Set(g.hand); g._firstDraw = true; draw(g, 1, ev); g._firstDraw = false; staxDraw(g, ev, g.hand.find(i => !h0.has(i)));
       { const hm = g.battlefield.filter(p => p.card.a.statics.howling).length + (g.opp ? g.opp.battlefield.filter(p => p.card.a.statics.howling).length : 0); if (hm && g.library.length) draw(g, hm, ev); }          // Howling Mine: each player draws an additional card
       if (g.battlefield.some(p => p.card.a.sylvan)) sylvanLibrary(g, ev);
     }
@@ -4812,7 +4881,8 @@
         if (sum >= v.card.a.crew && vp > lost && v.enteredTurn < g.turn) { pick.forEach(c => { c.tapped = true; }); v.animated = { p: vp, t: +v.card.toughness || 0, kw: [...(v.card.a.kw || [])] }; v.sick = false; touch(g); ev.push({ type: 'note', text: `${v.card.name} is crewed by ${pick.map(c => c.card.name).join(', ')}`, source: v }); }
       }
       let attackers = g.battlefield.filter(p => canAttack(g, p));
-      if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
+      if (g.forceAttackers) attackers = attackers.filter(p => g.forceAttackers.includes(p.iid));          // a human chose the attackers
+      else if (g.opp) attackers = chooseAttackers(g, attackers);              // mirror match: the autopilot weighs the other player's blockers
       if (!attackers.length) break;
       attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) p.tapped = true; p.attacking = true; p.attackedTurn = g.turn; });
       ev.push({ type: 'declare', attackers });
@@ -4851,10 +4921,10 @@
         if (pw <= 0) continue;
         dmg += pw; hitters.push(p);
         g.combatNames = Object.assign({}, g.combatNames, { [p.card.name]: true });          // "each opponent dealt combat damage this game by a creature named Gollum"
-        if (p.card.commander) g.cmdrDamage[p.iid] = (g.cmdrDamage[p.iid] || 0) + pw;
+        if (p.card.commander) { const ck = isPod(g) ? p.iid + '>' + g.opp.pid : p.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + pw; }
       }
       if (dmg) {
-        dealToOpp(g, dmg);
+        dealToOpp(g, dmg, true);
         ev.push({ type: 'attack', attackers: hitters, dmg, total: g.damage });
         checkKill(g, ev);
         oppLostLife(g, dmg, ev);                                         // Exquisite Blood: combat damage is life loss too
@@ -4951,6 +5021,7 @@
   }
 
   function endTurn(g) {
+    toxrillEnd(g, []);
     g.extortOwed = 0;
     if (g.monarch && g.library.length && !g.dry) draw(g, 1, []);                                            // the monarch draws a card at the beginning of their end step
     if (g.opp) { g.opp.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; }); for (const q of g.battlefield.slice()) if (q.card.a.statics.admiral && (g.pirateHits || 0) >= 3) { const bp = g.opp.battlefield.filter(x => !x.asLand && !x.card.commander).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv))[0]; if (bp) stealPerm(g, bp, [], false); break; } }          // Admiral Beckett Brass
@@ -5278,7 +5349,7 @@
         if (m.to === 'player') {
           dmg += m.n; if (!hitters.includes(m.from)) hitters.push(m.from);
           g.combatNames = Object.assign({}, g.combatNames, { [m.from.card.name]: true });
-          if (m.from.card.commander) g.cmdrDamage[m.from.iid] = (g.cmdrDamage[m.from.iid] || 0) + m.n;
+          if (m.from.card.commander) { const ck = isPod(g) ? m.from.iid + '>' + d.pid : m.from.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + m.n; }
         } else { m.to.dmg = (m.to.dmg || 0) + m.n; if (deathtouch(m.game, m.from)) m.to.dt = true; }
         if (hasKw(m.game, m.from, 'lifelink')) { if (m.game === g) ll += m.n; else llD += m.n; }
       }
@@ -5559,6 +5630,82 @@
     return { lines, winner: m.match.winner, reason: m.match.reason, turn: m.match.turn, lifeA: m.gA.life, lifeB: m.gB.life };
   }
 
+  // ---------- Pods: three or four players (and any played game) ----------
+  // One turn of a pod: the active player picks who it attacks (or is told), then plays a normal turn against that player.
+  function podTurn(g, hook, target) {
+    const m = g.match; if (g.dead || m.winner != null) return [];
+    podFocus(g, target);
+    const ev = playTurn(g);
+    if (hook) hook(g, ev);
+    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
+    if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
+    return ev;
+  }
+  function newPod(decks, optsList, seed, names, first) {
+    const games = decks.map((d, i) => newGame(d, Object.assign({}, optsList[i], { onPlay: false }), (seed + i * 0x9e3779b9) >>> 0));          // in a multiplayer game the first player draws too
+    const m = linkPod(games, names);
+    games.forEach(mulligan);
+    m.order = games.map((x, i) => games[(i + (first || 0)) % games.length]);
+    return { games, match: m };
+  }
+  function playPod(decks, optsList, seed, names, first, hook) {
+    const pod = newPod(decks, optsList, seed, names, first), m = pod.match, T = optsList[0].turns;
+    for (let t = 0; t < T && m.winner == null; t++) { m.round = t + 1; for (const g of m.order) { if (m.winner != null) break; podTurn(g, hook); } }
+    return pod;
+  }
+  // Many pod games. players: [{ cards, tokens, policy, name }]. The first seat rotates so no deck always starts.
+  function podMonteCarlo(players, opts, n, seed, onProgress) {
+    const decks = players.map(p => buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
+    const optsList = players.map(p => Object.assign({}, opts, { policy: p.policy || {} }));
+    const names = players.map((p, i) => p.name || 'Player ' + (i + 1)), P = players.length, T = opts.turns;
+    const res = { n, turns: T, players: P, names, wins: new Array(P).fill(0), none: 0, firstOut: new Array(P).fill(0), place: new Array(P).fill(0), hist: players.map(() => new Array(T + 2).fill(0)),
+      reasons: {}, errors: 0, firstError: null, games: [], life: new Array(P).fill(0), seatWins: new Array(P).fill(0) };
+    for (let i = 0; i < n; i++) {
+      const s = (seed + i * 7919) >>> 0, first = i % P;
+      try {
+        const pod = playPod(decks, optsList, s, names, first), m = pod.match, w = m.winner;
+        if (w == null) res.none++;
+        else { res.wins[w]++; res.hist[w][Math.min(T + 1, m.round)]++; res.reasons[m.reason || 'empty'] = (res.reasons[m.reason || 'empty'] || 0) + 1; res.seatWins[(w - first + P) % P]++; }
+        if (m.out[0]) res.firstOut[m.out[0].pid]++;
+        pod.games.forEach((x, k) => { res.life[k] += x.dead ? 0 : Math.max(0, x.life); });
+        res.games.push({ seed: s, first, winner: w, round: m.round });
+      } catch (err) { res.errors++; if (!res.firstError) res.firstError = String(err && err.stack || err); }
+      if (onProgress && i % 10 === 0) onProgress(i / n);
+    }
+    const ok = Math.max(1, n - res.errors);
+    res.life = res.life.map(v => v / ok);
+    res.avgRound = res.games.reduce((a, x) => a + x.round, 0) / Math.max(1, res.games.length);
+    const sorted = res.games.slice().sort((a, b) => a.round - b.round);
+    const pick = q => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1)))] : null;
+    res.samples = { quick: pick(0.1), median: pick(0.5), long: pick(0.9) };
+    res.commanders = decks.map(d => (d.commanders[0] || {}).card ? d.commanders[0].card.name : null);
+    return res;
+  }
+  // What happened in a turn, as short lines (used by the pod log and the played game)
+  function turnSummary(g, ev) {
+    const items = [];
+    for (const e of ev) {
+      if (e.type === 'cast') items.push('cast ' + e.inst.card.name);
+      else if (e.type === 'land') items.push('land ' + e.inst.card.name);
+      else if (e.type === 'declare') items.push('attacks ' + (g.opp && g.match ? (g.match.names ? g.match.names[g.opp.pid] : 'the opponent') : '') + ' with ' + e.attackers.map(p => p.card.name).join(', '));
+      else if (e.type === 'note' && (e.out != null || /blocks|dies in combat|Extort|transform|Ring|Wheel|Miracle|copy|copied|is out of the game/.test(e.text))) items.push(e.text);
+      else if (e.type === 'attack') items.push(e.dmg + ' combat damage got through');
+      else if (e.type === 'damage' && e.n > 0) items.push(e.n + ' damage' + (isPod(g) ? ' to each opponent' : '') + (e.source && e.source.card ? ' (' + e.source.card.name + ')' : ''));
+      else if (e.type === 'kill') items.push('☠ WINS');
+    }
+    return items;
+  }
+  function podLog(players, opts, seed, first) {
+    const decks = players.map(p => buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
+    const optsList = players.map(p => Object.assign({}, opts, { policy: p.policy || {} }));
+    const names = players.map((p, i) => p.name || 'Player ' + (i + 1)), lines = [];
+    const pod = playPod(decks, optsList, seed, names, first, (g, ev) => {
+      const creatures = g.battlefield.filter(isCreaturePerm), power = creatures.reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
+      lines.push({ turn: g.turn, pid: g.pid, who: names[g.pid], life: g.match.players.map(x => x.dead ? null : x.life), text: turnSummary(g, ev), board: `${creatures.length} creatures, ${power} power, ${g.battlefield.filter(q => q.asLand).length} lands, hand ${g.hand.length}` });
+    });
+    return { lines, names, winner: pod.match.winner, reason: pod.match.reason, round: pod.match.round, out: pod.match.out, life: pod.games.map(x => x.dead ? null : x.life) };
+  }
+
   // ---------- Exact hypergeometric ----------
   const LF = [0]; for (let i = 1; i <= 400; i++) LF.push(LF[i - 1] + Math.log(i));
   function choose(n, k) { if (k < 0 || k > n) return 0; return Math.exp(LF[n] - LF[k] - LF[n - k]); }
@@ -5573,6 +5720,7 @@
     pay, madness, fxValue, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
+    linkPod, newPod, podTurn, podFocus, pickTarget, podAlive, playPod, podMonteCarlo, podLog, turnSummary, eliminate, canAttack, chooseAttackers, matchOver, checkKill,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

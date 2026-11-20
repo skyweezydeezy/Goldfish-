@@ -157,11 +157,16 @@
       else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
       else if (d.what === 'burn') { q.title = `${sn || 'Damage'}: ${d.n} damage`; q.text = `Choose a creature this kills${d.face ? ', or deal the damage to the players' : ''}. Only creatures the damage would kill are listed: the engine does not keep damage on a creature that survives.`; q.none = d.face ? 'Deal it to the players' : 'No target (nothing happens)'; }
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
+      else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;
       q.text = 'Only the modes the engine can play are listed.';
+    } else if (d.kind === 'land') {                                                                        // Hakbal: a land from your hand, or a card
+      q.title = `${sn || 'Effect'}: put a land onto the battlefield?`;
+      q.text = 'Choose a land card from your hand to put onto the battlefield. If you do not, you draw a card.';
+      q.none = 'Draw a card instead';
     } else if (d.kind === 'discard') {
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`;
@@ -294,7 +299,7 @@
   // ---------- the log ----------
   // What happened, as short lines: the engine's own summary plus what a person chose or had done to them (searches, targets, discards,
   // sacrifices, counterspells). A card another player searched for and did not show stays unnamed.
-  const EXTRA = /^(Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: )| counters |'s controller pays /;
+  const EXTRA = /^(Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: )| counters |'s controller pays | explores: /;
   function summary(g, ev, viewer) {
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {

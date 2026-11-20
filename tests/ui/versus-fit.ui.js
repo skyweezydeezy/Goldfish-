@@ -10,6 +10,7 @@ const shot = process.env.SHOTS;
   const b = await chromium.launch();
   for (const [name, opts] of DEVS) {
     const ctx = await b.newContext({ ...opts, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const q = route.request();
       const c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

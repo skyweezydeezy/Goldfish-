@@ -102,7 +102,7 @@ T('kediss', () => { const cd = G.buildDeck(cards.map(c => Object.assign({}, c, {
   check('Kediss in a pod: the commander hits one opponent and the same damage goes to each other opponent', lost[1] >= 6 && lost[2] === 6 && lost[3] === 6 && lost[0] === 0, lost.join(',')); });
 T('labels', () => { const lab = (n, re) => { const c = by(n); return [c].concat(c.a.backCard ? [c.a.backCard] : []).flatMap(x => x.a.coverage).find(v => re.test(v.text)); };
   const um = lab('Undying Malice', /gains/), va = lab('Valgavoth, Terror Eater', /play cards exiled/), ke = lab('Kediss, Emberclaw Familiar', /each other opponent/);
-  check('Undying Malice and Valgavoth\'s exile-play line say "Needs opponent", not "Mirror matches only"', um.tag === 'opp' && !um.mirror && va.tag === 'opp' && !va.mirror, JSON.stringify([um.tag, um.mirror, va.tag, va.mirror]));
+  check('Undying Malice is simulated (batch 15); Valgavoth\'s exile-play line says "Needs opponent", not "Mirror matches only"', um.status === 'ok' && va.tag === 'opp' && !va.mirror, JSON.stringify([um.status, va.tag, va.mirror]));
   check('Kediss is labelled for games with opponents', ke.tag === 'opp' && ke.mirror === true); });
 T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });

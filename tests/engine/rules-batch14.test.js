@@ -106,10 +106,10 @@ T('run away together', () => { const { g: a, b } = mirror(); const bt = putOn(b,
   const v = lab('Run Away Together', /different players/); check('...labelled for matches', v.tag === 'opp' && v.mirror === true); });
 T('teval', () => { const g = bare(); g.library = g.library.slice(0, 20); const tj = putOn(g, "Teval's Judgment"); const cs = ['Opt', 'Sol Ring', 'Forest', 'Island'].map(n => inst(g, n)); g.graveyard = cs.slice(); G.castPhase(g); const h0 = g.hand.length;
   const leave = () => { g.exile.push(g.graveyard.shift()); G.castPhase(g); };
-  leave(); check("Teval's Judgment: a card leaves your graveyard, draw a card", g.hand.length + count(g, 'Forest') + count(g, 'Island') >= h0 + 1 && tj.tevalModes.draw === true, JSON.stringify(tj.tevalModes));
-  leave(); check('...the second time this turn: a Treasure', tj.tevalModes.treasure === true && (count(g, 'Treasure') === 1 || g.spentThisTurn > 0), names(g));
+  leave(); check("Teval's Judgment: a card leaves your graveyard, draw a card", g.hand.length + count(g, 'Forest') + count(g, 'Island') >= h0 + 1 && tj.unchosen.used.join() === '0', JSON.stringify(tj.unchosen));
+  leave(); check('...the second time this turn: a Treasure', tj.unchosen.used.join() === '0,1' && (count(g, 'Treasure') === 1 || g.spentThisTurn > 0), names(g));
   leave(); check('...the third: a 2/2 Zombie Druid', count(g, 'Zombie Druid') === 1, names(g));
-  leave(); check('...and nothing a fourth time', count(g, 'Zombie Druid') === 1 && tj.tevalModes.zombie === true); });
+  leave(); check('...and nothing a fourth time', count(g, 'Zombie Druid') === 1 && tj.unchosen.used.length === 3); });
 T('horizon explorer', () => { const g = bare(); putOn(g, 'Horizon Explorer'); putOn(g, 'Llanowar Elves'); G.combat(g); g.battlefield.find(p => p.card.name === 'Lander');
   check('Horizon Explorer: one Lander token when you attack (not one for each attacker)', count(g, 'Lander') === 1, names(g)); g.library = [inst(g, 'Opt'), inst(g, 'Forest')]; mana(g, 2); g.combatDone = true; G.useAbilities(g);
   const f = g.battlefield.find(p => p.card.name === 'Forest'); check('...the Lander: {2}, tap, sacrifice for a tapped basic land', !!f && f.tapped && count(g, 'Lander') === 0, names(g)); });

@@ -50,6 +50,25 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   const st = await A(() => __isfAudio.state());
   check('the first click wakes the sound up and starts the music', st.running && st.music, JSON.stringify(st));
   check('the music is really making sound', (await loud(3000)) > 0.003);
+  // ---- keep the music playing in the background? ----
+  const hide = h => p.evaluate(x => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => x }); Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => x ? 'hidden' : 'visible' }); document.dispatchEvent(new Event('visibilitychange')); }, h);
+  check('the first time the music plays, a banner asks about playing it in the background', await p.isVisible('#bgAsk') && /background/.test(await p.textContent('#bgAsk')));
+  await p.click('#bgAsk [data-bg=yes]');
+  check('"Yes, keep playing" is saved and the banner goes away', !(await p.isVisible('#bgAsk')) && (await A(() => __isfAudio.get().bg)) === true && await p.isChecked('#sdBg'));
+  await hide(true);
+  await p.waitForTimeout(400);
+  let bs = await A(() => __isfAudio.state());
+  check('with the app out of sight the music keeps playing, planned well ahead', bs.music && bs.running && bs.ahead > 20, JSON.stringify(bs));
+  check('and you can hear it', (await loud(2500)) > 0.003);
+  await hide(false); await p.waitForTimeout(300);
+  await p.uncheck('#sdBg');
+  await hide(true); await p.waitForTimeout(400);
+  bs = await A(() => __isfAudio.state());
+  check('with it switched off in the panel, hiding the app stops the music', !bs.music && !bs.running, JSON.stringify(bs));
+  await hide(false); await p.waitForTimeout(500);
+  check('coming back starts it again', (await A(() => __isfAudio.state().music)));
+  check('the banner does not come back once answered', !(await p.isVisible('#bgAsk')));
+
   check('there are three music tracks to choose from', (await p.$$eval('#sdTrack option', x => x.length)) === 3);
   await p.selectOption('#sdTrack', 'tide');
   check('choosing a track is remembered', (await A(() => __isfAudio.get().track)) === 'tide');

@@ -898,3 +898,10 @@ body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(
 .sound-cards summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
 .sound-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px; margin-top: 8px; max-height: 260px; overflow-y: auto; }
 .sound-card-grid button { text-align: left; font-size: 12.5px; padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* "keep the music playing in the background?" (audio.js): a banner along the bottom that does not block the page */
+.bg-ask { position: fixed; z-index: 470; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); width: min(620px, calc(100vw - 20px));
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(180deg, #1b3346, #12222f); border: 1px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+.bg-ask-text { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+.bg-ask-text b { color: var(--text-primary); font-size: 14px; }
+.bg-ask-btns { display: flex; flex-direction: column; gap: 6px; flex: none; }
+@media (max-width: 600px) { .bg-ask { flex-direction: column; align-items: stretch; } .bg-ask-btns { flex-direction: row; } .bg-ask-btns button { flex: 1; } }

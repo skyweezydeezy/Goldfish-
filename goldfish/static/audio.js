@@ -15,7 +15,7 @@
   'use strict';
 
   const KEY = 'isf_sound';
-  const DEF = { sfx: true, cards: true, sfxVol: 0.6, music: true, musicVol: 0.4, track: 'pond' };
+  const DEF = { sfx: true, cards: true, bg: null, sfxVol: 0.6, music: true, musicVol: 0.4, track: 'pond' };
   const load = () => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEF); } };
   let set = load();
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -30,7 +30,7 @@
     const comp = ctx.createDynamicsCompressor();            // keeps a pile-up of effects from clipping
     comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.connect(comp);
-    musicBus = ctx.createGain(); musicBus.connect(comp);
+    musicBus = ctx.createGain(); musicBus.connect(comp); M.comp = comp;
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     volumes();
@@ -270,11 +270,12 @@
     if (!live()) return;
     const tr = TRACKS.find(x => x.id === set.track) || TRACKS[0];
     if (M.next < ctx.currentTime) M.next = ctx.currentTime + 0.1;
-    while (M.next < ctx.currentTime + 1.5) { scheduleBar(tr, M.next); M.next += tr.bar; }
+    // in the background browsers wake timers up rarely, so plan the music further ahead there
+    while (M.next < ctx.currentTime + (document.hidden ? 25 : 1.5)) { scheduleBar(tr, M.next); M.next += tr.bar; }
   }
   function startMusic() {
     if (M.on || !set.music || !live()) return;
-    musicChain(); M.on = true; M.next = 0; volumes();
+    musicChain(); M.on = true; M.next = 0; volumes(); background(); askBackground();
     tick(); M.timer = setInterval(tick, 500);
   }
   function stopMusic() {
@@ -282,7 +283,48 @@
     M.on = false; clearInterval(M.timer); M.timer = null;
     volumes();                                              // fades out; notes already started ring off quietly
   }
-  const syncMusic = () => { if (set.music && !document.hidden) startMusic(); else stopMusic(); };
+  const syncMusic = () => { if (set.music && (!document.hidden || set.bg)) startMusic(); else stopMusic(); background(); };
+
+  // ---- music in the background (switching apps, a minimized browser, a locked screen), only if the player said yes ----
+  // Computers: the music simply keeps going. Phones: the music is also sent through an <audio> element and the lock screen gets
+  // play / pause buttons (Media Session), which is what lets mobile browsers keep a page's sound going. Effects never play out of sight.
+  const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  function background() {
+    if (!ctx) return;
+    const on = !!(set.bg && set.music && M.on);
+    try { if (navigator.audioSession) navigator.audioSession.type = on ? 'playback' : 'auto'; } catch (e) { /* not supported */ }
+    if ('mediaSession' in navigator) {
+      try {
+        const tr = TRACKS.find(x => x.id === set.track) || TRACKS[0];
+        navigator.mediaSession.metadata = on && window.MediaMetadata ? new MediaMetadata({ title: tr.name, artist: 'I See Fish', artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }] }) : null;
+        navigator.mediaSession.playbackState = on ? 'playing' : 'none';
+        navigator.mediaSession.setActionHandler('play', on || set.bg ? () => { set.music = true; save(); } : null);
+        navigator.mediaSession.setActionHandler('pause', on ? () => { set.music = false; save(); } : null);
+      } catch (e) { /* not supported */ }
+    }
+    if (!touch || !ctx.createMediaStreamDestination) return;
+    if (on && !M.el) {
+      M.dest = ctx.createMediaStreamDestination();
+      M.el = new Audio(); M.el.srcObject = M.dest.stream; M.el.setAttribute('playsinline', '');
+      // switch over only once the element is really playing, so the music never goes silent if the browser says no
+      M.el.play().then(() => { if (!M.el) return; musicBus.disconnect(); musicBus.connect(M.dest); }).catch(() => { M.el = null; });
+    } else if (!on && M.el && !document.hidden) {
+      try { musicBus.disconnect(); } catch (e) { /* already */ }
+      musicBus.connect(M.comp); M.el.pause(); M.el = null;
+    }
+  }
+  // The first time the music plays, ask once (a banner that does not block the page). The answer is kept; the Sound panel changes it.
+  function askBackground() {
+    if (set.bg !== null || document.hidden || document.getElementById('bgAsk')) return;
+    const b = document.createElement('div');
+    b.id = 'bgAsk'; b.className = 'bg-ask'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-labelledby', 'bgAskTitle');
+    b.innerHTML = `<div class="bg-ask-text"><b id="bgAskTitle">🎵 Keep the music playing in the background?</b>
+      <span>The music can keep playing when you switch to another app or tab, minimize the browser or lock your screen. Sound effects always stay quiet then.
+      You can change this any time in the Sound panel (🔊).${touch ? ' Some phones (iPhone and iPad especially) may still pause it.' : ''}</span></div>
+      <div class="bg-ask-btns"><button type="button" class="primary" data-bg="yes">Yes, keep playing</button><button type="button" class="ghost" data-bg="no">No, pause it</button></div>`;
+    b.addEventListener('click', e => { const x = e.target.closest('[data-bg]'); if (!x) return; set.bg = x.dataset.bg === 'yes'; b.remove(); save(); });
+    document.body.appendChild(b);
+  }
 
   // Browsers only allow sound after a tap, click or key press: wake up on the first one.
   function unlock() {
@@ -292,10 +334,13 @@
     if (ctx.state === 'running') go(); else ctx.resume().then(go).catch(() => {});
   }
   ['pointerdown', 'keydown', 'touchend'].forEach(t => document.addEventListener(t, unlock, { capture: true, passive: true }));
-  // no sound while the tab is in the background or the phone is locked
+  // no sound while the tab is in the background or the phone is locked, except the music when the player asked for that
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
-    if (document.hidden) { stopMusic(); ctx.suspend().catch(() => {}); }
+    if (document.hidden) {
+      if (set.bg && M.on) { tick(); return; }               // the player chose to keep the music going: plan ahead and carry on
+      stopMusic(); ctx.suspend().catch(() => {});
+    }
     else if (unlocked) ctx.resume().then(syncMusic).catch(() => {});
   });
 
@@ -316,11 +361,12 @@
     <div class="sound-row"><label for="sdTrack">Music</label><select id="sdTrack">${TRACKS.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select></div>
     <div class="sound-row"><label class="check"><input id="sdSfx" type="checkbox"> 🔔 Sound effects</label>
       <input id="sdSfxVol" type="range" min="0" max="1" step="0.05" aria-label="Sound effects volume"></div>
+    <div class="sound-row"><label class="check"><input id="sdBg" type="checkbox"> 🌙 Keep the music playing in the background</label></div>
     <div class="sound-row"><label class="check"><input id="sdCards" type="checkbox"> ✨ Special sounds for famous cards</label></div>
     <details id="sdCardList" class="sound-cards"><summary>Hear them</summary><div class="sound-card-grid"></div></details>
     <div class="row wrap"><button id="sdTest" class="ghost">Play a test sound</button><button id="sdMute" class="ghost"></button></div>
     <p id="sdNone" class="hint" hidden>This browser cannot play sound made by the page (no Web Audio).</p>
-    <p class="hint">Saved in this browser only. The music and every effect are made by the app itself, so they are free to use, need no download and work offline. Sound stops while the app is in the background.</p>
+    <p class="hint">Saved in this browser only. The music and every effect are made by the app itself, so they are free to use, need no download and work offline. Sound effects stop while the app is in the background; the music does too, unless you keep it playing.</p>
   </div>`;
   document.body.appendChild(modal);
 
@@ -330,6 +376,7 @@
     $('#sdMusicVol').value = set.musicVol; $('#sdSfxVol').value = set.sfxVol;
     $('#sdMusicVol').disabled = !set.music; $('#sdTrack').disabled = !set.music; $('#sdSfxVol').disabled = !set.sfx;
     $('#sdTrack').value = set.track;
+    $('#sdBg').checked = !!set.bg; $('#sdBg').disabled = !set.music;
     $('#sdCards').checked = set.cards; $('#sdCards').disabled = !set.sfx;
     const grid = $('#sdCardList .sound-card-grid'), names = Object.values(CARDS).map(c => c.name).sort((a, b) => a.localeCompare(b));
     if (grid.childElementCount !== names.length) grid.innerHTML = names.map(n => `<button type="button" class="ghost" data-card="${esc(n)}">▶ ${esc(n)}</button>`).join('');
@@ -343,6 +390,7 @@
   }
   $('#sdMusic').addEventListener('change', e => { set.music = e.target.checked; save(); });
   $('#sdSfx').addEventListener('change', e => { set.sfx = e.target.checked; save(); if (set.sfx) play('card'); });
+  $('#sdBg').addEventListener('change', e => { set.bg = e.target.checked; const a = document.getElementById('bgAsk'); if (a) a.remove(); save(); });
   $('#sdCards').addEventListener('change', e => { set.cards = e.target.checked; save(); });
   $('#sdCardList').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (!b) return; if (!set.sfx) { set.sfx = true; save(); } playCard(b.dataset.card); });
   $('#sdMusicVol').addEventListener('input', e => { set.musicVol = +e.target.value; save(); });
@@ -363,5 +411,5 @@
 
   window.__isfAudio = { play, events, addCards, playCard, cards: () => Object.values(CARDS).map(c => c.name), kit, open, close, TRACKS, SFX: Object.keys(SFX), played,
     get: () => Object.assign({}, set), set: o => { Object.assign(set, o); save(); },
-    state: () => ({ supported: !!AC, unlocked, running: live(), music: M.on, bars: M.bar }) };
+    state: () => ({ supported: !!AC, unlocked, running: live(), music: M.on, bars: M.bar, ahead: ctx ? M.next - ctx.currentTime : 0 }), tick: () => tick() };
 })();

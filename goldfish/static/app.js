@@ -70,7 +70,7 @@
   });
 
   // The version pill next to the card-source pill: the version this copy of the app is running (the service worker's cache version,
-  // "isf-v54" shows as "v54"). When a newer one has been deployed it says so, and a tap loads it.
+  // "isf-v54" shows as "v54"). When a newer one has been deployed the pill gets a thin outline (the number stays), and a tap loads it.
   (async function showVersion() {
     const el = $('#appVersion'); if (!el) return;
     const num = s => (String(s || '').match(/isf-v(\d+)/) || [])[1] || null;
@@ -80,10 +80,7 @@
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'I See Fish version ' + v;
     if (latest && +latest > +v) {
-      // a newer version is out: the pill stays as short as before (the new number and a small dot), so the top bar never grows or wraps.
-      // The new version is fetched in the background at once; a tap (or the next visit) opens it.
-      el.textContent = 'v' + latest; el.classList.add('update'); el.title = 'Version ' + latest + ' is ready (you are on ' + v + '). Tap to open it.';
-      try { navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {}); } catch (e) { /* no service worker */ }
+      el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
       el.addEventListener('click', async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* reload anyway */ } location.reload(); });
     }
   })();
@@ -700,20 +697,22 @@
   // ======================= goldfish table =======================
   // autopilot speed: the 🐢…🐇 slider slows everything down up to 5× (🐇 = the original speed); ⚡ Fast still applies on top
   // One setting for the whole app: every 🐢…🐇 slider (Goldfish Table, 1v1, Pod) shows and changes the same speed.
-  let speedVal = Math.max(1, Math.min(5, +localStorage.getItem('isf_speed') || 5));
-  const slow = () => 6 - speedVal;                        // slider 1 (turtle) … 5 (rabbit) → 5× … 1× slower
+  // slider 1 (turtle) … 10 (rabbit) → 10× … 1× slower. A speed saved on the old 1…5 scale (isf_speed) keeps its pace: old v is new v + 5.
+  const oldSpeed = +localStorage.getItem('isf_speed');
+  let speedVal = Math.max(1, Math.min(10, +localStorage.getItem('isf_speed10') || (oldSpeed ? oldSpeed + 5 : 10)));
+  const slow = () => 11 - speedVal;
   const speedBars = [];
   function paintSpeed() {
-    const txt = slow() === 1 ? 'Full speed' : slow() === 5 ? '5× slower (slowest)' : slow() + '× slower';
+    const txt = slow() === 1 ? 'Full speed' : slow() === 10 ? '10× slower (slowest)' : slow() + '× slower';
     speedBars.forEach(([box, lbl]) => { box.value = speedVal; box.title = 'Autopilot speed: ' + txt; if (lbl) lbl.textContent = txt; });
   }
   function bindSpeed(box, lbl) {
     speedBars.push([box, lbl]);
-    box.addEventListener('input', () => { speedVal = Math.max(1, Math.min(5, +box.value || 5)); localStorage.setItem('isf_speed', speedVal); paintSpeed(); });
+    box.addEventListener('input', () => { speedVal = Math.max(1, Math.min(10, +box.value || 10)); localStorage.setItem('isf_speed10', speedVal); paintSpeed(); });
   }
   function speedBar() {                                   // a new speed bar for another tab, already wired to the shared setting
     const bar = h('div', 'speed-bar', '<span class="speed-name">Autopilot speed</span><label class="speed" title="Autopilot speed"><span aria-hidden="true">🐢</span>' +
-      '<input type="range" min="1" max="5" step="0.5" value="5" aria-label="Autopilot speed, turtle to rabbit"><span aria-hidden="true">🐇</span></label><span class="speed-txt"></span>');
+      '<input type="range" min="1" max="10" step="0.5" value="10" aria-label="Autopilot speed, turtle to rabbit"><span aria-hidden="true">🐇</span></label><span class="speed-txt"></span>');
     bindSpeed(bar.querySelector('input'), bar.querySelector('.speed-txt')); paintSpeed();
     return bar;
   }

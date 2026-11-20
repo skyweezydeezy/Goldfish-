@@ -1,6 +1,5 @@
 /* Service worker: lets the app open offline and keeps card images you've already seen. */
-const VERSION = 'isf-v57';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'versus.js', 'versus.css', 'decide.js', 'choices.js', 'choices.css', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'profile.js', 'tags.js', 'decks/index.json', 'looks.js', 'audio.js', 'card-sounds.js', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
+const VERSION = 'isf-v58';
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const IMG = 'gf-img-v1';
 const MAX_IMAGES = 600;
@@ -37,7 +36,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   // the app itself: use the cached copy right away, refresh it in the background
-  if (url.origin === location.origin && url.pathname.endsWith('/sw.js')) return;          // always the deployed one: the version pill compares it with the running one
+  if (url.origin === location.origin && (url.pathname.endsWith('/sw.js') || url.pathname.endsWith('/version.js'))) return;          // always the deployed one: the version pill compares it with the running one
   if (url.origin === location.origin && !url.pathname.includes('/api/')) {
     e.respondWith(caches.open(VERSION).then(async cache => {
       const hit = await cache.match(req, { ignoreSearch: true });

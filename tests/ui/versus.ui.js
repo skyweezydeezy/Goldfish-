@@ -196,12 +196,12 @@ const shot = process.env.VERSUS_SHOTS;
   // playmats and sleeves: every player is dealt a random set, all different; your own pick goes on your seat
   const seatLooks = () => p.$$eval('#tab-pod .vs-seat', ss => ss.map(s => ({ me: s.classList.contains('me'), set: s.dataset.set, sleeved: s.classList.contains('sleeved'),
     mat: getComputedStyle(s).backgroundImage, sleeve: s.style.getPropertyValue('--sleeve'), back: getComputedStyle(s.querySelector('.card-back')).backgroundImage })));
-  const lk = await seatLooks(), originals = ['Prism Nexus', 'Sunken Gate', 'Eclipse Spires'];
+  const lk = await seatLooks(), originals = await p.evaluate(() => window.__isfLooks.MATS.filter(m => m.image).map(m => m.name));          // the I See Fish original sets (art playmat + art sleeves)
   check('every player in the pod has a playmat-and-sleeves set', lk.length === 4 && lk.every(x => x.set && x.sleeved && x.mat !== 'none' && x.sleeve), lk.map(x => (x.me ? 'You: ' : '') + x.set).join(' | '));
   check('no two players have the same set', new Set(lk.map(x => x.set)).size === 4 && new Set(lk.map(x => x.mat)).size === 4);
-  check('the three original designs are all on the table', originals.every(n => lk.some(x => x.set === n)));
+  check(`the original designs are dealt first: every seat has one of the ${originals.length} original sets`, originals.length >= 9 && lk.every(x => originals.includes(x.set)), lk.map(x => x.set).join(' | '));
   check('each library shows that player\'s own sleeve back', new Set(lk.map(x => x.back)).size === 4);
-  const oppSet = lk.find(x => !x.me).set, oppId = { 'Prism Nexus': 'prism', 'Sunken Gate': 'tide', 'Eclipse Spires': 'eclipse' }[oppSet] || 'prism';
+  const oppSet = lk.find(x => !x.me).set, oppId = await p.evaluate(n => (window.__isfLooks.MATS.find(m => m.name === n) || { id: 'prism' }).id, oppSet);
   await p.evaluate(id => window.__isfLooks.set({ mat: id, sleeve: id }), oppId);          // you pick the set the first opponent was dealt
   await p.waitForTimeout(300);
   const lk2 = await seatLooks();

@@ -4695,6 +4695,22 @@
 
   // Scry: look at the top cards and send the ones you do not want to the bottom: surplus lands once you have plenty, and
   // expensive cards you could not cast for several turns (never a combo piece or a token doubler).
+  // Explore revealed a nonland card: put it into the graveyard? The Policy lab's exploreKeep: 'auto' (the same rule as scry), 'tribe' (keep
+  // creatures of the deck's tribe on top, mill the rest), 'keep' (keep every nonland card), 'mill' (mill every nonland card: graveyard fuel)
+  function exploreMill(g, c) {
+    const ek = pol(g, 'exploreKeep');
+    if (ek === 'keep') return false;
+    if (ek === 'mill') return true;
+    if (ek === 'tribe') { const tr = g.deck && g.deck.tribe; return !(tr && c.card.a.isCreature && matchesFilter(c.card, tr.toLowerCase())) && !c.card.commander && !c.card.a.comboRole; }
+    return wantsBottom(g, c);
+  }
+  // The Policy lab's tribeFirst: cast creatures of the deck's tribe ahead of other spells ('on'), or only those that do something for it ('payoffs')
+  function tribeBonus(g, c) {
+    const tf = pol(g, 'tribeFirst'), tr = g.deck && g.deck.tribe, a = c.card.a;
+    if (tf === 'off' || !tr || !a.isCreature || !matchesFilter(c.card, tr.toLowerCase())) return 0;
+    if (tf === 'payoffs' && !(a.triggers.length || a.statics.anthems.length || a.statics.exploreTwice)) return 0;
+    return 40;
+  }
   function wantsBottom(g, c) {
     const a = c.card.a;
     const lands = g.battlefield.filter(p => p.asLand).length, handLands = g.hand.filter(i => i.card.a.isLand).length;
@@ -4900,7 +4916,7 @@
       if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: ${top.card.name} to your hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
       else {
         addCounters(g, p, '+1/+1', 1, ev, p);
-        let yard = wantsBottom(g, top);
+        let yard = exploreMill(g, top);
         if (g.ask && !g.dry) yard = decide(g, { kind: 'explore', options: [false, true], def: yard, reveal: top, source: p });          // a person: keep the revealed card on top, or put it into the graveyard
         if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
       fireExplore(g, 'explores', p, ev);
@@ -5584,7 +5600,7 @@
 
   function spellScore(g, c) {
     const a = c.card.a;
-    let s = a.castMv;
+    let s = a.castMv + tribeBonus(g, c);
     if (a.produce || a.rampLands || a.statics.extraLands) s += 100 - a.castMv;
     else if (a.statics.reducers.length) s += 80 - a.castMv;
     else if (c.card.commander && commanderBonus(g)) s += commanderBonus(g);
@@ -6601,7 +6617,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { faces: null, mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { faces: null, mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', exploreKeep: 'auto', tribeFirst: 'off', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -6628,6 +6644,12 @@ g.actSeq = (g.actSeq || 0) + 1;
     { id: 'pump', key: 'pumpTiming', label: 'Spells that pump all your creatures until end of turn',
       needs: [{ what: 'a spell that pumps all your creatures', test: a => a.spellFx.some(f => f.type === 'pumpAll') }],
       options: [{ name: 'Wait until the board is built', value: 'wait' }, { name: 'Cast it like any other spell', value: 'now' }, { name: 'Only when it is lethal', value: 'lethal' }] },
+    { id: 'exploreKeep', key: 'exploreKeep', label: 'Explore: what to do with a revealed nonland card',
+      needs: [{ what: 'a card that explores', test: a => !!(a.mapToken || a.sacExplore || a.spellFx.concat(a.triggers.flatMap(t => t.fx)).some(f => /^explore/.test(f.type)) || a.triggers.some(t => t.kinds.includes('explores'))) }],
+      options: [{ name: 'Keep it if it is castable soon, else the graveyard (default)', value: 'auto' }, { name: 'Keep creatures of your tribe, mill the rest', value: 'tribe' }, { name: 'Always keep it on top', value: 'keep' }, { name: 'Always put it into the graveyard', value: 'mill' }] },
+    { id: 'tribeFirst', key: 'tribeFirst', label: 'Tribal decks: cast creatures of your type first',
+      needs: [], deckNeed: { what: 'a creature type the deck is built around', test: deck => !!deck.tribe, cards: deck => [deck.tribe] },
+      options: [{ name: 'Best play first (default)', value: 'off' }, { name: 'Creatures of your type ahead of other spells', value: 'on' }, { name: 'Only those that pay off the type (lords, triggers)', value: 'payoffs' }] },
     { id: 'comboChase', key: 'comboChase', label: 'Tutors and combo pieces: how hard to chase the combo',
       needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) },
         { what: 'a piece of a combo the engine knows (library emptier and empty-library winner, untap-all instant and copy artifact, self-untapping rock and enabler, the two life-loop halves)', test: (a, c) => Object.values(SLOT).some(f => f(c)) }],
@@ -6679,6 +6701,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const hits = cards.filter(c => c.a && nd.test(c.a, c)).map(c => c.name);
         if (hits.length) because.push({ what: nd.what, cards: hits }); else missing.push(nd.what);
       }
+      if (ch.deckNeed) { if (ch.deckNeed.test(deck)) because.push({ what: ch.deckNeed.what, cards: ch.deckNeed.cards(deck) }); else missing.push(ch.deckNeed.what); }
       return Object.assign({}, ch, { applies: !missing.length, because, missing });
     });
   }
@@ -8226,7 +8249,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

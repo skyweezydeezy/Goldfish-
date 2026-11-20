@@ -16,7 +16,7 @@ const allNames = new Set(); names.forEach(n => decks[n].unique.forEach(c => { al
 const named = G.LAB_CHOICES.flatMap(c => [c.label].concat(c.options.map(o => o.name)).concat((c.needs || []).map(x => x.what))).filter(t => [...allNames].some(n => n.length > 4 && t.includes(n)));
 check('no choice, option or requirement names a card', named.length === 0, named.join(' | '));
 check('every choice sets a policy key the engine reads', G.LAB_CHOICES.every(c => typeof c.key === 'string' && c.options.length >= 1));
-check('every non-universal choice says what kind of card it needs', G.LAB_CHOICES.every(c => c.always || (c.needs && c.needs.length && c.needs.every(x => x.what && typeof x.test === 'function'))));
+check('every non-universal choice says what kind of card it needs', G.LAB_CHOICES.every(c => c.always || (c.needs && (c.needs.length || c.deckNeed) && c.needs.every(x => x.what && typeof x.test === 'function') && (!c.deckNeed || (c.deckNeed.what && typeof c.deckNeed.test === 'function')))));
 
 // ---- each deck only gets the choices it can use ----
 check('Veyran (spells): counterspells yes; sacrifice and life-for-cards no', applies(decks.veyran, 'counters') && !applies(decks.veyran, 'sac') && !applies(decks.veyran, 'necro'), ids(decks.veyran));
@@ -26,7 +26,7 @@ check('Veyran and Death Tax have no card that names a type, so no creature-type 
 check('Frodo has no land that searches for a land, so no fetch choice', !applies(decks.frodo, 'fetch'));
 check('Zul Ashur (zombies, sacrifice): sacrificing tokens yes', applies(decks['zul-ashur'], 'sac'), ids(decks['zul-ashur']));
 check('the opening-hand choice is offered to every deck', names.every(n => applies(decks[n], 'keep')));
-check('each applying choice lists the cards that make it apply', names.every(n => G.labChoices(decks[n]).filter(c => c.applies && !c.always).every(c => c.because.length === c.needs.length && c.because.every(b => b.cards.length))));
+check('each applying choice lists the cards that make it apply', names.every(n => G.labChoices(decks[n]).filter(c => c.applies && !c.always).every(c => c.because.length === c.needs.length + (c.deckNeed ? 1 : 0) && c.because.every(b => b.cards.length))));
 check('each skipped choice says what is missing', names.every(n => G.labChoices(decks[n]).filter(c => !c.applies).every(c => c.missing.length > 0)));
 check('no deck is offered every choice: they really are filtered', names.every(n => G.labChoices(decks[n]).some(c => !c.applies)));
 

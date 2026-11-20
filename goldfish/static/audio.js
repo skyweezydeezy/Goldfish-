@@ -318,11 +318,12 @@
     if (set.bg !== null || document.hidden || document.getElementById('bgAsk')) return;
     const b = document.createElement('div');
     b.id = 'bgAsk'; b.className = 'bg-ask'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-labelledby', 'bgAskTitle');
-    b.innerHTML = `<div class="bg-ask-text"><b id="bgAskTitle">🎵 Keep the music playing in the background?</b>
-      <span>The music can keep playing when you switch to another app or tab, minimize the browser or lock your screen. Sound effects always stay quiet then.
+    b.innerHTML = `<div class="bg-ask-text"><b id="bgAskTitle">🎵 Keep the music playing in the background?</b><button type="button" class="info-tog" aria-expanded="false" aria-label="What is this?" title="What is this?">i</button>
+      <span class="folded">The music can keep playing when you switch to another app or tab, minimize the browser or lock your screen. Sound effects always stay quiet then.
       You can change this any time in the Sound panel (🔊).${touch ? ' Some phones (iPhone and iPad especially) may still pause it.' : ''}</span></div>
       <div class="bg-ask-btns"><button type="button" class="primary" data-bg="yes">Yes, keep playing</button><button type="button" class="ghost" data-bg="no">No, pause it</button></div>`;
-    b.addEventListener('click', e => { const x = e.target.closest('[data-bg]'); if (!x) return; set.bg = x.dataset.bg === 'yes'; b.remove(); save(); });
+    b.addEventListener('click', e => { const t = e.target.closest('.info-tog'); if (t) { const open = b.querySelector('.bg-ask-text > span').classList.toggle('folded') === false; t.setAttribute('aria-expanded', String(open)); t.classList.toggle('on', open); return; }          // less is more: the explanation is one tap away
+      const x = e.target.closest('[data-bg]'); if (!x) return; set.bg = x.dataset.bg === 'yes'; b.remove(); save(); });
     document.body.appendChild(b);
   }
 

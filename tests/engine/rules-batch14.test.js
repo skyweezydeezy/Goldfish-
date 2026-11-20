@@ -137,7 +137,7 @@ T('flame of anor', () => { const g = bare(); g.library = g.library.slice(0, 20);
   check('...with a Wizard, two', two === 2, two); });
 T('goblin engineer', () => { const g = bare(); g.library = [inst(g, 'Opt'), inst(g, 'Sol Ring'), inst(g, 'Forest')]; putOn(g, 'Goblin Engineer'); check('Goblin Engineer puts an artifact from your library into your graveyard (it used to put it into your hand)', g.graveyard.some(i => i.card.name === 'Sol Ring') && !g.hand.some(i => i.card.name === 'Sol Ring'), g.graveyard.map(i => i.card.name).join()); });
 T('labels', () => { const ms = lab('March of Swirling Mist', /additional cost/); check('March of Swirling Mist says "Needs opponent"', ms.tag === 'opp' && !ms.mirror); });
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

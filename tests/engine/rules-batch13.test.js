@@ -171,7 +171,7 @@ T('factory', () => { const g = bare(); putOn(g, "Mishra's Factory"); putOn(g, 'F
   const g2 = bare(); const f1 = putOn(g2, "Mishra's Factory"), f2 = putOn(g2, "Mishra's Factory"); f1.animated = { p: 2, t: 2, kw: [] }; f2.enteredTurn = g2.turn; G.touch(g2); G.useAbilities(g2); const ev2 = G.combat(g2); const hit2 = ev2.filter(e => e.type === 'attack').reduce((t, e) => t + e.dmg, 0);
   check('...a second Factory that stays a land taps to give the Assembly-Worker +1/+1', f2.tapped && hit2 === 3, hit2);
   const pn = lab('Pithing Needle', /can't be activated/), pr = lab('Phyrexian Revoker', /can't be activated/); check('Pithing Needle and Phyrexian Revoker say "Needs opponent"', pn.tag === 'opp' && pr.tag === 'opp' && !pn.mirror); });
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

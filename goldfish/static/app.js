@@ -9,6 +9,34 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const pct = C.pct;
   const sfx = (name, at) => { if (window.__isfAudio) window.__isfAudio.play(name, at); };          // sound effects (audio.js); silent when sound is off
+  // "Less is more, until the user says more is best." Explanations and report details start folded; headers stay in view.
+  // tidy(el): an explanation (.hint) that sits under a header folds behind an ⓘ toggle beside it; every report group (.sg)
+  // folds to its heading. In a .fold-items group the group heading stays and each item folds to its own bold heading instead.
+  function infoToggle(head, text, inside) {
+    const b = h('button', 'info-tog', 'i'); b.type = 'button'; b.title = 'What is this?'; b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-label', 'What is this?');
+    text.classList.add('folded');
+    b.addEventListener('click', e => { e.stopPropagation(); const open = text.classList.toggle('folded') === false; b.setAttribute('aria-expanded', String(open)); b.classList.toggle('on', open); });
+    if (inside) head.appendChild(b); else head.after(b);          // inside a heading of its own, so it sits on the heading's line
+  }
+  function tidy(el) {
+    if (!el) return;
+    el.querySelectorAll('.box-head').forEach(bh => { const t = bh.querySelector(':scope > .hint:not(.folded)'); const hd = bh.querySelector(':scope > h2, :scope > h3'); if (t && hd && !bh.querySelector('.info-tog')) infoToggle(hd, t); });
+    el.querySelectorAll('h2 + p.hint:not([id]):not(.folded), h3 + p.hint:not([id]):not(.folded)').forEach(t => { const hd = t.previousElementSibling; if (!hd.querySelector('.info-tog')) infoToggle(hd, t, true); });
+    el.querySelectorAll('.hint[data-fold]:not(.folded)').forEach(t => { if (t.previousElementSibling) infoToggle(t.previousElementSibling, t); });          // a how-to line without a header of its own
+    el.querySelectorAll('.sg:not(.folded-sg)').forEach(sg => {
+      sg.classList.add('folded-sg');
+      if (sg.classList.contains('fold-items')) {
+        sg.querySelectorAll(':scope > ul > li').forEach(li => { const b = li.firstElementChild; if (!b || b.tagName !== 'B' || li.childNodes.length < 2) return;
+          const d = h('details', 'fold'), s = h('summary'); s.appendChild(b); const body = h('div', 'fold-body'); while (li.firstChild) body.appendChild(li.firstChild);
+          body.innerHTML = body.innerHTML.replace(/^\s*:\s*/, ''); d.append(s, body); li.appendChild(d); });
+        return;
+      }
+      const b = sg.firstElementChild; if (!b || b.tagName !== 'B' || sg.children.length < 2) return;
+      const n = sg.querySelectorAll(':scope > ul > li').length;
+      const d = h('details', 'fold'), s = h('summary'); s.appendChild(b); if (n) s.appendChild(h('span', 'fold-n', String(n)));
+      const body = h('div', 'fold-body'); while (sg.firstChild) body.appendChild(sg.firstChild); d.append(s, body); sg.appendChild(d);
+    });
+  }
   const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); };
 
   const S = { cards: [], deck: null, byUid: [], game: null, undo: [], sim: null, oddsSel: new Set(), busy: false };
@@ -27,6 +55,8 @@
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
   }
+
+  tidy(document.querySelector('main'));
 
   Source.init().then(st => {
     const el = $('#mirrorStatus');
@@ -246,11 +276,12 @@
     ['strength', 'weakness', 'trait'].forEach(k => {
       const xs = p.ids.filter(x => x.kind === k);
       if (!xs.length) return;
-      html += `<div class="sg ${KIND[k]}"><b>${LBL[k]}</b><ul>${xs.map(x => `<li><b>${esc(x.label)}</b>: ${esc(x.detail)}${x.cards ? `<br><span class="hint">${x.cards.map(esc).join(', ')}</span>` : ''}</li>`).join('')}</ul></div>`;
+      html += `<div class="sg fold-items ${KIND[k]}"><b>${LBL[k]}</b><ul>${xs.map(x => `<li><b>${esc(x.label)}</b>: ${esc(x.detail)}${x.cards ? `<div class="hint">${x.cards.map(esc).join(', ')}</div>` : ''}</li>`).join('')}</ul></div>`;
     });
     const c = p.counts, n = k => c[k] || 0;
-    html += `<p class="hint">Counted: ${n('land')} lands, ${n('ramp')} ramp, ${n('draw')} card draw, ${n('removal')} removal, ${n('wipe')} wipe${n('wipe') === 1 ? '' : 's'}, ${n('counter')} counterspell${n('counter') === 1 ? '' : 's'}, ${n('protection')} protection, ${n('tutor')} tutors, ${n('wincon')} finishers. Average mana value ${p.avgMv.toFixed(2)}. Rules-text matching can miss unusual wordings.</p>`;
-    $('#profileList').innerHTML = html || '<div class="empty-note">Nothing stands out.</div>';
+    html += `<details class="fold"><summary>Card counts</summary><p class="hint">Counted: ${n('land')} lands, ${n('ramp')} ramp, ${n('draw')} card draw, ${n('removal')} removal, ${n('wipe')} wipe${n('wipe') === 1 ? '' : 's'}, ${n('counter')} counterspell${n('counter') === 1 ? '' : 's'}, ${n('protection')} protection, ${n('tutor')} tutors, ${n('wincon')} finishers. Average mana value ${p.avgMv.toFixed(2)}. Rules-text matching can miss unusual wordings.</p>`;
+    $('#profileList').innerHTML = html ? html.replace(/(<details class="fold"><summary>Card counts<\/summary><p class="hint">Counted: [\s\S]*?<\/p>)/, '$1</details>') : '<div class="empty-note">Nothing stands out.</div>';
+    tidy($('#profileList'));
     box.hidden = false;
   }
 
@@ -1498,7 +1529,7 @@
     if (hl.best.length) html += `<div class="sg good"><b>Linked to winning</b><ul>${hl.best.map(row).join('')}</ul></div>`;
     if (hl.worst.length) html += `<div class="sg warn"><b>Linked to losing</b><p>Worth a closer look: try the deck without them, or check how the autopilot plays them.</p><ul>${hl.worst.map(row).join('')}</ul></div>`;
     if (!hl.best.length && !hl.worst.length) html += `<div class="sg"><b>No card stands out yet</b><p>After ${imp.n.toLocaleString()} matches no card's gap is clearly bigger than chance. More matches (1,000–3,000) can show smaller effects.</p></div>`;
-    box.innerHTML = html; box.hidden = false;
+    box.innerHTML = html; box.hidden = false; tidy(box);
   }
   // what your fastest wins and fastest losses have in common (Suggest.matchOutliers, run in the worker)
   function renderOutliers(out, oppName) {
@@ -1521,7 +1552,7 @@
     box.innerHTML = `<h3>Outlier games against ${esc(oppName)}</h3><p class="hint">Your fastest 20% of wins and fastest 20% of losses, compared with every other game. "Had early" means ${early}. Only clear differences are listed; with this many cards a single surprising line can still be chance.</p>` +
       group(out.quickWins, 'Your fastest wins', 'Cards you had early much more often:', 'Cards you rarely had early:', 'good') +
       group(out.quickLosses, 'Your fastest losses', 'Cards you had early more often (they may not help here):', 'Cards you were missing early:', 'warn');
-    box.hidden = false;
+    box.hidden = false; tidy(box);
   }
   // pairs of your cards that do much better, or much worse, together than apart (Suggest.matchPairs, run in the worker)
   function renderPairs(pr, oppName, n) {
@@ -1534,7 +1565,7 @@
     if (pr.worst.length) html += `<div class="sg warn"><b>Worse together</b><p>These may compete for the same job, or one may get in the other's way.</p><ul>${pr.worst.map(li).join('')}</ul></div>`;
     if (!pr.best.length && !pr.worst.length) html += `<div class="sg"><b>No pair stands out yet</b><p>After ${(n || 0).toLocaleString()} matches no pair is clearly better or worse together. Pairs need many games: try 3,000 matches.</p></div>`;
     else if ((n || 0) < 2000) html += `<p class="hint">With ${(n || 0).toLocaleString()} matches only the strongest pairs show up; 3,000 matches find more.</p>`;
-    box.innerHTML = html; box.hidden = false;
+    box.innerHTML = html; box.hidden = false; tidy(box);
   }
   // tags linked to winning or losing this matchup (Suggest.matchTags, run in the worker)
   function renderTagImpact(tr, oppName, n) {
@@ -1546,7 +1577,7 @@
     if (tr.best.length) html += `<div class="sg good"><b>Having these early goes with winning</b><ul>${tr.best.map(li).join('')}</ul></div>`;
     if (tr.worst.length) html += `<div class="sg warn"><b>Having these early goes with losing</b><ul>${tr.worst.map(li).join('')}</ul></div>`;
     if (!tr.best.length && !tr.worst.length) html += `<div class="sg"><b>No tag stands out yet</b><p>After ${(n || 0).toLocaleString()} matches no tag is clearly better or worse to have early. More matches can show smaller effects.</p></div>`;
-    box.innerHTML = html; box.hidden = false;
+    box.innerHTML = html; box.hidden = false; tidy(box);
   }
   function showMirrorLog(smp) {
     const { opp, o } = mmState;
@@ -1700,6 +1731,7 @@
     const list = Suggest.fromSim(r, S.deck, o);
     box.hidden = !list.length;
     $('#suggestList').innerHTML = list.map(s => `<div class="sg ${s.level}"><b>${esc(s.title)}</b><p>${esc(s.detail)}</p>${s.cards ? `<ul>${s.cards.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+    tidy($('#suggestList'));
   }
 
   function renderSim() {

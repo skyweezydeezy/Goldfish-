@@ -579,6 +579,19 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      // ---- counterspells in a match: what can't be countered, counters on the battlefield, redirects (see tryCounter, fieldCounter, protectOne)
+      { const MIRC = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let cm2;
+        if (/^(?:~|this spell) can't be countered\.?$/i.test(line)) { a.uncounterable = true; MIRC(); continue; }          // Abrupt Decay, Supreme Verdict, Dovin's Veto...
+        if ((cm2 = line.match(/^(spells|instant and sorcery spells|creature spells|green spells) you control can't be countered\.?$/i))) { a.statics.noCounter = cm2[1].toLowerCase(); MIRC(); continue; }          // Chimil, Sphinx of the Final Word
+        if ((cm2 = line.match(/^((?:\{[^}]+\})+), \{t\}: the next spell you cast this turn can't be countered/i))) { a.uncounterAb = parseCost(cm2[1].replace(/\{T\}/gi, '')); MIRC(); continue; }          // Mistrise Village
+        if ((cm2 = line.match(/^sacrifice (~|an? [a-z]+): counter target ([a-z ]*?)spell unless its controller pays \{(\d+)\}/i))) { a.fieldCounter = { filter: cm2[2].trim().toLowerCase(), unless: +cm2[3], sac: cm2[1] === '~' ? 'self' : cm2[1].replace(/^an? /i, '').toLowerCase() }; MIRC(); continue; }          // Cursecatcher, Vodalian Hexcatcher
+        if (/^discard a card with mana value x: counter target spell with mana value x/i.test(line)) { a.fieldCounter = { filter: '', unless: 0, discardMv: true }; MIRC(); continue; }          // Kozilek, the Great Distortion
+        if ((cm2 = line.match(/^((?:\{[^}]+\})+), sacrifice ~: counter target spell or ability that targets you or a creature you control/i))) { a.stormtamer = parseCost(cm2[1]); MIRC(); continue; }          // Siren Stormtamer
+        if (/^when you cast ~, counter it unless you sacrifice a land/i.test(line)) { a.castSacLand = true; rec.status = 'ok'; continue; }          // Mana Vortex: a land, in any game
+        if (/^change the target of target spell with a single target/i.test(line)) { a.redirect = true; MIRC(); continue; }          // Misdirection
+        if (/^(?:• )?counter target activated or triggered ability\.?$/i.test(line)) { a.abilityCounter = true; MIRC(); continue; }          // Sublime Epiphany, Stifle
+        if ((cm2 = line.match(/^• counter target spell unless its controller pays \{(\d+)\}\.?$/i))) { a.counter = Object.assign({ filter: '', unless: +cm2[1], perSpell: false }, /choose three\. you may choose the same mode more than once/i.test(text) ? { confluence: true } : {}); MIRC(); continue; }          // Mystic Confluence
+      }
       // ---- protection: what a player uses when the other player's spell, ability or attack comes for its things (see protectOne / protectAll),
       // and the statics that keep permanents alive. Only another player destroys, exiles or bounces your things, so most say "Mirror matches only".
       { const MIRP = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let pm;
@@ -2419,7 +2432,7 @@
     if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus.per ? Object.assign({ src: q }, a.attachBonus) : a.attachBonus); }          // a "for each" bonus keeps its Aura or Equipment (its own counters)
     if (q.produce) { info.producers.push(q); if (q.produce.restrict) info.restrictMana = true; }
     if (q.asLand) info.lands++;
-    if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
+    if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
     if (a.watch) info.watchers.push(q);
     if (st.tokenRepl.length) info.repl.push(q);
@@ -5499,6 +5512,11 @@
       const cmd = (g.deck.commanders[0] || {}).card, types = t => (String(t || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean);
       if (cmd && types(inst.card.type_line).some(w => types(cmd.type_line).includes(w))) for (const q of g.battlefield) if (q.card.a.scryOnType && q.tapped) scry(g, q.card.a.scryOnType, ev, q);
     }
+    if (a.castSacLand && !g.dry) {          // Mana Vortex: "counter it unless you sacrifice a land"
+      const land = g.battlefield.filter(q => q.asLand).sort((x, y) => (x.tapped ? 0 : 1) - (y.tapped ? 0 : 1) || (x.produce ? x.produce.amount : 0) - (y.produce ? y.produce.amount : 0))[0];
+      if (!land) { ev.push({ type: 'note', text: `${inst.card.name} is countered: no land to sacrifice` }); g.graveyard.push(inst); return; }
+      ev.push({ type: 'note', text: `${inst.card.name}: sacrificed ${land.card.name}` }); leavePerm(g, land, ev); flushLeaves(g, ev);
+    }
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
     g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
     if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);
@@ -5789,10 +5807,20 @@
     const a = inst.card.a;
     return !!(a.lifeAlt && g.opp && g.life >= a.lifeAlt + 14 && g.battlefield.some(q => q.asLand && /\bSwamp\b/.test(q.card.type_line || '')));
   }
-  function castCard(g, inst, force) { const prev = g._payFor; g._payFor = inst; try { return castCard0(g, inst, force); } finally { g._payFor = prev; } }          // restricted mana knows which spell it pays for
+  function castCard(g, inst, force) {
+    const prev = g._payFor; g._payFor = inst;
+    const mv = mistriseHold(g, inst);          // Mistrise Village is kept out of the payment of a spell it should protect
+    try { return castCard0(g, inst, force); } finally { g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
+  }
+  function mistriseHold(g, inst) {
+    if (!g.opp || g.dry || !g.opp.hand.length) return null;
+    const a0 = inst.card.a; if (!(a0.castMv >= 4 || a0.comboRole || inst.card.commander) || uncounterable(g, inst)) return null;
+    const mv = g.battlefield.find(q => q.card.a.uncounterAb && !q.tapped); if (!mv) return null;
+    mv.tapped = true; mv._hold = true; return mv;
+  }          // restricted mana knows which spell it pays for
   function castCard0(g, inst, force) {
     if (arbiterOn(g) && (g.attackedThisTurn || g.arbiterHold === g.turn) && !g.dry) return null;          // Angelic Arbiter: you attacked (or will) this turn
-    inst.kicked = false; inst.kickX = 0; inst.alt = null; inst.overloaded = false; g._casting = inst;          // the spell being cast is not discarded by Lion's Eye Diamond
+    inst.noCounter = false; inst.kicked = false; inst.kickX = 0; inst.alt = null; inst.overloaded = false; g._casting = inst;          // the spell being cast is not discarded by Lion's Eye Diamond
     inst._handCast = g.hand.includes(inst);                                                               // Chainer: creatures not cast from your hand
     if (inst.card.a.isAura && inst.card.a.enchantCreature && !bestCreature(g) && !force) return null;
     if (inst.card.a.sacLandCost && !g.battlefield.some(q => q.asLand) && !force) return null;
@@ -7211,6 +7239,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (c.card.a.noDraw) return !!g.opp && g.battlefield.length > g.opp.battlefield.length;                 // Possessed Portal: only when you are ahead on the table
     if (c.card.a.tangle) return !!g.opp && g.opp.battlefield.length >= g.battlefield.length;             // Tangle Wire and Trinisphere only pay off against a real opponent
     if (c.card.a.trini) return !!g.opp;
+    if (c.card.a.castSacLand) return !!g.opp && g.opp.battlefield.filter(q => q.asLand).length >= g.battlefield.filter(q => q.asLand).length;          // Mana Vortex: a land race only against a real opponent
     const L = lockOf(c.card);
     if (!L) return true;
     if (!g.opp) return false;
@@ -8033,6 +8062,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (d.ask) return false;          // a person answers for themselves
     const val = threat(d, g, t), cols = srcColors(g, source), lethal = kind === 'destroy' || kind === 'damage', units = () => allUnits(d);
     if (val < 2.5) return false;
+    if (isCreaturePerm(t) || source == null) { const st = d.battlefield.find(q => q.card.a.stormtamer); if (st && val >= 3 && canPay(st.card.a.stormtamer, units()) && pay(d, st.card.a.stormtamer) != null) { leavePerm(d, st, ev); flushLeaves(d, ev); ev.push({ type: 'note', text: `${st.card.name} is sacrificed: the ${source ? 'ability' : 'spell'} is countered`, source: null }); return 'fizzle'; } }          // Siren Stormtamer
+    if (source && source.card && val >= 5) { const se = d.hand.find(c => c.card.a.abilityCounter && canPay(effectiveCost(d, c), units())); if (se && castProtection(d, se, ev)) { ev.push({ type: 'note', text: `${se.card.name}: the ability of ${source.card.name} is countered`, source: null }); if (se.card.a.spellFx.some(f => f.type === 'draw')) draw(d, 1, ev); return 'fizzle'; } }          // Sublime Epiphany, Stifle
+    if (!source && kind !== 'damage') { const ms = d.hand.find(c => c.card.a.redirect && (canPay(effectiveCost(d, c), units()) || (c.card.a.pitch && d.hand.some(i => i !== c && (i.card.colors || []).includes(c.card.a.pitch.color))))); const nt = ms && g.battlefield.filter(q => (isCreaturePerm(q) === isCreaturePerm(t)) && targetable(g, q) && !(kind === 'destroy' && indestructible(g, q))).sort((x, y) => threat(g, d, y) - threat(g, d, x))[0];          // Misdirection: onto one of theirs
+      if (ms && nt) { if (canPay(effectiveCost(d, ms), units())) pay(d, effectiveCost(d, ms)); else { const pc = d.hand.find(i => i !== ms && (i.card.colors || []).includes(ms.card.a.pitch.color)); d.hand.splice(d.hand.indexOf(pc), 1); d.exile.push(pc); } d.hand.splice(d.hand.indexOf(ms), 1); d.graveyard.push(ms);
+        ev.push({ type: 'note', text: `Misdirection: the spell now targets ${nt.card.name}`, source: null }); leavePerm(g, nt, ev, kind === 'exile' ? 'exile' : kind === 'bounce' ? 'hand' : 'graveyard'); flushLeaves(g, ev); return 'fizzle'; } }
     if (lethal && t.card.a.regen && kind === 'destroy' && canPay(t.card.a.regen, units()) && pay(d, t.card.a.regen) != null) { t.regenShield = true; ev.push({ type: 'note', text: `${t.card.name} regenerates`, source: t }); return 'saved'; }
     if (isCreaturePerm(t) && cols.length) { const m = d.battlefield.find(q => q.card.a.mother && !q.tapped && !(q.sick && !hasKw(d, q, 'haste'))); if (m) { m.tapped = true; t.protColors = new Set([...(t.protColors || []), cols[0]]); ev.push({ type: 'note', text: `${m.card.name}: ${t.card.name} gains protection from ${cols[0]}`, source: m }); return 'fizzle'; } }
     if (kind !== 'damage' || cols.length) for (const q of d.battlefield) { const sh = q.card.a.auraShroud; if (sh && q.attachedTo === t.iid && canPay(sh, units()) && pay(d, sh) != null) { t.eotKw = new Set([...(t.eotKw || []), 'shroud']); ev.push({ type: 'note', text: `${q.card.name}: ${t.card.name} gains shroud`, source: q }); return 'fizzle'; } }
@@ -8100,7 +8134,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if ((a.card.a.onlySpirits || a.eotOnlySpirits) && !matchesFilter(b.card, 'spirit')) return false;          // Departed Deckhand
     if (a.eotOnlyHaste && !hasKw(d, b, 'haste')) return false;          // Gingerbrute: only creatures with haste
     if (b.noBlockBy === g && b.noBlockTurn === g.turn) return false;          // Endbringer: it can't block this turn
-    for (const q of g.battlefield) { const qa = q.card.a; if (qa.winnower && (b.card.a.mv || 0) % 2 === 0) return false; if (qa.lambholt && isCreaturePerm(q) && powerOf(d, b) < powerOf(g, q)) return false; }          // Void Winnower (a token's mana value is 0), Champion of Lambholt
+    { const gi = bfInfo(g); if (gi.winnower && (b.card.a.mv || 0) % 2 === 0) return false; if (gi.lambholt) for (const q of gi.lambholt) if (isCreaturePerm(q) && powerOf(d, b) < powerOf(g, q)) return false; }          // Void Winnower (a token's mana value is 0), Champion of Lambholt
     if (hasKw(g, a, 'flying') && !(hasKw(d, b, 'flying') || hasKw(d, b, 'reach'))) return false;
     if (hasKw(g, a, 'unblockable') || hasKw(g, a, 'shadow') || hasKw(g, a, 'horsemanship')) return false;
     if (hasKw(g, a, 'skulk') && powerOf(d, b) > powerOf(g, a)) return false;
@@ -8482,9 +8516,23 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Is this spell worth a counterspell, and does the other player hold one they can pay for? Returns true when the spell is countered.
   // A counterspell can be paid with mana, for free (Fierce Guardianship with a commander out, Mindbreak Trap) or by pitching a blue card (Force of Will).
   // by: a person in a pod who is not the player being attacked may answer the spell too (the autopilot only answers for the attacked player).
+  // can this spell of g's be countered? "~ can't be countered", Chimil ("spells you control"), Sphinx of the Final Word ("instant and sorcery spells"),
+  // Mistrise Village's "the next spell you cast this turn"
+  function uncounterable(g, inst) {
+    const a = inst.card.a;
+    if (a.uncounterable || inst.noCounter) return true;
+    for (const k of bfInfo(g).noCounter || []) if (k === 'spells' || (k === 'instant and sorcery spells' && a.isInstantSorcery) || (k === 'creature spells' && a.isCreature) || (k === 'green spells' && (inst.card.colors || []).includes('G'))) return true;
+    return false;
+  }
   function tryCounter(g, inst, ev, by) {
     const d = by || g.opp, a = inst.card.a;
-    if (!d || !d.hand.length) return false;
+    if (!d || uncounterable(g, inst)) return false;
+    if (!g.dry && !inst.noCounter && !by) {          // Mistrise Village: {U}, {T} before a spell worth protecting, while the other player holds cards
+      const mv = g.battlefield.find(q => q.card.a.uncounterAb && (q._hold || !q.tapped));
+      if (mv && d.hand.length && (a.castMv >= 4 || a.comboRole || inst.card.commander) && canPay(mv.card.a.uncounterAb, allUnits(g).filter(u => u.src !== mv))) { mv._hold = false; mv.tapped = true; pay(g, mv.card.a.uncounterAb); inst.noCounter = true; ev.push({ type: 'note', text: `${mv.card.name}: ${inst.card.name} can't be countered`, source: mv }); return false; }
+    }
+    if (fieldCounter(g, d, inst, ev)) return true;          // Cursecatcher, Vodalian Hexcatcher, Kozilek
+    if (!d.hand.length) return false;
     const big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.statics.tokenRepl.length || a.statics.counterDouble || a.castMv >= 4;
     const cw = pol(d, 'counterWorth');                                                                 // the Policy lab: which spells deserve a counterspell
     const worth = cw === 'big' ? big : cw === 'two' ? (big || a.castMv >= 2) : cw === 'creatures' ? (big || a.castMv >= 3 || a.isCreature) : cw === 'engines' ? (big || a.castMv >= 3 || (!a.isCreature && a.isPermanent && a.triggers.length > 0)) : (big || a.castMv >= 3);
@@ -8513,7 +8561,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (person && ways.length) way = decide(d, { kind: 'counter', options: ways, def: way || null, optional: true, spell: inst, caster: g });
     if (way) {
       const c = way.c, how = way.how, pitch = way.pitch, cost = way.cost, ca = c.card.a, k = ca.counter;
-      const unless = k.perSpell ? 1 + (g.spellsCast || 0) : k.unless;
+      let unless = k.perSpell ? 1 + (g.spellsCast || 0) : k.unless, extraDraw = 0;
+      if (k.confluence) { const spare = allUnits(g).length, times = Math.min(3, Math.floor(spare / k.unless) + 1); unless = k.unless * times; extraDraw = 3 - times; }          // Mystic Confluence: the counter mode as often as needed to beat their spare mana, the rest draws
       if (unless && canPay({ generic: unless, pips: [], x: 0 }, allUnits(g))) {                      // "unless its controller pays": a player with spare mana just pays
         pay(g, { generic: unless, pips: [], x: 0 }); ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${unless} for ${c.card.name}` }); return false;
       }
@@ -8525,11 +8574,36 @@ g.actSeq = (g.actSeq || 0) + 1;
       d.spellsCast = (d.spellsCast || 0) + 1;
       ev.push({ type: 'note', text: `${c.card.name} counters ${inst.card.name}${how === 'free' ? ' (free)' : ''}`, source: null });
       fireCastTriggers(d, c, ev);
+      if (extraDraw > 0) draw(d, extraDraw, ev);          // Mystic Confluence's other modes
       if (k.remand && !inst.card.commander) { g.hand.push(inst); draw(d, 1, ev); }
       else (inst.card.commander ? g.command : g.graveyard).push(inst);
       if (k.drain) d.pendingMana = (d.pendingMana || 0) + a.castMv;                                  // Mana Drain: colorless mana next turn
       if (ca.pact) d.pactDue = true;
       if (k.give) createTokens(g, k.give, k.give.n, ev, null);
+      return true;
+    }
+    return false;
+  }
+  // Counters on the battlefield: Cursecatcher (sacrifice it: an instant or sorcery, unless its controller pays {1}), Vodalian Hexcatcher (sacrifice a
+  // Merfolk: a noncreature spell, unless {1}), Kozilek, the Great Distortion (discard a card with the same mana value). Used for the spells tryCounter
+  // finds worth a counterspell.
+  function fieldCounter(g, d, inst, ev) {
+    if (g.dry || d.ask) return false;
+    const a = inst.card.a, big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4;
+    for (const q of d.battlefield.slice()) {
+      const fc = q.card.a.fieldCounter; if (!fc || !counterMatches(fc.filter, inst.card)) continue;
+      if (fc.unless && canPay({ generic: fc.unless, pips: [], x: 0 }, allUnits(g))) continue;          // they would just pay
+      if (fc.discardMv) {
+        if (!big) continue;
+        const dc = d.hand.filter(c => (c.card.a.mv || 0) === (a.mv || 0) && !c.card.a.counter).sort((x, y) => discardValue(d, x) - discardValue(d, y))[0]; if (!dc) continue;
+        d.hand.splice(d.hand.indexOf(dc), 1); d.graveyard.push(dc); madness(d, dc, ev);
+      } else {
+        if (!(big || a.castMv >= 3)) continue;
+        const fod = fc.sac === 'self' ? q : d.battlefield.filter(x => isCreaturePerm(x) && matchesFilter(x.card, fc.sac)).sort((x, y) => creatureValue(d, x) - creatureValue(d, y))[0]; if (!fod) continue;
+        leavePerm(d, fod, ev); flushLeaves(d, ev);
+      }
+      ev.push({ type: 'note', text: `${q.card.name} counters ${inst.card.name}`, source: null });
+      (inst.card.commander ? g.command : g.graveyard).push(inst);
       return true;
     }
     return false;

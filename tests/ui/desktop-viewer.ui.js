@@ -20,7 +20,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8800/');
-  await p.evaluate(() => localStorage.removeItem('isf_speed'));
+  await p.evaluate(() => { localStorage.removeItem('isf_speed'); localStorage.removeItem('isf_speed10'); });
   await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8'));
   await p.click('#loadDeck');
   await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
@@ -76,11 +76,16 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
     await p.waitForFunction(() => !window.__isf.busy, null, { timeout: 120000 });
     return Date.now() - t0;
   };
-  check('the slider starts at full speed (rabbit)', (await p.$eval('#tSpeed', e => e.value)) === '5');
-  const fast = await timeTurn(5), slowT = await timeTurn(1);
+  check('the slider starts at full speed (rabbit), and goes down to 10× slower', (await p.$eval('#tSpeed', e => e.value)) === '10' && (await p.$eval('#tSpeed', e => e.min + '-' + e.max)) === '1-10');
+  const fast = await timeTurn(10), slowT = await timeTurn(6);          // 5× slower: enough to measure, quicker than the 10× end
   check('turtle speed plays the autopilot clearly slower than rabbit', slowT > fast * 2, `rabbit ${fast} ms, turtle ${slowT} ms`);
   await p.reload(); await p.waitForTimeout(800);
-  check('the chosen speed is remembered after a reload', (await p.$eval('#tSpeed', e => e.value)) === '1');
+  check('the chosen speed is remembered after a reload', (await p.$eval('#tSpeed', e => e.value)) === '6');
+  await p.$eval('#tSpeed', e => { e.value = '1'; e.dispatchEvent(new Event('input')); });
+  check('the turtle end says 10× slower', /10× slower/.test(await p.textContent('#tSpeedTxt')), await p.textContent('#tSpeedTxt'));
+  await p.evaluate(() => { localStorage.removeItem('isf_speed10'); localStorage.setItem('isf_speed', '3'); }); await p.reload(); await p.waitForTimeout(800);
+  check('a speed saved on the old 1–5 slider keeps its pace (old 3 = 3× slower)', (await p.$eval('#tSpeed', e => e.value)) === '8' && /3× slower/.test(await p.textContent('#tSpeedTxt')), await p.textContent('#tSpeedTxt'));
+  await p.evaluate(() => { localStorage.removeItem('isf_speed'); localStorage.removeItem('isf_speed10'); });
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

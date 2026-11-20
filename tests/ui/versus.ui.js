@@ -146,8 +146,8 @@ const shot = process.env.VERSUS_SHOTS;
   // the speed slider: one setting shared with the Goldfish Table, and it paces Play
   check('the 1v1 table has the turtle-to-rabbit speed slider', !!(await p.$('#tab-duel .speed-bar input[type=range]')));
   const setSpeed = v => p.$eval('#tab-duel .speed-bar input', (e, v) => { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }, String(v));
-  await setSpeed(3);
-  check('moving it also moves the Goldfish Table\'s slider (one shared setting)', (await p.$eval('#tSpeed', e => e.value)) === '3' && /3× slower/.test(await p.$eval('#tab-duel .speed-txt', e => e.textContent)));
+  await setSpeed(8);
+  check('moving it also moves the Goldfish Table\'s slider (one shared setting)', (await p.$eval('#tSpeed', e => e.value)) === '8' && /3× slower/.test(await p.$eval('#tab-duel .speed-txt', e => e.textContent)));
   const timePlay = async v => {
     await setSpeed(v);
     const n0 = await p.evaluate(() => window.__isfVersus.duel.game.games.reduce((t, g) => t + g.turn, 0)), t0 = Date.now();
@@ -164,11 +164,11 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && !g.over && g.games.reduce((t, x) => t + x.turn, 0) === 0; }, null, { timeout: 30000 });
   await p.waitForSelector('#tab-duel .vs-play', { timeout: 30000 });
   {
-    const fast = await timePlay(5), slowT = await timePlay(1);
+    const fast = await timePlay(10), slowT = await timePlay(6);
     check('Play runs the game by itself, and the turtle end is clearly slower than the rabbit end', slowT > fast * 2.5, `3 turns: rabbit ${fast} ms, turtle ${slowT} ms`);
     check('Pause stops it', !(await p.evaluate(() => window.__isfVersus.duel.game.busy)));
   }
-  await setSpeed(5);
+  await setSpeed(10);
   if (!(await p.evaluate(() => !!window.__isfVersus.duel.game.over))) await p.click('#tab-duel .vs-toend');
   await p.waitForFunction(() => window.__isfVersus.duel.game.over, null, { timeout: 120000 });
 

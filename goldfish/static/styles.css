@@ -82,6 +82,12 @@ button { background: var(--surface-3); border: 1px solid var(--border); padding:
 button:hover { background: #383835; }
 button:active { transform: translateY(1px); }
 button:disabled { opacity: .45; cursor: default; }
+/* Simulation tab: the face each two-faced card is goldfished for */
+.face-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.face-row { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.face-pics { display: flex; gap: 4px; flex: none; --card-w: 62px; }
+.face-pick { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 13px; }
+.face-pick select { width: 100%; }
 button.primary { background: var(--accent); border-color: transparent; color: #fff; font-weight: 600; }
 button.primary:hover { background: #4a95ee; }
 button.ghost, select.ghost { background: transparent; }

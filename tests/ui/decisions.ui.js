@@ -282,6 +282,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForFunction(() => !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
   const cast = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], h = me.battlefield.find(q => /^Hakbal/.test(q.card.name)); return { ok: !!h, sick: !!(h && h.sick), q: !!document.querySelector('.ch-sheet') }; });
   check('Hakbal is cast from the command zone in the first main phase (summoning sick), and nothing explores yet', hk && cast.ok && cast.sick && !cast.q, JSON.stringify(cast));
+  await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], k = me.library.findIndex(i => i.card.name === 'Force of Will'); if (k > 0) me.library.unshift(me.library.splice(k, 1)[0]); });          // on top right before combat
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
   await p.waitForSelector('.ch-sheet.explore', { timeout: 20000 });
   const at = await p.evaluate(() => ({ step: window.__isfVersus.duel.game.step, lit: [...document.querySelectorAll('#tab-duel .vs-steps i.on')].map(i => i.textContent).join() }));
@@ -318,6 +319,46 @@ const shot = process.env.VERSUS_SHOTS;
   await p.click('.ch-sheet .ch-auto');
   await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
   check('..."Let the autopilot decide": Drift of Phantasms is in the graveyard and a three-drop is in your hand', await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return me.graveyard.some(i => i.card.name === 'Drift of Phantasms') && me.hand.some(i => i.card.a.mv === 3 && !i.card.a.isLand); }));
+  // ================= a two-faced card: Esika, God of the Tree // The Prismatic Bridge =================
+  await loadDeck('frodo', 'Esika, God of the Tree // The Prismatic Bridge', '1 Esika, God of the Tree // The Prismatic Bridge\n1 Island\n1 Mountain');
+  // the Simulation tab: the face Esika is goldfished for
+  await p.click('[data-tab=sim]');
+  const fb = await p.evaluate(() => { const b = document.querySelector('#faceBox'); return { shown: b && !b.hidden, rows: [...document.querySelectorAll('#faceList .face-row')].map(r => r.textContent.slice(0, 80)), opts: [...document.querySelectorAll('#faceList select option')].map(o => o.textContent) }; });
+  const esel = '#faceList select[data-card="Esika, God of the Tree // The Prismatic Bridge"]';
+  const eo = await p.$$eval(esel + ' option', os => os.map(o => o.textContent));
+  check('the Simulation tab lists every two-faced card (Esika and Jennifer Walters here) with Autopilot / Front face / Back face', fb.shown && fb.rows.length === 2 && fb.rows.some(r => /Esika, God of the Tree/.test(r)) && eo.length === 3 && /^Front face: Esika/.test(eo[1]) && /^Back face: The Prismatic Bridge/.test(eo[2]), eo.join(' | '));
+  await p.selectOption(esel, 'back');
+  check('...choosing the back face is saved with the deck\'s choices', await p.evaluate(() => { const t = document.querySelector('#plSaved').textContent; return /Two-faced cards = Esika, God of the Tree: back face/.test(t); }), await p.$eval('#plSaved', e => e.textContent.slice(0, 160)));
+  // the Goldfish Table: clicking Esika with both faces affordable asks which face; the menu names both faces
+  await p.click('[data-tab=table]');
+  await p.waitForFunction(() => window.__isf.game, null, { timeout: 30000 });
+  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; g.hand = g.hand.filter(i => !/^Esika/.test(i.card.name)); const k = g.library.findIndex(i => /^Esika/.test(i.card.name)); g.hand.push(g.library.splice(k, 1)[0]);
+    ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Forest'].forEach(n => { const c = g.deck.unique.find(x => x.name === n); const q = G.enter(g, { iid: g.nextIid++, card: c }, {}); q.tapped = false; }); });
+  await p.click('#zLibrary .card-back'); await p.waitForTimeout(600);
+  const eiid = await p.evaluate(() => window.__isf.game.hand.find(i => /^Esika/.test(i.card.name)).iid);
+  await p.evaluate(id => document.querySelector('#zHand .mtg[data-iid="' + id + '"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })), eiid);
+  const menu = await p.$$eval('#ctxMenu button', bs => bs.map(b => b.textContent));
+  check('the Goldfish Table\'s card menu offers both faces by name', menu.some(t => /Cast the front: Esika, God of the Tree/.test(t)) && menu.some(t => /Cast the back: The Prismatic Bridge/.test(t)), menu.join(' | '));
+  await p.click('#ctxMenu button >> text="▶ Cast"');          // the plain Cast: the face is asked
+  await p.waitForSelector('.ch-sheet.face', { timeout: 10000 });
+  sh = await sheet();
+  check('clicking Esika on the Goldfish Table asks which face, starting on the back face set for this deck', /^Esika, God of the Tree: which face do you cast\?/.test(sh.title) && sh.names.join(' | ') !== '' && sh.def[0] === 'The Prismatic Bridge' && sh.names.includes('Esika, God of the Tree'), sh.title + ' / ' + sh.names.join(', ') + ' / default ' + sh.def.join(','));
+  if (shot) await p.screenshot({ path: path.join(shot, 'choice-face.png') });
+  await p.click('.ch-sheet .ch-ok');
+  await p.waitForTimeout(800);
+  const tb = await p.evaluate(() => { const g = window.__isf.game; return { bridge: g.battlefield.some(q => q.card.name === 'The Prismatic Bridge'), esika: g.battlefield.some(q => q.card.layout === 'modal_dfc' && /^Esika/.test(q.card.name)) }; });
+  check('...Submit casts The Prismatic Bridge (not Esika)', tb.bridge && !tb.esika, JSON.stringify(tb));
+  // the 1v1 table: the same question; this time cast the front face
+  await start('duel');
+  await arrange('duel', { clear: true, hand: ['Esika, God of the Tree // The Prismatic Bridge'], lands: [['Plains', 1], ['Island', 1], ['Swamp', 1], ['Mountain', 1], ['Forest', 2]] });
+  await clickHand('duel', 'Esika, God of the Tree // The Prismatic Bridge');
+  await p.waitForSelector('.ch-sheet.face', { timeout: 10000 });
+  await pickTile('Esika, God of the Tree'); await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
+  const dv = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return { esika: me.battlefield.some(q => q.card.layout === 'modal_dfc' && /^Esika/.test(q.card.name)), bridge: me.battlefield.some(q => q.card.name === 'The Prismatic Bridge') }; });
+  check('in a 1v1 game the same question comes up; choosing the front casts Esika', dv.esika && !dv.bridge, JSON.stringify(dv));
+  await p.click('[data-tab=sim]'); await p.selectOption(esel, 'auto');          // leave the deck's choices as they were
+
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 
   await b.close();

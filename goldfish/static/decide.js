@@ -321,6 +321,28 @@
     return out;
   }
 
+  // ---------- a two-faced card: which face is cast ----------
+  // Esika, Queen of the Hollows // The Prismatic Bridge, Jennifer Walters // The Sensational She-Hulk: the face is chosen as it is cast.
+  // The question lists the faces you can pay for right now (as card pictures, each face with its cost and type); the default is the
+  // deck's face setting for that card (Simulation tab), else the front. Returns null when neither face can be cast; q.only when one can.
+  function faceQuestion(g, inst) {
+    const c = inst && inst.card;
+    if (!c || c.layout !== 'modal_dfc' || !c.a.backCard || c.a.isLand) return null;
+    const bc = c.a.backCard, half = (s, i) => String(s || '').split(' // ')[i] || '';
+    const front = G.canPay(G.effectiveCost(g, inst), G.allUnits(g)), back = G.canCastBack(g, inst);
+    if (!front && !back) return null;
+    const set = G.faceChoice(g, c), options = [];
+    if (front) options.push({ face: 0, name: half(c.name, 0), card: c, note: [half(c.mana_cost, 0), half(c.type_line, 0)].filter(Boolean).join(' · ') });
+    if (back) options.push({ face: 1, name: bc.name || half(c.name, 1), card: c, note: [bc.mana_cost, bc.type_line || half(c.type_line, 1)].filter(Boolean).join(' · ') });
+    options.forEach((o, k) => { o.k = k; o.def = false; });
+    const d = options.find(o => o.face === (set === 'back' ? 1 : 0)) || options[0]; d.def = true;
+    const q = { kind: 'face', what: null, seat: g.pid, multi: false, min: 1, max: 1, optional: false, none: null, source: c, options, def: [d.k], only: options.length === 1,
+      title: `${half(c.name, 0)}: which face do you cast?`,
+      text: `A two-faced card: you choose the face as you cast it. ${options.length < 2 ? '' : 'Both faces can be paid for now. '}The starting pick is ${set === 'auto' ? 'the front face' : 'the face set for this card on the Simulation tab'}.` };
+    q.sig = 'face/' + options.map(o => o.name).join('|');
+    return q;
+  }
+
   // ---------- the end of another player's turn ----------
   // Instants and cards with flash, cast with the mana that is still untapped. Counterspells are not offered here: they are asked when
   // a spell is cast.
@@ -346,7 +368,7 @@
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities, quietBeginCombat };
+  const api = { faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities, quietBeginCombat };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

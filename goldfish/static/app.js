@@ -891,9 +891,23 @@
       play([le, ...le.ev]);
       return;
     }
+    // a two-faced card (Esika // The Prismatic Bridge): choose the face as it is cast (the sheet from choices.js)
+    const fq = !force && window.Decide && window.Decide.faceQuestion(g, inst);
+    if (fq && !fq.only && window.__isfChoices) {
+      window.__isfChoices.ask(fq).then(pick => castFace(inst, (pick === 'auto' || pick == null ? fq.options[fq.def[0]] : fq.options[pick]).face, el)).catch(() => {});
+      return;
+    }
+    if (fq && fq.only && fq.options[0].face === 1) return castFace(inst, 1, el);
     snap();
     const ev = G.castCard(g, inst, force);
     if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); sfx('error'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
+    play(ev);
+  }
+
+  function castFace(inst, face, el) {
+    const g = S.game; snap();
+    const ev = face === 1 ? G.castBackFace(g, inst) : G.castCard(g, inst);
+    if (!ev) { S.undo.pop(); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } sfx('error'); return toast(`Not enough mana for ${face === 1 ? 'the back face' : 'the front face'} of ${inst.card.name.split(' // ')[0]}`); }
     play(ev);
   }
 
@@ -1148,6 +1162,10 @@
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
     });
     if (zone === 'hand' || zone === 'command') items.push([inst.card.a.isLand ? '▶ Play land' : '▶ Cast', () => playFromHand(inst, false, m), 'primary']);
+    if ((zone === 'hand' || zone === 'command') && inst.card.layout === 'modal_dfc' && inst.card.a.backCard && !inst.card.a.isLand && !inst.card.a.backCard.a.isLand && inst.card.a.backCard.mana_cost) {          // a two-faced card: either face, named
+      items.push([`▶ Cast the front: ${inst.card.name.split(' // ')[0]}`, () => castFace(inst, 0, m)]);
+      items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
+    }
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary']);
     items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
@@ -1253,7 +1271,7 @@
     hand.replaceChildren(...g.hand.map(i => {
       const e = tableEl(i.card, i.iid, 0, used);
       clearState(e);
-      if (!i.card.a.isLand && G.canPay(G.effectiveCost(g, i), units)) e.classList.add('castable');
+      if (!i.card.a.isLand && (G.canPay(G.effectiveCost(g, i), units) || G.canCastBack(g, i))) e.classList.add('castable');          // a two-faced card: either face
       if (i.card.a.isLand && G.canPlayLand(g)) e.classList.add('castable');
       return e;
     }));
@@ -1522,7 +1540,29 @@
   const DECISIONS = {};
   G.LAB_CHOICES.forEach(c => { DECISIONS[c.id] = Object.assign({}, c, { options: c.options.slice() }); });
   let labApplies = [];
+  // Two-faced cards (Simulation tab): the face each one is goldfished for, saved with the deck's other choices (policy.faces)
+  function renderFaces() {
+    const box = $('#faceBox'), list = $('#faceList'); if (!box || !list) return;
+    const cards = S.deck && G.faceCards ? G.faceCards(S.deck) : [];
+    box.hidden = !cards.length; if (!cards.length) { list.innerHTML = ''; return; }
+    const set = currentPolicy().faces || {}, half = (s, i) => String(s || '').split(' // ')[i] || '';
+    list.innerHTML = '';
+    cards.forEach(c => {
+      const row = h('div', 'face-row'), pics = h('div', 'face-pics');
+      pics.append(cardEl(c, { face: 0 }), cardEl(c, { face: 1 }));
+      const v = set[c.name] || (c.commander && currentPolicy().mdfcFace === 'back' ? 'back' : 'auto');
+      row.append(pics, h('label', 'face-pick', `<b>${esc(half(c.name, 0))}</b> <span class="hint">// ${esc(c.a.backCard.name || half(c.name, 1))}</span>
+        <select data-card="${esc(c.name)}"><option value="auto"${v === 'auto' ? ' selected' : ''}>Autopilot chooses each time (the better play)</option><option value="front"${v === 'front' ? ' selected' : ''}>Front face: ${esc(half(c.name, 0))} (${esc(half(c.mana_cost, 0))})</option><option value="back"${v === 'back' ? ' selected' : ''}>Back face: ${esc(c.a.backCard.name || half(c.name, 1))} (${esc(c.a.backCard.mana_cost || '')})</option></select>`));
+      list.appendChild(row);
+    });
+    list.querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => {
+      const f = Object.assign({}, currentPolicy().faces || {}); if (sel.value === 'auto') delete f[sel.dataset.card]; else f[sel.dataset.card] = sel.value;
+      savePolicy('faces', Object.keys(f).length ? f : null, 'chosen on the Simulation tab');
+      toast(sel.value === 'auto' ? 'The autopilot chooses the face' : `Goldfishing the ${sel.value} face of ${sel.dataset.card.split(' // ')[0]}`);
+    }));
+  }
   function fillLabChoices() {
+    renderFaces();
     const sel = $('#plDecision'), cur = sel.value;
     labApplies = S.deck ? G.labChoices(S.deck) : G.LAB_CHOICES.map(c => Object.assign({}, c, { applies: !!c.always, because: [], missing: [] }));
     const ok = labApplies.filter(c => c.applies), off = labApplies.filter(c => !c.applies);
@@ -1556,9 +1596,10 @@
     const box = $('#plSaved'); if (!S.cards || !S.cards.length) { box.textContent = ''; return; }
     const pol = currentPolicy(), keys = Object.keys(pol);
     if (!keys.length) { box.textContent = 'Nothing learned for this deck yet: the autopilot uses its default choices.'; return; }
-    const names = keys.map(k => { const d = Object.values(DECISIONS).find(x => x.key === k); const o = d && d.options.find(x => x.value === pol[k]); return `${d ? d.label : k} = ${o ? o.name : pol[k]}`; });
+    const names = keys.map(k => { if (k === 'faces') return 'Two-faced cards = ' + Object.keys(pol.faces).map(n => `${n.split(' // ')[0]}: ${pol.faces[n]} face`).join(', ');
+      const d = Object.values(DECISIONS).find(x => x.key === k); const o = d && d.options.find(x => x.value === pol[k]); return `${d ? d.label : k} = ${o ? o.name : pol[k]}`; });
     box.innerHTML = `Saved for this deck: <b>${esc(names.join('; '))}</b> (used by the autopilot, the simulation and mirror matches). <button class="ghost" id="plReset">Reset</button>`;
-    $('#plReset').addEventListener('click', () => { keys.forEach(k => savePolicy(k, null)); toast('Back to the default choices'); });
+    $('#plReset').addEventListener('click', () => { keys.forEach(k => savePolicy(k, null)); renderFaces(); toast('Back to the default choices'); });
   }
   let plWorker = null, plState = null;
   async function runLab() {

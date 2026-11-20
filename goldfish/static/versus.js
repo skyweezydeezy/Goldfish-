@@ -307,7 +307,7 @@
   })());
   // a counterspell is not cast from your hand in your main phase (there is nothing to counter): you are asked when an opponent casts a spell
   const reply = i => !!i.card.a.counter && !i.card.a.spellFx.length;
-  const castable = (g, i) => !reply(i) && G.canPay(G.effectiveCost(g, i), G.allUnits(g));
+  const castable = (g, i) => !reply(i) && (G.canPay(G.effectiveCost(g, i), G.allUnits(g)) || G.canCastBack(g, i));          // a two-faced card glows when either face can be paid for
   const playCard = (mode, iid, asLand) => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
     const find = gs => gs[g.pid].hand.concat(gs[g.pid].command).find(i => i.iid === iid), inst = find(gm.games); if (!inst) return;
@@ -319,7 +319,14 @@
       info(mode, ''); return humanDone(mode, ev);
     }
     if (!castable(g, inst)) return sfx('error'), info(mode, `Not enough mana for ${inst.card.name}.`);
-    const ev = await act(mode, gs => G.castCard(gs[g.pid], find(gs)));
+    // a two-faced card (Esika // The Prismatic Bridge): the face is chosen as it is cast
+    let face = 0;
+    const fq = !resp && D.faceQuestion(g, inst);
+    if (fq) {
+      if (fq.only) face = fq.options[0].face;
+      else { gm.choice = fq; render(mode); let pick; try { pick = await C.ask(fq); } finally { gm.choice = null; } face = (pick === 'auto' || pick == null ? fq.options[fq.def[0]] : fq.options[pick]).face; }
+    }
+    const ev = await act(mode, gs => face === 1 ? G.castBackFace(gs[g.pid], find(gs)) : G.castCard(gs[g.pid], find(gs)));
     if (!ev) return info(mode, `${inst.card.name} was not cast.`);
     info(mode, ''); humanDone(mode, ev);
   });

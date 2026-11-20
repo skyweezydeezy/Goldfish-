@@ -59,7 +59,7 @@
         const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text'));
         b.type = 'button'; b.dataset.t = t.i; b.dataset.k = t.ks[0]; b.title = t.o.name + (t.ks.length > 1 ? ` (${t.ks.length} in your library)` : '');
         b.dataset.find = (t.o.name + ' ' + (t.o.card ? t.o.card.type_line || '' : '')).toLowerCase();
-        if (t.o.card) { const c = A.cardEl(t.o.card, {}); b.appendChild(c); const z = h('span', 'ch-zoom', '🔍'); z.title = 'Read this card'; b.appendChild(z); }
+        if (t.o.card) { const c = A.cardEl(t.o.card, { face: t.o.face || 0 }); b.appendChild(c); const z = h('span', 'ch-zoom', '🔍'); z.title = 'Read this card'; b.appendChild(z); }
         b.appendChild(h('span', 'ch-name', esc(t.o.name) + (t.ks.length > 1 ? ` <i>×${t.ks.length}</i>` : '')));
         if (t.o.note) b.appendChild(h('small', 'ch-note', esc(t.o.note)));
         if (t.def) b.appendChild(h('span', 'ch-star', '★ autopilot'));

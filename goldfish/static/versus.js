@@ -163,29 +163,34 @@
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }
   }
 
-  function say(mode, g, text, stepKey) {
+  function say(mode, g, text, stepKey, quiet) {
     const st = V[mode], gm = st.game, box = st.q('.vs-log');
-    st.last = { pid: g ? g.pid : null, who: g ? gm.match.names[g.pid] : '', text };
-    const row = h('div', 'vs-line' + (g ? ' ' + SEAT[g.pid] : ' sys'));
+    if (!quiet) st.last = { pid: g ? g.pid : null, who: g ? gm.match.names[g.pid] : '', text };
+    const row = h('div', 'vs-line' + (g ? ' ' + SEAT[g.pid] : ' sys') + (quiet ? ' quiet' : ''));          // quiet: a step in which nothing happened
     if (stepKey) row.dataset.step = stepKey;                  // the step of the turn it happened in
     row.innerHTML = g ? `<b>${esc(gm.match.names[g.pid])}</b> <span class="vs-t">${g.turn ? 'turn ' + g.turn : 'opening hand'}${stepKey ? ' · <i>' + esc(D.STEP_NAME[stepKey].toLowerCase()) + '</i>' : ''}</span> ${esc(text)}` : esc(text);
     box.appendChild(row); box.scrollTop = box.scrollHeight;
   }
   // the events of one step as one line of the log, under that step's name. Returns how many things it had to say.
-  function tell(mode, g, stepKey, ev, lead) {
+  // always: the step is logged even when nothing happens in it (every turn goes through every step)
+  function tell(mode, g, stepKey, ev, lead, always) {
     const t = sum(g, ev || []);
     sfxEv(mode, ev);
     if (t.length || lead) say(mode, g, (lead ? lead + (t.length ? ' ' : '') : '') + t.join('; '), stepKey);
+    else if (always && stepKey) say(mode, g, 'nothing happens', stepKey, true);
     return t.length + (lead ? 1 : 0);
   }
-  // the beginning of a turn: untap, upkeep and draw, each under its own name
-  function tellBegin(mode, g, ev) {
+  // the beginning of a turn, one step at a time: untap, upkeep, draw, each lit on the strip (beat: the pause between steps) and logged,
+  // with a quiet "nothing happens" line when nothing did; the first main phase's own triggers follow
+  async function walkBegin(mode, g, ev, beat) {
     const gm = V[mode].game, mine = g.pid === gm.human;
     let n = 0;
     for (const [k, part] of D.beginSteps(g, ev)) {
       let lead = null;
       if (k === 'draw') { const drew = part.filter(e => e.type === 'draw'); lead = mine ? 'Your turn.' + (drew.length ? ' You drew ' + drew.map(e => e.inst.card.name).join(', ') + '.' : '') : drew.length ? `draws ${drew.length === 1 ? 'a card' : drew.length + ' cards'}.` : null; }
-      n += tell(mode, g, k, part, lead);
+      gm.step = k;
+      n += tell(mode, g, k, part, lead, k !== 'main1');
+      if (k !== 'main1' && beat) await beat();
     }
     return n;
   }
@@ -202,7 +207,7 @@
         if (turns++) say(mode, g, 'takes an extra turn.');
         gm.step = 'untap'; force = undefined;
         const ev = await act(mode, it.run);
-        gm.step = 'draw'; said += tellBegin(mode, g, ev);
+        said += await walkBegin(mode, g, ev, pause);
       } else if (it.step === 'declare') {
         const me = alive(gm) ? gm.games[gm.human] : null;
         if (!me || finished(gm) || g.dead || g.opp !== me) continue;
@@ -216,13 +221,12 @@
         const key = it.step === 'out' ? 'end' : it.step;
         gm.step = key;
         const ev = await act(mode, gs => it.run(gs, force)), asked = force && key === 'combat';
-        const n = tell(mode, g, key, asked ? ev.filter(e => e.type !== 'declare') : ev);          // the attack was already announced when you were asked to block
+        const n = tell(mode, g, key, asked ? ev.filter(e => e.type !== 'declare') : ev, null, it.step !== 'out' && !asked);          // the attack was already announced when you were asked to block; every step is logged
         if (asked && !n) say(mode, g, 'no damage', 'combat');
         said += n;
       }
       await pause();
     }
-    if (!said) say(mode, g, 'nothing happens');
     gm.step = null;
   }
   // The computer attacks you and you can block: the game waits here until you confirm your blocks (the wire() click handler answers).
@@ -287,7 +291,8 @@
     gm.phase = null; gm.step = 'untap'; gm.attacked = false; gm.inMain2 = false; gm.picking = null;
     sfx('turn');
     const ev = await act(mode, gs => D.turn.begin(gs[g.pid]));
-    tellBegin(mode, g, ev);
+    const st = V[mode];
+    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(140 * A.slow()); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
     gm.phase = 'main'; gm.step = 'main1';
     announce(mode);
   }
@@ -364,7 +369,8 @@
     if (!ev.some(e => e.type === 'declare')) say(mode, g, 'No attack.', 'combat');
     tell(mode, g, 'combat', ev);
     gm.step = 'main2'; gm.inMain2 = true;                    // the second main phase has begun (its triggers resolved): ending the turn goes on to the end step
-    humanDone(mode, finished(gm) ? [] : await act(mode, gs => D.turn.main2(gs[g.pid])), 'main2');
+    if (!finished(gm)) tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[g.pid])), null, true);
+    humanDone(mode, [], 'main2');
   });
   const endHumanTurn = (mode, auto) => mine(mode, async (gm, g) => {
     if (gm.phase !== 'main') return;
@@ -373,8 +379,8 @@
     if (auto) {                                               // the autopilot plays the rest of the turn as it would play its own, and nobody is asked
       tell(mode, g, gm.step, await act(mode, gs => D.turn.main1(gs[pid]), true));
       if (!gm.attacked && !finished(gm)) {
-        gm.step = 'combat'; tell(mode, g, 'combat', await act(mode, gs => { G.podFocus(gs[pid]); return D.turn.combat(gs[pid]); }, true));
-        gm.attacked = true; gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]), true));
+        gm.step = 'combat'; tell(mode, g, 'combat', await act(mode, gs => { G.podFocus(gs[pid]); return D.turn.combat(gs[pid]); }, true), null, true);
+        gm.attacked = true; gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]), true), null, true);
       }
     } else {
       // Every step in order, each shown on the strip: beginning of combat (its triggers resolve: Hakbal explores, even while summoning
@@ -387,11 +393,11 @@
         if (!finished(gm)) { const cev = await act(mode, gs => D.turn.combat(gs[pid], { attackers: [] })); say(mode, g, 'No attack.', 'combat'); tell(mode, g, 'combat', cev.filter(e => e.type !== 'declare')); }
         gm.attacked = true;
       }
-      if (!finished(gm) && !gm.inMain2) { gm.step = 'main2'; gm.inMain2 = true; await beat(); tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]))); }
+      if (!finished(gm) && !gm.inMain2) { gm.step = 'main2'; gm.inMain2 = true; await beat(); tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid])), null, true); }
       if (!finished(gm)) { gm.step = 'end'; await beat(); }
     }
     gm.step = 'end';
-    if (!finished(gm)) tell(mode, g, 'end', await act(mode, gs => D.turn.end(gs[pid]), auto));
+    if (!finished(gm)) tell(mode, g, 'end', await act(mode, gs => D.turn.end(gs[pid]), auto), null, true);
     if (!finished(gm)) tell(mode, g, 'end', D.turn.out(g));
     if (announce(mode)) return;
     if (g.extraTurns > 0 && !g.dead) { g.extraTurns--; say(mode, g, 'You take an extra turn.'); await startHuman(mode, g); return; }

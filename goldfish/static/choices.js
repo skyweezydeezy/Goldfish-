@@ -86,7 +86,8 @@
         } else {
           const t = [...take.keys()][0];
           ok.disabled = !t;
-          ok.textContent = !t ? (word ? 'Select a card' : 'Choose a card') : (word ? 'Submit' : 'Choose ' + t.o.name);
+          ok.textContent = !t ? (word ? 'Select a card' : 'Choose a card') : (word ? 'Submit' : (q.kind === 'face' ? 'Cast ' : 'Choose ') + t.o.name);
+          if (flip) { const fi = $('.ch-faceinfo'); if (fi && t) fi.innerHTML = `<b>${esc(t.o.name)}</b><small>${esc(t.o.note || '')}</small><span class="hint">${t.o.face ? 'Back face' : 'Front face'} · ⟲ turns the card over</span>`; }
         }
         const pk = $('.ch-picked');
         if (pk && q.kind === 'search') pk.textContent = n ? 'Selected: ' + picks().map(k => q.options[k].name).join(', ') : 'Nothing selected yet.'; else if (pk) pk.remove();
@@ -111,6 +112,15 @@
       });
       const flt = $('.ch-filter');
       if (flt) flt.addEventListener('input', () => { const v = flt.value.trim().toLowerCase(); box.querySelectorAll('.ch-opt').forEach(b => { b.hidden = !!v && !b.dataset.find.includes(v); }); layFan(); });
+      // a two-faced card: one card, not two pictures side by side. ⟲ swings it around; the face showing is the face that is cast.
+      let flip = null;
+      if (q.kind === 'face' && A.flipCardEl && ts.length === 2) {
+        const byFace = f => ts.find(t => t.o.face === f), start = [...take.keys()][0] || ts[0];
+        flip = A.flipCardEl(start.o.card, { face: start.o.face, onFlip: f => { take.clear(); take.set(byFace(f), 1); refresh(); } });
+        box.replaceChildren(h('div', 'ch-faceflip'));
+        box.firstChild.append(flip, h('div', 'ch-faceinfo'));
+        el.classList.add('flipping');
+      }
       open = { q, el, resolve, reject };
       document.body.appendChild(el);
       layFan(); refresh();

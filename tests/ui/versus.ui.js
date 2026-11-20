@@ -106,7 +106,7 @@ const shot = process.env.VERSUS_SHOTS;
       const canPick = await p.evaluate(() => { const sel = document.querySelector('#tab-duel .vs-blk[data-iid="' + window.__blk + '"]'); if (!sel || ![...sel.options].some(o => o.value === String(window.__big))) return false; sel.value = String(window.__big); return true; });
       await p.evaluate(() => document.querySelector('#tab-duel .vs-block-go').click());
       await until('duel', () => { const g = window.__isfVersus.duel.game; return !!g.over || g.phase === 'main'; });
-      const r = await p.evaluate(() => ({ log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].slice(-4).map(x => x.textContent).join(' || ') }));
+      const r = await p.evaluate(() => ({ log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line:not(.quiet)')].slice(-6).map(x => x.textContent).join(' || ') }));          // every step is logged now: skip the quiet "nothing happens" lines
       if (canPick) check('your chosen block happens: your creature blocks the attacker', /blocks/.test(r.log), r.log.slice(0, 260));
       else console.log('SKIP  your chosen block happens: in this random game the set-up creature could not block the set-up attacker');
     }

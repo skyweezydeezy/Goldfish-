@@ -185,7 +185,7 @@ T('arena', () => { const g = bare(); const ar = putOn(g, 'Arena of Glory'); cons
   G.endTurn(g); G.beginTurn(g); check('...', ar.tapped === true); });
 T('rip dies', () => { const g = bare(); putOn(g, 'Rest in Peace'); const t = putOn(g, 'Hooded Hydra'); t.counters = 3; G.leavePerm(g, t, []); G.flushLeaves(g, []); check('Rest in Peace: a creature that would die is exiled, so its "dies" ability does not trigger', g.battlefield.filter(p => p.card.name === 'Snake').length === 0 && g.graveyard.length === 0); });
 T('level gate', () => { const g = bare(); const c = putOn(g, 'Coralhelm Commander'); check('Coralhelm Commander has no flying before level 2', !G.hasKw(g, c, 'flying')); c.level = 2; check('...and flying from level 2', G.hasKw(g, c, 'flying')); });
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with all of these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with all of these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen mirror matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 300)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

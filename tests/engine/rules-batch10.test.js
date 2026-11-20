@@ -92,7 +92,7 @@ T('indestructible', () => { const { g: a, b } = mirror(); const t = putOn(a, 'Gr
 T('ayara', () => { const g = bare(); const ay = putOn(g, 'Ayara, First of Locthwain'); G.createTokens(g, tok('Zombie', 2, 2, ['B']), 1, [], null); g.library = g.library.slice(0, 10); G.useAbilities(g); check('Ayara: a black token for a card', g.hand.length === 1 && ay.tapped, g.hand.length); });
 T('opponent-only', () => { const ok = ['Redirect Lightning', 'Hydroelectric Specimen', 'Collective Resistance'].every(n => by(n).a.coverage.every(v => v.status !== 'ignored')); check('Redirect Lightning, Hydroelectric Specimen and Collective Resistance are read as answers to another player', ok); });
 
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with all of these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with all of these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10, policy: { tribe: 'Elf' } }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 300)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

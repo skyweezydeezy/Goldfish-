@@ -83,7 +83,7 @@ T('augur', () => { const g = bare(); putOn(g, 'Augur of Autumn'); putOn(g, 'Llan
   putOn(g, 'Sol Ring'); putOn(g, 'Grave Titan'); check('...coven with three: creature spells from the top of the library', G.topCastable(g)); });
 T('read only', () => { check('Zuran Orb and Nezahal are read (no use alone; Nezahal protects itself against removal)', ['Zuran Orb', 'Nezahal, Primal Tide'].every(n => by(n).a.coverage.every(v => v.status !== 'ignored'))); });
 
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 300)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -95,7 +95,7 @@ T('seated', () => { const mk = () => { const { g, b } = mirror(); top(g, 'Opt', 
   const cnt = gs => gs[0].battlefield.map(p => p.card.name + ':' + (p.counters || 0)).join() + '|' + gs[0].hand.length + '|' + gs[0].graveyard.length + '|' + gs[1].life;
   check('...and with every default taken it is the autopilot\'s combat', cnt(A) === cnt(B), cnt(A) + ' vs ' + cnt(B)); });
 
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

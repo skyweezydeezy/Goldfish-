@@ -104,7 +104,7 @@ T('labels', () => { const lab = (n, re) => { const c = by(n); return [c].concat(
   const um = lab('Undying Malice', /gains/), va = lab('Valgavoth, Terror Eater', /play cards exiled/), ke = lab('Kediss, Emberclaw Familiar', /each other opponent/);
   check('Undying Malice is simulated (batch 15); Valgavoth\'s exile-play line says "Needs opponent", not "Mirror matches only"', um.status === 'ok' && va.tag === 'opp' && !va.mirror, JSON.stringify([um.status, va.tag, va.mirror]));
   check('Kediss is labelled for games with opponents', ke.tag === 'opp' && ke.mirror === true); });
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

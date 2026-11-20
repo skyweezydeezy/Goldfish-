@@ -83,7 +83,7 @@ T('razaketh', () => { const g = bare(); putOn(g, 'Razaketh, the Foulblooded'); t
   check('Razaketh: 2 life and a spare token for the card the deck needs most', g.hand.length === 1 && g.life === l0 - 2 && !count(g, 'Zombie'), g.hand.map(i => i.card.name).join()); });
 T('broodlord', () => { const g = bare(); putOn(g, 'Grave Titan').sick = true; g.battlefield.forEach(q => { q.sick = true; }); putOn(g, 'Hoarding Broodlord'); const x = inst(g, 'Shivan Dragon'); g.exile.push(x); x.heldBy = 1; x.anyMana = true;
   check('Hoarding Broodlord: a spell cast from exile has convoke', G.effectiveCost(g, x).generic < 6, G.effectiveCost(g, x).generic); });
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

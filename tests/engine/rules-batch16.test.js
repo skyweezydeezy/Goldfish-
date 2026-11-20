@@ -74,7 +74,7 @@ T('thrasher', () => { const g = bare(); putOn(g, 'Party Thrasher'); g.hand = [in
 T('freerunning', () => { const g = bare(); const oa = inst(g, 'Overpowering Attack'); g.hand = [oa]; check('Overpowering Attack costs {3}{R}{R}', total(G.effectiveCost(g, oa)) === 5); g.freerunTurn = g.turn; check('...and {2}{R} once your commander or an Assassin dealt combat damage (freerunning)', total(G.effectiveCost(g, oa)) === 3); });
 T('frog', () => { const g = bare(); const f = putOn(g, 'Psychic Frog'); lands(g, 7); g.hand = [inst(g, 'Forest'), inst(g, 'Shivan Dragon')]; for (let i = 0; i < 3; i++) G.useAbilities(g); check('Psychic Frog: a spare land is discarded for a +1/+1 counter, a real card is kept', f.counters === 1 && g.hand.some(i => i.card.name === 'Shivan Dragon'), f.counters); });
 T('timepiece', () => { const g = bare(); const pt = putOn(g, 'Perpetual Timepiece'); const l0 = g.library.length; G.useAbilities(g); check('Perpetual Timepiece: {T}, mill two ("{T}: Mill two cards" was read as doing nothing)', l0 - g.library.length === 2 && pt.tapped, l0 - g.library.length); });
-T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 
 console.log(`\n${pass} passed, ${fail} failed`);

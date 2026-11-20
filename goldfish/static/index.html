@@ -218,7 +218,10 @@
       <div class="box-head"><h2>Policy lab <span class="pill approx">beta</span></h2><span class="hint">Learn by trial and error: the engine plays the same games with each option and keeps the one that does better. What it learns is saved in this browser for this deck and used by the autopilot.</span></div>
       <div class="row wrap">
         <label>Choice <select id="plDecision"></select></label>
-        <label>Test by <select id="plMode"><option value="goldfish">Goldfish (how early it wins)</option><option value="mirror">Mirror match (vs the opponent chosen above)</option></select></label>
+        <label>Test by <select id="plMode"><option value="field" selected>Against other decks (win rate)</option><option value="goldfish">Goldfish (how early it wins)</option><option value="mirror">Mirror match (vs the opponent chosen above)</option></select></label>
+        <label id="plOppWrap">Opponents <select id="plOpp"><option value="random" selected>Random decks</option><option value="selected">Selected decks</option></select></label>
+        <label id="plOppNWrap">How many <input id="plOppN" type="number" min="1" max="12" value="5"></label>
+        <label id="plOppListWrap" style="display:none">Decks <select id="plOppList" multiple size="6"></select></label>
         <label>Games per option <input id="plN" type="number" min="50" max="3000" value="400"></label>
         <button id="plRun" class="primary">Run the lab</button>
         <div id="plProgress" class="progress"><div></div></div>

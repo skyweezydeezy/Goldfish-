@@ -160,6 +160,22 @@ check('the board wipe choice is for matches only', G.LAB_CHOICES.find(c => c.id 
   check('the same option scores exactly the same before and after another option played the same games', gf[0].mean === gf[2].mean, gf[0].mean.toFixed(3) + ' / ' + gf[2].mean.toFixed(3));
 }
 
+// ---- explore and tribe-first choices (from the Hakbal study) ----
+{
+  const ld = n => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', n + '-loaded.json'), 'utf8'));
+  const mr = ld('mermaids'), deck = G.buildDeck(mr.cards, mr.tokens);
+  check('the Merfolk deck is offered both choices', applies(deck, 'exploreKeep') && applies(deck, 'tribeFirst'), deck.tribe);
+  check('a deck without a tribe is not offered "cast your type first"', !applies(G.buildDeck(ld('veyran').cards, []), 'tribeFirst'));
+  const g = pol => { const x = G.newGame(deck, withPol(pol), 1); x.turn = 4; return x; };
+  const mer = g({}).library.find(i => i.card.a.isCreature && /Merfolk/.test(i.card.type_line) && !i.card.commander);
+  const other = g({}).library.find(i => !i.card.a.isLand && !i.card.a.isCreature);
+  check('explore "always keep": a nonland card stays on top', G.exploreMill(g({ exploreKeep: 'keep' }), other) === false);
+  check('explore "always mill": it goes to the graveyard', G.exploreMill(g({ exploreKeep: 'mill' }), other) === true);
+  check('explore "keep your tribe": a Merfolk stays, a noncreature spell is milled', G.exploreMill(g({ exploreKeep: 'tribe' }), mer) === false && G.exploreMill(g({ exploreKeep: 'tribe' }), other) === true, mer.card.name + ' / ' + other.card.name);
+  check('tribe first: a Merfolk gets +40 when on, nothing by default', G.tribeBonus(g({ tribeFirst: 'on' }), mer) === 40 && G.tribeBonus(g({}), mer) === 0);
+  check('tribe first never boosts a card outside the tribe', G.tribeBonus(g({ tribeFirst: 'on' }), other) === 0);
+}
+
 // ---- the lab runs the new choices end to end ----
 {
   const r = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'soul-brokers-loaded.json'), 'utf8'));

@@ -16,7 +16,7 @@
     const gm = V[mode].game; if (!window.__isfAudio || !gm || gm.quiet) return;
     window.__isfAudio.events(ev, { win: gm.human == null || gm.match.winner === gm.human ? 'win' : 'lose' });
   }
-  window.__isfVersus = V;                                   // read-only handle for automated UI tests
+  window.__isfVersus = V; V.redraw = m => render(m);                                   // read-only handle for automated UI tests
 
   // ---------- setup ----------
   function oppOptions() {
@@ -552,6 +552,7 @@
       box.appendChild(slot);
     });
     if (!g.hand.length) box.appendChild(h('i', '', 'No cards in hand.'));
+    box.style.setProperty('--n', g.hand.length);                // a big hand overlaps more, so it never spills over the buttons
     return box;
   }
   // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.

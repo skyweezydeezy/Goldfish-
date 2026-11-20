@@ -215,13 +215,15 @@
   async function loadDeck() {
     const text = $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
+    { const link = readLink(text); if (link && text.trim().split(/\s+/).length === 1) return addFromLink(link, 'from the link'); }          // an ICEYfish deck link pasted in the box
+    { const site = deckSite(text); if (site && text.trim().split(/\s+/).length === 1) return toast(`${site[0].toUpperCase() + site.slice(1)} does not let other web pages read its decks. On the deck's page use Export (or Copy) as text, then paste the list here.`); }
     const btn = $('#loadDeck');
     btn.disabled = true; btn.textContent = 'Resolving…';
     try {
       await Source.init();
       const r = await Source.loadDeck(text, m => { btn.textContent = m; });
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
-      else setDeck(r);
+      else { setDeck(r); autoSave(text); }
     } catch (err) {
       console.error(err);
       $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
@@ -229,6 +231,17 @@
     btn.disabled = false; btn.textContent = 'Load deck';
   }
 
+  // "Save every deck I load" (on unless you turn it off in Saved decks): a list you paste or import goes into your saved decks by itself
+  const autoSaveOn = () => localStorage.getItem('isf_autosave') !== '0';
+  let loadingBuiltin = false;
+  function autoSave(text) {
+    if (!autoSaveOn() || loadingBuiltin || !S.deck) return;
+    const d = getDecks(); if (Object.values(d).includes(text)) return;
+    const base = S.deck.commanders.length ? S.deck.commanders.map(c => c.card.name.split(',')[0]).join(' + ') : 'Imported deck';
+    const m = getMeta(), name = uniqueName(base, d);
+    d[name] = text; m[name] = { saved: Date.now(), auto: true };
+    if (putDecks(d, m)) { refreshSaved(); $('#savedDecks').value = name; toast(`Saved as "${name}" (Rename it in Manage)`); keepData(); }
+  }
   function setDeck(r) {
     let cards = r.cards;
     // if no commander marked and it's a 100-card list whose first card is legendary creature, ask nothing: just guess
@@ -443,20 +456,86 @@
     const all = getDecks(), meta = getMeta();
     if (all[name] != null && all[name] !== $('#deckText').value && !confirm(`"${name}" is already saved. Replace it with what is in the box now?`)) return;
     all[name] = $('#deckText').value; meta[name] = { saved: Date.now() };
-    if (putDecks(all, meta)) { refreshSaved(); $('#savedDecks').value = name; toast('Saved "' + name + '"'); }
+    if (putDecks(all, meta)) { refreshSaved(); $('#savedDecks').value = name; toast('Saved "' + name + '"'); keepData(); }
   });
   $('#savedDecks').addEventListener('change', async e => {
     const v = e.target.value, b = builtinByValue(v);
     if (b) {
       try { $('#deckText').value = await builtinText(b); } catch (err) { return toast('Could not open the deck: ' + err.message); }
       localStorage.setItem('gf_last', $('#deckText').value);
-      await loadDeck();
+      loadingBuiltin = true; try { await loadDeck(); } finally { loadingBuiltin = false; }
       applyBuiltinPolicy(b);
       return;
     }
     const all = getDecks();
     if (all[v] != null) { $('#deckText').value = all[v]; localStorage.setItem('gf_last', $('#deckText').value); loadDeck(); }
   });
+
+
+  // ---- deck links: a whole decklist packed into an ICEYfish web address (#deck=…&name=…) ----
+  // Opening the link, or pasting it into the decklist box, adds the deck to your saved decks. Nothing goes through a server:
+  // the list travels inside the link itself (squeezed with the browser's own deflate when it has it, "z." links; plain otherwise, "p.").
+  const b64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64u = str => { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; };
+  const pipe = async (bytes, Stream, mode) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new Stream(mode))).arrayBuffer());
+  async function packDeck(text) {
+    const raw = new TextEncoder().encode(text);
+    if (typeof CompressionStream !== 'undefined') { try { return 'z.' + b64u(await pipe(raw, CompressionStream, 'deflate-raw')); } catch (e) { /* fall through to a plain link */ } }
+    return 'p.' + b64u(raw);
+  }
+  async function unpackDeck(code) {
+    const kind = code.slice(0, 2), bytes = unb64u(code.slice(2));
+    if (kind === 'z.') { if (typeof DecompressionStream === 'undefined') throw new Error('this browser cannot open squeezed deck links; update it and try again'); return new TextDecoder().decode(await pipe(bytes, DecompressionStream, 'deflate-raw')); }
+    if (kind === 'p.') return new TextDecoder().decode(bytes);
+    throw new Error('this is not an ICEYfish deck link');
+  }
+  async function deckLink(name, text) {
+    const u = new URL(location.href); u.search = ''; u.hash = 'deck=' + (await packDeck(text)) + '&name=' + encodeURIComponent(name);
+    return u.toString();
+  }
+  // the deck in a link (a full address or just "#deck=…"), or null
+  function readLink(s) {
+    const m = String(s || '').trim().match(/(?:^|[#&])deck=([A-Za-z0-9._-]+)(?:&name=([^&\s]*))?/);
+    return m ? { code: m[1], name: m[2] ? decodeURIComponent(m[2]) : '' } : null;
+  }
+  async function addFromLink(link, how) {
+    let text;
+    try { text = await unpackDeck(link.code); } catch (e) { toast('Could not open the deck link: ' + e.message); return false; }
+    if (!text.trim()) { toast('That deck link is empty'); return false; }
+    const d = getDecks(), m = getMeta(), base = (link.name || summarize(text) || 'Linked deck').trim();
+    const same = Object.keys(d).find(n => d[n] === text);
+    const name = same || uniqueName(base, d);
+    if (!same) { d[name] = text; m[name] = { saved: Date.now(), from: 'link' }; if (!putDecks(d, m)) return false; }
+    refreshSaved(); $('#deckText').value = text; localStorage.setItem('gf_last', text); $('#savedDecks').value = name;
+    toast(same ? `"${name}" is already in your saved decks` : `Added "${name}" to your saved decks${how ? ' ' + how : ''}`);
+    keepData(); loadDeck();
+    return true;
+  }
+  async function shareDeck(name, text) {
+    const url = await deckLink(name, text);
+    if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ title: name + ' · ICEYfish deck', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(url); toast('Deck link copied. Anyone who opens it gets this deck in their saved decks.'); }
+    catch (e) { prompt('Copy this deck link:', url); }
+  }
+  // a deck link opened from outside: add it, then tidy the address bar so a reload does not add it again
+  async function openLinkInAddress() {
+    const link = readLink(location.hash); if (!link) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    await addFromLink(link, 'from the link');
+  }
+  window.addEventListener('hashchange', openLinkInAddress);
+  // links from deck sites cannot be read here (they do not let other web pages fetch their decks), so say what to do instead
+  const deckSite = s => (String(s).trim().match(/^https?:\/\/(?:www\.)?(moxfield|archidekt|tappedout|mtggoldfish|deckstats|scryfall)\.(?:com|net)\//i) || [])[1];
+
+  // ---- keeping your data: ask the browser to keep this site's storage, and remember when you last made a backup ----
+  function keepData() { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* older browser */ } }
+  const BACKUP_KEYS = ['gf_policy', 'gf_tags', 'isf_look', 'isf_matfit', 'isf_sound', 'isf_speed10', 'isf_autosave'];          // besides the decks: lab choices, your tags, playmat and sleeves, playmat positions, sound, speed
+  function backupInfo() {
+    const t = +localStorage.getItem('isf_last_backup') || 0, el = $('#dmBackup'); if (!el) return;
+    const n = Object.keys(getDecks()).length;
+    el.textContent = t ? `Last backup: ${new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : (n ? 'No backup yet' : '');
+    el.classList.toggle('warn', !!n && (!t || Date.now() - t > 14 * 864e5));
+  }
 
   // ---- the manager panel ----
   const dm = $('#deckManager');
@@ -503,6 +582,7 @@
         try { await navigator.clipboard.writeText(all[name]); toast('Decklist copied'); }
         catch (e) { $('#deckText').value = all[name]; toast('Could not use the clipboard, so the list was put in the box instead'); closeManager(); }
       }, 'Copy the decklist text');
+      btn('Share link', 'ghost', () => shareDeck(name, all[name]), 'A link that adds this deck to anyone\'s saved decks when they open it');
       btn('Export', 'ghost', () => download(fileSafe(name) + '.txt', all[name]), 'Download as a .txt file');
       btn('Delete', 'ghost danger', () => {
         if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
@@ -513,7 +593,9 @@
       list.appendChild(row);
     });
   }
-  function openManager() { renderManager(); dm.classList.add('show'); document.body.classList.add('modal-open'); }
+  $('#dmAutoSave').checked = autoSaveOn();
+  $('#dmAutoSave').addEventListener('change', e => { localStorage.setItem('isf_autosave', e.target.checked ? '1' : '0'); toast(e.target.checked ? 'Every deck you load is saved here from now on' : 'Only decks you save yourself are kept'); });
+  function openManager() { renderManager(); backupInfo(); dm.classList.add('show'); document.body.classList.add('modal-open'); }
   function closeManager() { dm.classList.remove('show'); document.body.classList.remove('modal-open'); }
   $('#manageDecks').addEventListener('click', openManager);
   $('#dmClose').addEventListener('click', closeManager);
@@ -523,7 +605,9 @@
   $('#dmExportAll').addEventListener('click', () => {
     const all = getDecks();
     if (!Object.keys(all).length) return toast('Nothing to export yet');
-    download('iceyfish-decks.json', JSON.stringify({ app: 'ICEYfish', version: 1, exported: new Date().toISOString(), decks: all }, null, 2), 'application/json');
+    const extra = {}; BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v != null) extra[k] = v; });
+    download('iceyfish-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'ICEYfish', version: 2, exported: new Date().toISOString(), decks: all, meta: getMeta(), settings: extra }, null, 2), 'application/json');
+    localStorage.setItem('isf_last_backup', String(Date.now())); backupInfo(); toast('Backup saved to your downloads. Keep it somewhere safe (Files, iCloud Drive, Google Drive).');
   });
   $('#dmImport').addEventListener('click', () => $('#dmFile').click());
   $('#dmFile').addEventListener('change', async e => {
@@ -536,7 +620,11 @@
       const j = JSON.parse(text);
       const incoming = j && j.decks && typeof j.decks === 'object' ? j.decks : null;
       if (!incoming) throw new Error('not a backup');
-      for (const [n, t] of Object.entries(incoming)) { if (typeof t !== 'string') continue; const to = uniqueName(n, d); d[to] = t; m[to] = { saved: Date.now() }; added++; }
+      for (const [n, t] of Object.entries(incoming)) { if (typeof t !== 'string') continue; if (d[n] === t) continue; const to = uniqueName(n, d); d[to] = t; m[to] = (j.meta && j.meta[n]) || { saved: Date.now() }; added++; }          // the same deck twice is skipped
+      if (j.settings && typeof j.settings === 'object') for (const [k, v] of Object.entries(j.settings)) {
+        if (!BACKUP_KEYS.includes(k) || typeof v !== 'string') continue;
+        try { if (k === 'gf_policy' || k === 'gf_tags') { const cur = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify(Object.assign(JSON.parse(v), cur))); } else localStorage.setItem(k, v); } catch (e2) { /* skip a damaged entry */ }
+      }
     } catch (err) {
       // not a backup file: treat it as one decklist
       if (!text.trim()) return toast('That file is empty');
@@ -548,6 +636,7 @@
   });
   refreshSaved();
   loadBuiltinIndex();
+  openLinkInAddress();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));
 

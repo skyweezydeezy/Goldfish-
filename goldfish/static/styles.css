@@ -974,3 +974,9 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .mat-adjust-bar { position: fixed; z-index: 91; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
   padding: 8px 10px 8px 14px; border-radius: 12px; background: rgba(10,22,34,.96); box-shadow: 0 6px 24px rgba(0,0,0,.5), inset 0 0 0 1px rgba(143,216,255,.25); font-size: 13px; max-width: calc(100vw - 20px); }
 .mat-adjust-bar span { color: var(--text-secondary); }
+
+/* saved decks: the "how your data works" fold and the last-backup line */
+.data-help { margin: 2px 0 8px; }
+.data-help .fold-body p { margin: 6px 0; line-height: 1.45; }
+.dm-backup { align-self: center; margin-left: auto; }
+.dm-backup.warn { color: var(--warning, #fab219); }

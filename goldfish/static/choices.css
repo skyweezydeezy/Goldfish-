@@ -34,6 +34,33 @@
 .ch-auto small { color: var(--muted); font-size: 11.5px; }
 .ch-sheet.mode .ch-opts { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 
+/* ---------- a library search, the Arena way: the cards fanned out; tap one (it lifts), then Submit ---------- */
+.ch-dest { font-size: 13px; color: var(--text-secondary, #b9d0e0); }
+.ch-dest b { color: #f5d17a; }
+.ch-picked { font-size: 12.5px; color: var(--text-secondary, #b9d0e0); min-height: 1.3em; overflow-wrap: anywhere; }
+.ch-took { position: absolute; right: 4px; bottom: 26px; z-index: 4; padding: 0 6px; border-radius: 99px; font-size: 12px; font-weight: 800; color: #08121a; background: #7fdc7f; }
+.ch-took:empty { display: none; }
+.ch-sheet.fanned .ch-opts { --fan-w: 128px; display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 0; overflow: auto hidden; padding: 30px 26px 12px; min-height: calc(var(--fan-w, 128px) * 1.4 + 70px); scroll-snap-type: x proximity; }
+.ch-sheet.fanned .ch-opts.arc { justify-content: center; overflow: visible; }
+.ch-sheet.fanned .ch-opt { --fan-w: 128px; flex: 0 0 var(--fan-w); width: var(--fan-w); margin-left: calc(var(--fan-w) * -0.42); padding: 0; background: none; border: 0; border-radius: 8px; scroll-snap-align: center;
+  transform: translateY(var(--dip, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 120%; transition: transform .16s ease, filter .16s; }
+.ch-sheet.fanned .ch-opts:not(.arc) .ch-opt { margin-left: calc(var(--fan-w) * -0.55); }
+.ch-sheet.fanned .ch-opt:first-child { margin-left: 0; }
+.ch-sheet.fanned .ch-opt:hover { transform: translateY(calc(var(--dip, 0px) - 14px)) rotate(var(--rot, 0deg)); z-index: 90 !important; }
+.ch-sheet.fanned .ch-opt.sel { transform: translateY(calc(var(--dip, 0px) - 28px)) rotate(var(--rot, 0deg)); z-index: 95 !important; border: 0; box-shadow: none; }
+.ch-sheet.fanned .ch-opt.sel .mtg { box-shadow: 0 0 0 3px #7fdc7f, 0 0 22px rgba(12,163,12,.85); }
+.ch-sheet.fanned .ch-opt .mtg { box-shadow: 0 4px 14px rgba(0,0,0,.65); }
+.ch-sheet.fanned .ch-name { display: none; }                  /* overlapping cards: the names would pile up; the picture, the tooltip and "Selected:" name them */
+.ch-sheet.fanned .ch-main { flex: none; }
+.ch-sheet.fanned .ch-opts { flex: 1 1 auto; min-width: 0; }
+.ch-sheet.fanned .ch-took { bottom: 6px; }
+.ch-sheet.fanned .ch-star { top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.ch-sheet.fanned .ch-zoom { top: 6px; right: 6px; }
+@media (max-width: 600px) {
+  .ch-sheet.fanned .ch-opts, .ch-sheet.fanned .ch-opt { --fan-w: 92px; }
+  .ch-sheet.fanned .ch-opts { padding: 26px 18px 10px; }
+}
+
 /* what is asked and what is not, under the setup row */
 .vs-what { margin-top: 6px; }
 .vs-what summary { cursor: pointer; color: var(--text-secondary, #b9d0e0); }

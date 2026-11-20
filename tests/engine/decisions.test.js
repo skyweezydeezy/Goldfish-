@@ -82,7 +82,38 @@ const other = q => q.options.findIndex(o => !o.def);
   answer(p, run, [() => want.k]);
   check('a search that puts the card onto the battlefield does so with the chosen card', /onto the battlefield/.test(q.text) && q.options.every(o => o.card.a.isCreature) && a.battlefield.some(x => x.inst && x.inst.iid === want.iid), want.name); }
 
-// ---- 2. targets and modes
+// ---- 1b. land searches: ramp spells (Cultivate, Farseek) and fetch lands
+{ const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3); const cu = toHand(a, /^Cultivate$/);
+  const { q, still } = open(p, cast(cu.iid));
+  const basics = a.library.filter(i => i.card.a.isLand && /\bBasic\b/.test(i.card.type_line)).length;
+  check('Cultivate asks for up to two basic lands, every basic in the library offered, and says where they go', !!q && q.kind === 'search' && q.multi && q.min === 0 && q.max === 2 && q.options.length === basics && q.options.every(o => /\bBasic\b/.test(o.card.type_line)) && /one goes onto the battlefield tapped and the other into your hand/.test(q.text) && q.dest === '1 to the battlefield, tapped, 1 to your hand' && still, q && q.text + ' / ' + q.dest);
+  check('...the autopilot\'s two lands are the default', q.def.length === 2);
+  const names = [...new Set(q.options.map(o => o.name))]; const want = q.options.filter(o => o.name === names[0]).slice(0, 1).concat(q.options.filter(o => o.name === names[names.length - 1]).slice(0, 1));
+  const asked = []; D.resolveSync(p.games, 0, cast(cu.iid), qq => { asked.push(qq); return qq.what === 'battlefield' ? qq.options.findIndex(o => o.iid === want[1].iid) : want.map(o => o.k); });
+  const bf = a.battlefield.find(x => x.inst && x.inst.iid === want[1].iid), inHand = a.hand.find(i => i.iid === want[0].iid);
+  check('...two different basics: it then asks which goes onto the battlefield', names.length > 1 && asked.length === 2 && asked[1].what === 'battlefield' && /which land goes onto the battlefield/.test(asked[1].title), asked.map(x => x.title).join(' || '));
+  check('...the one you chose enters tapped, the other is in your hand, the library is shuffled', !!bf && bf.tapped && !!inHand && !a.library.some(i => i.iid === want[0].iid || i.iid === want[1].iid), want.map(o => o.name).join(' + ')); }
+{ const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3); const cu = toHand(a, /^Cultivate$/); const h0 = a.hand.length;
+  answer(p, cast(cu.iid), [() => []]);
+  check('..."up to": you may take none, and nothing is found', a.hand.length === h0 - 1 && a.battlefield.filter(x => x.asLand).length === 3); }
+{ const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3); const cu = toHand(a, /^Cultivate$/); const sw = a.library.filter(i => /^Swamp$/.test(i.card.name)).slice(0, 2);
+  const asked = []; D.resolveSync(p.games, 0, cast(cu.iid), qq => { asked.push(qq); return sw.map(i => qq.options.find(o => o.iid === i.iid).k); });
+  check('...two of the same basic: no second question, one enters and one goes to hand', asked.length === 1 && a.battlefield.some(x => x.inst === sw[0] || x.inst === sw[1]) && a.hand.some(i => i === sw[0] || i === sw[1])); }
+{ const A = table(['frodo', 'zul-ashur']), B = (() => { const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); return p; })();
+  for (const p of [A, B]) { lands(p.games[0], 3); toHand(p.games[0], /^Cultivate$/); }
+  D.resolveSync(A.games, 0, gs => G.castCard(gs[0], gs[0].hand[0]), () => 'auto'); G.castCard(B.games[0], B.games[0].hand[0]);
+  check('...and "the autopilot decides" finds the autopilot\'s lands', D.dump(A.games) === D.dump(B.games)); }
+{ const p = table(['second-breakfast', 'zul-ashur']), a = p.games[0]; const mf = G.enter(a, { iid: a.nextIid++, card: card(a, /^Marsh Flats$/) }, {});          // enter() places it without cracking it
+  const run = gs => { const ev = []; const x = gs[0]; G.crackFetch(x, x.battlefield.find(q => q.iid === mf.iid), ev); return ev; };
+  const { q } = open(p, run);
+  check('cracking a fetch land asks which land to fetch, offering only its land types', !!q && q.kind === 'search' && /Marsh Flats/.test(q.title) && q.options.every(o => /Plains|Swamp/.test(o.card.type_line)) && q.dest === 'Battlefield' && q.options.length >= 2, q && q.options.map(o => o.name).join(', '));
+  const want = q.options.find(o => !o.def);
+  answer(p, run, [() => want.k]);
+  check('...the chosen land enters, the fetch land is gone and 1 life is paid', a.battlefield.some(x => x.inst && x.inst.iid === want.iid) && !a.battlefield.includes(mf) && a.life === 39, want.name); }
+{ const p = table(['death-tax', 'zul-ashur']), a = p.games[0]; const fp = G.enter(a, { iid: a.nextIid++, card: card(a, /^Fabled Passage$/) }, {});
+  const q = open(p, gs => { const x = gs[0]; return G.crackFetch(x, x.battlefield.find(y => y.iid === fp.iid), []); }).q;
+  check('...Fabled Passage: basic lands only, and it enters tapped', !!q && q.options.every(o => /\bBasic\b/.test(o.card.type_line)) && q.dest === 'Battlefield, tapped', q && q.dest); }
+
 { const p = table(['frodo', 'zul-ashur', 'mermaids', 'red-rum-raiders']), [a, b, c, d] = p.games; lands(a, 2, /^Swamp$/); lands(a, 1, /^Plains$/); const au = toHand(a, /^Anguished Unmaking$/);
   const tb = putOn(b, card(b, /Grave Titan/)), tc = creature(c, 2), td = creature(d, 2); lands(d, 1); G.podFocus(a, b);
   const { q, still } = open(p, cast(au.iid));
@@ -108,7 +139,7 @@ const other = q => q.options.findIndex(o => !o.def);
   const { q } = open(p, run); const def = q.options[q.def[0]];
   answer(p, run, [qq => qq.options.findIndex(o => o.iid === c1.iid)]);
   check('counters go on the creature you choose, not the autopilot\'s biggest', q.what === 'counters' && q.options.length === 3 && def.iid !== c1.iid && c1.counters === 2 && !(c3.counters > 0), 'default ' + def.name); }
-{ const p = table(['veyran', 'zul-ashur']), a = p.games[0]; lands(a, 1, /^Island$/); const cu = toHand(a, /^Curiosity$/); const c1 = creature(a, 1), c2 = creature(a, 2);
+{ const p = table(['veyran', 'zul-ashur']), a = p.games[0]; lands(a, 1, /^Island$/); const cu = toHand(a, /^Curiosity$/); const c1 = creature(a, 1), c2 = putOn(a, a.deck.unique.find(c => c.a.isCreature && c.name !== c1.card.name && !c.a.triggers.length));          // two different creatures (two identical ones are not a choice)
   const { q } = open(p, cast(cu.iid)); const k = other(q);
   answer(p, cast(cu.iid), [() => k]);
   const aura = a.battlefield.find(x => x.card.name === 'Curiosity');

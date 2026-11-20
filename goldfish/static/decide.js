@@ -100,6 +100,11 @@
     }).filter(Boolean).join(', then ') || 'no effect the engine plays';
   }
   function filterWords(f) {
+    if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
+      const what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : [].concat(f.land).join(' or ');
+      const n = f.n || 1;
+      return n > 1 ? `up to ${n} ${what} cards` : (/^[aeiou]/i.test(what) ? 'an ' : 'a ') + what + ' card';
+    }
     const w = (f.filters || []).filter(Boolean);
     let t = w.length ? (/^[aeiou]/.test(w[0]) ? 'an ' : 'a ') + w.join(' or ') + ' card' : 'a card';
     if (f.permanent && !w.length) t = 'a permanent card';
@@ -119,7 +124,7 @@
     const optional = !multi && (!!d.optional || d.def == null);
     let min = 1, max = 1;
     if (multi) {
-      if (typeof d.pick === 'number') { min = max = Math.min(d.pick, opts.length); if (opts.length <= d.pick) return null; }
+      if (typeof d.pick === 'number') { max = Math.min(d.pick, opts.length); min = d.upTo ? 0 : max; if (opts.length <= d.pick && !d.upTo) return null; }
       else { max = opts.length; min = defs.length ? 1 : 0; }
     } else if (opts.length === 1 && !optional) return null;
     const src = srcOf(d, g), sn = src ? src.name : null, owner = p => (m && m.players ? m.players.find(x => x.battlefield.includes(p)) : null) || g;
@@ -137,8 +142,12 @@
     });
     const by = d.by && m && m.names ? m.names[d.by.pid] : 'An opponent';
     if (d.kind === 'search') {
-      q.title = `${sn || 'Search'}: search your library`;
-      q.text = `Choose ${filterWords(d.f || {})}. It goes ${(d.f || {}).dest === 'top' ? 'on top of your library' : (d.f || {}).dest === 'battlefield' ? 'onto the battlefield' : 'into your hand'}; your library is shuffled.`;
+      const f = d.f || {}, tapped = f.tapped ? ', tapped' : '';
+      const where = f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
+      q.dest = f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
+      if (d.what === 'battlefield') { q.title = `${sn || 'Search'}: which land goes onto the battlefield?`; q.text = `Choose ${f.bf === 1 ? 'the land' : f.bf + ' lands'} to put onto the battlefield${tapped}; the rest go into your hand.`; }
+      else { q.title = `${sn || 'Search'}: search your ${f.land ? 'library for ' + (f.land === 'basic' ? 'basic lands' : 'a land') : 'library'}`; q.text = `Choose ${filterWords(f)}. ${f.dest === 'split' ? 'Then ' + where.replace(/^one goes/, 'you choose which one goes') : (f.n > 1 ? 'They go ' : 'It goes ') + where}; your library is shuffled.`; }
+      q.fan = true;
     } else if (d.kind === 'target') {
       const f = d.f || {};
       if (d.what === 'removal') { q.title = `${sn || 'Removal'}: choose a target`; q.text = `Choose the permanent to ${f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'put into its owner\'s library' : 'destroy'}.`; q.none = 'No target (nothing happens)'; }
@@ -165,6 +174,8 @@
       q.spell = d.spell.card;
     }
     if (!q.optional) q.none = null;
+    // every option the same card (two Swamps for Cultivate's battlefield half, five identical Soldier tokens): there is nothing to choose
+    if (!q.optional && q.min === q.max && new Set(q.options.map(o => [o.name, o.note, o.owner].join('|'))).size === 1) return null;
     q.sig = [d.kind, d.what || '', min, max, q.options.map(o => o.name + (o.iid == null ? '' : '#' + o.iid)).join('|')].join('/');
     return q;
   }
@@ -305,7 +316,7 @@
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities };
+  const api = { filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -3198,7 +3198,7 @@
           break;
         }
         case 'ramp': {
-          const want = f.bf + f.hand, found = [];
+          const want = f.bf + f.hand; let found = [];
           if (f.wantMissing) {                                                   // Shire Terrace: fetch a basic that makes a color you do not have yet
             const have = new Set(); g.battlefield.forEach(q => { if (q.asLand && q.produce) q.produce.colors.forEach(c => have.add(c)); });
             const c0 = g.library.find(c => c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '') && c.card.a.produce && [...c.card.a.produce.colors].some(x => !have.has(x)));
@@ -3206,6 +3206,12 @@
           }
           for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
           if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
+          if (g.ask && !g.dry && want > 0) {                                     // a person searches: up to that many of the lands the search can find, then (Cultivate) which go onto the battlefield
+            const pool = g.library.filter(c => c.card.a.isLand && (!f.basicOnly || /\bBasic\b/.test(c.card.type_line || '')));
+            const dest = f.bf && f.hand ? 'split' : f.bf ? 'battlefield' : 'hand';
+            found = decide(g, { kind: 'search', options: pool, def: found.slice(), multi: true, pick: want, upTo: true, f: { dest, tapped: !!f.tapped, land: f.basicOnly ? 'basic' : 'land', bf: f.bf, hand: f.hand, n: want }, source });
+            if (dest === 'split' && found.length > f.bf) { const onto = decide(g, { kind: 'search', what: 'battlefield', options: found.slice(), def: found.slice(0, f.bf), multi: true, pick: f.bf, f: { dest: 'battlefield', tapped: !!f.tapped, bf: f.bf }, source }); found = onto.concat(found.filter(c => !onto.includes(c))); }
+          }
           found.forEach(c => g.library.splice(g.library.indexOf(c), 1));
           found.forEach((c, k) => {
             if (k < f.bf) { const perm = enterWithTriggers(g, c, { tapped: f.tapped }, ev); ev.push({ type: 'rampLand', inst: c, perm, source }); }
@@ -5516,6 +5522,7 @@
     g.hand.forEach(i => { if (!i.card.a.isLand) addNeed(i.card); }); g.command.forEach(i => addNeed(i.card));
     let best = null, bs = -Infinity;
     for (const c of cands) { const sc = fetchScore(g, c, spec, have, need); if (sc > bs) { bs = sc; best = c; } }
+    if (g.ask) best = decide(g, { kind: 'search', options: cands, def: best, f: { dest: 'battlefield', tapped: !!spec.tapped, land: spec.types === 'basic' ? 'basic' : spec.types }, source: perm });          // a person picks the land
     if (spec.life) { g.life -= spec.life; checkDeath(g, ev); }
     leavePerm(g, perm, ev);
     g.library.splice(g.library.indexOf(best), 1);

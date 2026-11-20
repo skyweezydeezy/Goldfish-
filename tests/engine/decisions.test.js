@@ -154,7 +154,7 @@ const other = q => q.options.findIndex(o => !o.def);
   const { q } = open(p, run); const def = q.options[q.def[0]];
   answer(p, run, [qq => qq.options.findIndex(o => o.iid === c1.iid)]);
   check('counters go on the creature you choose, not the autopilot\'s biggest', q.what === 'counters' && q.options.length === 3 && def.iid !== c1.iid && c1.counters === 2 && !(c3.counters > 0), 'default ' + def.name); }
-{ const p = table(['veyran', 'zul-ashur']), a = p.games[0]; lands(a, 1, /^Island$/); const cu = toHand(a, /^Curiosity$/); const c1 = creature(a, 1), c2 = putOn(a, a.deck.unique.find(c => c.a.isCreature && c.name !== c1.card.name && !c.a.triggers.length));          // two different creatures (two identical ones are not a choice)
+{ const p = table(['veyran', 'zul-ashur']), a = p.games[0]; lands(a, 1, /^Island$/); const cu = toHand(a, /^Curiosity$/); const c1 = creature(a, 1), c2 = putOn(a, a.deck.unique.find(c => c.a.isCreature && c.name !== c1.card.name && !c.a.triggers.some(t => !t.kinds.includes('etb'))));          // two different creatures (two identical ones are not a choice)
   const { q } = open(p, cast(cu.iid)); const k = other(q);
   answer(p, cast(cu.iid), [() => k]);
   const aura = a.battlefield.find(x => x.card.name === 'Curiosity');

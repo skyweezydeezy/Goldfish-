@@ -402,8 +402,6 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 3,
-   "learnedAt": "2026-11-19",
-   "learnedVs": "field",
    "policy": {
     "tribeFirst": "on"
    },
@@ -417,7 +415,9 @@
      "games": 600,
      "against": "the other commander decks"
     }
-   ]
+   ],
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "gnome-alone.txt",
@@ -630,6 +630,16 @@
     "killBy8": 0.15,
     "games": 400
    }
+  },
+  {
+   "file": "mob-storm.txt",
+   "name": "Mob Storm (Krenko, Mob Boss)",
+   "commanders": [
+    "Krenko, Mob Boss"
+   ],
+   "colors": "R",
+   "cards": 100,
+   "bracket": 3
   },
   {
    "file": "second-draw.txt",

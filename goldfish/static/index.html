@@ -299,12 +299,20 @@
 <div id="deckManager" class="modal" role="dialog" aria-modal="true" aria-labelledby="dmTitle">
   <div class="modal-card">
     <div class="modal-head"><h2 id="dmTitle">Saved decks</h2><span id="dmCount" class="hint"></span><button id="dmClose" class="ghost">Close</button></div>
-    <p class="hint">Decks are saved in this browser only. Use <b>Export all</b> to make a backup you can import on another device.</p>
+    <details class="fold data-help"><summary><b>How your saved data works</b></summary><div class="fold-body">
+      <p><b>Where it lives.</b> Your saved decks, lab choices, tags, playmat and sound settings are kept in this browser, on this device. There is no account and nothing is sent to a server, so a different browser or device starts empty.</p>
+      <p><b>Can it be lost?</b> Yes, in a few cases: clearing your browser's history or website data, private browsing, uninstalling the browser, or a new device. Safari on iPhone and iPad also deletes a website's saved data when the site has not been opened for 7 days. Adding ICEYfish to your Home Screen (Share, then Add to Home Screen) and opening it from there avoids that rule.</p>
+      <p><b>Back up.</b> <b>Export all</b> saves one file with every deck and your settings. Keep it in Files, iCloud Drive or Google Drive. To restore it, or to move to another device, use <b>Import…</b> and pick the file.</p>
+      <p><b>Saving.</b> With <b>Save every deck I load</b> on (below), any list you paste or import is saved here as soon as it loads, named after its commander. Built-in decks are always there and are not copied.</p>
+      <p><b>Share a deck.</b> <b>Share link</b> on a deck makes a link with the whole list inside it. Whoever opens it, or pastes it into the decklist box, gets the deck in their saved decks.</p>
+    </div></details>
     <div id="dmList" class="dm-list"></div>
     <div class="row wrap dm-foot">
       <button id="dmSaveCurrent" class="ghost">Save what's in the box…</button>
       <button id="dmImport" class="ghost">Import…</button>
-      <button id="dmExportAll" class="ghost">Export all</button>
+      <button id="dmExportAll" class="ghost" title="One backup file with every deck and your settings">Export all</button>
+      <span id="dmBackup" class="hint dm-backup"></span>
+      <label class="check small dm-auto" title="A decklist you paste or import is saved here as soon as it loads"><input id="dmAutoSave" type="checkbox" checked> Save every deck I load</label>
       <input id="dmFile" type="file" accept=".json,.txt,application/json,text/plain" hidden>
     </div>
   </div>

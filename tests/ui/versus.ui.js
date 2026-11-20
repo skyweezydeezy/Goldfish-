@@ -45,7 +45,7 @@ const shot = process.env.VERSUS_SHOTS;
     throw new Error('timed out waiting for the game');
   };
   const tabs = await p.$$eval('.tab', ts => ts.map(t => t.textContent.trim()));
-  check('the tab bar has 6 · 1v1 and 7 · Pod', tabs.length === 7 && /6 · 1v1/.test(tabs[5]) && /7 · Pod/.test(tabs[6]), tabs.join(' | '));
+  check('the tab bar has one word per tab, ending Duel and Pod', tabs.length === 7 && tabs.join(' ') === 'Build Mulligan Practice Simulate Odds Duel Pod' && tabs.every(t => !/\s/.test(t)), tabs.join(' | '));
 
   // ---- 1v1, you play ----
   await p.click('[data-tab=duel]');

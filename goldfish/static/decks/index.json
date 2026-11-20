@@ -151,8 +151,6 @@
    ],
    "colors": "UBR",
    "cards": 100,
-   "learnedAt": "2026-11-19",
-   "learnedVs": "field",
    "policy": {
     "comboChase": "eager"
    },
@@ -160,13 +158,15 @@
     {
      "choice": "Tutors and combo pieces: how hard to chase the combo",
      "picked": "Eager: fetch the next-to-last piece over ramp",
-     "z": 4.0,
+     "z": 4,
      "confirmZ": 3.5,
      "games": 800,
      "against": "goldfish",
      "note": "average kill turn 8.78 to 8.60"
     }
-   ]
+   ],
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "nights-curfew.txt",
@@ -188,8 +188,6 @@
    "colors": "WUB",
    "cards": 100,
    "bracket": 4,
-   "learnedAt": "2026-11-19",
-   "learnedVs": "field",
    "policy": {
     "comboChase": "eager"
    },
@@ -203,7 +201,9 @@
      "against": "goldfish",
      "note": "average kill turn 9.68 to 9.45"
     }
-   ]
+   ],
+   "learnedAt": "2026-11-19",
+   "learnedVs": "field"
   },
   {
    "file": "red-rum-raiders.txt",
@@ -312,8 +312,6 @@
    "colors": "UR",
    "cards": 100,
    "bracket": 4,
-   "learnedAt": "2026-11-20",
-   "learnedVs": "field",
    "policy": {
     "counterWorth": "two"
    },
@@ -321,13 +319,15 @@
     {
      "choice": "Countering: which spells are worth a counter",
      "picked": "Mana value 2 or more",
-     "z": 3.0,
-     "confirmZ": 3.0,
+     "z": 3,
+     "confirmZ": 3,
      "gain": 1.3,
      "games": 900,
      "against": "Red Rum Raiders, Mermaids, Second Draw"
     }
-   ]
+   ],
+   "learnedAt": "2026-11-20",
+   "learnedVs": "field"
   },
   {
    "file": "finale-of-the-floodborn.txt",
@@ -434,7 +434,7 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "bracket": 5,
+   "bracket": 4,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -515,6 +515,16 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
+  },
+  {
+   "file": "final-heaven.txt",
+   "name": "Final Heaven (Tifa Lockhart)",
+   "commanders": [
+    "Tifa Lockhart"
+   ],
+   "colors": "G",
+   "cards": 100,
+   "bracket": 3
   },
   {
    "file": "ice-age-engine.txt",

@@ -21,13 +21,13 @@
 <header class="topbar">
   <div class="brand"><img class="logo" src="logo.svg" width="40" height="40" alt=""><span class="brand-text">I See <b>Fish</b></span></div>
   <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="deck"><span class="tab-n">1 · </span>Deck</button>
-    <button class="tab" data-tab="hands"><span class="tab-n">2 · </span>Opening Hands</button>
-    <button class="tab" data-tab="table"><span class="tab-n">3 · </span>Goldfish Table</button>
-    <button class="tab" data-tab="sim"><span class="tab-n">4 · </span><span class="tab-full">Simulation</span><span class="tab-short">Sim</span></button>
-    <button class="tab" data-tab="odds"><span class="tab-n">5 · </span>Draw Odds</button>
-    <button class="tab" data-tab="duel"><span class="tab-n">6 · </span>1v1</button>
-    <button class="tab" data-tab="pod"><span class="tab-n">7 · </span>Pod</button>
+    <button class="tab active" data-tab="deck" title="Load and read your deck: strengths, tags, curve">Build</button>
+    <button class="tab" data-tab="hands" title="Draw opening hands and decide what to keep">Mulligan</button>
+    <button class="tab" data-tab="table" title="Play your deck by hand against a goldfish">Practice</button>
+    <button class="tab" data-tab="sim" title="Thousands of autopiloted games: kill turn, mana, suggestions">Simulate</button>
+    <button class="tab" data-tab="odds" title="The chance of drawing the cards you need, turn by turn">Odds</button>
+    <button class="tab" data-tab="duel" title="Play one opponent, Arena-style">Duel</button>
+    <button class="tab" data-tab="pod" title="Play a four-player Commander pod">Pod</button>
   </nav>
   <div id="mirrorStatus" class="status-pill">checking ScryMirror…</div>
   <button id="appVersion" class="status-pill app-ver" type="button" hidden title="I See Fish version"></button>
@@ -74,7 +74,7 @@
           <div class="row wrap">
             <input id="tagQuery" type="text" list="tagList" autocomplete="off" spellcheck="false" placeholder="e.g. role:ramp -type:land   ·   trigger:etb tribe:merfolk   ·   draw,tutor">
             <button id="tagClear" class="ghost">Clear</button>
-            <button id="tagToOdds" class="ghost" title="Send these cards to the Draw Odds tab">Draw odds</button>
+            <button id="tagToOdds" class="ghost" title="Send these cards to the Odds tab">Draw odds</button>
             <button id="tagMake" class="ghost">Tag these…</button>
           </div>
           <datalist id="tagList"></datalist>
@@ -138,7 +138,7 @@
       <button class="ghost open-looks" title="Choose a playmat and sleeves">🎨<span class="bl"> Playmat &amp; sleeves</span></button>
       <button class="ghost open-sound table-sound" title="Music and sound effects"><span class="sound-ic">🔊</span><span class="bl"> Sound</span></button>
       <label class="check small" title="Fast animations"><input id="tFast" type="checkbox"> ⚡<span class="bl"> Fast</span></label>
-      <span class="hint">Click any card for its menu: play or tap it, View card (prices, printings, shops), counters, moving it. Ctrl/⌘-click plays or taps it at once; Shift-click casts it ignoring mana.</span>
+      <span class="hint" data-fold>Click any card for its menu: play or tap it, View card (prices, printings, shops), counters, moving it. Ctrl/⌘-click plays or taps it at once; Shift-click casts it ignoring mana.</span>
     </div>
     <!-- autopilot speed: its own bar across the top of the table, so it is always in sight -->
     <div class="speed-bar">

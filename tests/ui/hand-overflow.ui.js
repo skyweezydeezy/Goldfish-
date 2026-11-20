@@ -22,6 +22,7 @@ const shot = process.env.SHOTS;
       } catch (e) { route.abort(); }
     });
     const p = await ctx.newPage();
+    await p.addInitScript(() => { try { const k = 'isf_sound'; const v = JSON.parse(localStorage.getItem(k) || '{}'); v.bg = false; localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} });          // the one-time music question is answered already
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto('http://127.0.0.1:8800/');
     await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8'));
@@ -39,11 +40,13 @@ const shot = process.env.SHOTS;
     await p.evaluate(() => { const gm = window.__isfVersus.duel.game, g = gm.games[gm.human]; while (g.hand.length < 40 && g.library.length) g.hand.push(g.library.shift()); window.__isfVersus.redraw('duel'); });
     await p.$eval('#tab-duel .vs-screen', e => { const bar = document.querySelector('.topbar'); window.scrollTo(0, e.getBoundingClientRect().top + scrollY - bar.offsetHeight - 4); });
     await p.waitForTimeout(700);
+    await p.evaluate(() => { const a = document.querySelector('#bgAsk'); if (a && a.offsetParent) { const no = [...a.querySelectorAll('button')].find(b => /no/i.test(b.textContent)) || a.querySelector('button'); if (no) no.click(); } });          // answer the one-time music question first, as a person would
+    await p.waitForTimeout(300);
     if (shot) await p.screenshot({ path: path.join(shot, `hand40-${name.replace(/ /g, '-')}.png`) });
     const m = await p.evaluate(() => {
       const root = document.querySelector('#tab-duel'), hit = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
       const hand = [...root.querySelectorAll('.vs-hand .mtg')].map(e => e.getBoundingClientRect()), btns = [...root.querySelectorAll('.vs-me button')].filter(e => e.offsetParent);
-      const covered = btns.filter(e => { const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; const top = document.elementFromPoint(x, y); return !top || !(top === e || e.contains(top)); }).map(e => e.textContent.trim());
+      const covered = btns.filter(e => { const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; const top = document.elementFromPoint(x, y); return !top || !(top === e || e.contains(top)); }).map(e => { const r = e.getBoundingClientRect(), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); let q = top, path = []; while (q && path.length < 5) { path.push(q.tagName + (q.id ? '#' + q.id : '') + (q.className ? '.' + q.className.toString().split(' ')[0] : '')); q = q.parentElement; } return e.textContent.trim() + ' (under ' + path.join(' < ') + ')'; });
       const overlap = btns.filter(e => hand.some(r => hit(r, e.getBoundingClientRect()))).map(e => e.textContent.trim());
       const hb = root.querySelector('.vs-hand').getBoundingClientRect();
       return { n: hand.length, btns: btns.length, covered, overlap, handIn: hand.every(r => r.left >= hb.left - 1 && r.right <= hb.right + 1 && r.right <= innerWidth + 1), pageW: document.documentElement.scrollWidth, vw: innerWidth };

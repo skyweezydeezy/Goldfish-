@@ -1,0 +1,66 @@
+// Keyword mechanics the Deck tab used to mark as read without the engine playing them: affinity, delve, convoke, storm, exalted, evoke,
+// kicker, suspend (and cards with no mana cost), Mizzix's Mastery's overload, and "mill N cards". Every card comes from the set database.
+const fs = require('fs'), path = require('path');
+const ROOT = path.join(__dirname, '..', '..');
+const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js'));
+const D = path.join(ROOT, 'goldfish', 'static', 'data', 'sets');
+const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8')), store = {};
+idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
+const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => (x.name === n || x.name.split(' // ')[0] === n) && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
+const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
+const NAMES = ['Ancestral Vision', 'Thoughtcast', 'Treasure Cruise', 'Chord of Calling', 'Grapeshot', 'Noble Hierarch', 'Mulldrifter', 'Into the Roil', 'Rite of Replication', 'Burst Lightning', "Mizzix's Mastery", 'Cyclonic Rift', 'Nyx Weaver', 'Goldlust Triad'];
+const HELPERS = ['Grave Titan', 'Llanowar Elves', 'Shivan Dragon', 'Forest', 'Island', 'Mountain', 'Sol Ring', 'Opt', 'Lightning Bolt'];
+const all = NAMES.concat(HELPERS);
+const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n)));
+const deck = G.buildDeck(cards, base.tokens);
+const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
+let pass = 0, fail = 0;
+const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+const by = n => { const c = deck.unique.find(c => c.name === n || c.name.split(' // ')[0] === n); if (!c) throw new Error('card not in the test deck: ' + n); return c; };
+const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.hand = []; g.battlefield = []; g.graveyard = []; g.exile = []; g.command = []; g.library = g.library.slice(0, 40); return g; };
+const mirror = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return { g, b }; };
+const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
+const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
+const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
+const total = c => c.generic + c.pips.length;
+const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t, colors: colors || [], subtypes: [name], keywords: [], artifact: false, name });
+const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
+
+const names = g => g.battlefield.map(p => p.card.name).join(', ');
+const count = (g, n) => g.battlefield.filter(p => p.card.name === n).length;
+const lab = (n, re) => by(n).a.coverage.find(v => re.test(v.text));
+const lands = (g, n, name) => { for (let i = 0; i < n; i++) putOn(g, name || 'Island'); };
+
+T('no mana cost', () => { const g = bare(); lands(g, 3); const av = inst(g, 'Ancestral Vision'); g.hand = [av]; g.library = g.library.slice(0, 20); G.castOne(g);
+  check('a card with no mana cost is not cast for free (Ancestral Vision is suspended for {U} instead)', !count(g, 'Ancestral Vision') && g.exile.includes(av) && av.suspendN === 4 && g.hand.length === 0, `${av.suspendN} time counters`);
+  for (let t = 0; t < 3; t++) { G.endTurn(g); G.beginTurn(g); } check('...a time counter comes off at each upkeep', av.suspendN === 1, av.suspendN);
+  const h = g.hand.length; G.endTurn(g); G.beginTurn(g); check('...and with the last it is cast for free: three cards', !g.exile.includes(av) && g.hand.length - h >= 3, g.hand.length - h); });
+T('affinity', () => { const g = bare(); const tc = inst(g, 'Thoughtcast'); g.hand = [tc]; check('Thoughtcast costs {4}{U}...', total(G.effectiveCost(g, tc)) === 5); for (let i = 0; i < 3; i++) putOn(g, 'Sol Ring'); check('...and {1}{U} with three artifacts (affinity)', total(G.effectiveCost(g, tc)) === 2, total(G.effectiveCost(g, tc))); });
+T('delve', () => { const g = bare(); lands(g, 2); g.library = g.library.slice(0, 20); const tcr = inst(g, 'Treasure Cruise'); g.hand = [tcr]; g.graveyard = ['Opt', 'Opt', 'Forest', 'Island', 'Opt', 'Lightning Bolt'].map(n => inst(g, n));
+  check('Treasure Cruise: six cards in the graveyard pay six of its eight mana (delve)', total(G.effectiveCost(g, tcr)) === 2, total(G.effectiveCost(g, tcr)));
+  const l0 = g.library.length; G.castOne(g); check('...cast with two lands, the six cards are exiled and you draw three', g.graveyard.filter(i => i !== tcr).length === 0 && g.exile.length === 6 && l0 - g.library.length === 3, `${g.exile.length} exiled, ${l0 - g.library.length} drawn`); });
+T('convoke', () => { const g = bare(); lands(g, 3, 'Forest'); const e1 = putOn(g, 'Llanowar Elves'), t = putOn(g, 'Grave Titan'); e1.sick = true; t.sick = true; g.library = [inst(g, 'Shivan Dragon')].concat(g.library.slice(0, 5)); g.combatDone = true;
+  const ch = inst(g, 'Chord of Calling'); g.hand = [ch]; const c = G.effectiveCost(g, ch); check('Chord of Calling: creatures that will not attack pay its generic mana (convoke; Llanowar Elves makes mana, so it does not)', c.generic === 0 && c.pips.length === 3, JSON.stringify(c));
+  const lab0 = lab('Chord of Calling', /^Convoke/); check('...labelled approximated (colored mana is not paid by creatures)', lab0.tag === 'approx'); });
+T('storm', () => { const g = bare(); lands(g, 4, 'Mountain'); g.hand = [inst(g, 'Opt'), inst(g, 'Opt')]; g.library = g.library.slice(0, 20); mana(g, 2, 'U'); const d0 = g.damage;
+  G.castOne(g); G.castOne(g); g.hand = [inst(g, 'Grapeshot')]; G.castOne(g); check('Grapeshot after two other spells: the spell and two storm copies, 3 damage', g.damage - d0 === 3 && g.graveyard.some(i => i.card.name === 'Grapeshot'), g.damage - d0); });
+T('exalted', () => { const g = bare(); putOn(g, 'Noble Hierarch'); const t = putOn(g, 'Grave Titan'); g.battlefield.find(p => p.card.name === 'Noble Hierarch').tapped = true; g.battlefield.filter(p => p.card.name === 'Zombie').forEach(p => G.removePerm(g, p));
+  const ev = G.combat(g); const dmg = ev.filter(e => e.type === 'attack').reduce((s, e) => s + e.dmg, 0); check('Noble Hierarch: a creature attacking alone gets +1/+1 (exalted)', dmg === 7, dmg);
+  const g2 = bare(); putOn(g2, 'Noble Hierarch').tapped = true; putOn(g2, 'Grave Titan'); putOn(g2, 'Shivan Dragon'); const ev2 = G.combat(g2); check('...not when more creatures attack', !ev2.some(e => e.type === 'note' && /Exalted/.test(e.text))); });
+T('evoke', () => { const g = bare(); lands(g, 3); g.library = g.library.slice(0, 20); const md = inst(g, 'Mulldrifter'); g.hand = [md]; const l0 = g.library.length; G.castOne(g);
+  check('Mulldrifter with three mana: evoked for {2}{U}, draws two, and is sacrificed', l0 - g.library.length === 2 && !count(g, 'Mulldrifter') && g.graveyard.includes(md), names(g));
+  const g2 = bare(); lands(g2, 5); g2.library = g2.library.slice(0, 20); g2.hand = [inst(g2, 'Mulldrifter')]; const l2 = g2.library.length; G.castOne(g2); check('...with five mana it is cast and stays', count(g2, 'Mulldrifter') === 1 && l2 - g2.library.length === 2); });
+T('kicker', () => { const { g: a, b } = mirror(); lands(a, 2); a.library = a.library.slice(0, 20); putOn(b, 'Grave Titan'); a.hand = [inst(a, 'Into the Roil')]; const h0 = a.library.length; G.castOne(a);
+  check('Into the Roil with two mana: not kicked, no card drawn (it used to draw for free)', h0 - a.library.length === 0, h0 - a.library.length);
+  const { g: c, b: d } = mirror(); lands(c, 4); c.library = c.library.slice(0, 20); putOn(d, 'Grave Titan'); c.hand = [inst(c, 'Into the Roil')]; const h1 = c.library.length; G.castOne(c); check('...with four mana it is kicked and draws a card', h1 - c.library.length === 1, h1 - c.library.length);
+  const g = bare(); lands(g, 9); putOn(g, 'Shivan Dragon'); g.hand = [inst(g, 'Rite of Replication')]; G.castOne(g); check('Rite of Replication kicked: five token copies of your best creature', g.battlefield.filter(p => p.token && p.card.name === 'Shivan Dragon').length === 5, names(g));
+  const g2 = bare(); lands(g2, 4); putOn(g2, 'Shivan Dragon'); g2.hand = [inst(g2, 'Rite of Replication')]; G.castOne(g2); check('...unkicked: one copy (it used to make none)', g2.battlefield.filter(p => p.token && p.card.name === 'Shivan Dragon').length === 1, names(g2));
+  const g3 = bare(); lands(g3, 5, 'Mountain'); g3.hand = [inst(g3, 'Burst Lightning')]; const d0 = g3.damage; G.castOne(g3); check('Burst Lightning kicked deals 4 instead of 2', g3.damage - d0 === 4, g3.damage - d0); });
+T('overload', () => { const g = bare(); lands(g, 8, 'Mountain'); g.graveyard = [inst(g, 'Opt'), inst(g, 'Lightning Bolt'), inst(g, 'Opt')]; g.library = g.library.slice(0, 20); g.hand = [inst(g, "Mizzix's Mastery")]; const d0 = g.damage; G.castOne(g);
+  check("Mizzix's Mastery overloaded: every instant and sorcery in your graveyard is copied", g.exile.length === 3 && g.damage - d0 === 3, `${g.exile.length} exiled`);
+  check('Cyclonic Rift\'s overload says "Needs opponent"', lab('Cyclonic Rift', /^Overload/).tag === 'opp'); });
+T('mill', () => { const g = bare(); putOn(g, 'Nyx Weaver'); const l0 = g.library.length; G.beginTurn(g); check('Nyx Weaver mills two at your upkeep ("mill two cards" was read as doing nothing)', l0 - g.library.length === 3 && g.graveyard.length === 2, l0 - g.library.length); });
+T('labels', () => { const n = by('Goldlust Triad').a.coverage.find(v => /^Myriad/.test(v.text)); check('myriad says "Needs opponent"', n.tag === 'opp'); });
+
+console.log(`\n${pass} passed, ${fail} failed`);
+if (fail) process.exit(1);

@@ -65,10 +65,9 @@ const shot = process.env.VERSUS_SHOTS;
   await until('duel', () => { const g = window.__isfVersus.duel.game; return g.phase === 'main'; });
   check('...and you keep six', await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; return g.openingHand.length === 6 && g.bottomed.length === 1; }));
   check('the game shows two seats at 40 life and waits for you on your turn', (await p.$$('#tab-duel .vs-seat')).length === 2 && (await p.$$eval('#tab-duel .vs-life', ls => ls.map(l => l.textContent))).every(t => +t <= 40 && +t > 0));
-  // the deal is random: make sure there is a land in hand (so something is playable), then redraw by opening and closing the attacker chooser
+  // the deal is random: make sure there is a land in hand (so something is playable), then redraw the table
   if (await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; if (g.hand.some(i => i.card.a.isLand)) return false; const k = g.library.findIndex(i => i.card.a.isLand); g.hand.push(g.library.splice(k, 1)[0]); return true; })) {
-    await p.evaluate(() => document.querySelector('#tab-duel .vs-attack').click());
-    await p.evaluate(() => document.querySelector('#tab-duel .vs-attack-cancel').click());
+    await p.evaluate(() => window.__isfVersus.redraw('duel'));
   }
   const hand0 = (await p.$$('#tab-duel .vs-hand .vs-card')).length;
   check('your hand is shown as card pictures, with the playable ones glowing', hand0 >= 5 && (await p.$$('#tab-duel .vs-hand .mtg img')).length >= 1 && (await p.$$('#tab-duel .vs-card.can')).length >= 1, hand0);
@@ -219,9 +218,11 @@ const shot = process.env.VERSUS_SHOTS;
   check('in a pod the three computer players each take a turn between yours', !!pod.over || pod.turns.every(t => t >= 3), JSON.stringify(pod));
   if (!pod.over && await p.evaluate(() => window.__isfVersus.pod.game.phase === 'main')) {
     await p.evaluate(() => document.querySelector('#tab-pod .vs-attack').click());
+    await until('pod', () => { const g = window.__isfVersus.pod.game; return !!g.picking || !!g.over; });
     const targets = (await p.$$('#tab-pod .vs-target option')).length;
     check('the attacker chooser lets you pick which player to attack', targets >= 2, targets);
-    await p.evaluate(() => document.querySelector('#tab-pod .vs-attack-cancel').click());
+    check('...once combat has begun there is no Cancel back to the main phase, only "No attack"', !(await p.$('#tab-pod .vs-attack-cancel')) && !!(await p.$('#tab-pod .vs-noattack')));
+    await p.evaluate(() => document.querySelector('#tab-pod .vs-noattack').click());
   }
   if (shot) await p.screenshot({ path: path.join(shot, 'pod.png'), fullPage: true });
   await p.fill('#tab-pod .vs-n', '30');

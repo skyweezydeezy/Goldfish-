@@ -7,6 +7,7 @@ const DECK = ['1 Isochron Scepter', '1 Chrome Mox', '4 Lightning Bolt', '4 Shock
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 900 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const q = route.request();
     const c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

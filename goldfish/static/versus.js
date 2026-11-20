@@ -17,6 +17,7 @@
     window.__isfAudio.events(ev, { win: gm.human == null || gm.match.winner === gm.human ? 'win' : 'lose' });
   }
   window.__isfVersus = V;                                   // read-only handle for automated UI tests
+  V.redraw = mode => render(mode);                          // ...which draw the table again after arranging a board
 
   // ---------- setup ----------
   function oppOptions() {
@@ -360,8 +361,8 @@
         gm.attacked = true; gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]), true));
       }
     } else if (!gm.attacked && !finished(gm)) {
-      gm.step = 'combat'; const pv = await act(mode, gs => D.turn.declare(gs[pid]));                       // no attack: the beginning of combat still happens (its triggers resolve)
-      if (pv && pv.ev && pv.ev.length) { say(mode, g, 'Beginning of combat.', 'combat'); tell(mode, g, 'combat', pv.ev); }
+      gm.step = 'combat'; const bev = await act(mode, gs => G.beginCombatOnly(gs[pid]));                    // no attack: the beginning of combat still happens (its triggers resolve)
+      if (bev.length) { say(mode, g, 'Beginning of combat.', 'combat'); tell(mode, g, 'combat', bev); }
       if (!finished(gm)) { gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]))); }
     }
     gm.step = 'end';
@@ -677,7 +678,12 @@
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
       if (hit('vs-abil')) return useAbilities(mode);
-      if (hit('vs-attack') && !gm.attacked) return beginAttack(mode);
+      if (hit('vs-attack') && !gm.attacked) {
+        if (!D.quietBeginCombat(gm.games, g.pid)) return beginAttack(mode);          // something happens at the beginning of combat: it resolves first
+        gm.picking = true; gm.target = null;
+        gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
+        return render(mode);
+      }
       if (hit('vs-end')) return endHumanTurn(mode, false);
       if (hit('vs-autoturn')) return endHumanTurn(mode, true);
     });

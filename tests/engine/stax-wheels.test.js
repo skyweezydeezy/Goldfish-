@@ -22,7 +22,7 @@ const total = c => c.generic + c.pips.length;
 
 for (const n of NAMES.slice(0, 8)) check(n + ': every line is read', by(n).a.coverage.every(c => c.status !== 'ignored'), by(n).a.coverage.filter(c => c.status === 'ignored').map(c => c.text.slice(0, 40)).join(' | '));
 
-{ const g = bare(); const w = putOn(g, 'Tangle Wire'); const rocks = ['Sol Ring', 'Arcane Signet', 'Mind Stone'].map(n => putOn(g, n)); const t = putOn(g, 'Grave Titan');
+{ const g = bare(); const w = putOn(g, 'Tangle Wire'); ['Sol Ring', 'Arcane Signet', 'Mind Stone'].map(n => putOn(g, n)); putOn(g, 'Grave Titan');
   check('Tangle Wire enters with four fade counters', w.fade === 4);
   G.beginTurn(g); const tapped = g.battlefield.filter(p => p.tapped).length;
   check('...in your upkeep it loses a counter and taps three permanents, itself first', w.fade === 3 && w.tapped && tapped === 3, `fade ${w.fade}, ${tapped} tapped`);
@@ -40,7 +40,7 @@ for (const n of NAMES.slice(0, 8)) check(n + ': every line is read', by(n).a.cov
   const l1 = g.life; G.applyEffects(g, [{ type: 'gainLife', n: 5 }], null, [], null); check("...and players can't gain life", g.life === l1); }
 { const g = bare(); putOn(g, 'Pestilence'); const t = putOn(g, 'Grave Titan'); mana(g, 8); const l0 = g.life, d0 = g.damage; G.postCombat(g);
   check('Pestilence: spare mana into damage, stopping before it kills your own creature', g.damage - d0 === 5 && g.life === l0 - 5 && g.battlefield.includes(t), `${g.damage - d0} damage`); }
-{ const g = bare(); const r = inst(g, 'Reforge the Soul'); g.library = [r].concat(g.library.slice(0, 30)); const sg = putOn(g, 'Arcane Signet'); putOn(g, 'Sol Ring'); g.hand = [inst(g, 'Mind Stone')]; const ev = G.beginTurn(g);
+{ const g = bare(); const r = inst(g, 'Reforge the Soul'); g.library = [r].concat(g.library.slice(0, 30)); const sg = putOn(g, 'Arcane Signet'); putOn(g, 'Sol Ring'); g.hand = [inst(g, 'Mind Stone')]; G.beginTurn(g);
   check('Miracle: Reforge the Soul drawn first is cast for {1}{R} and wheels', g.graveyard.includes(r) && g.hand.length === 7 && sg.tapped, `hand ${g.hand.length}`); }
 { const g = bare(); const r = inst(g, 'Reforge the Soul'); g.library = [r].concat(g.library.slice(0, 30)); g.hand = [inst(g, 'Sol Ring')]; G.beginTurn(g);
   check('...and stays in hand when the miracle cost cannot be paid', g.hand.includes(r)); }

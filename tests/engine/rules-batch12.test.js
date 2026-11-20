@@ -21,7 +21,6 @@ let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
 const by = n => { const c = deck.unique.find(c => c.name === n || c.name.split(' // ')[0] === n); if (!c) throw new Error('card not in the test deck: ' + n); return c; };
 const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.hand = []; g.battlefield = []; g.graveyard = []; g.exile = []; g.command = []; g.library = g.library.slice(0, 40); return g; };
-const mirror = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return { g, b }; };
 const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
 const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
@@ -75,7 +74,7 @@ T('full throttle', () => { const g = bare(); putOn(g, 'Grave Titan'); G.applyEff
   const fx = by('Full Throttle').a.spellFx; check('...read as two extra combats', fx.filter(f => f.type === 'extraCombat').length === 2 && fx.some(f => f.type === 'throttle'), fx.map(f => f.type).join(',')); });
 T('shredder', () => { const g = bare(); putOn(g, 'Hedge Shredder'); g.library = [inst(g, 'Forest'), inst(g, 'Opt'), inst(g, 'Sol Ring')]; G.applyEffects(g, [{ type: 'mill', n: 2 }], null, [], null); const f = g.battlefield.find(p => p.card.name === 'Forest');
   check('Hedge Shredder: a milled land enters tapped, the other card goes to the graveyard', !!f && f.tapped && g.graveyard.length === 1 && g.graveyard[0].card.name === 'Opt', g.graveyard.map(i => i.card.name).join(','));
-  const g2 = bare(); const hs = putOn(g2, 'Hedge Shredder'); putOn(g2, 'Llanowar Elves'); g2.library = [inst(g2, 'Forest'), inst(g2, 'Forest'), inst(g2, 'Opt')]; G.combat(g2);
+  const g2 = bare(); putOn(g2, 'Hedge Shredder'); putOn(g2, 'Llanowar Elves'); g2.library = [inst(g2, 'Forest'), inst(g2, 'Forest'), inst(g2, 'Opt')]; G.combat(g2);
   check('...crewed, it attacks and mills two lands onto the battlefield', g2.battlefield.filter(p => p.card.name === 'Forest').length === 2, g2.battlefield.map(p => p.card.name).join(', '));
   const g3 = bare(); g3.library = [inst(g3, 'Forest'), inst(g3, 'Opt')]; G.applyEffects(g3, [{ type: 'mill', n: 2 }], null, [], null); check('...without it milled lands stay in the graveyard', g3.graveyard.length === 2); });
 T('alexios', () => { const g = bare(); const a = putOn(g, 'Alexios, Deimos of Kosmos'); a.tapped = true; const c0 = a.counters || 0; G.beginTurn(g); check('Alexios: a +1/+1 counter at each player\'s upkeep (the opponent\'s, then yours) and it is untapped', (a.counters || 0) === c0 + 2 && !a.tapped, a.counters); });
@@ -99,7 +98,7 @@ T('kediss', () => { const cd = G.buildDeck(cards.map(c => Object.assign({}, c, {
   const pod = G.newPod([cd, cd, cd, cd], [O, O, O, O], 5, ['a', 'b', 'c', 'd'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; });
   const g = pod.games[0]; const ct = cd.unique.find(c => c.name === 'Grave Titan'), kc = cd.unique.find(c => c.name === 'Kediss, Emberclaw Familiar');
   for (const c of [kc, ct]) { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: c }, {}, []); p.sick = false; p.enteredTurn = 1; } g.battlefield.forEach(p => { if (p.card.name === 'Kediss, Emberclaw Familiar') p.tapped = true; });
-  const t = G.podFocus(g, pod.games[1]); const before = pod.games.map(x => x.life); G.combat(g); const lost = pod.games.map((x, i) => before[i] - x.life);
+  G.podFocus(g, pod.games[1]); const before = pod.games.map(x => x.life); G.combat(g); const lost = pod.games.map((x, i) => before[i] - x.life);
   check('Kediss in a pod: the commander hits one opponent and the same damage goes to each other opponent', lost[1] >= 6 && lost[2] === 6 && lost[3] === 6 && lost[0] === 0, lost.join(',')); });
 T('labels', () => { const lab = (n, re) => { const c = by(n); return [c].concat(c.a.backCard ? [c.a.backCard] : []).flatMap(x => x.a.coverage).find(v => re.test(v.text)); };
   const um = lab('Undying Malice', /gains/), va = lab('Valgavoth, Terror Eater', /play cards exiled/), ke = lab('Kediss, Emberclaw Familiar', /each other opponent/);

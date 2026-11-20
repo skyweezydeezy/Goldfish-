@@ -20,18 +20,18 @@
 1 Coalition Relic
 1 Grim Monolith
 1 Arcane Signet
-1 Fellwar Stone
+1 Lightning Greaves
 1 Mind Stone
 1 Birds of Paradise
 1 Noble Hierarch
-1 Deathrite Shaman
+1 Ignoble Hierarch
 1 Collected Company
 1 Chord of Calling
 1 Green Sun's Zenith
 1 Survival of the Fittest
 1 Eldritch Evolution
 1 Neoform
-1 Fauna Shaman
+1 Imperial Recruiter
 1 Recruiter of the Guard
 1 Demonic Tutor
 1 Vampiric Tutor
@@ -48,7 +48,7 @@
 1 Force of Will
 1 Force of Negation
 1 Fierce Guardianship
-1 Swan Song
+1 Dovin's Veto
 1 Deflecting Swat
 1 Pact of Negation
 1 Heroic Intervention

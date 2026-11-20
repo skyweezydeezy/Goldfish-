@@ -22,7 +22,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-REPO = os.environ.get("GOLDFISH_UPDATE_REPO", "https://github.com/skyweezydeezy/ICEYfish").rstrip("/")
+REPO = os.environ.get("GOLDFISH_UPDATE_REPO", "https://github.com/skyweezydeezy/Goldfish-").rstrip("/")
 REF = os.environ.get("GOLDFISH_UPDATE_REF", "HEAD")   # HEAD = the repo's default branch; or a branch name, tag or full commit id
 HERE = Path(__file__).resolve().parent
 MANIFEST = ".goldfish-install.json"

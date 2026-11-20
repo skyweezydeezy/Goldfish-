@@ -1525,9 +1525,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 20,
+    "full": 21,
     "approx": 1,
-    "partial": 6,
+    "partial": 5,
     "none": 0
    }
   },

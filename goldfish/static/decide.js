@@ -323,13 +323,18 @@
     try { for (let k = 0; k < 12; k++) { const e = G.useAbilities(g); if (!e.length) break; ev.push(...e); } } finally { g.instantOnly = false; }
     return ev;
   }
+  // does anything happen at the beginning of this player's combat (a trigger, a crewed vehicle)? Looked up on a copy.
+  function quietBeginCombat(games, pid) {
+    const copy = clonePod(games);
+    try { const pv = turn.declare(copy[pid]); return !pv || !pv.ev.length; } catch (e) { return false; }
+  }
   // would that pass do anything right now? (looked up on a copy, so nothing happens)
   function wouldUseAbilities(games, pid) {
     const copy = clonePod(games);
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities };
+  const api = { filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities, quietBeginCombat };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

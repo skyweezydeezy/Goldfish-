@@ -26,7 +26,6 @@ const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, c
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
 const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
 const total = c => c.generic + c.pips.length;
-const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t, colors: colors || [], subtypes: [name], keywords: [], artifact: false, name });
 const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
 
 { const bad = []; for (const n of NAMES) { const c = by(n); for (const x of [c].concat(c.a.backCard ? [c.a.backCard] : [])) for (const v of x.a.coverage) if (v.status === 'ignored') bad.push(n + ': ' + v.text.slice(0, 50)); }
@@ -37,7 +36,7 @@ T('harmonize', () => { const g = bare(); const tp = putOn(g, 'Grave Titan'); tp.
 T('gardens', () => { const g = bare(); putOn(g, 'Sol Ring'); const gd = putOn(g, 'The Mycosynth Gardens'); mana(g, 1); G.useAbilities(g); check('The Mycosynth Gardens becomes a copy of Sol Ring for {1}', gd.card.name === 'Sol Ring' && !gd.asLand && gd.produce && gd.produce.amount === 2, gd.card.name); });
 T('evendo', () => { const g = bare(); const e = putOn(g, 'Evendo, Waking Haven'); e.charge = 12; for (let i = 0; i < 4; i++) putOn(g, 'Llanowar Elves'); g.battlefield.forEach(p => { if (p !== e) p.tapped = true; });
   check('Evendo at 12 charge taps for {G} per creature (four creatures: three net)', G.manaUnits(g).filter(u => u.src === e).length === 3, G.manaUnits(g).filter(u => u.src === e).length); });
-T('kodama west', () => { const g = bare(); putOn(g, 'Kodama of the West Tree'); const t = putOn(g, 'Grave Titan'); g.library = [inst(g, 'Forest')].concat(g.library.slice(0, 5).filter(i => !/Basic/.test(i.card.type_line))); G.combat(g); check('Kodama of the West Tree: no land when no modified creature connects', !g.battlefield.some(p => p.card.name === 'Forest'));
+T('kodama west', () => { const g = bare(); putOn(g, 'Kodama of the West Tree'); putOn(g, 'Grave Titan'); g.library = [inst(g, 'Forest')].concat(g.library.slice(0, 5).filter(i => !/Basic/.test(i.card.type_line))); G.combat(g); check('Kodama of the West Tree: no land when no modified creature connects', !g.battlefield.some(p => p.card.name === 'Forest'));
   const g2 = bare(); putOn(g2, 'Kodama of the West Tree'); const t2 = putOn(g2, 'Grave Titan'); t2.counters = 1; g2.library = [inst(g2, 'Forest')]; G.combat(g2); check('...a basic land when one with a counter does', g2.battlefield.some(p => p.card.name === 'Forest')); });
 T('monument', () => { const g = bare(); putOn(g, 'Monument to Endurance'); g.hand = [inst(g, 'Opt'), inst(g, 'Sol Ring'), inst(g, 'Lightning Bolt'), inst(g, 'Forest'), inst(g, 'Island')]; g.library = g.library.slice(0, 20); const d0 = g.damage;
   for (let i = 0; i < 4; i++) G.discardWorst(g, []);
@@ -81,7 +80,7 @@ T('windcrag', () => { const g = bare(); putOn(g, 'Grave Titan'); putOn(g, 'Grave
   check('Windcrag Siege picks Mardu with two attack triggers out: each Titan attack trigger happens twice (eight Zombies)', w.siegeMode === 'mardu' && g.battlefield.filter(p => p.token).length - z0 === 8, g.battlefield.filter(p => p.token).length - z0);
   const g2 = bare(); const w2 = putOn(g2, 'Windcrag Siege'); G.beginTurn(g2); const gob = g2.battlefield.find(p => p.card.name === 'Goblin'); check('...and Jeskai otherwise: a hasty lifelink Goblin each upkeep', w2.siegeMode === 'jeskai' && !!gob && G.hasKw(g2, gob, 'haste') && G.hasKw(g2, gob, 'lifelink')); });
 T('augur', () => { const g = bare(); putOn(g, 'Augur of Autumn'); putOn(g, 'Llanowar Elves'); g.library = [inst(g, 'Grave Titan')].concat(g.library.slice(0, 5)); check('Augur of Autumn: no coven with two different powers', !G.topCastable(g));
-  putOn(g, 'Sol Ring'); const t = putOn(g, 'Grave Titan'); check('...coven with three: creature spells from the top of the library', G.topCastable(g)); });
+  putOn(g, 'Sol Ring'); putOn(g, 'Grave Titan'); check('...coven with three: creature spells from the top of the library', G.topCastable(g)); });
 T('read only', () => { check('Zuran Orb and Nezahal are read (no use alone; Nezahal protects itself against removal)', ['Zuran Orb', 'Nezahal, Primal Tide'].every(n => by(n).a.coverage.every(v => v.status !== 'ignored'))); });
 
 T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);

@@ -27,7 +27,6 @@ const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, c
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
 const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
 const total = c => c.generic + c.pips.length;
-const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t, colors: colors || [], subtypes: [name], keywords: [], artifact: false, name });
 const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
 
 { const bad = []; for (const n of NAMES) { const c = by(n); for (const x of [c].concat(c.a.backCard ? [c.a.backCard] : [])) for (const v of x.a.coverage) if (v.status === 'ignored') bad.push(n + ': ' + v.text.slice(0, 50)); }
@@ -51,7 +50,7 @@ T("smuggler's surprise", () => { const g = bare(); const ss = inst(g, "Smuggler'
   check('...for {2} more: mill four, a creature and a land among them go to your hand', g2.hand.some(i => i.card.name === 'Grave Titan') && (g2.hand.some(i => i.card.name === 'Forest') || count(g2, 'Forest') === 1) && g2.graveyard.some(i => i.card.name === 'Opt') && g2.graveyard.some(i => i.card.name === 'Sol Ring') && g2.library.length === 1, g2.hand.map(i => i.card.name).join()); });
 T('other spree cards', () => { const g = bare(); g.library = g.library.slice(0, 20); const ts = inst(g, 'Three Steps Ahead'); g.hand = [ts]; mana(g, 3, 'U'); const lib = g.library.length; G.castOne(g);
   check('Three Steps Ahead for {2} more: draw two cards, then discard one (it used to do everything for {U})', lib - g.library.length === 2 && g.graveyard.length === 2 && g.floating.length === 0, `${lib - g.library.length} drawn, ${g.graveyard.length} in the graveyard`);
-  const g2 = bare(); const gh = inst(g2, 'Great Train Heist'); g2.hand = [gh]; putOn(g2, 'Shivan Dragon'); const hz = putOn(g2, 'Grave Titan'); g2.battlefield.filter(p => p.card.name === 'Zombie').forEach(p => G.removePerm(g2, p)); mana(g2, 2, 'R'); G.castOne(g2); G.combat(g2);
+  const g2 = bare(); const gh = inst(g2, 'Great Train Heist'); g2.hand = [gh]; putOn(g2, 'Shivan Dragon'); putOn(g2, 'Grave Titan'); g2.battlefield.filter(p => p.card.name === 'Zombie').forEach(p => G.removePerm(g2, p)); mana(g2, 2, 'R'); G.castOne(g2); G.combat(g2);
   check('Great Train Heist for {R} more: a tapped Treasure for each creature that deals combat damage this turn', g2.battlefield.filter(p => p.card.name === 'Treasure' && p.tapped).length === 2, names(g2));
   const { g: a, b } = mirror(); const fs2 = inst(a, 'Final Showdown'); a.hand = [fs2]; putOn(b, 'Grave Titan'); putOn(b, 'Shivan Dragon'); mana(a, 6, 'W'); G.castOne(a);
   check('Final Showdown for {3}{W}{W} more destroys all creatures when the opponent loses more', !b.battlefield.some(G.isCreaturePerm) && a.graveyard.includes(fs2), names(b));
@@ -60,15 +59,15 @@ T('other spree cards', () => { const g = bare(); g.library = g.library.slice(0, 
   const cm = lab('Three Steps Ahead', /Counter target spell/); check('a mode that needs an opponent is labelled so', cm.tag === 'opp' && cm.status === 'neutral'); });
 
 // ---------- batch 14 ----------
-T('ba sing se', () => { const g = bare(); const bs = putOn(g, 'Ba Sing Se'); const f = putOn(g, 'Forest'); mana(g, 3, 'G'); G.useAbilities(g); const l = g.battlefield.find(p => p.earthbent);
+T('ba sing se', () => { const g = bare(); const bs = putOn(g, 'Ba Sing Se'); putOn(g, 'Forest'); mana(g, 3, 'G'); G.useAbilities(g); const l = g.battlefield.find(p => p.earthbent);
   check('Ba Sing Se: {2}{G}, tap: earthbend 2, a land becomes a 0/0 creature with haste and two +1/+1 counters', !!l && l.counters === 2 && G.isCreaturePerm(l) && G.hasKw(g, l, 'haste') && bs.tapped, names(g));
   const pl = lab('Fire Nation Palace', /firebending/); check('Fire Nation Palace: mana that lasts only through combat is labelled "No solo effect"', pl.tag === 'solo'); });
-T('valakut exploration', () => { const g = bare(); const ve = putOn(g, 'Valakut Exploration'); g.library = [inst(g, 'Shivan Dragon'), inst(g, 'Opt')].concat(g.library.slice(0, 5)); putOn(g, 'Forest'); const x = g.hand.find(i => i.card.name === 'Shivan Dragon');
+T('valakut exploration', () => { const g = bare(); putOn(g, 'Valakut Exploration'); g.library = [inst(g, 'Shivan Dragon'), inst(g, 'Opt')].concat(g.library.slice(0, 5)); putOn(g, 'Forest'); const x = g.hand.find(i => i.card.name === 'Shivan Dragon');
   check('Valakut Exploration: landfall exiles the top card and you may play it', !!x && x.valakutEx === true, g.hand.map(i => i.card.name).join()); const d0 = g.damage; G.endTurn(g);
   check('...not played by your end step: it goes to the graveyard and each opponent takes 1 damage', g.graveyard.includes(x) && !g.hand.includes(x) && g.damage === d0 + 1, g.damage - d0);
   const g2 = bare(); putOn(g2, 'Valakut Exploration'); g2.library = [inst(g2, 'Sol Ring'), inst(g2, 'Opt')].concat(g2.library.slice(0, 5)); putOn(g2, 'Forest'); mana(g2, 1); G.castOne(g2); const d1 = g2.damage; G.endTurn(g2);
   check('...a card you did play deals nothing', count(g2, 'Sol Ring') === 1 && g2.damage === d1, names(g2)); });
-T('siege-gang', () => { const g = bare(); const sg = putOn(g, 'Siege-Gang Commander'); check('Siege-Gang Commander enters with three Goblins', count(g, 'Goblin') === 3);
+T('siege-gang', () => { const g = bare(); putOn(g, 'Siege-Gang Commander'); check('Siege-Gang Commander enters with three Goblins', count(g, 'Goblin') === 3);
   mana(g, 8, 'R'); G.useAbilities(g); check('...the Goblins stay while sacrificing them would not end the game', count(g, 'Goblin') === 3 && g.floating.length === 8);
   g.damage = g.opts.oppLife - 6; G.useAbilities(g); check('...{1}{R} and a Goblin each: three Goblins deal the last 6 damage', g.killTurn != null && count(g, 'Goblin') === 0, `${g.damage} damage, ${count(g, 'Goblin')} goblins`); });
 T('tecutlan', () => { const mk = () => { const g = bare(); const tg = putOn(g, "Brass's Tunnel-Grinder"); tg.card = by("Brass's Tunnel-Grinder").a.backCard; tg.asLand = true; tg.produce = tg.card.a.produce; G.touch(g); g.hand = [inst(g, 'Sol Ring')]; g.library = [inst(g, 'Forest'), inst(g, 'Llanowar Elves'), inst(g, 'Opt')]; return { g, tg }; };
@@ -92,7 +91,7 @@ T('grenzo', () => { const g = bare(); g.library = [inst(g, 'Sol Ring'), inst(g, 
   const v = lab('Grenzo, Havoc Raiser', /Exile the top card/); check('...labelled as approximated (once each combat)', v.tag === 'approx'); });
 T('defiler', () => { const g = bare(); putOn(g, 'Defiler of Vigor'); const el = inst(g, 'Llanowar Elves'), sr = inst(g, 'Sol Ring'); g.hand = [el, sr]; const l0 = g.life;
   check('Defiler of Vigor: a green permanent spell costs {G} less for 2 life', total(G.effectiveCost(g, el)) === 0 && el._defiler === 1 && total(G.effectiveCost(g, sr)) === 1, total(G.effectiveCost(g, el)));
-  g.battlefield.push(...[]); const p = putOn(g, 'Forest'); G.castPhase(g); const e = g.battlefield.find(q => q.card.name === 'Llanowar Elves');
+  g.battlefield.push(...[]); putOn(g, 'Forest'); G.castPhase(g); const e = g.battlefield.find(q => q.card.name === 'Llanowar Elves');
   check('...the life is paid when it is cast, and the Defiler puts a +1/+1 counter on each creature', !!e && g.life === l0 - 2 && g.battlefield.find(q => q.card.name === 'Defiler of Vigor').counters === 1, `${l0 - g.life} life`);
   const g2 = bare(); putOn(g2, 'Defiler of Vigor'); g2.life = 15; const e2 = inst(g2, 'Llanowar Elves'); g2.hand = [e2]; check('...not when it would take you below 15 life', total(G.effectiveCost(g2, e2)) === 1); });
 T('colossus', () => { const g = bare(); const mc = inst(g, 'Metalwork Colossus'); g.graveyard = [mc]; treasure(g, 4); mana(g, 11);
@@ -102,7 +101,7 @@ T('skullspore', () => { const g = bare(); const nx = putOn(g, 'The Skullspore Ne
   check('The Skullspore Nexus: nontoken creatures that die together make one Fungus Dinosaur with their total power', fd.length === 1 && G.powerOf(g, fd[0]) === 7 && G.toughnessOf(g, fd[0]) === 7, fd.map(p => G.powerOf(g, p)).join());
   G.leavePerm(g, g.battlefield.find(p => p.card.name === 'Zombie'), []); G.flushLeaves(g, []); check('...not for a token', count(g, 'Fungus Dinosaur') === 1);
   fd[0].sick = false; mana(g, 2); G.useAbilities(g); check('...{2}, tap: your best attacker has double power this turn', nx.tapped && G.powerOf(g, fd[0]) === 14, G.powerOf(g, fd[0])); });
-T('run away together', () => { const { g: a, b } = mirror(); const bt = putOn(b, 'Grave Titan'); const el = putOn(a, 'Llanowar Elves'); putOn(a, 'Shivan Dragon'); G.applyEffects(a, by('Run Away Together').a.spellFx, null, [], null);
+T('run away together', () => { const { g: a, b } = mirror(); const bt = putOn(b, 'Grave Titan'); putOn(a, 'Llanowar Elves'); putOn(a, 'Shivan Dragon'); G.applyEffects(a, by('Run Away Together').a.spellFx, null, [], null);
   check('Run Away Together (in a match): an opposing creature and one of yours return to their owners\' hands', !b.battlefield.includes(bt) && b.hand.some(i => i.card.name === 'Grave Titan') && a.hand.some(i => i.card.name === 'Llanowar Elves') && count(a, 'Shivan Dragon') === 1, names(a));
   const v = lab('Run Away Together', /different players/); check('...labelled for matches', v.tag === 'opp' && v.mirror === true); });
 T('teval', () => { const g = bare(); g.library = g.library.slice(0, 20); const tj = putOn(g, "Teval's Judgment"); const cs = ['Opt', 'Sol Ring', 'Forest', 'Island'].map(n => inst(g, n)); g.graveyard = cs.slice(); G.castPhase(g); const h0 = g.hand.length;
@@ -111,7 +110,7 @@ T('teval', () => { const g = bare(); g.library = g.library.slice(0, 20); const t
   leave(); check('...the second time this turn: a Treasure', tj.tevalModes.treasure === true && (count(g, 'Treasure') === 1 || g.spentThisTurn > 0), names(g));
   leave(); check('...the third: a 2/2 Zombie Druid', count(g, 'Zombie Druid') === 1, names(g));
   leave(); check('...and nothing a fourth time', count(g, 'Zombie Druid') === 1 && tj.tevalModes.zombie === true); });
-T('horizon explorer', () => { const g = bare(); putOn(g, 'Horizon Explorer'); putOn(g, 'Llanowar Elves'); G.combat(g); const ln = g.battlefield.find(p => p.card.name === 'Lander');
+T('horizon explorer', () => { const g = bare(); putOn(g, 'Horizon Explorer'); putOn(g, 'Llanowar Elves'); G.combat(g); g.battlefield.find(p => p.card.name === 'Lander');
   check('Horizon Explorer: one Lander token when you attack (not one for each attacker)', count(g, 'Lander') === 1, names(g)); g.library = [inst(g, 'Opt'), inst(g, 'Forest')]; mana(g, 2); g.combatDone = true; G.useAbilities(g);
   const f = g.battlefield.find(p => p.card.name === 'Forest'); check('...the Lander: {2}, tap, sacrifice for a tapped basic land', !!f && f.tapped && count(g, 'Lander') === 0, names(g)); });
 T('twinning staff', () => { const g = bare(); g.lastCast = inst(g, 'Lightning Bolt'); putOn(g, 'Twinning Staff'); const d0 = g.damage; G.applyEffects(g, [{ type: 'copyNext', n: 1, times: 1 }], null, [], null);

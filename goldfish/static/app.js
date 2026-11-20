@@ -388,7 +388,7 @@
   // within a bracket by number of colors, then name. Decks without a bracket keep the color grouping after them.
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
   const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
-  const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket : ''}</option>`;
+  const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket + (d.bracketEst ? '?' : '') : ''}</option>`;
   function builtinOptions() {
     let html = '';
     for (let b = 5; b >= 1; b--) {

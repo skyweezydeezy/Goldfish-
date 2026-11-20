@@ -62,6 +62,8 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight
 .status-pill { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); white-space: nowrap; }
 .status-pill.ok::before { content: "● "; color: var(--good); }
 .status-pill.bad::before { content: "● "; color: var(--critical); }
+.app-ver { border: 0; min-height: 0; font: inherit; font-size: 12px; cursor: default; font-variant-numeric: tabular-nums; }
+.app-ver.update { cursor: pointer; color: var(--warning, #fab219); box-shadow: inset 0 0 0 1px rgba(250,178,25,.6); }
 
 main { padding: 16px 18px 60px; max-width: 1700px; margin: 0 auto; }
 .panel { display: none; }
@@ -357,6 +359,7 @@ button, .tab, select, label { touch-action: manipulation; }
   main { padding: 12px 10px 40px; }
   .topbar { gap: 10px; flex-wrap: wrap; }
   .status-pill { order: 3; }
+  .app-ver { margin-left: -4px; }
   .tabs { order: 4; flex-basis: 100%; }
   .brand { font-size: 15px; }
   .deck-input textarea { height: 220px; }
@@ -914,6 +917,12 @@ body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(
   body[data-view=table] .top-sound { display: none; }           /* the topbar is only the tabs here; the button moves into the table's toolbar */
   body[data-view=table] .table-sound { display: inline-block; }
   .sound-row > label { flex-basis: 150px; }
+}
+/* phones: the version pill joins the card-source pill and the sound button on the first row, so the spacing gets tighter */
+@media (max-width: 520px) {
+  .topbar { gap: 6px; padding-left: 12px; padding-right: 12px; }
+  .topbar .status-pill { padding: 4px 7px; font-size: 11px; }
+  .app-ver { margin-left: -2px; }
 }
 .sound-cards { margin: 4px 0 12px; }
 .sound-cards summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }

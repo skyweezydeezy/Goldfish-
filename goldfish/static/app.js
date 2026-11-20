@@ -70,7 +70,7 @@
   });
 
   // The version pill next to the card-source pill: the version this copy of the app is running (the service worker's cache version,
-  // "isf-v54" shows as "v54"). When a newer one has been deployed it says so, and a tap loads it.
+  // "isf-v54" shows as "v54"). When a newer one has been deployed the pill gets a thin outline (the number stays), and a tap loads it.
   (async function showVersion() {
     const el = $('#appVersion'); if (!el) return;
     const num = s => (String(s || '').match(/isf-v(\d+)/) || [])[1] || null;
@@ -80,7 +80,7 @@
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'I See Fish version ' + v;
     if (latest && +latest > +v) {
-      el.textContent = 'v' + v + ' → v' + latest; el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';
+      el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
       el.addEventListener('click', async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* reload anyway */ } location.reload(); });
     }
   })();

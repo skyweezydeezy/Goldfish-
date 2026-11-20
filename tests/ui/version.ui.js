@@ -1,6 +1,6 @@
 // The version pill in the top bar, next to the card-source pill: it shows the version this copy of the app is running (the service
 // worker's cache version, "isf-v54" as "v54"), on a PC, an iPad and an iPhone. With the service worker installed it asks the worker;
-// when a newer version has been deployed it says "v54 → v55" and a tap reloads into it.
+// when a newer version has been deployed it still shows only "v54", outlined, and a tap reloads into it.
 const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 let pass = 0, fail = 0;
@@ -32,7 +32,7 @@ const shot = process.env.SHOTS;
     await ctx.route('**/version.js', async route => { const r = await route.fetch(); route.fulfill({ response: r, body: (await r.text()).replace('ISF_VERSION = ' + V, 'ISF_VERSION = ' + (V + 1)) }); });
     await p.reload(); await p.waitForFunction(() => document.querySelector('#appVersion').classList.contains('update'), null, { timeout: 15000 }).catch(() => {});
     const t = await p.textContent('#appVersion'), cls = await p.$eval('#appVersion', e => e.className);
-    check(`when v${V + 1} is deployed it says "v${V} → v${V + 1}" and offers the update`, t === `v${V} → v${V + 1}` && /update/.test(cls), t);
+    check(`when v${V + 1} is deployed it still shows only v${V}, and offers the update (outline, tap)`, t === `v${V}` && /update/.test(cls), t);
     await ctx.close(); }
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

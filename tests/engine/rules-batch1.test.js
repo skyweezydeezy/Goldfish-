@@ -66,7 +66,7 @@ for (const n of NAMES) check(`${n}: the rules line added in this batch is unders
   check('Madness is parsed with its cost', by('Archfiend of Spite').a.madness && by('Archfiend of Spite').a.madness.generic === 3);
   G.discardWorst(g, []); check('a discarded card with madness is cast for its madness cost', g.battlefield.some(p => p.card.name === 'Archfiend of Spite'), g.battlefield.map(p => p.card.name).join(',')); }
 // Dream Pillager
-{ const g = bare(); g.library = g.library.slice(0, 20); const d = putOn(g, 'Dream Pillager'); const h = g.hand.length; G.combat(g);
+{ const g = bare(); g.library = g.library.slice(0, 20); putOn(g, 'Dream Pillager'); const h = g.hand.length; G.combat(g);
   check('Dream Pillager exiles cards equal to the damage and lets you cast them this turn', g.hand.length > h && g.hand.slice(h).every(i => i.temp === g.turn), g.hand.length - h); }
 
 let crashed = 0;

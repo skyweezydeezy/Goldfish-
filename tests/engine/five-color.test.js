@@ -28,7 +28,7 @@ for (const n of NAMES.slice(0, 5)) check(n + ': every line is read', deck.unique
   check('Najeela pays WUBRG for another combat: more Warriors, more damage, lifelink', w >= 3 && g.damage - d0 >= 20 && g.life > l0, `${w} Warriors, ${g.damage - d0} damage, +${g.life - l0} life`); }
 { const g = bare(); const s = putOn(g, 'Sisay, Weatherlight Captain'); const p0 = G.powerOf(g, s); putOn(g, 'Kiki-Jiki, Mirror Breaker'); putOn(g, 'Grave Titan');
   check('Sisay gets +1/+1 for each color among other legendary permanents (not for a nonlegendary Titan)', p0 === 2 && G.powerOf(g, s) === 3, `${p0} -> ${G.powerOf(g, s)}`); }
-{ const g = bare(); const s = putOn(g, 'Sisay, Weatherlight Captain'); putOn(g, 'Kiki-Jiki, Mirror Breaker'); mana(g, 5); g.library = [inst(g, 'Grave Titan'), inst(g, 'Ragavan, Nimble Pilferer'), inst(g, 'Derevi, Empyrial Tactician')].concat(g.library.slice(0, 10)); G.useAbilities(g);
+{ const g = bare(); putOn(g, 'Sisay, Weatherlight Captain'); putOn(g, 'Kiki-Jiki, Mirror Breaker'); mana(g, 5); g.library = [inst(g, 'Grave Titan'), inst(g, 'Ragavan, Nimble Pilferer'), inst(g, 'Derevi, Empyrial Tactician')].concat(g.library.slice(0, 10)); G.useAbilities(g);
   check('Sisay fetches a legendary permanent with mana value below her power (3)', g.battlefield.some(p => p.card.name === 'Ragavan, Nimble Pilferer') && !g.battlefield.some(p => /Grave Titan|Derevi/.test(p.card.name)), g.battlefield.map(p => p.card.name).join(', ')); }
 { const dk = mk('Derevi, Empyrial Tactician'); const g = bare(dk); const c = g.command[0]; g.cmdrCasts[c.iid] = 3; const cost = G.effectiveCost(g, c);
   check('Derevi comes from the command zone for {1}{G}{W}{U} whatever the tax', !!c && cost.generic + cost.pips.length === 4, cost.generic + cost.pips.length); }

@@ -100,6 +100,7 @@
     }).filter(Boolean).join(', then ') || 'no effect the engine plays';
   }
   function filterWords(f) {
+    if (f.transmute != null) return `a nonland card with mana value ${f.transmute}`;
     if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
       const ls = [].concat(f.land), what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : ls.length > 2 ? ls.slice(0, -1).join(', ') + ', or ' + ls[ls.length - 1] : ls.join(' or ');          // "a Plains, Island, Swamp, or Mountain card"
       const n = f.n || 1;
@@ -174,6 +175,16 @@
       q.title = d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = 'Do not cast it';
+    } else if (d.kind === 'instant') {
+      const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
+      q.step = d.step;
+      q.title = d.step === 'end' ? `End of ${who}'s turn: cast an instant?` : `${who} attacks: cast an instant?`;
+      q.text = d.step === 'end' ? 'You may cast an instant or a card with flash now with the mana you left untapped (only the ones you can pay for are listed).' : 'Attackers are declared. You may cast an instant or a card with flash now (only the ones you can pay for are listed); then combat goes on.';
+      q.none = 'Not now';
+    } else if (d.kind === 'ringbearer') {
+      const lv = Math.min(4, d.n || 1), ord = ['', 'first', 'second', 'third', 'fourth'][d.n] || d.n + 'th';
+      q.title = `💍 The Ring tempts you (${ord} time): choose your Ring-bearer`;
+      q.text = `Your Ring-bearer has: ${G.RING_TEXT.slice(0, lv).map((t, i) => (i + 1) + '. ' + t.replace(/^Your Ring-bearer /, '').replace(/^Whenever your Ring-bearer /, 'whenever it ')).join(' ')}`;
     } else if (d.kind === 'explore') {
       const pn = src ? src.name : 'Your creature';
       q.title = `${pn} explores: ${d.reveal.card.name}`;
@@ -304,9 +315,32 @@
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {
       if (e.type === 'tutor' && e.inst) out.push(mine ? `searched for ${e.inst.card.name}` : 'searched their library for a card');
+      else if (e.type === 'tempt') out.push(`💍 the Ring tempts ${mine ? 'you' : 'them'} (${e.n}${e.n === 1 ? 'st' : e.n === 2 ? 'nd' : e.n === 3 ? 'rd' : 'th'} time)${e.bearer ? ': ' + e.bearer.card.name + ' is the Ring-bearer' : ''}`);
       else if (e.type === 'note' && e.text && EXTRA.test(e.text) && !base.includes(e.text)) out.push(!mine && /^Tutored .* to the top/.test(e.text) ? 'searched their library and put a card on top' : e.text);
     }
     return out;
+  }
+
+  // ---------- a two-faced card: which face is cast ----------
+  // Esika, Queen of the Hollows // The Prismatic Bridge, Jennifer Walters // The Sensational She-Hulk: the face is chosen as it is cast.
+  // The question lists the faces you can pay for right now (as card pictures, each face with its cost and type); the default is the
+  // deck's face setting for that card (Simulation tab), else the front. Returns null when neither face can be cast; q.only when one can.
+  function faceQuestion(g, inst) {
+    const c = inst && inst.card;
+    if (!c || c.layout !== 'modal_dfc' || !c.a.backCard || c.a.isLand) return null;
+    const bc = c.a.backCard, half = (s, i) => String(s || '').split(' // ')[i] || '';
+    const front = G.canPay(G.effectiveCost(g, inst), G.allUnits(g)), back = G.canCastBack(g, inst);
+    if (!front && !back) return null;
+    const set = G.faceChoice(g, c), options = [];
+    if (front) options.push({ face: 0, name: half(c.name, 0), card: c, note: [half(c.mana_cost, 0), half(c.type_line, 0)].filter(Boolean).join(' · ') });
+    if (back) options.push({ face: 1, name: bc.name || half(c.name, 1), card: c, note: [bc.mana_cost, bc.type_line || half(c.type_line, 1)].filter(Boolean).join(' · ') });
+    options.forEach((o, k) => { o.k = k; o.def = false; });
+    const d = options.find(o => o.face === (set === 'back' ? 1 : 0)) || options[0]; d.def = true;
+    const q = { kind: 'face', what: null, seat: g.pid, multi: false, min: 1, max: 1, optional: false, none: null, source: c, options, def: [d.k], only: options.length === 1,
+      title: `${half(c.name, 0)}: which face do you cast?`,
+      text: `A two-faced card: you choose the face as you cast it. ${options.length < 2 ? '' : 'Both faces can be paid for now. '}The starting pick is ${set === 'auto' ? 'the front face' : 'the face set for this card on the Simulation tab'}.` };
+    q.sig = 'face/' + options.map(o => o.name).join('|');
+    return q;
   }
 
   // ---------- the end of another player's turn ----------
@@ -323,13 +357,18 @@
     try { for (let k = 0; k < 12; k++) { const e = G.useAbilities(g); if (!e.length) break; ev.push(...e); } } finally { g.instantOnly = false; }
     return ev;
   }
+  // does anything happen at the beginning of this player's combat (a trigger, a crewed vehicle)? Looked up on a copy.
+  function quietBeginCombat(games, pid) {
+    const copy = clonePod(games);
+    try { const pv = turn.declare(copy[pid]); return !pv || !pv.ev.length; } catch (e) { return false; }
+  }
   // would that pass do anything right now? (looked up on a copy, so nothing happens)
   function wouldUseAbilities(games, pid) {
     const copy = clonePod(games);
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities };
+  const api = { faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities, quietBeginCombat };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

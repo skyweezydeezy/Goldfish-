@@ -33,7 +33,6 @@ const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', fal
 
 { const bad = []; for (const n of NAMES) { const c = by(n); for (const x of [c].concat(c.a.backCard ? [c.a.backCard] : [])) for (const v of x.a.coverage) if (v.status === 'ignored') bad.push(n + ': ' + v.text.slice(0, 50)); }
   check('every rules line of these cards is read', bad.length === 0, bad.slice(0, 4).join(' || ')); }
-const clue = g => G.createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Clue' }, 1, [], null);
 const names = g => g.battlefield.map(p => p.card.name).join(', ');
 const lab = (n, re) => { const c = by(n); return [c].concat(c.a.backCard ? [c.a.backCard] : []).flatMap(x => x.a.coverage).find(v => re.test(v.text)); };
 
@@ -64,7 +63,7 @@ T('elevator', () => { const g = bare(); const e = putOn(g, 'The Eternity Elevato
   const t = putOn(g, 'Grave Titan'); t.sick = true; G.useAbilities(g); check('...station: a creature that is not attacking is tapped for charge counters equal to its power', t.tapped && e.charge === 6, e.charge);
   G.addCounters(g, e, 'charge', 14, [], e); check('...at 20 charge counters it taps for 20 mana of any color', e.charge === 20 && un().length === 20 && un()[0].colors.has('G'), `${e.charge} charge, ${un().length} mana`);
   const el = lab('The Eternity Elevator', /Add X mana/); check('...the level line keeps its "20+ |" and says it is approximated (any colors, not one)', /^20\+ \| /.test(el.text) && el.tag === 'approx', el.text.slice(0, 20)); });
-T("avatar's wrath", () => { const { g: a, b } = mirror(); const t = putOn(a, 'Grave Titan'); const e = putOn(a, 'Llanowar Elves'); G.createTokens(a, tok('Zombie', 2, 2, ['B']), 1, [], null); const bt = putOn(b, 'Grave Titan'); putOn(b, 'Llanowar Elves');
+T("avatar's wrath", () => { const { g: a, b } = mirror(); const t = putOn(a, 'Grave Titan'); const e = putOn(a, 'Llanowar Elves'); G.createTokens(a, tok('Zombie', 2, 2, ['B']), 1, [], null); putOn(b, 'Grave Titan'); putOn(b, 'Llanowar Elves');
   G.applyEffects(a, by("Avatar's Wrath").a.spellFx, null, [], null);
   check("Avatar's Wrath: your best creature stays, every other creature is exiled (tokens are gone)", a.battlefield.includes(t) && !a.battlefield.includes(e) && !a.battlefield.some(p => p.card.name === 'Zombie') && a.exile.some(i => i.card.name === 'Llanowar Elves' && i.airbent), names(a));
   check('...and both of the opponent\'s creatures', !b.battlefield.some(G.isCreaturePerm) && b.exile.filter(i => i.airbent).length === 2, names(b));
@@ -142,7 +141,7 @@ T('class levels', () => { const g = bare(); const c = putOn(g, 'Cleric Class'); 
 T('station levels', () => { const g = bare(); const s = putOn(g, 'The Seriema'); check('The Seriema is not a creature before 7 charge counters', !G.isCreaturePerm(s)); G.addCounters(g, s, 'charge', 7, [], s); check('...at 7 it is a 5/5 artifact creature with flying', G.isCreaturePerm(s) && G.powerOf(g, s) === 5 && G.hasKw(g, s, 'flying'), G.powerOf(g, s));
   const g2 = bare(); g2.library = g2.library.slice(0, 10); const u = putOn(g2, 'Uthros Research Craft'); g2.hand = [inst(g2, 'Sol Ring')]; mana(g2, 1); G.castOne(g2); check('Uthros Research Craft below 3 charge counters: an artifact spell draws nothing', g2.hand.length === 0 && !(u.charge > 0), g2.hand.length);
   G.addCounters(g2, u, 'charge', 3, [], u); g2.hand = [inst(g2, 'Arcane Signet')]; mana(g2, 2); G.castOne(g2); check('...at 3: a card and another charge counter', g2.hand.length === 1 && u.charge === 4, `${g2.hand.length} cards, ${u.charge} charge`); });
-T('cases', () => { const g = bare(); g.library = g.library.slice(0, 10); const c = putOn(g, 'Case of the Ransacked Lab'); g.hand = [inst(g, 'Opt')]; mana(g, 1, 'U'); const h = () => g.hand.length; const la = g.library.length; G.castOne(g);
+T('cases', () => { const g = bare(); g.library = g.library.slice(0, 10); const c = putOn(g, 'Case of the Ransacked Lab'); g.hand = [inst(g, 'Opt')]; mana(g, 1, 'U'); () => g.hand.length; const la = g.library.length; G.castOne(g);
   check('Case of the Ransacked Lab, unsolved: an instant draws only its own card', !c.solved && la - g.library.length === 1, la - g.library.length); g.isCast = 4; G.endTurn(g); check('...solved at the end step after four instants and sorceries in a turn', c.solved === true);
   g.hand = [inst(g, 'Opt')]; mana(g, 1, 'U'); const lb = g.library.length; G.castOne(g); check('...solved: casting an instant draws an extra card', lb - g.library.length === 2, lb - g.library.length); });
 

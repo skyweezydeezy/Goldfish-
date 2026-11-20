@@ -18,7 +18,6 @@ const by = n => deck.unique.find(c => c.name === n);
 const bare = () => { const g = G.newGame(deck, O, 3); g.turn = 6; g.hand = []; g.battlefield = []; g.graveyard = []; g.library = g.library.slice(0, 40); return g; };
 const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; return p; };
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
-const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true }); };
 const next = g => { g.turn++; G.beginTurn(g); };
 const on = (g, re) => g.battlefield.filter(p => re.test(p.card.name));
 
@@ -35,7 +34,7 @@ const on = (g, re) => g.battlefield.filter(p => re.test(p.card.name));
   check('...chapter III pumps Knights +2/+1 and the Saga is sacrificed', G.powerOf(g, k) === 4 && !g.battlefield.includes(s) && g.graveyard.some(i => i.card.name === 'History of Benalia'), G.powerOf(g, k)); }
 { const g = bare(); const s = putOn(g, 'Rite of Belzenlok'); next(g); next(g);
   check('Rite of Belzenlok: four Clerics and then a 6/6 Demon', on(g, /^Cleric$/).length === 4 && on(g, /^Demon$/).length === 1 && !g.battlefield.includes(s), on(g, /^Cleric$/).length); }
-{ const g = bare(); g.hand = [inst(g, 'Sol Ring'), inst(g, 'Grave Titan')]; const s = putOn(g, 'The Flame of Keld');
+{ const g = bare(); g.hand = [inst(g, 'Sol Ring'), inst(g, 'Grave Titan')]; putOn(g, 'The Flame of Keld');
   check('The Flame of Keld: chapter I discards your hand', g.hand.length === 0 && g.graveyard.length === 2);
   next(g); check('...chapter II draws two (plus the draw step)', g.hand.length === 3, g.hand.length); }
 { const g = bare(); const e = putOn(g, 'Llanowar Elves'); const n0 = G.manaUnits(g).length; const gt = putOn(g, 'Grave Titan'); putOn(g, 'Song of Freyalise');
@@ -49,7 +48,7 @@ const on = (g, re) => g.battlefield.filter(p => re.test(p.card.name));
   check('The Eldest Reborn: chapter III puts a creature from a graveyard onto the battlefield', on(g, /^Grave Titan$/).length === 1); }
 { const g = bare(); putOn(g, 'The Cruelty of Gix'); const l0 = g.life, h = g.hand.length; next(g);
   check('The Cruelty of Gix: chapter II loses 3 life and tutors', g.life === l0 - 3 && g.hand.length === h + 2, `${l0 - g.life} life, +${g.hand.length - h} cards`); }
-{ const g = bare(); putOn(g, 'Sol Ring'); const gt = putOn(g, 'Grave Titan'); putOn(g, 'Summon: Bahamut'); next(g); next(g); const d0 = g.damage; next(g);
+{ const g = bare(); putOn(g, 'Sol Ring'); putOn(g, 'Grave Titan'); putOn(g, 'Summon: Bahamut'); next(g); next(g); const d0 = g.damage; next(g);
   check('Summon: Bahamut: chapter IV deals the total mana value of your other permanents', g.damage - d0 >= 7 && !on(g, /Bahamut/).length, g.damage - d0); }
 { const g = bare(); g.library = [inst(g, 'Sol Ring'), inst(g, 'Lightning Bolt'), inst(g, 'Grave Titan'), inst(g, 'Llanowar Elves')].concat(g.library.slice(0, 10)); const l0 = g.library.length; putOn(g, 'Showdown of the Skalds');
   check('Showdown of the Skalds: chapter I exiles the top four cards to play', g.library.length === l0 - 4, l0 - g.library.length); }

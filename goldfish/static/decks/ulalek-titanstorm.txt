@@ -1,4 +1,5 @@
 // Ulalek Titanstorm (Ulalek, Fused Atrocity)
+// Bracket 4
 // COMMANDER
 1 Ulalek, Fused Atrocity (M3C) 143
 // DECK

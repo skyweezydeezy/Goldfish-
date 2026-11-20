@@ -113,8 +113,8 @@
   }
 
   // Every rules line that is not simulated says why: it needs an opponent, does nothing solo, or is still in development.
-  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated' };
-  const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly' };
+  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated', unsim: "Can't be simulated" };
+  const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly', unsim: 'Depends on something outside the game (card art, a toy, the time of day, a random card name), so the engine leaves it out' };
   function pillHtml(x) {
     const side = x.back ? '<span class="pill back" title="A rule on the back face of this double-faced card">Back</span> ' : '';
     if (x.mirror) return side + '<span class="pill opp" title="Does nothing against a goldfish. It is used in a Mirror match (Simulation tab).">Mirror matches only</span> ';
@@ -320,12 +320,20 @@
   const COLOR_GROUP = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
   const COLOR_ORDER = 'WUBRG';
   const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
+  // Decks with a Commander bracket (the [B1]…[B5] of the ManaBox lists, see tools/import-decks.js) are grouped by bracket, highest first;
+  // within a bracket by number of colors, then name. Decks without a bracket keep the color grouping after them.
+  const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
+  const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
+  const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket : ''}</option>`;
   function builtinOptions() {
     let html = '';
+    for (let b = 5; b >= 1; b--) {
+      const ds = BUILTIN.filter(d => d.bracket === b).sort(byColors);
+      if (ds.length) html += `<optgroup label="Bracket ${b} · ${BRACKET_NAME[b]}">` + ds.map(opt).join('') + '</optgroup>';
+    }
     for (let k = 5; k >= 0; k--) {
-      const ds = BUILTIN.filter(d => d.colors.length === k).sort((a, b) => colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name));
-      if (!ds.length) continue;
-      html += `<optgroup label="${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}</option>`).join('') + '</optgroup>';
+      const ds = BUILTIN.filter(d => !d.bracket && d.colors.length === k).sort(byColors);
+      if (ds.length) html += `<optgroup label="No bracket · ${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(opt).join('') + '</optgroup>';
     }
     return html;
   }

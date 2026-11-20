@@ -33,7 +33,8 @@ async function identities(names) {
     const first = (text.split(/\r?\n/).find(l => l.trim()) || '').replace(/^\/\/\s*/, '').trim();
     const entries = Source.parseDecklist(text);
     const list = Array.isArray(entries) ? entries : (entries.entries || []);
-    return { file, name: first || file.replace(/\.txt$/, ''), entries: list };
+    const bracket = +((text.match(/^\/\/\s*Bracket\s*(\d)/mi) || [])[1] || 0) || null;          // "// Bracket 4" (tools/import-decks.js writes it)
+    return { file, name: first || file.replace(/\.txt$/, ''), entries: list, bracket };
   });
   const lookup = new Set();
   decks.forEach(d => { const cm = d.entries.filter(e => e.commander); (cm.length ? cm : d.entries).forEach(e => lookup.add(e.name)); });
@@ -47,6 +48,7 @@ async function identities(names) {
       commanders: cm.map(e => e.name),
       colors: ORDER.split('').filter(k => colors.has(k)).join(''),
       cards: d.entries.reduce((s, e) => s + (e.qty || 1), 0),
+      ...(d.bracket ? { bracket: d.bracket } : {}),
     };
   }).sort((a, b) => b.colors.length - a.colors.length || a.name.localeCompare(b.name));
   // keep what the Policy lab learned for each deck (tools/learn-deck-policies.js writes "policy" and "learned")
@@ -54,5 +56,5 @@ async function identities(names) {
   try { (JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8')).decks || []).forEach(d => { old[d.file] = d; }); } catch (e) { /* first build */ }
   index.forEach(d => { const o = old[d.file]; if (!o) return; ['policy', 'learned', 'learnedAt', 'learnedVs'].forEach(k => { if (o[k] !== undefined) d[k] = o[k]; }); });
   fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ about: 'Built-in decks. Rebuild with: node tools/build-deck-index.js', decks: index }, null, 1) + '\n');
-  index.forEach(d => console.log(String(d.colors.length).padStart(2), (d.colors || 'C').padEnd(6), d.cards, d.name));
+  index.forEach(d => console.log(d.bracket ? 'B' + d.bracket : '--', (d.colors || 'C').padEnd(6), d.cards, d.name));
 })().catch(e => { console.error(e); process.exit(1); });

@@ -1,4 +1,5 @@
 // Tidal Loop (Hakbal of the Surging Soul)
+// Bracket 5
 // COMMANDER
 1 Hakbal of the Surging Soul (LCC) 19
 // DECK

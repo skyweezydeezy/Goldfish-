@@ -1,4 +1,5 @@
 // Second Breakfast (Frodo & Sam)
+// Bracket 4
 // COMMANDER
 1 Frodo, Adventurous Hobbit (LTC) 2
 1 Sam, Loyal Attendant (LTC) 7

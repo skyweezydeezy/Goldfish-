@@ -9,6 +9,7 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -22,6 +23,16 @@
    "cards": 100,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
+  },
+  {
+   "file": "friendship-is-magic.txt",
+   "name": "Friendship Is Magic (Princess Twilight Sparkle)",
+   "commanders": [
+    "Princess Twilight Sparkle"
+   ],
+   "colors": "WUBRG",
+   "cards": 100,
+   "bracket": 4
   },
   {
    "file": "scorched-sky.txt",
@@ -42,6 +53,7 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
+   "bracket": 5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -53,7 +65,7 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
-   "learnedAt": "2026-11-19",
+   "bracket": 4,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -68,6 +80,7 @@
      "against": "35 decks"
     }
    ],
+   "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
   {
@@ -89,6 +102,7 @@
    ],
    "colors": "WUBG",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -100,6 +114,7 @@
    ],
    "colors": "WUBG",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -111,6 +126,7 @@
    ],
    "colors": "WUBG",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -123,6 +139,7 @@
    ],
    "colors": "WUBG",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -156,6 +173,7 @@
    ],
    "colors": "WUB",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -167,6 +185,7 @@
    ],
    "colors": "UBR",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -190,6 +209,7 @@
    ],
    "colors": "WBG",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -212,7 +232,6 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19",
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -227,6 +246,7 @@
      "against": "35 decks"
     }
    ],
+   "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
   {
@@ -237,6 +257,7 @@
    ],
    "colors": "WB",
    "cards": 100,
+   "bracket": 4,
    "policy": {
     "tutorFocus": "mana"
    },
@@ -262,6 +283,7 @@
    ],
    "colors": "UR",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -273,6 +295,7 @@
    ],
    "colors": "UG",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -284,6 +307,7 @@
    ],
    "colors": "WR",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -295,7 +319,7 @@
    ],
    "colors": "WG",
    "cards": 100,
-   "learnedAt": "2026-11-19",
+   "bracket": 4,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -310,6 +334,7 @@
      "against": "35 decks"
     }
    ],
+   "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
   {
@@ -320,6 +345,7 @@
    ],
    "colors": "UG",
    "cards": 100,
+   "bracket": 5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -331,6 +357,7 @@
    ],
    "colors": "WU",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -353,6 +380,7 @@
    ],
    "colors": "WB",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -364,7 +392,7 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19",
+   "bracket": 5,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -379,6 +407,7 @@
      "against": "35 decks"
     }
    ],
+   "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
   {
@@ -389,6 +418,7 @@
    ],
    "colors": "UG",
    "cards": 100,
+   "bracket": 5,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -414,7 +444,7 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "learnedAt": "2026-11-19",
+   "bracket": 4,
    "policy": {
     "commanderTiming": "first"
    },
@@ -429,6 +459,7 @@
      "against": "35 decks"
     }
    ],
+   "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
   {
@@ -439,6 +470,7 @@
    ],
    "colors": "G",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -461,6 +493,7 @@
    ],
    "colors": "U",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -472,6 +505,7 @@
    ],
    "colors": "W",
    "cards": 100,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -483,8 +517,19 @@
    ],
    "colors": "B",
    "cards": 100,
+   "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
+  },
+  {
+   "file": "nothing-personal.txt",
+   "name": "Nothing Personal (Ultima, Origin of Oblivion)",
+   "commanders": [
+    "Ultima, Origin of Oblivion"
+   ],
+   "colors": "",
+   "cards": 100,
+   "bracket": 4
   },
   {
    "file": "void-tax.txt",

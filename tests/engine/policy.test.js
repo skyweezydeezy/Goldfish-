@@ -85,10 +85,13 @@ const syn = (name, type, cost, oracle, pw, th, extra) => { const c = Object.assi
 const duel = (polA, polB) => { const a = G.newGame(deck, Object.assign({}, O, { policy: polA }), 1), b = G.newGame(deck, Object.assign({}, O, { policy: polB }), 2); G.linkMatch(a, b); for (const x of [a, b]) { x.turn = 6; x.command = []; x.hand = []; x.library = x.library.slice(0, 40); } return { a, b }; };
 const putc = (g, c) => { const p = G.enter(g, { iid: g.nextIid++, card: c }, {}); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
 
-for (const [goal, want] of [['6', 6], ['11', 11], ['current', 9]]) {
+// Necropotence pays for the cards at the end step; the cleanup step then discards down to seven, so a goal above seven buys the best seven of more
+for (const [goal, paid] of [['6', 6], ['11', 11], ['current', 9]]) {
   g = fresh({ necroGoal: goal }); G.enterWithTriggers(g, inst(g, 'Necropotence'), {}, []); g.hand = []; g.life = 40; G.endTurn(g);
-  check(`necroGoal = ${goal}: Necropotence refills the hand to ${want}`, g.hand.length === want, g.hand.length);
+  check(`necroGoal = ${goal}: Necropotence pays for ${paid} cards and keeps ${Math.min(7, paid)} after the cleanup step`, g.life === 40 - paid && g.hand.length === Math.min(7, paid) && g.graveyard.length === Math.max(0, paid - 7), `life ${g.life}, hand ${g.hand.length}`);
 }
+g = fresh({ necroGoal: '11' }); G.enterWithTriggers(g, inst(g, 'Necropotence'), {}, []); g.noMaxHand = true; g.hand = []; g.life = 40; G.endTurn(g);
+check('...with no maximum hand size it keeps all eleven', g.hand.length === 11, g.hand.length);
 const soldier = { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W'], subtypes: ['Soldier'], keywords: [], artifact: false, name: 'Soldier' };
 const sacSetup = (mode, watchers, toks) => { const x = fresh({ sacMode: mode }); G.enterWithTriggers(x, inst(x, 'Viscera Seer'), {}, []); if (watchers >= 1) G.enterWithTriggers(x, inst(x, 'Blood Artist'), {}, []); if (watchers >= 2) G.enterWithTriggers(x, inst(x, 'Zulaport'), {}, []); G.createTokens(x, soldier, toks, [], null); x.battlefield.forEach(q => { q.sick = false; }); const d0 = x.damage; G.postCombat(x); return x.damage - d0; };
 check('sacMode = never: tokens are never sacrificed, even with two death triggers', sacSetup('never', 2, 10) === 0);

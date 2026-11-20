@@ -1,4 +1,5 @@
 // Sodium Seraphim (Gisela, the Broken Blade)
+// Bracket 4
 // COMMANDER
 1 Gisela, the Broken Blade (SLD) 1335
 // DECK

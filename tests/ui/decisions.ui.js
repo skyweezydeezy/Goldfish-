@@ -72,7 +72,7 @@ const shot = process.env.VERSUS_SHOTS;
     await p.evaluate(m => { const r = document.querySelector('#tab-' + m); r.querySelector('.vs-attack').click(); r.querySelector('.vs-attack-cancel').click(); }, mode);
   };
   const clickHand = (mode, name) => p.evaluate(({ m, name }) => { const me = window.__isfVersus[m].game.games[0], c = me.hand.find(i => i.card.name === name), el = c && document.querySelector('#tab-' + m + ' .vs-hand .vs-card.can[data-iid="' + c.iid + '"]'); if (el) el.click(); return !!el; }, { m: mode, name });
-  const sheet = () => p.evaluate(() => { const s = document.querySelector('.ch-sheet'); if (!s) return null; return { title: s.querySelector('.ch-title').textContent, text: s.querySelector('.ch-text').textContent, tiles: s.querySelectorAll('.ch-opt').length, shown: [...s.querySelectorAll('.ch-opt')].filter(x => !x.hidden).length, def: [...s.querySelectorAll('.ch-opt.def .ch-name')].map(x => x.textContent), stars: s.querySelectorAll('.ch-star').length, ok: s.querySelector('.ch-ok').textContent, okOff: s.querySelector('.ch-ok').disabled, none: s.querySelector('.ch-none') ? s.querySelector('.ch-none').textContent : null, names: [...s.querySelectorAll('.ch-opt .ch-name')].map(x => x.textContent), notes: [...s.querySelectorAll('.ch-opt .ch-note')].map(x => x.textContent) }; });
+  const sheet = () => p.evaluate(() => { const s = document.querySelector('.ch-sheet'); if (!s) return null; return { title: s.querySelector('.ch-title').textContent, text: s.querySelector('.ch-text').textContent, tiles: s.querySelectorAll('.ch-opt').length, shown: [...s.querySelectorAll('.ch-opt')].filter(x => !x.hidden).length, def: [...s.querySelectorAll('.ch-opt.def .ch-name')].map(x => x.textContent.replace(/ ×\d+$/, '')), stars: s.querySelectorAll('.ch-star').length, ok: s.querySelector('.ch-ok').textContent, okOff: s.querySelector('.ch-ok').disabled, none: s.querySelector('.ch-none') ? s.querySelector('.ch-none').textContent : null, names: [...s.querySelectorAll('.ch-opt .ch-name')].map(x => x.textContent.replace(/ ×\d+$/, '')), dest: s.querySelector('.ch-dest b') ? s.querySelector('.ch-dest b').textContent : null, fanned: s.classList.contains('fanned'), picked: s.querySelector('.ch-picked') ? s.querySelector('.ch-picked').textContent : null, notes: [...s.querySelectorAll('.ch-opt .ch-note')].map(x => x.textContent) }; });
   const pickTile = name => p.evaluate(n => { const b = [...document.querySelectorAll('.ch-sheet .ch-opt')].find(x => x.querySelector('.ch-name').textContent.replace(/ ×\d+$/, '') === n); if (b) b.click(); return !!b; }, name);
   const log = (mode, n) => p.$$eval('#tab-' + mode + ' .vs-log .vs-line', (ls, n) => ls.slice(-n).map(l => (l.dataset.step ? '[' + l.dataset.step + '] ' : '') + l.textContent), n || 6);
 
@@ -95,7 +95,7 @@ const shot = process.env.VERSUS_SHOTS;
   let sh = await sheet();
   const mid = await p.evaluate(() => { const gm = window.__isfVersus.duel.game, me = gm.games[0]; return { kind: gm.choice && gm.choice.kind, opts: gm.choice.options.length, names: new Set(gm.choice.options.map(o => o.name)).size, lib: me.library.length, inHand: me.hand.some(i => i.card.name === 'Vampiric Tutor'), viewHand: gm.preview[0].hand.some(i => i.card.name === 'Vampiric Tutor'), life: me.life, viewLife: gm.preview[0].life }; });
   check('casting it opens the search: every card of your library, one tile per card name', mid.kind === 'search' && /Vampiric Tutor: search your library/.test(sh.title) && mid.opts === lib0 && sh.tiles === mid.names && /top of your library/.test(sh.text), `${sh.title} — ${mid.opts} cards, ${sh.tiles} tiles`);
-  check('...the autopilot\'s pick is marked and chosen to begin with', sh.def.length === 1 && sh.stars === 1 && sh.ok === 'Choose ' + sh.def[0] && !sh.okOff, sh.def.join(','));
+  check('...the autopilot\'s pick is marked and chosen to begin with', sh.def.length === 1 && sh.stars === 1 && sh.ok === 'Submit' && !sh.okOff && sh.dest === 'Top of your library (after the shuffle)' && sh.fanned, sh.def.join(','));
   check('...the game itself waits: the Tutor is still in your hand, and the table shows the moment of the question', mid.inHand && !mid.viewHand && mid.lib === lib0 && mid.viewLife === mid.life - 2, JSON.stringify(mid));
   check('...the control box says a choice is open', /Vampiric Tutor/.test(await p.$eval('#tab-duel .vs-me', e => e.textContent)) && /Your choice/.test(await p.$eval('#tab-duel .vs-bar', e => e.textContent)));
   if (shot) await p.screenshot({ path: path.join(shot, 'choice-search.png') });
@@ -107,7 +107,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.fill('.ch-sheet .ch-filter', '');
   await pickTile(want);
   sh = await sheet();
-  check('clicking a card chooses it', sh.ok === 'Choose ' + want);
+  check('clicking a card selects it (it lifts out of the fan) and Submit is ready', sh.ok === 'Submit' && sh.picked === 'Selected: ' + want, sh.picked);
   await p.click('.ch-sheet .ch-peek');
   check('"Look at the table" folds the sheet away, and brings it back', await p.$eval('.ch-sheet', s => s.classList.contains('peek') && getComputedStyle(s.querySelector('.ch-body')).display === 'none'));
   await p.click('.ch-sheet .ch-peek');
@@ -168,6 +168,23 @@ const shot = process.env.VERSUS_SHOTS;
   const stepsSeen = await p.$$eval('#tab-duel .vs-log .vs-line.b[data-step]', ls => [...new Set(ls.map(l => l.dataset.step))]);
   check('the opponent\'s turn is logged step by step', stepsSeen.includes('draw') && stepsSeen.length >= 2, stepsSeen.join(','));
 
+  // ---- the cleanup step: more than seven cards at the end of your turn
+  if (!(await state('duel')).over && (await state('duel')).phase === 'main') {
+    await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; me.battlefield = me.battlefield.filter(q => !q.card.a.statics.noMaxHand); while (me.hand.length < 9) me.hand.push(me.library.shift()); });
+    await arrange('duel', {});
+    await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
+    await p.waitForSelector('.ch-sheet.discard', { timeout: 15000 });
+    const cs = await sheet();
+    check('ending your turn with nine cards asks what to discard, one card at a time', /End of turn: discard down to 7/.test(cs.title) && /2 to go/.test(cs.text) && cs.def.length === 1 && !cs.none, cs.title + ' / ' + cs.text);
+    const first = cs.names.find(n => !cs.def.includes(n)).replace(/ ×\d+$/, '');
+    await pickTile(first); await p.click('.ch-sheet .ch-ok');
+    await p.waitForFunction(() => /1 to go/.test((document.querySelector('.ch-sheet .ch-text') || {}).textContent || ''), null, { timeout: 10000 });
+    await p.click('.ch-sheet .ch-auto');
+    await until('duel', x => x.phase === 'main' && x.turn >= 3);
+    const cl = await p.$$eval('#tab-duel .vs-log .vs-line.a[data-step=end]', ls => ls.map(l => l.textContent).join(' || '));
+    check('...the card you chose is discarded and the log files the cleanup under the end step', /Cleanup: discards down to 7/.test(cl) && cl.includes('Discarded ' + first), cl.slice(-220));
+  }
+
   // ---- "Autopilot decides": no questions
   if (!(await state('duel')).over) {
     await p.selectOption('#tab-duel .vs-ask', 'auto');
@@ -224,6 +241,21 @@ const shot = process.env.VERSUS_SHOTS;
     check('Counterspell counters it: the spell is in the opponent\'s graveyard (a commander: back in the command zone) and never entered the battlefield', cr.myGy.includes('Counterspell') && cr.opGy.includes(spell) && !cr.opBf.includes(spell), spell + (spell === big ? '' : ' (not the set-up spell ' + big + ')'));
     check('...and the log says so, in the opponent\'s main step', (await p.$$eval('#tab-duel .vs-log .vs-line.b[data-step=main1]', ls => ls.map(l => l.textContent))).some(t => /Counterspell counters /.test(t)));
   }
+  // ================= explore: Hakbal at the beginning of combat =================
+  await loadDeck('mermaids', 'Hakbal of the Surging Soul');
+  await start('duel');
+  await arrange('duel', { clear: true, mine: ['Hakbal of the Surging Soul'] });
+  await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], k = me.library.findIndex(i => i.card.name === 'Force of Will'); me.library.unshift(me.library.splice(k, 1)[0]); });
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-attack').click());
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-attack-go').click());
+  await p.waitForSelector('.ch-sheet.explore', { timeout: 15000 });
+  sh = await sheet();
+  check('explore asks what to do with the revealed nonland card, and shows it', /explores: Force of Will/.test(sh.title) && sh.names.slice().sort().join(' | ') === 'Keep it on top of your library | Put it into your graveyard' && sh.def.length === 1 && !!(await p.$('.ch-sheet .ch-spell .mtg')) && /revealed/.test(await p.$eval('.ch-sheet .ch-spell', e => e.textContent)), sh.title + ' — ' + sh.names.join(' | '));
+  if (shot) await p.screenshot({ path: path.join(shot, 'choice-explore.png') });
+  await pickTile('Put it into your graveyard'); await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet.explore') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
+  const xp = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return { gy: me.graveyard.map(i => i.card.name), top: me.library[0].card.name, ctr: (me.battlefield.find(q => /^Hakbal/.test(q.card.name)) || {}).counters }; });
+  check('..."put it into your graveyard": Force of Will is milled and Hakbal has its +1/+1 counter', xp.gy.includes('Force of Will') && xp.top !== 'Force of Will' && xp.ctr >= 1, JSON.stringify(xp));
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 
   await b.close();

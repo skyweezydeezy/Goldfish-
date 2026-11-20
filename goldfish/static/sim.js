@@ -260,6 +260,7 @@
     if (/you have no maximum hand size for the rest of the game|emblem with ["“]you have no maximum hand size/i.test(withQuotes) && !/if x is \d+ or more/i.test(text)) fx.push({ type: 'noMaxHand' });
     // "You get an emblem with 'Creatures you control get +2/+2 (and have flying)'" (Ajani Resolute, Elspeth Sun's Champion)
     if ((m = withQuotes.match(/emblem with ["“]creatures you control get \+(\d+)\/\+(\d+)(?: and have ([a-z ,]+?))?\.?["”]/i))) fx.push({ type: 'emblem', p: +m[1], t: +m[2], keywords: kwList(m[3]) });
+    else if (/emblem with ["“]artifacts, creatures, enchantments, and lands you control have indestructible\.?["”]/i.test(withQuotes)) fx.push({ type: 'emblem', p: 0, t: 0, keywords: ['indestructible'], types: ['artifact', 'creature', 'enchantment', 'land'] });          // Elspeth, Knight-Errant
     // Gyome, Master Chef: Food equal to the nontoken creatures that entered this turn
     if ((m = text.match(/create a number of (Food|Treasure|Clue) tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn/i))) fx.push({ type: 'token', n: 'X', creature: false, artifact: true, name: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase(), count: { zone: 'special', what: 'nontoken creatures entered' } });
     if (/create (?:a|one) (?:token that's a copy|copy)/i.test(text)) { const of = (text.match(/cop(?:y|ies) of (~|this \w+|(?:another )?target)/i) || [])[1] || ''; fx.push({ type: 'copyToken', self: /^(?:~|this )/i.test(of), target: /target/i.test(of) }); }          // a copy of itself, of a target, or of the permanent that triggered it
@@ -382,7 +383,7 @@
     { let sw; if ((sw = text.match(/\bdestroy all (artifacts|enchantments)\b(?! (?:you|that))/i))) fx.push({ type: 'sweep', what: sw[1].toLowerCase().replace(/s$/, '') });          // Austere Command's modes
       if ((sw = text.match(/\bdestroy all creatures with mana value (\d+) or (less|greater)\b/i))) fx.push({ type: 'sweep', what: 'creature', mvMax: sw[2].toLowerCase() === 'less' ? +sw[1] : null, mvMin: sw[2].toLowerCase() === 'greater' ? +sw[1] : null });
       if ((sw = text.match(/\b(target creature|~|it) gains? (double strike|first strike|lifelink|deathtouch|trample|haste|flying|menace|vigilance) until end of turn/i)) && !/gets? \+/.test(text)) fx.push({ type: 'pumpOne', self: sw[1] === '~' || sw[1] === 'it', p: 0, t: 0, keywords: [sw[2].toLowerCase()] }); }          // Boros Charm
-    if (/\bdestroy all creatures\b(?! (?:with|you control|that))/i.test(text)) fx.push({ type: 'wrath', minPower: 0 });
+    if (/\bdestroy all creatures\b(?! (?:with|you control|that))/i.test(text)) fx.push(Object.assign({ type: 'wrath', minPower: 0 }, /can't be regenerated/i.test(text) ? { noRegen: true } : {}));
     // graveyard and sweepers: Samwise ("return target historic card from your graveyard to your hand"), Dawn, Dusk
     if ((m = text.match(/return target ([a-z]+) card from your graveyard to your hand/i))) fx.push({ type: 'gyReturn', filter: m[1].toLowerCase() });
     if ((m = text.match(/return all (creature )?cards? (?:with power (\d+) or less )?from your graveyard to your hand/i))) fx.push({ type: 'gyReturnAll', filter: m[1] ? 'creature' : 'any', maxPower: m[2] != null ? +m[2] : 99 });
@@ -578,6 +579,37 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      // ---- protection: what a player uses when the other player's spell, ability or attack comes for its things (see protectOne / protectAll),
+      // and the statics that keep permanents alive. Only another player destroys, exiles or bounces your things, so most say "Mirror matches only".
+      { const MIRP = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let pm;
+        if (/^until your next turn, your life total can't change and you gain protection from everything\. all permanents you control phase out/i.test(line)) { a.prot = 'tp'; MIRP(); continue; }          // Teferi's Protection
+        if (/^permanents you control gain hexproof and indestructible until end of turn/i.test(line)) { a.prot = 'heroic'; MIRP(); continue; }          // Heroic Intervention
+        if (/^you can't lose the game this turn and your opponents can't win the game this turn\. until end of turn, damage that would reduce your life total to less than 1 reduces it to 1 instead/i.test(line)) { a.prot = 'grace'; MIRP(); continue; }          // Angel's Grace
+        if (/^you can't lose the game and your opponents can't win the game\.?$/i.test(line)) { a.cantLose = true; MIRP(); continue; }          // Platinum Angel
+        if (/^when ~ enters, if you cast it, you gain protection from everything until your next turn/i.test(line)) { a.ringProt = true; MIRP(); continue; }          // The One Ring
+        if (/^(?:• )?target creature(?: you control)? gains indestructible until end of turn\.?$/i.test(line)) { a.prot = 'indOne'; MIRP(); continue; }          // Valorous Stance
+        if (/^target creature you control gains protection from (?:the color of your choice|each color) until end of turn/i.test(line)) { a.prot = 'protOne'; MIRP(); continue; }          // Shelter, Sejiri Shelter, Eldritch Immunity
+        if (/^sacrifice ~: creatures you control gain indestructible until end of turn/i.test(line)) { a.selfless = true; if (/until end of turn\.?$/i.test(line)) { MIRP(); continue; } }          // Selfless Spirit (Boromir's "...The Ring tempts you" is read further down as well)
+        if (/^\{t\}: target creature you control gains protection from the color of your choice until end of turn/i.test(line)) { a.mother = true; MIRP(); continue; }          // Mother of Runes
+        if ((pm = line.match(/^sacrifice another ([a-z]+): ~ gains indestructible until end of turn/i))) { a.sacInd = pm[1].toLowerCase(); MIRP(); continue; }          // Yahenni, Koma
+        if ((pm = line.match(/^((?:\{[^}]+\})+), \{t\}, exile ~: target legendary creature gains hexproof and indestructible until end of turn/i))) { a.plaza = parseCost(pm[1].replace(/\{T\}/gi, '')); MIRP(); continue; }          // Plaza of Heroes
+        if (/^sacrifice a land: target creature you control gains shroud until end of turn/i.test(line)) { a.safekeeper = true; MIRP(); continue; }          // Sylvan Safekeeper
+        if ((pm = line.match(/^((?:\{[^}]+\})+): enchanted creature gains shroud until end of turn/i))) { a.auraShroud = parseCost(pm[1]); MIRP(); continue; }          // Pemmin's Aura
+        if ((pm = line.match(/^((?:\{[^}]+\})+): regenerate ~\.?$/i))) { a.regen = parseCost(pm[1]); MIRP(); continue; }          // Skithiryx
+        if ((pm = line.match(/^((?:\{[^}]+\})+), \{t\}: prevent the next (\d+) damage that would be dealt to target legendary creature this turn/i))) { a.eiganjo = { cost: parseCost(pm[1].replace(/\{T\}/gi, '')), n: +pm[2] }; MIRP(); continue; }          // Eiganjo Castle
+        if (/^if damage would be dealt to ~ while it has a \+1\/\+1 counter on it, prevent that damage and remove that many \+1\/\+1 counters from it/i.test(line)) { a.polukranos = true; MIRP(); continue; }          // Polukranos
+        if (/^prevent all damage that would be dealt to you\.?$/i.test(line)) { a.preventDmg = true; MIRP(); continue; }          // Glacial Chasm
+        if (/^other permanents you control have indestructible\.?$/i.test(line)) { a.statics.anthems.push({ other: true, filter: '', p: 0, t: 0, keywords: ['indestructible'] }); rec.status = 'ok'; continue; }          // Avacyn
+        if ((pm = line.match(/^other creatures you control with (flying|[a-z]+) have (indestructible|hexproof)\.?$/i))) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'kw', kw: pm[1].toLowerCase(), other: true, p: 0, t: 0, keywords: [pm[2].toLowerCase()] }); rec.status = 'ok'; continue; }          // Sephara
+        if ((pm = line.match(/^~ has (indestructible|hexproof) as long as you control at least (\w+) other ([a-z]+)\.?$/i))) { a.kwIfOthers = { kw: pm[1].toLowerCase(), n: num(pm[2]), filter: singular(pm[3]).toLowerCase() }; rec.status = 'ok'; continue; }          // Svyelun
+        if (/^you, planeswalkers you control, and other creatures you control have hexproof\.?$/i.test(line)) { a.statics.anthems.push({ other: true, filter: '', p: 0, t: 0, keywords: ['hexproof'], types: ['creature', 'planeswalker'] }); a.playerHexproof = true; rec.status = 'partial'; continue; }          // your own hexproof: against targeted discard; "target player" damage is not told apart          // Shalai
+        if ((pm = line.match(/^other (enchantments|artifacts) you control have (shroud|hexproof|indestructible)\.?$/i))) { a.statics.anthems.push({ other: true, filter: '', p: 0, t: 0, keywords: [pm[2].toLowerCase()], types: [singular(pm[1]).toLowerCase()] }); rec.status = 'ok'; continue; }          // Greater Auramancy, Sterling Grove
+        if ((pm = line.match(/^other ([a-z]+) you control have ward \{(\d+)\}\.?$/i))) { (a.statics.wardGive = a.statics.wardGive || []).push({ filter: singular(pm[1]).toLowerCase(), n: +pm[2], other: true }); MIRP(); continue; }          // Svyelun: other Merfolk have ward {1}
+        if ((pm = line.match(/^permanents you control with counters on them have ward \{(\d+)\}\.?$/i))) { (a.statics.wardGive = a.statics.wardGive || []).push({ counters: true, n: +pm[1] }); MIRP(); continue; }          // Innkeeper's Talent
+        if ((pm = line.match(/^ward\s*(?:—|-)?\s*\{(\d+)\}(?:, pay (\d+) life)?\.?$/i))) { a.ward = { n: +pm[1], life: pm[2] ? +pm[2] : 0 }; MIRP(); continue; }          // Gisa: Ward—{2}, Pay 2 life; Ward {N}
+        if ((pm = line.match(/^((?:\{[^}]+\})+), sacrifice two other artifacts and\/or creatures: put an indestructible counter on ~/i))) { a.indCounterAb = { cost: parseCost(pm[1]), sac: 2 }; MIRP(); continue; }          // Mondrak
+        if ((pm = line.match(/^((?:\{[^}]+\})+), remove three counters from among other artifacts, creatures, and planeswalkers you control: put an indestructible counter on ~/i))) { a.indCounterAb = { cost: parseCost(pm[1]), counters: 3 }; MIRP(); continue; }          // Tekuthal
+      }
       if (card.layout === 'prepare' && half === 2) {
         if (!a.prepSpell) a.prepSpell = { cost: parseCost(((card.mana_cost || '').split('//')[1] || '').trim()), fx: [] };
         if (/^put a \+1\/\+1 counter on each of up to x target creatures\. those creatures gain flying until end of turn\. draw a card/i.test(line)) { a.prepSpell.fx.push({ type: 'runThePlay' }); rec.status = 'ok'; continue; }
@@ -1410,7 +1442,7 @@
       if (/^players may spend mana as though it were mana of any color/i.test(line)) { a.statics.anyColorMana = true; rec.status = 'ok'; continue; }          // Mycosynth Lattice
       if (/^~'s toughness is equal to your devotion to white/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
       { const lt = line.match(/^as long as you control your commander, ~ gets \+(\d+)\/\+(\d+) and other creatures you control get \+(\d+)\/\+(\d+)/i); if (lt) { a.statics.lieutenant = { sp: +lt[1], st: +lt[2], op: +lt[3], ot: +lt[4] }; rec.status = 'ok'; continue; } }          // Thunderfoot Baloth
-      { const gw = line.match(/^(other )?([A-Z][a-z]+)s you control have ([a-z ,]+)\.?$/); if (gw && kwList(gw[3]).length) { a.statics.anthems.push({ other: !!gw[1], filter: singular(gw[2]).toLowerCase(), p: 0, t: 0, keywords: kwList(gw[3]) }); rec.status = 'ok'; continue; } }          // Goblin Warchief
+      { const gw = line.match(/^([Oo]ther )?([A-Z][a-z]+)s you control have ([a-z ,]+)\.?$/); if (gw && kwList(gw[3]).length) { a.statics.anthems.push({ other: !!gw[1], filter: singular(gw[2]).toLowerCase(), p: 0, t: 0, keywords: kwList(gw[3]) }); rec.status = 'ok'; continue; } }          // Goblin Warchief
       { const bp = line.match(/^\{1\}\{g\/p\}, \{t\}, sacrifice a creature: search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value/i); if (bp) { a.pod = true; rec.status = 'ok'; continue; } }          // Birthing Pod
       if (/^discover 10\. if the discovered card's mana value is less than 10, create a number of tapped treasure tokens equal to the difference/i.test(line)) { a.spellFx.push({ type: 'discover', n: 10, lode: true }); rec.status = 'ok'; continue; }          // Hit the Mother Lode
       if (/^whenever a player attacks with three or more creatures, you draw a card/i.test(line)) { a.triggers.push({ kinds: ['attackAny'], once: true, minAttackers: 3, fx: [{ type: 'draw', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Aurelia, the Law Above
@@ -2387,7 +2419,7 @@
     if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus.per ? Object.assign({ src: q }, a.attachBonus) : a.attachBonus); }          // a "for each" bonus keeps its Aura or Equipment (its own counters)
     if (q.produce) { info.producers.push(q); if (q.produce.restrict) info.restrictMana = true; }
     if (q.asLand) info.lands++;
-    if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true;
+    if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
     if (a.watch) info.watchers.push(q);
     if (st.tokenRepl.length) info.repl.push(q);
@@ -2500,7 +2532,7 @@
     const info = { arr: g.battlefield, len: g.battlefield.length, ver: g.bfVer || 0, anthems: [], selfSrc: new Set(), attach: new Map(), byCard: new Map(), colors: new Set(), foodMana: false,
       dyn: [], metal: [], producers: [], lands: 0, reducers: [], watchers: [], repl: [], foods: [], cm: 0, foodDiscount: 0, lifeWatch: false, lifeThreshold: 0, coffers: [], allSwamps: false, allForests: false, manaDouble: false, foodG: false, lifeAnthems: [], lieutenants: [], equipMana: [], tokenCreatureMana: false, amulet: false, nonlandDouble: false, creatureManaPlus: false, anyColorMana: false, awbo: null, undying: null, coat: 0, tokenMana: null, manaTriple: false, omniscience: false, lossMult: 1, landDouble: 0, colorlessDouble: false, artifactMana: null, creatureForest: false, counterMana: false, abilityHaste: false, worldTree: false, landsUntapped: false, dynMana: [], landAuras: [], swampDouble: false, creatureMana: false, don: 0, cplus: 0, cbr: 0, forestDouble: false, landsAnyColor: false, seenCards: new Set() };
     for (const q of g.battlefield) addToInfo(info, q);
-    for (const em of g.emblems || []) info.anthems.push({ src: null, an: { other: false, filter: '', p: em.p, t: em.t, keywords: em.keywords || [] } });
+    for (const em of g.emblems || []) info.anthems.push({ src: null, an: { other: false, filter: '', p: em.p, t: em.t, keywords: em.keywords || [], types: em.types } });
     return (g._bf = info);
   }
   function computeAnthems(info, p) {
@@ -2508,6 +2540,7 @@
     for (const { src, an } of info.anthems) {
       if (an.other && src === p) continue;
       if (!matchesFilter(p.card, an.filter)) continue;
+      if (an.types && !an.types.some(t => t === 'creature' ? isCreaturePerm(p) : t === 'planeswalker' ? p.card.a.isPlaneswalker : t === 'enchantment' ? p.card.a.isEnchantment : t === 'artifact' ? p.card.a.isArtifact : t === 'land' ? (p.card.a.isLand || p.asLand) : false)) continue;          // "other creatures and planeswalkers", "other enchantments"
       dp += an.p; dt += an.t;
       if (an.keywords.length) { kw = kw || new Set(); an.keywords.forEach(k => kw.add(k)); }
     }
@@ -2618,6 +2651,7 @@
     if (p.card.a.kw && p.card.a.kw.has(k) && !(g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g))) return true;
     if (p.eotKw && p.eotKw.has(k)) return true;
     if (k === 'first strike' && p.card.a.fsOwnTurn && g.activeTurn !== false) return true;          // Razorkin Needlehead: during your turn
+    { const ko = p.card.a.kwIfOthers; if (ko && ko.kw === k && g.battlefield.filter(q => q !== p && isCreaturePerm(q) && matchesFilter(q.card, ko.filter)).length >= ko.n) return true; }          // Svyelun: two other Merfolk
     if (k === 'haste' && p.card.a.hasteLowLife != null && (g.opp ? otherPlayers(g).some(o => o.life <= p.card.a.hasteLowLife) : oppLifeLeft(g) <= p.card.a.hasteLowLife)) return true;          // Bloodghast
     if (k === 'flying' && p.flyCounter) return true;
     if (p.other && p.other[k] > 0) return true;          // a keyword counter (Gift of the Viper's reach and deathtouch)          // Wonder; Luminous Broodmoth: a flying counter
@@ -2791,6 +2825,10 @@
   // triggers fire with its power (Rapacious Guest).
   function leavePerm(g, p, ev, dest) {
     if (!g.battlefield.includes(p)) return;
+    if (p.card.a.cantLose && !g.dry) { try { return leavePerm0(g, p, ev, dest); } finally { if (!cantLose(g)) { if (g.opp && g.life <= 0) loseGame(g, ev || [], 'life'); else if (otherPlayers(g).some(o => (o.poisonDealt || 0) >= 10 && o.opp === g)) loseGame(g, ev || [], 'poison'); } } }          // Platinum Angel gone: a player at 0 life (or ten poison) loses now
+    return leavePerm0(g, p, ev, dest);
+  }
+  function leavePerm0(g, p, ev, dest) {
     if (!g.dry && isCreaturePerm(p)) {
       const oz = g.battlefield.find(q => q.card.a.ozolith && q !== p);                                    // The Ozolith keeps the counters of a creature that leaves
       if (oz) { if ((p.counters || 0) > 0) addCounters(g, oz, '+1/+1', p.counters, ev || [], oz); if (p.other) for (const kk of Object.keys(p.other)) if (p.other[kk] > 0) addCounters(g, oz, kk, p.other[kk], ev || [], oz); }
@@ -3386,7 +3424,8 @@
     if (a.trini) g.triniSeen = true;
     if (a.noLifeGain) { g.noGainSeen = true; if (g.opp) g.opp.noGainSeen = true; }
     if (a.echo) perm.echoDue = g.turn;                                                                    // Echo: pay again at your next upkeep or sacrifice it
-    if (inst.foreign && g.opp) { perm.owner = g.opp; perm.stolen = true; }                                 // a card of theirs you cast: you control it but don't own it (Don Andres)
+    if (inst.foreign && g.opp) { perm.owner = g.opp; perm.stolen = true; }
+    if (a.ringProt && g.lastCast === inst && !g.dry && !o.silent) { g.protAll = true; ev.push({ type: 'note', text: `${a._name || inst.card.name}: you have protection from everything until your next turn`, source: perm }); }          // The One Ring                                 // a card of theirs you cast: you control it but don't own it (Don Andres)
     if (a.allTribe && !g.dry) for (const q of g.battlefield) applyAllTribe(g, q);
     else if (!g.dry && isCreaturePerm(perm) && g.battlefield.some(q => q.card.a.allTribe)) applyAllTribe(g, perm);
     if (a.treachery && g.opp && !g.dry && bestOppCreature(g)) { const tg = bestOppCreature(g); stealPerm(g, tg, [], false); perm.attachedTo = tg.iid; tg.treacheryBy = perm.iid; touch(g); }          // Treachery: you control the enchanted creature
@@ -3870,13 +3909,14 @@
   }
   function eliminate(x, by, ev, why) {
     const m = x.match; if (!m || x.dead || m.winner != null) return;
+    if (cantLose(x)) return;          // Platinum Angel
     x.dead = true; m.out.push({ pid: x.pid, by: by ? by.pid : null, why, round: m.round || 0 });
     (ev || []).push({ type: 'note', text: `☠ ${m.names[x.pid]} is out of the game (${why === 'life' ? 'life total' : why === 'commander' ? 'commander damage' : why === 'empty' ? 'no cards left' : why})`, out: x.pid });
     const left = m.players.filter(q => !q.dead);
     if (left.length <= 1) { const w = left[0] || by || x; m.winner = w.pid; m.reason = why; m.turn = w.turn; w.killTurn = w.turn; (ev || []).push({ type: 'kill', cmdr: why === 'commander', mirror: true }); return; }
     for (const q of left) if (q.opp === x) q.opp = pickTarget(q);
   }
-  function loseGame(g, ev, why) { if (isPod(g)) eliminate(g, g.opp, ev, why); else if (g.opp) setWinner(g.opp, ev || [], why); }          // this player loses (life, Pact of Negation)
+  function loseGame(g, ev, why) { if (cantLose(g)) return; if (isPod(g)) eliminate(g, g.opp, ev, why); else if (g.opp) setWinner(g.opp, ev || [], why); }          // this player loses (life, Pact of Negation)
   function linkPod(games, names) {
     const m = { winner: null, reason: null, turn: null, pod: true, players: games, out: [], round: 0, names: names || games.map((x, i) => 'Player ' + (i + 1)) };
     games.forEach((x, i) => { x.pid = i; x.match = m; x.dead = false; });
@@ -3886,6 +3926,7 @@
   function podFocus(g, target) { const t = target && !target.dead && target !== g ? target : pickTarget(g); if (t) { g.opp = t; t.opp = g; } return t; }          // the attacked player answers this player for the turn
   function setWinner(g, ev, why) {
     if (!g.match || g.match.winner != null) return;
+    if (otherPlayers(g).some(cantLose)) { (ev || []).push({ type: 'note', text: `The other player can't lose the game (${why})`, source: null }); return; }          // Platinum Angel, Angel's Grace
     if (g.match.pod) {
       if (why === 'life' || why === 'commander') { if (g.opp) eliminate(g.opp, g, ev, why); }
       else { for (const o of podAlive(g)) { o.dead = true; g.match.out.push({ pid: o.pid, by: g.pid, why, round: g.match.round || 0, tie: true }); } g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: false, mirror: true }); }
@@ -3896,7 +3937,12 @@
   }
   function checkDeath(g, ev) { if (g.opp && g.life <= 0) loseGame(g, ev || [], 'life'); }          // you lost your last life point: the other player wins
   function oppLifeLeft(g) { return g.opp ? g.opp.life : g.opts.oppLife - g.damage; }
-  function dealToOpp(g, n, combat) { const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm; g.oppLostTurn = (g.oppLostTurn || 0) + n; g.damage += n; if (g.opp) { if (isPod(g) && !combat) podAlive(g).forEach(o => { o.life -= n; }); else g.opp.life -= n; } }          // Bloodletter of Aclazotz, Fiery Emancipation
+  function dealToOpp(g, n, combat, loss) {
+    const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm;
+    if (g.opp) { if (isPod(g) && !combat) { let top = 0; podAlive(g).forEach(o => { const k = shieldPlayer(o, n, loss); o.life -= k; top = Math.max(top, k); }); n = top; } else { n = shieldPlayer(g.opp, n, loss); g.opp.life -= n; } }          // The One Ring, Teferi's Protection, Glacial Chasm, Angel's Grace
+    g.oppLostTurn = (g.oppLostTurn || 0) + n; g.damage += n;
+    return n;
+  }          // Bloodletter of Aclazotz, Fiery Emancipation
   function checkKill(g, ev) {
     if (g.killTurn != null) return;
     if (isPod(g)) {                                                                                       // a pod: anyone at 0 life is out; commander damage counts per player
@@ -3917,9 +3963,9 @@
     if (!src || g.killTurn != null) return;
     for (const q of g.battlefield.slice()) if (q.attachedTo === src.iid) for (const t of q.card.a.triggers) if (t.kinds.includes('enchDamage')) fire(g, t, q, ev, src, n);
   }
-  function damageOpp(g, n, ev, source, one) {
+  function damageOpp(g, n, ev, source, one, loss) {
     if (!(n > 0)) return;
-    dealToOpp(g, n, !!one);
+    n = dealToOpp(g, n, !!one, loss); if (!(n > 0)) { ev.push({ type: 'note', text: 'The damage is prevented', source }); return; }
     ev.push({ type: 'damage', n, source, total: g.damage });
     checkKill(g, ev);
     oppLostLife(g, n, ev);
@@ -4055,8 +4101,8 @@
             } }
           damageOpp(g, n, ev, source); break;
         }
-        case 'drain': damageOpp(g, n, ev, source); break;
-        case 'burnCreature': { const t = g.opp && burnPick(g, n, true, source); if (t) against(g, t, () => { ev.push({ type: 'note', text: `${n} damage kills ${t.card.name}`, source }); leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); }); break; }
+        case 'drain': damageOpp(g, n, ev, source, false, true); break;          // life loss, not damage (protection does not stop it)
+        case 'burnCreature': { const t = g.opp && burnPick(g, n, true, source); if (t) against(g, t, () => { if (answered(g, t, 'damage', source, ev)) return; if (indestructible(g.opp, t) || (t.protColors && srcColors(g, source).some(c => t.protColors.has(c)))) { ev.push({ type: 'note', text: `${t.card.name} survives the damage`, source }); return; } if (t.card.a.polukranos && (t.counters || 0) > 0) { t.counters = Math.max(0, t.counters - n); ev.push({ type: 'note', text: `${t.card.name}: the damage is prevented, ${n} counters removed`, source }); if (toughnessOf(g.opp, t) <= 0) { leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); } return; } if (regenerates(g.opp, t, ev)) return; ev.push({ type: 'note', text: `${n} damage kills ${t.card.name}`, source }); leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); }); break; }
         case 'removal': if (g.opp) doRemoval(g, f, source, ev); break;
         case 'bounce': if (g.opp) doBounce(g, f, source, ev); break;
         case 'edict': if (g.opp) {
@@ -4102,16 +4148,19 @@
         }
         case 'sweep': {                                                                                        // destroy all artifacts / enchantments / creatures of a mana value range (both players)
           const hit = (gg, q) => f.what === 'creature' ? (isCreaturePerm(q) && (f.mvMax == null || (q.card.a.mv || 0) <= f.mvMax) && (f.mvMin == null || (q.card.a.mv || 0) >= f.mvMin)) : f.what === 'artifact' ? (q.card.a.isArtifact && !q.asLand) : (q.card.a.isEnchantment && !q.asLand);
-          const mine = g.battlefield.filter(q => hit(g, q)), theirs = g.opp ? g.opp.battlefield.filter(q => hit(g.opp, q)) : [];
+          if (g.opp) protectAll(g, g.opp, q => hit(g.opp, q) && !indestructible(g.opp, q), 'destroy', ev);
+          const mine = g.battlefield.filter(q => hit(g, q) && !indestructible(g, q) && !regenerates(g, q, ev)), theirs = g.opp ? g.opp.battlefield.filter(q => hit(g.opp, q) && !indestructible(g.opp, q) && !regenerates(g.opp, q, ev)) : [];          // indestructible ones stay
           theirs.forEach(q => leavePerm(g.opp, q, ev)); mine.forEach(q => leavePerm(g, q, ev)); if (g.opp) flushLeaves(g.opp, ev); flushLeaves(g, ev);
           ev.push({ type: 'note', text: `Destroyed all ${f.what}s${f.mvMax != null ? ' with mana value ' + f.mvMax + ' or less' : f.mvMin != null ? ' with mana value ' + f.mvMin + ' or greater' : ''}: ${mine.length} of yours and ${theirs.length} of theirs`, source });
           break;
         }
         case 'pumpBig': g.battlefield.forEach(q => { if (isCreaturePerm(q) && powerOf(g, q) >= 4) { q.eotP = (q.eotP || 0) + 1; q.eotT = (q.eotT || 0) + 1; q.eotKw = new Set([...(q.eotKw || []), 'trample']); } }); break;          // Goreclaw
         case 'wrath': {
-          const dead = g.battlefield.filter(q => isCreaturePerm(q) && powerOf(g, q) >= f.minPower);
+          if (g.opp) protectAll(g, g.opp, q => isCreaturePerm(q) && powerOf(g.opp, q) >= f.minPower && !indestructible(g.opp, q), 'destroy', ev);          // Heroic Intervention, Teferi's Protection, Selfless Spirit
+          const survives = (gg, q) => indestructible(gg, q) || (!f.noRegen && regenerates(gg, q, ev));          // "destroy" spares indestructible creatures (it did not) and regenerating ones
+          const dead = g.battlefield.filter(q => isCreaturePerm(q) && powerOf(g, q) >= f.minPower && !survives(g, q));
           dead.forEach(q => leavePerm(g, q, ev));
-          if (g.opp) { const od = g.opp.battlefield.filter(q => isCreaturePerm(q) && powerOf(g.opp, q) >= f.minPower); od.forEach(q => leavePerm(g.opp, q, ev)); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `The opponent loses ${od.length} creature${od.length === 1 ? '' : 's'}`, source }); }
+          if (g.opp) { const od = g.opp.battlefield.filter(q => isCreaturePerm(q) && powerOf(g.opp, q) >= f.minPower && !survives(g.opp, q)); od.forEach(q => leavePerm(g.opp, q, ev)); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `The opponent loses ${od.length} creature${od.length === 1 ? '' : 's'}`, source }); }
           ev.push({ type: 'note', text: `Destroyed ${dead.length} creature${dead.length === 1 ? '' : 's'} with power ${f.minPower} or greater`, source });
           break;
         }
@@ -4354,13 +4403,13 @@
           if (!(n > 0)) break;
           const os = otherPlayers(g);
           if (!os.length) { if (g.dry) break; const k = Math.min(n, g.oppHand == null ? 7 : g.oppHand); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}the opponent discards ${k} card${k === 1 ? '' : 's'}${f.random ? ' at random' : ''}`, source }); ghostDiscards(g, k, ev); break; }
-          for (const o of f.each ? os : [os.includes(g.opp) ? g.opp : os[0]]) { if (f.random) discardRandom(o, n, ev, source ? source.card.name : 'Discard'); else for (let i = 0; i < n && o.hand.length; i++) discardWorst(o, ev); }
+          for (const o of f.each ? os : [os.includes(g.opp) ? g.opp : os[0]].filter(x => !x.protAll && !bfInfo(x).playerHex)) { if (f.random) discardRandom(o, n, ev, source ? source.card.name : 'Discard'); else for (let i = 0; i < n && o.hand.length; i++) discardWorst(o, ev); }
           break;
         }
         case 'oppHandExile': {                                                                            // Karn Liberated +4: the opponent exiles a card from its hand (not a discard)
           const os = otherPlayers(g);
           if (!os.length) { const h = g.oppHand == null ? 7 : g.oppHand; if (g.dry || !h) break; g.oppHand = h - 1; ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}the opponent exiles a card from its hand (${g.oppHand} left)`, source }); break; }
-          const o = os.includes(g.opp) ? g.opp : os[0]; if (!o.hand.length) break;
+          const o = os.includes(g.opp) ? g.opp : os[0]; if (!o.hand.length || o.protAll || bfInfo(o).playerHex) break;          // a player with hexproof or protection can't be targeted
           const w = o.hand.slice().sort((x, y) => discardValue(o, x) - discardValue(o, y))[0]; o.hand.splice(o.hand.indexOf(w), 1); o.exile.push(w);
           ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}the opponent exiles ${w.card.name} from its hand`, source });
           break;
@@ -4654,7 +4703,7 @@
         case 'kayaEmblem': g.kayaEmblem = true; ev.push({ type: 'note', text: 'Emblem: each upkeep you may cast a legendary spell for free', source }); break;
         case 'wrennEmblem': g.wrennEmblem = true; ev.push({ type: 'note', text: 'Emblem: you may play lands and cast permanents from your graveyard', source }); break;
         case 'poisonWin': { const k = 9 - (g.poisonDealt || 0); if (k > 0) addPoison(g, k, ev, source, 'Vraska: up to nine'); else ev.push({ type: 'note', text: 'Vraska: the opponent already has nine or more poison counters', source }); break; }          // nine, not ten: one more (proliferate, toxic) wins
-        case 'emblem': (g.emblems = g.emblems || []).push({ p: f.p, t: f.t, keywords: f.keywords || [] }); touch(g); ev.push({ type: 'note', text: `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;
+        case 'emblem': (g.emblems = g.emblems || []).push({ p: f.p, t: f.t, keywords: f.keywords || [], types: f.types }); touch(g); ev.push({ type: 'note', text: f.types ? `Emblem: your ${f.types.join(', ')}s have ${f.keywords.join(', ')}` : `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;
         case 'proliferate':                                              // one more of each kind of counter already there, the opponent's poison counters included
           for (let pk = 0; pk < (bfInfo(g).prolifTwice ? 2 : 1); pk++) {
             if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) addPoison(g, 1, ev, source, 'Proliferate');
@@ -6350,6 +6399,14 @@ g.actSeq = (g.actSeq || 0) + 1;
         pay(g, a.sacDraw.cost); leavePerm(g, p, ev); flushLeaves(g, ev); draw(g, 1, ev); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, 1, ev, p);
         ev.push({ type: 'note', text: `${p.card.name}: sacrificed for a card and a Treasure`, source: p }); return;
       }
+      if (a.indCounterAb && g.opp && !g.dry && !(p.other && p.other.indestructible > 0) && canPay(a.indCounterAb.cost, allUnits(g))) {          // Mondrak, Tekuthal
+        const ic = a.indCounterAb;
+        if (ic.sac) { const fod = g.battlefield.filter(q => q !== p && (isCreaturePerm(q) || q.card.a.isArtifact) && q.token && !q.asLand).sort((x, y) => (isCreaturePerm(x) ? powerOf(g, x) : 0) - (isCreaturePerm(y) ? powerOf(g, y) : 0)).slice(0, ic.sac);
+          if (fod.length === ic.sac) { pay(g, ic.cost); fod.forEach(q => leavePerm(g, q, ev)); flushLeaves(g, ev); p.other = Object.assign({}, p.other, { indestructible: 1 }); touch(g); ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${fod.map(q => q.card.name).join(' and ')}, an indestructible counter`, source: p }); return; } }
+        if (ic.counters) { const pool = g.battlefield.filter(q => q !== p && (q.card.a.isArtifact || isCreaturePerm(q) || q.card.a.isPlaneswalker)); const spare = q => q.card.a.isPlaneswalker ? Math.max(0, (q.loyalty || 0) - 2) : isCreaturePerm(q) ? Math.max(0, Math.min(q.counters || 0, toughnessOf(g, q) - 1)) : Object.values(q.other || {}).reduce((t, v) => t + v, 0);
+          if (pool.reduce((t, q) => t + spare(q), 0) >= ic.counters + 3) { pay(g, ic.cost); let left = ic.counters; for (const q of pool.sort((x, y) => spare(y) - spare(x))) { const k = Math.min(left, spare(q)); if (!k) continue; if (q.card.a.isPlaneswalker) q.loyalty -= k; else if (isCreaturePerm(q) && (q.counters || 0) > 0) q.counters -= k; else { const key = Object.keys(q.other || {}).find(x => q.other[x] > 0); if (key) q.other = Object.assign({}, q.other, { [key]: q.other[key] - k }); } left -= k; if (!left) break; }
+            p.other = Object.assign({}, p.other, { indestructible: 1 }); touch(g); ev.push({ type: 'note', text: `${p.card.name}: removed ${ic.counters} counters, an indestructible counter`, source: p }); return; } }
+      }
       if (a.unblockAb && g.opp && !g.combatDone && canPay(a.unblockAb.cost, allUnits(g)) && g.opp.battlefield.some(x => isCreaturePerm(x) && !x.tapped)) {          // "can't be blocked this turn"
         const tgt = a.unblockAb.self ? p : g.battlefield.filter(q => isCreaturePerm(q) && !q.sick && !hasKw(g, q, 'unblockable') && matchesFilter(q.card, 'goblin|orc|pirate')).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
         if (tgt && !(tgt.sick && !hasKw(g, tgt, 'haste')) && !hasKw(g, tgt, 'unblockable') && !tgt.eotOnlyHaste && powerOf(g, tgt) >= 2) { pay(g, a.unblockAb.cost); if (a.unblockAb.haste) tgt.eotOnlyHaste = true; else tgt.eotKw = new Set([...(tgt.eotKw || []), 'unblockable']); ev.push({ type: 'note', text: `${tgt.card.name} can't be blocked this turn (${p.card.name})`, source: p }); return; }
@@ -7346,6 +7403,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   function beginTurn(g) {
     g.turn++;
     g.activeTurn = true; for (const o of otherPlayers(g)) o.activeTurn = false;          // whose turn it is ("during your turn")
+    (g.match || g).seq = ((g.match || g).seq || 0) + 1;          // every player's turn counts: Angel's Grace lasts this one
+    g.protAll = false; g.lifeLock = false; if (g.phased && g.phased.length) { g.battlefield.push(...g.phased); g.phased = null; touch(g); }          // The One Ring, Teferi's Protection end; phased-out permanents phase in before the untap step
     g.pirateHits = 0; g.attackedThisTurn = false; g._extraAtk = []; g.oppLostTurn = 0;
     g.floating = []; g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0; g.combatDone = false; g.isCast = 0; g.pwBonus = 0;
     const ev = [{ type: 'untap' }];
@@ -7559,7 +7618,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
       let dmg = 0, vsLifelink = 0, psn = 0;
       let hitters = [];
-      if (g.opp && !g.dry) { instantWindow(g.opp, ev, 'combat'); attackers = attackers.filter(p => g.battlefield.includes(p)); }          // the defender answers attackers at instant speed
+      if (g.opp && !g.dry) { protectLethal(g, g.opp, attackers, ev); instantWindow(g.opp, ev, 'combat'); attackers = attackers.filter(p => g.battlefield.includes(p)); }          // Angel's Grace, Teferi's Protection against a lethal attack          // the defender answers attackers at instant speed
       if (g.opp) { const r = resolveCombatVs(g, attackers, ev); dmg = r.dmg; hitters = r.hitters; vsLifelink = r.lifelink; psn = r.psn || 0; }
       else for (const p of attackers) {
         if (!g.battlefield.includes(p)) continue;
@@ -7572,14 +7631,15 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (p.card.commander) { const ck = isPod(g) ? p.iid + '>' + g.opp.pid : p.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + pw; }
       }
       if (dmg || psn) {
+        if (dmg) dmg = dealToOpp(g, dmg, true);
         if (dmg) {
-          dealToOpp(g, dmg, true);
           ev.push({ type: 'attack', attackers: hitters, dmg, total: g.damage });
           checkKill(g, ev);
           oppLostLife(g, dmg, ev);                                         // Exquisite Blood: combat damage is life loss too (infect damage is not)
         }
         for (const h of hitters) enchDamage(g, h, 1, ev);
         if (g.opp && hitters.length) { if (g.opp.monarch) { g.opp.monarch = false; g.monarch = true; ev.push({ type: 'note', text: 'You become the monarch (combat damage)' }); } if (g.opp.initiative) { g.opp.initiative = false; g.initiative = true; venture(g, ev, null); } }
+        if (psn && g.opp && (g.opp.protAll || g.opp.lifeLock || bfInfo(g.opp).preventDmg)) psn = 0;          // the damage was prevented, so no poison counters either
         if (psn) addPoison(g, psn, ev, null, 'Combat (toxic, infect)');          // ten poison counters win
         g.pirateHits = (g.pirateHits || 0) + hitters.filter(h => matchesFilter(h.card, 'pirate')).length;
         const lifelink = g.opp ? 0 : hitters.reduce((s, p) => s + (hasKw(g, p, 'lifelink') ? Math.max(0, powerOf(g, p)) * (hasKw(g, p, 'double strike') ? 2 : 1) : 0), 0);
@@ -7706,7 +7766,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     g.extortOwed = 0;
     if (g.monarch && g.library.length && !g.dry) draw(g, 1, []);                                            // the monarch draws a card at the beginning of their end step
-    if (g.opp) { g.opp.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; }); for (const q of g.battlefield.slice()) if (q.card.a.statics.admiral && (g.pirateHits || 0) >= 3) { const bp = g.opp.battlefield.filter(x => !x.asLand && !x.card.commander).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv))[0]; if (bp) stealPerm(g, bp, [], false); break; } }          // Admiral Beckett Brass
+    if (g.opp) { g.opp.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; }); for (const q of g.battlefield.slice()) if (q.card.a.statics.admiral && (g.pirateHits || 0) >= 3) { const bp = g.opp.battlefield.filter(x => !x.asLand && !x.card.commander).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv))[0]; if (bp) stealPerm(g, bp, [], false); break; } }          // Admiral Beckett Brass
     for (const p of g.battlefield.slice()) if (p.returnEot) sendHome(g, p);                                // control effects wear off
     for (const i of g.hand.slice()) if (i.temp != null && i.temp <= g.turn) { g.hand.splice(g.hand.indexOf(i), 1); if (!g.opp || !i.foreign) g.exile.push(i); else g.opp.exile.push(i); }          // cards exiled by Breeches, Ragavan... that were not cast
     for (const p of g.battlefield.slice()) if (p.dash) { p.dash = false; leavePerm(g, p, [], 'hand'); }          // Whip of Erebos; dash: back to hand
@@ -7740,7 +7800,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       creatures: g.battlefield.filter(isCreaturePerm).length, power: g.battlefield.reduce((s, p) => s + Math.max(0, powerOf(g, p)), 0),
     });
     g.eot = { p: 0, t: 0, kw: new Set() };
-    g.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
+    g.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
     return iw.length ? iw.concat(ev) : ev;
   }
@@ -7842,6 +7902,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Hold the pieces of line A instead of casting them on their own: an empty-library winner with a full library does nothing,
   // and the library emptier is only worth casting together with it.
   function holdForCombo(g, c) {
+    if (c.card.a.prot && c.card.a.prot !== 'indOne' && (g.opp || !c.card.a.spellFx.some(f => f.type === 'draw'))) return true;          // Teferi's Protection, Heroic Intervention, Angel's Grace, Shelter: kept for the response step (against a goldfish Shelter is a cantrip)
     const k = comboKind(c.card);
     if (k.oracleWin && g.library.length > 6) return true;
     if (k.emptier && g.library.concat(g.hand).some(i => i !== c && (comboKind(i.card).oracleWin || comboKind(i.card).drawWin))) return true;
@@ -7949,6 +8010,80 @@ g.actSeq = (g.actSeq || 0) + 1;
     const a = p.card.a;
     return (p.token ? 0.4 : 1) * (a.mv || 0) + Math.max(0, powerOf(g, p)) * 0.7 + a.triggers.length * 0.8 + (a.isLegendary ? 1 : 0) + Math.max(0, p.counters || 0) * 0.5;
   }
+  // ---------- Responses: a player protects its things from the other player's spell, ability or attack (a match) ----------
+  // d is about to lose t to game g's effect: kind 'destroy' | 'exile' | 'bounce' | 'damage' (n damage). Ward is paid first (or the effect is countered).
+  // Then the cheapest answer that works: regeneration, Mother of Runes, Pemmin's Aura, Sylvan Safekeeper, Plaza of Heroes, Yahenni and Koma, Selfless
+  // Spirit, and instants from the hand (Valorous Stance, Shelter, Eldritch Immunity, Heroic Intervention, Teferi's Protection for what matters most).
+  // Returns 'fizzle' (the target is no longer legal), 'saved' (it stays: indestructible, regenerated) or false. A person decides for themselves.
+  const wardOf = (d, p) => { let n = p.card.a.ward ? p.card.a.ward.n : 0, life = p.card.a.ward ? p.card.a.ward.life : 0; for (const q of d.battlefield) for (const w of q.card.a.statics.wardGive || []) if ((!w.other || q !== p) && (w.counters ? (p.counters || 0) > 0 || (p.other && Object.values(p.other).some(v => v > 0)) : isCreaturePerm(p) && matchesFilter(p.card, w.filter))) n = Math.max(n, w.n); return n || life ? { n, life } : null; };
+  const srcColors = (g, source) => source && source.card ? colorsOf(g, source.card) : g.lastCast ? colorsOf(g, g.lastCast.card) : [];
+  function castProtection(d, c, ev) {          // a protection instant from the hand: paid, cast, gone
+    if (!canPay(effectiveCost(d, c), allUnits(d)) || pay(d, effectiveCost(d, c)) == null) return false;
+    d.hand.splice(d.hand.indexOf(c), 1); (c.card.a.prot === 'tp' ? d.exile : d.graveyard).push(c); fireCastTriggers(d, c, ev);
+    ev.push({ type: 'note', text: `In response, the other player casts ${c.card.name}`, source: null }); return true;
+  }
+  function teferiProtect(d, ev, why) {          // Teferi's Protection: life locked, protection from everything, every permanent phased out until its next turn
+    d.lifeLock = true; d.protAll = true; d.phased = (d.phased || []).concat(d.battlefield.splice(0)); touch(d);
+    ev.push({ type: 'note', text: `Teferi's Protection: ${d.phased.length} permanents phase out, and the player can't be hurt until its next turn${why ? ' (' + why + ')' : ''}` });
+  }
+  function protectOne(g, d, t, kind, ev, source, n) {
+    if (!d || g.dry || !d.battlefield.includes(t)) return false;
+    const w = wardOf(d, t);
+    if (w) { const wc = { generic: w.n, pips: [], x: 0 }; if (canPay(wc, allUnits(g)) && g.life > w.life + 4) { pay(g, wc); if (w.life) g.life -= w.life; ev.push({ type: 'note', text: `Ward: paid {${w.n}}${w.life ? ' and ' + w.life + ' life' : ''} for ${t.card.name}`, source }); } else { ev.push({ type: 'note', text: `Ward: ${t.card.name}'s ward was not paid, the effect is countered`, source }); return 'fizzle'; } }
+    if (d.ask) return false;          // a person answers for themselves
+    const val = threat(d, g, t), cols = srcColors(g, source), lethal = kind === 'destroy' || kind === 'damage', units = () => allUnits(d);
+    if (val < 2.5) return false;
+    if (lethal && t.card.a.regen && kind === 'destroy' && canPay(t.card.a.regen, units()) && pay(d, t.card.a.regen) != null) { t.regenShield = true; ev.push({ type: 'note', text: `${t.card.name} regenerates`, source: t }); return 'saved'; }
+    if (isCreaturePerm(t) && cols.length) { const m = d.battlefield.find(q => q.card.a.mother && !q.tapped && !(q.sick && !hasKw(d, q, 'haste'))); if (m) { m.tapped = true; t.protColors = new Set([...(t.protColors || []), cols[0]]); ev.push({ type: 'note', text: `${m.card.name}: ${t.card.name} gains protection from ${cols[0]}`, source: m }); return 'fizzle'; } }
+    if (kind !== 'damage' || cols.length) for (const q of d.battlefield) { const sh = q.card.a.auraShroud; if (sh && q.attachedTo === t.iid && canPay(sh, units()) && pay(d, sh) != null) { t.eotKw = new Set([...(t.eotKw || []), 'shroud']); ev.push({ type: 'note', text: `${q.card.name}: ${t.card.name} gains shroud`, source: q }); return 'fizzle'; } }
+    if (isCreaturePerm(t) && val >= 4) { const sk = d.battlefield.find(q => q.card.a.safekeeper); const land = d.battlefield.filter(q => q.asLand).sort((x, y) => (x.tapped ? 0 : 1) - (y.tapped ? 0 : 1))[0]; if (sk && land && d.battlefield.filter(q => q.asLand).length >= 4) { leavePerm(d, land, ev); flushLeaves(d, ev); t.eotKw = new Set([...(t.eotKw || []), 'shroud']); ev.push({ type: 'note', text: `${sk.card.name}: sacrificed ${land.card.name}, ${t.card.name} gains shroud`, source: sk }); return 'fizzle'; } }
+    if (t.card.a.isLegendary && isCreaturePerm(t)) { const pz = d.battlefield.find(q => q.card.a.plaza && !q.tapped); if (pz && canPay(pz.card.a.plaza, allUnits(d).filter(u => u.src !== pz))) { pz.tapped = true; pay(d, pz.card.a.plaza); leavePerm(d, pz, ev, 'exile'); flushLeaves(d, ev); t.eotKw = new Set([...(t.eotKw || []), 'hexproof', 'indestructible']); ev.push({ type: 'note', text: `Plaza of Heroes: ${t.card.name} gains hexproof and indestructible`, source: null }); return 'fizzle'; } }
+    if (lethal && t.card.a.sacInd) { const f = d.battlefield.filter(q => q !== t && isCreaturePerm(q) && matchesFilter(q.card, t.card.a.sacInd)).sort((x, y) => creatureValue(d, x) - creatureValue(d, y))[0]; if (f && creatureValue(d, f) < val) { leavePerm(d, f, ev); flushLeaves(d, ev); t.eotKw = new Set([...(t.eotKw || []), 'indestructible']); ev.push({ type: 'note', text: `${t.card.name}: sacrificed ${f.card.name}, gains indestructible`, source: t }); return 'saved'; } }
+    if (lethal && isCreaturePerm(t) && val >= 4) { const ss = d.battlefield.find(q => q.card.a.selfless); if (ss) { leavePerm(d, ss, ev); flushLeaves(d, ev); d.battlefield.forEach(q => { if (isCreaturePerm(q)) q.eotKw = new Set([...(q.eotKw || []), 'indestructible']); }); ev.push({ type: 'note', text: `${ss.card.name} is sacrificed: creatures gain indestructible`, source: null }); return 'saved'; } }
+    for (const c of d.hand.slice()) {
+      const pr = c.card.a.prot; if (!pr || !canPay(effectiveCost(d, c), units())) continue;
+      if (pr === 'indOne' && lethal && isCreaturePerm(t)) { if (castProtection(d, c, ev)) { t.eotKw = new Set([...(t.eotKw || []), 'indestructible']); return 'saved'; } }
+      if (pr === 'protOne' && isCreaturePerm(t) && cols.length) { if (castProtection(d, c, ev)) { t.protColors = new Set([...(t.protColors || []), ...(/each color/i.test(c.card.oracle_text || '') ? COLORS : cols)]); if (c.card.a.spellFx.some(f => f.type === 'draw')) draw(d, 1, ev); return 'fizzle'; } }
+      if (pr === 'heroic' && val >= 5) { if (castProtection(d, c, ev)) { d.battlefield.forEach(q => { q.eotKw = new Set([...(q.eotKw || []), 'hexproof', 'indestructible']); }); return 'fizzle'; } }
+      if (pr === 'tp' && (val >= 8 || t.card.commander)) { if (castProtection(d, c, ev)) { teferiProtect(d, ev, t.card.name); return 'fizzle'; } }
+    }
+    return false;
+  }
+  // A wipe is coming for d's creatures (or other permanents): Teferi's Protection, Heroic Intervention, Selfless Spirit, for the board worth it
+  function protectAll(g, d, hit, kind, ev) {
+    if (!d || g.dry || d.ask) return;
+    const lost = d.battlefield.filter(hit), val = lost.reduce((t, q) => t + Math.max(1, threat(d, g, q)), 0);
+    if (lost.length < 2 && val < 6) return;
+    for (const c of d.hand.slice()) {
+      const pr = c.card.a.prot; if (!pr || !canPay(effectiveCost(d, c), allUnits(d))) continue;
+      if (pr === 'heroic' && kind !== 'exile') { if (castProtection(d, c, ev)) { d.battlefield.forEach(q => { q.eotKw = new Set([...(q.eotKw || []), 'hexproof', 'indestructible']); }); return; } }
+      if (pr === 'tp' && (val >= 8 || lost.length >= 3)) { if (castProtection(d, c, ev)) { teferiProtect(d, ev, 'a wipe'); return; } }
+    }
+    if (kind !== 'exile') { const ss = d.battlefield.find(q => q.card.a.selfless); if (ss && lost.some(isCreaturePerm)) { leavePerm(d, ss, ev); flushLeaves(d, ev); d.battlefield.forEach(q => { if (isCreaturePerm(q)) q.eotKw = new Set([...(q.eotKw || []), 'indestructible']); }); ev.push({ type: 'note', text: `${ss.card.name} is sacrificed: creatures gain indestructible`, source: null }); } }
+  }
+  // A lethal attack on d: Angel's Grace (it can't lose this turn, its life stops at 1) or Teferi's Protection
+  function protectLethal(g, d, attackers, ev) {
+    if (!d || g.dry || d.ask || d.lifeLock || d.protAll) return;
+    const blocks = chooseBlocks(d, g, attackers), open = attackers.filter(a => !blocks.has(a) || hasKw(g, a, 'trample')).reduce((t, a) => t + Math.max(0, powerOf(g, a)) * (hasKw(g, a, 'double strike') ? 2 : 1), 0);
+    if (open < d.life) return;
+    for (const c of d.hand.slice()) {
+      const pr = c.card.a.prot; if (!pr || !canPay(effectiveCost(d, c), allUnits(d))) continue;
+      if (pr === 'grace') { if (castProtection(d, c, ev)) { d.graceSeq = turnSeq(d); ev.push({ type: 'note', text: "Angel's Grace: the player can't lose this turn, and damage leaves it at 1 life" }); return; } }
+      if (pr === 'tp') { if (castProtection(d, c, ev)) { teferiProtect(d, ev, 'a lethal attack'); return; } }
+    }
+  }
+  // "You can't lose the game" (Platinum Angel, Angel's Grace this turn)
+  const turnSeq = x => (x.match || x).seq || 0;
+  const cantLose = x => !!x && (bfInfo(x).cantLose || (x.graceSeq != null && x.graceSeq === turnSeq(x)));
+  // what of n damage (or life loss) reaches player o: Teferi's Protection locks the life total, protection from everything (The One Ring) and Glacial
+  // Chasm prevent damage, Angel's Grace keeps it at 1
+  function shieldPlayer(o, n, loss) {
+    if (!(n > 0)) return 0;
+    if (o.lifeLock) return 0;
+    if (!loss && (o.protAll || bfInfo(o).preventDmg)) return 0;
+    if (!loss && o.graceSeq != null && o.graceSeq === turnSeq(o)) return Math.max(0, Math.min(n, o.life - 1));
+    return n;
+  }
   // Angelic Arbiter on another player's side: on your turn, a spell or an attack, not both
   const arbiterOn = g => g.activeTurn !== false && !!g.opp && otherPlayers(g).some(o => bfInfo(o).arbiter);
   // what attacking costs: Ghostly Prison and Propaganda ({2} each), an untapped Archangel of Tithes ({1} each), on the defending player's side
@@ -7960,6 +8095,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!isCreaturePerm(b) || b.tapped || b.card.a.cantBlock || b.decayed) return false;
     if (a.eotUnblockColor && colorsOf(d, b.card).includes(a.eotUnblockColor)) return false;          // Skrelv: can't be blocked by creatures of the chosen color
     if (b.card.a.blockFlyersOnly && !hasKw(g, a, 'flying')) return false;          // Brazen Borrower
+    if (a.protColors && colorsOf(d, b.card).some(c => a.protColors.has(c))) return false;          // protection from a color: not blocked by creatures of that color
     if (a.card.a.evadePower != null && powerOf(d, b) >= a.card.a.evadePower) return false;          // Beloved Princess
     if ((a.card.a.onlySpirits || a.eotOnlySpirits) && !matchesFilter(b.card, 'spirit')) return false;          // Departed Deckhand
     if (a.eotOnlyHaste && !hasKw(d, b, 'haste')) return false;          // Gingerbrute: only creatures with haste
@@ -8144,14 +8280,19 @@ g.actSeq = (g.actSeq || 0) + 1;
           psn += poisonOnHit(m.from, m.n, 1);
           if (!hitters.includes(m.from)) hitters.push(m.from);
           g.combatNames = Object.assign({}, g.combatNames, { [m.from.card.name]: true });
-          if (m.from.card.commander) { const ck = isPod(g) ? m.from.iid + '>' + d.pid : m.from.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + m.n; }
-        } else { m.to.dmg = (m.to.dmg || 0) + m.n; if (deathtouch(m.game, m.from)) m.to.dt = true; if (m.to.card.a.taunter && !g.dry && m.n > 0) { const own = m.game === g ? d : g; ev.push({ type: 'note', text: `${m.to.card.name} is dealt ${m.n} damage and deals that much to its opponent`, source: m.to }); damageOpp(own, m.n, ev, m.to, true); } }          // Brash Taunter
+          if (m.from.card.commander && !(d.protAll || d.lifeLock || bfInfo(d).preventDmg)) { const ck = isPod(g) ? m.from.iid + '>' + d.pid : m.from.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + m.n; }          // prevented damage is not commander damage
+        } else if (m.to.protColors && colorsOf(m.game, m.from.card).some(c => m.to.protColors.has(c))) { /* protection from that color: the damage is prevented */ }
+        else if (m.to.card.a.polukranos && (m.to.counters || 0) > 0) { m.to.counters = Math.max(0, m.to.counters - m.n); }          // Polukranos: counters instead of damage
+        else { m.to.dmg = (m.to.dmg || 0) + m.n; if (deathtouch(m.game, m.from)) m.to.dt = true; if (m.to.card.a.taunter && !g.dry && m.n > 0) { const own = m.game === g ? d : g; ev.push({ type: 'note', text: `${m.to.card.name} is dealt ${m.n} damage and deals that much to its opponent`, source: m.to }); damageOpp(own, m.n, ev, m.to, true); } }          // Brash Taunter
         if (hasKw(m.game, m.from, 'lifelink')) { if (m.game === g) ll += m.n; else llD += m.n; }
       }
       // state-based actions: creatures with lethal damage die
       for (const [game, list] of [[g, attackers], [d, [...blocks.values()].flat()]]) {
         for (const p of list) if (alive(game, p) && !indestructible(game, p) && (p.dt || (p.dmg || 0) >= toughnessOf(game, p)) && (p.dmg || 0) > 0) {          // indestructible creatures survive lethal damage
+          if (!p.dt && p.card.a.isLegendary && eiganjo(game, p, ev)) continue;          // Eiganjo Castle: 2 of the damage prevented
+          if (regenerates(game, p, ev)) continue;
           ev.push({ type: 'note', text: `${p.card.name} dies in combat`, source: p }); leavePerm(game, p, ev); }
+        for (const [game, list] of [[g, attackers], [d, [...blocks.values()].flat()]]) for (const p of list) if (alive(game, p) && isCreaturePerm(p) && toughnessOf(game, p) <= 0) { ev.push({ type: 'note', text: `${p.card.name} dies (no counters left)`, source: p }); leavePerm(game, p, ev); }          // Polukranos
       }
     }
     for (const game of [g, d]) game.battlefield.forEach(p => { p.dmg = 0; p.dt = false; p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });
@@ -8161,7 +8302,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
 
   // ---------- Interaction: removal, bounce, burn at creatures, counterspells (mirror matches only) ----------
-  const targetable = (d, p) => !hasKw(d, p, 'hexproof') && !hasKw(d, p, 'shroud') && !(p.eotHexColor && d.opp && d.opp.lastCast && colorsOf(d.opp, d.opp.lastCast.card).includes(p.eotHexColor));          // Skrelv: hexproof from a color
+  const targetable = (d, p) => !hasKw(d, p, 'hexproof') && !hasKw(d, p, 'shroud') && !((p.eotHexColor || p.protColors) && d.opp && d.opp.lastCast && colorsOf(d.opp, d.opp.lastCast.card).some(c => c === p.eotHexColor || (p.protColors && p.protColors.has(c))));          // Skrelv: hexproof from a color; Mother of Runes: protection from it
   const indestructible = (d, p) => hasKw(d, p, 'indestructible') || (p.other && p.other.indestructible > 0);
   // how much do I want this permanent of the other player gone?
   function threat(d, g, p) {
@@ -8203,8 +8344,28 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   function doRemoval(g, f, source, ev) {
     let t = pickRemovalTarget(g, f);
-    if (g.ask) { t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source }); if (t) return against(g, t, () => removalOf(g, f, source, ev, t)); }
-    if (t) removalOf(g, f, source, ev, t);
+    if (g.ask) { t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source }); if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
+    if (t && !answered(g, t, f.how === 'exile' || f.how === 'tuck' ? 'exile' : 'destroy', source, ev)) removalOf(g, f, source, ev, t);
+  }
+  // the other player answers a targeted effect: true when nothing more happens (the target is protected, regenerated or indestructible)
+  function answered(g, t, kind, source, ev) {
+    const d = g.opp, r = protectOne(g, d, t, kind, ev, source);
+    if (!r) return false;
+    if (r === 'fizzle' || !d.battlefield.includes(t)) { ev.push({ type: 'note', text: `${t.card.name} is no longer a legal target: the effect does nothing`, source }); return true; }
+    if (kind === 'destroy' && (indestructible(d, t) || t.regenShield)) { if (t.regenShield) { t.regenShield = false; t.tapped = true; t.dmg = 0; } ev.push({ type: 'note', text: `${t.card.name} survives`, source }); return true; }
+    return false;
+  }
+  // Eiganjo Castle: {W}, {T}: prevent 2 of the damage dealt to a legendary creature, when that saves it
+  function eiganjo(g, p, ev) {
+    const e = g.battlefield.find(q => q.card.a.eiganjo && !q.tapped); if (!e || g.dry) return false;
+    const ec = e.card.a.eiganjo; if ((p.dmg || 0) - ec.n >= toughnessOf(g, p) || !canPay(ec.cost, allUnits(g).filter(u => u.src !== e))) return false;
+    e.tapped = true; pay(g, ec.cost); p.dmg = Math.max(0, (p.dmg || 0) - ec.n); ev.push({ type: 'note', text: `${e.card.name}: ${ec.n} damage to ${p.card.name} prevented`, source: e }); return true;
+  }
+  // a creature about to be destroyed regenerates when its controller pays for it (Skithiryx): tapped, its damage removed
+  function regenerates(g, q, ev) {
+    if (q.regenShield) { q.regenShield = false; q.tapped = true; q.dmg = 0; q.attacking = false; ev.push({ type: 'note', text: `${q.card.name} regenerates`, source: q }); return true; }
+    const rc = q.card.a.regen; if (!rc || g.dry || !canPay(rc, allUnits(g)) || pay(g, rc) == null) return false;
+    q.tapped = true; q.dmg = 0; q.attacking = false; ev.push({ type: 'note', text: `${q.card.name} regenerates`, source: q }); return true;
   }
   function removalOf(g, f, source, ev, t) {
     const d = g.opp;
@@ -8230,6 +8391,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   function bounceOf(g, best, source, ev) {
     const d = g.opp;
+    if (answered(g, best, 'bounce', source, ev)) return;
     if (best.card.a.sacOnTarget && !source) { ev.push({ type: 'note', text: `${best.card.name} became the target of a spell: its controller sacrifices it`, source }); leavePerm(d, best, ev); flushLeaves(d, ev); return; }          // Departed Deckhand
     ev.push({ type: 'note', text: `Returned the opponent's ${best.card.name} to hand`, source });
     leavePerm(d, best, ev, 'hand');

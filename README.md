@@ -1,4 +1,4 @@
-# I See Fish
+# ICEYfish
 
 Paste a decklist and watch it goldfish. It uses your own card images from **ScryMirror**, plus exact draw math and a Monte Carlo simulation.
 
@@ -9,7 +9,7 @@ The `goldfish/static` folder is a complete web app that needs no server. In this
 **Publish it with GitHub Pages (free, about 2 minutes):**
 1. In the repo on GitHub: **Settings -> Pages -> Build and deployment -> Source: GitHub Actions**.
 2. Go to the **Actions** tab, open **Deploy to GitHub Pages**, and wait for the green check (or click **Run workflow**).
-3. Your app is at `https://<your-github-name>.github.io/Goldfish-/`. Open it on your phone.
+3. Your app is at `https://<your-github-name>.github.io/ICEYfish/`. Open it on your phone.
 
 GitHub Pages is free for public repositories. If the repo is private, use any free static host instead (for example drag the `goldfish/static` folder onto <https://app.netlify.com/drop>).
 
@@ -240,7 +240,7 @@ Cards are kept in a database filed by release set: one file per set in `goldfish
 
 ## Fan content, credits and donations
 
-*I See Fish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
+*ICEYfish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
 
 Card data and images are provided by [Scryfall](https://scryfall.com) and are not endorsed by Scryfall. Following Scryfall's and Wizards' policies, this app is **free to use with no sign-up or paywall**, card images are shown whole and unaltered, and the hosted version fetches everything from Scryfall directly instead of re-hosting it. Optional tips are welcome on Cash App at <https://cash.app/$SWDMark> and never unlock anything.
 

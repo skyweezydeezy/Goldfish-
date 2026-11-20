@@ -1,4 +1,4 @@
-/* I See Fish - UI */
+/* ICEYfish - UI */
 (function () {
   'use strict';
   const G = window.Goldfish, C = window.Charts;
@@ -78,7 +78,7 @@
     const running = sw ? await new Promise(res => { const ch = new MessageChannel(), t = setTimeout(() => res(null), 1500); ch.port1.onmessage = e => { clearTimeout(t); res(e.data && e.data.version); }; sw.postMessage('version', [ch.port2]); }) : null;
     let latest = null; try { const r = await fetch('version.js', { cache: 'no-store' }); if (r.ok) latest = ((await r.text()).match(/ISF_VERSION = (\d+)/) || [])[1] || null; } catch (e) { /* offline: show the running version only */ }          // version.js holds the number: one more with every merge
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
-    el.hidden = false; el.textContent = 'v' + v; el.title = 'I See Fish version ' + v;
+    el.hidden = false; el.textContent = 'v' + v; el.title = 'ICEYfish version ' + v;
     if (latest && +latest > +v) {
       el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
       el.addEventListener('click', async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* reload anyway */ } location.reload(); });
@@ -523,7 +523,7 @@
   $('#dmExportAll').addEventListener('click', () => {
     const all = getDecks();
     if (!Object.keys(all).length) return toast('Nothing to export yet');
-    download('i-see-fish-decks.json', JSON.stringify({ app: 'I See Fish', version: 1, exported: new Date().toISOString(), decks: all }, null, 2), 'application/json');
+    download('iceyfish-decks.json', JSON.stringify({ app: 'ICEYfish', version: 1, exported: new Date().toISOString(), decks: all }, null, 2), 'application/json');
   });
   $('#dmImport').addEventListener('click', () => $('#dmFile').click());
   $('#dmFile').addEventListener('change', async e => {

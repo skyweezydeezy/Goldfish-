@@ -1,5 +1,5 @@
 @echo off
-REM I See Fish - double-click to start. It first gets the newest version, then opens the app.
+REM ICEYfish - double-click to start. It first gets the newest version, then opens the app.
 REM Uses %USERPROFILE%\Documents\ScryMirror by default. To use another folder:
 REM   start.bat --scrymirror "D:\ScryMirror"
 REM To start without checking for a new version:  start.bat --no-update

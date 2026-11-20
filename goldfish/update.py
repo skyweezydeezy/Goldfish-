@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-I See Fish - self-updater. start.bat runs this before the server, so starting the app always gives you the newest version.
+ICEYfish - self-updater. start.bat runs this before the server, so starting the app always gives you the newest version.
 
 What it does:
   * Asks GitHub which commit is newest. If you already have it, nothing is downloaded.
@@ -22,7 +22,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-REPO = os.environ.get("GOLDFISH_UPDATE_REPO", "https://github.com/skyweezydeezy/Goldfish-").rstrip("/")
+REPO = os.environ.get("GOLDFISH_UPDATE_REPO", "https://github.com/skyweezydeezy/ICEYfish").rstrip("/")
 REF = os.environ.get("GOLDFISH_UPDATE_REF", "HEAD")   # HEAD = the repo's default branch; or a branch name, tag or full commit id
 HERE = Path(__file__).resolve().parent
 MANIFEST = ".goldfish-install.json"

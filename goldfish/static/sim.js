@@ -586,6 +586,40 @@
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
       if (!/^[IVX]+(?:, [IVX]+)* — /.test(raw)) {          // the match-side readers below never take a Saga chapter (it is read further down)
+      // ---- rules batch 20: the next 25 most played cards with unread lines
+      { let bm; const MIRB = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; };
+        if ((bm = line.match(/^whenever another (\w+) you control dies, (?:target|each) opponent loses (\d+) life\.?$/i)) && !/^(creature|nontoken|permanent)$/i.test(bm[1])) { a.triggers.push({ kinds: ['dies'], who: 'another ' + bm[1].toLowerCase() + ' you control', subtype: bm[1].toLowerCase(), fx: [{ type: 'drain', n: +bm[2] }], text: raw }); rec.status = 'ok'; continue; }          // Diregraf Captain
+        if ((bm = line.match(/^((?:\{[^}]+\})+)(, \{t\})?: regenerate (another )?target ([a-z, ]+?)\.?$/i)) && !/\bcreature\b|\bpermanent\b/i.test(bm[4])) { a.regenOther = { cost: parseCost(bm[1].replace(/\{t\}/gi, '')), tap: !!bm[2] || /\{t\}/i.test(bm[1]), other: !!bm[3], types: bm[4].replace(/\bor\b/gi, ',').split(',').map(x => x.trim().toLowerCase()).filter(Boolean) }; MIRB(); continue; }          // Accursed Duneyard, Ezuri: regeneration matters when something would destroy them
+        if ((bm = line.match(/^((?:\{[^}]+\})+): (\w+) creatures you control get \+(\d+)\/\+(\d+) and gain ([a-z ,]+?) until end of turn\.?$/i))) { a.teamPump = { cost: parseCost(bm[1]), tap: false, filter: bm[2].toLowerCase(), p: +bm[3], t: +bm[4], kws: kwList(bm[5]) }; rec.status = 'ok'; continue; }          // Ezuri, Renegade Leader
+        if (/^whenever a player taps a land for mana, ~ deals 1 damage to that player\.?$/i.test(line)) { a.manabarbs = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Manabarbs: every land you (and in a match, they) tap; a goldfish taps none
+        if ((bm = line.match(/^spells you cast have ripple (\d+)\.?$/i))) { a.statics.ripple = +bm[1]; rec.status = 'ok'; continue; }          // Thrumming Stone
+        if ((bm = line.match(/^ripple (\d+)\b/i))) { a.ripple = +bm[1]; rec.status = 'ok'; continue; }          // Surging Flame and friends
+        if (/^whenever another creature is put into your graveyard from the battlefield, you may pay \{b\}\. if you do, return ~ from your graveyard to the battlefield\.?$/i.test(line)) { a.netherTraitor = parseCost('{B}'); rec.status = 'ok'; continue; }          // Nether Traitor
+        if (/^whenever one or more artifact creatures you control attack, ~ deals x damage to any target and you scry x, where x is the number of tapped artifacts you control\.?$/i.test(line)) { a.alibou = true; rec.status = 'ok'; continue; }          // Alibou, Ancient Witness
+        if (/^\{u\}, \{t\}, return an artifact you control to its owner's hand: you may put an artifact card from your hand onto the battlefield\.?$/i.test(line)) { a.transmuter = parseCost('{U}'); rec.status = 'ok'; continue; }          // Master Transmuter
+        if (/^whenever ~ deals combat damage to a player, exile any number of target nonland permanents you control, then return those cards to the battlefield under their owner's control\.?$/i.test(line)) { a.brago = true; rec.status = 'ok'; continue; }          // Brago, King Eternal
+        if (/^whenever ~ attacks, reveal cards from the top of your library until you reveal a land card\. put that card onto the battlefield tapped and the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.triggers.push({ kinds: ['attack'], who: '~', fx: [{ type: 'revealLandTapped' }], text: raw }); rec.status = 'ok'; continue; }          // The Regalia
+        if (/^exile up to two target creatures you control, then return those cards to the battlefield under their owner's control\.?$/i.test(line)) { a.spellFx.push({ type: 'flickerTwo', creatures: true }); rec.status = 'ok'; continue; }          // Displace
+        if ((bm = line.match(/^when ~ enters, you get ((?:\{e\})+)\s*\.?$/i))) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'energy', n: (bm[1].match(/\{e\}/gi) || []).length }], text: raw }); rec.status = 'ok'; continue; }          // Chthonian Nightmare
+        if (/^pay x \{e\}, sacrifice a creature, return ~ to its owner's hand: return target creature card with mana value x from your graveyard to the battlefield\. activate only as a sorcery\.?$/i.test(line)) { a.nightmare = true; rec.status = 'ok'; continue; }
+        if (/^whenever a player casts a spell they don't own, that player creates a treasure token\.?$/i.test(line)) { a.gontiTreasure = true; MIRB(); continue; }          // Gonti, Night Minister: their cards come from the other player
+        if (/^whenever a creature deals combat damage to one of your opponents, its controller looks at the top card of that opponent's library and exiles it face down\. they may play that card for as long as it remains exiled\. mana of any type can be spent to cast a spell this way\.?$/i.test(line)) { a.gontiThief = true; MIRB(); continue; }
+        if ((bm = line.match(/^when ~ enters, support (\w+)\.?$/i))) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'support', n: num(bm[1]), other: true }], text: raw }); rec.status = 'ok'; continue; }          // Together Forever
+        if ((bm = line.match(/^support (\w+)\.?$/i))) { a.spellFx.push({ type: 'support', n: num(bm[1]) }); rec.status = 'ok'; continue; }
+        if (/^\{1\}: choose target creature with a counter on it\. when that creature dies this turn, return that card to its owner's hand\.?$/i.test(line)) { a.togetherForever = parseCost('{1}'); rec.status = 'ok'; continue; }
+        if (/^once each turn, you may pay \{0\} rather than pay the mana cost for a colorless spell you cast from your hand\.?$/i.test(line)) { a.statics.monolith = true; rec.status = 'ok'; continue; }          // Darksteel Monolith
+        if (/^\{t\}: untap two other target legendary creatures\.?$/i.test(line)) { a.untapLegends2 = true; rec.status = 'ok'; continue; }          // Ioreth of the Healing House
+        if (/^at the beginning of your upkeep, you may return target enchantment card from your graveyard to the battlefield\.?$/i.test(line)) { a.triggers.push({ kinds: ['upkeep'], fx: [{ type: 'enchReturn' }], text: raw }); rec.status = 'ok'; continue; }          // Starfield of Nyx
+        if (/^as long as you control five or more enchantments, each other non-aura enchantment you control is a creature in addition to its other types and has base power and base toughness each equal to its mana value\.?$/i.test(line)) { a.starfield = 5; rec.status = 'ok'; continue; }
+        if ((bm = line.match(/^each creature you control gets \+(\d+)\/\+(\d+) for each equipment attached to it\.?$/i))) { a.perEquip = { p: +bm[1], t: +bm[2] }; rec.status = 'ok'; continue; }          // Bruenor Battlehammer
+        if (/^you may pay \{0\} rather than pay the equip cost of the first equip ability you activate each turn\.?$/i.test(line)) { a.statics.freeEquip = true; rec.status = 'ok'; continue; }
+        if ((bm = line.match(/^when ~ enters, it deals (\d+) damage divided as you choose among any number of target creatures and\/or planeswalkers\.?$/i))) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'divideDamage', n: +bm[1] }], text: raw }); MIRB(); continue; }          // Fury
+        if (/^whenever you cast your first instant or sorcery spell each turn, exile an instant or sorcery card at random from your graveyard\. then copy each card exiled with ~\. you may cast any number of the copies without paying their mana costs\.?$/i.test(line)) { a.arcaneBombard = true; rec.status = 'ok'; continue; }          // Arcane Bombardment
+        if (/^enchanted creature is a treefolk with base power and toughness 0\/4 and loses all abilities\.?$/i.test(line)) { a.hostileAura = 'treefolk'; MIRB(); continue; }          // Lignify: on their best creature
+        if (/^when ~ dies or is put into exile from the battlefield, you may put it into its owner's library third from the top\.?$/i.test(line)) { a.godEternal = true; rec.status = 'ok'; continue; }          // the God-Eternals
+        if ((bm = line.match(/^exile the top (\w+) cards of your library\. you may play cards exiled this way until the end of your next turn\.?$/i))) { a.spellFx.push({ type: 'impulseOwn', n: num(bm[1]), next: true }); rec.status = 'ok'; continue; }          // Escape to the Wilds
+        if (/^if a source would deal damage to a permanent or player, it deals double that damage to that permanent or player instead\.?$/i.test(line)) { a.statics.twinGods = true; rec.status = 'ok'; continue; }          // Dictate of the Twin Gods, Furnace of Rath
+      }
       // ---- rules batch 19: the next 25 most played cards with unread lines
       { let bm;
         if ((bm = line.match(/^as long as enchanted creature is legendary, it gets \+(\d+)\/\+(\d+) and has ward \{(\d+)\}\./i))) { a.legendAura = { p: +bm[1], t: +bm[2], ward: +bm[3] }; rec.status = 'ok'; continue; }          // Combat Research
@@ -943,7 +977,7 @@
       { const rm = line.match(/^whenever you cast a (\w+) spell, copy that spell/i); if (rm) { a.statics.copyType = rm[1].toLowerCase(); rec.status = 'ok'; continue; } }          // Reflections of Littjara
       { const rt = line.match(/^(\w+) and (\w+) cards in your graveyard have retrace/i); if (rt) { a.retrace = [rt[1].toLowerCase(), rt[2].toLowerCase()]; rec.status = 'ok'; continue; } }          // Deeproot Historian
       if (/^if a creature you control would explore, instead it explores, then it explores again/i.test(line)) { a.statics.exploreTwice = true; rec.status = 'ok'; continue; }          // Topography Tracker
-      if (/^if one or more \+1\/\+1 counters would be put on a creature you control, that many plus one \+1\/\+1 counters are put on (?:it|that permanent) instead/i.test(line)) { a.statics.counterPlus = (a.statics.counterPlus || 0) + 1; rec.status = 'ok'; continue; }          // Hardened Scales
+      if (/^if one or more \+1\/\+1 counters would be put on a creature you control, that many plus one \+1\/\+1 counters are put on (?:it|that permanent|that creature) instead/i.test(line)) { a.statics.counterPlus = (a.statics.counterPlus || 0) + 1; rec.status = 'ok'; continue; }          // Hardened Scales, Conclave Mentor
       if (/^if one or more \+1\/\+1 counters would be put on a creature you control, twice that many \+1\/\+1 counters are put on that creature instead/i.test(line)) { a.statics.branching = (a.statics.branching || 0) + 1; rec.status = 'ok'; continue; }          // Branching Evolution
       { const lm = line.match(/^other ([A-Za-z]+) (?:creatures )?get \+(\d+)\/\+(\d+)(?: and have ([a-z ,]+))?\.?$/i); if (lm) { a.statics.anthems.push({ other: true, filter: singular(lm[1]).toLowerCase(), p: +lm[2], t: +lm[3], keywords: kwList(lm[4]) }); rec.status = 'ok'; continue; } }          // Lord of Atlantis
       if (/^other \w+ you control have ward/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }                                                      // Svyelun: ward only matters against an opponent
@@ -2790,6 +2824,8 @@
     if (st.portDraw) (info.portDraw = info.portDraw || []).push(q);
     if (q.card.a.roots) (info.roots = info.roots || []).push(q);
     if (st.freeEquip) info.freeEquip = true;
+    if (st.monolith) info.monolith = true;
+    if (a.perEquip) info.perEquip = { p: (info.perEquip ? info.perEquip.p : 0) + a.perEquip.p, t: (info.perEquip ? info.perEquip.t : 0) + a.perEquip.t };          // Bruenor Battlehammer
     if (st.millLands) info.millLands = true;
     if (st.lifePlus) info.lifePlus = (info.lifePlus || 0) + st.lifePlus;
     if (st.krrik) info.krrik = true;
@@ -2903,6 +2939,7 @@
     if (k === 'p' && p.card.a.cdaDevotion) n += devotionTo(g, p.card.a.cdaDevotion);
     for (const la of info.lifeAnthems) if (g.life >= (g.opts.startLife || 40) + la.over) n += k === 'p' ? la.p : la.t;
     for (const l of info.lieutenants) if (g.battlefield.some(q => q.card.commander)) n += l.src === p ? (k === 'p' ? l.lt.sp : l.lt.st) : (k === 'p' ? l.lt.op : l.lt.ot);
+    if (info.perEquip) { const eq = g.battlefield.filter(q => q.attachedTo === p.iid && q.card.a.isEquipment).length; if (eq) n += (k === 'p' ? info.perEquip.p : info.perEquip.t) * eq; }          // Bruenor Battlehammer
     if (info.jetmir && k === 'p' && g.battlefield.includes(p)) { const c = g.battlefield.filter(isCreaturePerm).length; n += (c >= 6 ? 1 : 0) + (c >= 9 ? 1 : 0); }          // Jetmir's two more steps
     if (info.legendAura && p.card.a.isLegendary) for (const q of g.battlefield) { const la = q.card.a.legendAura; if (la && q.attachedTo === p.iid) n += k === 'p' ? la.p : la.t; }          // Combat Research
     if (info.cityAnthem && p.card.a.isArtifact && cityBlessed(g)) for (const q of g.battlefield) { const ca = q.card.a.cityAnthem; if (ca && q !== p) n += k === 'p' ? ca.p : ca.t; }          // Illustrious Wanderglyph
@@ -3016,8 +3053,11 @@
       if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
       const cols = (info.landsAnyColor && p.asLand) ? ANY_COLOR : (info.allSwamps && p.asLand && !p.produce.colors.has('B')) ? new Set([...p.produce.colors, 'B', ...(info.allForests ? ['G'] : [])]) : (info.allForests && p.asLand && !p.produce.colors.has('G')) ? new Set([...p.produce.colors, 'G']) : p.produce.colors;          // Urborg: every land also taps for {B}; Wrenn: any colour
       if (p.card.a.kioraUntap) {                                                                       // Kiora's Follower untaps your best other mana permanent: its mana, once more
-        const best = info.producers.filter(q => q !== p && q.produce && !q.card.a.kioraUntap && !(q.sick && isCreaturePerm(q) && !info.abilityHaste && !hasKw(g, q, 'haste')) && !(stony && q.card.a.isArtifact)).sort((x, y) => y.produce.amount - x.produce.amount)[0];
-        if (best) for (let k = 0; k < best.produce.amount; k++) units.push({ src: p, colors: best.produce.colors });
+        const okU = q => q !== p && q.produce && !q.card.a.kioraUntap && !(q.sick && isCreaturePerm(q) && !info.abilityHaste && !hasKw(g, q, 'haste')) && !(stony && q.card.a.isArtifact);
+        const best = info.producers.filter(okU).sort((x, y) => y.produce.amount - x.produce.amount)[0];
+        const two = p.card.a.untapLegends2 ? info.producers.filter(q => okU(q) && isCreaturePerm(q) && q.card.a.isLegendary).sort((x, y) => y.produce.amount - x.produce.amount).slice(0, 2) : [];          // Ioreth of the Healing House
+        if (two.length === 2 && two[0].produce.amount + two[1].produce.amount > (best ? best.produce.amount : 0)) { for (const q of two) for (let k = 0; k < q.produce.amount; k++) units.push({ src: p, colors: q.produce.colors }); }
+        else if (best) for (let k = 0; k < best.produce.amount; k++) units.push({ src: p, colors: best.produce.colors });
         continue;
       }
       { const R = p.produce.restrict; if (R && restrictOk(g, R, g._payFor) && !(R.minLands && info.lands < R.minLands) && !(R.needLands && g.battlefield.filter(q => q.asLand && !q.tapped && q !== p).length < R.needLands)) { for (let k = 0; k < R.amount; k++) units.push({ src: p, colors: R.colors }); continue; } }          // restricted mana for a spell it may pay for (Castle Garenbrig's six {G} net of its {2}{G}{G})
@@ -3161,6 +3201,7 @@
     const gone = g.pendingLeaves || [];
     g.pendingLeaves = [];
     for (const p of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('tokenLeave')) fire(g, t, q, ev, p);
+    if (!g.dry && g.battlefield.some(q => q.card.a.starfield || (q.animated && q.animated.starfield))) starfieldSync(g);          // Starfield of Nyx
   }
   // A permanent is sacrificed or destroyed: a real card goes to the graveyard (a commander to the command zone), and "when ~ leaves the battlefield"
   // triggers fire with its power (Rapacious Guest).
@@ -3232,6 +3273,7 @@
       ev.push({ type: 'note', text: `${p.card.name} is exiled instead of dying (${repl.q.card.name})`, source: repl.q });
       dest = 'exile';
     } else {
+    if (p.card.a.godEternal && !p.token && p.inst && !p.card.commander && !g.dry && (dest == null || dest === 'graveyard' || dest === 'exile')) dest = 'library3';          // God-Eternal Oketra
     const H = p.owner || g;                                                                               // a stolen permanent goes to its owner's zones
     if (p.origCard) { p.card = p.origCard; p.origCard = null; }
     if (!p.token && p.inst) { if (dest === 'library3') H.library.splice(Math.min(2, H.library.length), 0, p.inst); else if (dest === 'library' && !p.card.commander) H.library.unshift(p.inst); else if (dest === 'libraryBottom' && !p.card.commander) H.library.push(p.inst); else (p.card.commander ? H.command : dest === 'exile' ? H.exile : dest === 'hand' ? H.hand : H.graveyard).push(p.inst); }
@@ -3265,7 +3307,9 @@
       createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W', 'B'], subtypes: ['Spirit'], keywords: ['flying'], artifact: false, name: 'Spirit' }, a.afterlife * dd, ev, p);
     }
     if (!g.dry && !p.token && p.inst && (a.selfLiesa || g.battlefield.some(q => q.card.a.liesa && q !== p))) (g.liesaBack = g.liesaBack || []).push(p.inst);          // Liesa: back to hand at the next end step
+    if (!g.dry && !(p.owner && p.owner !== g) && (p.token || (p.inst && g.graveyard.includes(p.inst)))) for (const i of g.graveyard.filter(x => x !== p.inst && x.card.a.netherTraitor)) { if (!canPay(i.card.a.netherTraitor, allUnits(g)) || pay(g, i.card.a.netherTraitor) == null) break; g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); ev.push({ type: 'note', text: `${i.card.name} returns from the graveyard ({B})`, source: null }); }          // Nether Traitor
     if (g.dry || !p.inst || p.token) return;
+    if (((p.counters || 0) !== 0 || Object.values(p.other || {}).some(v => v > 0)) && g.graveyard.includes(p.inst)) { const tf = g.battlefield.find(q => q.card.a.togetherForever); if (tf && canPay(tf.card.a.togetherForever, allUnits(g)) && pay(g, tf.card.a.togetherForever) != null) { g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); g.hand.push(p.inst); ev.push({ type: 'note', text: `Together Forever: ${p.card.name} returns to your hand`, source: tf }); return; } }          // Together Forever
     if (a.dieReturn && g.graveyard.includes(p.inst) && canPay(a.dieReturn.cost, allUnits(g))) { pay(g, a.dieReturn.cost); g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); g.hand.push(p.inst); ev.push({ type: 'note', text: `${p.card.name} returns to your hand ({B})` }); }
     if (a.dieReanim) {
       const have = allUnits(g).length;
@@ -3505,13 +3549,15 @@
     const leftovers = [], used = new Set(idx);
     g._paySrcs = [...srcs].some(x => x && x.card && x.card.a && x.card.a.discoverCast) ? srcs : null;          // Tecutlan: which permanents made the mana
     const vor = !g.dry && g.opp && othersPerms(g).some(({ q }) => q.card.a.vorinclex);
+    const barbs = g.dry ? 0 : bothSides(g).filter(q => q.card.a.manabarbs).length;          // Manabarbs
     srcs.forEach(s => {
       s.tapped = true;
       if (vor && s.asLand) s.vorSkip = true;          // Vorinclex, Voice of Hunger
       if (s.token && s.card && /Treasure/.test(s.card.name || '')) g._payTre = true;          // Rain of Riches
       if (s.card && s.card.a && s.card.a.tapWatch && !g.dry) for (const t of s.card.a.triggers) if (t.kinds.includes('selfTapped')) fire(g, t, s, [], s);
       if (s.card && s.card.a && s.card.a.tapCounter) s.other = Object.assign({}, s.other, { [s.card.a.tapCounter]: ((s.other && s.other[s.card.a.tapCounter]) || 0) + 1 });          // Twitching Doll: a nest counter each time it taps for mana
-      if (s.card && s.card.a && s.card.a.tapPain) { g.life -= s.card.a.tapPain; checkDeath(g, []); }          // City of Brass, Ancient Tomb, Mana Confluence
+      if (s.card && s.card.a && s.card.a.tapPain) { g.life -= s.card.a.tapPain; checkDeath(g, []); }
+      if (barbs && s.asLand) { g.life -= barbs * twinMult(g); checkDeath(g, []); }          // Manabarbs          // City of Brass, Ancient Tomb, Mana Confluence
       if (s.foods) s.foods.forEach(f => { f.tapped = true; });         // Cabbage Merchant taps the two Foods
       if (s.handCard) { const hi = g.hand.indexOf(s.handCard); if (hi >= 0) { g.hand.splice(hi, 1); g.exile.push(s.handCard); } }          // Simian Spirit Guide: exiled from the hand
       units.forEach((u, i) => { if (u.src === s && !used.has(i) && !u.druid) leftovers.push({ src: null, colors: u.colors, floating: true }); });
@@ -3602,7 +3648,8 @@
     if (a.mayhem && inst.mayhemTurn === g.turn && g.graveyard.includes(inst)) return a.mayhem;
     if (a.foretell && inst.foretoldTurn != null && inst.foretoldTurn < g.turn && g.exile.includes(inst)) return a.foretell;          // cast from exile for its foretell cost
     if (a.freerunning && g.freerunTurn === g.turn && g.hand.includes(inst)) return a.freerunning;          // freerunning
-    inst._af = null;
+    inst._af = null; inst._mono = false;
+    if (info0.monolith && g.monolithTurn !== g.turn && !a.isLand && !(inst.card.colors || []).length && !(a.cost && a.cost.x) && (a.mv || 0) > 0 && g.hand.includes(inst)) { inst._mono = true; return { generic: 0, pips: [], x: 0 }; }          // Darksteel Monolith
     if (info0.asForetold && !a.isLand) { const af = info0.asForetold.find(q => q.afTurn !== g.turn && ((q.other && q.other.time) || 0) >= (a.mv || 0)); if (af) { inst._af = af; return { generic: 0, pips: [], x: 0 }; } }          // As Foretold: once a turn, free          // mayhem
     if (info0.freeType && !a.isLand && matchesFilter(inst.card, info0.freeType)) return { generic: 0, pips: [], x: 0 };          // Dracogenesis
     if (a.isCreature && !a.isLand && (a.mv || 0) <= 3 && (info0.aluren || (g.opp && bfInfo(g.opp).aluren)) && (g.hand.includes(inst) || g.command.includes(inst))) return { generic: 0, pips: [], x: 0 };          // Aluren: any player
@@ -3745,6 +3792,7 @@
     }
     const perm = enter(g, inst, o);
     const a = inst.card.a;
+    if (!g.dry && (a.starfield || (a.isEnchantment && g.battlefield.some(q => q.card.a.starfield)))) starfieldSync(g);          // Starfield of Nyx
     if (inst.alt === 'warp') { inst.alt = null; perm.warped = true; (ev || []).push({ type: 'note', text: `${inst.card.name} is cast for its warp cost: it is exiled at the end of the turn and can be cast again later`, source: perm }); }
     if (inst.bestowing) { inst.bestowing = false; const host = bestCreature(g, perm); if (host) { perm.noCreature = true; perm.bestowed = true; perm.attachedTo = host.iid; touch(g); (ev || []).push({ type: 'note', text: `${inst.card.name} is bestowed on ${host.card.name}`, source: perm }); } }
     if (a.trigCopy || a.rings || a.lithoform || a.bracers) g.copierSeen = true;
@@ -4318,6 +4366,7 @@
   function checkDeath(g, ev) { if (g.opp && g.life <= 0) loseGame(g, ev || [], 'life'); }          // you lost your last life point: the other player wins
   function oppLifeLeft(g) { return g.opp ? g.opp.life : g.opts.oppLife - g.damage; }
   function dealToOpp(g, n, combat, loss) {
+    if (!loss && !g.dry) n *= twinMult(g);          // Dictate of the Twin Gods
     if (!loss && g.staggerTurn === g.turn && !g.dry) n *= 2;          // Lightning, Army of One: stagger
     if (combat && !g.dry && g.opp && bothSides(g).some(q => q.card.a.noCombatPrevent)) loss = true;          // Frenzied Baloth: combat damage can't be prevented (handled like life loss)
     const lm = bfInfo(g).lossMult; if (lm > 1) n *= lm;
@@ -4480,7 +4529,7 @@
             }
             if (bk.k) { bk.ts.forEach(q => leavePerm(g.opp, q, ev)); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `Comet Storm kicked ${bk.k}×: ${bk.ts.map(q => q.card.name).join(', ')} die`, source }); damageOpp(g, bk.x, ev, source); break; }
           }
-          if (g.opp && f.any) { const t = burnPick(g, n, false, source); if (t) { against(g, t, () => { ev.push({ type: 'note', text: `${n} damage kills ${t.card.name}`, source }); leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); }); break; } }
+          if (g.opp && f.any) { const t = burnPick(g, n, false, source); if (t) { against(g, t, () => burnHit(g, t, n, source, ev)); break; } }
           { const cols = source && source.card ? source.card.colors : (g.lastCast && g.lastCast.card.colors);
             if (!g.dry && (cols || []).includes('R')) {
               const ax = bfInfo(g).axonil; if (ax && n > 0) { const pw = ax.reduce((m, q) => Math.max(m, powerOf(g, q)), 0); if (n < pw) { ev.push({ type: 'note', text: `${ax[0].card.name}: ${n} damage becomes ${pw}`, source: ax[0] }); n = pw; } }
@@ -4489,7 +4538,7 @@
           damageOpp(g, n, ev, source); break;
         }
         case 'drain': damageOpp(g, n, ev, source, false, true); break;          // life loss, not damage (protection does not stop it)
-        case 'burnCreature': { const t = g.opp && burnPick(g, n, true, source); if (t) against(g, t, () => { if (answered(g, t, 'damage', source, ev)) return; if (indestructible(g.opp, t) || (t.protColors && srcColors(g, source).some(c => t.protColors.has(c)))) { ev.push({ type: 'note', text: `${t.card.name} survives the damage`, source }); return; } if (t.card.a.polukranos && (t.counters || 0) > 0) { t.counters = Math.max(0, t.counters - n); ev.push({ type: 'note', text: `${t.card.name}: the damage is prevented, ${n} counters removed`, source }); if (toughnessOf(g.opp, t) <= 0) { leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); } return; } if (regenerates(g.opp, t, ev)) return; ev.push({ type: 'note', text: `${n} damage kills ${t.card.name}`, source }); leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); }); break; }
+        case 'burnCreature': { const t = g.opp && burnPick(g, n, true, source); if (t) against(g, t, () => burnHit(g, t, n, source, ev)); break; }
         case 'removal': if (g.opp) doRemoval(g, f, source, ev); break;
         case 'bounce': if (g.opp) doBounce(g, f, source, ev); break;
         case 'edict': if (f.each || (f.n || 1) > 1) { for (const o of (f.each ? otherPlayers(g) : g.opp ? [g.opp] : [])) for (let k = 0; k < (f.n || 1); k++) { const v = edictPool(g, o, f)[0]; if (!v) break; ev.push({ type: 'note', text: `The other player sacrifices ${v.card.name}`, source }); sacEvent(o, v, ev); leavePerm(o, v, ev); flushLeaves(o, ev); } break; }          // Portal to Phyrexia: three, from each opponent
@@ -4544,6 +4593,18 @@
           mine.forEach(q => leavePerm(g, q, ev, exile ? 'exile' : 'graveyard')); flushLeaves(g, ev);
           ev.push({ type: 'note', text: `${exile ? 'Exiled' : 'Destroyed'} all ${f.what}s${f.mvMax != null ? ' with mana value ' + f.mvMax + ' or less' : f.mvMin != null ? ' with mana value ' + f.mvMin + ' or greater' : ''}: ${mine.length} of yours and ${theirs.length} of theirs`, source });
           break;
+        }
+        case 'revealLandTapped': {          // The Regalia: the first land from the top onto the battlefield tapped, the rest to the bottom
+          const at = g.library.findIndex(i => i.card.a.isLand); if (at < 0) break; const rest = g.library.splice(0, at), l = g.library.shift();
+          g.library.push(...shuffle(rest, g.rnd)); enterWithTriggers(g, l, { tapped: true }, ev); ev.push({ type: 'note', text: `${source ? source.card.name : 'Reveal'}: ${l.card.name} onto the battlefield tapped`, source }); break;
+        }
+        case 'support': {          // support N: a +1/+1 counter on each of up to N (other) creatures
+          const ts = g.battlefield.filter(q => isCreaturePerm(q) && !(f.other && q === source)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x)).slice(0, f.n || 1);
+          ts.forEach(q => addCounters(g, q, '+1/+1', 1, ev, source)); break;
+        }
+        case 'enchReturn': {          // Starfield of Nyx: the best non-Aura enchantment card from your graveyard
+          const i = g.graveyard.filter(x => x.card.a.isEnchantment && !x.card.a.isAura && !x.card.a.isLand).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (!i) break;
+          g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); ev.push({ type: 'note', text: `${i.card.name} returns from the graveyard`, source }); break;
         }
         case 'tyrantDeath': {          // Leyline Tyrant dies: all the {R} you can make, as damage to the other player
           const R = allUnits(g).filter(u => u.colors.has('R')).length; if (!R) break; const ok = pay(g, { generic: 0, pips: Array.from({ length: R }, () => ['R']), x: 0 }); if (ok == null) break;
@@ -4882,7 +4943,7 @@
         case 'freeFromHand': { for (let k = 0; k < (f.all ? 10 : 1); k++) { const c = g.hand.filter(i => !i.card.a.isLand && !i.card.commander && i.card.a.mv <= f.maxMv && (!f.instsorc || i.card.a.isInstantSorcery) && (!f.creature || i.card.a.isCreature) && !i.card.a.counter).sort((x, y) => y.card.a.mv - x.card.a.mv)[0]; if (!c) break; c.freeCast = true; const ce = castCard(g, c, true); c.freeCast = false; if (ce) ev.push({ type: 'note', text: `${c.card.name} is cast for free`, source }, ...ce); } break; }          // Rishkar's Expertise
         case 'charmPing': { const mine = g.battlefield.filter(isCreaturePerm).length; g.life -= mine; if (g.opp) { g.opp.life -= g.opp.battlefield.filter(isCreaturePerm).length; } checkDeath(g, ev); break; }          // Rakdos Charm
         case 'returnLands': { const ls = g.graveyard.filter(i => i.card.a.isLand).slice(0, f.n || 99); for (const l of ls) { g.graveyard.splice(g.graveyard.indexOf(l), 1); enterWithTriggers(g, l, { tapped: true }, ev); } ev.push({ type: 'note', text: `${ls.length} lands return from the graveyard`, source }); break; }
-        case 'flickerTwo': { const ps = g.battlefield.filter(q => !q.token && q.inst && (q.card.a.triggers.some(t => t.kinds.includes('etb')) || q.asLand)).sort((x, y) => fxValue(g, [].concat(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))) - fxValue(g, [].concat(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx)))).slice(0, 2);
+        case 'flickerTwo': { const ps = g.battlefield.filter(q => !q.token && q.inst && (!f.creatures || isCreaturePerm(q)) && (q.card.a.triggers.some(t => t.kinds.includes('etb')) || (q.asLand && !f.creatures))).sort((x, y) => fxValue(g, [].concat(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))) - fxValue(g, [].concat(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx)))).slice(0, 2);
           for (const q of ps) { removePerm(g, q); const np = enterWithTriggers(g, q.inst, {}, ev); np.sick = isCreaturePerm(np); } ev.push({ type: 'note', text: `Flickered ${ps.map(q => q.card.name).join(' and ')}`, source }); break; }          // Ghostly Flicker
         case 'hideaway': if (source) { const top = g.library.slice(0, f.n); const best = top.filter(i => !i.card.a.isLand).sort((x, y) => y.card.a.mv - x.card.a.mv)[0]; if (best) { g.library.splice(g.library.indexOf(best), 1); source.hidden = best; } const rest = g.library.splice(0, Math.max(0, f.n - (best ? 1 : 0))); g.library.push(...rest); } break;
         case 'attackToken': { createTokens(g, f.tok, 1, ev, source); for (const r of g.battlefield.slice(-4)) if (r.token && r.card.name === f.tok.name && r.enteredTurn === g.turn && !r.attacking && !r.atkTok) { r.atkTok = true; r.tapped = true; r.sick = false; r.attacking = true; r.attackedTurn = g.turn; (g._extraAtk = g._extraAtk || []).push(r); } break; }          // Najeela: the token enters tapped and attacking
@@ -5574,7 +5635,7 @@
         case 'untapLands': { let k = 0; for (const p of g.battlefield) if (p.asLand && p.tapped && k < n) { p.tapped = false; k++; } if (k) ev.push({ type: 'note', text: `Untapped ${k} land${k > 1 ? 's' : ''}`, source }); break; }
         case 'flashbackBest': { const t = flashbackTarget(g); if (t) castFromYard(g, t, ev); break; }
         case 'sweepDamage': {
-          const N = typeof f.n === 'number' ? f.n : n;          // Spiteful Banditry: X
+          const N = (typeof f.n === 'number' ? f.n : n) * twinMult(g);          // Spiteful Banditry: X; Dictate of the Twin Gods doubles it
           const sc = srcColors(g, source), kill = (game) => game.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(game, q) - (q.dmg || 0) <= N && !indestructible(game, q) && !(f.noFly && hasKw(game, q, 'flying')) && !(q.protColors && sc.some(c => q.protColors.has(c))));          // protection from its color: no damage
           for (const o of otherPlayers(g)) protectAll(g, o, q => kill(o).includes(q) && !indestructible(o, q), 'damage', ev);          // Eldritch Immunity, overloaded
           const hooks = []; for (const x of [g].concat(otherPlayers(g))) for (const q of x.battlefield) if (!(f.noFly && hasKw(x, q, 'flying'))) { if (q.card.a.bodyKnow) draw(x, N, ev); if (isCreaturePerm(q) && (q.card.a.stuffy || matchesFilter(q.card, 'dragon'))) hooks.push([x, q, x.battlefield.some(w => w.card.a.wrathfulRed)]); }          // Body of Knowledge, Stuffy Doll: dealt damage
@@ -5985,6 +6046,14 @@
     }
     if (g.opp && !isCopy) for (const q of g.opp.battlefield.slice()) if (q.card.a.talion && [inst.card.a.mv, inst.card.a.isCreature ? inst.card.a.power : null, inst.card.a.isCreature ? inst.card.a.toughness : null].includes(2)) { damageOpp(g.opp, 2, ev, q, true); if (g.opp.library.length) draw(g.opp, 1, ev); }          // Talion: the chosen number is 2
     if (!isCopy && !a.isCreature) { const ts = turnSeq(g); if (g.ncSeq !== ts) { g.ncSeq = ts; g.ncN = 0; } g.ncN++; }          // noncreature spells this turn (Esper Sentinel)
+    if (!isCopy && !g.dry && inst.foreign) { const gt = bothSides(g).filter(q => q.card.a.gontiTreasure).length; if (gt) createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, gt, ev, null); }          // Gonti, Night Minister: a spell you don't own
+    if (!isCopy && !g.dry && !a.isLand) { const rips = [a.ripple || 0].concat(g.battlefield.filter(q => q.card.a.statics.ripple).map(q => q.card.a.statics.ripple)).filter(Boolean);          // ripple (Thrumming Stone): the same name from the top, cast for free
+      for (const n of rips) { const top = g.library.splice(0, n), same = top.filter(i => i.card.name === inst.card.name); g.library.push(...top.filter(i => !same.includes(i)));
+        if (same.length) ev.push({ type: 'note', text: `Ripple ${n}: ${same.length} more ${inst.card.name}`, source: null });
+        for (const i of same) { if (g.killTurn != null || matchOver(g)) { g.library.push(i); continue; } g.hand.push(i); i.freeCast = true; const ce = castCard(g, i, true); i.freeCast = false; if (!ce && g.hand.includes(i)) { g.hand.splice(g.hand.indexOf(i), 1); g.library.push(i); } else if (ce) ev.push(...ce); } } }
+    if (!isCopy && !g.dry && a.isInstantSorcery && g.bombardTurn !== g.turn && g.battlefield.some(q => q.card.a.arcaneBombard)) { g.bombardTurn = g.turn;          // Arcane Bombardment: one more card exiled, then a free copy of each
+      for (const q of g.battlefield.filter(x => x.card.a.arcaneBombard)) { const pool = g.graveyard.filter(i => i.card.a.isInstantSorcery && i !== inst); if (pool.length) { const i = pool[Math.floor(g.rnd() * pool.length)]; g.graveyard.splice(g.graveyard.indexOf(i), 1); g.exile.push(i); (q.bombarded = q.bombarded || []).push(i); }
+        for (const i of (q.bombarded || []).slice()) { if (g.killTurn != null || matchOver(g)) break; ev.push({ type: 'note', text: `Arcane Bombardment: a free copy of ${i.card.name}`, source: q }); g.spellsCast = (g.spellsCast || 0) + 1; fireCastTriggers(g, { iid: g.nextIid++, card: i.card }, ev); applyEffects(g, i.card.a.spellFx, null, ev, null); } } }
     if (!isCopy && !g.dry && (inst.temp != null || inst.foretoldTurn != null || inst.airbent || inst.warpCast)) for (const q of g.battlefield.filter(x => x.card.a.pactBoon)) createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, 1, ev, q);          // Prosper: a card played from exile
     if (!isCopy && !g.dry && a.isCreature && (a.power || 0) >= 5) for (const q of g.battlefield.filter(x => x.card.a.vortexDiscover)) applyEffects(g, [{ type: 'discover', n: a.mv || 0 }], q, ev, null);          // Monstrous Vortex
     if (!isCopy && !g.dry) for (const q of g.battlefield) if (q.card.a.slumberCast && q.other && q.other.slumber > 0) { q.other = Object.assign({}, q.other, { slumber: q.other.slumber - 1 }); if (!q.other.slumber) { q.asLand = false; q.noCreature = false; touch(g); ev.push({ type: 'note', text: `${q.card.name} wakes up: a 12/12 creature`, source: q }); } }          // Arixmethes
@@ -6536,6 +6605,7 @@
       if ((!kc.x || X >= 1) && canPay(cost, allUnits(g)) && pay(g, cost) != null) { inst.kicked = true; inst.kickX = X; ev.push({ type: 'note', text: `${inst.card.name} is kicked${kc.x ? ' (X = ' + X + ')' : ''}` }); }
     }
     if (n != null && inst._af) { inst._af.afTurn = g.turn; inst._af = null; }
+    if (n != null && inst._mono) { g.monolithTurn = g.turn; inst._mono = false; }          // Darksteel Monolith: used for this turn
     inst._castExile = g.exile.includes(inst);
     inst._tre = n != null && !!g._payTre; inst._paidBy = n != null ? g._paySrcs : null;
     if (n != null && inst._defiler && !g.dry) { g.life -= 2 * inst._defiler; ev.push({ type: 'note', text: `Paid ${2 * inst._defiler} life: ${inst.card.name} costs less` }); inst._defiler = 0; checkDeath(g, ev); }
@@ -7165,6 +7235,15 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (a.diskAb && g.opp && !g.dry && !p.tapped && !(p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')) && !abilBlocked(g, p, false) && (() => { const h = (x, q) => !q.asLand && (isCreaturePerm(q) || q.card.a.isArtifact || q.card.a.isEnchantment) && !indestructible(x, q); const w = (x, q) => Math.max(0.5, threat(x, g, q)); return otherPlayers(g).reduce((t, o) => t + o.battlefield.filter(q => h(o, q)).reduce((u, q) => u + w(o, q), 0), 0) - g.battlefield.filter(q => h(g, q) && q !== p).reduce((t, q) => t + w(g, q), 0) >= 6; })() && canPay(a.diskAb, allUnits(g).filter(u => u.src !== p))) {
         p.tapped = true; pay(g, a.diskAb); ev.push({ type: 'note', text: `${p.card.name}: destroy all artifacts, creatures and enchantments`, source: p });
         for (const x of [g].concat(otherPlayers(g))) { const ls = x.battlefield.filter(q => !q.asLand && (isCreaturePerm(q) || q.card.a.isArtifact || q.card.a.isEnchantment) && !indestructible(x, q)); ls.forEach(q => leavePerm(x, q, ev)); flushLeaves(x, ev); } return; }          // Nevinyrral's Disk, itself included
+      if (a.transmuter && !g.dry && !p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && !abilBlocked(g, p, false)) {          // Master Transmuter: a cheap artifact back to hand, a big one from hand onto the battlefield
+        const big = g.hand.filter(i => i.card.a.isArtifact && !i.card.a.isLand && !i.card.commander).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0];
+        const back = big && g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.commander && !(q.token && q !== p)).sort((x, y) => (x.card.a.mv || 0) - (y.card.a.mv || 0))[0];
+        if (big && back && (big.card.a.mv || 0) >= 4 && (big.card.a.mv || 0) > (back.card.a.mv || 0) + 1 && !canPay(effectiveCost(g, big), allUnits(g)) && canPay(a.transmuter, allUnits(g)) && pay(g, a.transmuter) != null) {
+          p.tapped = true; leavePerm(g, back, ev, 'hand'); flushLeaves(g, ev); g.hand.splice(g.hand.indexOf(big), 1); enterWithTriggers(g, big, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: ${back.card.name} back to your hand, ${big.card.name} onto the battlefield`, source: p }); return; } }
+      if (a.nightmare && !g.dry && !g.combatDone && (g.energy || 0) > 0 && g.battlefield.includes(p)) {          // Chthonian Nightmare: energy, a creature and itself (to your hand) for a creature card with that mana value
+        const tgt = g.graveyard.filter(i => i.card.a.isCreature && (i.card.a.mv || 0) >= 1 && (i.card.a.mv || 0) <= g.energy).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x))[0];
+        const fod = tgt && g.battlefield.filter(q => isCreaturePerm(q) && !q.card.commander && creatureValue(g, q) < reanimateValue(g, tgt)).sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0];
+        if (tgt && fod) { g.energy -= tgt.card.a.mv; leavePerm(g, fod, ev); flushLeaves(g, ev); leavePerm(g, p, ev, 'hand'); flushLeaves(g, ev); g.graveyard.splice(g.graveyard.indexOf(tgt), 1); enterWithTriggers(g, tgt, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: ${tgt.card.a.mv} energy and ${fod.card.name} for ${tgt.card.name}`, source: null }); return; } }
       if (a.greedDraw && !g.dry && g.combatDone && g.life - a.greedDraw.life > lifeFloor(g, 12) && g.library.length > 5 && !abilBlocked(g, p, false) && canPay(a.greedDraw.cost, allUnits(g)) && pay(g, a.greedDraw.cost) != null) { g.life -= a.greedDraw.life; draw(g, 1, ev); ev.push({ type: 'note', text: `${p.card.name}: ${a.greedDraw.life} life for a card`, source: p }); return; }          // Greed
       if (a.stuffyPing && !g.dry && g.combatDone && !p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && !abilBlocked(g, p, false)) { p.tapped = true; ev.push({ type: 'note', text: `${p.card.name} deals 1 damage to itself`, source: p }); if (a.stuffy) damageOpp(g, 1, ev, p); return; }          // Stuffy Doll: 1 a turn to the chosen player
       if (a.tapLandDrop && !g.dry && !p.tapped && !(p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')) && !abilBlocked(g, p, false)) { const l = g.hand.find(i => i.card.a.isLand); if (l && g.landsPlayedThisTurn >= landsAllowed(g)) { p.tapped = true; g.hand.splice(g.hand.indexOf(l), 1); enterWithTriggers(g, l, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: ${l.card.name} put onto the battlefield`, source: p }); return; } }          // PuPu UFO: one more land
@@ -8511,6 +8590,11 @@ g.actSeq = (g.actSeq || 0) + 1;
       const atkM = 1 + g.battlefield.filter(q => q.card.a.statics.attackDouble || q.siegeMode === 'mardu').length;          // Isshin, Windcrag Siege (Mardu); Isshin: attack triggers trigger an additional time
       for (const p of attackers) for (const t of p.card.a.triggers) if (t.kinds.includes('attack')) for (let k = 0; k < atkM; k++) fire(g, t, p, ev, p);
       if (g.opp && !g.dry) for (const p of attackers) { const an = p.card.a.annihilator === 'COUNTERS' ? (p.counters || 0) : (p.card.a.annihilator || 0) + (p.eotAnnihilator || 0); if (an > 0 && g.battlefield.includes(p)) annihilate(g, g.opp, an, p, ev); }          // annihilator
+      if (!g.dry && attackers.some(x => x.card.a.isArtifact && isCreaturePerm(x))) for (const al of g.battlefield.filter(q => q.card.a.alibou)) {          // Alibou: X damage and scry X, X = your tapped artifacts
+        const X = g.battlefield.filter(q => q.card.a.isArtifact && q.tapped).length; if (!X) continue;
+        const t = g.opp && g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q) && !indestructible(g.opp, q) && toughnessOf(g.opp, q) - (q.dmg || 0) <= X * twinMult(g) && threat(g.opp, g, q) >= 4).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0];
+        if (t && g.opp.life > X * 3) { hurtCreature(g.opp, t, X, g, al, ev); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `${al.card.name}: ${X} damage to ${t.card.name}`, source: al }); } else damageOpp(g, X, ev, al);
+        scry(g, X, ev); }
       if (!g.dry && attackers.some(x => x.card.commander)) for (const q of g.battlefield) if (q.card.a.pageCounters) q.other = Object.assign({}, q.other, { page: ((q.other && q.other.page) || 0) + 1 });          // Tome of Legends: your commander attacks
       if (g.opp && !g.dry && attackers.length >= 2) for (const q of g.opp.battlefield.filter(x => x.card.a.troublePairs)) { draw(g.opp, 1, ev); ev.push({ type: 'note', text: `${q.card.name}: attacked by two or more creatures, the other player draws a card`, source: q }); }          // Trouble in Pairs
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
@@ -8533,7 +8617,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       { const sh = g.battlefield.find(q => q.card.a.dsGive && !q.tapped); if (sh && attackers.length) { const t = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (powerOf(g, t) >= 3 && !hasKw(g, t, 'double strike') && canPay(sh.card.a.dsGive.cost, allUnits(g).filter(u => u.src !== sh))) { sh.tapped = true; pay(g, sh.card.a.dsGive.cost); t.eotKw = new Set([...(t.eotKw || []), 'double strike']); ev.push({ type: 'note', text: `${sh.card.name}: ${t.card.name} gains double strike`, source: sh }); } } }          // Sunhome
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('equippedAttack')) { const eq = attackers.find(x => x.iid === q.attachedTo); if (eq) fire(g, t, q, ev, eq); }          // Sword of the Animist
       { const wr = g.battlefield.find(q => q.card.a.wolfRun && !q.tapped); if (wr && attackers.length) { const units = allUnits(g).length; const X = units - 3; if (X >= 2 && canPay({ generic: X, pips: [['R'], ['G']], x: 0 }, allUnits(g).filter(u => u.src !== wr))) { wr.tapped = true; pay(g, { generic: X, pips: [['R'], ['G']], x: 0 }); const t = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; t.eotP = (t.eotP || 0) + X; t.eotKw = new Set([...(t.eotKw || []), 'trample']); ev.push({ type: 'note', text: `Kessig Wolf Run: ${t.card.name} gets +${X}/+0 and trample`, source: wr }); } } }
-      for (const q of g.battlefield.slice()) { const tp = q.card.a.teamPump; if (!tp) continue; const tg = attackers.filter(x => !tp.filter || matchesFilter(x.card, tp.filter)); if (tg.length >= 2 && !(tp.tap && q.tapped)) for (let k = 0; k < (tp.tap ? 1 : 6) && canPay(tp.cost, allUnits(g).filter(u => u.src !== q || !tp.tap)); k++) { if (tp.tap) q.tapped = true; pay(g, tp.cost); tg.forEach(x => { x.eotP = (x.eotP || 0) + tp.p; x.eotT = (x.eotT || 0) + tp.t; }); } }          // Purphoros: pump the team with spare mana
+      for (const q of g.battlefield.slice()) { const tp = q.card.a.teamPump; if (!tp) continue; const tg = attackers.filter(x => !tp.filter || matchesFilter(x.card, tp.filter)); if (tg.length >= 2 && !(tp.tap && q.tapped)) for (let k = 0; k < (tp.tap ? 1 : 6) && canPay(tp.cost, allUnits(g).filter(u => u.src !== q || !tp.tap)); k++) { if (tp.tap) q.tapped = true; pay(g, tp.cost); tg.forEach(x => { x.eotP = (x.eotP || 0) + tp.p; x.eotT = (x.eotT || 0) + tp.t; if (tp.kws && tp.kws.length) x.eotKw = new Set([...(x.eotKw || []), ...tp.kws]); }); } }          // Purphoros: pump the team with spare mana
       if (!g.opp) for (const q of g.battlefield.slice()) { const ap = q.card.a.auraPump; const t = ap && q.attachedTo != null && attackers.find(x => x.iid === q.attachedTo); if (!t) continue;          // Pemmin's Aura: +1/-1 down to toughness 1
         const units = allUnits(g), keep = g.hand.filter(c => !c.card.a.isLand && canPay(effectiveCost(g, c), units)).reduce((m, c) => Math.max(m, (ec => ec.generic + ec.pips.length)(effectiveCost(g, c))), 0);          // mana kept for the spell the second main phase would cast
         for (let k = 0; k < 10 && toughnessOf(g, t) > 1 && allUnits(g).length - (ap.cost.generic + ap.cost.pips.length) >= keep && canPay(ap.cost, allUnits(g)); k++) { pay(g, ap.cost); t.eotP = (t.eotP || 0) + 1; t.eotT = (t.eotT || 0) - 1; } }
@@ -8575,6 +8659,12 @@ g.actSeq = (g.actSeq || 0) + 1;
         g.lastHitters = hitters; g.lastHitTurn = g.turn;
         if (!g.dry) { const gx = g.battlefield.filter(q => q.card.a.gixDraw).length; if (gx) for (let k = 0; k < hitters.length * gx && g.library.length && g.life > lifeFloor(g, 10); k++) { g.life -= 1; draw(g, 1, ev); ev.push({ type: 'note', text: 'Gix: 1 life for a card', source: null }); } }          // Gix, Yawgmoth Praetor
         if (g.opp && !g.dry) for (const h of hitters.filter(x => x.card.a.thiefSanity && g.battlefield.includes(x))) thiefLook(g, g.opp, 3, ev, h, false);          // Thief of Sanity
+        if (g.opp && !g.dry) { const gn = g.battlefield.filter(q => q.card.a.gontiThief).length; if (gn) for (const h of hitters) for (let k = 0; k < gn; k++) thiefLook(g, g.opp, 1, ev, h, false); }          // Gonti, Night Minister
+        if (!g.dry) for (const h of hitters.filter(x => x.card.a.brago && g.battlefield.includes(x))) {          // Brago: your permanents that like to enter again (enter triggers, tapped mana rocks)
+          const etbV = q => fxValue(g, [].concat(...q.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx)));
+          const ps = g.battlefield.filter(q => q !== h && !q.token && q.inst && !q.asLand && !q.card.a.isAura && !q.card.a.isPlaneswalker && q.attachedTo == null && !(q.counters > 0) && !Object.values(q.other || {}).some(v => v > 0) && !g.battlefield.some(x => x.attachedTo === q.iid) && (etbV(q) > 0 || (q.tapped && q.produce && !isCreaturePerm(q))));
+          for (const q of ps) { removePerm(g, q); const np = enterWithTriggers(g, q.inst, {}, ev); np.sick = isCreaturePerm(np); }
+          if (ps.length) ev.push({ type: 'note', text: `${h.card.name}: flickered ${ps.map(q => q.card.name).join(', ')}`, source: h }); }
         if (!g.dry && isPod(g)) for (const h of hitters) if (g.battlefield.some(q => q.card.a.superState && q.attachedTo === h.iid)) { const amt = Math.max(0, powerOf(g, h)); for (const o of otherPlayers(g)) if (o !== g.opp && !o.dead) o.life -= amt; ev.push({ type: 'note', text: `Super State: ${amt} damage to each other opponent`, source: h }); }          // Super State
         if (!g.dry && g.activeTurn !== false && g.battlefield.some(q => q.card.a.quilled)) for (const h of hitters) if (g.battlefield.includes(h)) addCounters(g, h, '+1/+1', Math.max(0, powerOf(g, h)), ev, h);          // Quilled Greatwurm
         if (!g.dry && hitters.some(h => h.card.a.stagger)) { g.staggerTurn = g.turn; ev.push({ type: 'note', text: 'Stagger: damage to that player is doubled until your next turn', source: null }); }          // Lightning, Army of One
@@ -9257,7 +9347,7 @@ g.actSeq = (g.actSeq || 0) + 1;
           if (m.from.card.commander && !(d.protAll || d.lifeLock || bfInfo(d).preventDmg)) { const ck = isPod(g) ? m.from.iid + '>' + d.pid : m.from.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + m.n; }          // prevented damage is not commander damage
         } else if (m.to.protColors && colorsOf(m.game, m.from.card).some(c => m.to.protColors.has(c))) { /* protection from that color: the damage is prevented */ }
         else if (m.to.card.a.polukranos && (m.to.counters || 0) > 0) { m.to.counters = Math.max(0, m.to.counters - m.n); }          // Polukranos: counters instead of damage
-        else { m.to.dmg = (m.to.dmg || 0) + m.n; if (m.n > 0 && !g.dry) { const tg = m.game === g ? g.opp : g; if (tg && m.to.card.a.bodyKnow) draw(tg, m.n, ev); if (tg) dealtDamageHooks(tg, m.to, m.n, ev); } /* Body of Knowledge, Stuffy Doll, Wrathful Red Dragon */ if (deathtouch(m.game, m.from)) m.to.dt = true; if (m.to.card.a.taunter && !g.dry && m.n > 0) { const own = m.game === g ? d : g; ev.push({ type: 'note', text: `${m.to.card.name} is dealt ${m.n} damage and deals that much to its opponent`, source: m.to }); damageOpp(own, m.n, ev, m.to, true); } }          // Brash Taunter
+        else { if (!g.dry && m.n > 0) m.n *= twinMult(g); m.to.dmg = (m.to.dmg || 0) + m.n; if (m.n > 0 && !g.dry) { const tg = m.game === g ? g.opp : g; if (tg && m.to.card.a.bodyKnow) draw(tg, m.n, ev); if (tg) dealtDamageHooks(tg, m.to, m.n, ev); } /* Body of Knowledge, Stuffy Doll, Wrathful Red Dragon */ if (deathtouch(m.game, m.from)) m.to.dt = true; if (m.to.card.a.taunter && !g.dry && m.n > 0) { const own = m.game === g ? d : g; ev.push({ type: 'note', text: `${m.to.card.name} is dealt ${m.n} damage and deals that much to its opponent`, source: m.to }); damageOpp(own, m.n, ev, m.to, true); } }          // Brash Taunter
         if (hasKw(m.game, m.from, 'lifelink')) { if (m.game === g) ll += m.n; else llD += m.n; }
       }
       // state-based actions: creatures with lethal damage die
@@ -9343,6 +9433,9 @@ g.actSeq = (g.actSeq || 0) + 1;
   // a creature about to be destroyed regenerates when its controller pays for it (Skithiryx): tapped, its damage removed
   function regenerates(g, q, ev) {
     if (q.regenShield) { q.regenShield = false; q.tapped = true; q.dmg = 0; q.attacking = false; ev.push({ type: 'note', text: `${q.card.name} regenerates`, source: q }); return true; }
+    if (!q.card.a.regen && !g.dry) for (const r of g.battlefield) { const ro = r.card.a.regenOther; if (!ro || (ro.other && r === q) || (ro.tap && r.tapped) || !hasSubtype(q.card, ro.types) || abilBlocked(g, r, false)) continue;          // Accursed Duneyard, Ezuri
+      if (ro.tap) r.tapped = true; if (!canPay(ro.cost, allUnits(g)) || pay(g, ro.cost) == null) { if (ro.tap) r.tapped = false; continue; }
+      q.tapped = true; q.dmg = 0; q.attacking = false; ev.push({ type: 'note', text: `${r.card.name} regenerates ${q.card.name}`, source: r }); return true; }
     const rc = q.card.a.regen; if (!rc || g.dry || !canPay(rc, allUnits(g)) || pay(g, rc) == null) return false;
     q.tapped = true; q.dmg = 0; q.attacking = false; ev.push({ type: 'note', text: `${q.card.name} regenerates`, source: q }); return true;
   }
@@ -9388,6 +9481,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function burnTarget(g, n, creatureOnly) {
     const d = g.opp;
     if (!g.dry && g.staggerTurn === g.turn) n *= 2;          // Lightning, Army of One: stagger doubles it
+    n *= twinMult(g);          // Dictate of the Twin Gods
     if (!d || (!creatureOnly && d.life <= n)) return null;
     let best = null, bs = pol(g, 'removalBar') === 'default' ? 2.5 : +pol(g, 'removalBar');
     for (const p of d.battlefield) {
@@ -9499,6 +9593,17 @@ g.actSeq = (g.actSeq || 0) + 1;
     return false;
   }
   // A mass effect's worth: what it takes from the other players less what it takes from you (in points of threat), 0 against a goldfish
+  // Starfield of Nyx: kept in step whenever a permanent enters or leaves
+  function starfieldSync(g) {
+    if (g.dry) return; const sf = g.battlefield.filter(q => q.card.a.starfield); let ch = false;
+    const on = sf.length > 0 && g.battlefield.filter(q => q.card.a.isEnchantment && !q.asLand).length >= 5;
+    for (const q of g.battlefield) { const want = on && q.card.a.isEnchantment && !q.card.a.isAura && !q.card.a.isCreature && !q.asLand && sf.some(x => x !== q);
+      if (want && !q.animated) { const mv = q.card.a.mv || 0; q.animated = { p: mv, t: mv, kw: [], starfield: true }; q.sick = q.enteredTurn != null && q.enteredTurn >= g.turn; ch = true; }
+      else if (!want && q.animated && q.animated.starfield) { q.animated = null; ch = true; } }
+    if (ch) touch(g);
+  }
+  // Dictate of the Twin Gods, Furnace of Rath: damage doubled for each one on the table
+  function twinMult(g) { if (g.dry) return 1; const n = bothSides(g).filter(q => q.card.a.statics.twinGods).length; return n ? Math.pow(2, Math.min(n, 4)) : 1; }
   // a creature of x was dealt n damage: Stuffy Doll deals it to the other player, Wrathful Red Dragon (for a Dragon) too
   function dealtDamageHooks(x, q, n, ev, wr, swept) {
     if (x.dry || !(n > 0)) return;
@@ -9577,9 +9682,14 @@ g.actSeq = (g.actSeq || 0) + 1;
     return best;
   }
   // n damage to a creature (a fight): deathtouch, indestructible, protection, Polukranos's counters
+  // a burn spell's damage to their creature: a response, indestructible, protection from its color, Polukranos's counters, regeneration
+  function burnHit(g, t, n, source, ev) {
+    if (answered(g, t, 'damage', source, ev)) return; if (indestructible(g.opp, t) || (t.protColors && srcColors(g, source).some(c => t.protColors.has(c)))) { ev.push({ type: 'note', text: `${t.card.name} survives the damage`, source }); return; } if (t.card.a.polukranos && (t.counters || 0) > 0) { t.counters = Math.max(0, t.counters - n); ev.push({ type: 'note', text: `${t.card.name}: the damage is prevented, ${n} counters removed`, source }); if (toughnessOf(g.opp, t) <= 0) { leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev); } return; } if (regenerates(g.opp, t, ev)) return; ev.push({ type: 'note', text: `${n} damage kills ${t.card.name}`, source }); leavePerm(g.opp, t, ev); flushLeaves(g.opp, ev);
+  }
   function hurtCreature(gg, q, n, sg, src, ev) {
     if (n <= 0 || !gg.battlefield.includes(q)) return;
-    if (sg && !sg.dry && sg.staggerTurn === sg.turn && gg === sg.opp) n *= 2;          // Lightning, Army of One: stagger doubles damage to their permanents too
+    if (sg && !sg.dry && sg.staggerTurn === sg.turn && gg === sg.opp) n *= 2;
+    if (!gg.dry) n *= twinMult(gg);          // Dictate of the Twin Gods          // Lightning, Army of One: stagger doubles damage to their permanents too
     if (q.protColors && colorsOf(sg, src.card).some(c => q.protColors.has(c))) return;
     if (q.card.a.polukranos && (q.counters || 0) > 0) { q.counters = Math.max(0, q.counters - n); if (toughnessOf(gg, q) <= 0) { leavePerm(gg, q, ev); flushLeaves(gg, ev); } return; }
     q.dmg = (q.dmg || 0) + n; if (q.card.a.bodyKnow) draw(gg, n, ev); dealtDamageHooks(gg, q, n, ev);          // Body of Knowledge, Stuffy Doll
@@ -9595,7 +9705,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Darksteel Mutation, Kenrith's Transformation, Imprisoned in the Moon: what the enchanted permanent becomes
   function hostileCard(g, kind, q) {
     const key = 'hostile:' + kind; if (g.deck.tokenCache[key]) return g.deck.tokenCache[key];
-    const base = { insect: { name: 'Insect', type_line: 'Artifact Creature — Insect', oracle_text: 'Indestructible', power: '0', toughness: '1', colors: [] }, elk: { name: 'Elk', type_line: 'Creature — Elk', oracle_text: '', power: '3', toughness: '3', colors: ['G'] }, moon: { name: 'Imprisoned land', type_line: 'Land', oracle_text: '{T}: Add {C}.', power: null, toughness: null, colors: [], produced_mana: ['C'] } }[kind];
+    const base = { insect: { name: 'Insect', type_line: 'Artifact Creature — Insect', oracle_text: 'Indestructible', power: '0', toughness: '1', colors: [] }, elk: { name: 'Elk', type_line: 'Creature — Elk', oracle_text: '', power: '3', toughness: '3', colors: ['G'] }, moon: { name: 'Imprisoned land', type_line: 'Land', oracle_text: '{T}: Add {C}.', power: null, toughness: null, colors: [], produced_mana: ['C'] }, treefolk: { name: 'Treefolk', type_line: 'Creature — Treefolk', oracle_text: '', power: '0', toughness: '4', colors: [] } }[kind];
     const card = Object.assign({ uid: key, isToken: false, qty: 1, mana_cost: '', cmc: 0, keywords: kind === 'insect' ? ['Indestructible'] : [], images: [], remote_images: [], faces: [] }, base);
     card.a = analyze(card, g.deck.deckColors); g.deck.tokenCache[key] = card; return card;
   }
@@ -9607,7 +9717,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!t && kind === 'elk') { t = g.battlefield.filter(q => isCreaturePerm(q) && creatureValue(g, q) < 4 && !q.origCard).sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0]; o = g; }          // against a goldfish: your weakest creature becomes a 3/3
     if (!t) return;
     t.origCard = t.card; t.card = hostileCard(g, kind, t); t.counters = kind === 'elk' && o === g ? t.counters : t.counters; t.hostileAura = { hg: g, ap: perm }; perm.hostileOn = { o, q: t }; touch(o);
-    ev.push({ type: 'note', text: `${perm.card.name}: ${t.origCard.name} is ${kind === 'insect' ? 'a 0/1 indestructible Insect with no abilities' : kind === 'elk' ? 'a 3/3 Elk with no abilities' : 'a colorless land that taps for {C}'}`, source: perm });
+    ev.push({ type: 'note', text: `${perm.card.name}: ${t.origCard.name} is ${kind === 'insect' ? 'a 0/1 indestructible Insect with no abilities' : kind === 'elk' ? 'a 3/3 Elk with no abilities' : kind === 'treefolk' ? 'a 0/4 Treefolk with no abilities' : 'a colorless land that taps for {C}'}`, source: perm });
   }
   // A permanent of one of these types (Jokulhaups: artifact, creature, land)
   function massHit(q, types) { return types.some(t => t === 'creature' ? isCreaturePerm(q) : t === 'land' ? q.asLand : t === 'artifact' ? q.card.a.isArtifact : t === 'enchantment' ? q.card.a.isEnchantment && !q.asLand : t === 'planeswalker' ? q.card.a.isPlaneswalker : false); }

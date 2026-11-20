@@ -103,6 +103,21 @@ const other = q => q.options.findIndex(o => !o.def);
   for (const p of [A, B]) { lands(p.games[0], 3); toHand(p.games[0], /^Cultivate$/); }
   D.resolveSync(A.games, 0, gs => G.castCard(gs[0], gs[0].hand[0]), () => 'auto'); G.castCard(B.games[0], B.games[0].hand[0]);
   check('...and "the autopilot decides" finds the autopilot\'s lands', D.dump(A.games) === D.dump(B.games)); }
+{ const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3, /^Forest$/); const fs = toHand(a, /^Farseek$/);
+  const fx = card(a, /^Farseek$/).a.spellFx.find(f => f.type === 'ramp');
+  check('Farseek is read as "a Plains, Island, Swamp, or Mountain card", not "basic land"', !fx.basicOnly && fx.types.join() === 'Plains,Island,Swamp,Mountain' && fx.tapped, JSON.stringify(fx));
+  const { q } = open(p, cast(fs.iid)); const names = q.options.map(o => o.name);
+  check('...it offers nonbasic duals with those types (Indatha Triome, Overgrown Tomb, Canopy Vista) and basic Plains and Swamps, not Forests', ['Indatha Triome', 'Overgrown Tomb', 'Canopy Vista', 'Plains', 'Swamp'].every(n => names.includes(n)) && !names.includes('Forest') && q.options.every(o => /Plains|Island|Swamp|Mountain/.test(o.card.type_line)) && /a Plains, Island, Swamp, or Mountain card/.test(q.text), [...new Set(names)].join(', '));
+  const tri = q.options.find(o => o.name === 'Indatha Triome');
+  answer(p, cast(fs.iid), [() => tri.k]);
+  check('...the chosen dual enters tapped', a.battlefield.some(x => x.inst && x.inst.iid === tri.iid && x.tapped)); }
+{ const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); const a = p.games[0]; lands(a, 3, /^Forest$/); a.hand.push({ iid: a.nextIid++, card: card(a, /^Anguished Unmaking$/) }); const fs = toHand(a, /^Farseek$/);
+  G.castCard(a, fs); const got = a.battlefield.find(x => x.asLand && !/^Forest$/.test(x.card.name));
+  check('the autopilot\'s Farseek takes the land that adds the colours it lacks (a white-black dual over a basic)', !!got && /Plains/.test(got.card.type_line) && /Swamp/.test(got.card.type_line), got && got.card.name); }
+{ const p = table(['frodo', 'zul-ashur']), a = p.games[0];
+  const c = { name: 'Lore Test', layout: 'normal', mana_cost: '{G}', cmc: 1, type_line: 'Sorcery', oracle_text: 'Search your library for a basic Forest card, put that card onto the battlefield, then shuffle.', front_oracle: 'Search your library for a basic Forest card, put that card onto the battlefield, then shuffle.', colors: ['G'], color_identity: ['G'], keywords: [], qty: 1 };
+  const fx = G.buildDeck([c], []).unique[0].a.spellFx.find(f => f.type === 'ramp');
+  check('"a basic Forest card" is still basic only, and Forests only', fx.basicOnly && fx.types.join() === 'Forest', JSON.stringify(fx)); }
 { const p = table(['second-breakfast', 'zul-ashur']), a = p.games[0]; const mf = G.enter(a, { iid: a.nextIid++, card: card(a, /^Marsh Flats$/) }, {});          // enter() places it without cracking it
   const run = gs => { const ev = []; const x = gs[0]; G.crackFetch(x, x.battlefield.find(q => q.iid === mf.iid), ev); return ev; };
   const { q } = open(p, run);
@@ -173,6 +188,23 @@ const other = q => q.options.findIndex(o => !o.def);
   const kinds = []; let found = null;
   D.resolveSync(p.games, 0, cast(di.iid), q => { kinds.push(q.kind + (q.cost ? '' : '')); if (q.kind === 'sacrifice') return q.options.findIndex(o => o.iid === sam.iid); found = q.options.find(o => !o.def); return found.k; });
   check('Diabolic Intent asks twice: what to sacrifice, then what to search for', kinds.join(',') === 'sacrifice,search' && !a.battlefield.includes(sam) && a.battlefield.includes(tok) && a.hand.some(i => i.iid === found.iid), kinds.join(',')); }
+
+// ---- explore: the revealed nonland card stays on top or goes to the graveyard
+{ const mk = (seat) => { const p = pod(['mermaids', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]); const a = p.games[0];
+    const h = putOn(a, card(a, /^Hakbal/)); const top = { iid: a.nextIid++, card: card(a, /^Force of Will$/) }; a.library.unshift(top); return { p, a, h, top }; };
+  const run = gs => { const ev = []; const x = gs[0]; G.applyEffects(x, [{ type: 'exploreSelf' }], x.battlefield.find(q => /^Hakbal/.test(q.card.name)), ev, null); return ev; };
+  let s = mk(true); const { q, still } = open(s.p, run);
+  check('explore reveals a nonland card: the game asks whether to keep it on top or put it into the graveyard', !!q && q.kind === 'explore' && /Hakbal.* explores: Force of Will/.test(q.title) && q.options.map(o => o.name).join(' | ') === 'Keep it on top of your library | Put it into your graveyard' && q.spell && q.spell.name === 'Force of Will' && still, q && q.title);
+  check('...the autopilot\'s choice is the default', q.def.length === 1);
+  answer(s.p, run, [() => 1]);
+  check('...put it into the graveyard: the card is milled and the creature has its counter', s.a.graveyard.includes(s.top) && s.a.library[0] !== s.top && s.h.counters === 1);
+  s = mk(true); answer(s.p, run, [() => 0]);
+  check('...keep it on top: it is the next card, and the counter is there too', s.a.library[0] === s.top && s.h.counters === 1, [s.a.library[0].card.name, s.h.counters, s.a.hand.map(i => i.card.name).join('/')].join(' '));
+  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); D.resolveSync(A.p.games, 0, run, () => 'auto'); run(B.p.games);
+  check('..."the autopilot decides" does what the autopilot does', D.dump(A.p.games) === D.dump(B.p.games));
+  s = mk(true); const land = { iid: s.a.nextIid++, card: s.a.deck.unique.find(c => /^Island$/.test(c.name)) }; s.a.library.unshift(land);
+  const r = D.attempt(s.p.games, 0, run, []);
+  check('a land revealed by explore goes to your hand without a question', r.done && s.a.hand.includes(land) && !(s.h.counters > 0)); }
 
 // ---- 3. responses: an opponent casts a spell
 { const mk = seat => { const p = pod(['red-rum-raiders', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]);

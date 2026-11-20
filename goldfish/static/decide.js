@@ -101,7 +101,7 @@
   }
   function filterWords(f) {
     if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
-      const what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : [].concat(f.land).join(' or ');
+      const ls = [].concat(f.land), what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : ls.length > 2 ? ls.slice(0, -1).join(', ') + ', or ' + ls[ls.length - 1] : ls.join(' or ');          // "a Plains, Island, Swamp, or Mountain card"
       const n = f.n || 1;
       return n > 1 ? `up to ${n} ${what} cards` : (/^[aeiou]/i.test(what) ? 'an ' : 'a ') + what + ' card';
     }
@@ -132,7 +132,7 @@
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
       if (d.kind === 'mode') { item.name = fxLabel(o.mode); }
-      else if (d.kind === 'explore') { item.name = o.to === 'top' ? 'Leave it on top' : 'To the graveyard'; item.card = o.card; item.iid = o.iid; }
+      else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how]; }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
@@ -148,6 +148,8 @@
       q.dest = f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
       if (d.what === 'battlefield') { q.title = `${sn || 'Search'}: which land goes onto the battlefield?`; q.text = `Choose ${f.bf === 1 ? 'the land' : f.bf + ' lands'} to put onto the battlefield${tapped}; the rest go into your hand.`; }
       else { q.title = `${sn || 'Search'}: search your ${f.land ? 'library for ' + (f.land === 'basic' ? 'basic lands' : 'a land') : 'library'}`; q.text = `Choose ${filterWords(f)}. ${f.dest === 'split' ? 'Then ' + where.replace(/^one goes/, 'you choose which one goes') : (f.n > 1 ? 'They go ' : 'It goes ') + where}; your library is shuffled.`; }
+      if (f.slot) { q.title = `${sn || 'Search'}: search for ${filterWords(f)} (${f.slot} of ${f.of})`; q.text = `Choose ${filterWords(f)}. It goes ${where}${f.slot < f.of ? '; the next search follows' : '; your library is then shuffled'}.`; }
+      if (d.optional) q.none = 'Find nothing';                            // a search of a hidden zone may come up empty
       q.fan = true;
     } else if (d.kind === 'target') {
       const f = d.f || {};
@@ -161,10 +163,6 @@
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;
       q.text = 'Only the modes the engine can play are listed.';
-    } else if (d.kind === 'explore') {                                                                     // explore showed a card that is not a land
-      const cn = opts[0].card.name;
-      q.title = `${sn || 'A creature'} explores: ${cn}`;
-      q.text = `${cn} is not a land, so ${sn || 'the creature'} gets a +1/+1 counter. Put ${cn} into your graveyard, or leave it on top of your library?`;
     } else if (d.kind === 'land') {                                                                        // Hakbal: a land from your hand, or a card
       q.title = `${sn || 'Effect'}: put a land onto the battlefield?`;
       q.text = 'Choose a land card from your hand to put onto the battlefield. If you do not, you draw a card.';
@@ -176,6 +174,11 @@
       q.title = d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = 'Do not cast it';
+    } else if (d.kind === 'explore') {
+      const pn = src ? src.name : 'Your creature';
+      q.title = `${pn} explores: ${d.reveal.card.name}`;
+      q.text = `The revealed card is not a land, so ${pn} gets a +1/+1 counter. Keep ${d.reveal.card.name} on top of your library, or put it into your graveyard?`;
+      q.spell = d.reveal.card; q.spellNote = 'revealed';
     } else if (d.kind === 'counter') {
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
       q.title = `${who} casts ${d.spell.card.name}`;
@@ -198,7 +201,7 @@
       return ks.length >= q.min && ks.length <= q.max ? ks.map(k => d.options[k]) : d.def;
     }
     if (a.pick === 'none') return q.optional ? null : d.def;
-    return Number.isInteger(a.pick) && d.options[a.pick] ? d.options[a.pick] : d.def;
+    return Number.isInteger(a.pick) && a.pick >= 0 && a.pick < d.options.length ? d.options[a.pick] : d.def;          // an option may itself be false (explore: "keep it on top")
   }
   const PENDING = { pending: true };
   // the chooser of a seat a person plays. It keeps nothing itself: the answers and the place in them live on the game (g.choices),

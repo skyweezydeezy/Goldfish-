@@ -351,12 +351,20 @@
       let n = 1;
       const um = sentence.match(/(up to )?(a|one|two|three|four) [^.]*?(land|Forest|Island|Swamp|Mountain|Plains) cards?/i);
       if (um) n = NUM[um[2].toLowerCase()] || 1;
-      const basicOnly = /basic/i.test(sentence) || /(Forest|Island|Swamp|Mountain|Plains) card/.test(sentence);
+      // land types named in the search ("a Plains, Island, Swamp, or Mountain card": Farseek, Nature's Lore) find any land with that type,
+      // nonbasic duals included; only "basic" limits the search to basic lands
+      const named = um ? (um[0].match(/\b(Forest|Island|Swamp|Mountain|Plains)\b/g) || []) : [];
+      const types = named.length ? [...new Set(named)] : null;
+      const basicOnly = /basic/i.test(um ? um[0] : sentence);
+      // "a Forest card and a Plains card" (Krosan Verge): one land of each type, each its own search
+      const two = sentence.match(/for an? (basic )?(Forest|Island|Swamp|Mountain|Plains) card and an? (basic )?(Forest|Island|Swamp|Mountain|Plains) card/i);
+      const slots = two ? [{ types: [two[2]], basic: !!two[1] }, { types: [two[4]], basic: !!two[3] }] : null;
+      if (slots) n = 2;
       let bf = 0, hand = 0;
       if (/put one onto the battlefield[^.]*and the other into your hand/i.test(text)) { bf = 1; hand = 1; }
       else if (/onto the battlefield/i.test(sentence) || /put (it|them|those cards|that card) onto the battlefield/i.test(text)) bf = n;
       else hand = n;
-      fx.push({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly });
+      fx.push(Object.assign({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly: slots ? false : basicOnly }, slots ? { slots } : types ? { types } : {}));
     } else if (!/put (?:that card|it) into your graveyard/i.test(text) && (m = text.match(/search your library(?: and\/or graveyard)? for (?:a|an|one) ([^,.]*?)cards?\b/i))) {
       // Tutors: Vampiric Tutor (to the top), Demonic Tutor / Diabolic Intent (to your hand), typed ones like "a creature card"
       const words = (m[1] || '').toLowerCase();
@@ -3568,12 +3576,30 @@
             const c0 = g.library.find(c => c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '') && c.card.a.produce && [...c.card.a.produce.colors].some(x => !have.has(x)));
             if (c0) found.push(c0);
           }
-          for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
-          if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
-          if (g.ask && !g.dry && want > 0) {                                     // a person searches: up to that many of the lands the search can find, then (Cultivate) which go onto the battlefield
-            const pool = g.library.filter(c => c.card.a.isLand && (!f.basicOnly || /\bBasic\b/.test(c.card.type_line || '')));
+          const typed = (c, types, basic) => c.card.a.isLand && (!basic || /\bBasic\b/.test(c.card.type_line || '')) && (!types || types.some(t => new RegExp('\\b' + t + '\\b').test(c.card.type_line || '')));
+          const fits = c => typed(c, f.types, f.basicOnly);
+          // typed searches (Farseek, Krosan Verge): the lands that add the colours you lack and your hand wants, as a fetch land picks
+          const have = new Set(); g.battlefield.forEach(q => { if (q.produce) q.produce.colors.forEach(c => have.add(c)); });
+          const need = new Map(); if (f.types || f.slots) g.hand.concat(g.command).forEach(i => { if (!i.card.a.isLand) (i.card.a.cost.pips || []).forEach(pp => pp.forEach(col => need.set(col, (need.get(col) || 0) + 1 / pp.length))); });
+          const sc = c => (c.card.a.produce ? fetchScore(g, c, { tapped: f.tapped }, have, need) : 0);
+          const bestOf = cs => cs.map(c => ({ c, v: sc(c) })).sort((x, y) => y.v - x.v).map(x => x.c);
+          if (f.slots) {                                                         // one land for each named type, each its own search; a land with both types can fill either
+            f.slots.forEach((sl, si) => {
+              const pool = g.library.filter(c => typed(c, sl.types, sl.basic) && !found.includes(c));
+              let pick = bestOf(pool)[0] || null;
+              if (g.ask && !g.dry && pool.length) pick = decide(g, { kind: 'search', options: pool, def: pick, optional: true, f: { dest: f.bf ? 'battlefield' : 'hand', tapped: !!f.tapped, land: sl.basic ? sl.types.map(t => 'basic ' + t) : sl.types, slot: si + 1, of: f.slots.length }, source });
+              if (pick) { found.push(pick); if (pick.card.a.produce) pick.card.a.produce.colors.forEach(c => have.add(c)); }
+            });
+          } else if (f.types) {
+            found.push(...bestOf(g.library.filter(c => fits(c) && !found.includes(c))).slice(0, want - found.length));
+          } else {
+            for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
+            if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
+          }
+          if (g.ask && !g.dry && want > 0 && !f.slots) {                         // a person searches: up to that many of the lands the search can find, then (Cultivate) which go onto the battlefield
+            const pool = g.library.filter(fits);
             const dest = f.bf && f.hand ? 'split' : f.bf ? 'battlefield' : 'hand';
-            found = decide(g, { kind: 'search', options: pool, def: found.slice(), multi: true, pick: want, upTo: true, f: { dest, tapped: !!f.tapped, land: f.basicOnly ? 'basic' : 'land', bf: f.bf, hand: f.hand, n: want }, source });
+            found = decide(g, { kind: 'search', options: pool, def: found.slice(), multi: true, pick: want, upTo: true, f: { dest, tapped: !!f.tapped, land: f.types ? (f.basicOnly ? f.types.map(t => 'basic ' + t) : f.types) : f.basicOnly ? 'basic' : 'land', bf: f.bf, hand: f.hand, n: want }, source });
             if (dest === 'split' && found.length > f.bf) { const onto = decide(g, { kind: 'search', what: 'battlefield', options: found.slice(), def: found.slice(0, f.bf), multi: true, pick: f.bf, f: { dest: 'battlefield', tapped: !!f.tapped, bf: f.bf }, source }); found = onto.concat(found.filter(c => !onto.includes(c))); }
           }
           found.forEach(c => g.library.splice(g.library.indexOf(c), 1));
@@ -4387,11 +4413,9 @@
       if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: ${top.card.name} to your hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
       else {
         addCounters(g, p, '+1/+1', 1, ev, p);
-        let bin = wantsBottom(g, top);                                                                     // the autopilot's choice; a person is asked
-        if (g.ask && !g.dry) { const opts = [{ card: top.card, iid: top.iid, to: 'graveyard' }, { card: top.card, iid: top.iid, to: 'top' }]; const r = decide(g, { kind: 'explore', options: opts, def: opts[bin ? 0 : 1], source: p }); bin = r === opts[0]; }
-        if (bin) { g.library.shift(); g.graveyard.push(top); }
-        ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev);
-      }
+        let yard = wantsBottom(g, top);
+        if (g.ask && !g.dry) yard = decide(g, { kind: 'explore', options: [false, true], def: yard, reveal: top, source: p });          // a person: keep the revealed card on top, or put it into the graveyard
+        if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
       fireExplore(g, 'explores', p, ev);
     }
   }
@@ -4988,11 +5012,10 @@
     }
     if (g.opp) {                                               // mirror match: interaction needs something to hit, and counterspells wait for the other player's spells
       if (a.counter && !a.spellFx.some(f => f.type === 'removal')) return -1;
+      if (!g.inWindow && !g.dry && pol(g, 'instantTiming') === 'hold' && isInstantInteraction(c.card)) return -1;     // the Policy lab: keep it for the other player's turn
       const fxs = a.spellFx.filter(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage');
       if (fxs.length && a.isInstantSorcery) {
-        const hit = fxs.some(f => f.type === 'removal' ? !!pickRemovalTarget(g, f) : f.type === 'divideDamage' ? g.opp.battlefield.some(q => isCreaturePerm(q) && targetable(g.opp, q) && toughnessOf(g.opp, q) <= f.n && threat(g.opp, g, q) > removalBar(g)) : f.type === 'burnCreature' ? !!burnTarget(g, f.n, true)
-          : f.type === 'edict' ? g.opp.battlefield.filter(isCreaturePerm).length > 0 && g.opp.battlefield.filter(isCreaturePerm).length <= 2
-          : g.opp.battlefield.some(p => isCreaturePerm(p) && targetable(g.opp, p) && threat(g.opp, g, p) > 3.5));
+        const hit = interactionHit(g, fxs);
         if (!hit && a.spellFx.every(f => fxs.includes(f))) return -1;
         if (hit) s += 25;                                      // clear the way before combat
       }
@@ -5511,6 +5534,14 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (a.adapt && !(p.counters > 0) && canPay(a.adapt.cost, allUnits(g))) {                              // Adapt N: N +1/+1 counters if it has none (and Benthic Biomancer loots when it gets one)
         pay(g, a.adapt.cost); addCounters(g, p, '+1/+1', a.adapt.n || 1, ev, p); ev.push({ type: 'note', text: `${p.card.name} adapts`, source: p }); return;
       }
+      if (a.sacAb && p.asLand && !g.dry && !p.tapped && p.enteredTurn < g.turn && a.sacAb.fx.every(f => f.type === 'ramp') && g.battlefield.filter(q => q.asLand).length < 9) {          // Krosan Verge: two lands for one, once the mana is spare
+        const rf = a.sacAb.fx[0], ok = c => c.card.a.isLand && (!rf.slots ? (!rf.types || rf.types.some(t => (c.card.type_line || '').includes(t))) : rf.slots.some(sl => sl.types.some(t => (c.card.type_line || '').includes(t))));
+        p.tapped = true;                                                                                 // its own {T} is part of the cost: it cannot pay for itself
+        if (g.library.some(ok) && !g.hand.some(h => !h.card.a.isLand && canPay(effectiveCost(g, h), allUnits(g)) && spellScore(g, h) > 0) && canPay(a.sacAb.cost, allUnits(g))) {
+          pay(g, a.sacAb.cost); leavePerm(g, p, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed to search for lands`, source: p }); applyEffects(g, a.sacAb.fx, p, ev, null); return;
+        }
+        p.tapped = false;
+      }
       if (a.sacAb && !g.dry && !(a.sacAb.needsTap && p.tapped) && canPay(a.sacAb.cost, allUnits(g)) && fxValue(g, a.sacAb.fx) >= 2.5 && !p.asLand) {          // Hedron Archive, Idol of Oblivion, Expedition Map: cash it in once the mana is spare
         pay(g, a.sacAb.cost); leavePerm(g, p, ev); flushLeaves(g, ev); applyEffects(g, a.sacAb.fx, p, ev, null); ev.push({ type: 'note', text: `${p.card.name}: sacrificed`, source: p }); return;
       }
@@ -5820,7 +5851,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
 
   function castPhase(g, dry) {
-    const held = dry ? [] : holdForCounter(g);
+    const held = dry ? [] : holdForCounter(g).concat(holdForInstant(g));
     try { return castPhaseInner(g, dry); } finally { held.forEach(q => { q.held = false; }); }
   }
   function castPhaseInner(g, dry) {
@@ -5895,7 +5926,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -5946,6 +5977,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     { id: 'wipe', key: 'wipeMargin', label: 'Board wipes: how far ahead the wipe must put you', mirrorOnly: true,
       needs: [{ what: 'a board wipe that weighs both boards', test: a => !!(a.delugeCost || a.spellFx.some(f => f.type === 'sweepDamage')) }],
       options: [{ name: 'Clearly ahead (learned default)', value: '3' }, { name: 'Any gain', value: '1' }, { name: 'Only a big swing', value: '6' }] },
+    { id: 'instant', key: 'instantTiming', label: 'Instant-speed removal: when to use it', mirrorOnly: true,
+      needs: [{ what: 'an instant (or flash card) that removes, bounces or burns', test: (a, c) => isInstantInteraction(c) }],
+      options: [{ name: 'On your turn, and on theirs with mana you left over (default)', value: 'spare' }, { name: 'Keep it, and the mana for it, for their turn', value: 'hold' }, { name: 'Only on your own turn', value: 'off' }] },
     { id: 'removal', key: 'removalBar', label: 'Removal: how big a threat must be before you spend removal on it', mirrorOnly: true,
       needs: [{ what: 'a spell or ability that removes, bounces or burns an opposing creature', test: a => a.spellFx.concat(a.triggers.flatMap(t => t.fx)).some(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || (f.type === 'damage' && f.any)) }],
       options: [{ name: 'Anything worth more than a small token (default)', value: 'default' }, { name: 'Anything at all, as soon as possible', value: '0.5' }, { name: 'Save it for real threats', value: '4' }, { name: 'Only for the biggest threats', value: '7' }] },
@@ -6439,6 +6473,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
       let dmg = 0, vsLifelink = 0;
       let hitters = [];
+      if (g.opp && !g.dry) { instantWindow(g.opp, ev, 'combat'); attackers = attackers.filter(p => g.battlefield.includes(p)); }          // the defender answers attackers at instant speed
       if (g.opp) { const r = resolveCombatVs(g, attackers, ev); dmg = r.dmg; hitters = r.hitters; vsLifelink = r.lifelink; }
       else for (const p of attackers) {
         if (!g.battlefield.includes(p)) continue;
@@ -6560,6 +6595,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
 
   function endTurn(g) {
+    const iw = [];
+    if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
     toxrillEnd(g, []);
     if (!g.dry) for (const o of otherPlayers(g)) for (const q of o.battlefield.slice()) for (const t of q.card.a.triggers) if (t.each && t.kinds.includes('end') && o.battlefield.includes(q)) fire(o, t, q, [], null);
     for (const p of g.battlefield.slice()) if (p.warped && !g.dry) { p.warped = false; const wi = p.inst; leavePerm(g, p, [], 'exile'); if (wi && g.exile.includes(wi)) wi.warpCast = true; }          // warp: exiled at the end step, castable from exile later
@@ -6603,7 +6640,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     g.eot = { p: 0, t: 0, kw: new Set() };
     g.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
-    return ev;
+    return iw.length ? iw.concat(ev) : ev;
   }
 
   // ---------- Combo lines ----------
@@ -7025,6 +7062,61 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (/instant|sorcery|enchantment|artifact/.test(f)) return (/instant/.test(f) && /Instant/.test(card.type_line)) || (/sorcery/.test(f) && /Sorcery/.test(card.type_line)) || (/enchantment/.test(f) && a.isEnchantment) || (/artifact/.test(f) && a.isArtifact);
     return true;
   };
+  // ---------- Instant-speed interaction on the other player's turn (matches) ----------
+  // The player who is not taking the turn gets two windows: after attackers are declared (removal, burn and bounce, before blocks and
+  // damage) and at the end of the turn (the same, plus instant card draw). It casts with the mana it left untapped on its own turn.
+  // Policy instantTiming: 'spare' (default) uses only leftover mana, 'hold' also keeps that interaction and its mana for their turn,
+  // 'off' never acts on their turn.
+  const INTERACT_FX = f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage' || (f.type === 'damage' && f.any);
+  const atInstantSpeed = card => /\bInstant\b/.test(card.type_line || '') || (card.keywords || []).includes('Flash');
+  function isInstantInteraction(card) { const a = card.a; return !!a && atInstantSpeed(card) && !a.isLand && !a.counter && a.spellFx.some(INTERACT_FX); }
+  // does at least one of these effects have something worth hitting on the other player's board?
+  function interactionHit(g, fxs) {
+    const d = g.opp; if (!d) return false;
+    return fxs.some(f => f.type === 'removal' ? !!pickRemovalTarget(g, f) : f.type === 'divideDamage' ? d.battlefield.some(q => isCreaturePerm(q) && targetable(d, q) && toughnessOf(d, q) <= f.n && threat(d, g, q) > removalBar(g)) : f.type === 'burnCreature' ? !!burnTarget(g, f.n, true)
+      : f.type === 'damage' ? !!burnTarget(g, f.n === 'X' ? 1 : f.n, false)
+      : f.type === 'edict' ? d.battlefield.filter(isCreaturePerm).length > 0 && d.battlefield.filter(isCreaturePerm).length <= 2
+      : d.battlefield.some(p => isCreaturePerm(p) && targetable(d, p) && threat(d, g, p) > 3.5));
+  }
+  function instantWindow(me, ev, step) {
+    if (!me || me.dry || me.dead || matchOver(me) || !me.opp || pol(me, 'instantTiming') === 'off') return 0;
+    let cast = 0;
+    for (let k = 0; k < 4 && !matchOver(me); k++) {
+      const units = manaUnits(me);
+      let best = null, bs = -Infinity;
+      for (const c of me.hand) {
+        const a = c.card.a;
+        if (!a || a.isLand || a.counter || !atInstantSpeed(c.card)) continue;
+        const fxs = a.spellFx.filter(INTERACT_FX);
+        const drawish = step === 'end' && !fxs.length && a.isInstantSorcery && a.spellFx.some(f => f.type === 'draw');
+        if (!fxs.length && !drawish) continue;
+        if (!canPay(effectiveCost(me, c), units)) continue;
+        if (fxs.length && !interactionHit(me, fxs)) continue;
+        const sc = (fxs.length ? 20 : 0) + a.castMv;                                                        // interaction first, then the most mana it can use
+        if (sc > bs) { bs = sc; best = c; }
+      }
+      if (!best) break;
+      me.inWindow = true;
+      let r = null;
+      try { r = castCard(me, best); } finally { me.inWindow = false; }
+      if (!r) break;
+      ev.push({ type: 'note', text: `On the other player's turn (${step === 'combat' ? 'attackers declared' : 'end step'}): cast ${best.card.name}`, source: null }, ...r);
+      cast++;
+    }
+    return cast;
+  }
+  // Keep mana open on your own turn for the cheapest instant-speed interaction in hand (policy 'hold').
+  function holdForInstant(g) {
+    if (!g.opp || g.turn < 2 || pol(g, 'instantTiming') !== 'hold') return [];
+    let best = null;
+    for (const c of g.hand) if (isInstantInteraction(c.card) && (!best || c.card.a.castMv < best.card.a.castMv)) best = c;
+    if (!best) return [];
+    const units = manaUnits(g), idx = canPay(effectiveCost(g, best), units);
+    if (!idx) return [];
+    const srcs = [...new Set(idx.map(i => units[i].src).filter(q => q && !q.pseudo && !q.held))];
+    srcs.forEach(q => { q.held = true; });
+    return srcs;
+  }
   // Is this spell worth a counterspell, and does the other player hold one they can pay for? Returns true when the spell is countered.
   // A counterspell can be paid with mana, for free (Fierce Guardianship with a commander out, Mindbreak Trap) or by pitching a blue card (Force of Will).
   // by: a person in a pod who is not the player being attacked may answer the spell too (the autopilot only answers for the attacked player).
@@ -7343,7 +7435,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, madness, fxValue, topCastable, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
+    pay, madness, fxValue, topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
     decide, tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard,

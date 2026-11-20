@@ -54,7 +54,7 @@
           </div>
         </div>`;
       const $ = s => el.querySelector(s), box = $('.ch-opts');
-      if (q.spell) { const c = A.cardEl(q.spell, { eager: true }); $('.ch-spell').append(c, h('small', '', 'being cast')); } else $('.ch-spell').remove();
+      if (q.spell) { const c = A.cardEl(q.spell, { eager: true }); $('.ch-spell').append(c, h('small', '', esc(q.spellNote || 'being cast'))); } else $('.ch-spell').remove();
       for (const t of ts) {
         const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text'));
         b.type = 'button'; b.dataset.t = t.i; b.dataset.k = t.ks[0]; b.title = t.o.name + (t.ks.length > 1 ? ` (${t.ks.length} in your library)` : '');

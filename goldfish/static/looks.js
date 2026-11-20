@@ -130,7 +130,7 @@
 
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(look)); } catch (e) { /* storage full or blocked: the look still applies for this visit */ }
-    apply(); render();
+    apply(); render(); if (typeof fitAll === 'function') fitAll();
     window.dispatchEvent(new Event('isf-look'));            // the 1v1 and Pod tables redraw your seat
   }
 
@@ -164,7 +164,7 @@
   modal.innerHTML = `<div class="modal-card look-card">
     <div class="modal-head"><h2 id="lkTitle">Playmat &amp; sleeves</h2><button id="lkClose" class="ghost">Done</button></div>
     <h3>Playmat</h3><div id="lkMats" class="look-grid"></div>
-    <div class="row wrap look-upload"><button id="lkUpload" class="ghost">Use my own playmat image…</button><input id="lkFile" type="file" accept="image/*" hidden><span id="lkMsg" class="hint"></span></div>
+    <div class="row wrap look-upload"><button id="lkUpload" class="ghost">Use my own playmat image…</button><input id="lkFile" type="file" accept="image/*" hidden><span id="lkMsg" class="hint"></span><button id="lkAdjust" class="ghost" title="Or drag three fingers on the playmat">Adjust playmat position</button></div>
     <h3>Sleeves</h3><div id="lkSleeves" class="look-grid sleeves"></div>
     <p id="lkShopMsg" class="look-shop-msg" aria-live="polite"></p>
     <p class="hint">Saved in this browser only. Card images are always shown whole; sleeves only colour the edge and the card backs.</p>
@@ -237,9 +237,98 @@
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('show')) close(); });
   $('#lkUpload').addEventListener('click', () => $('#lkFile').click());
+  $('#lkAdjust').addEventListener('click', () => { if (!adjust()) $('#lkMsg').textContent = 'Open a tab with your playmat on it (Practice, Mulligan, Duel or Pod) and pick an art playmat first.'; });
   $('#lkFile').addEventListener('change', e => { useImage(e.target.files[0]); e.target.value = ''; });
   document.querySelectorAll('.open-looks').forEach(b => b.addEventListener('click', open));
 
+
+  // ---- moving the playmat: where it sits and how close, chosen per playmat ----
+  // "Less is more": nothing to set up. Drag three fingers on a playmat to move it, and spread or pinch them to zoom (on an iPad
+  // the system may keep three-finger swipes for undo; then the Adjust button in the picker does the same with one finger or a mouse).
+  // Saved per playmat in this browser ({ x, y } in % like background-position, z = zoom over "cover"), and used wherever that playmat shows:
+  // the Goldfish table, the opening-hands stage and every seat at the 1v1 and Pod tables.
+  const FIT_KEY = 'isf_matfit', ASPECT = 1642 / 958;          // every original playmat has this shape; your own image is measured
+  let FIT = {}; try { FIT = JSON.parse(localStorage.getItem(FIT_KEY) || '{}') || {}; } catch (e) { FIT = {}; }
+  const saveFit = () => { try { localStorage.setItem(FIT_KEY, JSON.stringify(FIT)); } catch (e) { /* the fit still applies for this visit */ } };
+  const aspects = {};
+  const matOf = el => el.dataset.mat || look.mat;
+  const hasImage = id => id === 'custom' ? !!localStorage.getItem(IMG_KEY) : !!(MATS.find(m => m.id === id) || {}).image;
+  function aspectOf(id) {
+    if (id !== 'custom') return ASPECT;
+    if (aspects.custom) return aspects.custom;
+    const im = new Image(); im.onload = () => { aspects.custom = im.naturalWidth / im.naturalHeight || ASPECT; fitAll(); }; im.src = localStorage.getItem(IMG_KEY) || '';
+    return ASPECT;
+  }
+  function fitEl(el) {
+    const id = matOf(el), f = FIT[id];
+    if (!f || !hasImage(id)) { el.style.backgroundSize = ''; el.style.backgroundPosition = ''; return; }
+    const W = el.clientWidth, H = el.clientHeight; if (!W || !H) return;
+    const a = aspectOf(id), s = Math.max(W / a, H) * (f.z || 1);
+    el.style.backgroundSize = `${Math.ceil(s * a)}px ${Math.ceil(s)}px`;
+    el.style.backgroundPosition = `${f.x}% ${f.y}%`;
+  }
+  const watched = new Set();
+  const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => es.forEach(e => fitEl(e.target))) : null;
+  function watch(el, matId) {
+    if (!el) return;
+    if (matId) el.dataset.mat = matId;
+    if (!watched.has(el)) { watched.add(el); if (ro) ro.observe(el); }
+    fitEl(el);
+  }
+  function fitAll() { for (const el of watched) { if (!el.isConnected) { watched.delete(el); if (ro) ro.unobserve(el); continue; } fitEl(el); } }
+  document.querySelectorAll('.table-main, .hand-stage').forEach(el => watch(el));
+  // move by (dx, dy) screen pixels and scale by k, on the playmat shown on element el
+  function nudge(el, f0, dx, dy, k) {
+    const id = matOf(el), W = el.clientWidth, H = el.clientHeight, a = aspectOf(id);
+    const z = Math.max(1, Math.min(4, (f0.z || 1) * k)), s = Math.max(W / a, H) * z, ow = s * a - W, oh = s - H;
+    const x = ow > 0.5 ? Math.max(0, Math.min(100, f0.x - dx / ow * 100)) : 50, y = oh > 0.5 ? Math.max(0, Math.min(100, f0.y - dy / oh * 100)) : 50;
+    FIT[id] = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, z: Math.round(z * 100) / 100 };
+    fitAll();
+  }
+  const surfaceAt = t => t && t.closest && t.closest('.table-main, .hand-stage, .vs-seat');
+  const centre = ts => { let x = 0, y = 0; for (const t of ts) { x += t.clientX; y += t.clientY; } return { x: x / ts.length, y: y / ts.length }; };
+  const spread = (ts, c) => { let d = 0; for (const t of ts) d += Math.hypot(t.clientX - c.x, t.clientY - c.y); return d / ts.length || 1; };
+  // three fingers, anywhere on a playmat
+  let tri = null;
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 3) { if (e.touches.length > 3) tri = null; return; }
+    const el = surfaceAt(e.target); if (!el || !hasImage(matOf(el))) return;
+    const c = centre(e.touches); tri = { el, c, d: spread(e.touches, c), f0: Object.assign({ x: 50, y: 50, z: 1 }, FIT[matOf(el)]) };
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (!tri || e.touches.length !== 3) return;
+    e.preventDefault();
+    const c = centre(e.touches); nudge(tri.el, tri.f0, c.x - tri.c.x, c.y - tri.c.y, spread(e.touches, c) / tri.d);
+  }, { passive: false });
+  document.addEventListener('touchend', () => { if (tri) { tri = null; saveFit(); } });
+  document.addEventListener('touchcancel', () => { if (tri) { tri = null; saveFit(); } });
+  // the Adjust button: a clear layer over one playmat; drag with one finger or the mouse, pinch or scroll to zoom
+  function adjust() {
+    const el = [...document.querySelectorAll('.table-main, .hand-stage, .vs-seat.me')].find(x => x.offsetParent && hasImage(matOf(x)));
+    if (!el) return false;
+    close();
+    const r = el.getBoundingClientRect(), id = matOf(el);
+    const layer = document.createElement('div'); layer.className = 'mat-adjust'; layer.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+    const bar = document.createElement('div'); bar.className = 'mat-adjust-bar';
+    bar.innerHTML = `<span>Drag to move the playmat · pinch or scroll to zoom</span><button type="button" class="ghost" data-a="reset">Reset</button><button type="button" class="primary" data-a="done">Done</button>`;
+    document.body.append(layer, bar);
+    const pts = new Map(); let g = null;
+    const start = () => { const ps = [...pts.values()], c = centre(ps); g = { c, d: spread(ps, c), n: ps.length, f0: Object.assign({ x: 50, y: 50, z: 1 }, FIT[id]) }; };
+    layer.addEventListener('pointerdown', e => { layer.setPointerCapture(e.pointerId); pts.set(e.pointerId, e); start(); });
+    layer.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, e); const ps = [...pts.values()], c = centre(ps); nudge(el, g.f0, c.x - g.c.x, c.y - g.c.y, ps.length > 1 ? spread(ps, c) / g.d : 1); });
+    const up = e => { pts.delete(e.pointerId); if (pts.size) start(); else saveFit(); };
+    layer.addEventListener('pointerup', up); layer.addEventListener('pointercancel', up);
+    layer.addEventListener('wheel', e => { e.preventDefault(); nudge(el, Object.assign({ x: 50, y: 50, z: 1 }, FIT[id]), 0, 0, e.deltaY < 0 ? 1.08 : 1 / 1.08); saveFit(); }, { passive: false });
+    bar.addEventListener('click', e => {
+      const a = e.target.closest('[data-a]'); if (!a) return;
+      if (a.dataset.a === 'reset') { delete FIT[id]; saveFit(); fitAll(); return; }
+      layer.remove(); bar.remove();
+    });
+    return true;
+  }
+
   apply();
-  window.__isfLooks = { MATS, SLEEVES, SETS, dealSets, styleOf, get: () => Object.assign({}, look), set: (o) => { Object.assign(look, o); save(); }, open, close };
+  window.__isfLooks = { MATS, SLEEVES, SETS, dealSets, styleOf, get: () => Object.assign({}, look), set: (o) => { Object.assign(look, o); save(); }, open, close,
+    watchMat: watch, adjustMat: adjust, fit: () => JSON.parse(JSON.stringify(FIT)) };
 })();

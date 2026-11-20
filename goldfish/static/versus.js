@@ -66,7 +66,7 @@
   function fill(mode) {
     const st = V[mode]; if (!st.root) return;
     st.root.querySelectorAll('.vs-opp').forEach(sel => {
-      const cur = sel.dataset.touched ? sel.value : (mode === 'pod' && A.builtins().length ? 'random' : '');
+      const cur = sel.dataset.touched ? sel.value : (A.builtins().length ? 'random' : '');          // every opponent starts on a random built-in deck (1v1 and Pod)
       sel.innerHTML = oppOptions();
       sel.value = [...sel.options].some(o => o.value === cur) ? cur : '';
       sel.onchange = () => { sel.dataset.touched = '1'; };
@@ -530,6 +530,7 @@
     }
     seat.classList.toggle('sleeved', !!st.lookOn[pid]);
     seat.dataset.set = st.lookName[pid] || '';
+    if (L.watchMat) L.watchMat(seat, look.mat);          // its playmat sits where you moved it (three fingers, or Adjust in the picker)
   }
   function plateEl(st, gm, g, mine) {
     const m = gm.match, active = !gm.over && cur(gm).pid === g.pid;

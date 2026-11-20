@@ -402,6 +402,20 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 3,
+   "policy": {
+    "tribeFirst": "on"
+   },
+   "learned": [
+    {
+     "choice": "Tribal decks: cast creatures of your type first",
+     "picked": "Creatures of your type ahead of other spells",
+     "z": 3.5,
+     "confirmZ": 3.4,
+     "gain": 5.2,
+     "games": 600,
+     "against": "the other commander decks"
+    }
+   ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -616,6 +630,16 @@
     "killBy8": 0.15,
     "games": 400
    }
+  },
+  {
+   "file": "mob-storm.txt",
+   "name": "Mob Storm (Krenko, Mob Boss)",
+   "commanders": [
+    "Krenko, Mob Boss"
+   ],
+   "colors": "R",
+   "cards": 100,
+   "bracket": 3
   },
   {
    "file": "second-draw.txt",

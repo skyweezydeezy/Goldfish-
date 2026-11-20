@@ -50,6 +50,7 @@ const shot = process.env.VERSUS_SHOTS;
   // ---- 1v1, you play ----
   await p.click('[data-tab=duel]');
   check('1v1: one opponent menu, with a copy of your deck first', (await p.$$('#tab-duel .vs-opp')).length === 1 && /copy/i.test(await p.$eval('#tab-duel .vs-opp option', o => o.textContent)));
+  check('1v1: the opponent starts on a random built-in deck', (await p.$eval('#tab-duel .vs-opp', e => e.value)) === 'random', await p.$eval('#tab-duel .vs-opp', e => e.value));
   await p.selectOption('#tab-duel .vs-opp', '');
   await p.click('#tab-duel .vs-new');
   await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 60000 });
@@ -186,6 +187,7 @@ const shot = process.env.VERSUS_SHOTS;
   // ---- pod ----
   await p.click('[data-tab=pod]');
   check('Pod: three opponent menus', (await p.$$('#tab-pod .vs-opp')).length === 3);
+  check('Pod: every opponent starts on a random built-in deck', await p.$$eval('#tab-pod .vs-opp', es => es.every(e => e.value === 'random')));
   for (const sel of await p.$$('#tab-pod .vs-opp')) await sel.selectOption('');
   await p.click('#tab-pod .vs-new');
   await p.waitForFunction(() => { const g = window.__isfVersus.pod.game; return g && g.phase === 'mull'; }, null, { timeout: 90000 });

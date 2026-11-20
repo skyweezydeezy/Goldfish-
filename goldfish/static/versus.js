@@ -66,7 +66,7 @@
   function fill(mode) {
     const st = V[mode]; if (!st.root) return;
     st.root.querySelectorAll('.vs-opp').forEach(sel => {
-      const cur = sel.dataset.touched ? sel.value : (mode === 'pod' && A.builtins().length ? 'random' : '');
+      const cur = sel.dataset.touched ? sel.value : (A.builtins().length ? 'random' : '');          // every opponent starts on a random built-in deck (1v1 and Pod)
       sel.innerHTML = oppOptions();
       sel.value = [...sel.options].some(o => o.value === cur) ? cur : '';
       sel.onchange = () => { sel.dataset.touched = '1'; };

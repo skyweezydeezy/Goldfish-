@@ -63,11 +63,16 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight
 .status-pill.ok::before { content: "● "; color: var(--good); }
 .status-pill.bad::before { content: "● "; color: var(--critical); }
 .app-ver { border: 0; min-height: 0; font: inherit; font-size: 12px; cursor: default; font-variant-numeric: tabular-nums; }
-.app-ver.update { cursor: pointer; color: var(--warning, #fab219); box-shadow: inset 0 0 0 1px rgba(250,178,25,.6); }
+.app-ver.update { cursor: pointer; box-shadow: inset 0 0 0 1px rgba(250,178,25,.55); }
 
 main { padding: 16px 18px 60px; max-width: 1700px; margin: 0 auto; }
 .panel { display: none; }
-.panel.active { display: block; animation: fadein .25s ease; }
+/* Switching modes (tabs): the new one fades in softly instead of snapping on. --mode-fade sets how long it takes; the curve
+   makes it readable within about half a second, then it settles gently. Opacity only: nothing moves while it fades.
+   (People who ask their device for reduced motion get the instant switch, from the rule further down.) */
+:root { --mode-fade: 2s; }
+.panel.active { display: block; animation: modein var(--mode-fade) cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes modein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .card-box { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
@@ -440,7 +445,7 @@ html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; }   /* clip,
   #zLibrary .card-back { width: 54px; margin-bottom: 2px; }
 }
 
-/* ---------- I See Fish: frozen look ---------- */
+/* ---------- ICEYfish: frozen look ---------- */
 .card-box, .tile, .hud, .zone-pile, .table-log { background: linear-gradient(180deg, rgba(23,42,58,.92), rgba(16,30,42,.92)); box-shadow: inset 0 1px 0 rgba(214,241,255,.07); }
 .tab.active { background: linear-gradient(180deg, #2b4f6b, #213a4f); color: #fff; box-shadow: inset 0 0 0 1px rgba(143,216,255,.35); }
 button { background: var(--surface-3); }
@@ -923,6 +928,9 @@ body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(
   .topbar { gap: 6px; padding-left: 12px; padding-right: 12px; }
   .topbar .status-pill { padding: 4px 7px; font-size: 11px; }
   .app-ver { margin-left: -2px; }
+  /* the first row has only a few pixels to spare: the card-source pill gives up space (with "…") rather than pushing the sound button onto a row of its own */
+  #mirrorStatus { flex: 1 1 0; min-width: 0; max-width: max-content; overflow: hidden; text-overflow: ellipsis; }
+  .app-ver, .top-sound { flex: 0 0 auto; }
 }
 .sound-cards { margin: 4px 0 12px; }
 .sound-cards summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }

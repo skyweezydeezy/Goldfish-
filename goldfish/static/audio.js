@@ -296,7 +296,7 @@
     if ('mediaSession' in navigator) {
       try {
         const tr = TRACKS.find(x => x.id === set.track) || TRACKS[0];
-        navigator.mediaSession.metadata = on && window.MediaMetadata ? new MediaMetadata({ title: tr.name, artist: 'I See Fish', artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }] }) : null;
+        navigator.mediaSession.metadata = on && window.MediaMetadata ? new MediaMetadata({ title: tr.name, artist: 'ICEYfish', artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }] }) : null;
         navigator.mediaSession.playbackState = on ? 'playing' : 'none';
         navigator.mediaSession.setActionHandler('play', on || set.bg ? () => { set.music = true; save(); } : null);
         navigator.mediaSession.setActionHandler('pause', on ? () => { set.music = false; save(); } : null);
@@ -318,7 +318,7 @@
     if (set.bg !== null || document.hidden || document.getElementById('bgAsk')) return;
     const b = document.createElement('div');
     b.id = 'bgAsk'; b.className = 'bg-ask'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-labelledby', 'bgAskTitle');
-    b.innerHTML = `<div class="bg-ask-text"><b id="bgAskTitle">🎵 Keep the music playing in the background?</b><button type="button" class="info-tog" aria-expanded="false" aria-label="What is this?" title="What is this?">i</button>
+    b.innerHTML = `<div class="bg-ask-text"><b id="bgAskTitle">🎵 Keep the music playing in the background? <button type="button" class="info-tog" aria-expanded="false" aria-label="What is this?" title="What is this?">i</button></b>
       <span class="folded">The music can keep playing when you switch to another app or tab, minimize the browser or lock your screen. Sound effects always stay quiet then.
       You can change this any time in the Sound panel (🔊).${touch ? ' Some phones (iPhone and iPad especially) may still pause it.' : ''}</span></div>
       <div class="bg-ask-btns"><button type="button" class="primary" data-bg="yes">Yes, keep playing</button><button type="button" class="ghost" data-bg="no">No, pause it</button></div>`;

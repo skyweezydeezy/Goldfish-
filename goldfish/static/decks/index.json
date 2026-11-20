@@ -22,7 +22,15 @@
    "colors": "WUBRG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 4,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 8,
+    "killBy6": 0.09,
+    "killBy8": 0.63,
+    "games": 400
+   }
   },
   {
    "file": "friendship-is-magic.txt",
@@ -43,7 +51,15 @@
    "colors": "WUBRG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 4,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 7,
+    "killBy6": 0.25,
+    "killBy8": 0.81,
+    "games": 150
+   }
   },
   {
    "file": "the-kings-gambit.txt",
@@ -92,7 +108,15 @@
    "colors": "WUBRG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 4,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 7,
+    "killBy6": 0.2,
+    "killBy8": 0.79,
+    "games": 400
+   }
   },
   {
    "file": "compleat-contagion.txt",
@@ -166,7 +190,15 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 3,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 9,
+    "killBy6": 0.17,
+    "killBy8": 0.41,
+    "games": 400
+   }
   },
   {
    "file": "nights-curfew.txt",
@@ -177,7 +209,15 @@
    "colors": "WUB",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 4,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 8,
+    "killBy6": 0.15,
+    "killBy8": 0.6,
+    "games": 400
+   }
   },
   {
    "file": "odds-and-ends.txt",
@@ -226,7 +266,15 @@
    "colors": "UBR",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 4,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 8,
+    "killBy6": 0.12,
+    "killBy8": 0.61,
+    "games": 400
+   }
   },
   {
    "file": "second-breakfast.txt",
@@ -250,7 +298,15 @@
    "colors": "UR",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 2,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 11,
+    "killBy6": 0.01,
+    "killBy8": 0.08,
+    "games": 400
+   }
   },
   {
    "file": "dead-sea.txt",
@@ -275,7 +331,15 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 3,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 9,
+    "killBy6": 0.12,
+    "killBy8": 0.41,
+    "games": 400
+   }
   },
   {
    "file": "death-tax.txt",
@@ -412,7 +476,15 @@
    "colors": "UG",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 3,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 9,
+    "killBy6": 0.13,
+    "killBy8": 0.46,
+    "games": 400
+   }
   },
   {
    "file": "soul-brokers.txt",
@@ -535,7 +607,15 @@
    "colors": "U",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 2,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 11,
+    "killBy6": 0.01,
+    "killBy8": 0.15,
+    "games": 400
+   }
   },
   {
    "file": "second-draw.txt",
@@ -592,7 +672,15 @@
    "colors": "",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "bracket": 4,
+   "bracketEst": {
+    "by": "goldfish kill turn",
+    "medianKill": 8,
+    "killBy6": 0.26,
+    "killBy8": 0.68,
+    "games": 400
+   }
   }
  ]
 }

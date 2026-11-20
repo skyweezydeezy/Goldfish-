@@ -189,6 +189,9 @@
     if (!tokFound && plain !== text) { tokRe.lastIndex = 0; while ((m = tokRe.exec(plain))) fx.push(parseTokenSpec(m)); }          // a token with its own quoted ability (Moseo's Pest)
     const artRe = new RegExp('create ' + NRE + ' (tapped )?(Treasure|Food|Clue|Blood|Map|Gold|Powerstone|Junk)(?: artifact)? tokens?', 'gi');
     while ((m = artRe.exec(text))) fx.push({ type: 'token', n: num(m[1]), tapped: !!m[2], creature: false, name: m[3][0].toUpperCase() + m[3].slice(1).toLowerCase(), artifact: true });
+    // no maximum hand size for the rest of the game (Sea Gate Restoration, Ancient Silver Dragon), as an emblem (Tamiyo, Wrenn and Seven), or while you control a Saga (Jin-Gitaxias)
+    if (/you have no maximum hand size for the rest of the game|emblem with ["“]you have no maximum hand size/i.test(withQuotes) && !/if x is \d+ or more/i.test(text)) fx.push({ type: 'noMaxHand' });
+    else if (/you have no maximum hand size for as long as you control this saga/i.test(text)) fx.push({ type: 'noMaxHand', source: true });
     // "You get an emblem with 'Creatures you control get +2/+2 (and have flying)'" (Ajani Resolute, Elspeth Sun's Champion)
     if ((m = withQuotes.match(/emblem with ["“]creatures you control get \+(\d+)\/\+(\d+)(?: and have ([a-z ,]+?))?\.?["”]/i))) fx.push({ type: 'emblem', p: +m[1], t: +m[2], keywords: kwList(m[3]) });
     // Gyome, Master Chef: Food equal to the nontoken creatures that entered this turn
@@ -953,7 +956,7 @@
       // ---- batch 9 (top-3000 pool)
       { const cw = line.match(/^crew (\d+)/i); if (cw) { a.crew = +cw[1]; rec.status = 'ok'; continue; } }          // Vehicles
       if (/^whenever ~ deals combat damage to a player, roll a d20\. you create a number of treasure tokens equal to the result/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: '~', fx: [{ type: 'd20', what: 'treasure' }], text: raw }); rec.status = 'ok'; continue; }          // Ancient Copper Dragon
-      if (/^whenever ~ deals combat damage to a player, roll a d20\. draw cards equal to the result/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: '~', fx: [{ type: 'd20', what: 'draw' }], text: raw }); rec.status = 'ok'; continue; }          // Ancient Silver Dragon
+      if (/^whenever ~ deals combat damage to a player, roll a d20\. draw cards equal to the result/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: '~', fx: [{ type: 'd20', what: 'draw' }].concat(/no maximum hand size for the rest of the game/i.test(line) ? [{ type: 'noMaxHand' }] : []), text: raw }); rec.status = 'ok'; continue; }          // Ancient Silver Dragon
       if (/^whenever ~ deals combat damage to a player, roll a d20\. when you do, put any number of target creature cards with total mana value x or less from graveyards onto the battlefield/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: '~', fx: [{ type: 'd20', what: 'reanimate' }], text: raw }); rec.status = 'ok'; continue; }          // Ancient Brass Dragon
       if (/^if you tap a permanent for mana, it produces twice as much of that mana instead/i.test(line)) { a.statics.manaDouble = true; rec.status = 'ok'; continue; }          // Mana Reflection
       if (/^\{t\}: choose a color\. add an amount of mana of that color equal to your devotion to that color/i.test(line)) { a.nykthos = 'devotionFree'; rec.status = 'ok'; continue; }          // Nyx Lotus
@@ -1015,7 +1018,12 @@
       if (/^if one or more \+1\/\+1 counters would be put on a creature you control, twice that many \+1\/\+1 counters are put on it instead/i.test(line)) { a.statics.branching = (a.statics.branching || 0) + 1; rec.status = 'ok'; continue; }          // Corpsejack Menace
       if (/^whenever ~ deals combat damage to a player, they lose half their life, rounded up/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: '~', fx: [{ type: 'halfLife' }], text: raw }); rec.status = 'ok'; continue; }          // Unstoppable Slasher
       if (/^nonbasic lands are mountains/i.test(line) || /^commanders you control have ward/i.test(line) || /^when ~ enters, return another target nonland permanent to its owner's hand/i.test(line) || /^you may pay \{1\}\{b\} rather than pay ~'s mana cost/i.test(line) || /^regenerate each creature you control/i.test(line) || /^\{2\}\{r\}, discard ~: it deals 3 damage to target creature or planeswalker/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }
-      if (/^\{u\}: (?:tap|untap) enchanted creature/i.test(line) || /^your maximum hand size is twenty/i.test(line) || /^when ~ dies, put it on the bottom of its owner's library/i.test(line) || /^each nonland permanent you control is all colors/i.test(line) || /^~ enters with a charge counter on it/i.test(line) || /^at the beginning of each combat, untap equipped creature/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
+      // maximum hand size (the cleanup step discards down to it): "you have no maximum hand size", "players have...", "your maximum hand size is N", Jin-Gitaxias
+      let mh;
+      if ((mh = line.match(/^(you|players) have no maximum hand size\.?$/i))) { a.statics.noMaxHand = mh[1].toLowerCase() === 'players' ? 'all' : 'you'; rec.status = 'ok'; continue; }
+      if ((mh = line.match(/^your maximum hand size is (\w+)\.?$/i)) && BIGNUM[mh[1].toLowerCase()] != null) { a.statics.maxHand = BIGNUM[mh[1].toLowerCase()]; rec.status = 'ok'; continue; }
+      if ((mh = line.match(/^each opponent's maximum hand size is reduced by (\w+)\.?$/i)) && BIGNUM[mh[1].toLowerCase()] != null) { a.statics.oppHandDown = BIGNUM[mh[1].toLowerCase()]; rec.status = 'ok'; rec.tag = 'opp'; continue; }
+      if (/^\{u\}: (?:tap|untap) enchanted creature/i.test(line) || /^when ~ dies, put it on the bottom of its owner's library/i.test(line) || /^each nonland permanent you control is all colors/i.test(line) || /^~ enters with a charge counter on it/i.test(line) || /^at the beginning of each combat, untap equipped creature/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
       if (/^return target creature card from your graveyard to your hand\. return that card from your graveyard to the battlefield instead if there are seven or more cards in your graveyard/i.test(line) || /^return that card from your graveyard to the battlefield instead if there are seven or more cards in your graveyard/i.test(line)) { if (!a.spellFx.some(f => f.type === 'stitch')) { a.spellFx = a.spellFx.filter(f => f.type !== 'gyReturn'); a.spellFx.push({ type: 'stitch' }); } rec.status = 'ok'; continue; }          // Stitch Together
       if (/^whenever a land you control enters, exile the top card of your library\. you may play that card for as long as it remains exiled/i.test(line)) { a.triggers.push({ kinds: ['landfall'], fx: [{ type: 'impulseOwn', n: 1, next: true }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Valakut Exploration
       if (/^when ~ enters, sacrifice it unless it escaped/i.test(line)) { a.sacUnlessEscaped = true; rec.status = 'ok'; continue; }          // Uro, Kroxa
@@ -1073,7 +1081,7 @@
       { const kc = line.match(/^whenever an opponent casts a noncreature spell, (.*)$/i); if (kc) { const r = parseEffects(kc[1].replace(/that player loses/i, 'each opponent loses')); if (r.fx.length) { a.triggers.push({ kinds: ['oppCast'], fx: r.fx, text: raw }); rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; } } }          // Kambal, Consul of Allocation
       // ---- batch 6 (top-3000 pool)
       if (/^at the beginning of your upkeep, reveal the top card of your library and put that card into your hand\. you lose life equal to its mana value/i.test(line)) { a.triggers.push({ kinds: ['upkeep'], fx: [{ type: 'confidant' }], text: raw }); rec.status = 'ok'; continue; }          // Dark Confidant
-      if (/^draw cards equal to the number of cards in your hand plus one/i.test(line)) { a.spellFx.push({ type: 'draw', n: 'HANDPLUS1' }); rec.status = 'ok'; continue; }          // Sea Gate Restoration
+      if (/^draw cards equal to the number of cards in your hand plus one/i.test(line)) { a.spellFx.push({ type: 'draw', n: 'HANDPLUS1' }); if (/no maximum hand size for the rest of the game/i.test(line)) a.spellFx.push({ type: 'noMaxHand' }); rec.status = 'ok'; continue; }          // Sea Gate Restoration
       if (/^whenever you sacrifice a clue, put a \+1\/\+1 counter on ~/i.test(line)) { a.triggers.push({ kinds: ['clueSac'], fx: [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'self', types: [] }], text: raw }); rec.status = 'ok'; continue; }          // Tireless Tracker
       if (/^whenever one or more artifact creatures you control deal combat damage to a player, draw a card/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: 'one or more', hitArtifact: true, fx: [{ type: 'draw', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Thopter Spy Network
       if (/^if one or more creature tokens would be created under your control, three times that many of those tokens are created instead/i.test(line)) { a.statics.tokenRepl.push({ type: 'tripleCreature' }); rec.status = 'ok'; continue; }          // Ojer Taq
@@ -1737,8 +1745,10 @@
     const rnd = mulberry32(seed >>> 0);
     return {
       rnd, opts, seed, deck,
-      library: shuffle(deck.library.slice(), rnd),
-      hand: [], battlefield: [], graveyard: [], exile: [], command: deck.commanders.slice(),
+      // every game gets its own card instances: marks a game leaves on a card (Cauldron Familiar's return this turn, cast-from-graveyard
+      // flags...) must not carry into the next game played with the same deck, or the same seed could play differently
+      library: shuffle(deck.library.map(i => ({ iid: i.iid, card: i.card })), rnd),
+      hand: [], battlefield: [], graveyard: [], exile: [], command: deck.commanders.map(i => ({ iid: i.iid, card: i.card })),
       turn: 0, damage: 0, cmdrDamage: {}, mulligans: 0, bottomed: [],
       landPlayed: 0, manaSpent: 0, commanderCast: null, killTurn: null, cmdrCasts: {},
       castTurn: {}, drawTurn: {}, turns: [], floating: [], eot: { p: 0, t: 0, kw: new Set() }, extraCombats: 0,
@@ -2379,7 +2389,28 @@
     if (a.isCreature && a.yardActivate || a.landfallReturn) return 1;             // it comes back by itself
     return a.isLand ? (lands >= 6 ? 0 : lands >= 4 ? 4 : 9) : 2 + Math.min(8, a.castMv) * 0.5 + (a.comboRole ? 20 : 0) + (a.statics.tokenRepl.length ? 10 : 0) + (a.produce ? 5 : 0) - (a.castMv > lands + 4 ? 3 : 0);
   }
-  function discardWorst(g, ev) {
+  // Maximum hand size: seven, unless something says otherwise. "No maximum hand size" (Reliquary Tower, Thought Vessel, an emblem, Folio of
+  // Fancies for every player) wins over any number; "your maximum hand size is N" (Twenty-Toed Toad, Necrodominance) sets it, the newest
+  // such permanent counting; an opponent's Jin-Gitaxias, Core Augur reduces it.
+  function maxHandSize(g) {
+    if (g.noMaxHand) return Infinity;
+    const others = g.match && g.match.players ? g.match.players.filter(x => x !== g && !x.dead) : (g.opp ? [g.opp] : []);
+    if (g.battlefield.some(p => p.noMaxHand || p.card.a.statics.noMaxHand) || others.some(x => x.battlefield.some(p => p.card.a.statics.noMaxHand === 'all'))) return Infinity;
+    let n = 7;
+    for (const p of g.battlefield) if (p.card.a.statics.maxHand != null) n = p.card.a.statics.maxHand;
+    for (const x of others) for (const p of x.battlefield) if (p.card.a.statics.oppHandDown) n -= p.card.a.statics.oppHandDown;
+    return Math.max(0, n);
+  }
+  // The cleanup step: the player whose turn it is discards down to their maximum hand size, one card at a time (the worst first; a person
+  // seat is asked for each card). Each discard is a real discard: madness and "whenever you discard" work.
+  function cleanupDiscard(g, ev) {
+    const max = maxHandSize(g);
+    if (g.hand.length <= max) return;
+    const n = g.hand.length - max;
+    ev.push({ type: 'note', text: `Cleanup: discards down to ${max} card${max === 1 ? '' : 's'} (${n} too many)`, cleanup: true });
+    for (let k = 0; k < n && g.hand.length > max; k++) discardWorst(g, ev, { max, left: g.hand.length - max });
+  }
+  function discardWorst(g, ev, cleanup) {
     if (!g.hand.length) return;
     const lands = g.battlefield.filter(p => p.asLand).length;
     let worst = null, ws = Infinity;
@@ -2389,7 +2420,7 @@
       if (a.aftermath) v = 1;                                // Dusk // Dawn wants to be in the graveyard
       if (v < ws) { ws = v; worst = i; }
     }
-    if (g.ask) worst = decide(g, { kind: 'discard', options: g.hand.slice(), def: worst });
+    if (g.ask) worst = decide(g, { kind: 'discard', options: g.hand.slice(), def: worst, cleanup: cleanup || null });
     g.hand.splice(g.hand.indexOf(worst), 1); g.graveyard.push(worst);
     ev.push({ type: 'note', text: `Discarded ${worst.card.name}` });
     if (worst.card.a.isLand) landToYard(g, ev, false);
@@ -3135,6 +3166,7 @@
         }
         case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); checkDeath(g, ev); break;
         case 'tutor': tutor(g, f, ev, source); break;
+        case 'noMaxHand': if (f.source) { if (source) source.noMaxHand = true; } else g.noMaxHand = true; break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
         case 'counters': {
           // who gets them: each matching creature / the source itself / the best matching target
@@ -5390,7 +5422,7 @@
       options: [{ name: 'Crack at once', value: 'never' }, { name: 'Hold when a shuffle helps', value: 'whenShuffleHelps' }, { name: 'Hold until needed', value: 'untilNeeded' }, { name: 'Hold until the end of the turn', value: 'untilEnd' }] },
     { id: 'necro', key: 'necroGoal', label: 'Paying life for cards: how full to refill the hand',
       needs: [{ what: 'a card that turns life into cards', test: a => !!a.necroDig }],
-      options: [{ name: 'Refill to 7 (9 above 30 life)', value: 'current' }, { name: 'Refill to 6', value: '6' }, { name: 'Refill to 9', value: '9' }, { name: 'Refill to 11', value: '11' }] },
+      options: [{ name: 'Refill to 7 (9 above 30 life, then keep the best 7)', value: 'current' }, { name: 'Refill to 6', value: '6' }, { name: 'Refill to 9, then keep the best 7', value: '9' }, { name: 'Refill to 11, then keep the best 7', value: '11' }] },          // the cleanup step discards down to the maximum hand size
     { id: 'sac', key: 'sacMode', label: 'Sacrificing tokens to "whenever a creature dies" payoffs',
       needs: [{ what: 'a sacrifice outlet', test: a => !!(a.altar || a.sacScry || a.sacOutlet) }, { what: 'a "whenever a creature dies" payoff', test: isDeathPayoff }, { what: 'a token maker', test: makesTokens }],
       options: [{ name: 'Two payoffs out, a wide board or lethal', value: 'current' }, { name: 'Whenever there is a token', value: 'always' }, { name: 'Only for lethal', value: 'lethalOnly' }, { name: 'Never', value: 'never' }, { name: 'Only with 8+ tokens or lethal', value: 'wide' }, { name: 'Only with two payoffs out or lethal', value: 'two' }] },
@@ -6040,6 +6072,7 @@
     if (g.opp) g.floating = [];
     const ev = necroEv;
     eachTrigger(g, 'end', ev);
+    if (!g.dry && !matchOver(g)) cleanupDiscard(g, ev);                                                  // the cleanup step: discard down to the maximum hand size
     g.manaSpent += g.spentThisTurn || 0;
     g.turns.push({
       turn: g.turn,
@@ -6795,7 +6828,7 @@
     pay, madness, fxValue, topCastable, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
-    decide, tutorOptions, removalTargets, counterTarget, discardValue,
+    decide, tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard,
     linkPod, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, canBlock, chooseBlocks, dealOpening, keepOpening, mullCost, podFocus, pickTarget, podAlive, playPod, podMonteCarlo, podLog, turnSummary, eliminate, canAttack, chooseAttackers, matchOver, checkKill,
   };
   root.Goldfish = api;

@@ -86,7 +86,7 @@ g = fresh(); const hel = put(g, 'Heliod'); check('Heliod, Sun-Crowned is not a c
 
 // ---- Necropotence, Sylvan Library
 g = fresh(); put(g, 'Necropotence'); g.hand = []; g.life = 40; const libN = g.library.length; const evN = G.endTurn(g);
-check('Necropotence: at the end step you pay life to refill your hand (9 cards at life > 30)', g.hand.length === 9 && g.life === 31 && g.library.length === libN - 9, `hand ${g.hand.length}, life ${g.life}`);
+check('Necropotence: at the end step you pay life to refill your hand (9 cards at life > 30), then the cleanup step keeps the best 7', g.hand.length === 7 && g.graveyard.length === 2 && g.life === 31 && g.library.length === libN - 9, `hand ${g.hand.length}, life ${g.life}`);
 g = fresh(); put(g, 'Necropotence'); const libD = g.library.length; G.beginTurn(g);
 check('...and your draw step is skipped', g.library.length === libD);
 g = fresh(); put(g, 'Necropotence'); g.life = 14; g.hand = []; G.endTurn(g);

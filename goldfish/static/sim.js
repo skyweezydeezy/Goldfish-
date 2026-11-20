@@ -1701,8 +1701,10 @@
     const rnd = mulberry32(seed >>> 0);
     return {
       rnd, opts, seed, deck,
-      library: shuffle(deck.library.slice(), rnd),
-      hand: [], battlefield: [], graveyard: [], exile: [], command: deck.commanders.slice(),
+      // fresh card instances every game: the engine marks instances during play (flashback, escape, X chosen...), and a mark left over
+      // from one game must not change the next one (the Policy lab plays the same shuffles once per option and compares them)
+      library: shuffle(deck.library.map(i => ({ iid: i.iid, card: i.card })), rnd),
+      hand: [], battlefield: [], graveyard: [], exile: [], command: deck.commanders.map(i => ({ iid: i.iid, card: i.card })),
       turn: 0, damage: 0, cmdrDamage: {}, mulligans: 0, bottomed: [],
       landPlayed: 0, manaSpent: 0, commanderCast: null, killTurn: null, cmdrCasts: {},
       castTurn: {}, drawTurn: {}, turns: [], floating: [], eot: { p: 0, t: 0, kw: new Set() }, extraCombats: 0,
@@ -4391,11 +4393,10 @@
     }
     if (g.opp) {                                               // mirror match: interaction needs something to hit, and counterspells wait for the other player's spells
       if (a.counter && !a.spellFx.some(f => f.type === 'removal')) return -1;
+      if (!g.inWindow && !g.dry && pol(g, 'instantTiming') === 'hold' && isInstantInteraction(c.card)) return -1;     // the Policy lab: keep it for the other player's turn
       const fxs = a.spellFx.filter(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage');
       if (fxs.length && a.isInstantSorcery) {
-        const hit = fxs.some(f => f.type === 'removal' ? !!pickRemovalTarget(g, f) : f.type === 'divideDamage' ? g.opp.battlefield.some(q => isCreaturePerm(q) && targetable(g.opp, q) && toughnessOf(g.opp, q) <= f.n && threat(g.opp, g, q) > removalBar(g)) : f.type === 'burnCreature' ? !!burnTarget(g, f.n, true)
-          : f.type === 'edict' ? g.opp.battlefield.filter(isCreaturePerm).length > 0 && g.opp.battlefield.filter(isCreaturePerm).length <= 2
-          : g.opp.battlefield.some(p => isCreaturePerm(p) && targetable(g.opp, p) && threat(g.opp, g, p) > 3.5));
+        const hit = interactionHit(g, fxs);
         if (!hit && a.spellFx.every(f => fxs.includes(f))) return -1;
         if (hit) s += 25;                                      // clear the way before combat
       }
@@ -5168,7 +5169,7 @@
   }
 
   function castPhase(g, dry) {
-    const held = dry ? [] : holdForCounter(g);
+    const held = dry ? [] : holdForCounter(g).concat(holdForInstant(g));
     try { return castPhaseInner(g, dry); } finally { held.forEach(q => { q.held = false; }); }
   }
   function castPhaseInner(g, dry) {
@@ -5243,7 +5244,7 @@
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -5294,6 +5295,9 @@
     { id: 'wipe', key: 'wipeMargin', label: 'Board wipes: how far ahead the wipe must put you', mirrorOnly: true,
       needs: [{ what: 'a board wipe that weighs both boards', test: a => !!(a.delugeCost || a.spellFx.some(f => f.type === 'sweepDamage')) }],
       options: [{ name: 'Clearly ahead (learned default)', value: '3' }, { name: 'Any gain', value: '1' }, { name: 'Only a big swing', value: '6' }] },
+    { id: 'instant', key: 'instantTiming', label: 'Instant-speed removal: when to use it', mirrorOnly: true,
+      needs: [{ what: 'an instant (or flash card) that removes, bounces or burns', test: (a, c) => isInstantInteraction(c) }],
+      options: [{ name: 'On your turn, and on theirs with mana you left over (default)', value: 'spare' }, { name: 'Keep it, and the mana for it, for their turn', value: 'hold' }, { name: 'Only on your own turn', value: 'off' }] },
     { id: 'removal', key: 'removalBar', label: 'Removal: how big a threat must be before you spend removal on it', mirrorOnly: true,
       needs: [{ what: 'a spell or ability that removes, bounces or burns an opposing creature', test: a => a.spellFx.concat(a.triggers.flatMap(t => t.fx)).some(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || (f.type === 'damage' && f.any)) }],
       options: [{ name: 'Anything worth more than a small token (default)', value: 'default' }, { name: 'Anything at all, as soon as possible', value: '0.5' }, { name: 'Save it for real threats', value: '4' }, { name: 'Only for the biggest threats', value: '7' }] },
@@ -5773,6 +5777,7 @@
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
       let dmg = 0, vsLifelink = 0;
       let hitters = [];
+      if (g.opp && !g.dry) { instantWindow(g.opp, ev, 'combat'); attackers = attackers.filter(p => g.battlefield.includes(p)); }          // the defender answers attackers at instant speed
       if (g.opp) { const r = resolveCombatVs(g, attackers, ev); dmg = r.dmg; hitters = r.hitters; vsLifelink = r.lifelink; }
       else for (const p of attackers) {
         if (!g.battlefield.includes(p)) continue;
@@ -5891,6 +5896,8 @@
   }
 
   function endTurn(g) {
+    const iw = [];
+    if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
     toxrillEnd(g, []);
     if (!g.dry) for (const o of otherPlayers(g)) for (const q of o.battlefield.slice()) for (const t of q.card.a.triggers) if (t.each && t.kinds.includes('end') && o.battlefield.includes(q)) fire(o, t, q, [], null);
     for (const p of g.battlefield) if (p.wood) { p.card = p.wood.card; p.produce = p.wood.produce; p.asLand = true; p.wood = null; touch(g); }          // Shifting Woodland is a land again
@@ -5928,7 +5935,7 @@
     g.eot = { p: 0, t: 0, kw: new Set() };
     g.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
-    return ev;
+    return iw.length ? iw.concat(ev) : ev;
   }
 
   // ---------- Combo lines ----------
@@ -6350,6 +6357,61 @@
     if (/instant|sorcery|enchantment|artifact/.test(f)) return (/instant/.test(f) && /Instant/.test(card.type_line)) || (/sorcery/.test(f) && /Sorcery/.test(card.type_line)) || (/enchantment/.test(f) && a.isEnchantment) || (/artifact/.test(f) && a.isArtifact);
     return true;
   };
+  // ---------- Instant-speed interaction on the other player's turn (matches) ----------
+  // The player who is not taking the turn gets two windows: after attackers are declared (removal, burn and bounce, before blocks and
+  // damage) and at the end of the turn (the same, plus instant card draw). It casts with the mana it left untapped on its own turn.
+  // Policy instantTiming: 'spare' (default) uses only leftover mana, 'hold' also keeps that interaction and its mana for their turn,
+  // 'off' never acts on their turn.
+  const INTERACT_FX = f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage' || (f.type === 'damage' && f.any);
+  const atInstantSpeed = card => /\bInstant\b/.test(card.type_line || '') || (card.keywords || []).includes('Flash');
+  function isInstantInteraction(card) { const a = card.a; return !!a && atInstantSpeed(card) && !a.isLand && !a.counter && a.spellFx.some(INTERACT_FX); }
+  // does at least one of these effects have something worth hitting on the other player's board?
+  function interactionHit(g, fxs) {
+    const d = g.opp; if (!d) return false;
+    return fxs.some(f => f.type === 'removal' ? !!pickRemovalTarget(g, f) : f.type === 'divideDamage' ? d.battlefield.some(q => isCreaturePerm(q) && targetable(d, q) && toughnessOf(d, q) <= f.n && threat(d, g, q) > removalBar(g)) : f.type === 'burnCreature' ? !!burnTarget(g, f.n, true)
+      : f.type === 'damage' ? !!burnTarget(g, f.n === 'X' ? 1 : f.n, false)
+      : f.type === 'edict' ? d.battlefield.filter(isCreaturePerm).length > 0 && d.battlefield.filter(isCreaturePerm).length <= 2
+      : d.battlefield.some(p => isCreaturePerm(p) && targetable(d, p) && threat(d, g, p) > 3.5));
+  }
+  function instantWindow(me, ev, step) {
+    if (!me || me.dry || me.dead || matchOver(me) || !me.opp || pol(me, 'instantTiming') === 'off') return 0;
+    let cast = 0;
+    for (let k = 0; k < 4 && !matchOver(me); k++) {
+      const units = manaUnits(me);
+      let best = null, bs = -Infinity;
+      for (const c of me.hand) {
+        const a = c.card.a;
+        if (!a || a.isLand || a.counter || !atInstantSpeed(c.card)) continue;
+        const fxs = a.spellFx.filter(INTERACT_FX);
+        const drawish = step === 'end' && !fxs.length && a.isInstantSorcery && a.spellFx.some(f => f.type === 'draw');
+        if (!fxs.length && !drawish) continue;
+        if (!canPay(effectiveCost(me, c), units)) continue;
+        if (fxs.length && !interactionHit(me, fxs)) continue;
+        const sc = (fxs.length ? 20 : 0) + a.castMv;                                                        // interaction first, then the most mana it can use
+        if (sc > bs) { bs = sc; best = c; }
+      }
+      if (!best) break;
+      me.inWindow = true;
+      let r = null;
+      try { r = castCard(me, best); } finally { me.inWindow = false; }
+      if (!r) break;
+      ev.push({ type: 'note', text: `On the other player's turn (${step === 'combat' ? 'attackers declared' : 'end step'}): cast ${best.card.name}`, source: null }, ...r);
+      cast++;
+    }
+    return cast;
+  }
+  // Keep mana open on your own turn for the cheapest instant-speed interaction in hand (policy 'hold').
+  function holdForInstant(g) {
+    if (!g.opp || g.turn < 2 || pol(g, 'instantTiming') !== 'hold') return [];
+    let best = null;
+    for (const c of g.hand) if (isInstantInteraction(c.card) && (!best || c.card.a.castMv < best.card.a.castMv)) best = c;
+    if (!best) return [];
+    const units = manaUnits(g), idx = canPay(effectiveCost(g, best), units);
+    if (!idx) return [];
+    const srcs = [...new Set(idx.map(i => units[i].src).filter(q => q && !q.pseudo && !q.held))];
+    srcs.forEach(q => { q.held = true; });
+    return srcs;
+  }
   // Is this spell worth a counterspell, and does the other player hold one they can pay for? Returns true when the spell is countered.
   // A counterspell can be paid with mana, for free (Fierce Guardianship with a commander out, Mindbreak Trap) or by pitching a blue card (Force of Will).
   // by: a person in a pod who is not the player being attacked may answer the spell too (the autopilot only answers for the attacked player).
@@ -6668,7 +6730,7 @@
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, madness, fxValue, topCastable, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
+    pay, madness, fxValue, topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
     decide, tutorOptions, removalTargets, counterTarget, discardValue,

@@ -122,6 +122,44 @@ check('the board wipe choice is for matches only', G.LAB_CHOICES.find(c => c.id 
   }
 }
 
+// ---- instant-speed interaction on the other player's turn ----
+{
+  const mtn = n => Array.from({ length: n }, () => card('Mountain', 'Basic Land — Mountain', '({T}: Add {R}.)', { mana_cost: '', cmc: 0, colors: [], produced_mana: ['R'] }));
+  const bolt = card('Homebrew Bolt', 'Instant', 'Homebrew Bolt deals 3 damage to any target.', { mana_cost: '{R}', cmc: 1, colors: ['R'] });
+  const slowBolt = card('Homebrew Slow Bolt', 'Sorcery', 'Homebrew Slow Bolt deals 3 damage to any target.', { mana_cost: '{R}', cmc: 1, colors: ['R'] });
+  const ogre = card('Homebrew Ogre', 'Creature — Ogre', '', { mana_cost: '{2}{R}', cmc: 3, power: '3', toughness: '3', colors: ['R'] });
+  const deckD = G.buildDeck(mtn(30).concat([bolt, slowBolt]), []), deckA = G.buildDeck(mtn(30).concat([ogre]), []);
+  check('an instant that deals damage is instant-speed interaction; the same text on a sorcery is not',
+    G.isInstantInteraction(deckD.unique.find(c => c.name === 'Homebrew Bolt')) && !G.isInstantInteraction(deckD.unique.find(c => c.name === 'Homebrew Slow Bolt')));
+  check('instant-speed interaction brings in the timing choice', applies(deckD, 'instant') && !applies(deckA, 'instant'));
+  const setup = policy => {
+    const d = G.newGame(deckD, withPol(policy || {}), 1), g = G.newGame(deckA, withPol({}), 2); G.linkMatch(g, d);
+    d.turn = g.turn = 4; d.hand = []; g.hand = [];
+    const b = d.library.find(i => i.card.name === 'Homebrew Bolt'); d.library.splice(d.library.indexOf(b), 1); d.hand.push(b);
+    G.enter(d, d.library.find(i => i.card.name === 'Mountain'), {});
+    const o = G.enter(g, g.library.find(i => i.card.name === 'Homebrew Ogre'), {}); o.sick = false;
+    return { d, g, o, b };
+  };
+  { const { d, g, o, b } = setup(); const ev = []; const n = G.instantWindow(d, ev, 'combat');
+    check('with a Mountain left untapped, the defender bolts the attacking 3/3 on the other player\'s turn', n === 1 && !g.battlefield.includes(o) && d.graveyard.includes(b), n + ' cast'); }
+  { const { d, g, o } = setup({ instantTiming: 'off' }); const n = G.instantWindow(d, [], 'combat');
+    check('"only on your own turn": no cast on their turn', n === 0 && g.battlefield.includes(o)); }
+  { const { d } = setup(); d.battlefield.forEach(p => { if (p.asLand) p.tapped = true; }); check('no untapped mana: no cast', G.instantWindow(d, [], 'combat') === 0); }
+  { const { d, b } = setup({ instantTiming: 'hold' }); check('"keep it for their turn": not cast on your own turn', G.spellScore(d, b) === -1);
+    const { d: d2, b: b2 } = setup(); check('...while the default does cast it on your own turn', G.spellScore(d2, b2) > 0); }
+}
+
+// ---- every game starts clean: nothing the engine marks on a card during play carries over to the next game ----
+{
+  const ld = n => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', n + '-loaded.json'), 'utf8'));
+  const me = ld('veyran'), opp = ld('red-rum-raiders'), A = G.buildDeck(me.cards, me.tokens), B = G.buildDeck(opp.cards, opp.tokens);
+  for (let i = 0; i < 25; i++) G.playMatch(A, B, Object.assign({}, O, { turns: 20 }), 100 + i, i % 2 === 0);
+  const marked = {}; for (const d of [A, B]) for (const inst of d.library.concat(d.commanders)) for (const k of Object.keys(inst)) if (k !== 'iid' && k !== 'card') marked[k] = (marked[k] || 0) + 1;
+  check('after 25 matches the decks\' cards carry no marks from those games (stolen, temporary, held, X chosen...)', Object.keys(marked).length === 0, JSON.stringify(marked));
+  const gf = G.comparePolicies(me.cards, me.tokens, O, [{ name: 'd', policy: {} }, { name: 'h', policy: { instantTiming: 'hold' } }, { name: 'd2', policy: {} }], 40, 3, 'field', [opp]).rows;
+  check('the same option scores exactly the same before and after another option played the same games', gf[0].mean === gf[2].mean, gf[0].mean.toFixed(3) + ' / ' + gf[2].mean.toFixed(3));
+}
+
 // ---- the lab runs the new choices end to end ----
 {
   const r = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'soul-brokers-loaded.json'), 'utf8'));

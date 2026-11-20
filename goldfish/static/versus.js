@@ -158,6 +158,7 @@
     return r;
   }
   async function choose(mode, gm, q, view) {
+    if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
     gm.preview = view; gm.choice = q; render(mode);          // the table shows the game as it stands at the moment of the question
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }
   }
@@ -244,8 +245,8 @@
   async function respondWindow(mode, g) {
     const st = V[mode], gm = st.game;
     if (!alive(gm) || finished(gm) || !asking(mode) || gm.noStop) return;
-    const me = gm.games[gm.human], abil = D.wouldUseAbilities(gm.games, me.pid);
-    if (!D.instants(me).length && !abil) return;
+    const me = gm.games[gm.human], abil = D.wouldUseAbilities(gm.games, me.pid), asked = gm.endAsked; gm.endAsked = false;
+    if ((asked || !D.instants(me).length) && !abil) return;          // instants were just offered by the engine's end-step question
     gm.step = 'end';
     await new Promise(done => { gm.phase = 'respond'; gm.respond = { g, done, abil }; render(mode); });
     gm.phase = null; gm.respond = null; gm.step = null;
@@ -283,7 +284,7 @@
   // ---------- the human seat ----------
   async function startHuman(mode, g) {
     const gm = V[mode].game;
-    gm.phase = null; gm.step = 'untap'; gm.attacked = false; gm.picking = null;
+    gm.phase = null; gm.step = 'untap'; gm.attacked = false; gm.inMain2 = false; gm.picking = null;
     sfx('turn');
     const ev = await act(mode, gs => D.turn.begin(gs[g.pid]));
     tellBegin(mode, g, ev);
@@ -322,6 +323,15 @@
     if (!ev) return info(mode, `${inst.card.name} was not cast.`);
     info(mode, ''); humanDone(mode, ev);
   });
+  // landcycling or transmute from your hand: the search fan asks which card you find
+  const cycleCard = (mode, iid, kind) => mine(mode, async (gm, g) => {
+    const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !(resp && kind === 'cycle')) return;
+    const find = gs => gs[g.pid].hand.find(i => i.iid === iid);
+    const ev = await act(mode, gs => (kind === 'cycle' ? G.landcycleCard : G.transmuteCard)(gs[g.pid], find(gs), []));
+    if (!ev) return info(mode, 'Not enough mana for that.');
+    info(mode, ''); say(mode, g, ev.filter(e => e.text && /is cycled|Transmute:/.test(e.text)).map(e => e.text).join('; '), gm.step);
+    humanDone(mode, ev);
+  });
   const useAbilities = mode => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
     const ev = await act(mode, gs => { const x = gs[g.pid], out = []; if (resp) return D.instantAbilities(x); for (let k = 0; k < 12; k++) { const e = G.useAbilities(x); if (!e.length) break; out.push(...e); } return out; });
@@ -346,7 +356,7 @@
     gm.attacked = true;
     if (!ev.some(e => e.type === 'declare')) say(mode, g, 'No attack.', 'combat');
     tell(mode, g, 'combat', ev);
-    gm.step = 'main2';
+    gm.step = 'main2'; gm.inMain2 = true;                    // the second main phase has begun (its triggers resolved): ending the turn goes on to the end step
     humanDone(mode, finished(gm) ? [] : await act(mode, gs => D.turn.main2(gs[g.pid])), 'main2');
   });
   const endHumanTurn = (mode, auto) => mine(mode, async (gm, g) => {
@@ -359,10 +369,19 @@
         gm.step = 'combat'; tell(mode, g, 'combat', await act(mode, gs => { G.podFocus(gs[pid]); return D.turn.combat(gs[pid]); }, true));
         gm.attacked = true; gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]), true));
       }
-    } else if (!gm.attacked && !finished(gm)) {
-      gm.step = 'combat'; const bev = await act(mode, gs => G.beginCombatOnly(gs[pid]));                    // no attack: the beginning of combat still happens (its triggers resolve)
-      if (bev.length) { say(mode, g, 'Beginning of combat.', 'combat'); tell(mode, g, 'combat', bev); }
-      if (!finished(gm)) { gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]))); }
+    } else {
+      // Every step in order, each shown on the strip: beginning of combat (its triggers resolve: Hakbal explores, even while summoning
+      // sick), combat with no attackers, the second main phase, then the end step and cleanup below. Nothing goes back to an earlier step.
+      const beat = async () => { render(mode); await sleep(140 * A.slow()); };
+      if (!gm.attacked && !finished(gm)) {
+        gm.step = 'combat'; await beat();
+        const pv = await act(mode, gs => D.turn.declare(gs[pid]));
+        say(mode, g, 'Beginning of combat' + (pv && pv.ev && sum(g, pv.ev).length ? '.' : ': nothing triggers.'), 'combat'); if (pv) tell(mode, g, 'combat', pv.ev);
+        if (!finished(gm)) { const cev = await act(mode, gs => D.turn.combat(gs[pid], { attackers: [] })); say(mode, g, 'No attack.', 'combat'); tell(mode, g, 'combat', cev.filter(e => e.type !== 'declare')); }
+        gm.attacked = true;
+      }
+      if (!finished(gm) && !gm.inMain2) { gm.step = 'main2'; gm.inMain2 = true; await beat(); tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]))); }
+      if (!finished(gm)) { gm.step = 'end'; await beat(); }
     }
     gm.step = 'end';
     if (!finished(gm)) tell(mode, g, 'end', await act(mode, gs => D.turn.end(gs[pid]), auto));
@@ -386,7 +405,7 @@
     if (fresh) { e = A.cardEl(card, { face: face || 0, eager: true }); st.nodes.set(key, e); }
     e.className = 'mtg' + (card.commander ? ' commander' : '') + (fresh && st.drawn ? ' vs-new' : '');
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
-    delete e.dataset.iid;
+    delete e.dataset.iid; e.removeAttribute('title');
     return e;
   }
   function permEl(st, gm, g, p) {
@@ -402,6 +421,7 @@
       if (p.counters) e.appendChild(h('span', 'ctr' + (p.counters < 0 ? ' neg' : ''), (p.counters > 0 ? '+' : '') + p.counters));
     }
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
+    if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
     return e;
   }
   // The card exiled with a permanent by imprint (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) is drawn tucked behind that
@@ -508,8 +528,10 @@
     const backs = mine ? '' : `<span class="vs-backs" title="${g.hand.length} card${g.hand.length === 1 ? '' : 's'} in hand">${'<i></i>'.repeat(Math.min(g.hand.length, 7))}<b>${g.hand.length}</b></span>`;
     const turn = !active ? '' : `<span class="vs-turn">▶ ${g.opp && !g.opp.dead && m.players.length > 2 ? 'attacking ' + esc(m.names[g.opp.pid]) : 'turn ' + (g.turn || 1)}</span>`;
     const set = st.lookName[g.pid] ? `<span class="vs-set" title="Playmat and sleeves: ${esc(st.lookName[g.pid])}">🎨 ${esc(st.lookName[g.pid])}</span>` : '';
+    const rl = g.ring && g.ring.tempts > 0 ? Math.min(4, g.ring.tempts) : 0;
+    const ring = rl ? `<span class="vs-ring" title="The Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×. ${esc(G.RING_TEXT.slice(0, rl).join(' '))}">💍 ${g.ring.tempts}</span>` : '';
     return h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
-      `${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
+      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
   }
   // what you can do right now: mulligan, block, pick attackers, or the buttons of your main phase
   function ctlHtml(mode, gm) {
@@ -542,9 +564,9 @@
     if (gm.picking) {
       const can = g.battlefield.filter(p => G.canAttack(g, p));
       const opps = G.podAlive(g), def = gm.target != null && opps.some(o => o.pid === gm.target) ? gm.target : (g.opp && !g.opp.dead ? g.opp.pid : (opps[0] && opps[0].pid));
-      return `<div class="vs-ask"><b>Choose attackers</b> <span class="hint">${can.length ? `Click your creatures to send them or hold them back: <b>${[...gm.pick].filter(id => can.some(p => p.iid === id)).length}</b> of ${can.length} attacking. It starts on what the autopilot would send.` : 'No creature can attack.'} Blocks are chosen by the defending player.</span></div>
+      return `<div class="vs-ask"><b>Choose attackers</b> <span class="hint">${can.length ? `Beginning of combat is over. Click your creatures to send them or hold them back: <b>${[...gm.pick].filter(id => can.some(p => p.iid === id)).length}</b> of ${can.length} attacking. It starts on what the autopilot would send.` : 'No creature can attack.'} Blocks are chosen by the defending player.</span></div>
         <div class="row wrap">${opps.length > 1 ? `<label>Attack <select class="vs-target">${opps.map(o => `<option value="${o.pid}"${o.pid === def ? ' selected' : ''}>${esc(gm.match.names[o.pid])} (${o.life} life, ${o.battlefield.filter(G.isCreaturePerm).length} creatures)</option>`).join('')}</select></label>` : `<input type="hidden" class="vs-target" value="${def}">`}
-          <button class="primary vs-attack-go">Attack</button><button class="ghost vs-attack-all">All</button><button class="ghost vs-attack-none">None</button><button class="ghost vs-attack-cancel">Cancel</button></div>`;
+          <button class="primary vs-attack-go">Attack</button><button class="ghost vs-attack-all">All</button><button class="ghost vs-attack-none">None</button><button class="vs-noattack" title="Declare no attackers: combat ends and you go to your second main phase">No attack</button></div>`;
     }
     const units = G.allUnits(g).length;
     return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : 'Waiting for the other players…')}</span></div>
@@ -563,6 +585,10 @@
       if (human && reply(i)) e.title = 'A counterspell: you are asked when an opponent casts a spell.'; else e.removeAttribute('title');
       slot.appendChild(e);
       if (mine && a.mdfcLand && !a.isLand && landOk) { const b = h('button', 'ghost vs-asland', 'Play as land'); b.dataset.iid = i.iid; slot.appendChild(b); }
+      // landcycling (instant speed: your main phase or the end of another player's turn) and transmute (sorcery speed: your main phase)
+      const tc = a.typecycle, tm = a.transmute, units = (mine || quick) ? G.allUnits(g) : null;
+      if (tc && (mine || quick) && G.canPay(tc.cost, units)) { const b = h('button', 'ghost vs-asland vs-cycle', esc((tc.basic ? 'Basic land' : tc.type === 'land' ? 'Land' : tc.type[0].toUpperCase() + tc.type.slice(1)) + 'cycle')); b.dataset.iid = i.iid; b.title = `Discard ${i.card.name} and search for ${tc.basic ? 'a basic land' : tc.type === 'land' ? 'a land' : 'a ' + tc.type[0].toUpperCase() + tc.type.slice(1)} card`; slot.appendChild(b); }
+      else if (tm && mine && G.canPay(tm.cost, units)) { const b = h('button', 'ghost vs-asland vs-transmute', 'Transmute'); b.dataset.iid = i.iid; b.title = `Discard ${i.card.name} and search for a card with mana value ${a.mv || 0}`; slot.appendChild(b); }
       box.appendChild(slot);
     });
     if (!g.hand.length) box.appendChild(h('i', '', 'No cards in hand.'));
@@ -638,6 +664,7 @@
         if (hit('vs-pass')) return gm.respond.done();
         if (hit('vs-nostop')) { gm.noStop = true; return gm.respond.done(); }
         if (hit('vs-abil')) return useAbilities(mode);
+        if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
         const c = t.closest('.vs-card.can');
         if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
         return;
@@ -646,7 +673,7 @@
         const can = () => g.battlefield.filter(p => G.canAttack(g, p)).map(p => p.iid);
         if (hit('vs-attack-all')) { gm.pick = new Set(can()); return render(mode); }
         if (hit('vs-attack-none')) { gm.pick = new Set(); return render(mode); }
-        if (hit('vs-attack-cancel')) { gm.picking = null; return render(mode); }
+        if (hit('vs-noattack')) return attack(mode, [], +root.querySelector('.vs-target').value);          // the beginning of combat has happened: no way back to the first main phase
         if (hit('vs-attack-go')) { const ok = new Set(can()); return attack(mode, [...gm.pick].filter(id => ok.has(id)), +root.querySelector('.vs-target').value); }
         const stk = t.closest('.vs-seat.me .vs-stack.pickable');
         if (stk) {                                            // click a creature (or a stack of tokens) to send it or hold it back
@@ -674,6 +701,8 @@
         return;
       }
       if (gm.phase !== 'main') return;
+      if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
+      if (hit('vs-transmute')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-transmute').dataset.iid, 'transmute'); }
       if (hit('vs-asland')) { e.stopPropagation(); return playCard(mode, +hit('vs-asland').dataset.iid, true); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }

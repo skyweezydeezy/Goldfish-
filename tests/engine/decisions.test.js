@@ -206,6 +206,30 @@ const other = q => q.options.findIndex(o => !o.def);
   const r = D.attempt(s.p.games, 0, run, []);
   check('a land revealed by explore goes to your hand without a question', r.done && s.a.hand.includes(land) && !(s.h.counters > 0)); }
 
+// ---- the Ring tempts you: choose your Ring-bearer; the Ring's abilities against a real opponent
+{ const mk = seat => { const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]); const a = p.games[0];
+    const frodo = putOn(a, card(a, /^Frodo, Adventurous Hobbit/)), sam = putOn(a, card(a, /^Samwise Gamgee$/) || card(a, /Peregrin/)); return { p, a, frodo, sam }; };
+  const run = gs => { const ev = []; G.temptRing(gs[0], ev, null); return ev; };
+  let s = mk(true); const { q, still } = open(s.p, run);
+  check('when the Ring tempts you, you choose your Ring-bearer among your creatures (the autopilot\'s choice is the default)', !!q && q.kind === 'ringbearer' && /The Ring tempts you \(first time\): choose your Ring-bearer/.test(q.title) && q.options.length === 2 && q.def.length === 1 && /legendary and can't be blocked by creatures with greater power/.test(q.text) && still, q && q.title + ' / default ' + q.options[q.def[0]].name);
+  const other = q.options.find(o => !o.def);
+  const r = D.attempt(s.p.games, 0, run, [{ sig: q.sig, pick: other.k }]);
+  check('...the creature you choose is the Ring-bearer', r.done && s.a.ring.bearer === other.iid && s.a.ring.tempts === 1, other.name);
+  check('...and the log says the Ring tempted you and who carries it', D.summary(s.a, r.result, 0).some(t => /the Ring tempts you \(1st time\): .+ is the Ring-bearer/.test(t)) && D.summary(s.a, r.result, 1).some(t => /the Ring tempts them/.test(t)), D.summary(s.a, r.result, 0).join('; '));
+  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); D.resolveSync(A.p.games, 0, run, () => 'auto'); run(B.p.games);
+  check('..."the autopilot decides" picks the autopilot\'s Ring-bearer', D.dump(A.p.games) === D.dump(B.p.games));
+  s = mk(true); s.a.battlefield = [s.frodo]; const r1 = D.attempt(s.p.games, 0, run, []);
+  check('...with one creature there is nothing to choose: it carries the Ring', r1.done && r1.asked === 0 && s.a.ring.bearer === s.frodo.iid); }
+{ const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); const [a, b] = p.games;
+  const small = putOn(a, card(a, /^Frodo, Adventurous Hobbit/)), big = putOn(b, card(b, /Grave Titan/)); G.temptRing(a, [], null); a.ring.bearer = small.iid;
+  check('the Ring, level 1: a creature with greater power cannot block the Ring-bearer', !G.canBlock(a, small, b, big) && G.canBlock(b, big, a, small));
+  a.ring.tempts = 0; check('...without the Ring it can', G.canBlock(a, small, b, big)); }
+{ const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); const [a, b] = p.games; G.podFocus(a, b);
+  const rb = putOn(a, a.deck.unique.filter(c => c.a.isCreature && (c.a.power || 0) >= 2 && !c.a.kw.has('flying') && !c.a.kw.has('menace') && !c.a.isLegendary).sort((x, y) => y.a.power - x.a.power)[0]), blk = putOn(b, b.deck.unique.find(c => c.a.isCreature && !c.a.triggers.length && c.a.power <= 2 && c.a.toughness >= 1));
+  a.ring = { tempts: 3, bearer: rb.iid }; b.forcedBlocks = { [rb.iid]: [blk.iid] }; a.forceAttackers = [rb.iid];
+  const ev = G.combat(a); a.forceAttackers = null;
+  check('the Ring, level 3: the creature that blocked the Ring-bearer is sacrificed at end of combat', !b.battlefield.includes(blk) && ev.some(e => /blocked the Ring-bearer: it is sacrificed at end of combat/.test(e.text || '') || /dies in combat/.test(e.text || '')), ev.filter(e => e.text).map(e => e.text).join(' | ').slice(0, 200)); }
+
 // ---- 3. responses: an opponent casts a spell
 { const mk = seat => { const p = pod(['red-rum-raiders', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]);
     const [a, b] = p.games; const isl = lands(a, 2, /^Island$/); const cs = toHand(a, /^Counterspell$/); lands(b, 6, /^Swamp$/); const gt = { iid: b.nextIid++, card: card(b, /Grave Titan/) }; b.hand.push(gt); G.podFocus(b, a); return { p, a, b, isl, cs, gt }; };
@@ -231,6 +255,21 @@ const other = q => q.options.findIndex(o => !o.def);
   check('a counterspell paid by exiling a card says so (Force of Will)', !!q && q.options.some(o => o.name === 'Force of Will' && /exile Mystical Tutor/.test(o.note)), q && q.options.map(o => o.name + ': ' + o.note).join(' | '));
   answer(p, run, [qq => named(/Force of Will/)(qq)]);
   check('...and it is: the blue card is exiled, 1 life is paid, the spell is countered', a.exile.includes(blue) && a.life === 39 && b.graveyard.includes(gt)); }
+
+// ---- 3. responses: an opponent declares attackers (the engine's instant window asks a person first)
+{ const mk = seat => { const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]); const [a, b] = p.games;
+    lands(a, 1, /^Plains$/); const sw = toHand(a, /^Swords to Plowshares$/); const gt = putOn(b, card(b, /Grave Titan/)); b.battlefield.filter(q => q.token).forEach(q => { q.sick = true; }); G.podFocus(b, a); b.forceAttackers = [gt.iid]; return { p, a, b, sw, gt }; };
+  const run = gs => G.combat(gs[1]);
+  let s = mk(true); const { q, still } = open(s.p, run);
+  check('when an opponent attacks, a person is asked whether to cast an instant now (the autopilot\'s pick is the default)', !!q && q.kind === 'instant' && /attacks: cast an instant/.test(q.title) && q.options.some(o => o.name === 'Swords to Plowshares') && q.none === 'Not now' && q.def.length === 1 && still, q && q.title);
+  answer(s.p, run, [() => 'none']);
+  check('..."Not now": the instant stays in hand and the attack goes on', s.a.hand.includes(s.sw) && s.a.life < 40, s.a.life);
+  s = mk(true); answer(s.p, run, [qq => qq.options.findIndex(o => o.name === 'Swords to Plowshares')]);
+  check('...cast it: the attacker is exiled before damage', s.a.graveyard.includes(s.sw) && !s.b.battlefield.includes(s.gt) && s.a.life === 40, s.a.life);
+  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); D.resolveSync(A.p.games, 0, run, () => 'auto'); run(B.p.games);
+  check('..."the autopilot decides" casts what the autopilot casts', D.dump(A.p.games) === D.dump(B.p.games));
+  s = mk(true); const q2 = open(s.p, gs => G.instantWindow(gs[0], [], 'end')).q;
+  check('at the opponent\'s end step the same question is asked ("End of ...\'s turn")', !!q2 && q2.kind === 'instant' && /^End of .*'s turn: cast an instant\?/.test(q2.title), q2 && q2.title); }
 
 // ---- 3. responses: the end of another player's turn
 { const p = table(['frodo', 'zul-ashur']), [a, b] = p.games; lands(a, 1, /^Plains$/); const sw = toHand(a, /^Swords to Plowshares$/), sorc = toHand(a, /^Diabolic Intent$/), big = toHand(a, /^Anguished Unmaking$/); const tb = putOn(b, card(b, /Grave Titan/));

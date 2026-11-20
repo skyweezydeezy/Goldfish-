@@ -923,6 +923,9 @@ body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(
   .topbar { gap: 6px; padding-left: 12px; padding-right: 12px; }
   .topbar .status-pill { padding: 4px 7px; font-size: 11px; }
   .app-ver { margin-left: -2px; }
+  /* the first row has only a few pixels to spare: the card-source pill gives up space (with "…") rather than pushing the sound button onto a row of its own */
+  #mirrorStatus { flex: 1 1 0; min-width: 0; max-width: max-content; overflow: hidden; text-overflow: ellipsis; }
+  .app-ver, .top-sound { flex: 0 0 auto; }
 }
 .sound-cards { margin: 4px 0 12px; }
 .sound-cards summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }

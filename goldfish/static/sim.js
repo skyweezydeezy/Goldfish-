@@ -393,7 +393,13 @@
       const filters = ['creature', 'artifact', 'enchantment', 'instant', 'sorcery', 'planeswalker', 'legendary'].filter(w => words.includes(w));
       const dest = /\bon top\b/i.test(text) ? 'top' : /onto the battlefield/i.test(text) ? 'battlefield' : 'hand';
       const colors = [['white', 'W'], ['blue', 'U'], ['black', 'B'], ['red', 'R'], ['green', 'G']].filter(([w]) => new RegExp('\\b' + w + '\\b').test(words)).map(([, c]) => c);          // "a green creature card" (Natural Order)
-      fx.push(Object.assign({ type: 'tutor', filters, dest }, colors.length ? { colors } : {}));
+      const tf = Object.assign({ type: 'tutor', filters, dest }, colors.length ? { colors } : {});
+      const mvm = (m[1] || '').match(/with mana value (x|\d+) or less/i) || text.match(/card with mana value (x|\d+) or less/i);
+      if (mvm) tf.maxMv = /x/i.test(mvm[1]) ? 'X' : +mvm[1];                                                   // Finale of Devastation: mana value X or less
+      if (/search your library and\/or graveyard/i.test(text)) tf.yard = true;                                  // ...and it may come from the graveyard
+      fx.push(tf);
+      const big = text.match(/if x is (\d+) or more, creatures you control get \+x\/\+x(?: and gain ([a-z ,]+?))? until end of turn/i);
+      if (big) fx.push({ type: 'pumpAll', p: 0, t: 0, keywords: [], xKeywords: kwList(big[2]), minX: +big[1] });   // Finale of Devastation with X of 10 or more
     }
     if (/put a land card from your hand onto the battlefield/i.test(text)) fx.push({ type: 'landFromHand' });
     if (/you may play an additional land this turn/i.test(text)) fx.push({ type: 'extraLand' });
@@ -3957,6 +3963,7 @@
         case 'tempt': temptRing(g, ev, source); break;
         case 'pumpAll': {
           let p = f.p, t = f.t;
+          if (f.minX != null) { if ((g.xValue || 0) < f.minX) break; p = t = g.xValue; (f.xKeywords || []).forEach(k => g.eot.kw.add(k)); }          // keywords only with the big X; the stored numbers stay 0 so the autopilot does not count a pump it may not get                    // "if X is 10 or more, creatures you control get +X/+X" 
           if (p === 'X' || t === 'X') { const x = countFor(g, f.count || { what: 'creature', zone: 'you control' }, source); if (p === 'X') p = x; if (t === 'X') t = x; }
           g.eot.p += p; g.eot.t += t; (f.keywords || []).forEach(k => g.eot.kw.add(k));
           ev.push({ type: 'pump', all: true, p, t, keywords: f.keywords, source });
@@ -5412,10 +5419,10 @@
   function bestTutorTarget(g, f) {
     const ctx = tutorContext(g);
     let best = null, bs = -Infinity;
-    for (const i of g.library) {
+    for (const i of (f.yard ? g.library.concat(g.graveyard) : g.library)) {
       if (!tutorMatches(i, f.filters)) continue;
       if (f.colors && !f.colors.some(c => (i.card.colors || []).includes(c))) continue;
-      if (f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) continue;
+      if (f.maxMv != null && (i.card.a.mv || 0) > (f.maxMv === 'X' ? (g.xValue || 0) : f.maxMv)) continue;
       if (f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands)) continue;
       const s = f.biggest ? (i.card.a.mv || 0) + tutorScore(g, i, ctx) * 0.001 : tutorScore(g, i, ctx);          // Natural Order: the biggest one
       if (s > bs) { bs = s; best = i; }
@@ -5424,10 +5431,12 @@
     return best ? { inst: best, score: bs, completes: !!(ca.comboRole && ctx.roles.has(ca.comboRole === 'blood' ? 'bond' : 'blood')) || comboPlan(g, best) >= 1000 } : null;
   }
   function tutor(g, f, ev, source) {
+    if (f.maxMv === 'X') f = Object.assign({}, f, { maxMv: g.xValue || 0 });                                // "mana value X or less": the X it was cast with
     const t = pickSearch(g, bestTutorTarget(g, f), f, source);
     if (!t) { ev.push({ type: 'note', text: 'Searched the library: nothing to find', source }); return; }
-    g.library.splice(g.library.indexOf(t.inst), 1);
-    shuffle(g.library, g.rnd);
+    const gi = g.graveyard.indexOf(t.inst);
+    if (gi >= 0) g.graveyard.splice(gi, 1);                                                                     // found in the graveyard: no shuffle
+    else { g.library.splice(g.library.indexOf(t.inst), 1); shuffle(g.library, g.rnd); }
     if (f.dest === 'top') { g.library.unshift(t.inst); ev.push({ type: 'note', text: `Tutored ${t.inst.card.name} to the top of the library`, source }); }
     else if (f.dest === 'battlefield' && entryBlocked(g, t.inst.card, 'lib')) { g.exile.push(t.inst); ev.push({ type: 'note', text: `${t.inst.card.name} cannot enter the battlefield from the library and is exiled`, source }); }
     else if (f.dest === 'battlefield') { const perm = enterWithTriggers(g, t.inst, {}, ev); ev.push({ type: 'rampLand', inst: t.inst, perm, source }); }
@@ -5580,7 +5589,8 @@
     else if (a.statics.reducers.length) s += 80 - a.castMv;
     else if (c.card.commander && commanderBonus(g)) s += commanderBonus(g);
     else if (a.draw) s += 0.5;
-    if (a.spellFx.some(f => f.type === 'pumpAll')) { const pt = pol(g, 'pumpTiming'); if (pt === 'wait') s -= 30; else if (pt === 'lethal' && !pumpLethal(g, a)) return -1; }  // Overrun-style effects wait until the board is built (or until they are lethal)
+    // (a pump with minX is Finale of Devastation's "if X is 10 or more": that card is a tutor first, not an Overrun)
+    if (a.spellFx.some(f => f.type === 'pumpAll' && f.minX == null)) { const pt = pol(g, 'pumpTiming'); if (pt === 'wait') s -= 30; else if (pt === 'lethal' && !pumpLethal(g, a)) return -1; }  // Overrun-style effects wait until the board is built (or until they are lethal)
     if (a.isAura && !bestCreature(g)) return -1;
     if (a.sacCreatureCost && !pickSacrifice(g, a)) return -1;     // nothing cheap to sacrifice
     if (a.sacColor) { const tf = a.spellFx.find(f => f.type === 'tutor'), t = tf && bestTutorTarget(g, tf); if (!t || (t.inst.card.a.mv || 0) < (pickSacrifice(g, a).card.a.mv || 0) + 3) return -1; }          // Natural Order: only for something much bigger than what it costs
@@ -5665,7 +5675,7 @@
       if (mine || !a.aftermath || smallCreaturesInYard(g, null) < 2) return -1;
     }
     const tf = a.spellFx.find(f => f.type === 'tutor');
-    if (tf) { const t = bestTutorTarget(g, tf); if (t) s += t.completes ? 400 : t.score >= 200 ? 60 : 0; }   // a tutor that completes the combo goes first
+    if (tf) { const t = bestTutorTarget(g, tf.maxMv === 'X' ? Object.assign({}, tf, { maxMv: 1 + (c.extraX || 0) }) : tf); if (t) s += t.completes ? 400 : t.score >= 200 ? 60 : 0; }   // a tutor that completes the combo goes first
     return s;
   }
 
@@ -8088,7 +8098,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // { kind, options, def, ... } where def is what the autopilot picks; the chooser returns one of the options (or def). Dry runs never ask,
   // and no simulated game has a chooser, so Monte Carlo runs and all-autopilot games take exactly the path they always took.
   function decide(g, d) { if (!g.ask || g.dry) return d.def; const r = g.ask(g, d); return r === undefined ? d.def : r; }
-  function tutorOptions(g, f) { return g.library.filter(i => tutorMatches(i, f.filters) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands))); }
+  function tutorOptions(g, f) { return (f.yard ? g.library.concat(g.graveyard) : g.library).filter(i => tutorMatches(i, f.filters) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands))); }
   function pickSearch(g, t, f, source) { if (t && g.ask) t.inst = decide(g, { kind: 'search', options: tutorOptions(g, f), def: t.inst, f, source }); return t; }
   function ownCreature(g, def, what, source, exclude) { return def && g.ask ? decide(g, { kind: 'target', what, options: g.battlefield.filter(p => isCreaturePerm(p) && p !== exclude), def, source }) : def; }
   // In a pod a person may aim at any opponent, not only the one being attacked: every opponent's permanents are offered (eachFoe), and the

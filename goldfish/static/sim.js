@@ -4746,8 +4746,49 @@
   //   5. otherwise the strongest permanent you can actually afford soon
   // How much a card would advance one of the combo lines (see comboLines), given what is already in hand and on the battlefield.
   // Used by tutors (find the missing piece) and by Isochron Scepter (imprint the untap-all instant).
+  // ---------- Combo plans ----------
+  // Each combo line is a set of slots; a card fills a slot by what its rules text does. A tutor fetches the card that completes a line
+  // (or brings the closest line one step nearer), counting pieces in hand, on the battlefield and in the command zone (a commander that
+  // is one half of the combo, such as Kinnan or Thrasios, is always at hand).
+  const SLOT = {
+    emptier: c => comboKind(c).emptier,
+    winner: c => comboKind(c).oracleWin || comboKind(c).drawWin,
+    scepter: c => c.a.imprint === 'scepter',
+    untapAll: c => /\bInstant\b/.test(c.type_line || '') && c.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'),
+    rock: c => comboKind(c).untapCost != null,
+    enabler: c => comboKind(c).powerArtifact || comboKind(c).rings || !!c.a.statics.nonlandDouble,
+    outlet: c => comboKind(c).ballista || comboKind(c).xBurn || comboKind(c).drawEngine,
+    blood: c => c.a.comboRole === 'blood',
+    bond: c => c.a.comboRole === 'bond',
+  };
+  const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond']];
+  // the lines this deck can assemble at all (every slot has a card in the deck), cached on the deck
+  function deckLines(g) {
+    const d = g.deck; if (!d) return [];
+    if (d._lines) return d._lines;
+    const cards = d.unique || [];
+    return (d._lines = COMBO_LINES.filter(line => line.every(sl => cards.some(c => c.a && SLOT[sl](c)))));
+  }
+  // how much a card moves the best combo line forward: 1000 = it completes a line; one piece left after it = the Policy lab's comboChase
+  // (60 by default, 150 eager, 0 = only fetch the last piece); two or more left = 0 (fetching ramp is better that early)
+  const CHASE = { default: 60, eager: 150, off: 0 };
+  function comboPlan(g, inst) {
+    const lines = deckLines(g); if (!lines.length) return 0;
+    const have = g.hand.concat(g.battlefield, g.command).filter(x => x !== inst && x.card && x.card.a);
+    let best = 0;
+    for (const line of lines) {
+      const mine = line.filter(sl => SLOT[sl](inst.card));
+      if (!mine.length) continue;
+      const filled = sl => have.some(x => SLOT[sl](x.card)) || (sl === 'untapAll' && g.battlefield.some(p => p.imprinted && SLOT.untapAll(p.imprinted.card)));
+      if (mine.every(filled)) continue;                                                                  // that half is already here
+      const left = line.filter(sl => !mine.includes(sl) && !filled(sl)).length;
+      const sc = left === 0 ? 1000 : left === 1 ? (CHASE[pol(g, 'comboChase')] ?? 60) : 0;
+      if (sc > best) best = sc;
+    }
+    return best;
+  }
   function comboNeed(g, inst) {
-    const k = comboKind(inst.card), have = g.hand.concat(g.battlefield), kinds = have.map(x => comboKind(x.card));
+    const k = comboKind(inst.card), have = g.hand.concat(g.battlefield, g.command), kinds = have.map(x => comboKind(x.card));
     const any = f => kinds.some(f);
     let s = 0;
     const winner = x => x.oracleWin || x.drawWin;
@@ -4759,10 +4800,10 @@
     if (untapAll && scepterHere) s += 900;
     if (inst.card.a.imprint === 'scepter' && have.some(x => x.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'))) s += 900;
     if (infiniteMana(g) && (k.ballista || k.xBurn || k.drawEngine)) s += 1500;
-    const mono = any(x => x.untapCost != null), enabler = any(x => x.powerArtifact || x.rings) || g.battlefield.some(p => p.card.a.statics.nonlandDouble) || g.hand.some(i => i.card.a.statics.nonlandDouble);
+    const mono = any(x => x.untapCost != null), enabler = any(x => x.powerArtifact || x.rings) || have.some(p => p.card.a.statics.nonlandDouble);
     if (mono && !enabler && (k.powerArtifact || k.rings || inst.card.a.statics.nonlandDouble)) s += 700;
     if (enabler && !mono && k.untapCost != null) s += 700;
-    return s;
+    return Math.max(s, comboPlan(g, inst));
   }
   function tutorScore(g, inst, ctx) {
     const a = inst.card.a;
@@ -4818,7 +4859,7 @@
       if (s > bs) { bs = s; best = i; }
     }
     const ca = best && best.card.a;
-    return best ? { inst: best, score: bs, completes: !!(ca.comboRole && ctx.roles.has(ca.comboRole === 'blood' ? 'bond' : 'blood')) } : null;
+    return best ? { inst: best, score: bs, completes: !!(ca.comboRole && ctx.roles.has(ca.comboRole === 'blood' ? 'bond' : 'blood')) || comboPlan(g, best) >= 1000 } : null;
   }
   function tutor(g, f, ev, source) {
     const t = pickSearch(g, bestTutorTarget(g, f), f, source);
@@ -5926,7 +5967,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -5953,6 +5994,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     { id: 'pump', key: 'pumpTiming', label: 'Spells that pump all your creatures until end of turn',
       needs: [{ what: 'a spell that pumps all your creatures', test: a => a.spellFx.some(f => f.type === 'pumpAll') }],
       options: [{ name: 'Wait until the board is built', value: 'wait' }, { name: 'Cast it like any other spell', value: 'now' }, { name: 'Only when it is lethal', value: 'lethal' }] },
+    { id: 'comboChase', key: 'comboChase', label: 'Tutors and combo pieces: how hard to chase the combo',
+      needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) },
+        { what: 'a piece of a combo the engine knows (library emptier and empty-library winner, untap-all instant and copy artifact, self-untapping rock and enabler, the two life-loop halves)', test: (a, c) => Object.values(SLOT).some(f => f(c)) }],
+      options: [{ name: 'Fetch the next-to-last piece when nothing better is needed (default)', value: 'default' }, { name: 'Eager: fetch the next-to-last piece over ramp', value: 'eager' }, { name: 'Only fetch the piece that completes the combo', value: 'off' }] },
     { id: 'tutorFocus', key: 'tutorFocus', label: 'What tutors look for (when no combo piece is needed)',
       needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) }],
       options: [{ name: 'Best card for the moment', value: 'best' }, { name: 'Mana first (ramp and cost reducers)', value: 'mana' }, { name: 'The biggest payoff', value: 'payoff' }] },
@@ -7435,7 +7480,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     manaUnits, allUnits, canPay, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand,
     beginTurn, landStep, combat, postCombat, transformPerm, leavePerm, fodderList, gyTarget, castAftermath, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle,
-    pay, madness, fxValue, topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
+    pay, comboPlan, deckLines, madness, fxValue, topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
     decide, tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard,

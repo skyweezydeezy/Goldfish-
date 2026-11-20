@@ -327,6 +327,7 @@ label.small { font-size: 12px; }
 /* ---------- footer, viewer ---------- */
 .site-footer { max-width: 1100px; margin: 0 auto; padding: 18px 18px calc(28px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--border); }
 .site-footer p { margin: 0 0 8px; }
+.site-footer .app-version { margin: 8px 0 0; font-variant-numeric: tabular-nums; }
 .site-footer a { color: var(--text-secondary); }
 .site-footer a.donate { color: #7fb3f0; font-weight: 600; }
 .lightbox { position: fixed; inset: 0; z-index: 500; display: none; background: rgba(0,0,0,.88); overflow: auto; -webkit-overflow-scrolling: touch; }

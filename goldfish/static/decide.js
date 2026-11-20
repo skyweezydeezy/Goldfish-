@@ -101,7 +101,7 @@
   }
   function filterWords(f) {
     if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
-      const what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : [].concat(f.land).join(' or ');
+      const ls = [].concat(f.land), what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : ls.length > 2 ? ls.slice(0, -1).join(', ') + ', or ' + ls[ls.length - 1] : ls.join(' or ');          // "a Plains, Island, Swamp, or Mountain card"
       const n = f.n || 1;
       return n > 1 ? `up to ${n} ${what} cards` : (/^[aeiou]/i.test(what) ? 'an ' : 'a ') + what + ' card';
     }

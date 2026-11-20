@@ -350,12 +350,16 @@
       let n = 1;
       const um = sentence.match(/(up to )?(a|one|two|three|four) [^.]*?(land|Forest|Island|Swamp|Mountain|Plains) cards?/i);
       if (um) n = NUM[um[2].toLowerCase()] || 1;
-      const basicOnly = /basic/i.test(sentence) || /(Forest|Island|Swamp|Mountain|Plains) card/.test(sentence);
+      // land types named in the search ("a Plains, Island, Swamp, or Mountain card": Farseek, Nature's Lore) find any land with that type,
+      // nonbasic duals included; only "basic" limits the search to basic lands
+      const named = um ? (um[0].match(/\b(Forest|Island|Swamp|Mountain|Plains)\b/g) || []) : [];
+      const types = named.length ? [...new Set(named)] : null;
+      const basicOnly = /basic/i.test(um ? um[0] : sentence);
       let bf = 0, hand = 0;
       if (/put one onto the battlefield[^.]*and the other into your hand/i.test(text)) { bf = 1; hand = 1; }
       else if (/onto the battlefield/i.test(sentence) || /put (it|them|those cards|that card) onto the battlefield/i.test(text)) bf = n;
       else hand = n;
-      fx.push({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly });
+      fx.push(Object.assign({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly }, types ? { types } : {}));
     } else if (!/put that card into your graveyard/i.test(text) && (m = text.match(/search your library(?: and\/or graveyard)? for (?:a|an|one) ([^,.]*?)cards?\b/i))) {
       // Tutors: Vampiric Tutor (to the top), Demonic Tutor / Diabolic Intent (to your hand), typed ones like "a creature card"
       const words = (m[1] || '').toLowerCase();
@@ -3426,12 +3430,20 @@
             const c0 = g.library.find(c => c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '') && c.card.a.produce && [...c.card.a.produce.colors].some(x => !have.has(x)));
             if (c0) found.push(c0);
           }
-          for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
-          if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
+          const fits = c => c.card.a.isLand && (!f.basicOnly || /\bBasic\b/.test(c.card.type_line || '')) && (!f.types || f.types.some(t => new RegExp('\\b' + t + '\\b').test(c.card.type_line || '')));
+          if (f.types) {                                                         // typed search (Farseek): the lands that add the colours you lack and your hand wants, as a fetch land picks
+            const have = new Set(); g.battlefield.forEach(q => { if (q.produce) q.produce.colors.forEach(c => have.add(c)); });
+            const need = new Map(); g.hand.concat(g.command).forEach(i => { if (!i.card.a.isLand) (i.card.a.cost.pips || []).forEach(pp => pp.forEach(col => need.set(col, (need.get(col) || 0) + 1 / pp.length))); });
+            const sc = c => (c.card.a.produce ? fetchScore(g, c, { tapped: f.tapped }, have, need) : 0);
+            found.push(...g.library.filter(c => fits(c) && !found.includes(c)).map(c => ({ c, v: sc(c) })).sort((x, y) => y.v - x.v).slice(0, want - found.length).map(x => x.c));
+          } else {
+            for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
+            if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
+          }
           if (g.ask && !g.dry && want > 0) {                                     // a person searches: up to that many of the lands the search can find, then (Cultivate) which go onto the battlefield
-            const pool = g.library.filter(c => c.card.a.isLand && (!f.basicOnly || /\bBasic\b/.test(c.card.type_line || '')));
+            const pool = g.library.filter(fits);
             const dest = f.bf && f.hand ? 'split' : f.bf ? 'battlefield' : 'hand';
-            found = decide(g, { kind: 'search', options: pool, def: found.slice(), multi: true, pick: want, upTo: true, f: { dest, tapped: !!f.tapped, land: f.basicOnly ? 'basic' : 'land', bf: f.bf, hand: f.hand, n: want }, source });
+            found = decide(g, { kind: 'search', options: pool, def: found.slice(), multi: true, pick: want, upTo: true, f: { dest, tapped: !!f.tapped, land: f.types ? (f.basicOnly ? f.types.map(t => 'basic ' + t) : f.types) : f.basicOnly ? 'basic' : 'land', bf: f.bf, hand: f.hand, n: want }, source });
             if (dest === 'split' && found.length > f.bf) { const onto = decide(g, { kind: 'search', what: 'battlefield', options: found.slice(), def: found.slice(0, f.bf), multi: true, pick: f.bf, f: { dest: 'battlefield', tapped: !!f.tapped, bf: f.bf }, source }); found = onto.concat(found.filter(c => !onto.includes(c))); }
           }
           found.forEach(c => g.library.splice(g.library.indexOf(c), 1));

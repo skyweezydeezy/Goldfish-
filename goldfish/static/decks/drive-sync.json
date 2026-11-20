@@ -155,13 +155,6 @@
    "modifiedTime": "2026-11-19T22:14:48.051Z",
    "importedAt": "2026-11-19T22:59:38.354Z"
   },
-  "Tidal Loop [B5] (Hakbal of the Surging Soul).txt": {
-   "deck": "tidal-loop.txt",
-   "bracket": 5,
-   "id": "1XPcdl19LyDenDVBwqFLUcxlyxcvJhwTY",
-   "modifiedTime": "2026-11-19T22:14:32.585Z",
-   "importedAt": "2026-11-19T22:59:38.355Z"
-  },
   "Tidecaller [B5] (Thrasios, Triton Hero).txt": {
    "deck": "tidecaller.txt",
    "bracket": 5,
@@ -189,7 +182,21 @@
    "id": "1GHyaGYH5Qaa0GI2vmRhwNJdoZBV8RTYr",
    "modifiedTime": "2026-11-20T02:05:59.795Z",
    "importedAt": "2026-11-20T02:28:02.277Z"
+  },
+  "Final Heaven [B3] (Tifa Lockhart).txt": {
+   "deck": "final-heaven.txt",
+   "bracket": 3,
+   "id": "1rOsRY2v9Sqn013_mpz84WBw-kteIXuLK",
+   "modifiedTime": "2026-11-20T12:43:36.647Z",
+   "importedAt": "2026-11-20T13:10:48.024Z"
+  },
+  "Tidal Loop [B4] (Hakbal of the Surging Soul).txt": {
+   "deck": "tidal-loop.txt",
+   "bracket": 4,
+   "id": "1XPcdl19LyDenDVBwqFLUcxlyxcvJhwTY",
+   "modifiedTime": "2026-11-20T11:32:55.770Z",
+   "importedAt": "2026-11-20T13:10:48.025Z"
   }
  },
- "checkedAt": "2026-11-20T02:28:02.281Z"
+ "checkedAt": "2026-11-20T13:10:48.025Z"
 }

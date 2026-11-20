@@ -24,7 +24,7 @@
     { id: 'prism', name: 'Prism Nexus', image: 'looks/mat-prism.jpg', shop: '' },
     { id: 'tide', name: 'Sunken Gate', image: 'looks/mat-tide.jpg', shop: '' },
     { id: 'eclipse', name: 'Eclipse Spires', image: 'looks/mat-eclipse.jpg', shop: '' },
-    // the second wave of I See Fish originals (Drive: Magic Commanders / Playmats), upscaled with Real-ESRGAN x4plus; sleeves are a colour until their art exists
+    // the second wave of I See Fish originals (Drive: Magic Commanders / Playmats), upscaled with Real-ESRGAN x4plus; their sleeves are in Magic Commanders / Sleeves
     { id: 'angel', name: 'Sunlit Citadel', image: 'looks/mat-angel.jpg', shop: '' },
     { id: 'crystal', name: 'Moonlit Crystal City', image: 'looks/mat-crystal.jpg', shop: '' },
     { id: 'leviathan', name: 'Void Leviathan', image: 'looks/mat-leviathan.jpg', shop: '' },
@@ -46,6 +46,12 @@
     { id: 'prism', name: 'Prism Nexus', color: '#b8913f', back: 'looks/sleeve-prism.jpg', shop: '' },
     { id: 'tide', name: 'Sunken Gate', color: '#2a8c86', back: 'looks/sleeve-tide.jpg', shop: '' },
     { id: 'eclipse', name: 'Eclipse Spires', color: '#8e4bb5', back: 'looks/sleeve-eclipse.jpg', shop: '' },
+    { id: 'angel', name: 'Sunlit Citadel', color: '#d6ad4f', back: 'looks/sleeve-angel.jpg', shop: '' },
+    { id: 'crystal', name: 'Moonlit Crystal City', color: '#4f9fe0', back: 'looks/sleeve-crystal.jpg', shop: '' },
+    { id: 'leviathan', name: 'Void Leviathan', color: '#9b4fd1', back: 'looks/sleeve-leviathan.jpg', shop: '' },
+    { id: 'dragon', name: 'Molten Dragon', color: '#d2452a', back: 'looks/sleeve-dragon.jpg', shop: '' },
+    { id: 'emerald', name: 'Emerald Portal', color: '#2fa85a', back: 'looks/sleeve-emerald.jpg', shop: '' },
+    { id: 'storm', name: 'Isle of Arcane Storms', color: '#2f6fd0', back: 'looks/sleeve-storm.jpg', shop: '' },
     { id: 'ice', name: 'Ice blue', color: '#4aa6e0' },
     { id: 'black', name: 'Matte black', color: '#1d1f22' },
     { id: 'white', name: 'Pearl white', color: '#e9edf0' },
@@ -111,7 +117,7 @@
 
   // ---- sets: a playmat with its matching sleeves. The 1v1 and Pod tables deal one to every player. ----
   // The original designs pair with the sleeve of the same name; each plain playmat pairs with a sleeve colour that suits it.
-  const PAIR = { angel: 'gold', crystal: 'ice', leviathan: 'purple', dragon: 'red', emerald: 'green', storm: 'sapphire', felt: 'green', crimson: 'red', royal: 'purple', slate: 'black', dusk: 'orange', tidepool: 'ice', stars: 'sapphire', sand: 'gold' };
+  const PAIR = { felt: 'green', crimson: 'red', royal: 'purple', slate: 'black', dusk: 'orange', tidepool: 'ice', stars: 'sapphire', sand: 'gold' };
   const SETS = MATS.filter(m => m.id !== 'frozen').map(m => {
     const s = SLEEVES.find(x => x.id === m.id && x.color) || SLEEVES.find(x => x.id === PAIR[m.id]);
     return s ? { id: m.id, name: m.name, mat: m.id, sleeve: s.id, art: !!m.image } : null;

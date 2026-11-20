@@ -30,12 +30,13 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('choosing a playmat changes the table background', (await bg()) !== bg0);
   check('choosing a sleeve changes the card back', (await back()) !== back0 && await p.$eval('html', e => e.classList.contains('sleeved')));
   check('the chosen ones are marked in the picker', await p.$eval('[data-mat=crimson]', e => e.getAttribute('aria-pressed')) === 'true' && await p.$eval('[data-sleeve=green]', e => e.getAttribute('aria-pressed')) === 'true');
-  check('your nine original playmats and the three original sleeves each have a placeholder shop button', (await p.$$eval('button.look-shop.soon', x => x.length)) === 12);
+  check('your nine original playmats and their nine sleeves each have a placeholder shop button', (await p.$$eval('button.look-shop.soon', x => x.length)) === 18);
+  check('each new playmat has its own sleeve art, so they are full sets', (await p.$$eval('#lkSleeves .look-sw', x => x.map(b => b.dataset.sleeve))).filter(m => ['angel', 'crystal', 'leviathan', 'dragon', 'emerald', 'storm'].includes(m)).length === 6 && await p.evaluate(() => ['angel', 'crystal', 'leviathan', 'dragon', 'emerald', 'storm'].every(id => __isfLooks.SLEEVES.find(s => s.id === id && /sleeve-/.test(s.back)))));
   check('the six new playmats are listed with their upscaled art', (await p.$$eval('#lkMats .look-sw', x => x.map(b => b.dataset.mat))).filter(m => ['angel', 'crystal', 'leviathan', 'dragon', 'emerald', 'storm'].includes(m)).length === 6);
   await p.click('button.look-shop.soon[data-shop="mat:tide"]');
   check('clicking a placeholder says the shop is coming soon, and changes nothing', /Sunken Gate playmat is coming soon/.test(await p.textContent('#lkShopMsg')) && (await p.evaluate(() => __isfLooks.get().mat)) === 'crimson' && p.url().startsWith('http://127.0.0.1:8800/'));
   await p.evaluate(() => { __isfLooks.MATS.find(m => m.id === 'prism').shop = 'https://example.com/prism-mat'; __isfLooks.close(); __isfLooks.open(); });
-  check('filling in a shop URL turns the placeholder into a real link', (await p.$eval('a.look-shop[data-shop="mat:prism"]', e => e.href)) === 'https://example.com/prism-mat' && (await p.$$eval('button.look-shop.soon', x => x.length)) === 11);
+  check('filling in a shop URL turns the placeholder into a real link', (await p.$eval('a.look-shop[data-shop="mat:prism"]', e => e.href)) === 'https://example.com/prism-mat' && (await p.$$eval('button.look-shop.soon', x => x.length)) === 17);
   await p.keyboard.press('Escape');
   check('Escape closes it', !(await p.isVisible('#lookPicker')));
 

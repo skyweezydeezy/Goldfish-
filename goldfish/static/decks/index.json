@@ -25,6 +25,16 @@
    "learnedVs": "field"
   },
   {
+   "file": "friendship-is-magic.txt",
+   "name": "Friendship Is Magic (Princess Twilight Sparkle)",
+   "commanders": [
+    "Princess Twilight Sparkle"
+   ],
+   "colors": "WUBRG",
+   "cards": 100,
+   "bracket": 4
+  },
+  {
    "file": "scorched-sky.txt",
    "name": "Scorched Sky (The Ur-Dragon)",
    "commanders": [

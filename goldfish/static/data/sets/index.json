@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19",
+ "updated": "2026-11-20",
  "sets": [
   {
    "code": "30a",
@@ -1268,12 +1268,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/dtk.svg?1794805200",
    "partial": true,
-   "cards": 29,
-   "originals": 28,
+   "cards": 30,
+   "originals": 29,
    "reprints": 1,
    "missing": 0,
    "coverage": {
-    "full": 15,
+    "full": 16,
     "approx": 0,
     "partial": 10,
     "none": 4
@@ -3836,6 +3836,24 @@
    }
   },
   {
+   "code": "ptg",
+   "name": "Ponies: The Galloping",
+   "released_at": "2019-10-22",
+   "set_type": "funny",
+   "icon": "https://svgs.scryfall.io/sets/ptg.svg?1794805200",
+   "partial": true,
+   "cards": 3,
+   "originals": 3,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 2,
+    "none": 0
+   }
+  },
+  {
    "code": "por",
    "name": "Portal",
    "released_at": "1997-05-01",
@@ -4274,14 +4292,14 @@
    "set_type": "box",
    "icon": "https://svgs.scryfall.io/sets/star.svg?1794805200",
    "partial": true,
-   "cards": 59,
-   "originals": 10,
+   "cards": 64,
+   "originals": 15,
    "reprints": 49,
    "missing": 0,
    "coverage": {
-    "full": 57,
+    "full": 59,
     "approx": 1,
-    "partial": 1,
+    "partial": 4,
     "none": 0
    }
   },
@@ -4742,15 +4760,15 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/tmp.svg?1794805200",
    "partial": true,
-   "cards": 28,
-   "originals": 28,
+   "cards": 29,
+   "originals": 29,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 24,
     "approx": 0,
     "partial": 1,
-    "none": 3
+    "none": 4
    }
   },
   {

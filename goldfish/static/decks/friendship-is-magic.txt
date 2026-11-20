@@ -1,0 +1,105 @@
+// Friendship Is Magic (Princess Twilight Sparkle)
+// Bracket 4
+// COMMANDER
+1 Princess Twilight Sparkle
+
+// MAINBOARD
+1 Applejack
+1 Fluttershy
+1 Pinkie Pie
+1 Rainbow Dash
+1 Rarity
+1 Discord, Lord of Disharmony
+1 Sol Ring
+1 Talisman of Progress
+1 Mana Vault
+1 Chrome Mox
+1 Mox Diamond
+1 Mox Amber
+1 Lotus Petal
+1 Coalition Relic
+1 Grim Monolith
+1 Arcane Signet
+1 Fellwar Stone
+1 Mind Stone
+1 Birds of Paradise
+1 Noble Hierarch
+1 Deathrite Shaman
+1 Collected Company
+1 Chord of Calling
+1 Green Sun's Zenith
+1 Survival of the Fittest
+1 Eldritch Evolution
+1 Neoform
+1 Fauna Shaman
+1 Recruiter of the Guard
+1 Demonic Tutor
+1 Vampiric Tutor
+1 Imperial Seal
+1 Diabolic Intent
+1 Worldly Tutor
+1 Finale of Devastation
+1 Eladamri's Call
+1 Rhystic Study
+1 Mystic Remora
+1 Sylvan Library
+1 Brainstorm
+1 Ponder
+1 Force of Will
+1 Force of Negation
+1 Fierce Guardianship
+1 Swan Song
+1 Deflecting Swat
+1 Pact of Negation
+1 Heroic Intervention
+1 Teferi's Protection
+1 Cyclonic Rift
+1 Swords to Plowshares
+1 Mana Drain
+1 Silence
+1 Snuff Out
+1 Aluren
+1 Birthing Pod
+1 Smothering Tithe
+1 Sensei's Divining Top
+1 Orcish Bowmasters
+1 Eternal Witness
+1 Nightmare Moon // Princess Luna
+1 Teferi, Time Raveler
+1 Grand Abolisher
+1 Tundra
+1 Underground Sea
+1 Volcanic Island
+1 Tropical Island
+1 Savannah
+1 Bayou
+1 Scrubland
+1 Taiga
+1 Badlands
+1 Plateau
+1 Polluted Delta
+1 Flooded Strand
+1 Windswept Heath
+1 Wooded Foothills
+1 Arid Mesa
+1 Marsh Flats
+1 Misty Rainforest
+1 Verdant Catacombs
+1 Scalding Tarn
+1 Bloodstained Mire
+1 Raugrin Triome
+1 Indatha Triome
+1 Savai Triome
+1 Ketria Triome
+1 Zagoth Triome
+1 Command Tower
+1 City of Brass
+1 Mana Confluence
+1 Ancient Tomb
+1 Exotic Orchard
+1 Hallowed Fountain
+1 Watery Grave
+1 Breeding Pool
+1 Temple Garden
+1 Sacred Foundry
+1 Godless Shrine

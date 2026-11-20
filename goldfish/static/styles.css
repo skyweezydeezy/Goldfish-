@@ -63,7 +63,8 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight
 .status-pill.ok::before { content: "● "; color: var(--good); }
 .status-pill.bad::before { content: "● "; color: var(--critical); }
 .app-ver { border: 0; min-height: 0; font: inherit; font-size: 12px; cursor: default; font-variant-numeric: tabular-nums; }
-.app-ver.update { cursor: pointer; color: var(--warning, #fab219); box-shadow: inset 0 0 0 1px rgba(250,178,25,.6); }
+.app-ver.update { cursor: pointer; }
+.app-ver.update::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--good); vertical-align: 1px; }          /* update ready: a small dot, same size pill */
 
 main { padding: 16px 18px 60px; max-width: 1700px; margin: 0 auto; }
 .panel { display: none; }
@@ -923,6 +924,10 @@ body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(
   .topbar { gap: 6px; padding-left: 12px; padding-right: 12px; }
   .topbar .status-pill { padding: 4px 7px; font-size: 11px; }
   .app-ver { margin-left: -2px; }
+  /* the first row is brand, card-source pill, version pill and sound button with only a few pixels to spare: the card-source pill gives up
+     space (and shows "…") rather than pushing the sound button onto a row of its own, so the top bar keeps its height whatever the version pill says */
+  #mirrorStatus { flex: 1 1 0; min-width: 0; max-width: max-content; overflow: hidden; text-overflow: ellipsis; }
+  .app-ver, .top-sound { flex: 0 0 auto; }
 }
 .sound-cards { margin: 4px 0 12px; }
 .sound-cards summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }

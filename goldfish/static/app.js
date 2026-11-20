@@ -50,7 +50,10 @@
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'I See Fish version ' + v;
     if (latest && +latest > +v) {
-      el.textContent = 'v' + v + ' → v' + latest; el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';
+      // a newer version is out: the pill stays as short as before (the new number and a small dot), so the top bar never grows or wraps.
+      // The new version is fetched in the background at once; a tap (or the next visit) opens it.
+      el.textContent = 'v' + latest; el.classList.add('update'); el.title = 'Version ' + latest + ' is ready (you are on ' + v + '). Tap to open it.';
+      try { navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {}); } catch (e) { /* no service worker */ }
       el.addEventListener('click', async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* reload anyway */ } location.reload(); });
     }
   })();

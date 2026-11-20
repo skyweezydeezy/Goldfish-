@@ -50,6 +50,25 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   const st = await A(() => __isfAudio.state());
   check('the first click wakes the sound up and starts the music', st.running && st.music, JSON.stringify(st));
   check('the music is really making sound', (await loud(3000)) > 0.003);
+  // ---- keep the music playing in the background? ----
+  const hide = h => p.evaluate(x => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => x }); Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => x ? 'hidden' : 'visible' }); document.dispatchEvent(new Event('visibilitychange')); }, h);
+  check('the first time the music plays, a banner asks about playing it in the background', await p.isVisible('#bgAsk') && /background/.test(await p.textContent('#bgAsk')));
+  await p.click('#bgAsk [data-bg=yes]');
+  check('"Yes, keep playing" is saved and the banner goes away', !(await p.isVisible('#bgAsk')) && (await A(() => __isfAudio.get().bg)) === true && await p.isChecked('#sdBg'));
+  await hide(true);
+  await p.waitForTimeout(400);
+  let bs = await A(() => __isfAudio.state());
+  check('with the app out of sight the music keeps playing, planned well ahead', bs.music && bs.running && bs.ahead > 20, JSON.stringify(bs));
+  check('and you can hear it', (await loud(2500)) > 0.003);
+  await hide(false); await p.waitForTimeout(300);
+  await p.uncheck('#sdBg');
+  await hide(true); await p.waitForTimeout(400);
+  bs = await A(() => __isfAudio.state());
+  check('with it switched off in the panel, hiding the app stops the music', !bs.music && !bs.running, JSON.stringify(bs));
+  await hide(false); await p.waitForTimeout(500);
+  check('coming back starts it again', (await A(() => __isfAudio.state().music)));
+  check('the banner does not come back once answered', !(await p.isVisible('#bgAsk')));
+
   check('there are three music tracks to choose from', (await p.$$eval('#sdTrack option', x => x.length)) === 3);
   await p.selectOption('#sdTrack', 'tide');
   check('choosing a track is remembered', (await A(() => __isfAudio.get().track)) === 'tide');
@@ -67,6 +86,32 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   const silent = [];
   for (const n of names) { await p.waitForTimeout(120); await p.evaluate(x => __isfAudio.play(x), n); if ((await loud(280)) < 0.002) silent.push(n); }
   check(`all ${names.length} effects make sound`, names.length >= 20 && silent.length === 0, silent.join(','));
+
+  // ---- special sounds for famous cards ----
+  const cards = await A(() => __isfAudio.cards());
+  check('there are special sounds for famous cards', cards.length >= 40 && cards.includes('Cyclonic Rift') && cards.includes('Cultivate'), cards.length + ' cards');
+  await p.click('#sdCardList summary');
+  check('the panel lists them under "Hear them" with a play button each', (await p.$$eval('#sdCardList [data-card]', x => x.length)) === cards.length);
+  await p.waitForTimeout(1500);
+  const quietCards = [];
+  for (const c of cards) { await p.waitForTimeout(150); await p.evaluate(x => __isfAudio.playCard(x), c); if ((await loud(450)) < 0.002) quietCards.push(c); }
+  check(`all ${cards.length} card sounds make sound`, quietCards.length === 0, quietCards.join(', '));
+  await p.click('#sdCardList [data-card="Cyclonic Rift"]');
+  check('a play button in the list plays that card', (await loud(600)) > 0.005 && (await A(() => __isfAudio.played.slice(-1)[0])) === 'card:Cyclonic Rift');
+  await clear(); const k0 = 0;
+  await A(() => __isfAudio.events([{ type: 'cast', inst: { card: { name: 'Cultivate' } } }, { type: 'cast', inst: { card: { name: 'Grizzly Bears' } } }, { type: 'rampLand', inst: { card: { name: 'Forest' } } }]));
+  await p.waitForTimeout(1200);
+  let got0 = await since(k0);
+  check('casting Cultivate plays its own sound, other cards the ordinary one', got0.includes('card:Cultivate') && got0.includes('card') && got0.includes('land'), got0.join(','));
+  await clear();
+  await A(() => __isfAudio.events([{ type: 'land', inst: { card: { name: 'Evolving Wilds' } } }]));
+  check('a land with its own sound plays it when played', (await since(k0)).join(',') === 'card:Evolving Wilds', (await since(k0)).join(','));
+  await p.uncheck('#sdCards');
+  await clear();
+  await A(() => __isfAudio.events([{ type: 'cast', inst: { card: { name: 'Cyclonic Rift' } } }]));
+  check('with card sounds off, Cyclonic Rift plays the ordinary card sound', (await since(k0)).join(',') === 'card', (await since(k0)).join(','));
+  await p.check('#sdCards');
+  await p.waitForTimeout(2600);
 
   await p.click('#sdMute');
   check('"Turn all sound off" mutes everything and the button shows it', await A(() => !__isfAudio.get().sfx && !__isfAudio.get().music) && (await p.textContent('.top-sound .sound-ic')) === '🔇');
@@ -105,7 +150,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
     await p.waitForFunction(() => !window.__isf.busy && window.__isf.game.turnDone, null, { timeout: 60000 });
     (await since(0)).forEach(x => seen.add(x));
   }
-  check('twelve turns bring casts, attacks and new-turn chimes', ['card', 'turn'].every(x => seen.has(x)) && (seen.has('attack') || seen.has('declare')), [...seen].join(','));
+  check('twelve turns bring casts, attacks and new-turn chimes', (seen.has('card') || [...seen].some(x => /^card:/.test(x))) && seen.has('turn') && (seen.has('attack') || seen.has('declare')), [...seen].join(','));
   n = await count(); await p.click('#tUndo');
   check('undo has its own sound', (await since(n)).includes('undo'));
 

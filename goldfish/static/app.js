@@ -46,8 +46,8 @@
     const num = s => (String(s || '').match(/isf-v(\d+)/) || [])[1] || null;
     const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
     const running = sw ? await new Promise(res => { const ch = new MessageChannel(), t = setTimeout(() => res(null), 1500); ch.port1.onmessage = e => { clearTimeout(t); res(e.data && e.data.version); }; sw.postMessage('version', [ch.port2]); }) : null;
-    let latest = null; try { const r = await fetch('sw.js', { cache: 'no-store' }); if (r.ok) latest = num(await r.text()); } catch (e) { /* offline: show the running version only */ }
-    const v = num(running) || latest; if (!v) return;
+    let latest = null; try { const r = await fetch('version.js', { cache: 'no-store' }); if (r.ok) latest = ((await r.text()).match(/ISF_VERSION = (\d+)/) || [])[1] || null; } catch (e) { /* offline: show the running version only */ }          // version.js holds the number: one more with every merge
+    const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'I See Fish version ' + v;
     if (latest && +latest > +v) {
       el.textContent = 'v' + v + ' → v' + latest; el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';

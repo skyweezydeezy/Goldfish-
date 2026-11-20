@@ -6,6 +6,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 900 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), r => r.abort());   // no cards needed here
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));

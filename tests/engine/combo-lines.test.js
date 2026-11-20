@@ -68,7 +68,7 @@ run(g); check('Kinnan + Basalt Monolith + Walking Ballista wins', won(g));
 
 // ---- Finale of Devastation ----
 const fin = by('Finale of Devastation');
-check('Finale of Devastation is a creature tutor to the battlefield, not a pump spell', fin.a.spellFx.length === 1 && fin.a.spellFx[0].type === 'tutor' && fin.a.spellFx[0].dest === 'battlefield' && fin.a.spellFx[0].filters.includes('creature'), JSON.stringify(fin.a.spellFx));
+check('Finale of Devastation is a creature tutor to the battlefield, not a pump spell (its pump only happens with X of 10 or more)', fin.a.spellFx.every(f => f.type !== 'pumpAll' || f.minX === 10) && fin.a.spellFx[0].type === 'tutor' && fin.a.spellFx[0].dest === 'battlefield' && fin.a.spellFx[0].filters.includes('creature'), JSON.stringify(fin.a.spellFx));
 check('Green Sun\'s Zenith is unchanged', by('Green Sun\'s Zenith').a.spellFx[0].type === 'tutor');
 
 // ---- Policy lab: the Scepter choice is offered only with both pieces ----

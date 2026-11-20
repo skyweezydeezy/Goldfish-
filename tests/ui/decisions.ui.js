@@ -168,6 +168,23 @@ const shot = process.env.VERSUS_SHOTS;
   const stepsSeen = await p.$$eval('#tab-duel .vs-log .vs-line.b[data-step]', ls => [...new Set(ls.map(l => l.dataset.step))]);
   check('the opponent\'s turn is logged step by step', stepsSeen.includes('draw') && stepsSeen.length >= 2, stepsSeen.join(','));
 
+  // ---- the cleanup step: more than seven cards at the end of your turn
+  if (!(await state('duel')).over && (await state('duel')).phase === 'main') {
+    await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; me.battlefield = me.battlefield.filter(q => !q.card.a.statics.noMaxHand); while (me.hand.length < 9) me.hand.push(me.library.shift()); });
+    await arrange('duel', {});
+    await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
+    await p.waitForSelector('.ch-sheet.discard', { timeout: 15000 });
+    const cs = await sheet();
+    check('ending your turn with nine cards asks what to discard, one card at a time', /End of turn: discard down to 7/.test(cs.title) && /2 to go/.test(cs.text) && cs.def.length === 1 && !cs.none, cs.title + ' / ' + cs.text);
+    const first = cs.names.find(n => !cs.def.includes(n)).replace(/ ×\d+$/, '');
+    await pickTile(first); await p.click('.ch-sheet .ch-ok');
+    await p.waitForFunction(() => /1 to go/.test((document.querySelector('.ch-sheet .ch-text') || {}).textContent || ''), null, { timeout: 10000 });
+    await p.click('.ch-sheet .ch-auto');
+    await until('duel', x => x.phase === 'main' && x.turn >= 3);
+    const cl = await p.$$eval('#tab-duel .vs-log .vs-line.a[data-step=end]', ls => ls.map(l => l.textContent).join(' || '));
+    check('...the card you chose is discarded and the log files the cleanup under the end step', /Cleanup: discards down to 7/.test(cl) && cl.includes('Discarded ' + first), cl.slice(-220));
+  }
+
   // ---- "Autopilot decides": no questions
   if (!(await state('duel')).over) {
     await p.selectOption('#tab-duel .vs-ask', 'auto');

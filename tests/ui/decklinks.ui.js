@@ -27,7 +27,7 @@ const URL0 = 'http://127.0.0.1:8800/';
   check('the manager says how saved data works, folded to its heading', await a.isVisible('.data-help summary') && !(await a.isVisible('.data-help .fold-body')));
   await a.click('.data-help summary');
   const help = await a.textContent('.data-help .fold-body');
-  check('...opened, it says where data lives, how it can be lost (Safari\'s 7 days, Home Screen), and how to back up', /this browser, on this device/.test(help) && /7 days/.test(help) && /Home Screen/.test(help) && /Export all/.test(help) && /Import/.test(help), help.slice(0, 80));
+  check('...opened, it says where data lives, how it can be lost (Safari\'s 7 days, the Home Screen app\'s own storage, Android), and how to back up', /this browser, on this device/.test(help) && /7 days/.test(help) && /Home Screen/.test(help) && /starts empty/.test(help) && /Android/.test(help) && /Export all/.test(help) && /Import/.test(help), help.slice(0, 80));
   check('it shows "No backup yet" in the warning colour', /No backup yet/.test(await a.textContent('#dmBackup')) && await a.$eval('#dmBackup', e => e.classList.contains('warn')));
   await a.click('.dm-row button:has-text("Share link")'); await a.waitForTimeout(300);
   const link = await a.evaluate(() => navigator.clipboard.readText());

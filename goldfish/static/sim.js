@@ -5883,14 +5883,19 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   function cloneState(g) {
     // a dry run must never touch the other player: give the copy its own stand-in opponent and match record
-    const m2 = g.match ? Object.assign({}, g.match) : undefined;
-    const opp2 = g.opp ? Object.assign({}, g.opp, { ask: null, match: m2, opp: null, battlefield: g.opp.battlefield.map(p => Object.assign({}, p)), hand: g.opp.hand.slice(), graveyard: g.opp.graveyard.slice(), exile: g.opp.exile.slice(), command: g.opp.command.slice(), _bf: null, bfVer: (g.opp.bfVer || 0) + 1 }) : undefined;
-    return Object.assign({}, g, { match: m2, opp: opp2, ask: null,
+    // In a pod the match record lists every player, and damage "to each opponent" walks that list: the copy gets its own list of stand-ins,
+    // or a spell rehearsed on the copy would take life from the real players (and from the real self, who is not the copy).
+    const m2 = g.match ? Object.assign({}, g.match, g.match.out ? { out: g.match.out.slice() } : {}) : undefined;
+    const standIn = x => Object.assign({}, x, { ask: null, match: m2, opp: null, battlefield: x.battlefield.map(p => Object.assign({}, p)), hand: x.hand.slice(), graveyard: x.graveyard.slice(), exile: x.exile.slice(), command: x.command.slice(), _bf: null, bfVer: (x.bfVer || 0) + 1 });
+    const opp2 = g.opp ? standIn(g.opp) : undefined;
+    const s = Object.assign({}, g, { match: m2, opp: opp2, ask: null,
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
       cmdrDamage: Object.assign({}, g.cmdrDamage), eot: { p: g.eot.p, t: g.eot.t, kw: new Set(g.eot.kw) }, turns: [], pendingLeaves: [], emblems: (g.emblems || []).slice(), ring: Object.assign({}, g.ring),
     });
+    if (m2 && m2.players) m2.players = m2.players.map(x => x === g ? s : x === g.opp ? opp2 : standIn(x));
+    return s;
   }
 
   function evalLandChoice(g, o) {

@@ -355,11 +355,15 @@
       const named = um ? (um[0].match(/\b(Forest|Island|Swamp|Mountain|Plains)\b/g) || []) : [];
       const types = named.length ? [...new Set(named)] : null;
       const basicOnly = /basic/i.test(um ? um[0] : sentence);
+      // "a Forest card and a Plains card" (Krosan Verge): one land of each type, each its own search
+      const two = sentence.match(/for an? (basic )?(Forest|Island|Swamp|Mountain|Plains) card and an? (basic )?(Forest|Island|Swamp|Mountain|Plains) card/i);
+      const slots = two ? [{ types: [two[2]], basic: !!two[1] }, { types: [two[4]], basic: !!two[3] }] : null;
+      if (slots) n = 2;
       let bf = 0, hand = 0;
       if (/put one onto the battlefield[^.]*and the other into your hand/i.test(text)) { bf = 1; hand = 1; }
       else if (/onto the battlefield/i.test(sentence) || /put (it|them|those cards|that card) onto the battlefield/i.test(text)) bf = n;
       else hand = n;
-      fx.push(Object.assign({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly }, types ? { types } : {}));
+      fx.push(Object.assign({ type: 'ramp', bf, hand, tapped: /onto the battlefield tapped/i.test(text), basicOnly: slots ? false : basicOnly }, slots ? { slots } : types ? { types } : {}));
     } else if (!/put that card into your graveyard/i.test(text) && (m = text.match(/search your library(?: and\/or graveyard)? for (?:a|an|one) ([^,.]*?)cards?\b/i))) {
       // Tutors: Vampiric Tutor (to the top), Demonic Tutor / Diabolic Intent (to your hand), typed ones like "a creature card"
       const words = (m[1] || '').toLowerCase();
@@ -3430,17 +3434,27 @@
             const c0 = g.library.find(c => c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '') && c.card.a.produce && [...c.card.a.produce.colors].some(x => !have.has(x)));
             if (c0) found.push(c0);
           }
-          const fits = c => c.card.a.isLand && (!f.basicOnly || /\bBasic\b/.test(c.card.type_line || '')) && (!f.types || f.types.some(t => new RegExp('\\b' + t + '\\b').test(c.card.type_line || '')));
-          if (f.types) {                                                         // typed search (Farseek): the lands that add the colours you lack and your hand wants, as a fetch land picks
-            const have = new Set(); g.battlefield.forEach(q => { if (q.produce) q.produce.colors.forEach(c => have.add(c)); });
-            const need = new Map(); g.hand.concat(g.command).forEach(i => { if (!i.card.a.isLand) (i.card.a.cost.pips || []).forEach(pp => pp.forEach(col => need.set(col, (need.get(col) || 0) + 1 / pp.length))); });
-            const sc = c => (c.card.a.produce ? fetchScore(g, c, { tapped: f.tapped }, have, need) : 0);
-            found.push(...g.library.filter(c => fits(c) && !found.includes(c)).map(c => ({ c, v: sc(c) })).sort((x, y) => y.v - x.v).slice(0, want - found.length).map(x => x.c));
+          const typed = (c, types, basic) => c.card.a.isLand && (!basic || /\bBasic\b/.test(c.card.type_line || '')) && (!types || types.some(t => new RegExp('\\b' + t + '\\b').test(c.card.type_line || '')));
+          const fits = c => typed(c, f.types, f.basicOnly);
+          // typed searches (Farseek, Krosan Verge): the lands that add the colours you lack and your hand wants, as a fetch land picks
+          const have = new Set(); g.battlefield.forEach(q => { if (q.produce) q.produce.colors.forEach(c => have.add(c)); });
+          const need = new Map(); if (f.types || f.slots) g.hand.concat(g.command).forEach(i => { if (!i.card.a.isLand) (i.card.a.cost.pips || []).forEach(pp => pp.forEach(col => need.set(col, (need.get(col) || 0) + 1 / pp.length))); });
+          const sc = c => (c.card.a.produce ? fetchScore(g, c, { tapped: f.tapped }, have, need) : 0);
+          const bestOf = cs => cs.map(c => ({ c, v: sc(c) })).sort((x, y) => y.v - x.v).map(x => x.c);
+          if (f.slots) {                                                         // one land for each named type, each its own search; a land with both types can fill either
+            f.slots.forEach((sl, si) => {
+              const pool = g.library.filter(c => typed(c, sl.types, sl.basic) && !found.includes(c));
+              let pick = bestOf(pool)[0] || null;
+              if (g.ask && !g.dry && pool.length) pick = decide(g, { kind: 'search', options: pool, def: pick, optional: true, f: { dest: f.bf ? 'battlefield' : 'hand', tapped: !!f.tapped, land: sl.basic ? sl.types.map(t => 'basic ' + t) : sl.types, slot: si + 1, of: f.slots.length }, source });
+              if (pick) { found.push(pick); if (pick.card.a.produce) pick.card.a.produce.colors.forEach(c => have.add(c)); }
+            });
+          } else if (f.types) {
+            found.push(...bestOf(g.library.filter(c => fits(c) && !found.includes(c))).slice(0, want - found.length));
           } else {
             for (let i = 0; i < g.library.length && found.length < want; i++) { const c = g.library[i]; if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line)) found.push(c); }
             if (!f.basicOnly) for (let i = 0; i < g.library.length && found.length < want; i++) if (g.library[i].card.a.isLand && !found.includes(g.library[i])) found.push(g.library[i]);
           }
-          if (g.ask && !g.dry && want > 0) {                                     // a person searches: up to that many of the lands the search can find, then (Cultivate) which go onto the battlefield
+          if (g.ask && !g.dry && want > 0 && !f.slots) {                         // a person searches: up to that many of the lands the search can find, then (Cultivate) which go onto the battlefield
             const pool = g.library.filter(fits);
             const dest = f.bf && f.hand ? 'split' : f.bf ? 'battlefield' : 'hand';
             found = decide(g, { kind: 'search', options: pool, def: found.slice(), multi: true, pick: want, upTo: true, f: { dest, tapped: !!f.tapped, land: f.types ? (f.basicOnly ? f.types.map(t => 'basic ' + t) : f.types) : f.basicOnly ? 'basic' : 'land', bf: f.bf, hand: f.hand, n: want }, source });
@@ -5283,6 +5297,14 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!g.battlefield.includes(p)) continue;
       if (a.adapt && !(p.counters > 0) && canPay(a.adapt.cost, allUnits(g))) {                              // Adapt N: N +1/+1 counters if it has none (and Benthic Biomancer loots when it gets one)
         pay(g, a.adapt.cost); addCounters(g, p, '+1/+1', a.adapt.n || 1, ev, p); ev.push({ type: 'note', text: `${p.card.name} adapts`, source: p }); return;
+      }
+      if (a.sacAb && p.asLand && !g.dry && !p.tapped && p.enteredTurn < g.turn && a.sacAb.fx.every(f => f.type === 'ramp') && g.battlefield.filter(q => q.asLand).length < 9) {          // Krosan Verge: two lands for one, once the mana is spare
+        const rf = a.sacAb.fx[0], ok = c => c.card.a.isLand && (!rf.slots ? (!rf.types || rf.types.some(t => (c.card.type_line || '').includes(t))) : rf.slots.some(sl => sl.types.some(t => (c.card.type_line || '').includes(t))));
+        p.tapped = true;                                                                                 // its own {T} is part of the cost: it cannot pay for itself
+        if (g.library.some(ok) && !g.hand.some(h => !h.card.a.isLand && canPay(effectiveCost(g, h), allUnits(g)) && spellScore(g, h) > 0) && canPay(a.sacAb.cost, allUnits(g))) {
+          pay(g, a.sacAb.cost); leavePerm(g, p, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed to search for lands`, source: p }); applyEffects(g, a.sacAb.fx, p, ev, null); return;
+        }
+        p.tapped = false;
       }
       if (a.sacAb && !g.dry && !(a.sacAb.needsTap && p.tapped) && canPay(a.sacAb.cost, allUnits(g)) && fxValue(g, a.sacAb.fx) >= 2.5 && !p.asLand) {          // Hedron Archive, Idol of Oblivion, Expedition Map: cash it in once the mana is spare
         pay(g, a.sacAb.cost); leavePerm(g, p, ev); flushLeaves(g, ev); applyEffects(g, a.sacAb.fx, p, ev, null); ev.push({ type: 'note', text: `${p.card.name}: sacrificed`, source: p }); return;

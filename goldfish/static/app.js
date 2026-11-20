@@ -1452,14 +1452,16 @@
     if (!cards.some(c => c.commander) && total === 100) { const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1); if (cand) cand.commander = true; }
     return cards;
   }
-  async function mirrorOpponent() {
-    const value = $('#mmOpp').value, b = builtinByValue(value), name = b ? b.name : value;
+  async function mirrorOpponent() { return loadOpponent($('#mmOpp').value, $('#mmInfo')); }
+  // a built-in ("builtin:file") or saved deck as an opponent, with its learned choices; '' is your own deck (the mirror)
+  async function loadOpponent(value, info) {
+    const b = builtinByValue(value), name = b ? b.name : value;
     if (!value) return { cards: S.cards, tokens: S.tokens, name: 'Your deck (mirror)', policy: currentPolicy() };
     if (!mmCache.has(value)) {
-      $('#mmInfo').textContent = `Loading "${name}"…`;
+      info.textContent = `Loading "${name}"…`;
       await Source.init();
       const text = b ? await builtinText(b) : (getDecks()[value] || '');
-      const r = await Source.loadDeck(text, m => { $('#mmInfo').textContent = m; });
+      const r = await Source.loadDeck(text, m => { info.textContent = m; });
       mmCache.set(value, { cards: markCommander(r.cards), tokens: r.tokens || [] });
     }
     return Object.assign({ name, policy: (b && b.policy) || {} }, mmCache.get(value));
@@ -1677,39 +1679,50 @@
     const btn = $('#plRun'); btn.disabled = true;
     const dec = DECISIONS[$('#plDecision').value];
     if (!dec) { $('#plInfo').textContent = 'Load a deck first.'; btn.disabled = false; return; }
-    const mode = dec.mirrorOnly ? 'mirror' : $('#plMode').value;
+    let mode = $('#plMode').value;
+    if (dec.mirrorOnly && mode === 'goldfish') mode = 'field';                                       // a choice that needs an opponent is tested against other decks
     if (dec.dynamic) dec.options = tribeOptions();
     if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
     const n = Math.max(50, Math.min(3000, +$('#plN').value || 400));
     let opp = null;
+    let field = null;
     if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }
-    const o = Object.assign(opts(), { turns: mode === 'mirror' ? Math.max(5, Math.min(40, +$('#mmT').value || 20)) : (+$('#optTurns').value || 10) });
+    if (mode === 'field') {
+      const picks = labOpponents();
+      if (!picks.length) { $('#plInfo').textContent = $('#plOpp').value === 'selected' ? 'Select at least one deck to play against.' : 'No other deck of this format to play against.'; btn.disabled = false; return; }
+      try { field = []; for (const v of picks) { const x = await loadOpponent(v, $('#plInfo')); if (x.cards.length) field.push(x); } }
+      catch (err) { $('#plInfo').textContent = 'Could not load an opponent deck: ' + (err.message || err); btn.disabled = false; return; }
+    }
+    const o = Object.assign(opts(), { turns: mode === 'goldfish' ? (+$('#optTurns').value || 10) : Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     o.policy = Object.assign({}, o.policy, { [dec.key]: undefined });
     o.policy = JSON.parse(JSON.stringify(o.policy));
     const candidates = dec.options.map(op => ({ name: op.name, policy: { [dec.key]: op.value } }));
     if (plWorker) plWorker.terminate();
     plWorker = new Worker('worker.js');
     const bar = $('#plProgress div'); bar.style.width = '0';
-    $('#plInfo').textContent = `Playing ${n.toLocaleString()} games with each of the ${candidates.length} options…`;
+    const vs = field ? ` against ${field.map(x => x.name).join(', ')}` : '';
+    $('#plInfo').textContent = `Playing ${n.toLocaleString()} games with each of the ${candidates.length} options${vs}…`;
     const t0 = performance.now();
     plWorker.onmessage = e => {
       if (e.data.progress != null) bar.style.width = (e.data.progress * 100).toFixed(1) + '%';
       if (e.data.result) {
         bar.style.width = '100%'; btn.disabled = false;
         plState = { res: e.data.result, dec, mode, n };
-        $('#plInfo').textContent = `${n.toLocaleString()} games per option in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
+        $('#plInfo').textContent = `${n.toLocaleString()} games per option in ${((performance.now() - t0) / 1000).toFixed(1)}s${vs}`;
         renderLab();
       }
     };
     plWorker.onerror = err => { btn.disabled = false; $('#plInfo').textContent = 'Policy lab error: ' + err.message; };
-    plWorker.postMessage({ learn: { cards: S.cards, tokens: S.tokens, candidates, mode, cardsB: opp ? opp.cards : null, tokensB: opp ? opp.tokens : null }, opts: o, n, seed: rseed() });
+    if (opp) o.policyB = opp.policy || {};
+    const cardsB = field ? field.map(x => ({ cards: x.cards, tokens: x.tokens, policy: x.policy })) : opp ? opp.cards : null;
+    plWorker.postMessage({ learn: { cards: S.cards, tokens: S.tokens, candidates, mode, cardsB, tokensB: opp ? opp.tokens : null }, opts: o, n, seed: rseed() });
   }
   function renderLab() {
     const { res, dec, mode, n } = plState;
-    const unit = mode === 'mirror' ? 'win rate' : 'win-earliness score';
+    const unit = mode === 'goldfish' ? 'win-earliness score' : 'win rate';
     const rows = res.rows.map((r, i) => {
       const verdict = i === 0 ? 'baseline' : r.z > 1.64 ? '✓ better' : r.z < -1.64 ? '✗ worse' : '≈ no clear difference';
-      const extra = mode === 'mirror' ? `${(r.mean * 100).toFixed(1)}% wins` : (r.kills ? `${(r.kills / n * 100).toFixed(0)}% win by turn ${res.turns}, on average turn ${r.avgKillTurn.toFixed(1)}` : 'never won');
+      const extra = mode !== 'goldfish' ? `${(r.mean * 100).toFixed(1)}% wins` : (r.kills ? `${(r.kills / n * 100).toFixed(0)}% win by turn ${res.turns}, on average turn ${r.avgKillTurn.toFixed(1)}` : 'never won');
       return `<tr class="${res.best === i ? 'best' : ''}"><td><b>${esc(r.name)}</b></td><td>${r.mean.toFixed(3)} ± ${r.se.toFixed(3)}</td><td>${extra}</td><td>${i === 0 ? '—' : (r.diff >= 0 ? '+' : '') + r.diff.toFixed(3) + ' (z ' + r.z.toFixed(1) + ')'}</td><td>${verdict}</td><td><button class="ghost" data-use="${i}">Use this</button></td></tr>`;
     }).join('');
     const best = res.rows[res.best];
@@ -1723,6 +1736,27 @@
     }));
   }
   $('#plRun').addEventListener('click', runLab);
+  // Opponents for "against other decks": random built-in decks of the same format (the default), or the decks picked in the list
+  function labOpponents() {
+    const mine = S.deck && S.deck.commanders.length > 0, me = S.deck && S.deck.commanders.map(i => i.card.name).join('+');
+    if ($('#plOpp').value === 'selected') return [...$('#plOppList').selectedOptions].map(o => o.value);
+    const pool = BUILTIN.filter(d => (d.commanders.length > 0) === mine && d.commanders.join('+') !== me).map(d => 'builtin:' + d.file);
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    return pool.slice(0, Math.max(1, Math.min(12, +$('#plOppN').value || 5)));
+  }
+  function fillLabOpponents() {
+    const saved = Object.keys(getDecks()).sort();
+    $('#plOppList').innerHTML = BUILTIN.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)}</option>`).join('') + saved.map(n => `<option value="${esc(n)}">${esc(n)} (saved)</option>`).join('');
+  }
+  function showLabOpponents() {
+    const field = $('#plMode').value === 'field', sel = $('#plOpp').value === 'selected';
+    const show = (id, on) => { $(id).style.display = on ? '' : 'none'; };                              // labels are styled with display, so the hidden attribute alone is not enough
+    show('#plOppWrap', field); show('#plOppNWrap', field && !sel); show('#plOppListWrap', field && sel);
+    if (field && sel && !$('#plOppList').options.length) fillLabOpponents();
+  }
+  $('#plMode').addEventListener('change', showLabOpponents);
+  $('#plOpp').addEventListener('change', showLabOpponents);
+  showLabOpponents();
 
   function medianTurn(hist) { let c = 0; for (let i = 0; i < hist.length - 1; i++) { c += hist[i]; if (c >= 0.5) return i + 1; } return null; }
   function cumBy(hist, t) { let c = 0; for (let i = 0; i < Math.min(t, hist.length - 1); i++) c += hist[i]; return c; }

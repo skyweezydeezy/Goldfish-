@@ -403,7 +403,21 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "policy": {
+    "tribeFirst": "on"
+   },
+   "learned": [
+    {
+     "choice": "Tribal decks: cast creatures of your type first",
+     "picked": "Creatures of your type ahead of other spells",
+     "z": 3.5,
+     "confirmZ": 3.4,
+     "gain": 5.2,
+     "games": 600,
+     "against": "the other commander decks"
+    }
+   ]
   },
   {
    "file": "gnome-alone.txt",

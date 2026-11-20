@@ -894,3 +894,7 @@ body .bf-row .stackgroup.imprint .mtg.imprinted-card + .mtg { margin-left: calc(
   body[data-view=table] .table-sound { display: inline-block; }
   .sound-row > label { flex-basis: 150px; }
 }
+.sound-cards { margin: 4px 0 12px; }
+.sound-cards summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+.sound-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px; margin-top: 8px; max-height: 260px; overflow-y: auto; }
+.sound-card-grid button { text-align: left; font-size: 12.5px; padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -579,6 +579,31 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (!/^[IVX]+(?:, [IVX]+)* — /.test(raw)) {          // the match-side readers below never take a Saga chapter (it is read further down)
+      // ---- land and mana denial (see landKillUse, landWipe, moonOf, oppEntersTapped, Vorinclex, Rishadan Port, Mana Vortex). The symmetric ones
+      // (Armageddon, Blood Moon, Mana Vortex, Sanctum Prelate) work in any game, and the autopilot plays them only when they hurt the other player more.
+      { const MIRL = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let lm;
+        if ((lm = line.match(/^((?:\{[^}]+\})+, )?\{t\}, sacrifice (~|a land): destroy target (nonbasic )?land( an opponent controls)?(\. its controller may search their library for a basic land card, put it onto the battlefield, then shuffle| an opponent controls\. each player searches their library for a basic land card, puts it onto the battlefield, then shuffles|\. each player searches[^.]*\.)?/i))) {          // Strip Mine, Wasteland, Ghost Quarter, Field of Ruin, Dust Bowl
+          a.landKill = { cost: lm[1] ? parseCost(lm[1].replace(/, $/, '')) : parseCost(''), sacSelf: lm[2] === '~', sacLand: lm[2] !== '~', nonbasic: !!lm[3], basicBack: /its controller may search/i.test(line) ? 'them' : /each player searches/i.test(line) ? 'each' : null }; MIRL(); continue; }
+        if (/^destroy all lands\.?$/i.test(line)) { a.spellFx.push({ type: 'landWipe', what: 'all', how: 'destroy' }); rec.status = 'ok'; continue; }          // Armageddon, Ravages of War
+        if (/^destroy all nonbasic lands\.?$/i.test(line)) { a.spellFx.push({ type: 'landWipe', what: 'nonbasic', how: 'destroy' }); rec.status = 'ok'; continue; }          // Ruination
+        if ((lm = line.match(/^destroy all (islands|forests|swamps|mountains|plains)\.?$/i))) { a.spellFx.push({ type: 'landWipe', what: singular(lm[1]).toLowerCase(), how: 'destroy' }); rec.status = 'ok'; continue; }          // Tsunami
+        if (/^return all lands to their owners' hands\.?$/i.test(line)) { a.spellFx.push({ type: 'landWipe', what: 'all', how: 'hand' }); rec.status = 'ok'; continue; }          // Sunder
+        if (/^each player sacrifices x lands of their choice\.?$/i.test(line)) { a.spellFx.push({ type: 'landWipe', what: 'all', how: 'sacX' }); rec.status = 'ok'; continue; }          // Tectonic Break
+        if ((lm = line.match(/^nonbasic lands are (mountains|islands|forests|swamps|plains)\.?$/i))) { a.statics.moon = { mountains: 'R', islands: 'U', forests: 'G', swamps: 'B', plains: 'W' }[lm[1].toLowerCase()]; rec.status = 'ok'; continue; }          // Blood Moon, Magus of the Moon, Harbinger of the Seas
+        if ((lm = line.match(/^((?:artifacts|creatures|lands|nonbasic lands)(?:,? (?:and )?(?:artifacts|creatures|lands|nonbasic lands))*) your opponents control enter tapped\.?$/i))) { const w = lm[1].toLowerCase(); a.oppEntersTapped = { artifact: /artifacts/.test(w), creature: /creatures/.test(w), land: /(^|[ ,])lands/.test(w.replace(/nonbasic lands/, '')), nonbasic: /nonbasic lands/.test(w) }; MIRL(); continue; }          // Kismet, Blind Obedience, Thalia, Archon of Emeria
+        if (/^whenever an opponent taps a land for mana, that land doesn't untap during its controller's next untap step/i.test(line)) { a.vorinclex = true; MIRL(); continue; }          // Vorinclex, Voice of Hunger
+        if ((lm = line.match(/^((?:\{[^}]+\})+), \{t\}: tap target land\.?$/i))) { a.portTap = parseCost(lm[1].replace(/\{T\}/gi, '')); MIRL(); continue; }          // Rishadan Port
+        if (/^at the beginning of each of your main phases, if you haven't added mana with this ability this turn, you may add x mana of any one color, where x is the number of islands target opponent controls/i.test(line)) { a.carpet = true; MIRL(); continue; }          // Carpet of Flowers
+        if (/^as ~ enters, choose a number\.?$/i.test(line) && /noncreature spells with mana value equal to the chosen number can't be cast/i.test(text)) { rec.status = 'ok'; continue; }
+        if (/^noncreature spells with mana value equal to the chosen number can't be cast/i.test(line)) { a.prelate = true; rec.status = 'ok'; continue; }          // Sanctum Prelate: the number is chosen to hurt the other player (none against a goldfish)
+        if (/^at the beginning of each player's upkeep, that player sacrifices a land of their choice\.?$/i.test(line)) { a.vortexUpkeep = true; rec.status = 'ok'; continue; }          // Mana Vortex
+        if (/^when there are no lands on the battlefield, sacrifice ~\.?$/i.test(line)) { a.vortexEnd = true; rec.status = 'ok'; continue; }
+        if (/^(?:• )?tap all creatures your opponents control\.?$/i.test(line)) { a.spellFx.push({ type: 'tapOpp', what: 'all' }); MIRL(); continue; }          // Cryptic Command
+        if (/^(?:• )?tap target (creature|permanent)\.?$/i.test(line)) { a.spellFx.push({ type: 'tapOpp', what: 'one' }); MIRL(); continue; }          // Dispatch, Ice
+        if ((lm = line.match(/^((?:\{[^}]+\})+), \{t\}: tap target creature\.?$/i))) { a.tapAb = parseCost(lm[1].replace(/\{T\}/gi, '')); MIRL(); continue; }          // Staff of Domination
+        if (/^(?:metalcraft — )?if you control three or more artifacts, exile that creature/i.test(line)) { a.spellFx.push({ type: 'removal', how: 'exile', what: 'creature', metal: true }); MIRL(); continue; }          // Dispatch
+      }
       // ---- stax on casting, searching and abilities (see castBlocked, searching, abilBlocked). The symmetric ones (Rule of Law, Ethersworn Canonist,
       // Grafdigger's Cage) bind you in any game; the rest hold only the other players back, so they say "Mirror matches only".
       { const MIRS = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let sm;
@@ -649,6 +674,7 @@
         if ((pm = line.match(/^ward\s*(?:—|-)?\s*\{(\d+)\}(?:, pay (\d+) life)?\.?$/i))) { a.ward = { n: +pm[1], life: pm[2] ? +pm[2] : 0 }; MIRP(); continue; }          // Gisa: Ward—{2}, Pay 2 life; Ward {N}
         if ((pm = line.match(/^((?:\{[^}]+\})+), sacrifice two other artifacts and\/or creatures: put an indestructible counter on ~/i))) { a.indCounterAb = { cost: parseCost(pm[1]), sac: 2 }; MIRP(); continue; }          // Mondrak
         if ((pm = line.match(/^((?:\{[^}]+\})+), remove three counters from among other artifacts, creatures, and planeswalkers you control: put an indestructible counter on ~/i))) { a.indCounterAb = { cost: parseCost(pm[1]), counters: 3 }; MIRP(); continue; }          // Tekuthal
+      }
       }
       if (card.layout === 'prepare' && half === 2) {
         if (!a.prepSpell) a.prepSpell = { cost: parseCost(((card.mana_cost || '').split('//')[1] || '').trim()), fx: [] };
@@ -2459,7 +2485,7 @@
     if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus.per ? Object.assign({ src: q }, a.attachBonus) : a.attachBonus); }          // a "for each" bonus keeps its Aura or Equipment (its own counters)
     if (q.produce) { info.producers.push(q); if (q.produce.restrict) info.restrictMana = true; }
     if (q.asLand) info.lands++;
-    if (a.abilStax) info.abilStax = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
+    if (a.abilStax) info.abilStax = true; if (st.moon) info.moonSeen = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
     if (a.watch) info.watchers.push(q);
     if (st.tokenRepl.length) info.repl.push(q);
@@ -2725,11 +2751,13 @@
     const info = bfInfo(g);
     const stony = (g.stonySeen || (g.opp && g.opp.stonySeen)) && bothSides(g).some(q => q.card.a.statics.stony);
     const abilAny = info.abilStax || g.senSeq === turnSeq(g) || otherPlayers(g).some(o => bfInfo(o).abilStax);          // Karn, Linvala, Pithing Needle, Sen Triplets
+    const moon = info.moonSeen || otherPlayers(g).some(o => bfInfo(o).moonSeen) ? moonOf(g) : null;          // Blood Moon
     for (const p of info.producers) {
       if (p.tapped || p.held || !p.produce) continue;          // held: kept untapped for a counterspell
       if (g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g)) continue;
       if (stony && (p.card.a.isArtifact || p.sacMana && p.token)) continue;                              // Stony Silence (Treasures too)
       if (abilAny && abilBlocked(g, p, true)) continue;          // Karn, Linvala: no mana from their artifacts and creatures
+      if (moon && p.asLand && !isBasicLand(p)) { units.push({ src: p, colors: new Set([moon]) }); continue; }          // Blood Moon: a Mountain
       if (p.sick && isCreaturePerm(p) && !info.abilityHaste && !hasKw(g, p, 'haste') && !p.card.a.noTapMana) continue;
       if (p.card.a.metalMana && g.battlefield.filter(q => artOn(g, q)).length < 3) continue;          // Mox Opal: metalcraft
       if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
@@ -3193,8 +3221,10 @@
     for (const s of srcs) if (s && s.card && s.card.a.tendo && s.charge > 0 && !canPay(cost, units.map(u => u.src === s ? { src: s, colors: new Set(['C']) } : u))) s.charge--;          // Tendo Ice Bridge spent its charge counter on a color
     const leftovers = [], used = new Set(idx);
     g._paySrcs = [...srcs].some(x => x && x.card && x.card.a && x.card.a.discoverCast) ? srcs : null;          // Tecutlan: which permanents made the mana
+    const vor = !g.dry && g.opp && othersPerms(g).some(({ q }) => q.card.a.vorinclex);
     srcs.forEach(s => {
       s.tapped = true;
+      if (vor && s.asLand) s.vorSkip = true;          // Vorinclex, Voice of Hunger
       if (s.token && s.card && /Treasure/.test(s.card.name || '')) g._payTre = true;          // Rain of Riches
       if (s.card && s.card.a && s.card.a.tapWatch && !g.dry) for (const t of s.card.a.triggers) if (t.kinds.includes('selfTapped')) fire(g, t, s, [], s);
       if (s.card && s.card.a && s.card.a.tapCounter) s.other = Object.assign({}, s.other, { [s.card.a.tapCounter]: ((s.other && s.other[s.card.a.tapCounter]) || 0) + 1 });          // Twitching Doll: a nest counter each time it taps for mana
@@ -3467,6 +3497,8 @@
     if (a.noLifeGain) { g.noGainSeen = true; if (g.opp) g.opp.noGainSeen = true; }
     if (a.echo) perm.echoDue = g.turn;                                                                    // Echo: pay again at your next upkeep or sacrifice it
     if (inst.foreign && g.opp) { perm.owner = g.opp; perm.stolen = true; }
+    if (!g.dry && g.opp && !perm.tapped && othersPerms(g).some(({ q }) => { const et = q.card.a.oppEntersTapped; return et && ((et.artifact && a.isArtifact) || (et.creature && isCreaturePerm(perm)) || (et.land && perm.asLand) || (et.nonbasic && perm.asLand && !isBasicLand(perm))); })) perm.tapped = true;          // Kismet, Blind Obedience, Thalia, Archon of Emeria
+    if (a.prelate && !g.dry) { perm.prelateN = prelateNumber(g); ev.push({ type: 'note', text: `${inst.card.name} names ${perm.prelateN}`, source: perm }); }          // Sanctum Prelate
     if ((a.abilStax === 'needle' || a.abilStax === 'revoker') && !g.dry) { perm.named = needleName(g, a.abilStax); g.needleSeen = true; if (perm.named) ev.push({ type: 'note', text: `${inst.card.name} names ${perm.named}`, source: perm }); }          // Pithing Needle
     if (a.ringProt && g.lastCast === inst && !g.dry && !o.silent) { g.protAll = true; ev.push({ type: 'note', text: `${a._name || inst.card.name}: you have protection from everything until your next turn`, source: perm }); }          // The One Ring                                 // a card of theirs you cast: you control it but don't own it (Don Andres)
     if (a.allTribe && !g.dry) for (const q of g.battlefield) applyAllTribe(g, q);
@@ -4482,6 +4514,25 @@
           break;
         }
         case 'exileOppYards': for (const o of otherPlayers(g)) if (o.graveyard.length) { const k = o.graveyard.length; o.exile.push(...o.graveyard.splice(0)); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}exiled the ${k} cards of the opponent's graveyard`, source }); } break;          // Ashiok (a goldfish has no graveyard)
+        case 'landWipe': {          // Armageddon, Ruination, Tsunami, Sunder, Tectonic Break: every player alike
+          if (g.dry) break;
+          const hit = q => q.asLand && (f.what === 'all' || (f.what === 'nonbasic' ? !isBasicLand(q) : new RegExp('\\b' + f.what + '\\b', 'i').test(q.card.type_line || '')));
+          const X = f.how === 'sacX' ? Math.max(0, g.xValue || 0) : 0;
+          for (const x of [g].concat(otherPlayers(g))) {
+            let ls = x.battlefield.filter(hit);
+            if (f.how === 'sacX') ls = ls.sort((p1, p2) => (p1.produce ? p1.produce.amount : 0) - (p2.produce ? p2.produce.amount : 0)).slice(0, X);          // each player gives up its least useful lands
+            else if (f.how === 'destroy') ls = ls.filter(q => !indestructible(x, q));
+            ls.forEach(q => leavePerm(x, q, ev, f.how === 'hand' ? 'hand' : 'graveyard')); flushLeaves(x, ev);
+            ev.push({ type: 'note', text: `${x === g ? 'You' : 'The other player'}: ${ls.length} land${ls.length === 1 ? '' : 's'} ${f.how === 'hand' ? 'returned to hand' : f.how === 'sacX' ? 'sacrificed' : 'destroyed'}`, source });
+          }
+          vortexCheck(g, ev);
+          break;
+        }
+        case 'tapOpp': if (g.opp && !g.dry) {          // Cryptic Command, Dispatch, Ice: tap their blockers before an attack (or their best land)
+          const d = g.opp, ups = d.battlefield.filter(q => isCreaturePerm(q) && !q.tapped).sort((x, y) => threat(d, g, y) - threat(d, g, x));
+          const ts = f.what === 'all' ? ups : ups.slice(0, 1).concat(ups.length ? [] : d.battlefield.filter(q => q.asLand && !q.tapped).sort((x, y) => (y.produce ? y.produce.amount : 0) - (x.produce ? x.produce.amount : 0)).slice(0, 1));
+          ts.forEach(q => { q.tapped = true; }); if (ts.length) ev.push({ type: 'note', text: `Tapped ${ts.map(q => q.card.name).join(', ')}`, source });
+        } break;
         case 'skrelv': {                                                                                  // Skrelv: toxic for the best other attacker; in a match the color its likely blockers share
           const cands = g.battlefield.filter(q => isCreaturePerm(q) && q !== source && canAttack(g, q) && !q.eotToxic).sort((x, y) => (hasKw(g, y, 'double strike') ? 1 : 0) - (hasKw(g, x, 'double strike') ? 1 : 0) || powerOf(g, y) - powerOf(g, x));
           const t = cands[0]; if (!t) break;
@@ -6333,6 +6384,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (f.type === 'poisonWin') v += Math.max(0, 9 - (g.poisonDealt || 0)) * poisonWorth(g) + 4;          // nine counters: the next proliferate or toxic hit wins
       if (f.type === 'poison') { const k = typeof n === 'number' ? n : 1; v += (g.poisonDealt || 0) + k >= 10 ? 1000 : k * poisonWorth(g); }
       if (f.type === 'ajaniEmblem') v += 6;
+      if (f.type === 'tapOpp') v += g.opp && !g.combatDone && g.battlefield.some(q => canAttack(g, q)) ? (f.what === 'all' ? 2 * g.opp.battlefield.filter(q => isCreaturePerm(q) && !q.tapped).length : 2) : 0.2;
+      if (f.type === 'landWipe') v += g.opp && landWipeWorth(g, f) ? 12 : -20;          // only when it hurts them more
       if (f.type === 'oppDiscard') { const h = g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand); v += Math.min(n, h) * (0.6 + oppDiscardWorth(g)); }
       if (f.type === 'oppHandExile') v += (g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand)) ? 0.6 : 0;
       if (f.type === 'oppExileTop') v += (g.opp || g.oppLib != null ? 0.15 : 0.05) * (n === 'HALF' ? 20 : n) + (f.steal === 'lands' ? 1.5 : 0);
@@ -6498,6 +6551,9 @@ g.actSeq = (g.actSeq || 0) + 1;
         pay(g, a.sacDraw.cost); leavePerm(g, p, ev); flushLeaves(g, ev); draw(g, 1, ev); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, 1, ev, p);
         ev.push({ type: 'note', text: `${p.card.name}: sacrificed for a card and a Treasure`, source: p }); return;
       }
+      if (a.landKill && landKillUse(g, ev)) return;          // Strip Mine, Wasteland
+      if (a.tapAb && g.opp && !g.dry && !g.combatDone && !p.tapped && g.battlefield.some(q => q !== p && canAttack(g, q) && powerOf(g, q) >= 3)) { const b = g.opp.battlefield.filter(q => isCreaturePerm(q) && !q.tapped).sort((x, y) => toughnessOf(g.opp, y) - toughnessOf(g.opp, x))[0];          // Staff of Domination: a blocker tapped before combat
+        if (b && canPay(a.tapAb, allUnits(g).filter(u => u.src !== p))) { p.tapped = true; pay(g, a.tapAb); b.tapped = true; ev.push({ type: 'note', text: `${p.card.name}: tapped ${b.card.name}`, source: p }); return; } }
       if (a.indCounterAb && g.opp && !g.dry && !(p.other && p.other.indestructible > 0) && canPay(a.indCounterAb.cost, allUnits(g))) {          // Mondrak, Tekuthal
         const ic = a.indCounterAb;
         if (ic.sac) { const fod = g.battlefield.filter(q => q !== p && (isCreaturePerm(q) || q.card.a.isArtifact) && q.token && !q.asLand).sort((x, y) => (isCreaturePerm(x) ? powerOf(g, x) : 0) - (isCreaturePerm(y) ? powerOf(g, y) : 0)).slice(0, ic.sac);
@@ -6963,6 +7019,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     try { return castPhaseInner(g, dry); } finally { held.forEach(q => { q.held = false; }); }
   }
   function castPhaseInner(g, dry) {
+    if (!dry && g.opp && !g.combatDone && g.carpetTurn !== g.turn) { const cp = g.battlefield.find(q => q.card.a.carpet); if (cp) { g.carpetTurn = g.turn; const X = Math.max(...otherPlayers(g).map(o => o.battlefield.filter(q => q.asLand && /\bIsland\b/.test(q.card.type_line || '')).length)); for (let i = 0; i < X; i++) g.floating.push({ src: null, colors: ANY_COLOR, floating: true }); } }          // Carpet of Flowers: X mana of any color (their Islands)
     if (!dry && !g.combatDone && g.arbiterDecided !== g.turn && arbiterOn(g)) {          // Angelic Arbiter: hold the spells and attack, or cast and stay home
       g.arbiterDecided = g.turn;
       const atk = g.battlefield.filter(q => canAttack(g, q)).reduce((t, q) => t + Math.max(0, powerOf(g, q)) * (hasKw(g, q, 'double strike') ? 2 : 1), 0);
@@ -7270,7 +7327,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry) otherUntaps(g);
     const locks = g.dry ? [] : activeLocks(g);
     const stunned = new Set(); g.battlefield.forEach(p => { if (p.stun > 0 && p.tapped) { p.stun--; stunned.add(p); } });          // a stun counter is removed instead of untapping
-    const can = p => !p.card.a.noUntap && p.exerted !== g.turn && !stunned.has(p);                                           // an exerted permanent (Arena of Glory) stays tapped
+    const vors = new Set(); g.battlefield.forEach(p => { if (p.vorSkip) { p.vorSkip = false; if (p.tapped) vors.add(p); } });          // Vorinclex: tapped for mana last turn, it stays tapped
+    const can = p => !p.card.a.noUntap && p.exerted !== g.turn && !stunned.has(p) && !vors.has(p);                                           // an exerted permanent (Arena of Glory) stays tapped
     if (!locks.length) { g.battlefield.forEach(p => { if (can(p)) p.tapped = false; }); return; }
     const has = k => locks.find(x => x.L[k]);
     if (has('stasis')) { ev.push({ type: 'note', text: `${has('stasis').p.card.name}: no untap step` }); return; }
@@ -7319,7 +7377,13 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (c.card.a.tangle) return !!g.opp && g.opp.battlefield.length >= g.battlefield.length;             // Tangle Wire and Trinisphere only pay off against a real opponent
     if (c.card.a.trini) return !!g.opp;
     if (c.card.a.castSacLand) return !!g.opp && g.opp.battlefield.filter(q => q.asLand).length >= g.battlefield.filter(q => q.asLand).length;          // Mana Vortex: a land race only against a real opponent
-    { const cs = c.card.a.castStax; if (cs && (cs.oneSpell || cs.canonist || cs.cage) && !c.card.a.isCreature) return !!g.opp; }          // Rule of Law, Grafdigger's Cage: they bind you too, so only against a real opponent (Archon and Canonist are creatures worth casting anyway)
+    { const cs = c.card.a.castStax; if (cs && (cs.oneSpell || cs.canonist || cs.cage) && !c.card.a.isCreature) return !!g.opp; }
+    { const lw = c.card.a.spellFx.find(f => f.type === 'landWipe'); if (lw) return landWipeWorth(g, lw); }          // Armageddon: when your board wins without lands
+    if (c.card.a.statics.moon) { const col = c.card.a.statics.moon, nb = x => x.battlefield.filter(q => q.asLand && !isBasicLand(q)).length;          // Blood Moon: when they have more nonbasic lands; a creature (Harbinger of the Seas) also when it costs you nothing
+      const after = new Set([col]); g.battlefield.forEach(q => { if (q.produce && (!q.asLand || isBasicLand(q))) q.produce.colors.forEach(x => after.add(x)); });          // the colors left once nonbasic lands make only that one
+      const need = new Set(); g.hand.concat(g.command).forEach(i => { if (i !== c && !i.card.a.isLand) (i.card.a.cost.pips || []).forEach(pp => { if (!pp.some(x => after.has(x))) need.add(pp.join('/')); }); });
+      return (!!g.opp && nb(g.opp) >= nb(g) + 2) || (c.card.a.isCreature && need.size === 0); }          // a creature, when every color your hand and commander need is still made
+    if (c.card.a.vortexUpkeep) return !!g.opp && g.opp.battlefield.filter(q => q.asLand).length >= g.battlefield.filter(q => q.asLand).length;          // Mana Vortex          // Rule of Law, Grafdigger's Cage: they bind you too, so only against a real opponent (Archon and Canonist are creatures worth casting anyway)
     const L = lockOf(c.card);
     if (!L) return true;
     if (!g.opp) return false;
@@ -7525,6 +7589,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     untapStep(g, ev);                                                                     // symmetrical locks (Winter Orb, Static Orb, Stasis...) limit what untaps
     g.battlefield.forEach(p => { if (p.enteredTurn < g.turn) p.sick = false; });
     const marks = g.stepMarks = { upkeep: ev.length, draw: null, main: null };
+    if (!g.dry) for (const { q, o } of othersPerms(g)) { const pc = q.card.a.portTap; if (!pc || q.tapped || abilBlocked(o, q, false) || !canPay(pc, allUnits(o).filter(u => u.src !== q))) continue;          // Rishadan Port on your upkeep
+      const t = g.battlefield.filter(x => x.asLand && !x.tapped).sort((x, y) => landWorth(g, y) - landWorth(g, x))[0]; if (!t) continue; q.tapped = true; pay(o, pc); t.tapped = true; ev.push({ type: 'note', text: `${q.card.name}: your ${t.card.name} is tapped`, source: q }); }
+    if (!g.dry && [g].concat(otherPlayers(g)).some(x => x.battlefield.some(q => q.card.a.vortexUpkeep))) { const l = g.battlefield.filter(x => x.asLand).sort((x, y) => landWorth(g, x) - landWorth(g, y))[0]; if (l) { ev.push({ type: 'note', text: `Mana Vortex: you sacrifice ${l.card.name}`, source: null }); leavePerm(g, l, ev); flushLeaves(g, ev); } vortexCheck(g, ev); }          // Mana Vortex
     if (!g.dry && g.battlefield.some(q => q.card.a.senTriplets)) { const t = g.opp; if (t && !t.dead) { t.senSeq = turnSeq(g); ev.push({ type: 'note', text: "Sen Triplets: the other player can't cast spells or activate abilities this turn", source: null }); } }            // where each step starts in this turn's events (the played game's log says which step a thing happened in)
     for (const p of g.battlefield) {                                                                      // Mana Vault: pay {4} to untap it when there is mana to spare; it hurts while tapped
       if (p.card.a.vaultUntap && p.tapped) { const vc = actCost(g, p, { generic: 4, pips: [], x: 0 }); if (allUnits(g).length >= 7 && canPay(vc, allUnits(g))) { pay(g, vc); p.tapped = false; ev.push({ type: 'note', text: `Paid {4} to untap ${p.card.name}`, source: p }); } }
@@ -8459,6 +8526,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     return best;
   }
   function doRemoval(g, f, source, ev) {
+    if (f.metal && g.battlefield.filter(q => artOn(g, q)).length < 3) return;          // Dispatch: metalcraft
     let t = pickRemovalTarget(g, f);
     if (g.ask) { t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source }); if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
     if (t && !answered(g, t, f.how === 'exile' || f.how === 'tuck' ? 'exile' : 'destroy', source, ev)) removalOf(g, f, source, ev, t);
@@ -8612,6 +8680,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function abilBlocked(g, p, mana) {
     if (!p || !p.card) return false;
     if (g.senSeq === turnSeq(g)) return true;          // Sen Triplets
+    if (p.asLand && !isBasicLand(p) && !mana && moonOf(g)) return true;          // Blood Moon: a nonbasic land is only a Mountain
     if (!bfInfo(g).abilStax && !otherPlayers(g).some(o => bfInfo(o).abilStax)) return false;          // nothing at the table stops abilities
     const all = g.battlefield.map(q => ({ q, o: g })).concat(otherPlayers(g).flatMap(o => o.battlefield.map(q => ({ q, o }))));
     for (const { q, o } of all) {
@@ -8623,6 +8692,51 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (as === 'abolisher' && o.activeTurn === true && !mana && (artOn(g, p) || isCreaturePerm(p) || enchOn(g, p))) return true;          // Grand Abolisher, on its controller's turn
     }
     return false;
+  }
+  // ---------- Land and mana denial ----------
+  // Armageddon and friends: worth it in a match when your board wins without lands (more creature power, and mana that is not a land)
+  function landWipeWorth(g, f) {
+    if (!g.opp) return false;
+    const pw = x => x.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(x, q)), 0), rocks = x => x.battlefield.filter(q => !q.asLand && q.produce).length;
+    const lands = (x, flt) => x.battlefield.filter(q => q.asLand && flt(q)).length;
+    if (f.what === 'nonbasic') return lands(g.opp, q => !isBasicLand(q)) >= lands(g, q => !isBasicLand(q)) + 2;
+    if (f.what !== 'all') return lands(g.opp, q => new RegExp('\\b' + f.what + '\\b', 'i').test(q.card.type_line || '')) >= lands(g, q => new RegExp('\\b' + f.what + '\\b', 'i').test(q.card.type_line || '')) + 2;
+    return pw(g) >= Math.max(5, pw(g.opp) * 2) && rocks(g) >= rocks(g.opp);
+  }
+  // what a land is worth to its controller: mana, a nonbasic's colors and abilities
+  const landWorth = (d, p) => (p.produce ? (p.produce.per ? perAmount(d, p) : p.produce.amount) * 1.5 + (p.produce.colors.size > 1 ? 1 : 0) : 0) + (!isBasicLand(p) ? 1 : 0) + ((p.card.a.activated || []).length || p.card.a.landKill || p.card.a.portTap ? 1.5 : 0) + (p.card.a.nykthos ? 3 : 0);          // Gaea's Cradle: the mana it makes now
+  // Strip Mine, Wasteland, Ghost Quarter, Field of Ruin, Dust Bowl: in a match, the other player's best land when it is worth more than the one used
+  function landKillUse(g, ev) {
+    if (!g.opp || g.dry) return false;
+    for (const p of g.battlefield.slice()) {
+      const lk = p.card.a.landKill; if (!lk || p.tapped || !g.battlefield.includes(p) || abilBlocked(g, p, false)) continue;
+      if (g.battlefield.filter(q => q.asLand).length < 4) continue;          // keep developing first
+      const d = g.opp, t = d.battlefield.filter(q => q.asLand && (!lk.nonbasic || !isBasicLand(q)) && targetable(d, q)).sort((x, y) => landWorth(d, y) - landWorth(d, x))[0];
+      if (!t || landWorth(d, t) < (lk.basicBack ? 3.5 : 3)) continue;
+      const fod = lk.sacLand ? g.battlefield.filter(q => q.asLand && q !== p).sort((x, y) => landWorth(g, x) - landWorth(g, y))[0] : null; if (lk.sacLand && !fod) continue;
+      p.tapped = true; if (!canPay(lk.cost, allUnits(g)) || pay(g, lk.cost) == null) { p.tapped = false; continue; }
+      if (lk.sacSelf) leavePerm(g, p, ev); if (fod) leavePerm(g, fod, ev); flushLeaves(g, ev);
+      if (answered(g, t, 'destroy', p, ev)) return true;
+      ev.push({ type: 'note', text: `${p.card.name}: destroyed the other player's ${t.card.name}`, source: p }); leavePerm(d, t, ev); flushLeaves(d, ev);
+      if (lk.basicBack) for (const x of lk.basicBack === 'each' ? [g, d] : [d]) applyEffects(x, [{ type: 'ramp', bf: 1, hand: 0, tapped: false, basicOnly: true }], null, ev, null);          // Ghost Quarter, Field of Ruin: a basic land back
+      return true;
+    }
+    return false;
+  }
+  // Sanctum Prelate: the mana value that stops the most of the other player's noncreature spells and the fewest of yours (against a goldfish, one
+  // you do not use)
+  function prelateNumber(g) {
+    const cnt = (deck, n) => deck ? deck.unique.filter(c => !c.a.isCreature && !c.a.isLand && (c.a.mv || 0) === n).reduce((t, c) => t + (c.qty || 1), 0) : 0;
+    let best = 0, bv = -Infinity;
+    for (let n = 0; n <= 10; n++) { const v = otherPlayers(g).reduce((t, o) => t + cnt(o.deck, n), 0) * 1.5 - cnt(g.deck, n); if (v > bv) { bv = v; best = n; } }
+    return best;
+  }
+  // Blood Moon, Magus of the Moon, Harbinger of the Seas: the color nonbasic lands make (both players'), or null
+  function moonOf(g) { for (const q of bothSides(g)) if (q.card.a.statics.moon) return q.card.a.statics.moon; return null; }
+  // Mana Vortex: with no land left on the battlefield it is sacrificed
+  function vortexCheck(g, ev) {
+    const players = [g].concat(otherPlayers(g)); if (players.some(x => x.battlefield.some(q => q.asLand))) return;
+    for (const x of players) for (const q of x.battlefield.filter(q => q.card.a.vortexEnd)) { ev.push({ type: 'note', text: `${q.card.name}: no lands on the battlefield, it is sacrificed`, source: q }); leavePerm(x, q, ev); flushLeaves(x, ev); }
   }
   // the permanents of every other player (a pod has several), and every permanent at the table
   const othersPerms = g => otherPlayers(g).flatMap(o => o.battlefield.map(q => ({ q, o })));
@@ -8644,6 +8758,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (cs.handOnly && !fromHand) return true;          // Drannith Magistrate: the command zone, the graveyard, exile, the library
       if (cs.even && (a.mv || 0) % 2 === 0) return true;          // Void Winnower
     }
+    for (const { q } of all) if (q.card.a.prelate && q.prelateN != null && !a.isCreature && (a.mv || 0) === q.prelateN) return true;          // Sanctum Prelate
     if (g.silenceSeq === ts) return true;          // Silence
     if (g.noNoncreatureSeq === ts && !a.isCreature) return true;          // Ranger-Captain of Eos
     if (g.senSeq === ts) return true;          // Sen Triplets

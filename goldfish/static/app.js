@@ -60,6 +60,23 @@
     const i = face || 0;
     return (card.images && card.images[i]) || (card.remote_images && card.remote_images[i]) || null;
   }
+  // A two-faced card shown one face at a time: the ⟲ button swings it around (a 3D turn) to the other face. o.face starts on the back;
+  // o.onFlip(face) is told when it turns. box.setFace(0|1) turns it from outside; box.face() says which face shows.
+  function hasTwoFaces(card) { return Math.max((card.images || []).length, (card.remote_images || []).length) >= 2 || (card.faces || []).length >= 2; }
+  function flipCardEl(card, o) {
+    o = o || {};
+    const box = h('div', 'flip' + (o.face ? ' flipped' : '')), inner = h('div', 'flip-inner');
+    const front = cardEl(card, Object.assign({}, o, { face: 0 })), back = cardEl(card, Object.assign({}, o, { face: 1 }));
+    front.classList.add('flip-front'); back.classList.add('flip-back');
+    inner.append(front, back); box.appendChild(inner);
+    const btn = h('button', 'flip-btn', '⟲'); btn.type = 'button'; btn.title = 'Turn the card over'; btn.setAttribute('aria-label', 'Turn the card over');
+    box.face = () => (box.classList.contains('flipped') ? 1 : 0);
+    box.setFace = f => { box.classList.toggle('flipped', !!f); front.setAttribute('aria-hidden', f ? 'true' : 'false'); back.setAttribute('aria-hidden', f ? 'false' : 'true'); };
+    box.turn = () => { box.setFace(!box.face()); sfx('transform'); if (o.onFlip) o.onFlip(box.face()); };
+    btn.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); box.turn(); });
+    box.appendChild(btn); box.setFace(o.face ? 1 : 0);
+    return box;
+  }
   function cardEl(card, o) {
     o = o || {};
     const e = h('div', 'mtg');
@@ -891,9 +908,23 @@
       play([le, ...le.ev]);
       return;
     }
+    // a two-faced card (Esika // The Prismatic Bridge): choose the face as it is cast (the sheet from choices.js)
+    const fq = !force && window.Decide && window.Decide.faceQuestion(g, inst);
+    if (fq && !fq.only && window.__isfChoices) {
+      window.__isfChoices.ask(fq).then(pick => castFace(inst, (pick === 'auto' || pick == null ? fq.options[fq.def[0]] : fq.options[pick]).face, el)).catch(() => {});
+      return;
+    }
+    if (fq && fq.only && fq.options[0].face === 1) return castFace(inst, 1, el);
     snap();
     const ev = G.castCard(g, inst, force);
     if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); sfx('error'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
+    play(ev);
+  }
+
+  function castFace(inst, face, el) {
+    const g = S.game; snap();
+    const ev = face === 1 ? G.castBackFace(g, inst) : G.castCard(g, inst);
+    if (!ev) { S.undo.pop(); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } sfx('error'); return toast(`Not enough mana for ${face === 1 ? 'the back face' : 'the front face'} of ${inst.card.name.split(' // ')[0]}`); }
     play(ev);
   }
 
@@ -983,7 +1014,9 @@
     const faces = h('div', 'lb-faces');
     const shown = sel ? Object.assign({}, card, { images: [], remote_images: sel.imgs }) : card;
     const n = Math.max(1, Math.min(2, (shown.images || []).length || (shown.remote_images || []).length));
-    for (let i = 0; i < n; i++) faces.appendChild(cardEl(shown, { face: i }));
+    if (lb.faceOf !== card) { lb.faceOf = card; lb.face = 0; }          // another card: start on its front
+    if (n === 2) { lb.flip = flipCardEl(shown, { face: lb.face || 0, onFlip: f => { lb.face = f; } }); faces.appendChild(lb.flip); }          // a two-faced card: one face at a time, ⟲ (or F) turns it over
+    else { lb.flip = null; faces.appendChild(cardEl(shown, { face: 0 })); }
     let sx = null, sy = null;
     faces.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
     faces.addEventListener('pointerup', e => { if (sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 55 && Math.abs(dy) < 60) lbGo(dx < 0 ? 1 : -1); });
@@ -1067,6 +1100,7 @@
     if (e.key === 'Escape') lbClose();
     else if (e.key === 'ArrowRight') lbGo(1);
     else if (e.key === 'ArrowLeft') lbGo(-1);
+    else if ((e.key === 'f' || e.key === 'F') && lb.flip) lb.flip.turn();
   });
 
   let lp = null, suppressClick = false;
@@ -1148,6 +1182,10 @@
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
     });
     if (zone === 'hand' || zone === 'command') items.push([inst.card.a.isLand ? '▶ Play land' : '▶ Cast', () => playFromHand(inst, false, m), 'primary']);
+    if ((zone === 'hand' || zone === 'command') && inst.card.layout === 'modal_dfc' && inst.card.a.backCard && !inst.card.a.isLand && !inst.card.a.backCard.a.isLand && inst.card.a.backCard.mana_cost) {          // a two-faced card: either face, named
+      items.push([`▶ Cast the front: ${inst.card.name.split(' // ')[0]}`, () => castFace(inst, 0, m)]);
+      items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
+    }
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary']);
     items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
@@ -1253,7 +1291,7 @@
     hand.replaceChildren(...g.hand.map(i => {
       const e = tableEl(i.card, i.iid, 0, used);
       clearState(e);
-      if (!i.card.a.isLand && G.canPay(G.effectiveCost(g, i), units)) e.classList.add('castable');
+      if (!i.card.a.isLand && (G.canPay(G.effectiveCost(g, i), units) || G.canCastBack(g, i))) e.classList.add('castable');          // a two-faced card: either face
       if (i.card.a.isLand && G.canPlayLand(g)) e.classList.add('castable');
       return e;
     }));
@@ -1522,7 +1560,30 @@
   const DECISIONS = {};
   G.LAB_CHOICES.forEach(c => { DECISIONS[c.id] = Object.assign({}, c, { options: c.options.slice() }); });
   let labApplies = [];
+  // Two-faced cards (Simulation tab): the face each one is goldfished for, saved with the deck's other choices (policy.faces)
+  function renderFaces() {
+    const box = $('#faceBox'), list = $('#faceList'); if (!box || !list) return;
+    const cards = S.deck && G.faceCards ? G.faceCards(S.deck) : [];
+    box.hidden = !cards.length; if (!cards.length) { list.innerHTML = ''; return; }
+    const set = currentPolicy().faces || {}, half = (s, i) => String(s || '').split(' // ')[i] || '';
+    list.innerHTML = '';
+    cards.forEach(c => {
+      const row = h('div', 'face-row'), pics = h('div', 'face-pics');
+      const v = set[c.name] || (c.commander && currentPolicy().mdfcFace === 'back' ? 'back' : 'auto');
+      const fl = flipCardEl(c, { face: v === 'back' ? 1 : 0 }); pics.appendChild(fl); row.flip = fl;          // one card; ⟲ turns it over, and picking a face turns it to that face
+      row.append(pics, h('label', 'face-pick', `<b>${esc(half(c.name, 0))}</b> <span class="hint">// ${esc(c.a.backCard.name || half(c.name, 1))}</span>
+        <select data-card="${esc(c.name)}"><option value="auto"${v === 'auto' ? ' selected' : ''}>Autopilot chooses each time (the better play)</option><option value="front"${v === 'front' ? ' selected' : ''}>Front face: ${esc(half(c.name, 0))} (${esc(half(c.mana_cost, 0))})</option><option value="back"${v === 'back' ? ' selected' : ''}>Back face: ${esc(c.a.backCard.name || half(c.name, 1))} (${esc(c.a.backCard.mana_cost || '')})</option></select>`));
+      list.appendChild(row);
+    });
+    list.querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => {
+      const row = sel.closest('.face-row'); if (row && row.flip && sel.value !== 'auto') row.flip.setFace(sel.value === 'back' ? 1 : 0);
+      const f = Object.assign({}, currentPolicy().faces || {}); if (sel.value === 'auto') delete f[sel.dataset.card]; else f[sel.dataset.card] = sel.value;
+      savePolicy('faces', Object.keys(f).length ? f : null, 'chosen on the Simulation tab');
+      toast(sel.value === 'auto' ? 'The autopilot chooses the face' : `Goldfishing the ${sel.value} face of ${sel.dataset.card.split(' // ')[0]}`);
+    }));
+  }
   function fillLabChoices() {
+    renderFaces();
     const sel = $('#plDecision'), cur = sel.value;
     labApplies = S.deck ? G.labChoices(S.deck) : G.LAB_CHOICES.map(c => Object.assign({}, c, { applies: !!c.always, because: [], missing: [] }));
     const ok = labApplies.filter(c => c.applies), off = labApplies.filter(c => !c.applies);
@@ -1556,9 +1617,10 @@
     const box = $('#plSaved'); if (!S.cards || !S.cards.length) { box.textContent = ''; return; }
     const pol = currentPolicy(), keys = Object.keys(pol);
     if (!keys.length) { box.textContent = 'Nothing learned for this deck yet: the autopilot uses its default choices.'; return; }
-    const names = keys.map(k => { const d = Object.values(DECISIONS).find(x => x.key === k); const o = d && d.options.find(x => x.value === pol[k]); return `${d ? d.label : k} = ${o ? o.name : pol[k]}`; });
+    const names = keys.map(k => { if (k === 'faces') return 'Two-faced cards = ' + Object.keys(pol.faces).map(n => `${n.split(' // ')[0]}: ${pol.faces[n]} face`).join(', ');
+      const d = Object.values(DECISIONS).find(x => x.key === k); const o = d && d.options.find(x => x.value === pol[k]); return `${d ? d.label : k} = ${o ? o.name : pol[k]}`; });
     box.innerHTML = `Saved for this deck: <b>${esc(names.join('; '))}</b> (used by the autopilot, the simulation and mirror matches). <button class="ghost" id="plReset">Reset</button>`;
-    $('#plReset').addEventListener('click', () => { keys.forEach(k => savePolicy(k, null)); toast('Back to the default choices'); });
+    $('#plReset').addEventListener('click', () => { keys.forEach(k => savePolicy(k, null)); renderFaces(); toast('Back to the default choices'); });
   }
   let plWorker = null, plState = null;
   async function runLab() {
@@ -1953,5 +2015,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, viewCard: showLightbox, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

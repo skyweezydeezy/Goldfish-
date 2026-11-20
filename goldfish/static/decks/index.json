@@ -152,7 +152,21 @@
    "colors": "UBR",
    "cards": 100,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "policy": {
+    "comboChase": "eager"
+   },
+   "learned": [
+    {
+     "choice": "Tutors and combo pieces: how hard to chase the combo",
+     "picked": "Eager: fetch the next-to-last piece over ramp",
+     "z": 4.0,
+     "confirmZ": 3.5,
+     "games": 800,
+     "against": "goldfish",
+     "note": "average kill turn 8.78 to 8.60"
+    }
+   ]
   },
   {
    "file": "nights-curfew.txt",
@@ -175,7 +189,21 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "policy": {
+    "comboChase": "eager"
+   },
+   "learned": [
+    {
+     "choice": "Tutors and combo pieces: how hard to chase the combo",
+     "picked": "Eager: fetch the next-to-last piece over ramp",
+     "z": 5.4,
+     "confirmZ": 4.1,
+     "games": 800,
+     "against": "goldfish",
+     "note": "average kill turn 9.68 to 9.45"
+    }
+   ]
   },
   {
    "file": "red-rum-raiders.txt",

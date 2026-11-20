@@ -5285,6 +5285,31 @@
     return ev;
   }
 
+  // Two-faced cards (modal double-faced: Esika // The Prismatic Bridge, Jennifer Walters // She-Hulk): which face is cast is chosen when
+  // it is cast. faceChoice: the deck's setting for this card ('front', 'back' or 'auto', policy.faces[name]); the Policy lab's older
+  // commander-only choice (mdfcFace = 'back') still counts. castBackFace casts the back face (paying its cost, commander tax included).
+  function faceChoice(g, card) {
+    if (!card || card.layout !== 'modal_dfc' || !card.a.backCard) return 'auto';
+    const f = (pol(g, 'faces') || {})[card.name];
+    if (f === 'front' || f === 'back') return f;
+    return card.commander && pol(g, 'mdfcFace') === 'back' ? 'back' : 'auto';
+  }
+  function backFaceCost(g, c) { const k = c.card.a.backCard.a.cost; return c.card.commander ? Object.assign({}, k, { generic: k.generic + 2 * (g.cmdrCasts[c.iid] || 0) }) : k; }
+  function canCastBack(g, c) { const bc = c && c.card.a.backCard; return !!(bc && c.card.layout === 'modal_dfc' && bc.mana_cost && !bc.a.isLand && (g.hand.includes(c) || g.command.includes(c)) && !(c.card.commander && bc.a.isLegendary && g.battlefield.some(p => p.card.name === bc.name)) && canPay(backFaceCost(g, c), allUnits(g))); }
+  function castBackFace(g, c) {
+    if (!canCastBack(g, c)) return null;
+    const bi = { iid: c.iid, card: c.card.a.backCard, front: c.card };
+    const evB = [];
+    const nB = pay(g, backFaceCost(g, c));
+    if (nB == null) return null;
+    evB.push({ type: 'pay', n: nB });
+    if (g.hand.includes(c)) g.hand.splice(g.hand.indexOf(c), 1);
+    else { g.command.splice(g.command.indexOf(c), 1); g.cmdrCasts[c.iid] = (g.cmdrCasts[c.iid] || 0) + 1; if (g.commanderCast == null) g.commanderCast = g.turn; }
+    resolveSpell(g, bi, evB); flushLeaves(g, evB);
+    return evB;
+  }
+  // the two-faced cards of a deck whose back face can be cast as a spell (not a land): the ones a face setting applies to
+  function faceCards(deck) { return (deck.unique || []).filter(c => c.layout === 'modal_dfc' && c.a.backCard && c.a.backCard.mana_cost && !c.a.backCard.a.isLand && !c.a.isLand); }
   function castOne(g) {
     const units = allUnits(g);
     if (!units.length && !(g.library[0] && g.battlefield.some(q => q.card.a.citadel)) && !g.battlefield.some(q => q.card.a.kci) && !(bfInfo(g).aluren || (g.opp && bfInfo(g.opp).aluren))) return null;
@@ -5299,7 +5324,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const c of cands) {
       if (holdForCombo(g, c)) continue;
       if (!lockWorth(g, c)) continue;
-      if (c.card.commander && c.card.layout === 'modal_dfc' && c.card.a.backCard && pol(g, 'mdfcFace') === 'back') continue;          // the lab chose the commander's back face: never cast the front
+      if (faceChoice(g, c.card) === 'back') continue;          // this card is set to its back face (or the lab chose the commander's back face): never cast the front
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick) - (c.card.a.mv > 0 ? 0 : 0)));
       if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X
       c.fromTop = g.library[0] === c; c.viaCitadel = c.fromTop && citadelOk(g) && !(topCastOk(g) && canPay(effectiveCost(g, c), units)); c.retracing = !!(g.graveyard.includes(c) && retraceOk(g, c) && !(c.card.a.yardCastIfZombie || c.zulCast === g.turn || c.card.a.escape || (g.wrennEmblem && c.card.a.isPermanent)));
@@ -5322,19 +5347,14 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const c of g.hand.concat(g.command)) {
       const bc = c.card.a.backCard;
       if (!bc || c.card.layout !== 'modal_dfc' || !bc.a.isPermanent || !bc.mana_cost) continue;
+      if (faceChoice(g, c.card) === 'front') continue;                                                   // this card is set to its front face
       if (c.card.commander && g.battlefield.some(p => p.card.name === bc.name)) continue;
       const v = backValue(bc);
       if (canPay(backCost(c), units) && v > backScore) { backCast = c; backScore = v; }
     }
-    if (backCast && backScore > bestScore) {
-      const bi = { iid: backCast.iid, card: backCast.card.a.backCard, front: backCast.card };
-      const evB = [];
-      const nB = pay(g, backCost(backCast));
-      if (nB != null) {
-        evB.push({ type: 'pay', n: nB });
-        if (g.hand.includes(backCast)) g.hand.splice(g.hand.indexOf(backCast), 1);
-        else { g.command.splice(g.command.indexOf(backCast), 1); g.cmdrCasts[backCast.iid] = (g.cmdrCasts[backCast.iid] || 0) + 1; if (g.commanderCast == null) g.commanderCast = g.turn; }
-        resolveSpell(g, bi, evB); flushLeaves(g, evB);
+    if (backCast && backScore > bestScore || backCast && faceChoice(g, backCast.card) === 'back' && !best) {
+      const evB = castBackFace(g, backCast);
+      if (evB) {
         if (!g.dry) while (canPlayLand(g)) { const le = playLand(g); if (!le) break; evB.push(le, ...le.ev); }
         return evB;
       }
@@ -6140,7 +6160,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { faces: null, mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -7683,7 +7703,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    landcycleCard, transmuteCard, cycleLands, transmuteTargets,
+    landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

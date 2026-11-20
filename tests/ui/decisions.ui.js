@@ -171,6 +171,9 @@ const shot = process.env.VERSUS_SHOTS;
   }
   const stepsSeen = await p.$$eval('#tab-duel .vs-log .vs-line.b[data-step]', ls => [...new Set(ls.map(l => l.dataset.step))]);
   check('the opponent\'s turn is logged step by step', stepsSeen.includes('draw') && stepsSeen.length >= 2, stepsSeen.join(','));
+  const walk = await p.$$eval('#tab-duel .vs-log .vs-line.b[data-step]', ls => { const t = ls[ls.length - 1] && ls[ls.length - 1].querySelector('.vs-t').textContent.match(/turn \d+/)[0]; return ls.filter(l => l.querySelector('.vs-t').textContent.includes(t + ' ')).map(l => l.dataset.step + (l.classList.contains('quiet') ? '(quiet)' : '')); });
+  const walkOrder = walk.map(x => x.replace('(quiet)', '')).filter((x, k, l) => l[k - 1] !== x);
+  check('every turn goes through every step, logged in order even when nothing happens: untap, upkeep, draw, main, combat, second main, end', walkOrder.join(',') === 'untap,upkeep,draw,main1,combat,main2,end' && walk.some(x => /quiet/.test(x)), walk.join(' '));
 
   // ---- the cleanup step: more than seven cards at the end of your turn
   if (!(await state('duel')).over && (await state('duel')).phase === 'main') {
@@ -282,6 +285,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForFunction(() => !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
   const cast = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], h = me.battlefield.find(q => /^Hakbal/.test(q.card.name)); return { ok: !!h, sick: !!(h && h.sick), q: !!document.querySelector('.ch-sheet') }; });
   check('Hakbal is cast from the command zone in the first main phase (summoning sick), and nothing explores yet', hk && cast.ok && cast.sick && !cast.q, JSON.stringify(cast));
+  await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], k = me.library.findIndex(i => i.card.name === 'Force of Will'); if (k > 0) me.library.unshift(me.library.splice(k, 1)[0]); });          // on top right before combat
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
   await p.waitForSelector('.ch-sheet.explore', { timeout: 20000 });
   const at = await p.evaluate(() => ({ step: window.__isfVersus.duel.game.step, lit: [...document.querySelectorAll('#tab-duel .vs-steps i.on')].map(i => i.textContent).join() }));
@@ -318,6 +322,63 @@ const shot = process.env.VERSUS_SHOTS;
   await p.click('.ch-sheet .ch-auto');
   await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
   check('..."Let the autopilot decide": Drift of Phantasms is in the graveyard and a three-drop is in your hand', await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return me.graveyard.some(i => i.card.name === 'Drift of Phantasms') && me.hand.some(i => i.card.a.mv === 3 && !i.card.a.isLand); }));
+  // ================= a two-faced card: Esika, God of the Tree // The Prismatic Bridge =================
+  await loadDeck('frodo', 'Esika, God of the Tree // The Prismatic Bridge', '1 Esika, God of the Tree // The Prismatic Bridge\n1 Island\n1 Mountain');
+  // the Simulation tab: the face Esika is goldfished for
+  await p.click('[data-tab=sim]');
+  const fb = await p.evaluate(() => { const b = document.querySelector('#faceBox'); return { shown: b && !b.hidden, rows: [...document.querySelectorAll('#faceList .face-row')].map(r => r.textContent.slice(0, 80)), opts: [...document.querySelectorAll('#faceList select option')].map(o => o.textContent) }; });
+  const esel = '#faceList select[data-card="Esika, God of the Tree // The Prismatic Bridge"]';
+  const eo = await p.$$eval(esel + ' option', os => os.map(o => o.textContent));
+  check('the Simulation tab lists every two-faced card (Esika and Jennifer Walters here) with Autopilot / Front face / Back face', fb.shown && fb.rows.length === 2 && fb.rows.some(r => /Esika, God of the Tree/.test(r)) && eo.length === 3 && /^Front face: Esika/.test(eo[1]) && /^Back face: The Prismatic Bridge/.test(eo[2]), eo.join(' | '));
+  await p.selectOption(esel, 'back');
+  check('...choosing the back face is saved with the deck\'s choices', await p.evaluate(() => { const t = document.querySelector('#plSaved').textContent; return /Two-faced cards = Esika, God of the Tree: back face/.test(t); }), await p.$eval('#plSaved', e => e.textContent.slice(0, 160)));
+  // the Goldfish Table: clicking Esika with both faces affordable asks which face; the menu names both faces
+  await p.click('[data-tab=table]');
+  await p.waitForFunction(() => window.__isf.game, null, { timeout: 30000 });
+  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; g.hand = g.hand.filter(i => !/^Esika/.test(i.card.name)); const k = g.library.findIndex(i => /^Esika/.test(i.card.name)); g.hand.push(g.library.splice(k, 1)[0]);
+    ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Forest'].forEach(n => { const c = g.deck.unique.find(x => x.name === n); const q = G.enter(g, { iid: g.nextIid++, card: c }, {}); q.tapped = false; }); });
+  await p.click('#zLibrary .card-back'); await p.waitForTimeout(600);
+  const eiid = await p.evaluate(() => window.__isf.game.hand.find(i => /^Esika/.test(i.card.name)).iid);
+  await p.evaluate(id => document.querySelector('#zHand .mtg[data-iid="' + id + '"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })), eiid);
+  const menu = await p.$$eval('#ctxMenu button', bs => bs.map(b => b.textContent));
+  check('the Goldfish Table\'s card menu offers both faces by name', menu.some(t => /Cast the front: Esika, God of the Tree/.test(t)) && menu.some(t => /Cast the back: The Prismatic Bridge/.test(t)), menu.join(' | '));
+  await p.click('#ctxMenu button >> text="▶ Cast"');          // the plain Cast: the face is asked
+  await p.waitForSelector('.ch-sheet.face', { timeout: 10000 });
+  sh = await sheet();
+  const faceSheet = () => p.evaluate(() => { const s = document.querySelector('.ch-sheet.face'), f = s && s.querySelector('.flip'); return s && { title: s.querySelector('.ch-title').textContent, one: s.querySelectorAll('.flip').length === 1 && !s.querySelector('.ch-opt'), flipped: !!(f && f.classList.contains('flipped')), btn: !!(f && f.querySelector('.flip-btn')), info: (s.querySelector('.ch-faceinfo b') || {}).textContent, ok: s.querySelector('.ch-ok').textContent }; });
+  let fs1 = await faceSheet();
+  check('casting Esika on the Goldfish Table asks which face: one card (not two side by side) with a ⟲ button, turned to the back face set for this deck', !!fs1 && /^Esika, God of the Tree: which face do you cast\?/.test(fs1.title) && fs1.one && fs1.btn && fs1.flipped && fs1.info === 'The Prismatic Bridge' && fs1.ok === 'Cast The Prismatic Bridge', JSON.stringify(fs1));
+  await p.click('.ch-sheet .flip-btn'); await p.waitForTimeout(700);
+  const fs2 = await faceSheet();
+  check('...⟲ swings the card around to the front face, and Submit now casts Esika', !fs2.flipped && fs2.info === 'Esika, God of the Tree' && fs2.ok === 'Cast Esika, God of the Tree', JSON.stringify(fs2));
+  await p.click('.ch-sheet .flip-btn'); await p.waitForTimeout(700);
+  if (shot) await p.screenshot({ path: path.join(shot, 'choice-face.png') });
+  await p.click('.ch-sheet .ch-ok');
+  await p.waitForTimeout(800);
+  const tb = await p.evaluate(() => { const g = window.__isf.game; return { bridge: g.battlefield.some(q => q.card.name === 'The Prismatic Bridge'), esika: g.battlefield.some(q => q.card.layout === 'modal_dfc' && /^Esika/.test(q.card.name)) }; });
+  check('...Submit casts The Prismatic Bridge (not Esika)', tb.bridge && !tb.esika, JSON.stringify(tb));
+  // the card viewer: a two-faced card is one card with ⟲, not two pictures side by side
+  await p.evaluate(() => { const c = window.__isf.cards.find(x => /^Esika/.test(x.name)), A = window.__isfApi; A.viewCard(window.__isf.deck.unique.find(x => x.name === c.name)); });
+  await p.waitForSelector('#lightbox.show .lb-faces .flip', { timeout: 10000 });
+  const lv1 = await p.evaluate(() => ({ cards: document.querySelectorAll('#lightbox .lb-faces > .mtg, #lightbox .lb-faces > .flip').length, flipped: document.querySelector('#lightbox .flip').classList.contains('flipped') }));
+  await p.click('#lightbox .flip-btn'); await p.waitForTimeout(700);
+  const lv2 = await p.evaluate(() => document.querySelector('#lightbox .flip').classList.contains('flipped'));
+  await p.keyboard.press('f'); await p.waitForTimeout(700);
+  const lv3 = await p.evaluate(() => document.querySelector('#lightbox .flip').classList.contains('flipped'));
+  check('the card viewer shows Esika as one card; ⟲ (or the F key) turns it over to The Prismatic Bridge and back', lv1.cards === 1 && !lv1.flipped && lv2 && !lv3, JSON.stringify({ lv1, lv2, lv3 }));
+  await p.keyboard.press('Escape');
+  // the 1v1 table: the same question; this time cast the front face
+  await start('duel');
+  await arrange('duel', { clear: true, hand: ['Esika, God of the Tree // The Prismatic Bridge'], lands: [['Plains', 1], ['Island', 1], ['Swamp', 1], ['Mountain', 1], ['Forest', 2]] });
+  await clickHand('duel', 'Esika, God of the Tree // The Prismatic Bridge');
+  await p.waitForSelector('.ch-sheet.face', { timeout: 10000 });
+  if (await p.evaluate(() => document.querySelector('.ch-sheet.face .flip').classList.contains('flipped'))) { await p.click('.ch-sheet .flip-btn'); await p.waitForTimeout(700); }          // turn it to the front
+  await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
+  const dv = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return { esika: me.battlefield.some(q => q.card.layout === 'modal_dfc' && /^Esika/.test(q.card.name)), bridge: me.battlefield.some(q => q.card.name === 'The Prismatic Bridge') }; });
+  check('in a 1v1 game the same question comes up; choosing the front casts Esika', dv.esika && !dv.bridge, JSON.stringify(dv));
+  await p.click('[data-tab=sim]'); await p.selectOption(esel, 'auto');          // leave the deck's choices as they were
+
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 
   await b.close();

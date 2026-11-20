@@ -1,0 +1,145 @@
+// Rules batch 14: the next 25 most played cards that still had unread lines, and spree as a real additional cost (each mode is paid for;
+// before, every mode of a spree spell resolved for the base cost). Every card comes from the set database; each rule is checked by what it does.
+const fs = require('fs'), path = require('path');
+const ROOT = path.join(__dirname, '..', '..');
+const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js'));
+const D = path.join(ROOT, 'goldfish', 'static', 'data', 'sets');
+const idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8')), store = {};
+idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
+const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => (x.name === n || x.name.split(' // ')[0] === n) && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
+const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
+const NAMES = ['Ba Sing Se', 'Fire Nation Palace', 'Valakut Exploration', "Smuggler's Surprise", 'Siege-Gang Commander', "Brass's Tunnel-Grinder", 'March of Swirling Mist', 'Chameleon, Master of Disguise', 'Chainer, Nightmare Adept', "Illusionist's Bracers",
+  'Grenzo, Havoc Raiser', 'Defiler of Vigor', 'Metalwork Colossus', 'The Skullspore Nexus', 'Run Away Together', "Teval's Judgment", 'Lively Dirge', 'Horizon Explorer', 'Twinning Staff', 'Druid Class', 'Extraplanar Lens', 'Runaway Steam-Kin',
+  'Allosaurus Shepherd', 'Mirror Box', 'Flame of Anor',
+  // the other spree cards: spree is now a real additional cost for each mode
+  'Final Showdown', 'Requisition Raid', 'Three Steps Ahead', 'Insatiable Avarice', 'Great Train Heist'];
+const HELPERS = ['Grave Titan', 'Llanowar Elves', 'Forest', 'Island', 'Mountain', 'Swamp', 'Sol Ring', 'Opt', 'Lightning Bolt', 'Arcane Signet', 'Shivan Dragon', 'Goblin Engineer', 'Elvish Mystic', 'Archaeomancer', 'Rhystic Study'];
+const all = NAMES.concat(HELPERS);
+const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n)));
+const deck = G.buildDeck(cards, base.tokens);
+const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
+let pass = 0, fail = 0;
+const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+const by = n => { const c = deck.unique.find(c => c.name === n || c.name.split(' // ')[0] === n); if (!c) throw new Error('card not in the test deck: ' + n); return c; };
+const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.hand = []; g.battlefield = []; g.graveyard = []; g.exile = []; g.command = []; g.library = g.library.slice(0, 40); return g; };
+const mirror = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return { g, b }; };
+const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
+const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
+const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
+const total = c => c.generic + c.pips.length;
+const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t, colors: colors || [], subtypes: [name], keywords: [], artifact: false, name });
+const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
+
+{ const bad = []; for (const n of NAMES) { const c = by(n); for (const x of [c].concat(c.a.backCard ? [c.a.backCard] : [])) for (const v of x.a.coverage) if (v.status === 'ignored') bad.push(n + ': ' + v.text.slice(0, 50)); }
+  check('every rules line of these cards is read', bad.length === 0, bad.slice(0, 4).join(' || ')); }
+const names = g => g.battlefield.map(p => p.card.name).join(', ');
+const lab = (n, re) => { const c = by(n); return [c].concat(c.a.backCard ? [c.a.backCard] : []).flatMap(x => x.a.coverage).find(v => re.test(v.text)); };
+const treasure = (g, n) => G.createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, n || 1, [], null);
+const count = (g, n) => g.battlefield.filter(p => p.card.name === n).length;
+
+// ---------- spree ----------
+T('spree costs', () => { const g = bare(); const ld = inst(g, 'Lively Dirge'); g.hand = [ld]; g.graveyard = [inst(g, 'Llanowar Elves'), inst(g, 'Elvish Mystic')]; mana(g, 4, 'B');
+  check('Lively Dirge: the cost is {1}{B} plus the mode you take (the graveyard mode: {2} more)', total(G.effectiveCost(g, ld)) === 4 && ld._spree === 2, `${total(G.effectiveCost(g, ld))} mana, mode ${ld._spree}`);
+  G.castOne(g); check('...paid: up to two creature cards with total mana value 4 or less return to the battlefield', count(g, 'Llanowar Elves') === 1 && count(g, 'Elvish Mystic') === 1 && g.floating.length === 0, names(g));
+  const g2 = bare(); const ld2 = inst(g2, 'Lively Dirge'); g2.hand = [ld2]; g2.graveyard = [inst(g2, 'Llanowar Elves')]; mana(g2, 3, 'B'); G.castOne(g2); check('...it cannot be cast for less than a mode costs', g2.hand.includes(ld2) && !count(g2, 'Llanowar Elves'), names(g2));
+  const g3 = bare(); g3.library = g3.library.slice(0, 20); const ia = inst(g3, 'Insatiable Avarice'); g3.hand = [ia]; mana(g3, 5, 'B'); const l0 = g3.life, lib = g3.library.length; const ev = G.castOne(g3) || [];
+  check('Insatiable Avarice with five mana: both modes are paid for (search to the top, then draw three and lose 3 life)', g3.life === l0 - 3 && g3.floating.length === 0 && ev.some(e => e.type === 'note' && /^Spree: /.test(e.text) && /;/.test(e.text)), `${l0 - g3.life} life, ${g3.floating.length} mana left`);
+  const g4 = bare(); g4.library = g4.library.slice(0, 20); const ia4 = inst(g4, 'Insatiable Avarice'); g4.hand = [ia4]; mana(g4, 3, 'B'); const l4 = g4.life, lib4 = g4.library.length; G.castOne(g4); check('...with three mana, only the mode worth most (draw three)', g4.floating.length === 0 && g4.life === l4 - 3 && lib4 - g4.library.length === 3, `${l4 - g4.life} life, ${lib4 - g4.library.length} drawn`); });
+T("smuggler's surprise", () => { const g = bare(); const ss = inst(g, "Smuggler's Surprise"), t = inst(g, 'Grave Titan'), sd = inst(g, 'Shivan Dragon'); g.hand = [ss, t, sd]; mana(g, 6, 'G'); G.castPhase(g);
+  check("Smuggler's Surprise for {4}{G} more: two creature cards go from your hand onto the battlefield", count(g, 'Grave Titan') === 1 && count(g, 'Shivan Dragon') === 1 && g.graveyard.includes(ss), names(g));
+  const g2 = bare(); const s2 = inst(g2, "Smuggler's Surprise"); g2.hand = [s2]; g2.library = [inst(g2, 'Forest'), inst(g2, 'Opt'), inst(g2, 'Grave Titan'), inst(g2, 'Sol Ring'), inst(g2, 'Island')]; mana(g2, 3, 'G'); G.castOne(g2);
+  check('...for {2} more: mill four, a creature and a land among them go to your hand', g2.hand.some(i => i.card.name === 'Grave Titan') && (g2.hand.some(i => i.card.name === 'Forest') || count(g2, 'Forest') === 1) && g2.graveyard.some(i => i.card.name === 'Opt') && g2.graveyard.some(i => i.card.name === 'Sol Ring') && g2.library.length === 1, g2.hand.map(i => i.card.name).join()); });
+T('other spree cards', () => { const g = bare(); g.library = g.library.slice(0, 20); const ts = inst(g, 'Three Steps Ahead'); g.hand = [ts]; mana(g, 3, 'U'); const lib = g.library.length; G.castOne(g);
+  check('Three Steps Ahead for {2} more: draw two cards, then discard one (it used to do everything for {U})', lib - g.library.length === 2 && g.graveyard.length === 2 && g.floating.length === 0, `${lib - g.library.length} drawn, ${g.graveyard.length} in the graveyard`);
+  const g2 = bare(); const gh = inst(g2, 'Great Train Heist'); g2.hand = [gh]; putOn(g2, 'Shivan Dragon'); const hz = putOn(g2, 'Grave Titan'); g2.battlefield.filter(p => p.card.name === 'Zombie').forEach(p => G.removePerm(g2, p)); mana(g2, 2, 'R'); G.castOne(g2); G.combat(g2);
+  check('Great Train Heist for {R} more: a tapped Treasure for each creature that deals combat damage this turn', g2.battlefield.filter(p => p.card.name === 'Treasure' && p.tapped).length === 2, names(g2));
+  const { g: a, b } = mirror(); const fs2 = inst(a, 'Final Showdown'); a.hand = [fs2]; putOn(b, 'Grave Titan'); putOn(b, 'Shivan Dragon'); mana(a, 6, 'W'); G.castOne(a);
+  check('Final Showdown for {3}{W}{W} more destroys all creatures when the opponent loses more', !b.battlefield.some(G.isCreaturePerm) && a.graveyard.includes(fs2), names(b));
+  const g3 = bare(); const fs3 = inst(g3, 'Final Showdown'); g3.hand = [fs3]; putOn(g3, 'Grave Titan'); mana(g3, 6, 'W'); G.castOne(g3); check('...and is not cast against a goldfish', g3.hand.includes(fs3) && count(g3, 'Grave Titan') === 1);
+  const g4 = bare(); const rr = inst(g4, 'Requisition Raid'); g4.hand = [rr]; const t4 = putOn(g4, 'Grave Titan'); mana(g4, 2, 'W'); G.castOne(g4); check('Requisition Raid for {1} more: a +1/+1 counter on each of your creatures', t4.counters === 1, t4.counters);
+  const cm = lab('Three Steps Ahead', /Counter target spell/); check('a mode that needs an opponent is labelled so', cm.tag === 'opp' && cm.status === 'neutral'); });
+
+// ---------- batch 14 ----------
+T('ba sing se', () => { const g = bare(); const bs = putOn(g, 'Ba Sing Se'); const f = putOn(g, 'Forest'); mana(g, 3, 'G'); G.useAbilities(g); const l = g.battlefield.find(p => p.earthbent);
+  check('Ba Sing Se: {2}{G}, tap: earthbend 2, a land becomes a 0/0 creature with haste and two +1/+1 counters', !!l && l.counters === 2 && G.isCreaturePerm(l) && G.hasKw(g, l, 'haste') && bs.tapped, names(g));
+  const pl = lab('Fire Nation Palace', /firebending/); check('Fire Nation Palace: mana that lasts only through combat is labelled "No solo effect"', pl.tag === 'solo'); });
+T('valakut exploration', () => { const g = bare(); const ve = putOn(g, 'Valakut Exploration'); g.library = [inst(g, 'Shivan Dragon'), inst(g, 'Opt')].concat(g.library.slice(0, 5)); putOn(g, 'Forest'); const x = g.hand.find(i => i.card.name === 'Shivan Dragon');
+  check('Valakut Exploration: landfall exiles the top card and you may play it', !!x && x.valakutEx === true, g.hand.map(i => i.card.name).join()); const d0 = g.damage; G.endTurn(g);
+  check('...not played by your end step: it goes to the graveyard and each opponent takes 1 damage', g.graveyard.includes(x) && !g.hand.includes(x) && g.damage === d0 + 1, g.damage - d0);
+  const g2 = bare(); putOn(g2, 'Valakut Exploration'); g2.library = [inst(g2, 'Sol Ring'), inst(g2, 'Opt')].concat(g2.library.slice(0, 5)); putOn(g2, 'Forest'); mana(g2, 1); G.castOne(g2); const d1 = g2.damage; G.endTurn(g2);
+  check('...a card you did play deals nothing', count(g2, 'Sol Ring') === 1 && g2.damage === d1, names(g2)); });
+T('siege-gang', () => { const g = bare(); const sg = putOn(g, 'Siege-Gang Commander'); check('Siege-Gang Commander enters with three Goblins', count(g, 'Goblin') === 3);
+  mana(g, 8, 'R'); G.useAbilities(g); check('...the Goblins stay while sacrificing them would not end the game', count(g, 'Goblin') === 3 && g.floating.length === 8);
+  g.damage = g.opts.oppLife - 6; G.useAbilities(g); check('...{1}{R} and a Goblin each: three Goblins deal the last 6 damage', g.killTurn != null && count(g, 'Goblin') === 0, `${g.damage} damage, ${count(g, 'Goblin')} goblins`); });
+T('tecutlan', () => { const mk = () => { const g = bare(); const tg = putOn(g, "Brass's Tunnel-Grinder"); tg.card = by("Brass's Tunnel-Grinder").a.backCard; tg.asLand = true; tg.produce = tg.card.a.produce; G.touch(g); g.hand = [inst(g, 'Sol Ring')]; g.library = [inst(g, 'Forest'), inst(g, 'Llanowar Elves'), inst(g, 'Opt')]; return { g, tg }; };
+  const { g } = mk(); const ev = G.castOne(g) || [];
+  check('Tecutlan: a permanent spell cast with its mana discovers that spell\'s mana value (Llanowar Elves is cast free)', count(g, 'Sol Ring') === 1 && count(g, 'Llanowar Elves') === 1 && ev.some(e => e.type === 'note' && /discover 1/.test(e.text)), names(g));
+  const { g: g2, tg: tg2 } = mk(); tg2.tapped = true; mana(g2, 1); G.castOne(g2); check('...not when other mana paid for it', count(g2, 'Sol Ring') === 1 && count(g2, 'Llanowar Elves') === 0, names(g2)); });
+T('mayhem', () => { const g = bare(); putOn(g, 'Shivan Dragon'); const ch = inst(g, 'Chameleon, Master of Disguise'); g.hand = [ch]; mana(g, 3, 'U'); G.castOne(g); check('Chameleon cannot be cast from your hand for three mana (it costs {3}{U})', g.hand.includes(ch));
+  G.discardWorst(g, []); check('...discarded this turn, it can be cast from your graveyard for its mayhem cost {2}{U}', g.graveyard.includes(ch) && ch.mayhemTurn === g.turn && total(G.effectiveCost(g, ch)) === 3, total(G.effectiveCost(g, ch)));
+  G.castOne(g); check('...and it is (entering as a copy of your creature)', g.battlefield.length === 2 && !g.graveyard.includes(ch) && g.floating.length === 0, names(g));
+  const g2 = bare(); putOn(g2, 'Shivan Dragon'); const c2 = inst(g2, 'Chameleon, Master of Disguise'); g2.hand = [c2]; G.discardWorst(g2, []); G.endTurn(g2); G.beginTurn(g2); mana(g2, 3, 'U'); G.castOne(g2); check('...only on the turn it was discarded', g2.graveyard.includes(c2)); });
+T('chainer', () => { const g = bare(); const ch = putOn(g, 'Chainer, Nightmare Adept'); const t = inst(g, 'Grave Titan'), f = inst(g, 'Forest'); g.graveyard = [t]; g.hand = [f]; for (let i = 0; i < 6; i++) putOn(g, 'Swamp');
+  G.useAbilities(g); check('Chainer: discard a card to cast a creature spell from your graveyard this turn', g.graveyard.includes(f) && t.chainerCast === g.turn && ch.chainTurn === g.turn, g.graveyard.map(i => i.card.name).join());
+  G.castOne(g); const tp = g.battlefield.find(p => p.card.name === 'Grave Titan'); check('...it is cast from the graveyard, and it has haste because it was not cast from your hand', !!tp && tp.sick === false && !g.graveyard.includes(t), names(g));
+  const g2 = bare(); putOn(g2, 'Chainer, Nightmare Adept'); const t2 = inst(g2, 'Grave Titan'); g2.hand = [t2]; mana(g2, 6, 'B'); G.castOne(g2); const tp2 = g2.battlefield.find(p => p.card.name === 'Grave Titan'); check('...a creature cast from your hand has no haste', !!tp2 && tp2.sick === true);
+  const zs = g2.battlefield.filter(p => p.card.name === 'Zombie'); check('...tokens do not get it either', zs.length === 2 && zs.every(z => z.sick === true)); });
+T('bracers', () => { const g = bare(); g.library = g.library.slice(0, 20); const ge = putOn(g, 'Goblin Engineer'); const br = putOn(g, "Illusionist's Bracers"); br.attachedTo = ge.iid; G.touch(g);
+  const a = { cost: { generic: 0, pips: [], x: 0 }, tap: true, fx: [{ type: 'draw', n: 1 }], text: 'test' }; ge.card = Object.assign({}, ge.card, { a: Object.assign({}, ge.card.a, { activated: [a], engineer: null }) }); G.touch(g); const h0 = g.hand.length; for (let i = 0; i < 2; i++) G.useAbilities(g);
+  check("Illusionist's Bracers: an ability of the equipped creature is copied (one activation, two cards)", g.hand.length - h0 === 2, g.hand.length - h0); });
+T('grenzo', () => { const g = bare(); g.library = [inst(g, 'Sol Ring'), inst(g, 'Opt')].concat(g.library.slice(0, 5)); putOn(g, 'Grenzo, Havoc Raiser'); G.combat(g);
+  check('Grenzo: combat damage exiles a top card that you may cast this turn (your own library stands in against a goldfish)', g.hand.some(i => i.card.name === 'Sol Ring' && i.temp === g.turn), g.hand.map(i => i.card.name).join());
+  const v = lab('Grenzo, Havoc Raiser', /Exile the top card/); check('...labelled as approximated (once each combat)', v.tag === 'approx'); });
+T('defiler', () => { const g = bare(); putOn(g, 'Defiler of Vigor'); const el = inst(g, 'Llanowar Elves'), sr = inst(g, 'Sol Ring'); g.hand = [el, sr]; const l0 = g.life;
+  check('Defiler of Vigor: a green permanent spell costs {G} less for 2 life', total(G.effectiveCost(g, el)) === 0 && el._defiler === 1 && total(G.effectiveCost(g, sr)) === 1, total(G.effectiveCost(g, el)));
+  g.battlefield.push(...[]); const p = putOn(g, 'Forest'); G.castPhase(g); const e = g.battlefield.find(q => q.card.name === 'Llanowar Elves');
+  check('...the life is paid when it is cast, and the Defiler puts a +1/+1 counter on each creature', !!e && g.life === l0 - 2 && g.battlefield.find(q => q.card.name === 'Defiler of Vigor').counters === 1, `${l0 - g.life} life`);
+  const g2 = bare(); putOn(g2, 'Defiler of Vigor'); g2.life = 15; const e2 = inst(g2, 'Llanowar Elves'); g2.hand = [e2]; check('...not when it would take you below 15 life', total(G.effectiveCost(g2, e2)) === 1); });
+T('colossus', () => { const g = bare(); const mc = inst(g, 'Metalwork Colossus'); g.graveyard = [mc]; treasure(g, 4); mana(g, 11);
+  G.useAbilities(g); check('Metalwork Colossus: two spare artifact tokens return it from your graveyard to your hand when you can then cast it', g.hand.includes(mc) && count(g, 'Treasure') === 2, names(g));
+  const g2 = bare(); const m2 = inst(g2, 'Metalwork Colossus'); g2.graveyard = [m2]; treasure(g2, 2); G.useAbilities(g2); check('...not when it could not be cast', g2.graveyard.includes(m2)); });
+T('skullspore', () => { const g = bare(); const nx = putOn(g, 'The Skullspore Nexus'); const t = putOn(g, 'Grave Titan'), e = putOn(g, 'Llanowar Elves'); G.leavePerm(g, t, []); G.leavePerm(g, e, []); G.flushLeaves(g, []); const fd = g.battlefield.filter(p => p.card.name === 'Fungus Dinosaur');
+  check('The Skullspore Nexus: nontoken creatures that die together make one Fungus Dinosaur with their total power', fd.length === 1 && G.powerOf(g, fd[0]) === 7 && G.toughnessOf(g, fd[0]) === 7, fd.map(p => G.powerOf(g, p)).join());
+  G.leavePerm(g, g.battlefield.find(p => p.card.name === 'Zombie'), []); G.flushLeaves(g, []); check('...not for a token', count(g, 'Fungus Dinosaur') === 1);
+  fd[0].sick = false; mana(g, 2); G.useAbilities(g); check('...{2}, tap: your best attacker has double power this turn', nx.tapped && G.powerOf(g, fd[0]) === 14, G.powerOf(g, fd[0])); });
+T('run away together', () => { const { g: a, b } = mirror(); const bt = putOn(b, 'Grave Titan'); const el = putOn(a, 'Llanowar Elves'); putOn(a, 'Shivan Dragon'); G.applyEffects(a, by('Run Away Together').a.spellFx, null, [], null);
+  check('Run Away Together (in a match): an opposing creature and one of yours return to their owners\' hands', !b.battlefield.includes(bt) && b.hand.some(i => i.card.name === 'Grave Titan') && a.hand.some(i => i.card.name === 'Llanowar Elves') && count(a, 'Shivan Dragon') === 1, names(a));
+  const v = lab('Run Away Together', /different players/); check('...labelled for matches', v.tag === 'opp' && v.mirror === true); });
+T('teval', () => { const g = bare(); g.library = g.library.slice(0, 20); const tj = putOn(g, "Teval's Judgment"); const cs = ['Opt', 'Sol Ring', 'Forest', 'Island'].map(n => inst(g, n)); g.graveyard = cs.slice(); G.castPhase(g); const h0 = g.hand.length;
+  const leave = () => { g.exile.push(g.graveyard.shift()); G.castPhase(g); };
+  leave(); check("Teval's Judgment: a card leaves your graveyard, draw a card", g.hand.length + count(g, 'Forest') + count(g, 'Island') >= h0 + 1 && tj.tevalModes.draw === true, JSON.stringify(tj.tevalModes));
+  leave(); check('...the second time this turn: a Treasure', tj.tevalModes.treasure === true && (count(g, 'Treasure') === 1 || g.spentThisTurn > 0), names(g));
+  leave(); check('...the third: a 2/2 Zombie Druid', count(g, 'Zombie Druid') === 1, names(g));
+  leave(); check('...and nothing a fourth time', count(g, 'Zombie Druid') === 1 && tj.tevalModes.zombie === true); });
+T('horizon explorer', () => { const g = bare(); putOn(g, 'Horizon Explorer'); putOn(g, 'Llanowar Elves'); G.combat(g); const ln = g.battlefield.find(p => p.card.name === 'Lander');
+  check('Horizon Explorer: one Lander token when you attack (not one for each attacker)', count(g, 'Lander') === 1, names(g)); g.library = [inst(g, 'Opt'), inst(g, 'Forest')]; mana(g, 2); g.combatDone = true; G.useAbilities(g);
+  const f = g.battlefield.find(p => p.card.name === 'Forest'); check('...the Lander: {2}, tap, sacrifice for a tapped basic land', !!f && f.tapped && count(g, 'Lander') === 0, names(g)); });
+T('twinning staff', () => { const g = bare(); g.lastCast = inst(g, 'Lightning Bolt'); putOn(g, 'Twinning Staff'); const d0 = g.damage; G.applyEffects(g, [{ type: 'copyNext', n: 1, times: 1 }], null, [], null);
+  const bolt = inst(g, 'Lightning Bolt'); g.hand = [bolt]; mana(g, 1, 'R'); G.castOne(g); check('Twinning Staff: a spell that is copied once is copied twice (three Lightning Bolts)', g.damage - d0 === 9 || g.damage - d0 === 6, g.damage - d0);
+  const g2 = bare(); g2.library = g2.library.slice(0, 20); const st = putOn(g2, 'Twinning Staff'); const ia = inst(g2, 'Insatiable Avarice'); g2.hand = [ia]; mana(g2, 3, 'B'); mana(g2, 9); const l0 = g2.life; G.castOne(g2);
+  check('...{7}, tap copies a spell worth it: the copy is doubled too (draw three, three times)', st.tapped && l0 - g2.life === 9, `${l0 - g2.life} life lost`); });
+T('druid class', () => { const g = bare(); const dc = putOn(g, 'Druid Class'); for (let i = 0; i < 4; i++) putOn(g, 'Forest'); mana(g, 3, 'G'); for (let i = 0; i < 3 && (dc.level || 1) < 2; i++) G.useAbilities(g); mana(g, 5, 'G'); for (let i = 0; i < 3 && dc.level < 3; i++) G.useAbilities(g);
+  const l = g.battlefield.find(p => p.asLand && p.animated); check('Druid Class at level 3: a land becomes a creature with haste, as big as your land count', dc.level === 3 && !!l && G.powerOf(g, l) === 4 && G.toughnessOf(g, l) === 4 && G.hasKw(g, l, 'haste'), l ? G.powerOf(g, l) : 'no land');
+  if (l) { putOn(g, 'Forest'); check('...and it grows with each land', G.powerOf(g, l) === 5); G.endTurn(g); check('...it stays a creature', G.isCreaturePerm(l)); } });
+T('extraplanar lens', () => { const g = bare(); for (let i = 0; i < 5; i++) putOn(g, 'Forest'); putOn(g, 'Island'); const m0 = G.manaUnits(g).length; const el = putOn(g, 'Extraplanar Lens');
+  check('Extraplanar Lens exiles one of your five Forests: the other four make two mana each', el.lensName === 'Forest' && count(g, 'Forest') === 4 && G.manaUnits(g).length === 9 && m0 === 6, `${G.manaUnits(g).length} mana, was ${m0}`);
+  const g2 = bare(); for (let i = 0; i < 2; i++) putOn(g2, 'Forest'); const e2 = putOn(g2, 'Extraplanar Lens'); check('...with fewer than four lands of one name it exiles nothing', !e2.lensName && count(g2, 'Forest') === 2); });
+T('steam-kin', () => { const g = bare(); const sk = putOn(g, 'Runaway Steam-Kin'); sk.counters = 3; const sd = inst(g, 'Shivan Dragon'); g.hand = [sd]; mana(g, 3, 'R'); G.castOne(g);
+  check('Runaway Steam-Kin: three +1/+1 counters become {R}{R}{R} when that casts a spell', count(g, 'Shivan Dragon') === 1 && sk.counters <= 1, `${sk.counters} counters, ${names(g)}`);
+  const g2 = bare(); const s2 = putOn(g2, 'Runaway Steam-Kin'); s2.counters = 2; g2.hand = [inst(g2, 'Shivan Dragon')]; mana(g2, 3, 'R'); G.castOne(g2); check('...not with two counters', count(g2, 'Shivan Dragon') === 0 && s2.counters === 2); });
+T('shepherd', () => { const g = bare(); putOn(g, 'Allosaurus Shepherd'); const e1 = putOn(g, 'Llanowar Elves'), e2 = putOn(g, 'Elvish Mystic'); const t = putOn(g, 'Grave Titan'); mana(g, 6, 'G'); G.useAbilities(g);
+  check('Allosaurus Shepherd: {4}{G}{G}, each Elf is 5/5 this turn', G.powerOf(g, e1) === 5 && G.toughnessOf(g, e1) === 5 && G.powerOf(g, e2) === 5 && G.powerOf(g, t) === 6, `${G.powerOf(g, e1)}/${G.toughnessOf(g, e1)}`); G.endTurn(g); check('...only until end of turn', G.powerOf(g, e1) === 1);
+  const g2 = bare(); putOn(g2, 'Allosaurus Shepherd'); mana(g2, 6, 'G'); G.useAbilities(g2); check('...not for one Elf', g2.floating.length === 6); });
+T('mirror box', () => { const g = bare(); putOn(g, 'Mirror Box'); const a = putOn(g, 'Llanowar Elves'), b2 = putOn(g, 'Llanowar Elves'), c = putOn(g, 'Elvish Mystic'); check('Mirror Box: +1/+1 for each other creature you control with the same name', G.powerOf(g, a) === 2 && G.toughnessOf(g, b2) === 2 && G.powerOf(g, c) === 1, G.powerOf(g, a)); });
+T('flame of anor', () => { const g = bare(); g.library = g.library.slice(0, 20); const h0 = g.hand.length; G.applyEffects(g, by('Flame of Anor').a.spellFx, null, [], null); check('Flame of Anor: choose one (draw two cards against a goldfish)', g.hand.length === h0 + 2, g.hand.length - h0);
+  const { g: a, b } = mirror(); a.library = a.library.slice(0, 20); const bt = putOn(b, 'Llanowar Elves'); const sr = putOn(b, 'Sol Ring'); G.applyEffects(a, by('Flame of Anor').a.spellFx, null, [], null); const one = [a.hand.length === 2, !b.battlefield.includes(bt), !b.battlefield.includes(sr)].filter(Boolean).length;
+  check('...without a Wizard only one mode happens (it used to do all three)', one === 1, one);
+  const { g: a2, b: b3 } = mirror(); a2.library = a2.library.slice(0, 20); putOn(a2, 'Archaeomancer'); const bt2 = putOn(b3, 'Llanowar Elves'); const sr2 = putOn(b3, 'Sol Ring'); const h2 = a2.hand.length; G.applyEffects(a2, by('Flame of Anor').a.spellFx, null, [], null); const two = [a2.hand.length === h2 + 2, !b3.battlefield.includes(bt2), !b3.battlefield.includes(sr2)].filter(Boolean).length;
+  check('...with a Wizard, two', two === 2, two); });
+T('goblin engineer', () => { const g = bare(); g.library = [inst(g, 'Opt'), inst(g, 'Sol Ring'), inst(g, 'Forest')]; putOn(g, 'Goblin Engineer'); check('Goblin Engineer puts an artifact from your library into your graveyard (it used to put it into your hand)', g.graveyard.some(i => i.card.name === 'Sol Ring') && !g.hand.some(i => i.card.name === 'Sol Ring'), g.graveyard.map(i => i.card.name).join()); });
+T('labels', () => { const ms = lab('March of Swirling Mist', /additional cost/); check('March of Swirling Mist says "Needs opponent"', ms.tag === 'opp' && !ms.mirror); });
+T('games', () => { const r = G.simulate(deck, Object.assign({}, O, { turns: 8 }), 80, 5); check('eighty goldfish games with these cards run clean', !!r);
+  const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
+
+console.log(`\n${pass} passed, ${fail} failed`);
+if (fail) process.exit(1);

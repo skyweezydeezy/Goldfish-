@@ -823,8 +823,8 @@
    "reprints": 697,
    "missing": 0,
    "coverage": {
-    "full": 577,
-    "approx": 12,
+    "full": 576,
+    "approx": 13,
     "partial": 94,
     "none": 54
    }
@@ -1435,8 +1435,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 2,
-    "approx": 0,
+    "full": 1,
+    "approx": 1,
     "partial": 0,
     "none": 0
    }
@@ -2965,8 +2965,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 15,
-    "approx": 2,
+    "full": 14,
+    "approx": 3,
     "partial": 2,
     "none": 1
    }

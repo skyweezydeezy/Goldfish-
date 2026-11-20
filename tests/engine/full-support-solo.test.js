@@ -15,9 +15,10 @@ const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 're
   'Kinnan, Bonder Prodigy', 'Ureni of the Unwritten', 'Duskwatch Recruiter', 'Tamiyo, Collector of Tales', 'Karn, the Great Creator', 'Thought Scour', 'Brain Freeze', 'Mindcrank', 'Jace Beleren',
   "Jace's Archivist", 'Magus of the Wheel', 'Breach the Multiverse', 'Angelic Chorus', 'Righteous Valkyrie', 'Kenrith, the Returned King', 'Berserk', 'Kor Spiritdancer', 'Resplendent Angel',
   'Kamahl, Fist of Krosa', 'Sneak Attack', 'Bruna, Light of Alabaster', 'Flickerform', 'Derevi, Empyrial Tactician', 'Forgotten Ancient', 'Hydroid Krasis', 'Lifeblood Hydra', 'Skeleton Crew', 'Outpost Siege',
-  'Fearless Swashbuckler'];
+  'Fearless Swashbuckler', 'Tifa Lockhart', 'Adventuring Gear', 'Mightform Harmonizer', 'Ride the Shoopuf', 'Skyclave Pick-Axe', 'Stable Wormhole', "Tifa's Limit Break", 'Loot, Exuberant Explorer',
+  'Natural Order', 'Traveling Chocobo'];
 const HELPERS = ['Grave Titan', 'Llanowar Elves', 'Shivan Dragon', 'Forest', 'Island', 'Mountain', 'Swamp', 'Plains', 'Sol Ring', 'Opt', 'Mana Vault', "Ajani's Pridemate", 'Serra Angel', 'Rancor', 'Mulldrifter',
-  'Skithiryx, the Blight Dragon', 'Ancient Tomb', 'Jace, Wielder of Mysteries', 'Lightning Bolt'];
+  'Skithiryx, the Blight Dragon', 'Ancient Tomb', 'Jace, Wielder of Mysteries', 'Lightning Bolt', 'Craterhoof Behemoth', 'Birds of Paradise'];
 const all = NAMES.concat(HELPERS);
 const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n)));
 const deck = G.buildDeck(cards, base.tokens);
@@ -161,6 +162,24 @@ T('siege', () => { const g = bare(); for (let i = 0; i < 4; i++) G.createTokens(
   check('Outpost Siege: Dragons with a board of tokens, and a creature leaving deals 1', os.siegeMode === 'dragons' && g.damage - d0 === 1);
   const g2 = bare(); const o2 = putOn(g2, 'Outpost Siege'); G.endTurn(g2); G.beginTurn(g2); check('...Khans otherwise: a card off the top each upkeep', o2.siegeMode === 'khans' && g2.hand.some(i => i.temp != null)); });
 T('swashbuckler', () => { check('Fearless Swashbuckler: Vehicles have haste, and the loot is read', !!by('Fearless Swashbuckler').a.statics.vehicleHaste && by('Fearless Swashbuckler').a.swashLoot); });
+
+// ---- the Final Heaven deck (Tifa Lockhart), imported with lines the engine could not read
+T('final heaven', () => { const g = bare(); const tf = putOn(g, 'Tifa Lockhart'); G.playLandCard(g, inst(g, 'Forest')); G.playLandCard(g, inst(g, 'Forest')); check("Tifa Lockhart: each land doubles her power (1, 2, 4)", G.powerOf(g, tf) === 4, G.powerOf(g, tf));
+  const g2 = bare(); const sh = putOn(g2, 'Shivan Dragon'), ag = putOn(g2, 'Adventuring Gear'); ag.attachedTo = sh.iid; putOn(g2, 'Mightform Harmonizer'); G.playLandCard(g2, inst(g2, 'Forest'));
+  check('Adventuring Gear (+2/+2) and Mightform Harmonizer (double) on landfall', G.powerOf(g2, sh) === 14 || G.powerOf(g2, sh) === 12, G.powerOf(g2, sh));
+  const g3 = bare(); putOn(g3, 'Shivan Dragon'); const pa = G.enterWithTriggers(g3, inst(g3, 'Skyclave Pick-Axe'), {}, []); check('Skyclave Pick-Axe attaches itself as it enters', pa.attachedTo != null);
+  const g4 = bare(); const rs = putOn(g4, 'Ride the Shoopuf'); lands(g4, 7); G.useAbilities(g4); check('Ride the Shoopuf: {5}{G}{G} makes it a 7/7 for good', G.powerOf(g4, rs) === 7 && rs.animated.perm);
+  const g5 = bare(); putOn(g5, 'Stable Wormhole'); const t5 = putOn(g5, 'Tifa Lockhart'); G.combat(g5); const np = g5.battlefield.find(q => q.card.name === 'New Planet');
+  check('Stable Wormhole: attacking makes a tapped New Planet land (any color), and it is landfall (Tifa doubled)', !!np && np.tapped && np.asLand && g5.damage === 2, g5.damage); });
+T('tiered', () => { const g = bare(); const sd = putOn(g, 'Shivan Dragon'); const lb = inst(g, "Tifa's Limit Break"); g.hand = [lb]; lands(g, 8); G.castCard(g, lb, false);
+  check("Tifa's Limit Break (tiered): with {6}{G} more, Final Heaven triples the attacker", G.powerOf(g, sd) === 15, G.powerOf(g, sd));
+  const g2 = bare(); const s2 = putOn(g2, 'Shivan Dragon'); const l2 = inst(g2, "Tifa's Limit Break"); g2.hand = [l2]; lands(g2, 1); G.castCard(g2, l2, false); check('...with only its {G}, Somersault (+2/+2): one mode, never two', G.powerOf(g2, s2) === 7, G.powerOf(g2, s2)); });
+T('loot and order', () => { const g = bare(); putOn(g, 'Loot, Exuberant Explorer'); lands(g, 6); g.library = ['Opt', 'Shivan Dragon', 'Forest', 'Llanowar Elves', 'Opt', 'Island'].map(n => inst(g, n)).concat(g.library.slice(0, 4)); mana(g, 6); G.useAbilities(g);
+  check("Loot's {4}{G}{G}: a creature with mana value up to your land count onto the battlefield", count(g, 'Shivan Dragon') === 1);
+  const g2 = bare(); putOn(g2, 'Llanowar Elves'); const no = inst(g2, 'Natural Order'); g2.hand = [no]; g2.library = ['Craterhoof Behemoth', 'Llanowar Elves', 'Shivan Dragon'].map(n => inst(g2, n)).concat(g2.library.slice(0, 5)); lands(g2, 4); G.castOne(g2);
+  check('Natural Order: a green creature is sacrificed (it was free) for the biggest green creature (a red one is not green)', count(g2, 'Craterhoof Behemoth') === 1 && g2.graveyard.some(i => i.card.name === 'Llanowar Elves'), names(g2));
+  const g3 = bare(); putOn(g3, 'Shivan Dragon'); const n3 = inst(g3, 'Natural Order'); g3.hand = [n3]; lands(g3, 4); check('...not cast without a green creature to sacrifice', G.spellScore(g3, n3) < 0); });
+T('chocobo', () => { const g = bare(); putOn(g, 'Traveling Chocobo'); putOn(g, 'Angelic Chorus'); const l0 = g.life; G.enterWithTriggers(g, inst(g, 'Birds of Paradise'), {}, []); check('Traveling Chocobo: a Bird entering triggers Angelic Chorus twice', g.life - l0 === 2, g.life - l0); });
 
 T('labels', () => { const bad = []; for (const n of NAMES) { const c = by(n); for (const v of c.a.coverage) if (v.status === 'ignored' || (v.status === 'neutral' && v.tag === 'solo' && !/flash|partner|look at target player's hand|tap enchanted creature/i.test(v.text))) bad.push(n + ': ' + v.text.slice(0, 50)); }
   check('none of these lines is labelled "no solo effect" (or unread) any more', bad.length === 0, bad.slice(0, 4).join(' || ')); });

@@ -579,6 +579,33 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      // ---- stax on casting, searching and abilities (see castBlocked, searching, abilBlocked). The symmetric ones (Rule of Law, Ethersworn Canonist,
+      // Grafdigger's Cage) bind you in any game; the rest hold only the other players back, so they say "Mirror matches only".
+      { const MIRS = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let sm;
+        if (/^each player can't cast more than one spell each turn\.?$/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { oneSpell: true }); rec.status = 'ok'; continue; }          // Rule of Law, Archon of Emeria
+        if (/^each player who has cast a nonartifact spell this turn can't cast additional nonartifact spells\.?$/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { canonist: true }); rec.status = 'ok'; continue; }          // Ethersworn Canonist
+        if (/^players can't cast spells from graveyards or libraries\.?$/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { cage: true }); rec.status = 'ok'; continue; }          // Grafdigger's Cage
+        if ((sm = line.match(/^each spell costs \{(\d+)\} more to cast except during its controller's turn/i))) { a.statics.taxOffTurn = +sm[1]; MIRS(); continue; }          // Defense Grid
+        if ((sm = line.match(/^spells your opponents cast cost \{(\d+)\} more to cast\.?$/i))) { a.statics.taxOpp = +sm[1]; MIRS(); continue; }          // God-Pharaoh's Statue, Grand Arbiter Augustin IV
+        if (/^your opponents can't cast spells during your turn\.?$/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { ownTurn: true }); MIRS(); continue; }          // Dragonlord Dromoka
+        if (/^your opponents can't cast spells from anywhere other than their hands/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { handOnly: true }); MIRS(); continue; }          // Drannith Magistrate
+        if (/^during your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { ownTurn: true }); a.abilStax = 'abolisher'; MIRS(); continue; }          // Grand Abolisher
+        if (/^your opponents can't cast spells with even mana values\.?$/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { even: true }); MIRS(); continue; }          // Void Winnower
+        if (/^whenever an opponent casts an artifact, instant, or sorcery spell, counter that spell\. this ability triggers only once each turn/i.test(line)) { a.jinCounter = true; MIRS(); continue; }          // Jin-Gitaxias, Progress Tyrant
+        if (/^your opponents can't cast spells this turn\.?$/i.test(line)) { a.silence = 'all'; MIRS(); continue; }          // Silence
+        if (/^sacrifice ~: your opponents can't cast noncreature spells this turn/i.test(line)) { a.silenceSac = 'noncreature'; MIRS(); continue; }          // Ranger-Captain of Eos
+        if (/^at the beginning of your upkeep, choose target opponent\. this turn, that player can't cast spells or activate abilities/i.test(line)) { a.senTriplets = true; rec.status = 'partial'; continue; }          // Sen Triplets: casting from their hand is not built
+        if (/^(?:your opponents can't search libraries|spells and abilities your opponents control can't cause their controller to search their library)\.?$/i.test(line)) { a.searchStax = 'cant'; MIRS(); continue; }          // Stranglehold, Ashiok
+        if (/^if an opponent would search a library, that player searches the top four cards of that library instead/i.test(line)) { a.searchStax = 'top4'; MIRS(); continue; }          // Aven Mindcensor
+        if (/^while an opponent is searching their library, they exile each card they find\. you may play those cards/i.test(line)) { a.searchStax = 'agent'; MIRS(); continue; }          // Opposition Agent
+        if (/^you control your opponents while they're searching their libraries/i.test(line)) { rec.status = 'partial'; continue; }          // Opposition Agent: the searcher still picks the card
+        if (/^if an opponent would begin an extra turn, that player skips that turn instead/i.test(line)) { a.skipExtra = true; MIRS(); continue; }          // Stranglehold, Trouble in Pairs
+        if (/^activated abilities of (artifacts|creatures) your opponents control can't be activated\.?$/i.test(line)) { a.abilStax = line.match(/of (artifacts|creatures)/i)[1].toLowerCase(); MIRS(); continue; }          // Karn, the Great Creator; Linvala, Keeper of Silence
+        if (/^activated abilities of sources with the chosen name can't be activated( unless they're mana abilities)?/i.test(line)) { a.abilStax = /unless they're mana abilities/i.test(line) ? 'needle' : 'revoker'; MIRS(); continue; }          // Pithing Needle, Phyrexian Revoker
+        if (/^as ~ enters, choose a (?:nonland )?card name\.?$/i.test(line) && /activated abilities of sources with the chosen name/i.test(text)) { MIRS(); continue; }
+        if ((sm = line.match(/^(?:spells your opponents cast|abilities your opponents activate) that target an? ([a-z]+) you control cost \{(\d+)\} more to (?:cast|activate)/i))) { (a.statics.wardGive = a.statics.wardGive || []).filter(w => w.filter === sm[1].toLowerCase()).length || (a.statics.wardGive = (a.statics.wardGive || []).concat({ filter: singular(sm[1]).toLowerCase(), n: +sm[2] })); MIRS(); continue; }          // Kopala: a tax like ward
+        if ((sm = line.match(/^spells your opponents cast that target ~ cost an additional (\d+) life to cast/i))) { a.ward = { n: 0, life: +sm[1] }; MIRS(); continue; }          // Terror of the Peaks
+      }
       // ---- counterspells in a match: what can't be countered, counters on the battlefield, redirects (see tryCounter, fieldCounter, protectOne)
       { const MIRC = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let cm2;
         if (/^(?:~|this spell) can't be countered\.?$/i.test(line)) { a.uncounterable = true; MIRC(); continue; }          // Abrupt Decay, Supreme Verdict, Dovin's Veto...
@@ -2432,7 +2459,7 @@
     if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus.per ? Object.assign({ src: q }, a.attachBonus) : a.attachBonus); }          // a "for each" bonus keeps its Aura or Equipment (its own counters)
     if (q.produce) { info.producers.push(q); if (q.produce.restrict) info.restrictMana = true; }
     if (q.asLand) info.lands++;
-    if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
+    if (a.abilStax) info.abilStax = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
     if (a.watch) info.watchers.push(q);
     if (st.tokenRepl.length) info.repl.push(q);
@@ -2697,10 +2724,12 @@
     const units = [];
     const info = bfInfo(g);
     const stony = (g.stonySeen || (g.opp && g.opp.stonySeen)) && bothSides(g).some(q => q.card.a.statics.stony);
+    const abilAny = info.abilStax || g.senSeq === turnSeq(g) || otherPlayers(g).some(o => bfInfo(o).abilStax);          // Karn, Linvala, Pithing Needle, Sen Triplets
     for (const p of info.producers) {
       if (p.tapped || p.held || !p.produce) continue;          // held: kept untapped for a counterspell
       if (g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g)) continue;
       if (stony && (p.card.a.isArtifact || p.sacMana && p.token)) continue;                              // Stony Silence (Treasures too)
+      if (abilAny && abilBlocked(g, p, true)) continue;          // Karn, Linvala: no mana from their artifacts and creatures
       if (p.sick && isCreaturePerm(p) && !info.abilityHaste && !hasKw(g, p, 'haste') && !p.card.a.noTapMana) continue;
       if (p.card.a.metalMana && g.battlefield.filter(q => artOn(g, q)).length < 3) continue;          // Mox Opal: metalcraft
       if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
@@ -3245,7 +3274,7 @@
     if (bfInfo(g).krrik && !inst.card.a.isLand) { const room = Math.max(0, Math.floor((g.life - 15) / 2)), pips = c.pips.slice(); let k = 0; while (k < room) { const i = pips.findIndex(x => x.length === 1 && x[0] === 'B'); if (i < 0) break; pips.splice(i, 1); k++; } if (k) { inst._krrik = k; c = { generic: c.generic, pips, x: c.x }; } }          // K'rrik: 2 life for a {B}, keeping 15 life
     for (const q of g.battlefield) { const pr = q.card.a.statics.pipReduce; if (!pr || inst.card.a.isLand || q.card === inst.card || !matchesFilter(inst.card, pr.filter)) continue; const pips = c.pips.slice(); for (const col of pr.colors) { const i = pips.findIndex(x => x.length === 1 && x[0] === col); if (i >= 0) pips.splice(i, 1); } c = { generic: c.generic, pips, x: c.x }; }          // Morophon: one less of each colored mana
     if (g.taxSeen || (g.opp && g.opp.taxSeen)) {                                                          // Sphere of Resistance, Thalia, Thorn of Amethyst: both players pay more
-      let t = 0; for (const q of bothSides(g)) { const st = q.card.a.statics; if (st.taxAll) t += st.taxAll; if (st.taxNoncreature && !inst.card.a.isCreature) t += st.taxNoncreature; }
+      let t = 0; for (const q of bothSides(g)) { const st = q.card.a.statics; if (st.taxAll) t += st.taxAll; if (st.taxNoncreature && !inst.card.a.isCreature) t += st.taxNoncreature; if (st.taxOpp && !g.battlefield.includes(q)) t += st.taxOpp; if (st.taxOffTurn && g.activeTurn === false) t += st.taxOffTurn; }          // God-Pharaoh's Statue, Defense Grid
       if (t) c = { generic: c.generic + t, pips: c.pips, x: c.x };
     }
     if (!(g.triniSeen || (g.opp && g.opp.triniSeen))) return c;
@@ -3430,7 +3459,7 @@
       const sv = bfInfo(g).sovereigns;
       if (sv && !perm.token && !o.silent && (a.mv || 0) >= 3) for (const q of sv) { const sc = q.card.a.statics.sovereign; if (q !== perm && canPay(sc, allUnits(g)) && pay(g, sc) != null) { const cp = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, {}, ev); cp.token = true; (ev || []).push({ type: 'note', text: `${q.card.name}: a token copy of ${inst.card.name}`, source: q }); break; } }          // Bramble Sovereign
     }
-    { const st = a.statics; if (st.taxAll || st.taxNoncreature) g.taxSeen = true; if (st.stony) g.stonySeen = true; if (st.torpor) g.torporSeen = true; if (st.cage) g.cageSeen = true; if (st.breachLand) g.breachSeen = true; }
+    { const st = a.statics; if (st.taxAll || st.taxNoncreature || st.taxOpp || st.taxOffTurn) g.taxSeen = true; if (st.stony) g.stonySeen = true; if (st.torpor) g.torporSeen = true; if (st.cage) g.cageSeen = true; if (st.breachLand) g.breachSeen = true; }
     if (a.rip && !g.dry) { g.ripSeen = true; ripSweep(g); (ev || []).push({ type: 'note', text: `${inst.card.name}: every graveyard is exiled`, source: perm }); }
     if (a.splendor) g.splendorSeen = true;
     if (a.notionThief) g.thiefSeen = true;
@@ -3438,6 +3467,7 @@
     if (a.noLifeGain) { g.noGainSeen = true; if (g.opp) g.opp.noGainSeen = true; }
     if (a.echo) perm.echoDue = g.turn;                                                                    // Echo: pay again at your next upkeep or sacrifice it
     if (inst.foreign && g.opp) { perm.owner = g.opp; perm.stolen = true; }
+    if ((a.abilStax === 'needle' || a.abilStax === 'revoker') && !g.dry) { perm.named = needleName(g, a.abilStax); g.needleSeen = true; if (perm.named) ev.push({ type: 'note', text: `${inst.card.name} names ${perm.named}`, source: perm }); }          // Pithing Needle
     if (a.ringProt && g.lastCast === inst && !g.dry && !o.silent) { g.protAll = true; ev.push({ type: 'note', text: `${a._name || inst.card.name}: you have protection from everything until your next turn`, source: perm }); }          // The One Ring                                 // a card of theirs you cast: you control it but don't own it (Don Andres)
     if (a.allTribe && !g.dry) for (const q of g.battlefield) applyAllTribe(g, q);
     else if (!g.dry && isCreaturePerm(perm) && g.battlefield.some(q => q.card.a.allTribe)) applyAllTribe(g, perm);
@@ -4213,7 +4243,7 @@
           }
           break;
         }
-        case 'ramp': {
+        case 'ramp': { searching(g, ev, source, () => {          // Stranglehold, Aven Mindcensor, Opposition Agent
           const want = f.bf + f.hand; let found = [];
           const typed = (c, types, basic) => c.card.a.isLand && (!basic || /\bBasic\b/.test(c.card.type_line || '')) && (!types || types.some(t => new RegExp('\\b' + t + '\\b').test(c.card.type_line || '')));
           const fits = c => typed(c, f.types, f.basicOnly);
@@ -4242,12 +4272,13 @@
             if (dest === 'split' && found.length > f.bf) { const onto = decide(g, { kind: 'search', what: 'battlefield', options: found.slice(), def: found.slice(0, f.bf), multi: true, pick: f.bf, f: { dest: 'battlefield', tapped: !!f.tapped, bf: f.bf }, source }); found = onto.concat(found.filter(c => !onto.includes(c))); }
           }
           found.forEach(c => g.library.splice(g.library.indexOf(c), 1));
+          if (g._agent) { found.forEach(c => agentTake(g, c, ev, source)); found = []; }
           found.forEach((c, k) => {
             if (k < f.bf) { const perm = enterWithTriggers(g, c, { tapped: f.tapped }, ev); ev.push({ type: 'rampLand', inst: c, perm, source }); }
             else { g.hand.push(c); ev.push({ type: 'tutor', inst: c, source }); }
           });
           shuffle(g.library, g.rnd);
-          break;
+          }); break;
         }
         case 'landFromHand': {
           const l = g.hand.find(c => c.card.a.isLand);
@@ -4881,7 +4912,7 @@
             let best = null, bs = -Infinity;
             if (f.filter && f.filter !== 'creature') { const c = g.library.filter(i => matchesFilter(i.card, f.filter) && (f.filter !== 'artifact' || (i.card.a.mv || 0) <= 3 || g.battlefield.some(q => q.card.a.engineer) === false)).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c) { g.library.splice(g.library.indexOf(c), 1); g.graveyard.push(c); shuffle(g.library, g.rnd); ev.push({ type: 'note', text: `${c.card.name} goes from your library to the graveyard`, source }); } break; }
             for (const i of g.library) { const v = reanimateValue(g, i); if (v > bs) { bs = v; best = i; } }
-            if (best && bs >= (f.n > 1 ? 4 : 6)) { g.library.splice(g.library.indexOf(best), 1); g.graveyard.push(best); ev.push({ type: 'note', text: `Entomb: ${best.card.name} goes to the graveyard`, source }); }
+            if (best && bs >= (f.n > 1 ? 4 : 6)) { const sr = searchRule(g); if (sr && sr.kind === 'cant') { ev.push({ type: 'note', text: `${sr.by.card.name}: no searching`, source }); break; } g.library.splice(g.library.indexOf(best), 1); if (sr && sr.agent) { g._agent = sr.agent; agentTake(g, best, ev, source); g._agent = null; } else { g.graveyard.push(best); ev.push({ type: 'note', text: `Entomb: ${best.card.name} goes to the graveyard`, source }); } }          // Stranglehold, Opposition Agent
             else break;
           }
           shuffle(g.library, g.rnd);
@@ -5344,6 +5375,7 @@
     const a = inst.card.a;
     if (!isCopy && !g.dry) {
       if (a.cost && a.cost.x) g.xCastTurn = g.turn;
+      { const ts = turnSeq(g); if (g.castSeqT !== ts) { g.castSeqT = ts; g.castSeqN = 0; } g.castSeqN++; if (!a.isArtifact) g.nonArtSeq = ts; }          // Rule of Law, Ethersworn Canonist: spells cast this turn
       if (g.ajaniPoison && (a.isCreature || a.isPlaneswalker) && g.killTurn == null && !matchOver(g)) addPoison(g, g.ajaniPoison, ev, null, "Ajani's emblem");          // Ajani, Sleeper Agent: two poison counters for each creature or planeswalker spell
       g.mvCast = { turn: g.turn, n: (g.mvCast && g.mvCast.turn === g.turn ? g.mvCast.n : 0) + (a.mv || 0) };          // Call Forth the Tempest
       g.lastCast = inst;
@@ -5755,11 +5787,38 @@
     const ca = best && best.card.a;
     return best ? { inst: best, score: bs, completes: !!(ca.comboRole && ctx.roles.has(ca.comboRole === 'blood' ? 'bond' : 'blood')) || comboPlan(g, best) >= 1000 } : null;
   }
-  function tutor(g, f, ev, source) {
+  // Searching under the other players' stax: Stranglehold and Ashiok (no search at all), Aven Mindcensor (only the top four cards, then the whole
+  // library is shuffled), Opposition Agent (each card found is exiled, and the Agent's controller may play it). fn searches g.library as usual.
+  function searchRule(g) {
+    if (!g.opp) return null;
+    let r = null;
+    for (const { q, o } of othersPerms(g)) { const st = q.card.a.searchStax; if (!st) continue; if (st === 'cant') return { kind: 'cant', by: q }; r = r || { kind: 'some', by: q }; if (st === 'top4') r.top4 = true; if (st === 'agent') r.agent = o; }
+    return r;
+  }
+  function searching(g, ev, source, fn) {
+    const r = searchRule(g);
+    if (!r) return fn();
+    if (r.kind === 'cant') { ev.push({ type: 'note', text: `${r.by.card.name}: no searching (nothing found)`, source }); return null; }
+    const rest = r.top4 ? g.library.slice(4) : null; if (r.top4) g.library = g.library.slice(0, 4);
+    const prevAgent = g._agent; g._agent = r.agent || null;
+    try { return fn(); } finally {
+      g._agent = prevAgent;
+      if (rest) { const top = g._keepTop; g.library = g.library.filter(x => x !== top).concat(rest); shuffle(g.library, g.rnd); if (top) g.library.unshift(top); g._keepTop = null; ev.push({ type: 'note', text: `${r.by.card.name}: only the top four cards were searched`, source }); }
+    }
+  }
+  // Opposition Agent: the card found goes into exile, playable by the Agent's controller (it sits in that player's hand, theirs to play, with any mana)
+  function agentTake(g, inst, ev, source) {
+    const ag = g._agent; inst.foreign = true; inst.anyMana = true; inst.temp = (ag.turn || 0) + 999;
+    ag.hand.push(inst); ev.push({ type: 'note', text: `Opposition Agent: ${inst.card.name} is exiled, and the other player may play it`, source });
+  }
+  function tutor(g, f, ev, source) { return searching(g, ev, source, () => tutor0(g, f, ev, source)); }
+  function tutor0(g, f, ev, source) {
     const t = pickSearch(g, bestTutorTarget(g, f), f, source);
     if (!t) { ev.push({ type: 'note', text: 'Searched the library: nothing to find', source }); return; }
     g.library.splice(g.library.indexOf(t.inst), 1);
     shuffle(g.library, g.rnd);
+    if (g._agent) { agentTake(g, t.inst, ev, source); return; }
+    if (f.dest === 'top') g._keepTop = t.inst;
     if (f.dest === 'top') { g.library.unshift(t.inst); ev.push({ type: 'note', text: `Tutored ${t.inst.card.name} to the top of the library`, source }); }
     else if (f.dest === 'battlefield' && entryBlocked(g, t.inst.card, 'lib')) { g.exile.push(t.inst); ev.push({ type: 'note', text: `${t.inst.card.name} cannot enter the battlefield from the library and is exiled`, source }); }
     else if (f.dest === 'battlefield') { const perm = enterWithTriggers(g, t.inst, {}, ev); ev.push({ type: 'rampLand', inst: t.inst, perm, source }); }
@@ -5809,8 +5868,18 @@
   }
   function castCard(g, inst, force) {
     const prev = g._payFor; g._payFor = inst;
+    silenceFirst(g, inst);          // Silence, Ranger-Captain of Eos before a big spell
     const mv = mistriseHold(g, inst);          // Mistrise Village is kept out of the payment of a spell it should protect
-    try { return castCard0(g, inst, force); } finally { g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
+    try { const r = castCard0(g, inst, force); if (r && g._silEv) { r.unshift(...g._silEv); } return r; } finally { g._silEv = null; g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
+  }
+  function silenceFirst(g, inst) {
+    if (!g.opp || g.dry || inst.card.a.silence) return;
+    const a0 = inst.card.a; if (!(a0.castMv >= 4 || a0.comboRole || inst.card.commander) || uncounterable(g, inst)) return;
+    const os = otherPlayers(g).filter(o => o.hand.length && allUnits(o).length >= 1 && o.silenceSeq !== turnSeq(o));
+    if (!os.length) return;
+    const sil = g.hand.find(c => c !== inst && c.card.a.silence && canPay({ generic: effectiveCost(g, c).generic + effectiveCost(g, inst).generic, pips: effectiveCost(g, c).pips.concat(effectiveCost(g, inst).pips), x: 0 }, allUnits(g)));
+    if (sil && !castBlocked(g, sil)) { pay(g, effectiveCost(g, sil)); g.hand.splice(g.hand.indexOf(sil), 1); g.graveyard.push(sil); fireCastTriggers(g, sil, []); os.forEach(o => { o.silenceSeq = turnSeq(o); }); (g._silEv = g._silEv || []).push({ type: 'note', text: `${sil.card.name}: the other player can't cast spells this turn`, source: null }); return; }
+    const rc = g.battlefield.find(q => q.card.a.silenceSac); if (rc && !abilBlocked(g, rc, false)) { leavePerm(g, rc, []); flushLeaves(g, []); os.forEach(o => { o.noNoncreatureSeq = turnSeq(o); }); (g._silEv = g._silEv || []).push({ type: 'note', text: `${rc.card.name} is sacrificed: no noncreature spells for the other player this turn`, source: null }); }
   }
   function mistriseHold(g, inst) {
     if (!g.opp || g.dry || !g.opp.hand.length) return null;
@@ -5819,6 +5888,7 @@
     mv.tapped = true; mv._hold = true; return mv;
   }          // restricted mana knows which spell it pays for
   function castCard0(g, inst, force) {
+    if (!g.dry && castBlocked(g, inst)) return null;          // Rule of Law, Grand Abolisher, Silence, Drannith Magistrate...
     if (arbiterOn(g) && (g.attackedThisTurn || g.arbiterHold === g.turn) && !g.dry) return null;          // Angelic Arbiter: you attacked (or will) this turn
     inst.noCounter = false; inst.kicked = false; inst.kickX = 0; inst.alt = null; inst.overloaded = false; g._casting = inst;          // the spell being cast is not discarded by Lion's Eye Diamond
     inst._handCast = g.hand.includes(inst);                                                               // Chainer: creatures not cast from your hand
@@ -6070,6 +6140,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const rMana = bfInfo(g).restrictMana;
     for (const c of cands) {
       if (holdForCombo(g, c)) continue;
+      if (castBlocked(g, c)) continue;          // not castable now
       const units = rMana ? unitsFor(g, c) : units0;          // Cavern of Souls, Eldrazi Temple: the mana this spell could use
       if (!lockWorth(g, c)) continue;
       if (faceChoice(g, c.card) === 'back') continue;          // this card is set to its back face (or the lab chose the commander's back face): never cast the front
@@ -6645,6 +6716,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const oath = g.battlefield.filter(q => q.card.a.oath).length, pwPlus = g.battlefield.some(q => q.card.a.statics.pwPlus);
     for (const p of g.battlefield.slice()) {
       if (!p.card.a.isPlaneswalker || g.instantOnly || !(p.card.a.pwAbilities.length || p.card.a.bolasAll)) continue;
+      if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) continue;          // Pithing Needle on a planeswalker
       if (p.pwTurn !== g.turn) { p.pwTurn = g.turn; p.pwN = 0; }
       const allowed = 1 + oath + (g.pwBonusTurn === g.turn ? 1 : 0) + (p.card.a.masterTime ? 1 : 0);          // Oath of Teferi, The Chain Veil, Teferi, Master of Time
       for (let act = 0; act < 4 && p.pwN < allowed && g.battlefield.includes(p); act++) {
@@ -6678,6 +6750,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (p.card.a.reconfigure && !p.card.a.chipTop && ((p.card.a.attachBonus || {}).p || 0) < powerOf(g, p)) continue;          // reconfigure only when the bonus beats the creature
       if (!target) continue;
       if (stonyOn(g)) continue;
+      if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) continue;          // Karn: no equip
       const freeEq = bfInfo(g).freeEquip && g.freeEquipTurn !== g.turn;                                     // Forge Anew: the first equip each turn is free
       const eqc = freeEq ? { generic: 0, pips: [], x: 0 } : actCost(g, p, p.card.a.equip.cost) !== p.card.a.equip.cost ? actCost(g, p, p.card.a.equip.cost) : g.battlefield.some(q => q.card.a.statics.equipZero) && g.battlefield.filter(q => q.card.a.isArtifact).length >= 3 ? { generic: 0, pips: [], x: 0 } : p.card.a.equip.cost;          // Puresteel Paladin
       if (pay(g, eqc) != null) { if (freeEq) g.freeEquipTurn = g.turn; p.attachedTo = target.iid; if (p.card.a.reconfigure) { p.noCreature = true; p.reconf = true; } touch(g); ev.push({ type: 'equip', perm: p, target }); }
@@ -6687,6 +6760,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (ab.sacFood) continue;                      // Food abilities are handled below, because they have to sacrifice the Foods
         if (p.card.a.abbey && g.battlefield.filter(q => q.token && isCreaturePerm(q) && powerOf(g, q) <= 2).length >= 5) continue;          // Westvale Abbey keeps its mana to become Ormendahl
         if (p.card.a.isArtifact && stonyOn(g)) continue;                                                // Stony Silence
+        if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) continue;          // Karn, Linvala, Pithing Needle, Grand Abolisher
         if (ab.key ? p.abUsed && p.abUsed[ab.key] === g.turn : p.actUsed === g.turn) continue;
         if (ab.late && !g.combatDone) continue;                                                    // scry and the like: with the mana left at the end of the turn
         if (ab.gate && !abilityGate(g, p, ab)) continue;
@@ -7096,6 +7170,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     return sc;
   }
   function crackFetch(g, perm, ev) {
+    const sr = searchRule(g); if (sr && sr.kind === 'cant') return null;          // Stranglehold: the fetch land stays (its search would find nothing)
+    return searching(g, ev, perm, () => crackFetch0(g, perm, ev));
+  }
+  function crackFetch0(g, perm, ev) {
     const spec = perm.card.a.fetchSpec;
     if (!spec || !g.battlefield.includes(perm)) return null;
     if (spec.life && pol(g, 'lifeFloor') !== 'current' && g.life - spec.life < lifeFloor(g, 1)) return null;          // the Policy lab's life floor: a fetch land stays uncracked below it
@@ -7111,6 +7189,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     leavePerm(g, perm, ev);
     g.library.splice(g.library.indexOf(best), 1);
     shuffle(g.library, g.rnd);
+    if (g._agent) { agentTake(g, best, ev, perm); return null; }          // Opposition Agent: the land is theirs to play
     const np = enterWithTriggers(g, best, { tapped: spec.tapped }, ev);
     ev.push({ type: 'rampLand', inst: best, perm: np, source: perm });
     return np;
@@ -7240,6 +7319,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (c.card.a.tangle) return !!g.opp && g.opp.battlefield.length >= g.battlefield.length;             // Tangle Wire and Trinisphere only pay off against a real opponent
     if (c.card.a.trini) return !!g.opp;
     if (c.card.a.castSacLand) return !!g.opp && g.opp.battlefield.filter(q => q.asLand).length >= g.battlefield.filter(q => q.asLand).length;          // Mana Vortex: a land race only against a real opponent
+    { const cs = c.card.a.castStax; if (cs && (cs.oneSpell || cs.canonist || cs.cage) && !c.card.a.isCreature) return !!g.opp; }          // Rule of Law, Grafdigger's Cage: they bind you too, so only against a real opponent (Archon and Canonist are creatures worth casting anyway)
     const L = lockOf(c.card);
     if (!L) return true;
     if (!g.opp) return false;
@@ -7444,7 +7524,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const x of (g.match && g.match.players) || [g, g.opp]) if (x) x.drawSeq = 0;                     // a new turn: every player's "second card each turn" count starts again
     untapStep(g, ev);                                                                     // symmetrical locks (Winter Orb, Static Orb, Stasis...) limit what untaps
     g.battlefield.forEach(p => { if (p.enteredTurn < g.turn) p.sick = false; });
-    const marks = g.stepMarks = { upkeep: ev.length, draw: null, main: null };            // where each step starts in this turn's events (the played game's log says which step a thing happened in)
+    const marks = g.stepMarks = { upkeep: ev.length, draw: null, main: null };
+    if (!g.dry && g.battlefield.some(q => q.card.a.senTriplets)) { const t = g.opp; if (t && !t.dead) { t.senSeq = turnSeq(g); ev.push({ type: 'note', text: "Sen Triplets: the other player can't cast spells or activate abilities this turn", source: null }); } }            // where each step starts in this turn's events (the played game's log says which step a thing happened in)
     for (const p of g.battlefield) {                                                                      // Mana Vault: pay {4} to untap it when there is mana to spare; it hurts while tapped
       if (p.card.a.vaultUntap && p.tapped) { const vc = actCost(g, p, { generic: 4, pips: [], x: 0 }); if (allUnits(g).length >= 7 && canPay(vc, allUnits(g))) { pay(g, vc); p.tapped = false; ev.push({ type: 'note', text: `Paid {4} to untap ${p.card.name}`, source: p }); } }
     }
@@ -7931,6 +8012,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Hold the pieces of line A instead of casting them on their own: an empty-library winner with a full library does nothing,
   // and the library emptier is only worth casting together with it.
   function holdForCombo(g, c) {
+    if (c.card.a.silence) return true;          // Silence is cast just before a spell it protects (silenceFirst)
     if (c.card.a.prot && c.card.a.prot !== 'indOne' && (g.opp || !c.card.a.spellFx.some(f => f.type === 'draw'))) return true;          // Teferi's Protection, Heroic Intervention, Angel's Grace, Shelter: kept for the response step (against a goldfish Shelter is a cantrip)
     const k = comboKind(c.card);
     if (k.oracleWin && g.library.length > 6) return true;
@@ -8047,7 +8129,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   const wardOf = (d, p) => { let n = p.card.a.ward ? p.card.a.ward.n : 0, life = p.card.a.ward ? p.card.a.ward.life : 0; for (const q of d.battlefield) for (const w of q.card.a.statics.wardGive || []) if ((!w.other || q !== p) && (w.counters ? (p.counters || 0) > 0 || (p.other && Object.values(p.other).some(v => v > 0)) : isCreaturePerm(p) && matchesFilter(p.card, w.filter))) n = Math.max(n, w.n); return n || life ? { n, life } : null; };
   const srcColors = (g, source) => source && source.card ? colorsOf(g, source.card) : g.lastCast ? colorsOf(g, g.lastCast.card) : [];
   function castProtection(d, c, ev) {          // a protection instant from the hand: paid, cast, gone
-    if (!canPay(effectiveCost(d, c), allUnits(d)) || pay(d, effectiveCost(d, c)) == null) return false;
+    if (castBlocked(d, c) || !canPay(effectiveCost(d, c), allUnits(d)) || pay(d, effectiveCost(d, c)) == null) return false;
     d.hand.splice(d.hand.indexOf(c), 1); (c.card.a.prot === 'tp' ? d.exile : d.graveyard).push(c); fireCastTriggers(d, c, ev);
     ev.push({ type: 'note', text: `In response, the other player casts ${c.card.name}`, source: null }); return true;
   }
@@ -8478,6 +8560,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const c of me.hand) {
         const a = c.card.a;
         if (!a || a.isLand || a.counter || !atInstantSpeed(c.card)) continue;
+        if (castBlocked(me, c)) continue;
         const fxs = a.spellFx.filter(INTERACT_FX);
         const drawish = step === 'end' && !fxs.length && a.isInstantSorcery && a.spellFx.some(f => f.type === 'draw');
         if (!fxs.length && !drawish) continue;
@@ -8516,6 +8599,56 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Is this spell worth a counterspell, and does the other player hold one they can pay for? Returns true when the spell is countered.
   // A counterspell can be paid with mana, for free (Fierce Guardianship with a commander out, Mindbreak Trap) or by pitching a blue card (Force of Will).
   // by: a person in a pod who is not the player being attacked may answer the spell too (the autopilot only answers for the attacked player).
+  // Pithing Needle, Phyrexian Revoker: the other player's permanent whose activated abilities matter most (a planeswalker, an engine), else its
+  // commander; none against a goldfish
+  function needleName(g, kind) {
+    const os = otherPlayers(g); if (!os.length) return null;
+    const hasAb = q => q.card.a.isPlaneswalker || (q.card.a.activated || []).length || q.card.a.equip || (kind === 'revoker' && q.produce && !q.asLand);
+    const cands = os.flatMap(o => o.battlefield.filter(q => !q.token && hasAb(q) && !(kind === 'revoker' && q.asLand)).map(q => ({ q, v: threat(o, g, q) + (q.card.a.isPlaneswalker ? 3 : 0) })));
+    const best = cands.sort((x, y) => y.v - x.v)[0]; if (best) return best.q.card.name;
+    const cm = os.flatMap(o => o.command).find(i => i.card.a.isPlaneswalker || (i.card.a.activated || []).length); return cm ? cm.card.name : null;
+  }
+  // can g activate an ability of p? mana: a mana ability (Pithing Needle allows those; Karn and Linvala do not)
+  function abilBlocked(g, p, mana) {
+    if (!p || !p.card) return false;
+    if (g.senSeq === turnSeq(g)) return true;          // Sen Triplets
+    if (!bfInfo(g).abilStax && !otherPlayers(g).some(o => bfInfo(o).abilStax)) return false;          // nothing at the table stops abilities
+    const all = g.battlefield.map(q => ({ q, o: g })).concat(otherPlayers(g).flatMap(o => o.battlefield.map(q => ({ q, o }))));
+    for (const { q, o } of all) {
+      const as = q.card.a.abilStax; if (!as) continue;
+      if ((as === 'needle' || as === 'revoker') && q.named && q.named === p.card.name && !(as === 'needle' && mana)) return true;          // "sources with the chosen name": yours too
+      if (o === g) continue;
+      if (as === 'artifacts' && artOn(g, p)) return true;          // Karn, the Great Creator
+      if (as === 'creatures' && isCreaturePerm(p)) return true;          // Linvala, Keeper of Silence
+      if (as === 'abolisher' && o.activeTurn === true && !mana && (artOn(g, p) || isCreaturePerm(p) || enchOn(g, p))) return true;          // Grand Abolisher, on its controller's turn
+    }
+    return false;
+  }
+  // the permanents of every other player (a pod has several), and every permanent at the table
+  const othersPerms = g => otherPlayers(g).flatMap(o => o.battlefield.map(q => ({ q, o })));
+  // spells cast this turn by this player (any player's turn counts as "this turn")
+  const castsThisTurn = g => g.castSeqT === turnSeq(g) ? g.castSeqN || 0 : 0;
+  // may g cast this spell now? Rule of Law and Ethersworn Canonist (anyone's), Grafdigger's Cage (anyone's), and the other players' Silence, Grand
+  // Abolisher and Dragonlord Dromoka (on their turn), Drannith Magistrate (only from the hand), Void Winnower (no even mana value), Sen Triplets
+  function castBlocked(g, inst) {
+    const a = inst.card.a; if (a.isLand) return false;
+    const fromHand = g.hand.includes(inst) && !inst.foreign, n = castsThisTurn(g), ts = turnSeq(g);
+    const all = g.battlefield.map(q => ({ q, o: g })).concat(othersPerms(g));
+    for (const { q, o } of all) {
+      const cs = q.card.a.castStax; if (!cs) continue;
+      if (cs.oneSpell && n >= 1) return true;
+      if (cs.canonist && !a.isArtifact && g.nonArtSeq === ts) return true;
+      if (cs.cage && (g.graveyard.includes(inst) || g.library.includes(inst))) return true;
+      if (o === g) continue;
+      if (cs.ownTurn && o.activeTurn === true) return true;          // Grand Abolisher, Dragonlord Dromoka: during their turn
+      if (cs.handOnly && !fromHand) return true;          // Drannith Magistrate: the command zone, the graveyard, exile, the library
+      if (cs.even && (a.mv || 0) % 2 === 0) return true;          // Void Winnower
+    }
+    if (g.silenceSeq === ts) return true;          // Silence
+    if (g.noNoncreatureSeq === ts && !a.isCreature) return true;          // Ranger-Captain of Eos
+    if (g.senSeq === ts) return true;          // Sen Triplets
+    return false;
+  }
   // can this spell of g's be countered? "~ can't be countered", Chimil ("spells you control"), Sphinx of the Final Word ("instant and sorcery spells"),
   // Mistrise Village's "the next spell you cast this turn"
   function uncounterable(g, inst) {
@@ -8532,6 +8665,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (mv && d.hand.length && (a.castMv >= 4 || a.comboRole || inst.card.commander) && canPay(mv.card.a.uncounterAb, allUnits(g).filter(u => u.src !== mv))) { mv._hold = false; mv.tapped = true; pay(g, mv.card.a.uncounterAb); inst.noCounter = true; ev.push({ type: 'note', text: `${mv.card.name}: ${inst.card.name} can't be countered`, source: mv }); return false; }
     }
     if (fieldCounter(g, d, inst, ev)) return true;          // Cursecatcher, Vodalian Hexcatcher, Kozilek
+    if (!g.dry && (a.isArtifact || a.isInstantSorcery)) for (const o of [d].concat(isPod(g) ? otherPlayers(g).filter(x => x !== d) : [])) { const jg = o.battlefield.find(q => q.card.a.jinCounter && q.jinSeq !== turnSeq(o)); if (jg) { jg.jinSeq = turnSeq(o); ev.push({ type: 'note', text: `${jg.card.name} counters ${inst.card.name}`, source: null }); (inst.card.commander ? g.command : g.graveyard).push(inst); return true; } }          // Jin-Gitaxias, Progress Tyrant
     if (!d.hand.length) return false;
     const big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.statics.tokenRepl.length || a.statics.counterDouble || a.castMv >= 4;
     const cw = pol(d, 'counterWorth');                                                                 // the Policy lab: which spells deserve a counterspell
@@ -8541,6 +8675,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const c of d.hand) {
       const k = c.card.a.counter;
       if (!k || !counterMatches(k.filter, inst.card)) continue;
+      if (castBlocked(d, c)) continue;          // Grand Abolisher, Silence: no counterspell
       const ca = c.card.a, cost = effectiveCost(d, c);
       let auto = !(ca.pact && units.length < 5);                                                       // a Pact has to be paid for next upkeep: the autopilot wants the mana for it
       if (!auto && !person) continue;
@@ -8635,6 +8770,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (m.winner != null) break;
         const tev = playTurn(g);
         if (hook) hook(g, t, tev);
+        if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;          // Stranglehold: an extra turn is skipped
         for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null; k++) { g.extraTurns--; const e2 = playTurn(g); if (hook) hook(g, t, e2); }
         if (m.winner == null && g.library.length === 0 && g.hand.length === 0) m.winner = g.opp.pid;       // nothing left to draw
       }
@@ -8775,6 +8911,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     podFocus(g, target);
     const ev = playTurn(g);
     if (hook) hook(g, ev);
+    if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;
     for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
@@ -8791,6 +8928,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function podTurnPost(g) {
     const ev = [], m = g.match;
     if (!matchOver(g)) ev.push(...combat(g)); if (!matchOver(g)) ev.push(...postCombat(g)); ev.push(...endTurn(g));
+    if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;
     for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
@@ -8872,7 +9010,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,
-    lockUpkeep, ghostTurn, comboLines, infiniteMana, bestTutorTarget, stealPerm, discardWorst, setTribe: t => { curTribe = t; }, playMatch,
+    lockUpkeep, ghostTurn, castBlocked, abilBlocked, searchRule, comboLines, infiniteMana, bestTutorTarget, stealPerm, discardWorst, setTribe: t => { curTribe = t; }, playMatch,
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,

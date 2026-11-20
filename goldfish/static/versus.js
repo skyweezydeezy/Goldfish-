@@ -329,6 +329,16 @@
     say(mode, g, names.length ? 'Abilities: ' + names.slice(0, 8).join('; ') : 'No ability worth using right now.', gm.step);
     humanDone(mode, ev.filter(e => e.type !== 'note'));
   });
+  // "Attack…": the beginning of combat comes first (Hakbal's Merfolk explore, vehicles are crewed), then you choose your attackers
+  const beginAttack = mode => mine(mode, async (gm, g) => {
+    if (gm.phase !== 'main' || gm.attacked || gm.picking) return;
+    gm.step = 'combat';
+    const pv = await act(mode, gs => D.turn.declare(gs[g.pid]));
+    if (pv && pv.ev && pv.ev.length) { say(mode, g, 'Beginning of combat.', 'combat'); tell(mode, g, 'combat', pv.ev); }
+    if (finished(gm)) return;
+    gm.picking = true; gm.target = null;
+    gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
+  });
   const attack = (mode, iids, targetPid) => mine(mode, async (gm, g) => {
     if (gm.phase !== 'main' || gm.attacked) return;
     gm.step = 'combat'; gm.picking = null;
@@ -349,7 +359,11 @@
         gm.step = 'combat'; tell(mode, g, 'combat', await act(mode, gs => { G.podFocus(gs[pid]); return D.turn.combat(gs[pid]); }, true));
         gm.attacked = true; gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]), true));
       }
-    } else if (!gm.attacked && !finished(gm)) { gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]))); }
+    } else if (!gm.attacked && !finished(gm)) {
+      gm.step = 'combat'; const pv = await act(mode, gs => D.turn.declare(gs[pid]));                       // no attack: the beginning of combat still happens (its triggers resolve)
+      if (pv && pv.ev && pv.ev.length) { say(mode, g, 'Beginning of combat.', 'combat'); tell(mode, g, 'combat', pv.ev); }
+      if (!finished(gm)) { gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]))); }
+    }
     gm.step = 'end';
     if (!finished(gm)) tell(mode, g, 'end', await act(mode, gs => D.turn.end(gs[pid]), auto));
     if (!finished(gm)) tell(mode, g, 'end', D.turn.out(g));
@@ -664,11 +678,7 @@
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
       if (hit('vs-abil')) return useAbilities(mode);
-      if (hit('vs-attack') && !gm.attacked) {
-        gm.picking = true; gm.target = null;
-        gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
-        return render(mode);
-      }
+      if (hit('vs-attack') && !gm.attacked) return beginAttack(mode);
       if (hit('vs-end')) return endHumanTurn(mode, false);
       if (hit('vs-autoturn')) return endHumanTurn(mode, true);
     });

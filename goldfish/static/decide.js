@@ -100,6 +100,7 @@
     }).filter(Boolean).join(', then ') || 'no effect the engine plays';
   }
   function filterWords(f) {
+    if (f.transmute != null) return `a nonland card with mana value ${f.transmute}`;
     if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
       const ls = [].concat(f.land), what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : ls.length > 2 ? ls.slice(0, -1).join(', ') + ', or ' + ls[ls.length - 1] : ls.join(' or ');          // "a Plains, Island, Swamp, or Mountain card"
       const n = f.n || 1;
@@ -174,6 +175,16 @@
       q.title = d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = 'Do not cast it';
+    } else if (d.kind === 'instant') {
+      const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
+      q.step = d.step;
+      q.title = d.step === 'end' ? `End of ${who}'s turn: cast an instant?` : `${who} attacks: cast an instant?`;
+      q.text = d.step === 'end' ? 'You may cast an instant or a card with flash now with the mana you left untapped (only the ones you can pay for are listed).' : 'Attackers are declared. You may cast an instant or a card with flash now (only the ones you can pay for are listed); then combat goes on.';
+      q.none = 'Not now';
+    } else if (d.kind === 'ringbearer') {
+      const lv = Math.min(4, d.n || 1), ord = ['', 'first', 'second', 'third', 'fourth'][d.n] || d.n + 'th';
+      q.title = `💍 The Ring tempts you (${ord} time): choose your Ring-bearer`;
+      q.text = `Your Ring-bearer has: ${G.RING_TEXT.slice(0, lv).map((t, i) => (i + 1) + '. ' + t.replace(/^Your Ring-bearer /, '').replace(/^Whenever your Ring-bearer /, 'whenever it ')).join(' ')}`;
     } else if (d.kind === 'explore') {
       const pn = src ? src.name : 'Your creature';
       q.title = `${pn} explores: ${d.reveal.card.name}`;
@@ -304,6 +315,7 @@
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {
       if (e.type === 'tutor' && e.inst) out.push(mine ? `searched for ${e.inst.card.name}` : 'searched their library for a card');
+      else if (e.type === 'tempt') out.push(`💍 the Ring tempts ${mine ? 'you' : 'them'} (${e.n}${e.n === 1 ? 'st' : e.n === 2 ? 'nd' : e.n === 3 ? 'rd' : 'th'} time)${e.bearer ? ': ' + e.bearer.card.name + ' is the Ring-bearer' : ''}`);
       else if (e.type === 'note' && e.text && EXTRA.test(e.text) && !base.includes(e.text)) out.push(!mine && /^Tutored .* to the top/.test(e.text) ? 'searched their library and put a card on top' : e.text);
     }
     return out;

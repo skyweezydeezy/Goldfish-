@@ -2610,7 +2610,8 @@
   function temptRing(g, ev, source) {
     const ring = g.ring = Object.assign({ tempts: 0, bearer: null }, g.ring);          // a new object, so a dry-run copy never shares it
     ring.tempts++;
-    const bearer = chooseRingBearer(g);
+    let bearer = chooseRingBearer(g);
+    if (g.ask && !g.dry && bearer) bearer = decide(g, { kind: 'ringbearer', options: g.battlefield.filter(isCreaturePerm), def: bearer, n: ring.tempts, source });          // a person chooses (a creature must be chosen when there is one)
     ring.bearer = bearer ? bearer.iid : null;
     const level = Math.min(4, ring.tempts);
     ev.push({ type: 'tempt', n: ring.tempts, level, bearer, ability: RING_TEXT[level - 1], source });
@@ -4764,6 +4765,41 @@
     if (enabler && !mono && k.untapCost != null) s += 700;
     return s;
   }
+  // Landcycling ("Swampcycling {2}", "basic landcycling {1}"): discard the card from your hand to search for a land of that kind.
+  // Transmute: discard it at sorcery speed to search for a card with the same mana value. Both are searches: a person's seat picks the
+  // card from the fan (the autopilot's pick is the default) and may find nothing. Each returns the events, or null when it cannot be paid.
+  const CYCLE_TYPE = { plains: 'Plains', island: 'Island', swamp: 'Swamp', mountain: 'Mountain', forest: 'Forest' };
+  function cycleLands(g, cy) {
+    const tc = cy.card.a.typecycle; if (!tc) return [];
+    return g.library.filter(i => i.card.a.isLand && (tc.type === 'land' ? (!tc.basic || /\bBasic\b/.test(i.card.type_line || '')) : new RegExp('\\b' + CYCLE_TYPE[tc.type] + '\\b').test(i.card.type_line || '')));
+  }
+  function landcycleCard(g, cy, ev) {
+    const tc = cy.card.a.typecycle;
+    if (!tc || !g.hand.includes(cy) || !canPay(tc.cost, allUnits(g))) return null;
+    const pool = cycleLands(g, cy);
+    let land = pool[0] || null;
+    if (g.ask && !g.dry && pool.length) land = decide(g, { kind: 'search', options: pool, def: land, optional: true, f: { dest: 'hand', land: tc.type === 'land' ? (tc.basic ? 'basic' : 'land') : [CYCLE_TYPE[tc.type]] }, source: cy });
+    pay(g, tc.cost); g.hand.splice(g.hand.indexOf(cy), 1); g.graveyard.push(cy);
+    if (land) { g.library.splice(g.library.indexOf(land), 1); g.hand.push(land); }
+    shuffle(g.library, g.rnd);
+    ev.push({ type: 'note', text: land ? `${cy.card.name} is cycled for ${land.card.name}` : `${cy.card.name} is cycled: no land found`, source: cy });
+    madness(g, cy, ev);
+    return ev;
+  }
+  function transmuteTargets(g, i) { return g.library.filter(c => (c.card.a.mv || 0) === (i.card.a.mv || 0) && !c.card.a.isLand); }
+  function transmuteTarget(g, i) { const ctx = tutorContext(g); return transmuteTargets(g, i).sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx))[0] || null; }
+  function transmuteCard(g, i, ev) {
+    const tm = i.card.a.transmute;
+    if (!tm || !g.hand.includes(i) || !canPay(tm.cost, allUnits(g))) return null;
+    const pool = transmuteTargets(g, i);
+    let t = transmuteTarget(g, i);
+    if (g.ask && !g.dry && pool.length) t = decide(g, { kind: 'search', options: pool, def: t, optional: true, f: { dest: 'hand', transmute: i.card.a.mv || 0 }, source: i });
+    pay(g, tm.cost); g.hand.splice(g.hand.indexOf(i), 1); g.graveyard.push(i);
+    if (t) { g.library.splice(g.library.indexOf(t), 1); g.hand.push(t); }
+    shuffle(g.library, g.rnd);
+    ev.push({ type: 'note', text: t ? `Transmute: ${i.card.name} for ${t.card.name}` : `Transmute: ${i.card.name}, nothing found`, source: i });
+    return ev;
+  }
   function tutorScore(g, inst, ctx) {
     const a = inst.card.a;
     if (a.isLegendary && ctx.names.has(inst.card.name)) return -1000;                 // legend rule: a second copy would be useless
@@ -5502,8 +5538,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     for (const i of g.hand.slice()) {                                                                    // Transmute: trade the card for one with the same mana value
       const tm = i.card.a.transmute; if (!tm || g.dry || !canPay(tm.cost, allUnits(g))) continue;
-      const ctx = tutorContext(g); const t = g.library.filter(c => (c.card.a.mv || 0) === (i.card.a.mv || 0) && !c.card.a.isLand).sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx))[0];
-      if (t && tutorScore(g, t, ctx) > 100) { pay(g, tm.cost); g.hand.splice(g.hand.indexOf(i), 1); g.graveyard.push(i); g.library.splice(g.library.indexOf(t), 1); shuffle(g.library, g.rnd); g.hand.push(t); ev.push({ type: 'note', text: `Transmute: ${i.card.name} for ${t.card.name}` }); return; }
+      const t = transmuteTarget(g, i);
+      if (t && tutorScore(g, t, tutorContext(g)) > 100) { transmuteCard(g, i, ev); return; }
     }
     if (!g.combatDone) for (const i of g.graveyard.slice()) {                                             // Unearth: back for one attack, then exiled
       const ue = i.card.a.unearth; if (!ue || g.dry || !canPay(ue, allUnits(g))) continue;
@@ -5523,11 +5559,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ready = p => !p.tapped && !(p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste'));
     { const have = g.battlefield.filter(q => q.asLand).length + g.hand.filter(i => i.card.a.isLand).length;           // landcycling: when short of lands, cash in a card for a basic land
       const cy = have < 5 ? g.hand.find(i => i.card.a.typecycle && canPay(i.card.a.typecycle.cost, allUnits(g))) : null;
-      if (cy) {
-        const tc = cy.card.a.typecycle, TY = { plains: 'Plains', island: 'Island', swamp: 'Swamp', mountain: 'Mountain', forest: 'Forest' };
-        const land = g.library.find(i => i.card.a.isLand && (tc.type === 'land' ? (!tc.basic || /\bBasic\b/.test(i.card.type_line || '')) : new RegExp('\\b' + TY[tc.type] + '\\b').test(i.card.type_line || '')));
-        if (land) { pay(g, tc.cost); g.hand.splice(g.hand.indexOf(cy), 1); g.graveyard.push(cy); g.library.splice(g.library.indexOf(land), 1); shuffle(g.library, g.rnd); g.hand.push(land); ev.push({ type: 'note', text: `${cy.card.name} is cycled for ${land.card.name}` }); madness(g, cy, ev); return; }
-      } }
+      if (cy && cycleLands(g, cy).length) { landcycleCard(g, cy, ev); return; } }
     for (const p of g.battlefield.slice()) {
       const a = p.card.a;
       if (!g.battlefield.includes(p)) continue;
@@ -6515,6 +6547,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       attackers.forEach(p => { p.attacking = false; });
       for (const p of attackers) if (p.exileEoc && g.battlefield.includes(p)) leavePerm(g, p, ev, 'exile');
       vilisCheck(g, ev); rootsCheck(g, ev); if (g.opp) vilisCheck(g.opp, ev);          // Kari Zev's Ragavan is exiled at end of combat
+      if (g.opp) { const sac = g.opp.battlefield.filter(q => q.ringSac); sac.forEach(q => { q.ringSac = false; ev.push({ type: 'note', text: `💍 ${q.card.name} blocked the Ring-bearer: it is sacrificed at end of combat`, source: q }); leavePerm(g.opp, q, ev); }); if (sac.length) flushLeaves(g.opp, ev); }
       if (matchOver(g)) break;
       if (g.extraCombats > 0) { g.extraCombats--; phases++; }
     }
@@ -6840,6 +6873,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (hasKw(g, a, 'flying') && !(hasKw(d, b, 'flying') || hasKw(d, b, 'reach'))) return false;
     if (hasKw(g, a, 'unblockable') || hasKw(g, a, 'shadow') || hasKw(g, a, 'horsemanship')) return false;
     if (hasKw(g, a, 'skulk') && powerOf(d, b) > powerOf(g, a)) return false;
+    if (g.ring && g.ring.tempts >= 1 && g.ring.bearer === a.iid && powerOf(d, b) > powerOf(g, a)) return false;          // the Ring, level 1: your Ring-bearer can't be blocked by creatures with greater power
     return true;
   }
   const kills = (gx, x, gy, y) => powerOf(gx, x) > 0 && !indestructible(gy, y) && (deathtouch(gx, x) || powerOf(gx, x) >= toughnessOf(gy, y));
@@ -6924,6 +6958,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const blockedSet = new Set(blocks.keys());
     if (!g.dry && g.hand.some(c => c.card.a.sneak)) sneakStep(g, attackers, attackers.filter(x => !blockedSet.has(x)), ev);          // sneak, once the blocks are known
     blocks.forEach((bl, a) => ev.push({ type: 'note', text: `${bl.map(b => b.card.name).join(' + ')} blocks ${a.card.name}`, source: bl[0] }));
+    if (g.ring && g.ring.tempts >= 3 && !g.dry) blocks.forEach((bl, a) => { if (a.iid === g.ring.bearer) bl.forEach(b => { b.ringSac = true; }); });          // the Ring, level 3: whatever blocks your Ring-bearer is sacrificed at end of combat
     let dmg = 0, ll = 0, llD = 0; const hitters = [];
     const alive = (game, p) => game.battlefield.includes(p);
     const steps = attackers.concat([...blocks.values()].flat()).some(p => hasFirst(g.battlefield.includes(p) ? g : d, p)) ? ['first', 'regular'] : ['regular'];
@@ -7094,6 +7129,11 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (fxs.length && !interactionHit(me, fxs)) continue;
         const sc = (fxs.length ? 20 : 0) + a.castMv;                                                        // interaction first, then the most mana it can use
         if (sc > bs) { bs = sc; best = c; }
+      }
+      if (me.ask) {                                                                                       // a person: any instant or flash card they can pay for, the autopilot's pick as the default, or not now
+        const opts = me.hand.filter(c => c.card.a && !c.card.a.isLand && !c.card.a.counter && atInstantSpeed(c.card) && canPay(effectiveCost(me, c), units));
+        if (!opts.length) break;
+        best = decide(me, { kind: 'instant', options: opts, def: best, optional: true, step, caster: me.opp });
       }
       if (!best) break;
       me.inWindow = true;
@@ -7438,7 +7478,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     pay, madness, fxValue, topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, tutorScore, tutorContext, commanderBonus, lifeFloor, pumpLethal, lockOf, activeLocks, untapStep, lockWorth, lockUpkeep, castCard, effectiveCost, ghostTurn, ghostDraws, ghostDiscards, wheel, comboLines, infiniteMana, comboKind, comboNeed, bestTutorTarget, stealPerm, sendHome, discardWorst, setTribe: t => { curTribe = t; }, playMatch, comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackHeld, heldFetches, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks, chooseAttackers, resolveCombatVs, duel, canBlock, creatureValue, checkKill, sagaAdvance,
     tokenGroups, flushLeaves, counterMult, touch, sacrificeFoods, foodsOf, bestTutorTarget, pickSacrifice,
     addCounters, temptRing, ringBearer, RING_TEXT,
-    decide, tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard,
+    decide, landcycleCard, transmuteCard, cycleLands, transmuteTargets, tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard,
     linkPod, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, canBlock, chooseBlocks, dealOpening, keepOpening, mullCost, podFocus, pickTarget, podAlive, playPod, podMonteCarlo, podLog, turnSummary, eliminate, canAttack, chooseAttackers, matchOver, checkKill,
   };
   root.Goldfish = api;

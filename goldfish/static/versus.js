@@ -530,6 +530,7 @@
     }
     seat.classList.toggle('sleeved', !!st.lookOn[pid]);
     seat.dataset.set = st.lookName[pid] || '';
+    if (L.watchMat) L.watchMat(seat, look.mat);          // its playmat sits where you moved it (three fingers, or Adjust in the picker)
   }
   function plateEl(st, gm, g, mine) {
     const m = gm.match, active = !gm.over && cur(gm).pid === g.pid;

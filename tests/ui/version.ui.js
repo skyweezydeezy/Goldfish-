@@ -5,7 +5,7 @@ const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
-const V = +fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'sw.js'), 'utf8').match(/isf-v(\d+)/)[1];
+const V = +fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'version.js'), 'utf8').match(/ISF_VERSION = (\d+)/)[1];          // the one place the number lives
 const shot = process.env.SHOTS;
 (async () => {
   const b = await chromium.launch();
@@ -29,7 +29,7 @@ const shot = process.env.SHOTS;
     const asked = await p.evaluate(() => new Promise(res => { const ch = new MessageChannel(); ch.port1.onmessage = e => res(e.data.version); navigator.serviceWorker.controller.postMessage('version', [ch.port2]); setTimeout(() => res(null), 2000); }));
     check('the service worker says which version it runs', asked === 'isf-v' + V, asked);
     check(`with it installed the pill shows v${V}`, (await p.textContent('#appVersion')) === 'v' + V);
-    await ctx.route('**/sw.js', async route => { const r = await route.fetch(); route.fulfill({ response: r, body: (await r.text()).replace('isf-v' + V, 'isf-v' + (V + 1)) }); });
+    await ctx.route('**/version.js', async route => { const r = await route.fetch(); route.fulfill({ response: r, body: (await r.text()).replace('ISF_VERSION = ' + V, 'ISF_VERSION = ' + (V + 1)) }); });
     await p.reload(); await p.waitForFunction(() => document.querySelector('#appVersion').classList.contains('update'), null, { timeout: 15000 }).catch(() => {});
     const t = await p.textContent('#appVersion'), cls = await p.$eval('#appVersion', e => e.className);
     check(`when v${V + 1} is deployed it says "v${V} → v${V + 1}" and offers the update`, t === `v${V} → v${V + 1}` && /update/.test(cls), t);

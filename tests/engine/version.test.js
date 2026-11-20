@@ -13,7 +13,10 @@ check('...and keeps version.js for offline use', /'version\.js'/.test(sw.slice(s
 { const g = { }; g.self = g; let imported = null; new Function('self', 'importScripts', 'caches', 'location', sw.replace(/self\.addEventListener\(/g, '(function(){})(') + '\nself.__v = VERSION;')(g, f => { imported = f; new Function('self', ver)(g); }, {}, { hostname: 'example.org' });
   check('run together they give the cache name isf-v<number>', imported === 'version.js' && g.__v === 'isf-v' + m[1], g.__v); }
 const html = read('goldfish/static/index.html');
-check('the page loads version.js before the app and shows the number in the footer', html.indexOf('<script src="version.js">') > 0 && html.indexOf('<script src="version.js">') < html.indexOf('<script src="sim.js">') && /id="appVersion"/.test(html) && /"Version " \+ self\.ISF_VERSION/.test(html));
+check('the page loads version.js before the app and has one version pill', html.indexOf('<script src="version.js">') > 0 && html.indexOf('<script src="version.js">') < html.indexOf('<script src="sim.js">') && (html.match(/id="appVersion"/g) || []).length === 1);
+const app = read('goldfish/static/app.js');
+check('the pill reads the deployed number from version.js, never from sw.js', /fetch\('version\.js', \{ cache: 'no-store' \}\)/.test(app) && !/fetch\('sw\.js'/.test(app));
+check('the service worker never serves a cached version.js to that check', /endsWith\('\/version\.js'\)/.test(sw));
 { const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'isf-ver-')), 'version.js'); fs.writeFileSync(tmp, ver);
   const out = execFileSync(process.execPath, [path.join(ROOT, 'tools', 'bump-version.js'), tmp], { encoding: 'utf8' }).trim();
   const after = fs.readFileSync(tmp, 'utf8');

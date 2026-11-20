@@ -38,7 +38,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   // the app itself: use the cached copy right away, refresh it in the background
-  if (url.origin === location.origin && url.pathname.endsWith('/sw.js')) return;          // always the deployed one: the version pill compares it with the running one
+  if (url.origin === location.origin && (url.pathname.endsWith('/sw.js') || url.pathname.endsWith('/version.js'))) return;          // always the deployed one: the version pill compares it with the running one
   if (url.origin === location.origin && !url.pathname.includes('/api/')) {
     e.respondWith(caches.open(VERSION).then(async cache => {
       const hit = await cache.match(req, { ignoreSearch: true });

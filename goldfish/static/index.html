@@ -291,7 +291,6 @@
     <a href="https://cash.app/$SWDMark" target="_blank" rel="noopener" class="tip-qr" title="Tip the developer on Cash App"><img src="donate-qr.jpg" alt="Cash App QR code for tips" width="96" height="96" loading="lazy"></a>
     <p>Card data and images are provided by <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a> and are not endorsed by Scryfall. Free to use, with no sign-up. If it's useful, you can <a class="donate" href="https://cash.app/$SWDMark" target="_blank" rel="noopener">tip the developer on Cash App ($SWDMark)</a>, or scan the code. Totally optional.</p>
   </div>
-  <p id="appVersion" class="app-version"></p>
 </footer>
 
 <div id="deckManager" class="modal" role="dialog" aria-modal="true" aria-labelledby="dmTitle">
@@ -327,7 +326,6 @@
 <script src="choices.js"></script>
 <script src="versus.js"></script>
 <script src="looks.js"></script>
-<script>document.getElementById("appVersion").textContent = self.ISF_VERSION ? "Version " + self.ISF_VERSION : "";</script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>
 </html>

@@ -1,0 +1,76 @@
+// Mob Storm (Krenko, Mob Boss)
+// Bracket 3
+// COMMANDER
+1 Krenko, Mob Boss
+// MAINBOARD
+1 Sol Ring
+1 Arcane Signet
+1 Mind Stone
+1 Fire Diamond
+1 Thought Vessel
+1 Brightstone Ritual
+1 Jeska's Will
+1 Goblin Lackey
+1 Goblin Chieftain
+1 Goblin King
+1 Goblin Warchief
+1 Goblin Rabblemaster
+1 Legion Warboss
+1 Skirk Prospector
+1 Conspicuous Snoop
+1 Pashalik Mons
+1 Moggcatcher
+1 Goblin Matron
+1 Goblin Recruiter
+1 Goblin Ringleader
+1 Siege-Gang Commander
+1 Muxus, Goblin Grandee
+1 Broadside Bombardiers
+1 Hobgoblin Bandit Lord
+1 Goblin Instigator
+1 Goblin Piledriver
+1 Goblin Trashmaster
+1 Goblin Chainwhirler
+1 Zada, Hedron Grinder
+1 Goblin Bushwhacker
+1 Goblin Sharpshooter
+1 Mogg War Marshal
+1 Battle Cry Goblin
+1 Empty the Warrens
+1 Hordeling Outburst
+1 Impact Tremors
+1 Purphoros, God of the Forge
+1 Goblin Bombardment
+1 Shared Animosity
+1 Warstorm Surge
+1 Terror of the Peaks
+1 Torbran, Thane of Red Fell
+1 Skullclamp
+1 Grapeshot
+1 Roaming Throne
+1 Vandalblast
+1 Chandra, Torch of Defiance
+1 Valakut Awakening // Valakut Stoneforge
+1 Wheel of Fortune
+1 Reckless Impulse
+1 Lightning Bolt
+1 Abrade
+1 Chaos Warp
+1 Fiery Confluence
+1 Deflecting Swat
+1 Kiki-Jiki, Mirror Breaker
+1 Boggart Shenanigans
+1 Beetleback Chief
+1 Hellrider
+1 Inferno Titan
+1 Goblin Cratermaker
+1 Mogg Fanatic
+1 Goblin Engineer
+1 Cavern of Souls
+1 Castle Embereth
+1 Mutavault
+1 Ancient Tomb
+1 Rogue's Passage
+1 Shinka, the Bloodsoaked Keep
+1 Great Furnace
+29 Mountain

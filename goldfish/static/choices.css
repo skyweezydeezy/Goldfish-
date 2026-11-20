@@ -32,7 +32,8 @@
   background: rgba(4,10,16,.82); box-shadow: 0 0 0 1px rgba(143,216,255,.5); cursor: zoom-in; }
 .ch-btns { margin: 0; }
 .ch-auto small { color: var(--muted); font-size: 11.5px; }
-.ch-sheet.mode .ch-opts { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.ch-sheet.mode .ch-opts, .ch-sheet.explore .ch-opts { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.ch-opt.text.def { padding-top: 24px; }                          /* room for the ★ badge above the words */
 
 /* ---------- a library search, the Arena way: the cards fanned out; tap one (it lifts), then Submit ---------- */
 .ch-dest { font-size: 13px; color: var(--text-secondary, #b9d0e0); }

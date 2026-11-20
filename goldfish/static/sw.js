@@ -1,5 +1,5 @@
 /* Service worker: lets the app open offline and keeps card images you've already seen. */
-const VERSION = 'isf-v45';
+const VERSION = 'isf-v49';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'versus.js', 'versus.css', 'decide.js', 'choices.js', 'choices.css', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'profile.js', 'tags.js', 'decks/index.json', 'looks.js', 'audio.js', 'card-sounds.js', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const IMG = 'gf-img-v1';

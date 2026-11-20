@@ -242,6 +242,21 @@ const shot = process.env.VERSUS_SHOTS;
     check('Counterspell counters it: the spell is in the opponent\'s graveyard (a commander: back in the command zone) and never entered the battlefield', cr.myGy.includes('Counterspell') && cr.opGy.includes(spell) && !cr.opBf.includes(spell), spell + (spell === big ? '' : ' (not the set-up spell ' + big + ')'));
     check('...and the log says so, in the opponent\'s main step', (await p.$$eval('#tab-duel .vs-log .vs-line.b[data-step=main1]', ls => ls.map(l => l.textContent))).some(t => /Counterspell counters /.test(t)));
   }
+  // ================= explore: Hakbal at the beginning of combat =================
+  await loadDeck('mermaids', 'Hakbal of the Surging Soul');
+  await start('duel');
+  await arrange('duel', { clear: true, mine: ['Hakbal of the Surging Soul'] });
+  await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], k = me.library.findIndex(i => i.card.name === 'Force of Will'); me.library.unshift(me.library.splice(k, 1)[0]); });
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-attack').click());
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-attack-go').click());
+  await p.waitForSelector('.ch-sheet.explore', { timeout: 15000 });
+  sh = await sheet();
+  check('explore asks what to do with the revealed nonland card, and shows it', /explores: Force of Will/.test(sh.title) && sh.names.slice().sort().join(' | ') === 'Keep it on top of your library | Put it into your graveyard' && sh.def.length === 1 && !!(await p.$('.ch-sheet .ch-spell .mtg')) && /revealed/.test(await p.$eval('.ch-sheet .ch-spell', e => e.textContent)), sh.title + ' — ' + sh.names.join(' | '));
+  if (shot) await p.screenshot({ path: path.join(shot, 'choice-explore.png') });
+  await pickTile('Put it into your graveyard'); await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet.explore') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
+  const xp = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return { gy: me.graveyard.map(i => i.card.name), top: me.library[0].card.name, ctr: (me.battlefield.find(q => /^Hakbal/.test(q.card.name)) || {}).counters }; });
+  check('..."put it into your graveyard": Force of Will is milled and Hakbal has its +1/+1 counter', xp.gy.includes('Force of Will') && xp.top !== 'Force of Will' && xp.ctr >= 1, JSON.stringify(xp));
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 
   await b.close();

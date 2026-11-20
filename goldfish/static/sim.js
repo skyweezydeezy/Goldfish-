@@ -4223,7 +4223,11 @@
       if (!g.library.length || !g.battlefield.includes(p)) break;
       const top = g.library[0];
       if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: ${top.card.name} to your hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
-      else { addCounters(g, p, '+1/+1', 1, ev, p); if (wantsBottom(g, top)) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
+      else {
+        addCounters(g, p, '+1/+1', 1, ev, p);
+        let yard = wantsBottom(g, top);
+        if (g.ask && !g.dry) yard = decide(g, { kind: 'explore', options: [false, true], def: yard, reveal: top, source: p });          // a person: keep the revealed card on top, or put it into the graveyard
+        if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
     }
   }
   function fireExplore(g, kind, p, ev) { for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes(kind)) fire(g, t, q, ev, p); }

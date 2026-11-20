@@ -132,6 +132,7 @@
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
       if (d.kind === 'mode') { item.name = fxLabel(o.mode); }
+      else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how]; }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
@@ -168,6 +169,11 @@
       q.title = d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = 'Do not cast it';
+    } else if (d.kind === 'explore') {
+      const pn = src ? src.name : 'Your creature';
+      q.title = `${pn} explores: ${d.reveal.card.name}`;
+      q.text = `The revealed card is not a land, so ${pn} gets a +1/+1 counter. Keep ${d.reveal.card.name} on top of your library, or put it into your graveyard?`;
+      q.spell = d.reveal.card; q.spellNote = 'revealed';
     } else if (d.kind === 'counter') {
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
       q.title = `${who} casts ${d.spell.card.name}`;
@@ -190,7 +196,7 @@
       return ks.length >= q.min && ks.length <= q.max ? ks.map(k => d.options[k]) : d.def;
     }
     if (a.pick === 'none') return q.optional ? null : d.def;
-    return Number.isInteger(a.pick) && d.options[a.pick] ? d.options[a.pick] : d.def;
+    return Number.isInteger(a.pick) && a.pick >= 0 && a.pick < d.options.length ? d.options[a.pick] : d.def;          // an option may itself be false (explore: "keep it on top")
   }
   const PENDING = { pending: true };
   // the chooser of a seat a person plays. It keeps nothing itself: the answers and the place in them live on the game (g.choices),

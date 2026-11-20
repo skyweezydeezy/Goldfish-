@@ -56,7 +56,7 @@ const shot = process.env.VERSUS_SHOTS;
     await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-keep').click(), mode);
     return until(mode, s => s.phase === 'main');
   };
-  // put cards in my hand and permanents on the table, then redraw (open and close the attacker chooser)
+  // put cards in my hand and permanents on the table, then redraw
   const arrange = async (mode, spec) => {
     await p.evaluate(({ m, spec }) => {
       const G = window.Goldfish, gm = window.__isfVersus[m].game, me = gm.games[0];

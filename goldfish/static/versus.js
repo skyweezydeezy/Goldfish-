@@ -707,7 +707,12 @@
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
       if (hit('vs-abil')) return useAbilities(mode);
-      if (hit('vs-attack') && !gm.attacked) return beginAttack(mode);
+      if (hit('vs-attack') && !gm.attacked) {
+        if (!D.quietBeginCombat(gm.games, g.pid)) return beginAttack(mode);          // something happens at the beginning of combat: it resolves first
+        gm.picking = true; gm.target = null;
+        gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
+        return render(mode);
+      }
       if (hit('vs-end')) return endHumanTurn(mode, false);
       if (hit('vs-autoturn')) return endHumanTurn(mode, true);
     });

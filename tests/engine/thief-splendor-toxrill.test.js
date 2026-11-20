@@ -36,7 +36,7 @@ for (const n of NAMES.slice(0, 3)) check(n + ': every line is read', by(n).a.cov
 { const { g, b } = mirror(); const t = putOn(b, 'Grave Titan'), bp = putOn(b, 'Birds of Paradise'); const z = b.battlefield.filter(p => p.token).length; const u0 = G.manaUnits(b).length; putOn(g, 'Overwhelming Splendor');
   check("Overwhelming Splendor: the other player's creatures are 1/1 with no abilities", G.powerOf(b, t) === 1 && G.toughnessOf(b, t) === 1 && !G.hasKw(b, t, 'deathtouch') && !G.hasKw(b, bp, 'flying'), `${G.powerOf(b, t)}/${G.toughnessOf(b, t)}`);
   check('...their mana creatures make no mana', u0 >= 1 && G.manaUnits(b).length === u0 - 1, `${u0} -> ${G.manaUnits(b).length}`);
-  const ev = G.combat(b); check('...and their attack triggers do not fire (no new Zombies)', b.battlefield.filter(p => p.token).length === z, b.battlefield.filter(p => p.token).length - z);
+  G.combat(b); check('...and their attack triggers do not fire (no new Zombies)', b.battlefield.filter(p => p.token).length === z, b.battlefield.filter(p => p.token).length - z);
   const mine = putOn(g, 'Grave Titan'); check('...your own creatures are untouched', G.powerOf(g, mine) === 6); }
 
 // Toxrill

@@ -24,6 +24,13 @@
     { id: 'prism', name: 'Prism Nexus', image: 'looks/mat-prism.jpg', shop: '' },
     { id: 'tide', name: 'Sunken Gate', image: 'looks/mat-tide.jpg', shop: '' },
     { id: 'eclipse', name: 'Eclipse Spires', image: 'looks/mat-eclipse.jpg', shop: '' },
+    // the second wave of I See Fish originals (Drive: Magic Commanders / Playmats), upscaled with Real-ESRGAN x4plus; sleeves are a colour until their art exists
+    { id: 'angel', name: 'Sunlit Citadel', image: 'looks/mat-angel.jpg', shop: '' },
+    { id: 'crystal', name: 'Moonlit Crystal City', image: 'looks/mat-crystal.jpg', shop: '' },
+    { id: 'leviathan', name: 'Void Leviathan', image: 'looks/mat-leviathan.jpg', shop: '' },
+    { id: 'dragon', name: 'Molten Dragon', image: 'looks/mat-dragon.jpg', shop: '' },
+    { id: 'emerald', name: 'Emerald Portal', image: 'looks/mat-emerald.jpg', shop: '' },
+    { id: 'storm', name: 'Isle of Arcane Storms', image: 'looks/mat-storm.jpg', shop: '' },
     { id: 'felt', name: 'Card-room felt', css: 'radial-gradient(ellipse at 50% 0%, #2f7048 0%, #1c4a2d 50%, #0f2c1b 100%)' },
     { id: 'crimson', name: 'Crimson', css: 'radial-gradient(ellipse at 50% 0%, #7a2433 0%, #4a1520 50%, #250a10 100%)' },
     { id: 'royal', name: 'Royal violet', css: 'radial-gradient(ellipse at 50% 0%, #563585 0%, #321e55 50%, #180f2e 100%)' },
@@ -104,7 +111,7 @@
 
   // ---- sets: a playmat with its matching sleeves. The 1v1 and Pod tables deal one to every player. ----
   // The original designs pair with the sleeve of the same name; each plain playmat pairs with a sleeve colour that suits it.
-  const PAIR = { felt: 'green', crimson: 'red', royal: 'purple', slate: 'black', dusk: 'orange', tidepool: 'ice', stars: 'sapphire', sand: 'gold' };
+  const PAIR = { angel: 'gold', crystal: 'ice', leviathan: 'purple', dragon: 'red', emerald: 'green', storm: 'sapphire', felt: 'green', crimson: 'red', royal: 'purple', slate: 'black', dusk: 'orange', tidepool: 'ice', stars: 'sapphire', sand: 'gold' };
   const SETS = MATS.filter(m => m.id !== 'frozen').map(m => {
     const s = SLEEVES.find(x => x.id === m.id && x.color) || SLEEVES.find(x => x.id === PAIR[m.id]);
     return s ? { id: m.id, name: m.name, mat: m.id, sleeve: s.id, art: !!m.image } : null;

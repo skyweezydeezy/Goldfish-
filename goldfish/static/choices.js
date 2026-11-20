@@ -1,4 +1,4 @@
-/* I See Fish - the question sheet of a played game (1v1 and Pod): a library search, a target, a mode, a discard, a sacrifice, a
+/* ICEYfish - the question sheet of a played game (1v1 and Pod): a library search, a target, a mode, a discard, a sacrifice, a
    counterspell. decide.js makes the question (what is asked, the options, the autopilot's pick); versus.js calls ask(q) and gets a
    promise of the answer: 'auto' (the autopilot decides), 'none', an option number, or a list of option numbers.
    The sheet lies over the bottom of the table and folds away ("Look at the table") so the board stays readable while you choose. */

@@ -1,7 +1,7 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [main, master, 'claude/visual-goldfish-calculator-1ztks5']          # only the default branch is published; other branches are refused by the Pages environment
+    branches: [main, master, iceymain, 'claude/visual-goldfish-calculator-1ztks5']          # only the default branch is published; other branches are refused by the Pages environment
   workflow_dispatch:
 permissions:
   contents: write          # the deploy gives each merge a new version number and commits it

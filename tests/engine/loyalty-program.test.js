@@ -146,7 +146,8 @@ G.endTurn(g); check('...and it is back after the end step', g.battlefield.some(q
 { const g = fresh(true); const v = put(g, 'Vraska'); v.loyalty = 9; const ev = [];
   const ab = v.card.a.pwAbilities.find(x => x.cost === -9);
   check('Vraska\'s -9 is parsed as a win', ab && ab.fx.some(f => f.type === 'poisonWin'));
-  G.applyEffects(g, ab.fx, v, ev, null); check('Vraska -9: the opponent has lost (nine poison counters)', g.opp.life <= 0 || G.matchOver(g), g.opp.life); }
+  G.applyEffects(g, ab.fx, v, ev, null); check('Vraska -9: nine poison counters, and the game goes on (ten are needed)', g.poisonDealt === 9 && !G.matchOver(g), g.poisonDealt);
+  G.applyEffects(g, [{ type: 'proliferate' }], null, ev, null); check('...one proliferate later the opponent has lost', G.matchOver(g) && g.match.reason === 'poison', g.match.reason); }
 { const g = fresh(); const v = put(g, 'Vraska'); v.loyalty = 9; G.useAbilities(g);
   check('Vraska at 9 loyalty uses her ultimate on her own', g.killTurn != null || v.loyalty <= 0 || !g.battlefield.includes(v), `loyalty ${v.loyalty}`); }
 { const g = fresh(); const v = put(g, 'Vraska'); v.loyalty = 5; G.useAbilities(g);

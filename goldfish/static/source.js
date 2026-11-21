@@ -70,6 +70,7 @@
       id: card.id,
       name: card.name,
       layout: card.layout || 'normal',
+      rarity: card.rarity || '',
       mana_cost: g('mana_cost'),
       cmc: card.cmc || 0,
       type_line: g('type_line'),

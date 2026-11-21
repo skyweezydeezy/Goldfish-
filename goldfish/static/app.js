@@ -1900,6 +1900,105 @@
     if (field && sel && !$('#plOppList').options.length) fillLabOpponents();
   }
   $('#plMode').addEventListener('change', showLabOpponents);
+
+  // ---------- A/B test (compare.js): diagnose, change one or two cards, test version 2 against version 1 ----------
+  let abWorker = null, abOpps = null, abV2 = null;
+  const abGames = () => Math.max(100, Math.min(10000, +$('#abN').value || 5000));
+  const abKey = () => S.deck ? S.deck.commanders.map(i => i.card.name).join(' + ') || 'deck' : 'deck';
+  function abShow() {
+    const sel = $('#abOpp').value === 'selected', show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
+    show('#abOppNWrap', !sel); show('#abOppListWrap', sel);
+    if (sel && !$('#abOppList').options.length) $('#abOppList').innerHTML = $('#plOppList').innerHTML || BUILTIN.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)}</option>`).join('');
+  }
+  $('#abOpp').addEventListener('change', abShow); abShow();
+  // the opponents are picked once per deck and kept for version 2, so both versions meet the same decks
+  async function abOpponents(fresh) {
+    if (abOpps && !fresh) return abOpps;
+    let picks;
+    if ($('#abOpp').value === 'selected') picks = [...$('#abOppList').selectedOptions].map(o => o.value);
+    else {
+      const mine = S.deck.commanders.length > 0, me = S.deck.commanders.map(i => i.card.name).join('+');
+      picks = BUILTIN.filter(d => (d.commanders.length > 0) === mine && d.commanders.join('+') !== me).map(d => 'builtin:' + d.file);
+      for (let i = picks.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [picks[i], picks[j]] = [picks[j], picks[i]]; }
+      picks = picks.slice(0, Math.max(1, Math.min(20, +$('#abOppN').value || 8)));
+    }
+    const out = [];
+    for (const v of picks) { const x = await loadOpponent(v, $('#abInfo')); if (x.cards.length) out.push({ name: x.name, cards: x.cards, tokens: x.tokens, policy: x.policy || {} }); }
+    return (abOpps = out);
+  }
+  function abRun(msg, onDone) {
+    if (abWorker) abWorker.terminate();
+    abWorker = new Worker('worker.js');
+    const bar = $('#abProgress div'); bar.style.width = '0';
+    const t0 = performance.now();
+    abWorker.onmessage = e => {
+      if (e.data.progress != null) bar.style.width = (e.data.progress * 100).toFixed(1) + '%';
+      if (e.data.result) { bar.style.width = '100%'; $('#abDiag').disabled = $('#abRun').disabled = false; onDone(e.data.result, ((performance.now() - t0) / 1000).toFixed(0)); }
+    };
+    abWorker.onerror = err => { $('#abDiag').disabled = $('#abRun').disabled = false; $('#abInfo').textContent = 'A/B test error: ' + err.message; };
+    abWorker.postMessage(msg);
+  }
+  const abOpts = () => Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
+  const pts = x => (x >= 0 ? '+' : '') + (100 * x).toFixed(1);
+  const VERDICT = { card: ['card', 'fully simulated and cast: the number is about the card'], play: ['played', 'drawn but rarely cast: mana, curve or the autopilot\'s timing, not necessarily the card'], engine: ['engine', 'some of its text is not simulated: test it by hand'] };
+  function abCardList(title, rows, cut) {
+    if (!rows.length) return '';
+    const li = rows.map(r => `<li><b>${esc(r.name)}</b> ${pts(r.diff)} pts (z ${r.z.toFixed(1)}) · <span class="pill" title="${esc(VERDICT[r.verdict][1])}">${VERDICT[r.verdict][0]}</span> · ${r.castRate == null ? 'not drawn' : 'cast in ' + (100 * r.castRate).toFixed(0) + '% of games drawn'}${r.notSim.length ? ' · <i>not simulated: ' + esc(r.notSim[0].slice(0, 70)) + '</i>' : ''}${cut ? ` <button class="ghost" data-abcut="${esc(r.name)}">Cut</button>` : ''}</li>`).join('');
+    return `<div class="sg"><h3>${title} (${rows.length})</h3><ul>${li}</ul></div>`;
+  }
+  $('#abDiag').addEventListener('click', async () => {
+    if (!need()) return;
+    $('#abDiag').disabled = true; $('#abDiagOut').innerHTML = '';
+    let opps; try { opps = await abOpponents(true); } catch (err) { $('#abInfo').textContent = 'Could not load the opponents: ' + (err.message || err); $('#abDiag').disabled = false; return; }
+    if (!opps.length) { $('#abInfo').textContent = 'Pick at least one opponent.'; $('#abDiag').disabled = false; return; }
+    const n = abGames();
+    $('#abInfo').textContent = `Diagnosing: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
+    abRun({ diagnose: { cards: S.cards, tokens: S.tokens, opps }, opts: abOpts(), n, seed: rseed() }, (d, sec) => {
+      $('#abInfo').textContent = `${n.toLocaleString()} matches in ${sec}s: this deck wins ${(100 * d.winRate).toFixed(1)}% against ${opps.length} decks.`;
+      const lose = d.losing, win = d.winning;
+      $('#abDiagOut').innerHTML = `<div class="suggest">${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
+      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => { const t = $('#abChanges'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + '- ' + b.dataset.abcut + '\n+ '; t.focus(); }));
+      if (typeof tidy === 'function') tidy($('#abDiagOut'));
+    });
+  });
+  $('#abRun').addEventListener('click', async () => {
+    if (!need()) return;
+    const ch = Compare.applyChanges($('#deckText').value, $('#abChanges').value);
+    if (ch.missing.length) { $('#abInfo').textContent = `Not in the list: ${ch.missing.join(', ')}`; return; }
+    if (!ch.cuts.length && !ch.adds.length) { $('#abInfo').textContent = 'Write the changes first: "- Card" to cut, "+ Card" to add, one per line.'; return; }
+    $('#abRun').disabled = true; $('#abOut').innerHTML = '';
+    let opps, v2;
+    try {
+      opps = await abOpponents(false);
+      $('#abInfo').textContent = 'Loading version 2…'; await Source.init();
+      const r = await Source.loadDeck(ch.text, m => { $('#abInfo').textContent = m; });
+      v2 = { cards: markCommander(r.cards), tokens: r.tokens || [], text: ch.text };
+    } catch (err) { $('#abInfo').textContent = 'Could not load: ' + (err.message || err); $('#abRun').disabled = false; return; }
+    const unknown = ch.adds.filter(a => !v2.cards.some(c => c.name.toLowerCase() === a.toLowerCase() || c.name.split(' // ')[0].toLowerCase() === a.toLowerCase()));
+    if (unknown.length) { $('#abInfo').textContent = `Card not found: ${unknown.join(', ')}`; $('#abRun').disabled = false; return; }
+    const n = abGames();
+    $('#abInfo').textContent = `Testing version 2 (${[...ch.cuts.map(x => '−' + x), ...ch.adds.map(x => '+' + x)].join(', ')}): ${n.toLocaleString()} matches per version, twice, then head to head…` + (ch.cuts.length + ch.adds.length > 4 ? ' More than two swaps at once makes it hard to tell which one mattered.' : '');
+    abRun({ ab: { v1: { cards: S.cards, tokens: S.tokens }, v2: { cards: v2.cards, tokens: v2.tokens }, opps }, opts: abOpts(), n, seed: rseed() }, (r, sec) => {
+      abV2 = v2;
+      const head = { better: `✓ Version 2 is better: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)})`, worse: `✗ Version 2 is worse: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)})`, unclear: `≈ No clear difference: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)}). More games, or a bigger change, may tell.` }[r.verdict];
+      const row = (l, x) => `<tr><td>${l}</td><td>${(100 * x.v1).toFixed(1)}%</td><td>${(100 * x.v2).toFixed(1)}%</td><td>${pts(x.diff)} (z ${x.z.toFixed(1)})</td></tr>`;
+      const opp = r.perOpp.map(p => `<li>${esc(p.name)}: ${(100 * p.v1).toFixed(0)}% → ${(100 * p.v2).toFixed(0)}%</li>`).join('');
+      const nc = r.newCards.map(c => `<li><b>${esc(c.name)}</b> ${pts(c.diff)} pts (z ${c.z.toFixed(1)}) · ${VERDICT[c.verdict][0]}</li>`).join('');
+      $('#abOut').innerHTML = `<p><b>${head}</b></p><table class="labtable"><thead><tr><th>Run</th><th>Version 1</th><th>Version 2</th><th>Change</th></tr></thead><tbody>${row('Test', r.test)}${row('Fresh shuffles', r.confirm)}${row('Both', r.both)}</tbody></table>${r.h2h ? `<p class="hint">Head to head: version 2 wins ${(100 * r.h2h.v2).toFixed(1)}% of ${r.h2h.n} matches against version 1 (z ${r.h2h.z.toFixed(1)}).</p>` : ''}<div class="suggest"><div class="sg"><h3>By opponent (${r.perOpp.length})</h3><ul>${opp}</ul></div>${nc ? `<div class="sg"><h3>The cards you added</h3><ul>${nc}</ul></div>` : ''}</div><div class="row wrap"><button id="abUse" class="primary">Use version 2</button></div>`;
+      if (typeof tidy === 'function') tidy($('#abOut'));
+      $('#abUse').addEventListener('click', () => { $('#deckText').value = abV2.text; $('#loadDeck').click(); abOpps = null; toast('Version 2 is now the deck'); });
+      const log = JSON.parse(localStorage.getItem('gf_ab') || '{}'), k = abKey();
+      (log[k] = log[k] || []).unshift({ at: new Date().toISOString().slice(0, 10), changes: $('#abChanges').value.trim(), diff: r.both.diff, z: r.both.z, verdict: r.verdict, n });
+      log[k] = log[k].slice(0, 20); localStorage.setItem('gf_ab', JSON.stringify(log)); abRenderLog();
+      $('#abInfo').textContent = `${n.toLocaleString()} matches per version, twice, in ${sec}s.`;
+    });
+  });
+  function abRenderLog() {
+    const log = (JSON.parse(localStorage.getItem('gf_ab') || '{}'))[abKey()] || [];
+    $('#abLog').innerHTML = log.length ? `<div class="suggest"><div class="sg"><h3>Tests for this deck (${log.length})</h3><ul>${log.map(e => `<li>${e.at} · ${esc(e.changes.replace(/\n/g, ', '))} · ${e.verdict === 'better' ? '✓' : e.verdict === 'worse' ? '✗' : '≈'} ${pts(e.diff)} pts (z ${e.z.toFixed(1)}, ${e.n.toLocaleString()} games)</li>`).join('')}</ul></div></div>` : '';
+    if (log.length && typeof tidy === 'function') tidy($('#abLog'));
+  }
+  abRenderLog();
   $('#plOpp').addEventListener('change', showLabOpponents);
   showLabOpponents();
 

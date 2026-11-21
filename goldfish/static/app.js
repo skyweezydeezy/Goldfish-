@@ -1662,7 +1662,7 @@
     if (!opp.cards.length) { $('#mmInfo').textContent = 'That deck has no cards.'; btn.disabled = false; return; }
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     o.policyB = opp.policy || {};                                                          // the opponent plays with its own learned choices
-    const n = Math.max(20, Math.min(3000, +$('#mmN').value || 400));
+    const n = Math.max(20, Math.min(10000, +$('#mmN').value || 5000));
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');
     const bar = $('#mmProgress div'); bar.style.width = '0';
@@ -1870,7 +1870,7 @@
     if (dec.mirrorOnly && mode === 'goldfish') mode = 'field';                                       // a choice that needs an opponent is tested against other decks
     if (dec.dynamic) dec.options = tribeOptions();
     if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
-    const n = Math.max(50, Math.min(3000, +$('#plN').value || 400));
+    const n = Math.max(50, Math.min(10000, +$('#plN').value || 5000));
     let opp = null;
     let field = null;
     if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }

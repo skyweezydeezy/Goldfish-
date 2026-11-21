@@ -335,6 +335,20 @@
     if (!ev) return info(mode, `${inst.card.name} was not cast.`);
     info(mode, ''); humanDone(mode, ev);
   });
+  // a planeswalker's loyalty abilities: the menu (decide.js loyaltyQuestion), then the chosen ability resolves (its own choices asked)
+  const openLoyalty = (mode, iid) => mine(mode, async (gm, g) => {
+    if (gm.phase !== 'main') return;
+    const perm = g.battlefield.find(q => q.iid === iid), q = D.loyaltyQuestion(g, perm);
+    if (!q) return;
+    gm.choice = q; render(mode);
+    let pick; try { pick = await C.ask(q); } finally { gm.choice = null; }
+    const k = pick === 'auto' ? q.def[0] : pick;
+    if (k == null || k === 'none' || !q.options[k] || q.options[k].disabled) return render(mode);
+    const idx = q.options[k].i;
+    const ev = await act(mode, gs => G.useLoyalty(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid), idx));
+    if (!ev) return info(mode, `${perm.card.name} cannot use that ability now.`);
+    info(mode, ''); humanDone(mode, ev);
+  });
   // landcycling or transmute from your hand: the search fan asks which card you find
   const cycleCard = (mode, iid, kind) => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !(resp && kind === 'cycle')) return;
@@ -346,7 +360,7 @@
   });
   const useAbilities = mode => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
-    const ev = await act(mode, gs => { const x = gs[g.pid], out = []; if (resp) return D.instantAbilities(x); for (let k = 0; k < 12; k++) { const e = G.useAbilities(x); if (!e.length) break; out.push(...e); } return out; });
+    const ev = await act(mode, gs => { const x = gs[g.pid], out = []; if (resp) return D.instantAbilities(x); x.skipLoyalty = true; try { for (let k = 0; k < 12; k++) { const e = G.useAbilities(x); if (!e.length) break; out.push(...e); } } finally { x.skipLoyalty = false; } return out; });          // loyalty abilities are yours to choose: click the planeswalker
     const names = ev.filter(e => e.type === 'activate' || e.type === 'pw' || e.type === 'note').map(e => e.text || (e.perm && e.perm.card.name)).filter(Boolean);
     say(mode, g, names.length ? 'Abilities: ' + names.slice(0, 8).join('; ') : 'No ability worth using right now.', gm.step);
     humanDone(mode, ev.filter(e => e.type !== 'note'));
@@ -421,6 +435,9 @@
     delete e.dataset.iid; e.removeAttribute('title');
     return e;
   }
+  // can you use one of this planeswalker's loyalty abilities right now? It is yours, it is your main phase and nothing else is waiting
+  // (you have priority), and one of its abilities can be paid for (once a turn: the engine's loyaltyState)
+  const loyal = (gm, g, p) => gm.human === g.pid && gm.phase === 'main' && !gm.over && !gm.picking && !gm.choice && !gm.acting && !g.dead && G.loyaltyState(g, p).list.some(it => it.ok);
   function permEl(st, gm, g, p) {
     const e = node(st, `b${g.pid}:${p.iid}:${p.mdfc ? 1 : 0}:${p.card.uid}`, p.card, p.mdfc ? 1 : 0);
     e.classList.add('vs-pc'); e.dataset.iid = p.iid;
@@ -434,6 +451,7 @@
       if (p.counters) e.appendChild(h('span', 'ctr' + (p.counters < 0 ? ' neg' : ''), (p.counters > 0 ? '+' : '') + p.counters));
     }
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
+    if (p.card.a.isPlaneswalker && loyal(gm, g, p)) { e.classList.add('vs-loyal'); e.title = 'Loyalty abilities: click to choose one'; }          // your main phase, nothing else waiting
     if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
     return e;
   }
@@ -471,10 +489,13 @@
   }
   // creatures in the front row (facing the other players), lands and everything else in the back row
   function fieldEl(st, gm, g, mine) {
-    const cre = g.battlefield.filter(G.isCreaturePerm), lands = g.battlefield.filter(p => p.asLand && !G.isCreaturePerm(p)), other = g.battlefield.filter(p => !p.asLand && !G.isCreaturePerm(p));
-    const front = h('div', 'vs-row front'), back = h('div', 'vs-row back'), gl = h('div', 'vs-grp lands'), go = h('div', 'vs-grp other');
-    front.append(...stacks(st, gm, g, cre)); gl.append(...stacks(st, gm, g, lands)); go.append(...stacks(st, gm, g, other));
-    if (!cre.length) front.appendChild(h('span', 'vs-none', 'No creatures'));
+    // the front row: creatures, and planeswalkers at the opposite end of the same row; the back row: lands, and everything else
+    const walker = p => p.card.a.isPlaneswalker && !G.isCreaturePerm(p) && !p.asLand;
+    const cre = g.battlefield.filter(G.isCreaturePerm), pws = g.battlefield.filter(walker), lands = g.battlefield.filter(p => p.asLand && !G.isCreaturePerm(p)), other = g.battlefield.filter(p => !p.asLand && !G.isCreaturePerm(p) && !walker(p));
+    const front = h('div', 'vs-row front'), back = h('div', 'vs-row back'), gc = h('div', 'vs-grp creatures'), gw = h('div', 'vs-grp walkers'), gl = h('div', 'vs-grp lands'), go = h('div', 'vs-grp other');
+    gc.append(...stacks(st, gm, g, cre)); gw.append(...stacks(st, gm, g, pws)); gl.append(...stacks(st, gm, g, lands)); go.append(...stacks(st, gm, g, other));
+    if (!cre.length) gc.appendChild(h('span', 'vs-none', 'No creatures'));
+    front.append(gc); if (pws.length) front.append(gw);
     if (!lands.length && !other.length) gl.appendChild(h('span', 'vs-none', 'No lands yet'));
     back.append(gl, go);
     const f = h('div', 'vs-field');
@@ -584,7 +605,7 @@
     }
     const units = G.allUnits(g).length;
     return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : 'Waiting for the other players…')}</span></div>
-      ${mine ? `<div class="row wrap"><button class="vs-abil"><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
+      ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
   function handEl(st, gm, g) {
@@ -738,6 +759,8 @@
       if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
       if (hit('vs-transmute')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-transmute').dataset.iid, 'transmute'); }
       if (hit('vs-asland')) { e.stopPropagation(); return playCard(mode, +hit('vs-asland').dataset.iid, true); }
+      const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
+      if (lw) { e.stopPropagation(); return openLoyalty(mode, +lw.dataset.iid); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
       if (hit('vs-abil')) return useAbilities(mode);

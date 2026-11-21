@@ -227,6 +227,28 @@ const shot = process.env.VERSUS_SHOTS;
   check('...Samwise carries the Ring: 💍 on his card and "💍 1" by your name', rg.tempts === 1 && rg.bearer && rg.marked && /💍 1/.test(rg.plate), JSON.stringify(rg));
   check('...and the log says the Ring tempted you', (await log('duel', 6)).some(t => /the Ring tempts you \(1st time\): Samwise Gamgee is the Ring-bearer/.test(t)), (await log('duel', 3)).join(' || '));
 
+  // ================= a planeswalker's loyalty abilities: the menu, and its place in the creature row =================
+  await start('duel');
+  await arrange('duel', { clear: true, mine: ["Elspeth, Sun's Champion", 'Samwise Gamgee'], oppClear: true });
+  const lay = await p.evaluate(() => { const r = document.querySelector('#tab-duel .vs-seat.me .vs-row.front'), w = r && r.querySelector('.vs-grp.walkers'), c = r && r.querySelector('.vs-grp.creatures');
+    const name = el => { const me = window.__isfVersus.duel.game.games[0], q = me.battlefield.find(x => String(x.iid) === el.dataset.iid); return q ? q.card.name : '?'; };
+    return { walkers: w ? [...w.querySelectorAll('.mtg[data-iid]')].map(name) : [], creatures: c ? [...c.querySelectorAll('.mtg[data-iid]')].map(name) : [], walkersRight: !!(w && c && w.getBoundingClientRect().left > c.getBoundingClientRect().left), backHasPw: !!document.querySelector('#tab-duel .vs-seat.me .vs-row.back .mtg.vs-loyal') }; });
+  check('your planeswalker sits in the creature row, at the opposite end from your creatures', lay.walkers.join() === "Elspeth, Sun's Champion" && lay.creatures.includes('Samwise Gamgee') && lay.walkersRight && !lay.backHasPw, JSON.stringify(lay));
+  const glow = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], e = me.battlefield.find(x => /^Elspeth, Sun/.test(x.card.name)); const el = document.querySelector('#tab-duel .vs-seat.me .mtg[data-iid="' + e.iid + '"]'); return { glow: el.classList.contains('vs-loyal'), iid: e.iid }; });
+  check('in your main phase it glows: a loyalty ability can be used', glow.glow);
+  await p.evaluate(iid => document.querySelector('#tab-duel .vs-seat.me .mtg[data-iid="' + iid + '"]').click(), glow.iid);
+  await p.waitForSelector('.ch-sheet.loyalty', { timeout: 10000 });
+  const lm = await p.evaluate(() => { const s = document.querySelector('.ch-sheet.loyalty'); return { title: s.querySelector('.ch-title').textContent, tiles: [...s.querySelectorAll('.ch-opt')].map(b => (b.disabled ? '(off) ' : '') + b.querySelector('.ch-name').textContent.slice(0, 26)), notes: [...s.querySelectorAll('.ch-opt.off .ch-note')].map(n => n.textContent), card: !!s.querySelector('.ch-spell .mtg'), ok: s.querySelector('.ch-ok').textContent, none: (s.querySelector('.ch-none') || {}).textContent }; });
+  check('clicking it opens the loyalty menu: +1, −3, −7 (dimmed: not enough loyalty), the card shown, "Not now"', /Elspeth, Sun's Champion: loyalty abilities/.test(lm.title) && lm.tiles.length === 3 && lm.tiles.some(t => /^\+1: Create three/.test(t)) && lm.tiles.some(t => /^\(off\) −7/.test(t)) && /needs 7 loyalty/.test(lm.notes.join()) && lm.card && lm.none === 'Not now', JSON.stringify(lm));
+  if (shot) await p.screenshot({ path: path.join(shot, 'choice-loyalty.png') });
+  await p.evaluate(() => { const b = [...document.querySelectorAll('.ch-sheet .ch-opt')].find(x => /^\+1:/.test(x.querySelector('.ch-name').textContent)); b.click(); });
+  check('...picking +1 makes the button "Activate +1"', (await p.$eval('.ch-sheet .ch-ok', b => b.textContent)) === 'Activate +1');
+  await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
+  const af = await p.evaluate(iid => { const me = window.__isfVersus.duel.game.games[0], e = me.battlefield.find(x => x.iid === iid); const el = document.querySelector('#tab-duel .vs-seat.me .mtg[data-iid="' + iid + '"]'); return { loyalty: e.loyalty, soldiers: me.battlefield.filter(q => q.token && /Soldier/.test(q.card.name)).length, glow: el.classList.contains('vs-loyal'), badge: (el.querySelector('.loyalty') || {}).textContent }; }, glow.iid);
+  check('...+1 resolves: three Soldiers, loyalty 5 (the badge says ◆ 5), and it stops glowing (once a turn)', af.soldiers === 3 && af.loyalty === 5 && af.badge === '◆ 5' && !af.glow, JSON.stringify(af));
+  check('...the log names the ability', (await log('duel', 4)).some(t => /Elspeth, Sun's Champion \+1: Create three 1\/1 white Soldier/.test(t)), (await log('duel', 2)).join(' || '));
+
   // ================= a pod: targets at any opponent =================
   await start('pod');
   await arrange('pod', { clear: true, hand: ['Anguished Unmaking'], lands: [['Swamp', 3], ['Plains', 3]], oppClear: true, opp: ['Academy Manufactor'] });
@@ -410,6 +432,21 @@ const shot = process.env.VERSUS_SHOTS;
   check('...and the next turn begins with seven cards (plus the one drawn)', await p.evaluate(() => window.__isf.game.hand.length === 8));
   await p.click('#tAuto'); await p.waitForTimeout(2500);
   check('Goldfish Table: "Autopilot turn" still plays by itself, without questions', !(await p.$('.ch-sheet')));
+  // the Practice table: the same planeswalker menu, from the card's menu
+  await p.waitForFunction(() => !window.__isf.busy, null, { timeout: 30000 }).catch(() => {});
+  await p.waitForTimeout(1500);
+  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; g.battlefield = g.battlefield.filter(q => !q.card.a.isPlaneswalker); const c = g.deck.unique.find(x => x.name === "Elspeth, Sun's Champion"); const q = G.enter(g, { iid: g.nextIid++, card: c }, {}); q.loyalty = 4; q.enteredTurn = g.turn; window.__pw = q.iid; });
+  await p.click('#zLibrary .card-back'); await p.waitForTimeout(600);
+  const pwRow = await p.evaluate(() => { const row = document.querySelector('#zCreatures'), el = row.querySelector('.mtg[data-iid="' + window.__pw + '"]'); const kids = [...row.children]; const sp = kids.findIndex(k => k.classList.contains('row-spacer')), at = kids.findIndex(k => k.contains(el)); return { inRow: !!el, afterSpacer: sp >= 0 && at > sp, glow: !!(el && el.classList.contains('castable')) }; });
+  check('Practice: the planeswalker sits in the creature row past a spacer (its far end), glowing', pwRow.inRow && pwRow.afterSpacer && pwRow.glow, JSON.stringify(pwRow));
+  await p.evaluate(() => document.querySelector('#zCreatures .mtg[data-iid="' + window.__pw + '"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })));
+  await p.click('#ctxMenu button >> text="◆ Loyalty abilities…"');
+  await p.waitForSelector('.ch-sheet.loyalty', { timeout: 10000 });
+  await p.evaluate(() => { const b = [...document.querySelectorAll('.ch-sheet .ch-opt')].find(x => /^\+1:/.test(x.querySelector('.ch-name').textContent)); b.click(); });
+  await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet'), null, { timeout: 10000 }); await p.waitForTimeout(1200);
+  const pa = await p.evaluate(() => { const g = window.__isf.game, e = g.battlefield.find(q => q.iid === window.__pw); return { loyalty: e && e.loyalty, soldiers: g.battlefield.filter(q => q.token && /Soldier/.test(q.card.name)).length, log: [...document.querySelectorAll('#gameLog li')].slice(-3).map(l => l.textContent).join(' | ') }; });
+  check('..."◆ Loyalty abilities…" opens the same menu; +1 makes three Soldiers and loyalty 5', pa.loyalty === 5 && pa.soldiers >= 3, JSON.stringify(pa));
 
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 

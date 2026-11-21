@@ -988,7 +988,7 @@
         case 'tempt': log(`<b>💍 The Ring tempts you</b> (${e.n > 4 ? e.n + 'th' : ORD[e.n]} time): ${e.bearer ? '<b>' + nm(e.bearer) + '</b> is your Ring-bearer.' : 'you have no creature to carry it.'} <i>${esc(e.ability)}</i>`); break;
         case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
         case 'mana': log(`↳ added ${e.n} mana`); break;
-        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.x ? 'X' : e.cost}: <i>${esc(e.text)}</i> (loyalty ${e.perm.loyalty})`); break;
+        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.x ? 'X' : e.cost}: <i>${esc(String(e.text || '').replace(/^[+−-]?(?:\d+|x|X):\s*/, ''))}</i> (loyalty ${e.perm.loyalty})`); break;          // the ability's text without its cost (the cost is written first)
         case 'equip': log(`Equipped ${nm(e.perm)} to ${nm(e.target)}`); break;
         case 'activate': log(`Activated ${nm(e.perm)}: <i>${esc(e.text)}</i>`); break;
         case 'note': log(`↳ ${esc(e.text)}`); break;
@@ -1082,6 +1082,20 @@
     play(ev);
   }
 
+  // Practice: a planeswalker's loyalty abilities, chosen in the same menu as on the Duel table (decide.js loyaltyQuestion)
+  function openLoyalty(obj) {
+    const g = S.game, D = window.Decide, C = window.__isfChoices;
+    if (!g || S.busy || !D || !C) return;
+    const q = D.loyaltyQuestion(g, obj); if (!q) return;
+    S.busy = true;
+    C.ask(q).then(pick => {
+      S.busy = false;
+      const k = pick === 'auto' ? q.def[0] : pick;
+      if (k == null || k === 'none' || !q.options[k] || q.options[k].disabled) return render();
+      const idx = q.options[k].i; snap();
+      quiet(yours(x => G.useLoyalty(x, x.battlefield.find(y => y.iid === obj.iid), idx)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
+    }).catch(() => { S.busy = false; });
+  }
   function castFace(inst, face, el) { snap(); quiet(yours(x => face === 1 ? G.castBackFace(x, sameInst(x, inst)) : G.castCard(x, sameInst(x, inst))).then(ev => faceDone(ev, inst, face, el))); }
   function faceDone(ev, inst, face, el) {
     if (!ev) { S.undo.pop(); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } sfx('error'); return toast(`Not enough mana for ${face === 1 ? 'the back face' : 'the front face'} of ${inst.card.name.split(' // ')[0]}`); }
@@ -1372,6 +1386,7 @@
       items.push([`▶ Cast the front: ${inst.card.name.split(' // ')[0]}`, () => castFace(inst, 0, m)]);
       items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
     }
+    if (zone === 'battlefield' && obj.card.a.isPlaneswalker && !forViewer) items.push(['◆ Loyalty abilities…', () => openLoyalty(obj), 'primary']);          // the planeswalker menu: choose which ability
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
@@ -1445,7 +1460,7 @@
   function clearState(e) {
     e.style.marginLeft = ''; e.style.marginRight = '';
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
-    e.classList.remove('tapped', 'token', 'sick', 'castable', 'ringbearer');
+    e.classList.remove('tapped', 'token', 'sick', 'castable', 'ringbearer'); e.removeAttribute('title');
   }
 
   function render(first) {
@@ -1456,7 +1471,9 @@
     const used = new Set();
 
     const rows = { zCreatures: [], zOther: [], zLands: [] };
-    g.battlefield.forEach(p => { rows[p.asLand ? 'zLands' : G.isCreaturePerm(p) ? 'zCreatures' : 'zOther'].push(p); });
+    const walker = p => p.card.a.isPlaneswalker && !G.isCreaturePerm(p) && !p.asLand;          // planeswalkers sit in the creature row, at its far end
+    g.battlefield.forEach(p => { rows[p.asLand ? 'zLands' : G.isCreaturePerm(p) || walker(p) ? 'zCreatures' : 'zOther'].push(p); });
+    rows.zCreatures.sort((x, y) => (walker(x) ? 1 : 0) - (walker(y) ? 1 : 0));
     for (const [id, list] of Object.entries(rows)) {
       const row = document.getElementById(id);
       const label = row.querySelector('.row-label');
@@ -1468,8 +1485,10 @@
         if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p);
       });
       const nodes = [label];
+      let spaced = false;
       for (const ps of groups.values()) {
         const sg = h('div', 'stackgroup');
+        if (id === 'zCreatures' && walker(ps[0])) { sg.classList.add('walker'); if (!spaced) { nodes.push(h('span', 'row-spacer')); spaced = true; } }
         if (ps.length === 1 && imprintOf(ps[0])) { sg.classList.add('imprint'); sg.appendChild(imprintEl(ps[0], used)); }
         (ps.length > 4 ? ps.slice(0, 4) : ps).forEach(p => sg.appendChild(permEl(p, used)));   // a big stack shows 4 cards and a count, not 100 images
         if (ps.length > 1) { const sc = h('span', 'stack-count', '×' + ps.length); sc.title = ps.length + ' × ' + ps[0].card.name; sg.appendChild(sc); }          // the pile's size, on the pile: a big stack shows only 4 cards
@@ -1552,6 +1571,7 @@
     // other kinds of counters (indestructible, shield...) as small labelled badges
     Object.keys(p.other || {}).forEach((k, i) => e.appendChild(h('span', 'ctr kind', `${esc(k)} ×${p.other[k]}`)).style.top = (44 + i * 18) + 'px');
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + p.loyalty));
+    if (p.card.a.isPlaneswalker && !S.busy && G.loyaltyState(g, p).list.some(it => it.ok)) { e.classList.add('castable'); e.title = 'Loyalty abilities: click for the menu'; }          // one of its loyalty abilities can be used now
     if (p.attachedTo != null) { const t = g.battlefield.find(q => q.iid === p.attachedTo); if (t) e.appendChild(h('span', 'tag', '→ ' + esc(t.card.name.split(',')[0]))); }
     return e;
   }

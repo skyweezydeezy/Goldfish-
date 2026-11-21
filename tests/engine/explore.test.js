@@ -21,6 +21,11 @@ const deck = G.buildDeck(cards, base.tokens, 'Merfolk');
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+// "Does it resolve?" (your own spell, or another player's that you have nothing to answer with) is passed by these wrappers: the
+// scenarios of the stack itself are in stack.test.js. r.asked counts the other questions only.
+const stackPass = q => q.kind === 'resolve' || (q.kind === 'counter' && !q.options.length);
+const AT = (games, pid, run, answers) => { const as = []; let i = 0, passes = 0; for (;;) { const r = D.attempt(games, pid, run, as); if (r.done) { r.asked -= passes; return r; } if (stackPass(r.ask)) { passes++; as.push({ sig: r.ask.sig, pick: 'none' }); continue; } if (answers && i < answers.length) { as.push(answers[i++]); continue; } return r; } };
+const RS = (games, pid, run, choose) => D.resolveSync(games, pid, run, q => stackPass(q) ? 'none' : choose(q));
 const by = n => { const c = deck.unique.find(c => c.name === n || c.name.split(' // ')[0] === n); if (!c) throw new Error('card not in the test deck: ' + n); return c; };
 const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.hand = []; g.battlefield = []; g.graveyard = []; g.exile = []; g.command = []; g.library = g.library.slice(0, 40); return g; };
 const mirror = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return { g, b }; };
@@ -89,8 +94,8 @@ T('hakbal choice', () => { const g = bare(); top(g, 'Opt', 'Opt', 'Opt'); putOn(
 T('seated', () => { const mk = () => { const { g, b } = mirror(); top(g, 'Opt', 'Opt', 'Opt', 'Opt'); putOn(g, 'Hakbal of the Surging Soul'); putOn(g, 'Reef Pathfinder'); return [g, b]; };
   const A = mk(), B = mk(); D.seat(B[0]); const kinds = [];
   const pa = G.previewAttack(A[0]); A[0].forceAttackers = pa.attackers.map(p => p.iid); G.combat(A[0]); A[0].forceAttackers = null;
-  const pb = D.resolveSync(B, 0, gs => D.turn.declare(gs[0]), q => { kinds.push(q.kind); return 'auto'; });
-  D.resolveSync(B, 0, gs => D.turn.combat(gs[0], { attackers: pb.attackers.map(p => p.iid) }), q => { kinds.push(q.kind); return 'auto'; });
+  const pb = RS(B, 0, gs => D.turn.declare(gs[0]), q => { kinds.push(q.kind); return 'auto'; });
+  RS(B, 0, gs => D.turn.combat(gs[0], { attackers: pb.attackers.map(p => p.iid) }), q => { kinds.push(q.kind); return 'auto'; });
   check('in a played game the explore questions are asked at the beginning of combat', kinds.filter(k => k === 'explore').length >= 2, kinds.join());
   const cnt = gs => gs[0].battlefield.map(p => p.card.name + ':' + (p.counters || 0)).join() + '|' + gs[0].hand.length + '|' + gs[0].graveyard.length + '|' + gs[1].life;
   check('...and with every default taken it is the autopilot\'s combat', cnt(A) === cnt(B), cnt(A) + ' vs ' + cnt(B)); });

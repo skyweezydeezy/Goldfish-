@@ -1984,6 +1984,19 @@
     const li = rows.map(r => `<li><b>${esc(r.name)}</b> ${pts(r.diff)} pts (z ${r.z.toFixed(1)}) · <span class="pill" title="${esc(VERDICT[r.verdict][1])}">${VERDICT[r.verdict][0]}</span> · ${r.castRate == null ? 'not drawn' : 'cast in ' + (100 * r.castRate).toFixed(0) + '% of games drawn'}${r.notSim.length ? ' · <i>not simulated: ' + esc(r.notSim[0].slice(0, 70)) + '</i>' : ''}${cut ? ` <button class="ghost" data-abcut="${esc(r.name)}">Cut</button>` : ''}</li>`).join('');
     return `<div class="sg"><h3>${title} (${rows.length})</h3><ul>${li}</ul></div>`;
   }
+  // ---- replacements for a card you cut: the most played Commander cards that do the same job, in the deck's colors, for at most one
+  // more mana, and not in the deck already (Scryfall, sorted by EDHREC rank). A list to pick from; the A/B test says whether a pick is better.
+  const abLines = () => $('#abChanges').value.split('\n').map(l => l.trim()).filter(l => l && l !== '+' && l !== '-');
+  const abSetLines = ls => { $('#abChanges').value = ls.join('\n') + (ls.length ? '\n' : ''); };
+  // Cut on any card list: writes "- Card", then shows the same replacements as the ranked swap suggestions under the card
+  async function abCut(btn) {
+    const name = btn.dataset.abcut, li = btn.closest('li'), card = S.deck.unique.find(c => c.name === name);
+    let ls = abLines(); if (!ls.includes('- ' + name)) { ls.push('- ' + name); abSetLines(ls); }
+    btn.classList.add('on'); btn.textContent = 'Cut ✓';
+    if (!card || !li || li.querySelector('.ab-repls')) return;
+    const box = h('div', 'ab-repls ab-under', '<span class="hint">Finding replacements…</span>'); li.appendChild(box);
+    abShowRepls(box, name, await abFind(card, new Set()));
+  }
   $('#abDiag').addEventListener('click', async () => {
     if (!need()) return;
     $('#abDiag').disabled = true; $('#abDiagOut').innerHTML = '';
@@ -1996,46 +2009,63 @@
       const lose = d.losing, win = d.winning;
       const ranked = d.rows.filter(r => r.z < 0 && r.verdict !== 'engine' && !r.commander).slice(0, 10);
       $('#abDiagOut').innerHTML = `<div class="suggest"><div class="sg"><h3>Swap suggestions: the 10 cards most linked to losing, with replacements (${ranked.length})</h3><p class="hint" data-fold>Click a replacement to choose it; click it again to undo. Replacements do the same job (ramp, draw, removal…), are the same kind of card at a similar mana value, fit the commander's colors and are the most played first (EDHREC). ✓ = the engine reads all of its text, so its result will mean something.</p><div id="abSwaps">${ranked.map((r, i) => abSwapRow(r, i)).join('')}</div></div>${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
-      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => { const t = $('#abChanges'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + '- ' + b.dataset.abcut + '\n+ '; t.focus(); }));
+      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => abCut(b)));
       if (typeof tidy === 'function') tidy($('#abDiagOut'));
-      abPicks = {}; abFillReplacements(ranked);
+      abFillReplacements(ranked);
     });
   });
   // ---- swap suggestions: card images ranked 1-10, replacements in the same order, click to choose ----
-  let abPicks = {};
   const abImg = (card, cls) => { const u = card && imgFor(card); return u ? `<img class="${cls || ''}" src="${esc(u)}" alt="${esc(card.name)}" loading="lazy">` : `<span class="ab-noimg">${esc(card ? card.name : '?')}</span>`; };
   function abSwapRow(r, i) {
     const card = S.deck.unique.find(c => c.name === r.name);
     return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
   }
-  async function abFillReplacements(ranked) {
+  // Replacements for one card: the same job (by its roles), the same kind of card, a similar mana value, inside the deck's colors, the most
+  // played first; the ones the engine reads fully come first. taken: names already suggested elsewhere on the page.
+  async function abFind(card, taken) {
     const ident = [...new Set(S.deck.commanders.flatMap(i => i.card.color_identity || []))];
     const inDeck = new Set(S.deck.unique.map(c => c.name));
+    const roles = typeof Profile !== 'undefined' && Profile.roles ? [...Profile.roles(card)] : [];
+    let found = [];
+    for (const q of Compare.replacementQueries(card, ident, roles)) {
+      const res = await Source.searchCards(q, 24);
+      for (const c of res) if (!inDeck.has(c.name) && !(taken && taken.has(c.name)) && !found.some(x => x.name === c.name)) found.push(c);
+      if (found.length >= 8) break;
+    }
+    return found.slice(0, 8).map(c => { let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, c)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ } return { c, lvl }; })
+      .sort((x, y) => (x.lvl === 'ok' ? 0 : 1) - (y.lvl === 'ok' ? 0 : 1)).slice(0, 5);
+  }
+  // Choosing a replacement: "- Cut" and "+ Pick" go into the change box together (one pick per cut card). A second click takes the pick
+  // back, and the cut too unless you pressed Cut on that card yourself.
+  // Every place that offers replacements for the same card (ranked rows, Cut rows) shows the same choice.
+  function abToggle(cut, add) {
+    let ls = abLines();
+    const all = $$('#abDiagOut .ab-repl').filter(o => o.dataset.cut === cut), was = all.some(o => o.dataset.add === add && o.classList.contains('on'));
+    all.forEach(o => { if (o.classList.contains('on')) ls = ls.filter(x => x !== '+ ' + o.dataset.add); o.classList.remove('on'); });
+    const cutByHand = $$('#abDiagOut [data-abcut]').some(x => x.dataset.abcut === cut && x.classList.contains('on'));          // you pressed Cut yourself: the cut stays
+    if (was) { if (!cutByHand) ls = ls.filter(x => x !== '- ' + cut); }
+    else {
+      if (!ls.includes('- ' + cut)) ls.push('- ' + cut);
+      ls.splice(ls.indexOf('- ' + cut) + 1, 0, '+ ' + add);
+      all.forEach(o => { if (o.dataset.add === add) o.classList.add('on'); });
+    }
+    abSetLines(ls);
+    const n = ls.filter(x => x.startsWith('+ ')).length;
+    $('#abInfo').textContent = n ? `${n} swap${n > 1 ? 's' : ''} chosen.${n > 2 ? ' More than two at once makes it hard to tell which one mattered.' : ''} Click "2. Test version 2".` : '';
+  }
+  function abShowRepls(box, cut, found) {
+    box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-cut="${esc(cut)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
+      : '<span class="hint">No replacement found (or Scryfall could not be reached): write your own as "+ Card" below.</span>';
+    box.querySelectorAll('.ab-repl').forEach(b => b.addEventListener('click', () => abToggle(b.dataset.cut, b.dataset.add)));
+  }
+  async function abFillReplacements(ranked) {
     const taken = new Set();
     for (let i = 0; i < ranked.length; i++) {
       const box = $('#abRepl' + i); if (!box) return;                                                    // a new diagnosis replaced the list
       const card = S.deck.unique.find(c => c.name === ranked[i].name);
-      const roles = typeof Profile !== 'undefined' && Profile.roles ? [...Profile.roles(card)] : [];
-      let found = [];
-      for (const q of Compare.replacementQueries(card, ident, roles)) {
-        const res = await Source.searchCards(q, 24);
-        for (const c of res) if (!inDeck.has(c.name) && !taken.has(c.name) && !found.some(x => x.name === c.name)) found.push(c);
-        if (found.length >= 8) break;
-      }
-      // the engine's reading of each candidate: fully simulated first, the most played first within that
-      found = found.slice(0, 8).map(c => { let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, c)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ } return { c, lvl }; })
-        .sort((a, b) => (a.lvl === 'ok' ? 0 : 1) - (b.lvl === 'ok' ? 0 : 1)).slice(0, 5);
+      const found = await abFind(card, taken);
       found.forEach(x => taken.add(x.c.name));
-      box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-row="${i}" data-cut="${esc(ranked[i].name)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
-        : '<span class="hint">No replacement found (or Scryfall could not be reached).</span>';
-      box.querySelectorAll('.ab-repl').forEach(b => b.addEventListener('click', () => {
-        const row = b.dataset.row, on = abPicks[row] && abPicks[row].add === b.dataset.add;
-        box.querySelectorAll('.ab-repl').forEach(x => x.classList.remove('on'));
-        if (on) delete abPicks[row]; else { abPicks[row] = { cut: b.dataset.cut, add: b.dataset.add }; b.classList.add('on'); }
-        $('#abChanges').value = Object.keys(abPicks).sort((x, y) => x - y).map(k => `- ${abPicks[k].cut}\n+ ${abPicks[k].add}`).join('\n');
-        const n = Object.keys(abPicks).length;
-        $('#abInfo').textContent = n ? `${n} swap${n > 1 ? 's' : ''} chosen.${n > 2 ? ' More than two at once makes it hard to tell which one mattered.' : ''} Click "2. Test version 2".` : '';
-      }));
+      abShowRepls(box, ranked[i].name, found);
     }
   }
   $('#abRun').addEventListener('click', async () => {
@@ -2430,5 +2460,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

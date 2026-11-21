@@ -15,7 +15,7 @@
   function sfxEv(mode, ev) {
     const gm = V[mode].game; if (!gm || gm.quiet) return;
     if (window.__isfAudio) window.__isfAudio.events(ev, { win: gm.human == null || gm.match.winner === gm.human ? 'win' : 'lose' });
-    if (window.__isfFx) window.__isfFx.events(ev);                 // on-screen card effects (card-effects.js)
+    if (window.__isfFx) window.__isfFx.events(ev, { mode });       // on-screen card effects (card-effects.js)
   }
   window.__isfVersus = V; V.redraw = m => render(m);                                   // read-only handle for automated UI tests
 

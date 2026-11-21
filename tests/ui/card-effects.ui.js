@@ -38,6 +38,14 @@ const cast = name => [{ type: 'cast', inst: { card: { name } } }];
   check('the name is matched on the front face of a two-faced card', !!(await p.$('.fx-bolt')));
   await p.waitForTimeout(1000);
 
+  // Cyclonic Rift on the Practice table: the goldfish has no cards in play, so just the tornado
+  await p.click('[data-tab=table]'); await p.waitForTimeout(2200);
+  await p.evaluate(c => __isfFx.events(c), cast('Cyclonic Rift'));
+  await p.waitForTimeout(300);
+  check('Cyclonic Rift on the Practice table: a tornado, no cards thrown', !!(await p.$('.fx-tornado')) && !(await p.$('.fx-ghost')));
+  await p.waitForTimeout(2600);
+  check('the tornado is gone after about 2½ seconds', !(await p.$('.fx-tornado')));
+
   // reduced motion: the bolt fades out, with no flash
   const q = await ctx.newPage(); await q.emulateMedia({ reducedMotion: 'reduce' });
   await q.goto('http://127.0.0.1:8800/'); await q.waitForTimeout(400);

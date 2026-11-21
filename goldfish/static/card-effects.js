@@ -65,25 +65,95 @@
     flash.animate([{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 0 }], { duration: 600, easing: 'ease-out' }).onfinish = () => flash.remove();
   }
 
+  // A tornado over a part of the screen (rect): a swaying funnel of spinning rings with debris, sweeping across it.
+  function tornado(r, ms) {
+    const box = document.createElement('div'); box.className = 'fx-tornado';
+    const w = Math.min(r.width * 0.42, r.height * 0.9, 340), hgt = Math.min(r.height * 0.98, w * 2.3);
+    box.style.cssText = `left:${r.left}px;top:${r.top + r.height - hgt}px;width:${r.width}px;height:${hgt}px`;
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', `0 0 ${w} ${hgt}`); svg.setAttribute('width', w); svg.setAttribute('height', hgt); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', 'fx-funnel');
+    // a misty funnel behind the rings: wide and soft at the top, a thin twisting tail at the ground
+    const fy = t => hgt * (1 - t) * 0.94 + hgt * 0.03, fx = t => w * (0.06 + 0.44 * Math.pow(t, 1.35)) * 1.05, fs = t => Math.sin(t * 3.1) * w * 0.06;
+    const side = s => Array.from({ length: 11 }, (_, i) => { const t = s > 0 ? i / 10 : 1 - i / 10; return `${(w / 2 + fs(t) + s * fx(t)).toFixed(1)} ${fy(t).toFixed(1)}`; }).join(' L');
+    let rings = `<defs><linearGradient id="fxMist" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb2c2" stop-opacity=".5"/><stop offset="1" stop-color="#6f8291" stop-opacity=".15"/></linearGradient>` +
+      `<filter id="fxSoft"><feGaussianBlur stdDeviation="${(w / 40).toFixed(1)}"/></filter></defs>` +
+      `<path d="M${side(1)} L${side(-1)} Z" fill="url(#fxMist)" filter="url(#fxSoft)" class="fx-mist"/>`;
+    const N = 13;
+    for (let i = 0; i < N; i++) {                            // rings: narrow at the ground, wide at the top
+      const t = i / (N - 1), y = hgt * (1 - t) * 0.94 + hgt * 0.03, rx = w * (0.06 + 0.44 * Math.pow(t, 1.35)), ry = rx * 0.22, sway = Math.sin(t * 3.1) * w * 0.06;
+      rings += `<ellipse cx="${w / 2 + sway}" cy="${y}" rx="${rx}" ry="${ry}" class="fx-ring" style="animation-duration:${(0.45 + t * 0.5).toFixed(2)}s;stroke-width:${(1.5 + t * 3).toFixed(1)}" stroke-dasharray="${(rx * 0.9).toFixed(0)} ${(rx * 0.5).toFixed(0)}"/>`;
+    }
+    for (let i = 0; i < 16; i++) {                           // debris whirling around the funnel
+      const t = Math.random(), y = hgt * (1 - t) * 0.9, rx = w * (0.1 + 0.42 * t);
+      rings += `<rect width="${4 + Math.random() * 6}" height="${2 + Math.random() * 3}" class="fx-debris" style="--rx:${rx.toFixed(0)}px;--y:${y.toFixed(0)}px;--c:${(w / 2).toFixed(0)}px;animation-duration:${(0.5 + Math.random() * 0.6).toFixed(2)}s;animation-delay:-${Math.random().toFixed(2)}s"/>`;
+    }
+    svg.innerHTML = rings; box.appendChild(svg); document.body.appendChild(box);
+    const travel = r.width - w;
+    svg.animate([{ transform: `translateX(${travel * 0.05}px)` }, { transform: `translateX(${travel * 0.55}px)`, offset: 0.45 }, { transform: `translateX(${travel * 0.3}px)`, offset: 0.7 }, { transform: `translateX(${travel * 0.9}px)` }], { duration: ms, easing: 'ease-in-out' });
+    box.animate([{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: ms }).onfinish = () => box.remove();
+    return { centre: t => ({ x: r.left + travel * t + w / 2, y: r.top + r.height - hgt * 0.45 }) };
+  }
+
+  // Cyclonic Rift: a tornado over the opponents' side, and every card it returned flies up into the wind and into its owner's hand.
+  // The game has already moved the cards when this runs, but the screen still shows them: the ones no longer on their owner's
+  // battlefield are the ones that were returned. Each is copied where it stands and the copy is thrown; the real table redraws
+  // underneath without them.
+  function rift(ctx) {
+    const ms = 2400;
+    const V = window.__isfVersus, gm = ctx && ctx.mode && V && V[ctx.mode] && V[ctx.mode].game;
+    const root = gm ? document.getElementById('tab-' + ctx.mode) : document.getElementById('tab-table');
+    const area = root && (gm ? root.querySelector('.vs-opps') : root.querySelector('.table-main'));
+    if (!area || !area.getClientRects().length) return;
+    const flying = [];
+    if (gm) for (const seat of root.querySelectorAll('.vs-seat.opp[data-pid]')) {
+      const g = gm.games[+seat.dataset.pid]; if (!g) continue;
+      const still = new Set(g.battlefield.map(p => p.iid)), hand = seat.querySelector('.vs-backs') || seat.querySelector('.vs-plate') || seat;
+      for (const el of seat.querySelectorAll('.vs-pc[data-iid]')) if (!still.has(+el.dataset.iid) && el.getClientRects().length) flying.push({ el, hand });
+    }
+    const ghosts = flying.slice(0, 40).map(({ el, hand }) => {
+      const r = el.getBoundingClientRect(), c = el.cloneNode(true);
+      c.className += ' fx-ghost'; c.removeAttribute('data-iid');
+      c.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+      document.body.appendChild(c);
+      return { c, r, hand };
+    });
+    if (reduce()) { ghosts.forEach(({ c }) => c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => c.remove()); return; }
+    const tw = tornado(area.getBoundingClientRect(), ms);
+    ghosts.forEach(({ c, r, hand }, i) => {
+      const h = hand.getBoundingClientRect(), wind = tw.centre(0.35 + Math.random() * 0.3);
+      const dx1 = wind.x - (r.left + r.width / 2) + (Math.random() - 0.5) * 80, dy1 = wind.y - (r.top + r.height / 2) - 40 - Math.random() * 60;
+      const dx2 = h.left + h.width / 2 - (r.left + r.width / 2), dy2 = h.top + h.height / 2 - (r.top + r.height / 2);
+      const spin = (Math.random() < 0.5 ? -1 : 1) * (540 + Math.random() * 360);
+      c.animate([
+        { transform: 'none', opacity: 1 },
+        { transform: 'translate(0,-6px) rotate(-4deg)', opacity: 1, offset: 0.18 },                                     // the wind catches it
+        { transform: `translate(${dx1}px,${dy1}px) rotate(${spin * 0.6}deg) scale(.75)`, opacity: 1, offset: 0.62 },   // swept into the funnel
+        { transform: `translate(${dx2}px,${dy2}px) rotate(${spin}deg) scale(.12)`, opacity: 0.2 },                     // thrown into its owner's hand
+      ], { duration: ms * 0.85, delay: 250 + i * 55, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'both' }).onfinish = () => c.remove();
+    });
+  }
+
   const FX = {
     'Lightning Bolt': lightning,
+    'Cyclonic Rift': rift,
   };
   const key = n => String(n || '').split(' // ')[0].trim().toLowerCase();
   const BY = {}; for (const n of Object.keys(FX)) BY[key(n)] = FX[n];
   const played = [];                                         // names of the effects played, newest last (for automated UI tests)
   let last = 0;
 
-  function play(name) {
+  // ctx: where it happens. { mode: 'duel' | 'pod' } on those tabs; nothing on the Practice table.
+  function play(name, ctx) {
     const fn = BY[key(name)]; if (!fn) return false;
     played.push(name); if (played.length > 30) played.shift();
-    if (document.hidden || performance.now() - last < 500) return true;   // one at a time: two bolts at once is just noise
+    if (document.hidden || performance.now() - last < 500) return true;   // one at a time: two effects at once is just noise
     last = performance.now();
-    try { fn(); } catch (e) { /* a broken effect never stops the game */ }
+    try { fn(ctx); } catch (e) { /* a broken effect never stops the game */ }
     return true;
   }
   // a batch of engine events: play the effect of the first card cast that has one
-  function events(ev) {
-    for (const e of ev || []) if (e && e.type === 'cast' && e.inst && e.inst.card && play(e.inst.card.name)) return;
+  function events(ev, ctx) {
+    for (const e of ev || []) if (e && e.type === 'cast' && e.inst && e.inst.card && play(e.inst.card.name, ctx)) return;
   }
   window.__isfFx = { play, events, played, cards: () => Object.keys(FX) };
 })();

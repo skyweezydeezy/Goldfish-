@@ -126,7 +126,8 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | ui/versus | Tabs 6 (1v1) and 7 (Pod): a played game (mulligan and bottom, land, attack chooser, block chooser, end turn, autopilot the rest; questions on the way take the autopilot's pick), an all-autopilot game, the many-games runner and sample logs (browser test); the Arena-style table (every permanent a card picture, piles in order, card backs for hidden hands, card viewer on an opponent's card) and the shared speed slider pacing Play / Pause; a random playmat-and-sleeves set for every player (all different, your own pick on your seat) |
 | ui/looks | Playmat and sleeve picker (browser test) |
 | ui/sound | Music and sound effects: the Sound panel, special sounds for famous cards, real audio output measured, an effect for each action, mute, reload, phones (browser test) |
-| ui/card-effects | On-screen card effects: the Lightning Bolt strike, its single flash, reduced motion, only one at a time (browser test, no internet) |
+| ui/card-effects | On-screen card effects: the Lightning Bolt strike, the Cyclonic Rift tornado on the Practice table, its single flash, reduced motion, | ui/rift | Cyclonic Rift in a real Duel game: the tornado, exactly the opponent's returned cards fly into their hand, lands stay (browser test) |
+only one at a time (browser test, no internet) |
 | ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer; a phone held sideways scrolls instead, with the toolbar on top, room for cards and every hand card reachable (browser test) |
 | ui/tags-panel | Deck tab Tags panel: folding groups, even grid, Show all, tap a tag to search (PC and iPhone) |
 | ui/category-odds | Draw Odds "Odds by category": odds match exact math, − / +, tapping a row picks its cards (PC and iPhone) |

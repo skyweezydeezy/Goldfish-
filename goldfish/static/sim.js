@@ -424,8 +424,8 @@
     if (m && m[2].toLowerCase() !== 'loyalty') {
       const who = m[3].trim().replace(/\s+and (?:you|draw|create|gain|add)\b.*$/i, ''), lw = who.toLowerCase();          // "on ~ and you gain 1 life" (Syr Vondam)
       const scope = /target (player|opponent) controls|an opponent controls|opponents control/.test(lw) ? 'opp' : /^each\b/.test(lw) ? 'each' : lw === 'it' && /create [^.]*token and put [^.]*counters? on it/i.test(text) ? 'lastToken' : (lw === '~' || lw === 'it') ? 'self' : 'target';          // "create a Fractal token and put X counters on it" (Berta)
-      const STOP = new Set(['each', 'other', 'another', 'target', 'up', 'to', 'one', 'two', 'three', 'creature', 'creatures', 'you', 'control', 'than', 'of', 'that', 'and', 'a', 'an', 'permanent', 'permanents', 'nontoken']);
-      const types = lw.replace(/~/g, ' ').split(/[^a-z]+/).filter(w => w && !STOP.has(w));
+      const STOP = new Set(['each', 'other', 'another', 'target', 'up', 'to', 'one', 'two', 'three', 'creature', 'creatures', 'you', 'control', 'than', 'of', 'that', 'and', 'a', 'an', 'permanent', 'permanents', 'nontoken', 'or']);
+      const types = /\bcreature or (?:enchantment|artifact|vehicle|planeswalker)\b|\b(?:artifact|enchantment|vehicle) or creature\b/.test(lw) ? [] : lw.replace(/~/g, ' ').split(/[^a-z]+/).filter(w => w && !STOP.has(w));          // "target creature or enchantment you control" (Heliod): any creature ("or" matched "Warrior")
       fx.push({ type: 'counters', kind: m[2], n: /^that many$/i.test(m[1]) ? 'THAT' : num(m[1]), scope, other: /\bother\b/.test(lw), excl: /other than ~|\banother\b/i.test(who), types });
     }
     if (/\bthe ring tempts you\b/i.test(text)) fx.push({ type: 'tempt' });                 // Frodo, Boromir...
@@ -686,6 +686,7 @@
         if (/^\{2\}, remove two \+1\/\+1 counters from among artifacts you control: draw a card\.?$/i.test(line)) { a.counterDraw = { cost: parseCost('{2}'), n: 2 }; rec.status = 'ok'; continue; }          // Iron Spider
         if (/^(?:converge — )?~ enters with a \+1\/\+1 counter on it for each color of mana spent to cast it\.?$/i.test(line)) { a.converge = true; rec.status = 'ok'; continue; }          // Crystalline Crawler
         if (/^remove a \+1\/\+1 counter from ~: add one mana of any color\.?$/i.test(line)) { a.counterMana = true; rec.status = 'ok'; continue; }
+        if (/^\{t\}, sacrifice a food: add one mana of any color\.?$/i.test(line)) { a.foodSacMana = true; rec.status = 'ok'; continue; }          // Gilded Goose (a person's; the autopilot keeps its Foods)
         if (/^(?:• )?(?:enclave — )?whenever a player attacks you with one or more creatures, that player gets twice that many rad counters\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Struggle for Project Purity: rad counters on an attacker
         if (/^~ deals damage to each player equal to twice the number of nonbasic lands that player controls\.?$/i.test(line)) { a.spellFx.push({ type: 'priceProgress' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Price of Progress (a goldfish has no lands)
         if (/^creatures your opponents control lose trample and can't have or gain trample\.?$/i.test(line)) { a.noTrampleOpp = true; MIRH(); continue; }          // Archetype of Aggression
@@ -7906,6 +7907,91 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
   }
 
+  // ---------- A person's abilities ----------
+  // What a permanent (or a card in the graveyard) of yours can do now, for the card menu: Foods (with Sam's discount), "{cost}: effect"
+  // abilities, sacrifice outlets, Walking Ballista, Aetherflux Reservoir, Gilded Goose, Cauldron Familiar. All of them can be used any time you
+  // have priority (they are not sorcery-speed), so the list is the same on your turn and in a response. Each entry: { label, cost, ok, why }.
+  const costText = c => !c ? '' : (c.generic || (!c.pips.length && !c.x) ? '{' + (c.generic || 0) + '}' : '') + (c.x ? '{X}' : '') + c.pips.map(p => '{' + p.join('/') + '}').join('');
+  const sickTap = (g, p) => p.tapped ? 'it is tapped' : (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')) ? 'it has summoning sickness' : null;
+  const foodCostOf = g => ({ generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [], x: 0 });
+  function abilityList(g, p) {
+    const out = [], a = p.card.a, onBf = g.battlefield.includes(p);
+    const add = (label, cost, why, run) => out.push({ label, cost: cost == null ? '' : typeof cost === 'string' ? cost : costText(cost), ok: !why, why: why || null, run });
+    const payWhy = c => canPay(c, allUnits(g)) ? null : 'not enough mana';
+    if (!onBf) {                                                                                         // the graveyard: Cauldron Familiar
+      if (a.gyReturn && g.graveyard.includes(p)) add(`Sacrifice a Food: return ${p.card.name} to the battlefield`, '', foodsOf(g).length ? null : 'you control no Food', ev => {
+        sacrificeFoods(g, 1, ev); g.graveyard.splice(g.graveyard.indexOf(p), 1); p.retTurn = g.turn;
+        ev.push({ type: 'note', text: `Sacrificed a Food: ${p.card.name} returns from the graveyard` });
+        const perm = enterWithTriggers(g, p, {}, ev); ev.push({ type: 'rampLand', inst: p, perm, source: null });
+      });
+      return out;
+    }
+    if (g.timeStopped === g.turn) return out;
+    const blocked = (g.opp || g.needleSeen) && abilBlocked(g, p, false) ? 'its abilities cannot be activated' : (a.isArtifact && stonyOn(g)) ? 'Stony Silence' : null;
+    if (foodsOf(g).includes(p)) {                                                                        // a Food: {2}, {T}, sacrifice it: gain 3 life (Sam: {1})
+      const c = foodCostOf(g);
+      add('Gain 3 life (tap and sacrifice this Food)', c, blocked || (p.tapped ? 'it is tapped' : null) || payWhy(c), ev => {
+        pay(g, c); p.tapped = true; ev.push({ type: 'activate', perm: p, text: `${costText(c)}, {T}, Sacrifice this Food: You gain 3 life.` });
+        removePerm(g, p); artYard(g, p, ev);
+        for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('foodSac')) fire(g, t, q, ev, p);
+        flushLeaves(g, ev); gainLife(g, 3, ev, null);
+      });
+    }
+    (a.activated || []).forEach(ab => {
+      const c0 = actCost(g, p, ab.cost), xs = ab.cost.x ? Math.max(0, Math.floor((allUnits(g).length - (ab.tap ? 1 : 0) - c0.generic - c0.pips.length) / ab.cost.x)) : 0;
+      const c = ab.cost.x ? { generic: c0.generic + xs * ab.cost.x, pips: c0.pips, x: 0 } : c0;
+      const why = blocked || (ab.tap ? sickTap(g, p) : null) || (ab.sacFood && foodsOf(g).length < ab.sacFood ? `it needs ${ab.sacFood === 1 ? 'a Food' : ab.sacFood + ' Foods'}` : null) || (ab.cost.x && xs < 1 ? 'not enough mana' : null) || (ab.gate && !abilityGate(g, p, ab) ? 'not now' : null);
+      add(ab.text.replace(/^[^:]*:\s*/, '').replace(/~/g, p.card.name), ab.text.split(':')[0], why || (ab.tap ? (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })() : payWhy(c)), ev => {
+        if (ab.tap) p.tapped = true;
+        const prev = g._payFor; g._payFor = { abilityOf: p }; pay(g, c); g._payFor = prev;
+        ev.push({ type: 'activate', perm: p, text: ab.text });
+        if (ab.sacFood) sacrificeFoods(g, ab.sacFood, ev);
+        if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }
+        const xv = g.xValue; if (xs) g.xValue = xs;
+        try { applyEffects(g, ab.fx, p, ev, null); } finally { g.xValue = xv; }
+      });
+    });
+    const sacVictim = (ev, label) => {                                                                    // "Sacrifice a creature": you choose which
+      const vs = g.battlefield.filter(isCreaturePerm); let v = pickSacrifice(g, null) || vs.slice().sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0];
+      if (g.ask && vs.length) v = decide(g, { kind: 'sacrifice', options: vs, def: v, ability: label, optional: true, source: p });
+      if (!v || !g.battlefield.includes(v)) return null;
+      leavePerm(g, v, ev); flushLeaves(g, ev); return v;
+    };
+    const anyCreature = g.battlefield.some(isCreaturePerm) ? null : 'you control no creature';
+    if (a.altar) add(`Sacrifice a creature: add ${a.altar.any ? 'one mana of any color' : '{C}'.repeat(a.altar.n)}`, 'Sacrifice a creature', blocked || anyCreature, ev => {
+      const v = sacVictim(ev, p.card.name); if (!v) return;
+      for (let i = 0; i < a.altar.n; i++) g.floating.push({ src: null, colors: a.altar.any ? new Set(['W', 'U', 'B', 'R', 'G']) : new Set(['C']), floating: true });
+      ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${v.card.name} for ${a.altar.n} mana`, source: p });
+    });
+    if (a.sacScry) add(`Sacrifice a creature: ${a.sacSurveil ? 'surveil' : 'scry'} ${a.sacScry}`, 'Sacrifice a creature', blocked || anyCreature, ev => {
+      const v = sacVictim(ev, p.card.name); if (!v) return;
+      ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${v.card.name}`, source: p });
+      (a.sacSurveil ? surveil : scry)(g, a.sacScry, ev, p);
+    });
+    if (a.sacRamp) add('Sacrifice it: put a basic land onto the battlefield tapped', 'Sacrifice it', blocked, ev => {
+      ev.push({ type: 'note', text: `${p.card.name}: sacrificed for a basic land`, source: p }); leavePerm(g, p, ev); flushLeaves(g, ev);
+      applyEffects(g, [{ type: 'ramp', bf: 1, hand: 0, tapped: true, basicOnly: true }], p, ev, null);
+    });
+    if (a.pingCounter) add('Remove a +1/+1 counter: 1 damage to an opponent', 'Remove a counter', blocked || ((p.counters || 0) > 0 ? null : 'it has no +1/+1 counter'), ev => {
+      p.counters--; touch(g); ev.push({ type: 'note', text: `${p.card.name} removes a counter: 1 damage`, source: p }); damageOpp(g, 1, ev, p);
+    });
+    if (a.reservoir) add('Pay 50 life: 50 damage to an opponent', 'Pay 50 life', blocked || (g.life >= 50 ? null : `you have ${g.life} life`), ev => {
+      g.life -= 50; ev.push({ type: 'note', text: `${p.card.name}: paid 50 life for 50 damage`, source: p }); damageOpp(g, 50, ev, p);
+    });
+    if (a.foodSacMana) add('Add one mana of any color (tap it, sacrifice a Food)', '{T}, Sacrifice a Food', blocked || sickTap(g, p) || (foodsOf(g).length ? null : 'you control no Food'), ev => {
+      p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
+      ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });
+    });
+    return out;
+  }
+  function abilityMenu(g, p) { return abilityList(g, p).map(({ label, cost, ok, why }) => ({ label, cost, ok, why })); }
+  // a person's choice from abilityMenu: the events, or null when it cannot be used now. The stack and state-based actions follow (acting).
+  function useAbility(g, p, i) {
+    const it = abilityList(g, p)[i];
+    if (!it || !it.ok) return null;
+    return acting(g, () => { const ev = []; it.run(ev); touch(g); return ev; });
+  }
+
   // Planeswalkers, equip, activated abilities, clues. Returns events (empty if nothing done).
   // Zul Ashur's friends: Lord of the Undead, Cemetery Reaper, Kalitas, Sidisi, Castle Locthwain and Fain. Each is used at most once per call; castPhase loops.
   function zombieAbilities(g, ev) {
@@ -11390,7 +11476,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

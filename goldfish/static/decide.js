@@ -213,6 +213,8 @@
       q.none = 'Pass';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     }
+    { const st = G.stackView ? G.stackView(g) : [];          // what waits on the stack while you choose (newest first)
+      if (st.length) q.stack = st.map(x => ({ name: x.card ? x.card.name : 'An ability', card: x.card, kind: x.kind, text: x.text || '', who: x.pid === g.pid ? 'You' : (m && m.names ? m.names[x.pid] : 'Opponent') })); }
     if (!q.optional) q.none = null;
     // every option the same card (two Swamps for Cultivate's battlefield half, five identical Soldier tokens): there is nothing to choose
     if (!q.optional && q.min === q.max && new Set(q.options.map(o => [o.name, o.note, o.owner].join('|'))).size === 1) return null;

@@ -4366,8 +4366,8 @@
         if (h.trigQ && h.trigQ.length) {
           const q = h.trigQ.splice(0), ap = activePlayer(h);
           const mine = q.filter(x => x.g === ap), rest = q.filter(x => x.g !== ap);
-          for (const it of mine.reverse()) stack.push(it);          // pushed first: resolves last (APNAP)
-          for (const it of rest.reverse()) stack.push(it);
+          for (const it of mine.reverse()) { it.seq = stackDepth(h); stack.push(it); }          // pushed first: resolves last (APNAP)
+          for (const it of rest.reverse()) { it.seq = stackDepth(h); stack.push(it); }
         }
         if (!stack.length) break;
         if (matchOver(h) || (h.match && h.match.winner != null)) { stack.length = 0; break; }
@@ -4383,6 +4383,18 @@
         dirty = tableVer(h) !== v0 || !sbaSafe(it);
       }
     } finally { h.acts--; h.settling = false; }
+  }
+  // What is on the stack now, newest first: spells being cast and resolving, triggered abilities on the stack, and abilities that have
+  // triggered and wait to go on it. [{ kind: 'spell' | 'ability' | 'triggered', card, pid, text }]
+  function stackDepth(g) { let n = 0; for (const x of [g].concat(otherPlayers(g))) n += (x.spellStack || []).length + (x.stackItems || []).length; return n; }          // an item's place: how many are under it
+  function stackView(g) {
+    const out = [], all = [g].concat(otherPlayers(g));
+    for (const x of all) {
+      for (const s of x.spellStack || []) out.push({ seq: s.seq, kind: 'spell', card: s.inst.card, pid: x.pid });
+      for (const it of x.stackItems || []) out.push({ seq: it.seq || 0, kind: 'ability', card: it.source && it.source.card || null, pid: it.g.pid, text: it.trig.text });
+      for (const it of x.trigQ || []) out.push({ seq: Infinity, kind: 'triggered', card: it.source && it.source.card || null, pid: it.g.pid, text: it.trig.text });
+    }
+    return out.sort((a, b) => b.seq - a.seq).map(({ seq, ...r }) => r);
   }
   // an action: abilities that trigger during it wait, and when it is done they go on the stack and resolve
   function acting(g, fn) {
@@ -7283,7 +7295,9 @@
     const prev = g._payFor; g._payFor = inst;
     silenceFirst(g, inst);          // Silence, Ranger-Captain of Eos before a big spell
     const mv = mistriseHold(g, inst);          // Mistrise Village is kept out of the payment of a spell it should protect
-    try { const r = castCard0(g, inst, force); if (r && g._silEv) { r.unshift(...g._silEv); } return r; } finally { g._silEv = null; g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
+    const item = { inst, seq: stackDepth(g) };
+    g.spellStack = (g.spellStack || []).concat([item]);          // on the stack while it is cast and resolves (a new list each time: a rehearsal's copy shares the old one)
+    try { const r = castCard0(g, inst, force); if (r && g._silEv) { r.unshift(...g._silEv); } return r; } finally { const left = (g.spellStack || []).filter(x => x !== item); if (left.length) g.spellStack = left; else delete g.spellStack; g._silEv = null; g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
   }
   function silenceFirst(g, inst) {
     if (!g.opp || g.dry || inst.card.a.silence) return;
@@ -8783,9 +8797,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     // In a pod the match record lists every player, and damage "to each opponent" walks that list: the copy gets its own list of stand-ins,
     // or a spell rehearsed on the copy would take life from the real players (and from the real self, who is not the copy).
     const m2 = g.match ? Object.assign({}, g.match, g.match.out ? { out: g.match.out.slice() } : {}) : undefined;
-    const standIn = x => Object.assign({}, x, { acts: 0, trigQ: [], stackItems: [], settling: false, ask: null, match: m2, opp: null, battlefield: x.battlefield.map(p => Object.assign({}, p)), hand: x.hand.slice(), graveyard: x.graveyard.slice(), exile: x.exile.slice(), command: x.command.slice(), _bf: null, bfVer: (x.bfVer || 0) + 1 });
+    const standIn = x => Object.assign({}, x, { acts: 0, trigQ: [], stackItems: [], spellStack: undefined, settling: false, ask: null, match: m2, opp: null, battlefield: x.battlefield.map(p => Object.assign({}, p)), hand: x.hand.slice(), graveyard: x.graveyard.slice(), exile: x.exile.slice(), command: x.command.slice(), _bf: null, bfVer: (x.bfVer || 0) + 1 });
     const opp2 = g.opp ? standIn(g.opp) : undefined;
-    const s = Object.assign({}, g, { acts: 0, trigQ: [], stackItems: [], settling: false, match: m2, opp: opp2, ask: null,
+    const s = Object.assign({}, g, { acts: 0, trigQ: [], stackItems: [], spellStack: undefined, settling: false, match: m2, opp: opp2, ask: null,
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
@@ -11328,7 +11342,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

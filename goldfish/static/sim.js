@@ -278,7 +278,7 @@
     if ((m = text.match(/\binvestigates?( twice| three times)?/i))) fx.push({ type: 'token', n: m[1] ? (/twice/.test(m[1]) ? 2 : 3) : 1, creature: false, name: 'Clue', artifact: true });
 
     m = text.match(new RegExp('(?:you )?draws? ' + NRE + ' cards?', 'i'));
-    if (m && !/each player draws|target opponent draws/i.test(text)) fx.push({ type: 'draw', n: num(m[1]) });
+    if (m && !/each player draws|target opponent draws/i.test(text)) fx.push(Object.assign({ type: 'draw', n: num(m[1]) }, /^that many$/i.test(m[1]) ? { thatMany: true } : {}));          // "draw that many cards": the amount the trigger carries (Terrasymbiosis)
 
     m = text.match(new RegExp('deals ' + NRE + ' damage (?:to|divided as you choose among) (any target|each opponent|target player|target opponent|each player|target player or planeswalker|any one target|that player|defending player|the defending player|target creature or player|any number of targets|one or two targets|up to [a-z]+ targets|each of up to)', 'i'));
     if (m) fx.push({ type: 'damage', n: num(m[1]), any: /any target|any one target|target creature or/.test(m[2]) });
@@ -4340,7 +4340,11 @@
   function actingHost(g) { if (g.acts > 0) return g; if (!g.opp && !g.match) return null; for (const o of otherPlayers(g)) if (o.acts > 0) return o; return null; }
   const REPLACES = new WeakMap();          // "enters with counters", "as ~ enters": a replacement effect, part of entering (614.1c), not a trigger
   const isReplacement = t => { let r = REPLACES.get(t); if (r === undefined) REPLACES.set(t, r = /^(?:~|this [a-z]+) enters (?:with|tapped)|^as (?:~|this [a-z]+) enters/i.test(t.text || '')); return r; };
+  // "This ability triggers only once each turn" / "Do this only once each turn": once per permanent per turn (any player's turn), checked when it would trigger
+  const ONCE = new WeakMap();
+  const onceEachTurn = t => { let r = ONCE.get(t); if (r === undefined) ONCE.set(t, r = /(?:triggers|do this) only once each turn/i.test(t.text || '')); return r; };
   function fire(g, trig, source, ev, subject, amount) {
+    if (source && onceEachTurn(trig)) { const k = turnSeq(g) + ':' + g.turn, used = source.onceUsed || []; if (used.some(u => u.t === trig && u.k === k)) return; source.onceUsed = used.filter(u => u.t !== trig).concat([{ t: trig, k }]); }          // a new list each time: a rehearsal's copy of the permanent must not use up the real one's turn
     const h = isReplacement(trig) ? null : actingHost(g);
     if (h) { (h.trigQ || (h.trigQ = [])).push({ g, trig, source, subject, amount, x: g.xValue, last: g.lastCast, much: g.thatMuch, sc: g.spellsCast }); return; }
     fireNow(g, trig, source, ev, subject, amount);
@@ -5051,7 +5055,8 @@
     for (const f of fx) {
       if (f.cond && !condMet(g, f.cond, source)) { if (f.cond.kind === 'secondCast' && !g.dry) g.winSpellCasts = (g.winSpellCasts || 0) + 1; continue; }             // e.g. Frodo's draw only while he is the Ring-bearer; Approach of the Second Sun remembers its first cast
       let n = f.n;
-      if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
+      if (f.thatMany && g.thatMuch > 0) n = g.thatMuch;
+      else if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
       else if (n === 'THAT') n = g.thatMuch || 0;                       // "that much life"
       else if (n === 'LIFEGAINED') n = g.lifeGainedThisTurn || 0;
       else if (n === 'SPELLS') n = (g.spellsCast || 0) + 1;

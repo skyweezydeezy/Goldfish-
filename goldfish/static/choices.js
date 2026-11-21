@@ -56,7 +56,8 @@
       const $ = s => el.querySelector(s), box = $('.ch-opts');
       if (q.spell) { const c = A.cardEl(q.spell, { eager: true }); $('.ch-spell').append(c, h('small', '', esc(q.spellNote || 'being cast'))); } else $('.ch-spell').remove();
       for (const t of ts) {
-        const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text'));
+        const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text') + (t.o.disabled ? ' off' : ''));
+        if (t.o.disabled) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }          // shown, with the reason in its note, but it cannot be picked
         b.type = 'button'; b.dataset.t = t.i; b.dataset.k = t.ks[0]; b.title = t.o.name + (t.ks.length > 1 ? ` (${t.ks.length} in your library)` : '');
         b.dataset.find = (t.o.name + ' ' + (t.o.card ? t.o.card.type_line || '' : '')).toLowerCase();
         if (t.o.card) { const c = A.cardEl(t.o.card, { face: t.o.face || 0 }); b.appendChild(c); const z = h('span', 'ch-zoom', '🔍'); z.title = 'Read this card'; b.appendChild(z); }
@@ -86,7 +87,7 @@
         } else {
           const t = [...take.keys()][0];
           ok.disabled = !t;
-          ok.textContent = !t ? (word ? 'Select a card' : 'Choose a card') : (word ? 'Submit' : (q.kind === 'face' ? 'Cast ' : 'Choose ') + t.o.name);
+          ok.textContent = !t ? (word ? 'Select a card' : q.kind === 'loyalty' ? 'Choose an ability' : 'Choose a card') : (word ? 'Submit' : q.kind === 'loyalty' ? 'Activate ' + t.o.label : (q.kind === 'face' ? 'Cast ' : 'Choose ') + t.o.name);
           if (flip) { const fi = $('.ch-faceinfo'); if (fi && t) fi.innerHTML = `<b>${esc(t.o.name)}</b><small>${esc(t.o.note || '')}</small><span class="hint">${t.o.face ? 'Back face' : 'Front face'} · ⟲ turns the card over</span>`; }
         }
         const pk = $('.ch-picked');

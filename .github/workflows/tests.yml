@@ -1,0 +1,24 @@
+name: Tests
+# Runs the engine scenario tests on every pull request and every push to a work branch, so a session does not have to
+# run the whole suite itself before asking for a merge. The test files run side by side (one per core): see tests/run.js.
+on:
+  push:
+    branches: [main, master, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Engine tests
+        run: node tests/run.js

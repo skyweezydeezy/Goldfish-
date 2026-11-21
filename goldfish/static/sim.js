@@ -8106,6 +8106,68 @@ g.actSeq = (g.actSeq || 0) + 1;
     const info = bfInfo(g);
     return info.lifeWatch || (info.lifeThreshold > 0 && (g.lifeGainedThisTurn || 0) < info.lifeThreshold) || info.lifeAnthems.some(la => g.life < (g.opts.startLife || 40) + la.over) || (!!g.opp && g.life < 15);
   }
+  // ---------- Loyalty abilities ----------
+  // A planeswalker's loyalty abilities are activated at sorcery speed, once a turn each planeswalker (twice with Oath of Teferi, once more
+  // with The Chain Veil or Teferi, Master of Time), and only while its loyalty can pay the cost. The autopilot picks with autoLoyalty; a
+  // person picks from the planeswalker menu (loyaltyState lists the abilities, what each costs and why one cannot be used; useLoyalty
+  // activates the one they chose). Both go through activateLoyalty.
+  function loyaltyAllowed(g, p) { return 1 + g.battlefield.filter(q => q.card.a.oath).length + (g.pwBonusTurn === g.turn ? 1 : 0) + (p.card.a.masterTime ? 1 : 0); }
+  function loyaltyAbilities(g, p) { return p.card.a.bolasAll ? p.card.a.pwAbilities.concat(...bothSides(g).filter(q => q !== p && q.card.a.isPlaneswalker).map(q => q.card.a.pwAbilities)) : p.card.a.pwAbilities; }          // Nicol Bolas, Dragon-God has the others' too
+  function loyaltyBlocked(g, p) {
+    if (bothSides(g).some(q => q.card.a.statics.noLoyalty)) return 'The Immortal Sun: no loyalty abilities can be activated';
+    if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) return 'its abilities cannot be activated (Pithing Needle)';
+    return null;
+  }
+  function autoLoyalty(g, p) {
+    let best = null, bs = -Infinity;
+    for (const ab of loyaltyAbilities(g, p)) {
+      const c = ab.x ? -Math.max(0, p.loyalty - 1) : ab.cost;
+      if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
+      if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
+      let v = fxValue(g, ab.fx) + c * (+pol(g, 'pwLoyalty') || 0);
+      if (ab.fx.some(f => f.n === 'GYCREATURES') && g.graveyard.filter(i => i.card.a.isCreature).length >= oppLifeLeft(g)) v += 1000;         // Grist's -5 as the finisher
+      if (v > bs) { bs = v; best = ab; }
+    }
+    return best;
+  }
+  function activateLoyalty(g, p, ab, ev, pwPlus) {
+    if (p.pwTurn !== g.turn) { p.pwTurn = g.turn; p.pwN = 0; }
+    if (pwPlus === undefined) pwPlus = g.battlefield.some(q => q.card.a.statics.pwPlus);
+    p.pwN++;
+    p.loyalty += ab.x ? 0 : (ab.cost > 0 ? Math.floor((ab.cost + (bfInfo(g).cplusLz || 0)) * counterMult(g) / (othersHave(g, 'vorinHalf') ? 2 : 1)) : ab.cost);   // Doubling Season doubles + loyalty costs
+    if (pwPlus) p.loyalty += 1;                                                                // Carth: "cost an additional [+1]"
+    ev.push({ type: 'pw', perm: p, text: ab.text, cost: ab.cost, x: ab.x });
+    applyEffects(g, ab.fx, p, ev, null); abilityCopy(g, ab.fx, p, ev);
+    if (p.loyalty <= 0) {
+      removePerm(g, p); g.graveyard.push(p.inst);
+      for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('pwDies')) fire(g, t, q, ev, null);       // Carth the Lion
+    }
+    return ev;
+  }
+  // what the planeswalker menu shows: whether p can activate now (why: the reason it cannot), and each ability with its cost label
+  // (+1, 0, −3, −X), whether it can be paid and the engine plays it (ok), and why not
+  function loyaltyState(g, p) {
+    const out = { why: null, used: 0, allowed: 1, list: [], auto: null };
+    if (!p || !g.battlefield.includes(p) || !p.card.a.isPlaneswalker) { out.why = 'not a planeswalker on the battlefield'; return out; }
+    out.allowed = loyaltyAllowed(g, p); out.used = p.pwTurn === g.turn ? (p.pwN || 0) : 0;
+    out.why = g.timeStopped === g.turn ? 'the turn has ended' : loyaltyBlocked(g, p) || (out.used >= out.allowed ? (out.allowed > 1 ? `used ${out.used} times this turn` : 'already used this turn') : null);
+    const abs = loyaltyAbilities(g, p);
+    out.list = abs.map((ab, i) => {
+      const label = ab.x ? '−X' : ab.cost > 0 ? '+' + ab.cost : ab.cost < 0 ? '−' + (-ab.cost) : '0';
+      let no = null;
+      if (!ab.x && p.loyalty + ab.cost < 0) no = `needs ${-ab.cost} loyalty (it has ${p.loyalty})`;
+      else if (!ab.fx.length) no = 'the engine does not play this ability yet';
+      return { i, ab, label, text: String(ab.text || '').replace(/^[+−-]?(?:\d+|x|X):\s*/, ''), x: !!ab.x, ok: !no && !out.why, why: no || out.why, own: p.card.a.pwAbilities.includes(ab) };
+    });
+    out.auto = out.why ? null : autoLoyalty(g, p);
+    return out;
+  }
+  // a person's choice: the ability at index i of loyaltyState's list. Returns the events, or null when it cannot be activated now.
+  function useLoyalty(g, p, i) {
+    const st = loyaltyState(g, p), it = st.list[i];
+    if (!it || !it.ok) return null;
+    return activateLoyalty(g, p, it.ab, []);
+  }
   function useAbilities(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
@@ -8117,34 +8179,16 @@ g.actSeq = (g.actSeq || 0) + 1;
       p.tapped = true; const ok = canPay(vc, allUnits(g)) && pay(g, vc) != null; if (!ok) { p.tapped = false; continue; }
       g.pwBonusTurn = g.turn; g.pwBonus = 1; ev.push({ type: 'note', text: `${p.card.name}: every planeswalker may activate again`, source: p });
     }
-    const oath = g.battlefield.filter(q => q.card.a.oath).length, pwPlus = g.battlefield.some(q => q.card.a.statics.pwPlus);
+    const pwPlus = g.battlefield.some(q => q.card.a.statics.pwPlus);
     for (const p of g.battlefield.slice()) {
-      if (!p.card.a.isPlaneswalker || g.instantOnly || !(p.card.a.pwAbilities.length || p.card.a.bolasAll)) continue;
-      if (bothSides(g).some(q => q.card.a.statics.noLoyalty)) continue;          // The Immortal Sun
-      if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) continue;          // Pithing Needle on a planeswalker
+      if (!p.card.a.isPlaneswalker || g.instantOnly || g.skipLoyalty || !(p.card.a.pwAbilities.length || p.card.a.bolasAll)) continue;          // skipLoyalty: a person's "Use abilities" leaves loyalty abilities to them
+      if (loyaltyBlocked(g, p)) continue;                                                                  // The Immortal Sun, Pithing Needle
       if (p.pwTurn !== g.turn) { p.pwTurn = g.turn; p.pwN = 0; }
-      const allowed = 1 + oath + (g.pwBonusTurn === g.turn ? 1 : 0) + (p.card.a.masterTime ? 1 : 0);          // Oath of Teferi, The Chain Veil, Teferi, Master of Time
+      const allowed = loyaltyAllowed(g, p);
       for (let act = 0; act < 4 && p.pwN < allowed && g.battlefield.includes(p); act++) {
-        let best = null, bs = -Infinity;
-        const abs = p.card.a.bolasAll ? p.card.a.pwAbilities.concat(...bothSides(g).filter(q => q !== p && q.card.a.isPlaneswalker).map(q => q.card.a.pwAbilities)) : p.card.a.pwAbilities;          // Nicol Bolas, Dragon-God
-        for (const ab of abs) {
-          const c = ab.x ? -Math.max(0, p.loyalty - 1) : ab.cost;
-          if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
-          if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
-          let v = fxValue(g, ab.fx) + c * (+pol(g, 'pwLoyalty') || 0);
-          if (ab.fx.some(f => f.n === 'GYCREATURES') && g.graveyard.filter(i => i.card.a.isCreature).length >= oppLifeLeft(g)) v += 1000;         // Grist's -5 as the finisher
-          if (v > bs) { bs = v; best = ab; }
-        }
-        p.pwN++;
+        const best = autoLoyalty(g, p);
         if (!best) { p.pwN = allowed; break; }
-        p.loyalty += best.x ? 0 : (best.cost > 0 ? Math.floor((best.cost + (bfInfo(g).cplusLz || 0)) * counterMult(g) / (othersHave(g, 'vorinHalf') ? 2 : 1)) : best.cost);   // Doubling Season doubles + loyalty costs
-        if (pwPlus) p.loyalty += 1;                                                                // Carth: "cost an additional [+1]"
-        ev.push({ type: 'pw', perm: p, text: best.text, cost: best.cost, x: best.x });
-        applyEffects(g, best.fx, p, ev, null); abilityCopy(g, best.fx, p, ev);
-        if (p.loyalty <= 0) {
-          removePerm(g, p); g.graveyard.push(p.inst);
-          for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('pwDies')) fire(g, t, q, ev, null);       // Carth the Lion
-        }
+        activateLoyalty(g, p, best, ev, pwPlus);
       }
     }
     if (g.opp && g.opp.splendorSeen && splendored(g)) return ev;                                            // Overwhelming Splendor: only mana and loyalty abilities
@@ -10885,7 +10929,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    postCombatTriggers, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

@@ -16,6 +16,11 @@ const cards = SF.cards.concat(EXTRA.filter(n => !SF.cards.some(c => c.name === n
 const O = { turns: 25, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+// "Does it resolve?" (your own spell, or another player's that you have nothing to answer with) is passed by these wrappers: the
+// scenarios of the stack itself are in stack.test.js. r.asked counts the other questions only.
+const stackPass = q => q.kind === 'resolve' || (q.kind === 'counter' && !q.options.length);
+const AT = (games, pid, run, answers) => { const as = []; let i = 0, passes = 0; for (;;) { const r = D.attempt(games, pid, run, as); if (r.done) { r.asked -= passes; return r; } if (stackPass(r.ask)) { passes++; as.push({ sig: r.ask.sig, pick: 'none' }); continue; } if (answers && i < answers.length) { as.push(answers[i++]); continue; } return r; } };
+const RS = (games, pid, run, choose) => D.resolveSync(games, pid, run, q => stackPass(q) ? 'none' : choose(q));
 const duel = seat => { const p = G.newPod([G.buildDeck(cards, SF.tokens), G.buildDeck(ZA.cards, ZA.tokens)], [O, O], 5, ['you', 'them'], 0); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]); return p; };
 const card = (g, n) => g.deck.unique.find(c => c.name === n);
 const putOn = (g, c) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: c }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
@@ -105,9 +110,9 @@ const lands = (g, n, b) => { for (let k = 0; k < n; k++) putOn(g, card(g, b || '
   check('...and on your next turn it ends', !G.instantSpeedFor(a, sorc.card)); }
 { const p = duel(true), [a] = p.games; putOn(a, card(a, 'Leyline of Anticipation')); lands(a, 3, 'Forest'); const w = toHand(a, 'Eternal Witness');
   const run = gs => { const ev = []; G.instantWindow(gs[0], ev, 'end'); return ev; };
-  const r = D.attempt(p.games, 0, run, []);
+  const r = AT(p.games, 0, run, []);
   check("a person is asked at the other player's end step, and the flashed creature is offered (Leyline of Anticipation, Eternal Witness)", !r.done && r.ask.kind === 'instant' && r.ask.options.some(o => o.iid === w.iid), r.ask && r.ask.options.map(o => o.name).join(', '));
-  D.attempt(p.games, 0, run, [{ sig: r.ask.sig, pick: r.ask.options.findIndex(o => o.iid === w.iid) }]);
+  AT(p.games, 0, run, [{ sig: r.ask.sig, pick: r.ask.options.findIndex(o => o.iid === w.iid) }]);
   check('...choosing it casts it', !a.hand.includes(w) && a.battlefield.some(q => q.card.name === 'Eternal Witness')); }
 { const r = G.podMonteCarlo([{ cards, tokens: SF.tokens, name: 'a' }, { cards: ZA.cards, tokens: ZA.tokens, name: 'b' }], O, 30, 7);
   check('thirty duels with these cards: no engine error', r.errors === 0, r.firstError); }

@@ -37,7 +37,7 @@
       const body = h('div', 'fold-body'); while (sg.firstChild) body.appendChild(sg.firstChild); d.append(s, body); sg.appendChild(d);
     });
   }
-  const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); };
+  const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); if (window.__isfFx) window.__isfFx.events(ev); };   // sounds, and on-screen card effects (card-effects.js)
 
   const S = { cards: [], deck: null, byUid: [], game: null, undo: [], sim: null, oddsSel: new Set(), busy: false };
   window.__isf = S;                                  // read-only handle for automated UI tests
@@ -99,7 +99,7 @@
       minLands: +$('#optMinLands').value, maxLands: +$('#optMaxLands').value,
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
-      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 5000,
+      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 10000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
     };
   }
@@ -1662,7 +1662,7 @@
     if (!opp.cards.length) { $('#mmInfo').textContent = 'That deck has no cards.'; btn.disabled = false; return; }
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     o.policyB = opp.policy || {};                                                          // the opponent plays with its own learned choices
-    const n = Math.max(20, Math.min(3000, +$('#mmN').value || 400));
+    const n = Math.max(20, Math.min(20000, +$('#mmN').value || 10000));          // 10,000: any percentage within about ±1 point (95%)
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');
     const bar = $('#mmProgress div'); bar.style.width = '0';
@@ -1870,7 +1870,7 @@
     if (dec.mirrorOnly && mode === 'goldfish') mode = 'field';                                       // a choice that needs an opponent is tested against other decks
     if (dec.dynamic) dec.options = tribeOptions();
     if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
-    const n = Math.max(50, Math.min(3000, +$('#plN').value || 400));
+    const n = Math.max(50, Math.min(20000, +$('#plN').value || 10000));
     let opp = null;
     let field = null;
     if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }
@@ -1943,9 +1943,74 @@
   }
   $('#plMode').addEventListener('change', showLabOpponents);
 
+  // ---------- Policy lab: swaps by role (the diagnosis grouped by what cards do: "more ramp", then 2 cards to add and 2 to remove) ----------
+  let plRolesWorker = null;
+  $('#plRoles').addEventListener('click', async () => {
+    if (!need()) return;
+    const btn = $('#plRoles'); btn.disabled = true; $('#plRolesOut').innerHTML = '';
+    let opps = [];
+    try { for (const v of labOpponents()) { const x = await loadOpponent(v, $('#plInfo')); if (x.cards.length) opps.push({ name: x.name, cards: x.cards, tokens: x.tokens, policy: x.policy || {} }); } }
+    catch (err) { $('#plInfo').textContent = 'Could not load an opponent deck: ' + (err.message || err); btn.disabled = false; return; }
+    if (!opps.length) { $('#plInfo').textContent = 'Pick at least one opponent (Opponents, above).'; btn.disabled = false; return; }
+    const n = Math.max(500, Math.min(20000, +$('#abN').value || 10000));
+    $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
+    if (plRolesWorker) plRolesWorker.terminate();
+    plRolesWorker = new Worker('worker.js');
+    const bar = $('#plRolesProgress div'); bar.style.width = '0';
+    const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
+    plRolesWorker.onerror = err => { btn.disabled = false; $('#plInfo').textContent = 'Swaps by role: ' + err.message; };
+    plRolesWorker.onmessage = async e => {
+      if (e.data.progress != null) { bar.style.width = (e.data.progress * 100).toFixed(1) + '%'; return; }
+      if (!e.data.result) return;
+      bar.style.width = '100%'; btn.disabled = false;
+      const d = e.data.result, byName = new Map(S.deck.unique.map(c => [c.name, c]));
+      const roles = Compare.roleSummary(d.rows, nm => { const c = byName.get(nm); return c && typeof Profile !== 'undefined' ? [...Profile.roles(c)] : []; });
+      // what to add: 1. a kind of card clearly linked to winning; 2. else what the deck profile says it is short on ("Little ramp"...);
+      // 3. else the kind most linked to winning, flagged as a guess
+      const PROFILE_ROLE = { 'ramp-low': 'ramp', 'draw-low': 'draw', 'removal-low': 'removal', 'wipes-none': 'wipe' };
+      let short = null; try { const ids = (Profile.analyze(S.deck) || {}).ids || []; const w = ids.find(x => PROFILE_ROLE[x.id]); if (w) short = { role: PROFILE_ROLE[w.id], label: w.label }; } catch (er) { /* no profile */ }
+      let overruled = null;
+      if (short) { const r = roles.find(x => x.role === short.role); if (r && r.z < -2) { overruled = { label: short.label, r }; short = null; } }          // the games say otherwise: that kind of card is clearly linked to losing in this deck
+      const clear = roles.find(r => r.diff > 0 && r.z > 2 && Compare.roleQuery(r.role, []));
+      const why = clear ? 'clear' : short ? 'profile' : 'guess';
+      const want = clear || (short && (roles.find(r => r.role === short.role) || { role: short.role, name: { ramp: 'ramp', draw: 'card draw', removal: 'removal', wipe: 'board wipes' }[short.role], diff: 0, z: 0, n: 0, cards: [] })) || roles.find(r => r.diff > 0 && Compare.roleQuery(r.role, []));
+      const removes = d.rows.filter(r => r.z < 0 && r.verdict === 'card' && !r.commander && !r.land && !(want && want.cards.includes(r))).slice(0, 2);
+      $('#plInfo').textContent = `${n.toLocaleString()} matches: this deck wins ${(100 * d.winRate).toFixed(1)}% against ${opps.length} decks.`;
+      const stat = r => r.n ? ` (your ${esc(r.name)} cards: ${pts(r.diff)} pts each, z ${r.z.toFixed(1)})` : ' (the deck has none yet)';
+      const head = !want ? (overruled ? `No kind of card stands out as linked to winning. The deck profile says "${esc(overruled.label)}", but in these games your ${esc(overruled.r.name)} cards are linked to losing (${pts(overruled.r.diff)} pts each, z ${overruled.r.z.toFixed(1)}), so no add is suggested; the removals below still apply.` : 'No kind of card stands out as linked to winning, and the deck profile finds nothing short.')
+        : why === 'clear' ? `More <b>${esc(want.name)}</b>: your ${esc(want.name)} cards are clearly linked to winning${stat(want).replace(/^ \(your [^:]+: /, ' (')}.`
+        : why === 'profile' ? `More <b>${esc(want.name)}</b>: the deck profile says "${esc(short.label)}"${stat(want)}. No kind of card is clearly linked to winning yet, so test it.`
+        : `Maybe more <b>${esc(want.name)}</b>: the kind of card most linked to winning, but not clearly${stat(want)}; test it.`;
+      const table = roles.map(r => `<li>${esc(r.name)}: ${pts(r.diff)} pts per card (z ${r.z.toFixed(1)}, ${r.n} card${r.n === 1 ? '' : 's'})</li>`).join('');
+      $('#plRolesOut').innerHTML = `<p>${head}</p><div class="suggest">${want ? `<div class="sg"><h3>Add (2)</h3><div class="ab-repls" id="plRolesAdd"><span class="hint">Finding cards…</span></div></div>` : ''}<div class="sg"><h3>Remove: the 2 cards most linked to losing (${removes.length})</h3><div class="ab-repls">${removes.map(r => `<figure class="ab-cut">${abImg(byName.get(r.name))}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)}</figcaption></figure>`).join('') || '<span class="hint">No card is clearly linked to losing.</span>'}</div></div><div class="sg"><h3>Every kind of card (${roles.length})</h3><ul>${table}</ul></div></div><div class="row wrap"><button id="plRolesSend" class="primary" disabled>Send to the A/B test</button></div>`;
+      if (typeof tidy === 'function') tidy($('#plRolesOut'));
+      let adds = [];
+      if (want) {
+        const ident = [...new Set(S.deck.commanders.flatMap(i => i.card.color_identity || []))], inDeck = new Set(S.deck.unique.map(c => c.name));
+        const found = (await Source.searchCards(Compare.roleQuery(want.role, ident), 24)).filter(c => !inDeck.has(c.name))
+          .map(c => { let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, c)], []).unique[0].a.coverageLevel; } catch (er) { /* unreadable */ } return { c, lvl }; })
+          .sort((x, y) => (x.lvl === 'ok' ? 0 : 1) - (y.lvl === 'ok' ? 0 : 1));
+        adds = found.slice(0, 2);
+        const box = $('#plRolesAdd');
+        if (box) box.innerHTML = adds.length ? adds.map(({ c, lvl }) => `<figure class="ab-cut">${abImg(c)}<figcaption><b>${esc(c.name)}</b><br>${lvl === 'ok' ? '✓ fully simulated' : lvl === 'partial' ? '◐ partly simulated' : '✗ not simulated'}</figcaption></figure>`).join('') : '<span class="hint">No card found (or Scryfall could not be reached).</span>';
+      }
+      const send = $('#plRolesSend');
+      if (send && (adds.length || removes.length)) {
+        send.disabled = false;
+        send.addEventListener('click', () => {
+          const lines = removes.map(r => '- ' + r.name).concat(adds.map(x => '+ ' + x.c.name));
+          $('#abChanges').value = lines.join('\n') + '\n';
+          $('#abBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          toast('Sent to the A/B test: press "2. Test version 2"');
+        });
+      }
+    };
+    plRolesWorker.postMessage({ diagnose: { cards: S.cards, tokens: S.tokens, opps }, opts: o, n, seed: rseed() });
+  });
+
   // ---------- A/B test (compare.js): diagnose, change one or two cards, test version 2 against version 1 ----------
   let abWorker = null, abOpps = null, abV2 = null;
-  const abGames = () => Math.max(100, Math.min(10000, +$('#abN').value || 5000));
+  const abGames = () => Math.max(100, Math.min(20000, +$('#abN').value || 10000));
   const abKey = () => S.deck ? S.deck.commanders.map(i => i.card.name).join(' + ') || 'deck' : 'deck';
   function abShow() {
     const sel = $('#abOpp').value === 'selected', show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
@@ -2022,7 +2087,7 @@
   const abImg = (card, cls) => { const u = card && imgFor(card); return u ? `<img class="${cls || ''}" src="${esc(u)}" alt="${esc(card.name)}" loading="lazy">` : `<span class="ab-noimg">${esc(card ? card.name : '?')}</span>`; };
   function abSwapRow(r, i) {
     const card = S.deck.unique.find(c => c.name === r.name);
-    return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
+    return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}${card ? `<span class="ab-zoom" role="button" tabindex="0" aria-label="View ${esc(r.name)}" data-abview="deck:${esc(r.name)}">🔍</span>` : ''}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
   }
   // Replacements for one card: the same job (by its roles), the same kind of card, a similar mana value, inside the deck's colors, the most
   // played first; the ones the engine reads fully come first. taken: names already suggested elsewhere on the page.
@@ -2057,11 +2122,27 @@
     const n = ls.filter(x => x.startsWith('+ ')).length;
     $('#abInfo').textContent = n ? `${n} swap${n > 1 ? 's' : ''} chosen.${n > 2 ? ' More than two at once makes it hard to tell which one mattered.' : ''} Click "2. Test version 2".` : '';
   }
+  // the cards on show in the A/B test, by name, so the 🔍 on any of them opens the card viewer (prices, printings, the full text)
+  const abSeen = new Map();
   function abShowRepls(box, cut, found) {
-    box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-cut="${esc(cut)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
+    found.forEach(({ c }) => abSeen.set(c.name, c));
+    box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-cut="${esc(cut)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<span class="ab-zoom" role="button" tabindex="0" aria-label="View ${esc(c.name)}" data-abview="${esc(c.name)}">🔍</span><small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
       : '<span class="hint">No replacement found (or Scryfall could not be reached): write your own as "+ Card" below.</span>';
     box.querySelectorAll('.ab-repl').forEach(b => b.addEventListener('click', () => abToggle(b.dataset.cut, b.dataset.add)));
   }
+  // 🔍 on an A/B card: open it in the card viewer; the tap does not choose the card. Left and right in the viewer move through the cards
+  // of the same row.
+  document.addEventListener('click', e => {
+    const z = e.target.closest('[data-abview]'); if (!z) return;
+    e.stopPropagation(); e.preventDefault();
+    const key = z.dataset.abview, deckName = key.startsWith('deck:') ? key.slice(5) : null;
+    const card = deckName ? S.deck && S.deck.unique.find(c => c.name === deckName) : abSeen.get(key);
+    if (!card) return;
+    const row = z.closest('.ab-repls');
+    const list = row ? [...row.querySelectorAll('[data-abview]')].map(x => abSeen.get(x.dataset.abview)).filter(Boolean) : null;
+    showLightbox(card, list && list.includes(card) ? list : undefined);
+  }, true);
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-abview]')) { e.preventDefault(); e.target.click(); } });
   async function abFillReplacements(ranked) {
     const taken = new Set();
     for (let i = 0; i < ranked.length; i++) {

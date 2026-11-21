@@ -9,6 +9,11 @@ const SRC = {}; for (const n of ['death-tax', 'zul-ashur', 'mermaids', 'red-rum-
 const O = { turns: 25, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+// "Does it resolve?" (your own spell, or another player's that you have nothing to answer with) is passed by these wrappers: the
+// scenarios of the stack itself are in stack.test.js. r.asked counts the other questions only.
+const stackPass = q => q.kind === 'resolve' || (q.kind === 'counter' && !q.options.length);
+const AT = (games, pid, run, answers) => { const as = []; let i = 0, passes = 0; for (;;) { const r = D.attempt(games, pid, run, as); if (r.done) { r.asked -= passes; return r; } if (stackPass(r.ask)) { passes++; as.push({ sig: r.ask.sig, pick: 'none' }); continue; } if (answers && i < answers.length) { as.push(answers[i++]); continue; } return r; } };
+const RS = (games, pid, run, choose) => D.resolveSync(games, pid, run, q => stackPass(q) ? 'none' : choose(q));
 // every pod gets its own decks: card instances belong to a deck, so two games in progress must not share one
 const pod = (names, seed, first) => G.newPod(names.map(n => G.buildDeck(SRC[n].cards, SRC[n].tokens)), names.map(() => O), seed, names, first || 0);
 // a bare table at turn 6: empty hands and battlefields, seat 0 played by a person
@@ -20,8 +25,8 @@ const toHand = (g, re) => { const i = { iid: g.nextIid++, card: card(g, re) }; g
 const creature = (g, min) => putOn(g, g.deck.unique.filter(c => c.a.isCreature && !c.a.isLegendary && !c.a.triggers.length && (c.a.power || 0) >= (min || 1)).sort((x, y) => (x.a.power || 0) - (y.a.power || 0))[0] || g.deck.unique.find(c => c.a.isCreature));
 const cast = iid => gs => { const g = gs[0]; return G.castCard(g, g.hand.find(i => i.iid === iid)); };
 // ask once: the question a call stops at (the real game must not have moved), then answer it and make the call
-const open = (p, run, answers) => { const before = D.dump(p.games), r = D.attempt(p.games, 0, run, answers || []); return { r, q: r.ask, still: D.dump(p.games) === before }; };
-const answer = (p, run, picks) => { const answers = []; for (;;) { const r = D.attempt(p.games, 0, run, answers); if (r.done) return r; answers.push({ sig: r.ask.sig, pick: picks.length ? picks.shift()(r.ask) : 'auto' }); } };
+const open = (p, run, answers) => { const before = D.dump(p.games), as = (answers || []).slice(); let r; for (;;) { r = AT(p.games, 0, run, as); if (r.done || !stackPass(r.ask)) break; as.push({ sig: r.ask.sig, pick: 'none' }); } return { r, q: r.ask, still: D.dump(p.games) === before, answers: as }; };
+const answer = (p, run, picks) => { const answers = []; let passes = 0; for (;;) { const r = AT(p.games, 0, run, answers); if (r.done) { r.asked -= passes; return r; } if (stackPass(r.ask)) { passes++; answers.push({ sig: r.ask.sig, pick: 'none' }); continue; } answers.push({ sig: r.ask.sig, pick: picks.length ? picks.shift()(r.ask) : 'auto' }); } };
 const named = re => q => q.options.findIndex(o => re.test(o.name));
 const other = q => q.options.findIndex(o => !o.def);
 
@@ -52,7 +57,7 @@ const other = q => q.options.findIndex(o => !o.def);
     for (let t = 0; t < 12 && A.match.winner == null; t++) for (let k = 0; k < names.length; k++) {
       if (A.match.winner != null) break;
       G.podTurn(A.match.order[k]);
-      for (const it of D.turnPlan(B.games, B.match.order[k].pid)) { if (it.step === 'declare') continue; D.resolveSync(B.games, 0, gs => it.run(gs), q => { asked++; kinds[q.kind] = (kinds[q.kind] || 0) + 1; return 'auto'; }); }
+      for (const it of D.turnPlan(B.games, B.match.order[k].pid)) { if (it.step === 'declare') continue; RS(B.games, 0, gs => it.run(gs), q => { asked++; kinds[q.kind] = (kinds[q.kind] || 0) + 1; return 'auto'; }); }
       n++; if (D.dump(A.games) !== D.dump(B.games)) same = false;
     } } });
   check('with "the autopilot decides" on every question, the played game is the autopilot game, turn for turn', same && asked > 10, `${n} turns, ${asked} questions: ${Object.keys(kinds).map(k => k + ' ' + kinds[k]).join(', ')}`); }
@@ -89,7 +94,7 @@ const other = q => q.options.findIndex(o => !o.def);
   check('Cultivate asks for up to two basic lands, every basic in the library offered, and says where they go', !!q && q.kind === 'search' && q.multi && q.min === 0 && q.max === 2 && q.options.length === basics && q.options.every(o => /\bBasic\b/.test(o.card.type_line)) && /one goes onto the battlefield tapped and the other into your hand/.test(q.text) && q.dest === '1 to the battlefield, tapped, 1 to your hand' && still, q && q.text + ' / ' + q.dest);
   check('...the autopilot\'s two lands are the default', q.def.length === 2);
   const names = [...new Set(q.options.map(o => o.name))]; const want = q.options.filter(o => o.name === names[0]).slice(0, 1).concat(q.options.filter(o => o.name === names[names.length - 1]).slice(0, 1));
-  const asked = []; D.resolveSync(p.games, 0, cast(cu.iid), qq => { asked.push(qq); return qq.what === 'battlefield' ? qq.options.findIndex(o => o.iid === want[1].iid) : want.map(o => o.k); });
+  const asked = []; RS(p.games, 0, cast(cu.iid), qq => { asked.push(qq); return qq.what === 'battlefield' ? qq.options.findIndex(o => o.iid === want[1].iid) : want.map(o => o.k); });
   const bf = a.battlefield.find(x => x.inst && x.inst.iid === want[1].iid), inHand = a.hand.find(i => i.iid === want[0].iid);
   check('...two different basics: it then asks which goes onto the battlefield', names.length > 1 && asked.length === 2 && asked[1].what === 'battlefield' && /which land goes onto the battlefield/.test(asked[1].title), asked.map(x => x.title).join(' || '));
   check('...the one you chose enters tapped, the other is in your hand, the library is shuffled', !!bf && bf.tapped && !!inHand && !a.library.some(i => i.iid === want[0].iid || i.iid === want[1].iid), want.map(o => o.name).join(' + ')); }
@@ -97,11 +102,11 @@ const other = q => q.options.findIndex(o => !o.def);
   answer(p, cast(cu.iid), [() => []]);
   check('..."up to": you may take none, and nothing is found', a.hand.length === h0 - 1 && a.battlefield.filter(x => x.asLand).length === 3); }
 { const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3); const cu = toHand(a, /^Cultivate$/); const sw = a.library.filter(i => /^Swamp$/.test(i.card.name)).slice(0, 2);
-  const asked = []; D.resolveSync(p.games, 0, cast(cu.iid), qq => { asked.push(qq); return sw.map(i => qq.options.find(o => o.iid === i.iid).k); });
+  const asked = []; RS(p.games, 0, cast(cu.iid), qq => { asked.push(qq); return sw.map(i => qq.options.find(o => o.iid === i.iid).k); });
   check('...two of the same basic: no second question, one enters and one goes to hand', asked.length === 1 && a.battlefield.some(x => x.inst === sw[0] || x.inst === sw[1]) && a.hand.some(i => i === sw[0] || i === sw[1])); }
 { const A = table(['frodo', 'zul-ashur']), B = (() => { const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); return p; })();
   for (const p of [A, B]) { lands(p.games[0], 3); toHand(p.games[0], /^Cultivate$/); }
-  D.resolveSync(A.games, 0, gs => G.castCard(gs[0], gs[0].hand[0]), () => 'auto'); G.castCard(B.games[0], B.games[0].hand[0]);
+  RS(A.games, 0, gs => G.castCard(gs[0], gs[0].hand[0]), () => 'auto'); G.castCard(B.games[0], B.games[0].hand[0]);
   check('...and "the autopilot decides" finds the autopilot\'s lands', D.dump(A.games) === D.dump(B.games)); }
 { const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3, /^Forest$/); const fs = toHand(a, /^Farseek$/);
   const fx = card(a, /^Farseek$/).a.spellFx.find(f => f.type === 'ramp');
@@ -176,7 +181,7 @@ const other = q => q.options.findIndex(o => !o.def);
   answer(p, run, [qq => qq.options.findIndex(o => o.iid === keep.iid)]);
   check('a discard is the card you choose', q.kind === 'discard' && q.options.length === 3 && a.graveyard.includes(keep) && a.hand.includes(l1) && a.hand.includes(sp), 'default ' + q.options[q.def[0]].name);
   const run2 = gs => { const ev = []; G.applyEffects(gs[0], [{ type: 'discardSelf', n: 2 }], null, ev, null); return ev; }; toHand(a, /^Plains$/);
-  const seen = []; D.resolveSync(p.games, 0, run2, qq => { seen.push(qq.options.length); return 0; });
+  const seen = []; RS(p.games, 0, run2, qq => { seen.push(qq.options.length); return 0; });
   check('"discard two cards" asks twice, the second time with the cards that are left', seen.join(',') === '3,2' && a.hand.length === 1, seen.join(',')); }
 { const p = table(['zul-ashur', 'frodo']), [b, a0] = p.games, a = a0; D.seat(a); const c1 = creature(a, 1), c2 = putOn(a, card(a, /^Samwise Gamgee$/) || card(a, /Peregrin/)); G.podFocus(b, a);
   const run = gs => { const ev = []; G.applyEffects(gs[0], [{ type: 'edict' }], null, ev, null); return ev; };
@@ -186,7 +191,7 @@ const other = q => q.options.findIndex(o => !o.def);
   check('...and the creature they chose is the one that goes', a.battlefield.length === 1 && a.battlefield[0].iid === q.options[q.def[0]].iid, a.battlefield.map(x => x.card.name).join(',')); }
 { const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 2, /^Swamp$/); const di = toHand(a, /^Diabolic Intent$/); const tok = creature(a, 1), sam = putOn(a, card(a, /^Samwise Gamgee$/) || card(a, /Peregrin/));
   const kinds = []; let found = null;
-  D.resolveSync(p.games, 0, cast(di.iid), q => { kinds.push(q.kind + (q.cost ? '' : '')); if (q.kind === 'sacrifice') return q.options.findIndex(o => o.iid === sam.iid); found = q.options.find(o => !o.def); return found.k; });
+  RS(p.games, 0, cast(di.iid), q => { kinds.push(q.kind + (q.cost ? '' : '')); if (q.kind === 'sacrifice') return q.options.findIndex(o => o.iid === sam.iid); found = q.options.find(o => !o.def); return found.k; });
   check('Diabolic Intent asks twice: what to sacrifice, then what to search for', kinds.join(',') === 'sacrifice,search' && !a.battlefield.includes(sam) && a.battlefield.includes(tok) && a.hand.some(i => i.iid === found.iid), kinds.join(',')); }
 
 // ---- explore: the revealed nonland card stays on top or goes to the graveyard
@@ -200,10 +205,10 @@ const other = q => q.options.findIndex(o => !o.def);
   check('...put it into the graveyard: the card is milled and the creature has its counter', s.a.graveyard.includes(s.top) && s.a.library[0] !== s.top && s.h.counters === 1);
   s = mk(true); answer(s.p, run, [() => 0]);
   check('...keep it on top: it is the next card, and the counter is there too', s.a.library[0] === s.top && s.h.counters === 1, [s.a.library[0].card.name, s.h.counters, s.a.hand.map(i => i.card.name).join('/')].join(' '));
-  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); D.resolveSync(A.p.games, 0, run, () => 'auto'); run(B.p.games);
+  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); RS(A.p.games, 0, run, () => 'auto'); run(B.p.games);
   check('..."the autopilot decides" does what the autopilot does', D.dump(A.p.games) === D.dump(B.p.games));
   s = mk(true); const land = { iid: s.a.nextIid++, card: s.a.deck.unique.find(c => /^Island$/.test(c.name)) }; s.a.library.unshift(land);
-  const r = D.attempt(s.p.games, 0, run, []);
+  const r = AT(s.p.games, 0, run, []);
   check('a land revealed by explore goes to your hand without a question', r.done && s.a.hand.includes(land) && !(s.h.counters > 0)); }
 
 // ---- the Ring tempts you: choose your Ring-bearer; the Ring's abilities against a real opponent
@@ -213,12 +218,12 @@ const other = q => q.options.findIndex(o => !o.def);
   let s = mk(true); const { q, still } = open(s.p, run);
   check('when the Ring tempts you, you choose your Ring-bearer among your creatures (the autopilot\'s choice is the default)', !!q && q.kind === 'ringbearer' && /The Ring tempts you \(first time\): choose your Ring-bearer/.test(q.title) && q.options.length === 2 && q.def.length === 1 && /legendary and can't be blocked by creatures with greater power/.test(q.text) && still, q && q.title + ' / default ' + q.options[q.def[0]].name);
   const other = q.options.find(o => !o.def);
-  const r = D.attempt(s.p.games, 0, run, [{ sig: q.sig, pick: other.k }]);
+  const r = AT(s.p.games, 0, run, [{ sig: q.sig, pick: other.k }]);
   check('...the creature you choose is the Ring-bearer', r.done && s.a.ring.bearer === other.iid && s.a.ring.tempts === 1, other.name);
   check('...and the log says the Ring tempted you and who carries it', D.summary(s.a, r.result, 0).some(t => /the Ring tempts you \(1st time\): .+ is the Ring-bearer/.test(t)) && D.summary(s.a, r.result, 1).some(t => /the Ring tempts them/.test(t)), D.summary(s.a, r.result, 0).join('; '));
-  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); D.resolveSync(A.p.games, 0, run, () => 'auto'); run(B.p.games);
+  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); RS(A.p.games, 0, run, () => 'auto'); run(B.p.games);
   check('..."the autopilot decides" picks the autopilot\'s Ring-bearer', D.dump(A.p.games) === D.dump(B.p.games));
-  s = mk(true); s.a.battlefield = [s.frodo]; const r1 = D.attempt(s.p.games, 0, run, []);
+  s = mk(true); s.a.battlefield = [s.frodo]; const r1 = AT(s.p.games, 0, run, []);
   check('...with one creature there is nothing to choose: it carries the Ring', r1.done && r1.asked === 0 && s.a.ring.bearer === s.frodo.iid); }
 { const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); const [a, b] = p.games;
   const small = putOn(a, card(a, /^Frodo, Adventurous Hobbit/)), big = putOn(b, card(b, /Grave Titan/)); G.temptRing(a, [], null); a.ring.bearer = small.iid;
@@ -266,7 +271,7 @@ const other = q => q.options.findIndex(o => !o.def);
   check('..."Not now": the instant stays in hand and the attack goes on', s.a.hand.includes(s.sw) && s.a.life < 40, s.a.life);
   s = mk(true); answer(s.p, run, [qq => qq.options.findIndex(o => o.name === 'Swords to Plowshares')]);
   check('...cast it: the attacker is exiled before damage', s.a.graveyard.includes(s.sw) && !s.b.battlefield.includes(s.gt) && s.a.life === 40, s.a.life);
-  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); D.resolveSync(A.p.games, 0, run, () => 'auto'); run(B.p.games);
+  const A = mk(false), B = mk(false); D.seat(A.p.games[0]); RS(A.p.games, 0, run, () => 'auto'); run(B.p.games);
   check('..."the autopilot decides" casts what the autopilot casts', D.dump(A.p.games) === D.dump(B.p.games));
   s = mk(true); const q2 = open(s.p, gs => G.instantWindow(gs[0], [], 'end')).q;
   check('at the opponent\'s end step the same question is asked ("End of ...\'s turn")', !!q2 && q2.kind === 'instant' && /^End of .*'s turn: cast an instant\?/.test(q2.title), q2 && q2.title); }
@@ -306,7 +311,7 @@ const other = q => q.options.findIndex(o => !o.def);
 
 // ---- nobody seated: the autopilot is never asked
 { const p = pod(['death-tax', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); const a = p.games[0]; lands(a, 1, /^Swamp$/); const vt = toHand(a, /^Vampiric Tutor$/); const auto = G.bestTutorTarget(a, { filters: [] }).inst;
-  const r = D.attempt(p.games, 0, cast(vt.iid), []);
+  const r = AT(p.games, 0, cast(vt.iid), []);
   check('a seat without a chooser is never asked: the call goes straight through with the autopilot\'s pick', r.done && r.asked === 0 && a.library[0] === auto); }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -48,6 +48,15 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.click('.ab-repl >> nth=1');
   l = await lines();
   check('tapping it again takes the pick back; the cut you pressed stays', !l.some(x => x.startsWith('+')) && l.includes('- ' + name), l.join(' | '));
+  // the 🔍 in a replacement's corner opens the card viewer with that card (name, price, printings) and does not choose it
+  const before = await lines();
+  const first = await p.$eval('.ab-repl', x => x.dataset.add);
+  await p.click('.ab-repl >> nth=0 >> .ab-zoom'); await p.waitForTimeout(800);
+  check('the 🔍 on a replacement opens the card viewer with that card', await p.isVisible('#lightbox.show') && (await p.textContent('.lb-name')).trim() === first, await p.textContent('.lb-name').catch(() => ''));
+  check('...and does not choose it', JSON.stringify(await lines()) === JSON.stringify(before) && !(await p.$eval('.ab-repl', x => x.classList.contains('on'))));
+  await p.waitForFunction(() => document.querySelector('#lightbox .lb-print') || /not available/.test((document.querySelector('.lb-strip') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+  check('the viewer shows its printings and shop links', (await p.$$('#lightbox .lb-buy')).length >= 3);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   check('no page errors', !errs.length, errs[0]);
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

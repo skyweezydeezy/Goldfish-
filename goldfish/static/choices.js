@@ -80,6 +80,7 @@
       const refresh = () => {
         box.querySelectorAll('.ch-opt').forEach(b => { const t = ts[+b.dataset.t], n = take.get(t) || 0; b.classList.toggle('sel', n > 0); b.setAttribute('aria-pressed', n > 0 ? 'true' : 'false'); b.querySelector('.ch-took').textContent = n > 1 ? '×' + n : ''; });
         const ok = $('.ch-ok'), n = count(), word = q.kind === 'search' ? 'Submit' : null;
+        ok.hidden = !ts.length;                               // nothing to pick (a spell on the stack you cannot answer): only "Let it resolve"
         if (q.multi) {
           ok.disabled = n < q.min || n > q.max;
           ok.textContent = word ? (n ? `Submit (${n})` : 'Submit: take nothing') : q.kind === 'mode' ? 'Choose these' : `Confirm ${n} card${n === 1 ? '' : 's'}`;
@@ -87,7 +88,7 @@
         } else {
           const t = [...take.keys()][0];
           ok.disabled = !t;
-          ok.textContent = !t ? (word ? 'Select a card' : q.kind === 'loyalty' ? 'Choose an ability' : 'Choose a card') : (word ? 'Submit' : q.kind === 'loyalty' ? 'Activate ' + t.o.label : (q.kind === 'face' ? 'Cast ' : 'Choose ') + t.o.name);
+          ok.textContent = !t ? (word ? 'Select a card' : q.kind === 'loyalty' ? 'Choose an ability' : 'Choose a card') : (word ? 'Submit' : q.kind === 'loyalty' ? 'Activate ' + t.o.label : (q.kind === 'counter' && !/^counter it/.test(t.o.note || '')) || q.kind === 'resolve' || q.kind === 'face' ? 'Cast ' + t.o.name : q.kind === 'counter' ? 'Counter with ' + t.o.name : 'Choose ' + t.o.name);
           if (flip) { const fi = $('.ch-faceinfo'); if (fi && t) fi.innerHTML = `<b>${esc(t.o.name)}</b><small>${esc(t.o.note || '')}</small><span class="hint">${t.o.face ? 'Back face' : 'Front face'} · ⟲ turns the card over</span>`; }
         }
         const pk = $('.ch-picked');

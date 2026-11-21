@@ -118,12 +118,12 @@
   // the card a choice comes from. A spell's own effects carry no source in the engine: the spell being cast (g.lastCast) stands in for it.
   const srcOf = (d, g) => (d.source && d.source.card ? d.source.card : (d.kind === 'search' || d.kind === 'target' || d.kind === 'mode') && !d.source && g && g.lastCast ? g.lastCast.card : null);
   const ptOf = (o, p) => (G.isCreaturePerm(p) ? `${G.powerOf(o, p)}/${G.toughnessOf(o, p)}` : '');
-  const HOW = { mana: 'pay its mana cost', free: 'free', daze: 'return an Island to your hand', pitch: 'exile a card from your hand' };
+  const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   function question(g, d) {
     const opts = d.options || [], multi = !!d.multi, m = g.match;
-    if (!opts.length) return null;
+    if (!opts.length && !d.always) return null;          // always: asked with nothing to pick too (a spell on the stack: "does it resolve?")
     const defs = multi ? (d.def || []) : (d.def == null ? [] : [d.def]);
     const optional = !multi && (!!d.optional || d.def == null);
     let min = 1, max = 1;
@@ -137,7 +137,8 @@
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
       if (d.kind === 'mode') { item.name = fxLabel(o.mode); }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
-      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how]; }
+      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
+      else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
         if (d.kind === 'target' || d.kind === 'sacrifice') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
@@ -195,10 +196,16 @@
       q.spell = d.reveal.card; q.spellNote = 'revealed';
     } else if (d.kind === 'counter') {
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
-      q.title = `${who} casts ${d.spell.card.name}`;
-      q.text = 'Counter it? You can answer with a counterspell you hold and can pay for.';
+      const nc = opts.filter(o => o.how !== 'respond').length, nr = opts.length - nc;
+      q.title = `${who} casts ${d.spell.card.name}: does it resolve?`;
+      q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant or card with flash you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant or a card with flash (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
       q.none = 'Let it resolve';
-      q.spell = d.spell.card;
+      q.spell = d.spell.card; q.spellNote = 'on the stack';
+    } else if (d.kind === 'resolve') {
+      q.title = `You cast ${d.spell.card.name}: does it resolve?`;
+      q.text = `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant or a card with flash (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
+      q.none = 'Pass';
+      q.spell = d.spell.card; q.spellNote = 'on the stack';
     }
     if (!q.optional) q.none = null;
     // every option the same card (two Swamps for Cultivate's battlefield half, five identical Soldier tokens): there is nothing to choose
@@ -332,7 +339,7 @@
   // ---------- the log ----------
   // What happened, as short lines: the engine's own summary plus what a person chose or had done to them (searches, targets, discards,
   // sacrifices, counterspells). A card another player searched for and did not show stays unnamed.
-  const EXTRA = /^(Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: )| counters |'s controller pays | explores: /;
+  const EXTRA = /^(Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
   function summary(g, ev, viewer) {
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {

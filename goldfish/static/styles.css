@@ -1012,6 +1012,9 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .ab-repl { width: 104px; padding: 3px; background: none; border: 2px solid transparent; border-radius: 9px; cursor: pointer; color: inherit; text-align: left; }
 .ab-repl:hover { border-color: rgba(120,190,255,.45); }
 .ab-repl.on { border-color: #4cc2ff; box-shadow: 0 0 0 2px rgba(76,194,255,.25); }
+.ab-cut, .ab-repl { position: relative; }
+.ab-zoom { position: absolute; top: 4px; right: 4px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: rgba(8,18,26,.82); box-shadow: 0 0 0 1px rgba(143,216,255,.45); font-size: 16px; line-height: 1; cursor: zoom-in; }
+.ab-zoom:hover { background: rgba(23,42,58,.95); }
 .ab-repl small { display: block; font-size: 11px; margin-top: 3px; line-height: 1.25; }
 .ab-noimg { display: inline-block; padding: 30px 6px; font-size: 12px; border: 1px dashed rgba(255,255,255,.2); border-radius: 6px; }
 

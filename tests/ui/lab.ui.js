@@ -27,6 +27,9 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.waitForTimeout(1500);
   await p.click('[data-tab=sim]');
   check('the Policy lab says nothing is learned yet', /Nothing learned/.test(await p.textContent('#plSaved')));
+  // the lab lists more choices now (opening hand, mulligans...) and tests against other decks by default: pick fetch land timing, goldfish
+  await p.selectOption('#plDecision', 'fetch');
+  await p.selectOption('#plMode', 'goldfish');
   await p.fill('#plN', '60');
   await p.click('#plRun');
   await p.waitForSelector('#plOut .labtable', { timeout: 120000 });
@@ -36,7 +39,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('a plain-language verdict is shown above the table', /No option clearly beat|did better than the baseline/.test(await p.textContent('#plOut')));
   await p.click('#plOut [data-use="2"]');
   const saved = await p.textContent('#plSaved');
-  check('"Use this" saves the choice for this deck', /Fetch land timing = Hold until needed/.test(saved), saved.slice(0, 90));
+  check('"Use this" saves the choice for this deck', /When to crack lands that search for a land = Hold until needed/.test(saved), saved.slice(0, 90));
   const stored = await p.evaluate(() => localStorage.getItem('gf_policy'));
   check('it is stored in the browser', /untilNeeded/.test(stored || ''));
   // the table autopilot uses it

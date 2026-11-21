@@ -1,6 +1,7 @@
-// A/B test: "Cut" on a card writes "- Card" into the changes and offers replacements under it (popular cards that do the same job,
-// in the deck's colors, for at most one more mana, not in the deck). Tapping one writes "+ Pick"; another tap takes it back; a second
-// pick replaces the first.
+// A/B test: "Cut" on a card writes "- Card" into the changes and offers replacements under it, the same ones as the ranked swap
+// suggestions (cards that do the same job, of the same kind, at a similar mana value, in the deck's colors, not in the deck; the ones the
+// engine reads fully first, marked ✓). Tapping one writes "+ Pick" after the cut; a second pick replaces the first; tapping it again
+// takes the pick back (a cut you pressed yourself stays).
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
 let pass = 0, fail = 0;
@@ -31,22 +32,22 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
     return c.name;
   });
   await p.click('#abDiagOut [data-abcut]');
-  await p.waitForSelector('.ab-pick', { timeout: 30000 });
+  await p.waitForSelector('.ab-repl', { timeout: 30000 });
   const lines = () => p.$eval('#abChanges', t => t.value.split('\n').map(l => l.trim()).filter(Boolean));
   check('Cut writes "- Card" into the changes', (await lines()).includes('- ' + name), (await lines()).join(' | '));
-  const picks = await p.$$eval('.ab-pick', xs => xs.map(x => x.dataset.abpick));
+  const picks = await p.$$eval('.ab-repl', xs => xs.map(x => x.dataset.add));
   const deck = await p.evaluate(() => window.__isf.cards.map(c => c.name));
-  check('replacements are offered under the card, with a heading saying what they are', picks.length >= 3 && /Replace with/.test(await p.textContent('.ab-picks-head')), (await p.textContent('.ab-picks-head')) + ' / ' + picks.slice(0, 4).join(', '));
+  check('replacements are offered under the card (at least 3)', picks.length >= 3, picks.join(', '));
   check('none of them is already in the deck', picks.every(n => !deck.includes(n)));
-  check('each shows a picture and a price (or a dash)', await p.$$eval('.ab-pick', xs => xs.every(x => x.querySelector('img') && x.querySelector('small'))));
-  await p.click('.ab-pick >> nth=0');
-  check('tapping one writes "+ Pick" right after the cut and lights it', (await lines()).join('|').includes('- ' + name + '|+ ' + picks[0]) && await p.$eval('.ab-pick', x => x.classList.contains('on')), (await lines()).join(' | '));
-  await p.click('.ab-pick >> nth=1');
+  check('each shows a picture and its name with the engine\'s rating (✓ / ◐ / ✗)', await p.$$eval('.ab-repl', xs => xs.every(x => x.querySelector('img') && /^[✓◐✗] /.test(x.querySelector('small').textContent))));
+  await p.click('.ab-repl >> nth=0');
+  check('tapping one writes "+ Pick" right after the cut and lights it', (await lines()).join('|').includes('- ' + name + '|+ ' + picks[0]) && await p.$eval('.ab-repl', x => x.classList.contains('on')), (await lines()).join(' | '));
+  await p.click('.ab-repl >> nth=1');
   let l = await lines();
   check('tapping another replaces the first pick', l.includes('+ ' + picks[1]) && !l.includes('+ ' + picks[0]), l.join(' | '));
-  await p.click('.ab-pick >> nth=1');
+  await p.click('.ab-repl >> nth=1');
   l = await lines();
-  check('tapping it again takes it back; the cut stays', !l.some(x => x.startsWith('+')) && l.includes('- ' + name), l.join(' | '));
+  check('tapping it again takes the pick back; the cut you pressed stays', !l.some(x => x.startsWith('+')) && l.includes('- ' + name), l.join(' | '));
   check('no page errors', !errs.length, errs[0]);
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

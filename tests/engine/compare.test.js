@@ -13,6 +13,14 @@ const O = { turns: 16 };
   check('"-Card" removes one copy (keeping the set code line format), "+Card" adds', !/Counterspell/.test(r.text) && /^1 Island$/m.test(r.text) && /^1 Mana Drain$/m.test(r.text) && /^2 Ponder$/m.test(r.text), r.text.replace(/\n/g, ' | '));
   check('a card that is not in the list is reported, not silently ignored', r.missing.includes('Not In Deck') && r.cuts.length === 2 && r.adds.length === 2); }
 
+// ---- replacement searches ----
+{ const q = C.replacementQueries({ type_line: 'Artifact', cmc: 2 }, ['U', 'R'], ['ramp']);
+  check('a 2-mana ramp artifact in a blue-red deck: same job, same type, mana value 1-3, inside the colors, legal in Commander', q[0] === 'legal:commander id<=ur -is:digital otag:ramp t:artifact cmc>=1 cmc<=3', q[0]);
+  check('...then looser searches: the job without the type, then the type without the job', q.length === 3 && !/t:/.test(q[1]) && !/otag/.test(q[2]));
+  const l = C.replacementQueries({ type_line: 'Land', cmc: 0 }, ['R'], []);
+  check('a land is replaced by lands of any mana value; a card with no known job gets one search', l.length === 1 && /t:land/.test(l[0]) && !/cmc/.test(l[0]), l[0]);
+  check('a colorless commander searches colorless cards', /id<=c /.test(C.replacementQueries({ type_line: 'Artifact', cmc: 1 }, [], [])[0])); }
+
 // ---- diagnosis ----
 { const d = C.diagnose(G, me.cards, me.tokens, opps, O, 240, 7);
   check('diagnose plays the games and gives a win rate', d.errors === 0 && d.winRate >= 0 && d.winRate <= 1, d.winRate.toFixed(2));

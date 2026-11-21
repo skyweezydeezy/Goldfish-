@@ -1419,7 +1419,7 @@
         const sg = h('div', 'stackgroup');
         if (ps.length === 1 && imprintOf(ps[0])) { sg.classList.add('imprint'); sg.appendChild(imprintEl(ps[0], used)); }
         (ps.length > 4 ? ps.slice(0, 4) : ps).forEach(p => sg.appendChild(permEl(p, used)));   // a big stack shows 4 cards and a count, not 100 images
-        if (ps.length > 4) sg.appendChild(h('span', 'stack-count', '×' + ps.length));
+        if (ps.length > 1) { const sc = h('span', 'stack-count', '×' + ps.length); sc.title = ps.length + ' × ' + ps[0].card.name; sg.appendChild(sc); }          // the pile's size, on the pile: a big stack shows only 4 cards
         nodes.push(sg);
       }
       row.replaceChildren(...nodes);

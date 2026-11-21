@@ -44,7 +44,14 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
     res.end(JSON.stringify({ iceServers: [{ urls: 'turn:relay.test.invalid:3478', username: 'u-test', credential: 'p-test' }], expires: new Date(Date.now() + 12 * 3600e3).toISOString() }));
   });
   await new Promise(r => relay.listen(0, '127.0.0.1', r));
-  await A.evaluate(u => { const R = window.__isfRemote; R.ice = null; R.relayService = u; R.state.failAfter = 60000; }, `http://127.0.0.1:${relay.address().port}/ice`);
+  // the relay built into the site: Metered's servers with the user's credential
+  await A.evaluate(() => { const R = window.__isfRemote; R.ice = null; R.state.failAfter = 60000; });
+  await A.click('#tab-duel .rm-invite');
+  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers);
+  check('as shipped, the site connects through Metered\'s relay (TURN on 80 and 443, TURNS) with a login, as well as STUN', built.some(s => [].concat(s.urls).includes('turns:global.relay.metered.ca:443?transport=tcp') && s.username) && built.some(s => [].concat(s.urls).includes('turn:global.relay.metered.ca:80') && s.credential) && built.some(s => /^stun:/.test([].concat(s.urls)[0])), built.map(s => [].concat(s.urls).join(' ')).join(', '));
+  check('...and the list of what is shared says so (the relay line, version 3)', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 3 && R.DISCLOSURE.some(t => /Metered's relay server/.test(t)) && !R.DISCLOSURE.some(t => /ICEYfish server/.test(t)); }));
+  await A.evaluate(u => { const R = window.__isfRemote; R.relayServers = null; R.relayService = u; }, `http://127.0.0.1:${relay.address().port}/ice`);
   await A.click('#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
   const conf = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));

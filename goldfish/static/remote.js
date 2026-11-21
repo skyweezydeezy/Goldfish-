@@ -23,7 +23,8 @@
   // Shown to each player before their first connection. Nothing is sent until that player ticks "I understand and accept"; each side
   // sends the version it accepted in its hello, and a side whose version differs is refused, so both players always agreed to the same
   // text. Any change to what is shared must change this list and bump the version.
-  // Version 2 was accepted by the user (the project owner) on 2026-11-21. Version 3 adds the relay; version 4 also the relay service.
+  // Version 2 was accepted by the user (the project owner) on 2026-11-21, and version 3 (the relay) on 2026-11-21. Version 4 would add
+  // the relay service.
   // The relay (TURN), approved by the user: for when the two devices find no direct path (Safari hides a device's local address from
   // web pages, and many home routers will not pass traffic between two devices on the same network by their public address). The
   // traffic through it is encrypted end to end. Two ways, the user chose the first:
@@ -31,7 +32,14 @@
   //            does not expire; changing it means changing this file.
   //   service: the web address of a service that holds the Metered secret key and hands out credentials that expire
   //            (server/php/turn/ice.php, or /ice of server/turn-service.js). Not used.
-  const RELAY = { name: 'Metered', servers: null, service: null };
+  const METERED = { username: '3ee4b0a0a24eab2f0cbece7b', credential: 'tzpAlPTE8yY+RLLX' };          // the user's Metered credential (public by design)
+  const RELAY = { name: 'Metered', service: null, servers: [
+    { urls: 'stun:stun.relay.metered.ca:80' },
+    Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, METERED),
+    Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, METERED),
+    Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, METERED),
+    Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, METERED),
+  ] };
   const relayOn = !!(RELAY.servers || RELAY.service);
   const DISCLOSURE_VERSION = RELAY.service ? 4 : relayOn ? 3 : 2;
   const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';

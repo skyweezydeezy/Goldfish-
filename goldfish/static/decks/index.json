@@ -666,6 +666,16 @@
    "learnedVs": "field"
   },
   {
+   "file": "tookens.txt",
+   "name": "Tookens (Belladonna Took)",
+   "commanders": [
+    "Belladonna Took"
+   ],
+   "colors": "W",
+   "cards": 100,
+   "bracket": 3
+  },
+  {
    "file": "undead-witches.txt",
    "name": "Undead Witches (Zul Ashur)",
    "commanders": [

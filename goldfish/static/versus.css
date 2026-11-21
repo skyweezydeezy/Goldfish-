@@ -104,6 +104,9 @@
 .vs-seat.sleeved .card-back { background: var(--sleeve-back); border-color: var(--sleeve-dark); }
 .vs-seat.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px 0 var(--sleeve-mid), 6px 6px 8px rgba(0,0,0,.6); }
 .vs-seat.sleeved .vs-backs i { background: var(--sleeve-back); border-color: var(--sleeve-dark); }
+.vs-seat .card-back > img.sleeve-art, .vs-seat .vs-backs i > img.sleeve-art { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; pointer-events: none; }
+.vs-seat:not(.sleeved) img.sleeve-art { display: none; }
+.vs-backs i, .vs-seat .card-back { overflow: hidden; }
 .vs-seat.sleeved .vs-pile.deep > .mtg { box-shadow: 0 0 0 2px var(--sleeve), 2px 2px 0 var(--sleeve-dark), 4px 4px 0 var(--sleeve-mid), 5px 5px 8px rgba(0,0,0,.6); }
 /* a player without sleeves keeps the plain card back, whatever you chose for yourself */
 .vs-seat:not(.sleeved) .card-back { background: radial-gradient(ellipse at 50% 50%, #bfe9ff 0 16%, #4aa6e0 17% 30%, #12324a 31% 100%), repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px); border-color: #0a2030; }

@@ -3017,15 +3017,40 @@
   }
 
   // ---------- Board queries ----------
+  // A filter ("goblin", "nontoken creature", "skeleton|pirate") is asked for every permanent and every trigger, so it is taken apart once and remembered.
+  const FILTERS = new Map(), LOWER_TYPES = new Map();
+  const TYPE_WORD = /^(artifact|enchantment|land|planeswalker|legendary|instant|sorcery|token|basic|snow)$/;
+  function filterSpec(filter) {
+    let f = filter.toLowerCase().replace(/\b(nontoken|other)\b/g, '').replace(/\bcreatures?\b/g, '').trim();
+    const tokenOnly = /\btokens?\b/.test(f);                                                              // "Creature tokens you control" (Teysa Karlov)
+    if (tokenOnly) f = f.replace(/\btokens?\b/g, '').trim();
+    return { tokenOnly, words: f ? f.split(/\s+/).map(w => ({ s: singular(w), type: TYPE_WORD.test(w) })) : [] };
+  }
+  function lowerType(card) {
+    const t = card.type_line; if (!t) return '';
+    let l = LOWER_TYPES.get(t); if (l === undefined) { if (LOWER_TYPES.size > 20000) LOWER_TYPES.clear(); LOWER_TYPES.set(t, l = t.toLowerCase()); }
+    return l;
+  }
+  function matchesSpec(card, sp) {
+    if (sp === null) return true;                                                                        // an empty alternative
+    if (sp.tokenOnly && !card.isToken) return false;
+    const ws = sp.words; if (!ws.length) return true;
+    const tl = lowerType(card); let chg = -1;
+    for (let i = 0; i < ws.length; i++) {
+      if (tl.includes(ws[i].s)) continue;
+      if (ws[i].type) return false;
+      if (chg < 0) chg = card.a && card.a.kw && card.a.kw.has('changeling') && /\bcreature\b/.test(tl) ? 1 : 0;          // a Changeling is every creature type
+      if (!chg) return false;
+    }
+    return true;
+  }
   function matchesFilter(card, filter) {
     if (!filter) return true;
-    if (filter.indexOf('|') >= 0) return filter.split('|').some(x => matchesFilter(card, x));          // "a Skeleton or Pirate"
-    let f = filter.toLowerCase().replace(/\b(nontoken|other)\b/g, '').replace(/\bcreatures?\b/g, '').trim();
-    if (/\btokens?\b/.test(f)) { if (!card.isToken) return false; f = f.replace(/\btokens?\b/g, '').trim(); }          // "Creature tokens you control" (Teysa Karlov)
-    if (!f) return true;
-    const tl = (card.type_line || '').toLowerCase();
-    const chg = card.a && card.a.kw && card.a.kw.has('changeling') && /\bcreature\b/.test(tl);          // a Changeling is every creature type
-    return f.split(/\s+/).every(w => tl.includes(singular(w)) || (chg && !/^(artifact|enchantment|land|planeswalker|legendary|instant|sorcery|token|basic|snow)$/.test(w)));
+    let sp = FILTERS.get(filter);
+    if (sp === undefined) { if (FILTERS.size > 20000) FILTERS.clear(); FILTERS.set(filter, sp = filter.indexOf('|') >= 0 ? filter.split('|').map(x => x ? filterSpec(x) : null) : filterSpec(filter)); }          // "a Skeleton or Pirate"
+    if (!Array.isArray(sp)) return matchesSpec(card, sp);
+    for (let i = 0; i < sp.length; i++) if (matchesSpec(card, sp[i])) return true;
+    return false;
   }
 
   // Anthems and equipment bonuses are looked up a LOT (every creature, every combat), and token boards get big.
@@ -3047,6 +3072,8 @@
     if (q.asLand) info.lands++;
     if (a.abilStax) info.abilStax = true; if (st.moon) info.moonSeen = true; if (a.cityAnthem) info.cityAnthem = true; if (a.jetmir6 || a.jetmir9) info.jetmir = true; if (a.legendAura) info.legendAura = true; if (st.oppMinus) info.oppMinus = true; if (st.maha) info.maha = true; if (st.narset) info.narset = true; if (st.normEtb) info.normEtb = true; if (st.tamiyo) info.tamiyo = true; if (st.vorinHalf) info.vorinHalf = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
+    if (st.trigDouble || st.trigDoublePower != null) info.trigDouble = true; if (st.trigDoubleColorless) info.trigDoubleColorless = true; if (a.wizardStaff) info.wizardStaff = true;          // trigger doublers: looked up every time a trigger fires
+    if (a.inspiringLeader) info.inspiringLeader = (info.inspiringLeader || 0) + 1;
     if (a.watch) info.watchers.push(q);
     if (st.tokenRepl.length) info.repl.push(q);
     if (st.counterDouble) info.cm++;
@@ -3226,7 +3253,7 @@
     for (const l of info.lieutenants) if (g.battlefield.some(q => q.card.commander)) n += l.src === p ? (k === 'p' ? l.lt.sp : l.lt.st) : (k === 'p' ? l.lt.op : l.lt.ot);
     if (g.gauntletSeen || (g.opp && g.opp.gauntletSeen)) for (const q of bothSides(g)) if (q.card.a.gauntletAnthem && q.gauntletColor && colorsOf(g, p.card).includes(q.gauntletColor)) n += 1;          // Gauntlet of Power
     if (info.porcelain && g.battlefield.includes(p)) { const c = g.battlefield.filter(isCreaturePerm).length; n += c - (k === 'p' ? (p.card.a.power || 0) : (p.card.a.toughness || 0)); }          // Porcelain Gallery
-    if (p.token && g.battlefield.some(q => q.card.a.inspiringLeader) && g.battlefield.some(q => q.card.commander && isCreaturePerm(q))) n += g.battlefield.filter(q => q.card.a.inspiringLeader).length * 2;          // Inspiring Leader
+    if (info.inspiringLeader && p.token && g.battlefield.some(q => q.card.commander && isCreaturePerm(q))) n += info.inspiringLeader * 2;          // Inspiring Leader
     if (info.tenLands && g.battlefield.filter(q => q.asLand).length >= 10) n += k === 'p' ? info.tenLands.p : info.tenLands.t;          // Fecund Greenshell
     if (info.perEquip) { const eq = g.battlefield.filter(q => q.attachedTo === p.iid && q.card.a.isEquipment).length; if (eq) n += (k === 'p' ? info.perEquip.p : info.perEquip.t) * eq; }          // Bruenor Battlehammer
     if (info.jetmir && k === 'p' && g.battlefield.includes(p)) { const c = g.battlefield.filter(isCreaturePerm).length; n += (c >= 6 ? 1 : 0) + (c >= 9 ? 1 : 0); }          // Jetmir's two more steps
@@ -4230,13 +4257,13 @@
 
   function fire(g, trig, source, ev, subject, amount) {
     fireOnce(g, trig, source, ev, subject, amount);
-    if (!g.dry && source && source.iid != null && g.killTurn == null && isCreaturePerm(source) && g.battlefield.some(q => q.card.a.wizardStaff && q.attachedTo === source.iid)) fireOnce(g, trig, source, ev, subject, amount);          // Wizard's Staff
+    if (!g.dry && source && source.iid != null && g.killTurn == null && isCreaturePerm(source) && bfInfo(g).wizardStaff && g.battlefield.some(q => q.card.a.wizardStaff && q.attachedTo === source.iid)) fireOnce(g, trig, source, ev, subject, amount);          // Wizard's Staff
     if (g.copierSeen && !g.dry && source && g.killTurn == null && !g.inCopy) {                                   // Strionic Resonator, Lithoform Engine: {2}, {T}: copy a triggered ability worth copying
       const cp = g.battlefield.find(q => q.card.a.trigCopy && !q.tapped && q !== source && (!q.card.a.trigCopy.enchOnly || enchOn(g, source)));          // Weaver of Harmony: an enchantment's ability
       if (cp && fxValue(g, trig.fx) >= 3.5 && canPay(cp.card.a.trigCopy.cost, allUnits(g).filter(u => u.src !== cp))) { cp.tapped = true; if (pay(g, cp.card.a.trigCopy.cost) != null) { ev.push({ type: 'note', text: `${cp.card.name}: copied the triggered ability of ${source.card.name}`, source: cp }); g.inCopy = true; try { fireOnce(g, trig, source, ev, subject, amount); } finally { g.inCopy = false; } } else cp.tapped = false; }
     }
-    if (source && source.card && !g.dry && !(source.card.colors || []).length && !source.asLand && source.card.a && !source.card.a.isLand) for (const q of g.battlefield) if (q.card.a.statics.trigDoubleColorless && q !== source) fireOnce(g, trig, source, ev, subject, amount);          // Echoes of Eternity
-    if (source && isCreaturePerm(source) && !g.dry) for (const q of g.battlefield) { const td = q.card.a.statics.trigDouble; if (td && (q !== source || q.card.a.statics.trigDoubleSelf) && matchesFilter(source.card, td)) fireOnce(g, trig, source, ev, subject, amount); const tdp = q.card.a.statics.trigDoublePower; if (tdp != null && powerOf(g, source) <= tdp) fireOnce(g, trig, source, ev, subject, amount); }          // Roaming Throne, Harmonic Prodigy
+    if (source && source.card && !g.dry && !(source.card.colors || []).length && !source.asLand && source.card.a && !source.card.a.isLand && bfInfo(g).trigDoubleColorless) for (const q of g.battlefield) if (q.card.a.statics.trigDoubleColorless && q !== source) fireOnce(g, trig, source, ev, subject, amount);          // Echoes of Eternity
+    if (source && isCreaturePerm(source) && !g.dry && bfInfo(g).trigDouble) for (const q of g.battlefield) { const td = q.card.a.statics.trigDouble; if (td && (q !== source || q.card.a.statics.trigDoubleSelf) && matchesFilter(source.card, td)) fireOnce(g, trig, source, ev, subject, amount); const tdp = q.card.a.statics.trigDoublePower; if (tdp != null && powerOf(g, source) <= tdp) fireOnce(g, trig, source, ev, subject, amount); }          // Roaming Throne, Harmonic Prodigy
   }
   // Rings of Brighthearth ({2}: copy an activated ability) and Lithoform Engine ({2}, {T}); loyalty abilities and plain "cost: effect" abilities only
   // Rings of Brighthearth on an ability the engine plays by hand (a tutor, The One Ring): {2} to do it again
@@ -5424,7 +5451,7 @@
         case 'creaturesFromHand': for (const c of g.hand.filter(i => i.card.a.isCreature && !i.card.commander)) { if (g.battlefield.length >= 250) break; g.hand.splice(g.hand.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); } break;
         case 'triumph': g.battlefield.forEach(q => { if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) + 1; q.eotT = (q.eotT || 0) + 1; q.eotKw = new Set([...(q.eotKw || []), 'trample', 'infect']); } }); break;
         case 'doubleAllCounters': g.battlefield.forEach(q => { if (isCreaturePerm(q) && (q.counters || 0) > 0) addCounters(g, q, '+1/+1', q.counters, ev, source, true); }); break;
-        case 'attackerKw': { const atk = g.battlefield.filter(q => q.attacking); const tg = f.best ? atk.sort((x, y) => powerOf(g, y) - powerOf(g, x)).slice(0, 1) : (subject ? [subject] : []); tg.forEach(q => { q.eotKw = new Set([...(q.eotKw || []), f.kw]); }); break; }
+        case 'attackerKw': { const tg = f.best ? g.battlefield.filter(q => q.attacking).sort((x, y) => powerOf(g, y) - powerOf(g, x)).slice(0, 1) : (subject ? [subject] : []); tg.forEach(q => { q.eotKw = new Set([...(q.eotKw || []), f.kw]); }); break; }
         case 'pastInFlames': for (const i of g.graveyard) if (i.card.a.isInstantSorcery && !i.card.a.spellFx.some(x => x.type === 'pastInFlames')) { i.yardCastTurn = g.turn; i.exileInstead = true; } ev.push({ type: 'note', text: 'Past in Flames: instants and sorceries in your graveyard have flashback this turn', source }); break;
         case 'peer': { const k = Math.min(25, Math.floor(g.library.length / 2)); draw(g, k, ev); g.life = Math.ceil(g.life / 2); ev.push({ type: 'note', text: `Peer into the Abyss: drew ${k} cards, life is ${g.life}`, source }); break; }
         case 'flickerOne': { if (entryBlocked(g, { a: { isCreature: true } }, 'other')) break; const c = g.battlefield.filter(q => q !== source && isCreaturePerm(q) && !q.token && q.inst && q.card.a.triggers.some(t => t.kinds.includes('etb'))).sort((x, y) => fxValue(g, [].concat(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))) - fxValue(g, [].concat(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))))[0];
@@ -6222,25 +6249,50 @@
     p.origCard = p.card; p.card = Object.assign({}, p.card, { type_line: p.card.type_line + ' ' + tribe }); touch(g);
   }
   // the number of X: used by cost reduction and "power equal to the number of ..." lines
-  function countWhat(g, what, self) {
+  // "the number of X": the text is read once (which count it asks for) and remembered; the count itself is taken from the board each time
+  const COUNT_KINDS = new Map();
+  function countKind(what) {
     const w = what.toLowerCase();
-    if (/^poison counters? your opponents have/.test(w)) return g.poisonDealt || 0;          // Vishgraz
-    if (/greatest mana value among artifacts you control/.test(w)) return g.battlefield.filter(q => q.card.a.isArtifact).reduce((m, q) => Math.max(m, q.card.a.mv || 0), 0);          // Karn, Legacy Reforged
-    if (/greatest power among creatures you control/.test(w)) return g.battlefield.filter(isCreaturePerm).reduce((m, q) => Math.max(m, powerOf(g, q)), 0);
-    if (/total power of creatures you control/.test(w)) return g.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
-    if (/total mana value of (\w+?)s you control/.test(w)) { const ty = w.match(/total mana value of (\w+?)s you control/)[1]; return g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, ty)).reduce((t, q) => t + (q.card.a.mv || 0), 0); }
-    if (/instant and sorcery cards? in your graveyard/.test(w)) return g.graveyard.filter(i => i.card.a.isInstantSorcery).length;
-    if (/creature cards? in your graveyard/.test(w)) return g.graveyard.filter(i => i.card.a.isCreature).length;
-    if (/cards? in (?:your|the chosen player's|a|each) graveyard|cards in all graveyards/.test(w)) return g.graveyard.length;
-    if (/other creatures? you control/.test(w)) return g.battlefield.filter(q => isCreaturePerm(q) && q !== self).length;
-    if (/creatures? you control/.test(w)) return g.battlefield.filter(isCreaturePerm).length;
-    if (/artifacts? and\/or enchantments? you control/.test(w)) return g.battlefield.filter(q => artOn(g, q) || enchOn(g, q)).length;          // All That Glitters
-    if (/artifacts? you control/.test(w)) return g.battlefield.filter(q => artOn(g, q)).length;
-    if (/enchantments? you control/.test(w)) return g.battlefield.filter(q => enchOn(g, q)).length;
-    if (/lands? you control/.test(w)) return g.battlefield.filter(q => q.asLand).length;
-    if (/cards? in your hand/.test(w)) return g.hand.length;
-    if (/(\w+)s? you control/.test(w)) { const t = w.match(/(\w+?)s? you control/)[1]; return g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, t)).length; }
-    return 0;
+    if (/^poison counters? your opponents have/.test(w)) return { id: 'poison' };          // Vishgraz
+    if (/greatest mana value among artifacts you control/.test(w)) return { id: 'artMv' };          // Karn, Legacy Reforged
+    if (/greatest power among creatures you control/.test(w)) return { id: 'maxPower' };
+    if (/total power of creatures you control/.test(w)) return { id: 'sumPower' };
+    if (/total mana value of (\w+?)s you control/.test(w)) return { id: 'sumMv', t: w.match(/total mana value of (\w+?)s you control/)[1] };
+    if (/instant and sorcery cards? in your graveyard/.test(w)) return { id: 'gySpells' };
+    if (/creature cards? in your graveyard/.test(w)) return { id: 'gyCreatures' };
+    if (/cards? in (?:your|the chosen player's|a|each) graveyard|cards in all graveyards/.test(w)) return { id: 'gy' };
+    if (/other creatures? you control/.test(w)) return { id: 'otherCreatures' };
+    if (/creatures? you control/.test(w)) return { id: 'creatures' };
+    if (/artifacts? and\/or enchantments? you control/.test(w)) return { id: 'artEnch' };          // All That Glitters
+    if (/artifacts? you control/.test(w)) return { id: 'artifacts' };
+    if (/enchantments? you control/.test(w)) return { id: 'enchantments' };
+    if (/lands? you control/.test(w)) return { id: 'lands' };
+    if (/cards? in your hand/.test(w)) return { id: 'hand' };
+    if (/(\w+)s? you control/.test(w)) return { id: 'type', t: w.match(/(\w+?)s? you control/)[1] };
+    return { id: 'none' };
+  }
+  function countWhat(g, what, self) {
+    let k = COUNT_KINDS.get(what); if (k === undefined) { if (COUNT_KINDS.size > 20000) COUNT_KINDS.clear(); COUNT_KINDS.set(what, k = countKind(what)); }
+    const bf = g.battlefield; let n = 0;
+    switch (k.id) {
+      case 'poison': return g.poisonDealt || 0;
+      case 'artMv': return bf.filter(q => q.card.a.isArtifact).reduce((m, q) => Math.max(m, q.card.a.mv || 0), 0);
+      case 'maxPower': return bf.filter(isCreaturePerm).reduce((m, q) => Math.max(m, powerOf(g, q)), 0);
+      case 'sumPower': return bf.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
+      case 'sumMv': return bf.filter(q => isCreaturePerm(q) && matchesFilter(q.card, k.t)).reduce((t, q) => t + (q.card.a.mv || 0), 0);
+      case 'gySpells': return g.graveyard.filter(i => i.card.a.isInstantSorcery).length;
+      case 'gyCreatures': return g.graveyard.filter(i => i.card.a.isCreature).length;
+      case 'gy': return g.graveyard.length;
+      case 'otherCreatures': for (let i = 0; i < bf.length; i++) if (isCreaturePerm(bf[i]) && bf[i] !== self) n++; return n;
+      case 'creatures': for (let i = 0; i < bf.length; i++) if (isCreaturePerm(bf[i])) n++; return n;
+      case 'artEnch': return bf.filter(q => artOn(g, q) || enchOn(g, q)).length;
+      case 'artifacts': return bf.filter(q => artOn(g, q)).length;
+      case 'enchantments': return bf.filter(q => enchOn(g, q)).length;
+      case 'lands': for (let i = 0; i < bf.length; i++) if (bf[i].asLand) n++; return n;
+      case 'hand': return g.hand.length;
+      case 'type': for (let i = 0; i < bf.length; i++) if (isCreaturePerm(bf[i]) && matchesFilter(bf[i].card, k.t)) n++; return n;
+      default: return 0;
+    }
   }
   // Initiative: venture into the Undercity each upkeep (a simplified path: land, counters, Treasure, card, Skeleton, then the best creature of the top ten)
   function venture(g, ev, source) {
@@ -9298,7 +9350,7 @@ g.actSeq = (g.actSeq || 0) + 1;
             const who = t.who === '~' ? q : g.battlefield.find(x => x.iid === q.attachedTo);
             if (who && hitters.includes(who)) fire(g, t, q, ev, who);
           } else if (/one or more/.test(t.who)) { if ((!t.hitFilter || hitters.some(h => matchesFilter(h.card, t.hitFilter))) && (!t.hitArtifact || hitters.some(h => h.card.a.isArtifact)) && (!t.pumped || hitters.some(h => powerOf(g, h) > (h.card.a.power || 0)))) fire(g, t, q, ev, null); }
-          else hitters.filter(h => matchesFilter(h.card, t.who.replace(/^a /, '').replace(/ you control$/, '')) && (!t.tokenOnly || h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h));
+          else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.tokenOnly || h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
         }
       }
       if (vsLifelink > 0 && !matchOver(g)) gainLife(g, vsLifelink, ev, null);

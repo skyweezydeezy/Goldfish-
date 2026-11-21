@@ -1012,3 +1012,13 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .ab-repl.on { border-color: #4cc2ff; box-shadow: 0 0 0 2px rgba(76,194,255,.25); }
 .ab-repl small { display: block; font-size: 11px; margin-top: 3px; line-height: 1.25; }
 .ab-noimg { display: inline-block; padding: 30px 6px; font-size: 12px; border: 1px dashed rgba(255,255,255,.2); border-radius: 6px; }
+
+/* Teach these cards: a banner on the Build tab when a deck has cards the simulator does not fully read */
+.teach-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 14px; padding: 12px 16px; border-radius: 12px;
+  background: linear-gradient(90deg, rgba(76,194,255,.16), rgba(140,110,255,.14)); border: 1px solid rgba(120,190,255,.35); }
+.teach-banner[hidden] { display: none; }
+.teach-icon { font-size: 24px; }
+.teach-text { flex: 1 1 320px; }
+.teach-btn { display: inline-block; padding: 9px 18px; border-radius: 999px; background: #4cc2ff; color: #06121c; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.teach-btn:hover { filter: brightness(1.08); }
+.teach-how { flex-basis: 100%; margin: 0; }

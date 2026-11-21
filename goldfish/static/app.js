@@ -350,14 +350,35 @@
       for (let j = 0; j < Math.min(c.qty, 5); j++) { const e = cardEl(c); e.style.left = j * 4 + 'px'; e.style.top = j * 4 + 'px'; p.appendChild(e); }
       const n = Math.min(c.qty, 5); p.style.width = `calc(var(--land-card, 82px) + ${(n - 1) * 4}px)`; p.style.height = `calc(var(--land-card, 82px) * 680 / 488 + ${(n - 1) * 4}px)`;   // the box covers the whole fanned stack, so it centres
       g.appendChild(p);
-      const colors = [...c.a.produce.colors].map(x => `<span class="pip ${x}">${x}</span>`).join('');
+      const colors = [...((c.a.produce && c.a.produce.colors) || [])].map(x => `<span class="pip ${x}">${x}</span>`).join('');          // a land with no mana of its own (Maze of Ith, Glacial Chasm) has no colors
       g.appendChild(h('div', 'cnt', `${c.qty}× ${colors}${c.a.entersTapped ? ' <span title="enters tapped">⤵</span>' : ''}`));
       lw.appendChild(g);
     });
   }
 
+  // ---- Teach these cards: cards whose rules text the engine does not fully read become a pre-filled GitHub request (one click in
+  // the app, then Create on GitHub). Only the card names, the unread lines and the app version are sent, never the decklist.
+  const TEACH_REPO = 'https://github.com/skyweezydeezy/Goldfish-';
+  const unreadLines = c => (c.a.coverage || []).filter(r => r.status === 'ignored' || r.status === 'partial').map(r => r.text);
+  function teachUrl(cards) {
+    const list = cards.slice(0, 8);
+    const block = c => `${c.name}\nhttps://scryfall.com/search?q=${encodeURIComponent('!"' + c.name + '"')}\n` + unreadLines(c).slice(0, 4).map(t => '- ' + t.slice(0, 240)).join('\n');
+    const title = 'Teach: ' + list.map(c => c.name).join(', ').slice(0, 120) + (cards.length > list.length ? ` and ${cards.length - list.length} more` : '');
+    const q = new URLSearchParams({ template: 'teach-card.yml', title, labels: 'unlearned', cards: list.map(block).join('\n\n'), version: 'v' + (self.ISF_VERSION || '?') });
+    return `${TEACH_REPO}/issues/new?${q.toString()}`;
+  }
+  function teachButton(cards, label) { return `<a class="teach-btn" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  function renderTeach() {
+    const box = $('#teachBanner'); if (!box) return;
+    const cards = S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : [];
+    if (!cards.length) { box.hidden = true; box.innerHTML = ''; return; }
+    const names = cards.slice(0, 4).map(c => esc(c.name)).join(', ') + (cards.length > 4 ? ` and ${cards.length - 4} more` : '');
+    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    box.hidden = false;
+  }
   function renderCoverage() {
     if (!S.deck) return;
+    renderTeach();
     const only = $('#covOnlyGaps').checked;
     const box = $('#coverage'); box.innerHTML = '';
     const list = S.deck.unique.filter(c => !(c.a.isLand && /Basic/.test(c.type_line)));
@@ -2022,7 +2043,8 @@
       const head = { better: `✓ Version 2 is better: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)})`, worse: `✗ Version 2 is worse: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)})`, unclear: `≈ No clear difference: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)}). More games, or a bigger change, may tell.` }[r.verdict];
       const row = (l, x) => `<tr><td>${l}</td><td>${(100 * x.v1).toFixed(1)}%</td><td>${(100 * x.v2).toFixed(1)}%</td><td>${pts(x.diff)} (z ${x.z.toFixed(1)})</td></tr>`;
       const opp = r.perOpp.map(p => `<li>${esc(p.name)}: ${(100 * p.v1).toFixed(0)}% → ${(100 * p.v2).toFixed(0)}%</li>`).join('');
-      const nc = r.newCards.map(c => `<li><b>${esc(c.name)}</b> ${pts(c.diff)} pts (z ${c.z.toFixed(1)}) · ${VERDICT[c.verdict][0]}</li>`).join('');
+      const unread = v2.cards.map(c => G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0]).filter(c => ch.adds.some(a => a.toLowerCase() === c.name.toLowerCase()) && c.a.coverageLevel !== 'ok');
+      const nc = r.newCards.map(c => `<li><b>${esc(c.name)}</b> ${pts(c.diff)} pts (z ${c.z.toFixed(1)}) · ${VERDICT[c.verdict][0]}</li>`).join('') + (unread.length ? `<li>🧠 ${unread.map(c => esc(c.name)).join(', ')}: not fully understood yet, so ${unread.length > 1 ? 'their' : 'its'} result is rough. ${teachButton(unread, 'Teach ' + (unread.length > 1 ? 'these cards' : 'this card'))}</li>` : '');
       $('#abOut').innerHTML = `<p><b>${head}</b></p><div class="suggest"><div class="sg"><h3>The runs (3)</h3><table class="labtable"><thead><tr><th>Run</th><th>Version 1</th><th>Version 2</th><th>Change</th></tr></thead><tbody>${row('Test', r.test)}${row('Fresh shuffles', r.confirm)}${row('Both', r.both)}</tbody></table>${r.h2h ? `<p>Head to head: version 2 wins ${(100 * r.h2h.v2).toFixed(1)}% of ${r.h2h.n} matches against version 1 (z ${r.h2h.z.toFixed(1)}).</p>` : ''}</div><div class="sg"><h3>By opponent (${r.perOpp.length})</h3><ul>${opp}</ul></div>${nc ? `<div class="sg"><h3>The cards you added</h3><ul>${nc}</ul></div>` : ''}</div><div class="row wrap"><button id="abUse" class="primary">Use version 2</button><button id="abSave">Save as a new deck</button></div>`;
       if (typeof tidy === 'function') tidy($('#abOut'));
       $('#abUse').addEventListener('click', () => { $('#deckText').value = abV2.text; $('#loadDeck').click(); abOpps = null; toast('Version 2 is now the deck'); });

@@ -24,8 +24,10 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
     const connect = AudioNode.prototype.connect;
     AudioNode.prototype.connect = function (dest, ...rest) {
       if (dest && dest === this.context.destination) {
-        if (!window.__an) { window.__an = this.context.createAnalyser(); window.__an.fftSize = 2048; }
-        connect.call(this, window.__an);
+        const cx = this.context;                          // one meter per audio engine ("Restart sound" makes a new one)
+        if (!cx.__an) { cx.__an = cx.createAnalyser(); cx.__an.fftSize = 2048; }
+        window.__an = cx.__an;
+        connect.call(this, cx.__an);
       }
       return connect.call(this, dest, ...rest);
     };
@@ -111,6 +113,17 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   await A(() => __isfAudio.events([{ type: 'cast', inst: { card: { name: 'Cyclonic Rift' } } }]));
   check('with card sounds off, Cyclonic Rift plays the ordinary card sound', (await since(k0)).join(',') === 'card', (await since(k0)).join(','));
   await p.check('#sdCards');
+  await p.waitForTimeout(2600);
+
+  // ---- "Restart sound" starts the audio fresh (for crackling) ----
+  await A(() => __isfAudio.set({ music: true }));
+  await p.waitForTimeout(500);
+  await p.click('#sdRestart');
+  await p.waitForFunction(() => __isfAudio.state().running && __isfAudio.state().music, null, { timeout: 5000 }).catch(() => {});
+  const rs = await A(() => __isfAudio.state());
+  check('"Restart sound" brings the music back on a fresh start', rs.running && rs.music && rs.bars <= 2, JSON.stringify(rs));
+  check('and you can hear it', (await loud(2500)) > 0.003);
+  await A(() => __isfAudio.set({ music: false }));
   await p.waitForTimeout(2600);
 
   await p.click('#sdMute');

@@ -37,7 +37,7 @@
       const body = h('div', 'fold-body'); while (sg.firstChild) body.appendChild(sg.firstChild); d.append(s, body); sg.appendChild(d);
     });
   }
-  const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); };
+  const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); if (window.__isfFx) window.__isfFx.events(ev); };   // sounds, and on-screen card effects (card-effects.js)
 
   const S = { cards: [], deck: null, byUid: [], game: null, undo: [], sim: null, oddsSel: new Set(), busy: false };
   window.__isf = S;                                  // read-only handle for automated UI tests

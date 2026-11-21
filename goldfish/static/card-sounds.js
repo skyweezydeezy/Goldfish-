@@ -183,15 +183,12 @@
     'Winter Orb': k => { k.wind({ pts: [[0, 1200], [1.6, 2200]], swirl: [3, 300], q: 3, dur: 1.7, vol: 0.18 }); for (let i = 0; i < 6; i++) k.metal({ at: 0.3 + i * 0.17, f: rnd(3500, 5200), ratios: [1, 2.9], dur: 0.4, vol: 0.05 }); },   // icy wind and ice crystals
 
     // ---- red: fire, lightning and chaos ----
-    'Lightning Bolt': k => {                                  // a huge crack of lightning right overhead, then the thunder rolls away
-      k.noise({ f: 1800, kind: 'highpass', dur: 0.05, vol: 0.6, attack: 0.001 });          // the crack: instant, bright and very loud
-      k.noise({ f: 7000, kind: 'lowpass', dur: 0.18, vol: 0.5, attack: 0.001 });
-      k.noise({ at: 0.07, f: 2200, kind: 'highpass', dur: 0.04, vol: 0.45, attack: 0.001 }); // the bolt forks: a second, smaller crack
-      k.crackle({ at: 0.01, f: 5500, n: 34, dur: 0.4, vol: 0.2 });                          // electric sizzle
-      k.noise({ at: 0.02, f: 6000, f2: 300, q: 1.2, dur: 0.5, vol: 0.3 });                  // the tearing sweep down
-      k.tone({ at: 0.04, f: 95, f2: 26, dur: 1.3, vol: 0.55 });                             // the boom you feel
-      k.wind({ at: 0.06, pts: [[0, 700], [0.35, 190], [2.5, 45]], kind: 'lowpass', q: 0.7, dur: 2.6, vol: 0.55, attack: 0.05, hold: 0.2 });   // thunder
-      k.wind({ at: 0.7, pts: [[0, 260], [1.8, 55]], kind: 'lowpass', swirl: [2.5, 70], q: 0.9, dur: 1.9, vol: 0.32, attack: 0.3, hold: 0.3 }); // rolling away
+    'Lightning Bolt': k => {                                  // a magic bolt: an electric zap and sizzle, a crack, then thunder (the player's pick of four)
+      k.voice({ type: 'square', lp: 4000, pts: [[0, 3000], [0.25, 180]], dur: 0.3, vol: 0.12, vib: [60, 400] });            // the zap
+      k.crackle({ f: 6000, n: 40, dur: 0.6, vol: 0.2 });                                                                    // the sizzle
+      k.noise({ at: 0.03, f: 1800, kind: 'highpass', dur: 0.05, vol: 0.55, attack: 0.001 });                                 // the crack
+      k.tone({ at: 0.06, f: 90, f2: 30, dur: 0.8, vol: 0.45 });                                                              // the boom
+      k.wind({ at: 0.1, pts: [[0, 600], [0.3, 160], [1.6, 50]], kind: 'lowpass', q: 0.7, dur: 1.7, vol: 0.4, attack: 0.04, hold: 0.15 });   // thunder
     },
     'Chaos Warp': k => { k.voice({ type: 'sine', pts: [[0, 300], [0.5, 900], [1, 200], [1.4, 600]], dur: 1.45, vib: [7, 160], vol: 0.12 }); k.wind({ pts: [[0, 500], [1.4, 1800]], swirl: [4, 600], q: 3, dur: 1.4, vol: 0.14 }); },
     'Vandalblast': k => { k.tone({ f: 120, f2: 30, dur: 1, vol: 0.45 }); k.noise({ f: 1500, kind: 'lowpass', dur: 0.9, vol: 0.32, attack: 0.005 }); k.crackle({ at: 0.15, f: 1800, n: 20, dur: 1, vol: 0.1 }); },   // an explosion and falling scrap

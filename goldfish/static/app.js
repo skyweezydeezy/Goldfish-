@@ -2022,7 +2022,7 @@
   const abImg = (card, cls) => { const u = card && imgFor(card); return u ? `<img class="${cls || ''}" src="${esc(u)}" alt="${esc(card.name)}" loading="lazy">` : `<span class="ab-noimg">${esc(card ? card.name : '?')}</span>`; };
   function abSwapRow(r, i) {
     const card = S.deck.unique.find(c => c.name === r.name);
-    return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
+    return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}${card ? `<span class="ab-zoom" role="button" tabindex="0" aria-label="View ${esc(r.name)}" data-abview="deck:${esc(r.name)}">🔍</span>` : ''}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
   }
   // Replacements for one card: the same job (by its roles), the same kind of card, a similar mana value, inside the deck's colors, the most
   // played first; the ones the engine reads fully come first. taken: names already suggested elsewhere on the page.
@@ -2057,11 +2057,27 @@
     const n = ls.filter(x => x.startsWith('+ ')).length;
     $('#abInfo').textContent = n ? `${n} swap${n > 1 ? 's' : ''} chosen.${n > 2 ? ' More than two at once makes it hard to tell which one mattered.' : ''} Click "2. Test version 2".` : '';
   }
+  // the cards on show in the A/B test, by name, so the 🔍 on any of them opens the card viewer (prices, printings, the full text)
+  const abSeen = new Map();
   function abShowRepls(box, cut, found) {
-    box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-cut="${esc(cut)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
+    found.forEach(({ c }) => abSeen.set(c.name, c));
+    box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-cut="${esc(cut)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<span class="ab-zoom" role="button" tabindex="0" aria-label="View ${esc(c.name)}" data-abview="${esc(c.name)}">🔍</span><small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
       : '<span class="hint">No replacement found (or Scryfall could not be reached): write your own as "+ Card" below.</span>';
     box.querySelectorAll('.ab-repl').forEach(b => b.addEventListener('click', () => abToggle(b.dataset.cut, b.dataset.add)));
   }
+  // 🔍 on an A/B card: open it in the card viewer; the tap does not choose the card. Left and right in the viewer move through the cards
+  // of the same row.
+  document.addEventListener('click', e => {
+    const z = e.target.closest('[data-abview]'); if (!z) return;
+    e.stopPropagation(); e.preventDefault();
+    const key = z.dataset.abview, deckName = key.startsWith('deck:') ? key.slice(5) : null;
+    const card = deckName ? S.deck && S.deck.unique.find(c => c.name === deckName) : abSeen.get(key);
+    if (!card) return;
+    const row = z.closest('.ab-repls');
+    const list = row ? [...row.querySelectorAll('[data-abview]')].map(x => abSeen.get(x.dataset.abview)).filter(Boolean) : null;
+    showLightbox(card, list && list.includes(card) ? list : undefined);
+  }, true);
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-abview]')) { e.preventDefault(); e.target.click(); } });
   async function abFillReplacements(ranked) {
     const taken = new Set();
     for (let i = 0; i < ranked.length; i++) {

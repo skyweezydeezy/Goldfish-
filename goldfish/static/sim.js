@@ -604,7 +604,7 @@
         if ((bm = line.match(/^((?:\{[^}]+\})+), \{t\}: search your library for a goblin permanent card, put it onto the battlefield, then shuffle\.?$/i))) { a.activated.push({ cost: parseCost(bm[1]), tap: true, fx: [{ type: 'tutor', filters: ['goblin'], dest: 'battlefield' }], text: raw }); rec.status = 'ok'; continue; }          // Moggcatcher
         if (/^when ~ enters, search your library for any number of goblin cards, reveal them, then shuffle and put those cards on top in any order\.?$/i.test(line)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'stackTop', filter: 'goblin' }], text: raw }); rec.status = 'ok'; continue; }          // Goblin Recruiter
         if (/^sacrifice another creature or artifact: ~ deals damage equal to 2 plus the sacrificed permanent's mana value to any target\.?$/i.test(line) && /^Boast/i.test(raw)) { a.bombardiers = true; rec.status = 'ok'; continue; }          // Broadside Bombardiers
-        if (/^whenever you cast an instant or sorcery spell that targets only ~, copy that spell for each other creature you control that the spell could target/i.test(line)) { a.zada = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Zada, Hedron Grinder: its copies are not made (a pump on Zada stays one pump)
+        if (/^whenever you cast an instant or sorcery spell that targets only ~, copy that spell for each other creature you control that the spell could target/i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Zada, Hedron Grinder: its copies are not made (a pump on Zada stays one pump)
         if (/^whenever a creature dies, untap ~\.?$/i.test(line)) { a.triggers.push({ kinds: ['dies'], who: 'a creature', fx: [{ type: 'untapSelfAb' }], text: raw }); rec.status = 'ok'; continue; }          // Goblin Sharpshooter
         if (/^whenever another goblin you control is put into a graveyard from the battlefield, you may have ~ deal 1 damage to target player or planeswalker\.?$/i.test(line)) { a.triggers.push({ kinds: ['dies'], who: 'another goblin you control', subtype: 'goblin', fx: [{ type: 'damage', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Boggart Shenanigans
         if (/^whenever a creature you control attacks, ~ deals 1 damage to the player or planeswalker it's attacking\.?$/i.test(line)) { a.triggers.push({ kinds: ['attackAny'], fx: [{ type: 'damage', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Hellrider
@@ -1044,7 +1044,7 @@
         if (/^−14: restart the game/i.test(line)) { rec.status = 'neutral'; rec.tag = 'unsim'; continue; }          // Karn Liberated: a restarted game is not simulated
       }
       // ---- the other player's triggers and punishers (see fireCastTriggers, draw, betrayFlush, narsetOn, normEtbOn, castBlocked). A goldfish casts and draws nothing.
-      { const MIR10 = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let pm;
+      { const MIR10 = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; };
         if (/^whenever an opponent casts their first noncreature spell each turn, draw a card unless that player pays \{x\}, where x is ~'s power\.?$/i.test(line)) { a.triggers.push({ kinds: ['oppCast'], fx: [{ type: 'draw', n: 1 }], unless: 'POWER', firstNc: true, text: raw }); MIR10(); continue; }          // Esper Sentinel
         if (/^whenever an opponent draws their second card each turn, you draw a card\.?$/i.test(line)) { a.triggers.push({ kinds: ['oppDraw'], fx: [{ type: 'draw', n: 1 }], drawNth: 2, text: raw }); rec.status = 'ok'; continue; }          // Faerie Mastermind (a goldfish draws too)
         if (/^each opponent can't draw more than one card each turn\.?$/i.test(line)) { a.statics.narset = true; rec.status = 'ok'; continue; }          // Narset, Parter of Veils (a goldfish's draws too)
@@ -1064,7 +1064,7 @@
         if (/^if an opponent would put one or more counters on a permanent or player, they put half that many of each of those kinds of counters on that permanent or player instead, rounded down\.?$/i.test(line)) { a.statics.vorinHalf = true; MIR10(); continue; }          // Vorinclex, Monstrous Raider
         if (/^whenever ~ deals combat damage to a player, look at the top three cards of that player's library, exile one of them face down, then put the rest into their graveyard\. you may cast that card for as long as it remains exiled/i.test(line)) { a.thiefSanity = true; MIR10(); continue; }          // Thief of Sanity
         if (/^at the beginning of your end step, each opponent who has three or more poison counters exiles the top card of their library face down\. you may look at and play those cards for as long as they remain exiled/i.test(line)) { a.ixhel = true; MIR10(); continue; }          // Ixhel, Scion of Atraxa
-        if ((pm = line.match(/^((?:\{[^}]+\})+): change a target of target spell or ability to ~\.?$/i))) { a.spellskite = true; MIR10(); continue; }          // Spellskite
+        if (/^((?:\{[^}]+\})+): change a target of target spell or ability to ~\.?$/i.test(line)) { a.spellskite = true; MIR10(); continue; }          // Spellskite
       }
       // ---- removal, theft, bounce and fights in a match (see removalTargets, linkLeave, hostileAuraOn, fightPair, annihilate). A goldfish has nothing to take.
       { const MIR9 = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }; let rm;
@@ -3134,7 +3134,7 @@
     if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus.per ? Object.assign({ src: q }, a.attachBonus) : a.attachBonus); }          // a "for each" bonus keeps its Aura or Equipment (its own counters)
     if (q.produce) { info.producers.push(q); if (q.produce.restrict) info.restrictMana = true; }
     if (q.asLand) info.lands++;
-    if (a.abilStax) info.abilStax = true; if (st.moon) info.moonSeen = true; if (a.cityAnthem) info.cityAnthem = true; if (a.jetmir6 || a.jetmir9) info.jetmir = true; if (a.legendAura) info.legendAura = true; if (st.oppMinus) info.oppMinus = true; if (st.maha) info.maha = true; if (st.narset) info.narset = true; if (st.normEtb) info.normEtb = true; if (st.tamiyo) info.tamiyo = true; if (st.vorinHalf) info.vorinHalf = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
+    if (a.abilStax) { info.abilStax = true; (info.abilStaxers = info.abilStaxers || []).push(q); } if (st.moon) info.moonSeen = true; if (a.cityAnthem) info.cityAnthem = true; if (a.jetmir6 || a.jetmir9) info.jetmir = true; if (a.legendAura) info.legendAura = true; if (st.oppMinus) info.oppMinus = true; if (st.maha) info.maha = true; if (st.narset) info.narset = true; if (st.normEtb) info.normEtb = true; if (st.tamiyo) info.tamiyo = true; if (st.vorinHalf) info.vorinHalf = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
     if (st.trigDouble || st.trigDoublePower != null) info.trigDouble = true; if (st.trigDoubleColorless) info.trigDoubleColorless = true; if (a.wizardStaff) info.wizardStaff = true;          // trigger doublers: looked up every time a trigger fires
     if (a.inspiringLeader) info.inspiringLeader = (info.inspiringLeader || 0) + 1;
@@ -3821,7 +3821,7 @@
       case 'kicked': return !!(source && source.inst ? source.inst.kicked : g.lastCast && g.lastCast.kicked);
       case 'siege': return !!(source && source.siegeMode === c.mode);
       case 'questAtLeast': return !!(source && source.other && (source.other.quest || 0) >= c.n);
-      case 'smokeWorth': { if (!g.opp || !source) return false; const n = ((source.other && source.other.soot) || 0) + 1, mine = g.battlefield.filter(q => q !== source && (q.token || !q.asLand)).length; return g.battlefield.filter(q => q.token).length >= n || otherPlayers(g).every(o => o.battlefield.length + n <= g.battlefield.length); }          // Smokestack
+      case 'smokeWorth': { if (!g.opp || !source) return false; const n = ((source.other && source.other.soot) || 0) + 1; return g.battlefield.filter(q => q.token).length >= n || otherPlayers(g).every(o => o.battlefield.length + n <= g.battlefield.length); }          // Smokestack
       case 'selfCounters': return !!(source && ((source.other || {})[c.counter] || 0) >= c.min);
       case 'never': return false;
     }
@@ -5679,7 +5679,6 @@
         case 'mantle': { const tgt = source && g.battlefield.find(q => q.iid === source.attachedTo); if (tgt) { const cs = g.graveyard.filter(i => i.card.a.isAura || i.card.a.equip || /\bEquipment\b/.test(i.card.type_line || '')); for (const c of cs) { g.graveyard.splice(g.graveyard.indexOf(c), 1); const np = enterWithTriggers(g, c, {}, ev); np.attachedTo = tgt.iid; } if (cs.length) { touch(g); ev.push({ type: 'note', text: `${cs.length} Aura and Equipment card${cs.length === 1 ? '' : 's'} return attached to ${tgt.card.name}`, source }); } } break; }
         case 'karnPlus': { const two = g.library.splice(0, 2); if (two.length) { const ctx = tutorContext(g); two.sort((x, y) => tutorScore(g, x, ctx) - tutorScore(g, y, ctx)); g.hand.push(two[0]); ev.push({ type: 'draw', inst: two[0] }); if (two[1]) { (g.silver = g.silver || []).push(two[1]); g.exile.push(two[1]); } } break; }          // the opponent hands you the lesser card
         case 'karnMinus': { const sv = (g.silver || []).filter(i => g.exile.includes(i)); if (sv.length) { const c = sv[sv.length - 1]; g.exile.splice(g.exile.indexOf(c), 1); g.silver.splice(g.silver.indexOf(c), 1); g.hand.push(c); ev.push({ type: 'note', text: `${c.card.name} returns from exile to your hand`, source }); } break; }
-        case 'doubleSelfCounters': if (source && (source.counters || 0) > 0) addCounters(g, source, '+1/+1', source.counters, ev, source, true); break;
         case 'doubleSubjectCounters': if (subject && (subject.counters || 0) > 0) addCounters(g, subject, '+1/+1', subject.counters, ev, source, true); break;
         case 'tanazirBase': if (source) { const tp = powerOf(g, source), tt = toughnessOf(g, source); for (const q of g.battlefield) if (q !== source && isCreaturePerm(q) && (q.card.a.power || 0) < tp) { q.eotP = (q.eotP || 0) + tp - (q.card.a.power || 0); q.eotT = (q.eotT || 0) + Math.max(0, tt - (q.card.a.toughness || 0)); } } break;
         case 'fractalFromDamage': { const d = (g.lastHitters || []).filter(q => (q.card.a.power || 0) === 0 && !q.animated).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0); if (d > 0) { const n0 = g.battlefield.length; createTokens(g, { type: 'token', n: 1, creature: true, p: 0, t: 0, colors: ['G', 'U'], subtypes: ['Fractal'], keywords: [], artifact: false, name: 'Fractal' }, 1, ev, source); for (const r of g.battlefield.slice(n0)) if (r.token) addCounters(g, r, '+1/+1', d, ev, source); } break; }
@@ -7441,7 +7440,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const units = rMana ? unitsForKind(g, c, kinds) : units0;          // Cavern of Souls, Eldrazi Temple: the mana this spell could use
       if (!lockWorth(g, c)) continue;
       if (faceChoice(g, c.card) === 'back') continue;          // this card is set to its back face (or the lab chose the commander's back face): never cast the front
-      if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick) - (c.card.a.mv > 0 ? 0 : 0)));
+      if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick)));
       if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X
       c.fromTop = g.library[0] === c; c.viaCitadel = c.fromTop && citadelOk(g) && !(topCastOk(g) && canPay(effectiveCost(g, c), units)); c.retracing = !!(g.graveyard.includes(c) && retraceOk(g, c) && !(c.card.a.yardCastIfZombie || c.zulCast === g.turn || c.card.a.escape || (g.wrennEmblem && c.card.a.isPermanent)));
       c.escaping = !!(c.card.a.escape && g.graveyard.includes(c) && !c.card.a.yardCastIfZombie);
@@ -7789,7 +7788,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!g.battlefield.includes(p)) continue;
       if (a.citadelSac && ready(p)) {                                                                    // Bolas's Citadel: sacrifice ten nonland permanents for a ten-point drain, only when it wins or nearly wins
         const perms = g.battlefield.filter(q => !q.asLand && q !== p && !q.card.commander).sort((x, y) => (x.token ? 0 : 1) - (y.token ? 0 : 1) || creatureValue(g, x) - creatureValue(g, y));
-        if (perms.length >= 10 && (!g.opp || true) && oppLifeLeft(g) <= 10 + watchers * 4) {
+        if (perms.length >= 10 && oppLifeLeft(g) <= 10 + watchers * 4) {
           p.tapped = true; ev.push({ type: 'note', text: `${p.card.name}: sacrificed ten permanents`, source: p });
           for (const q of perms.slice(0, 10)) { if (matchOver(g)) break; leavePerm(g, q, ev); }
           flushLeaves(g, ev); damageOpp(g, 10, ev, p); return;
@@ -7854,7 +7853,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const a = p.card.a;
       if (!inLoop(p.card, raiderAbilities)) continue;
       if (!g.battlefield.includes(p)) continue;
-      if (a.threatenAb && g.opp && !g.combatDone && !(p.sick && !hasKw(g, p, 'haste') && false)) {            // Captivating Crew: take their best creature for the turn and attack with it
+      if (a.threatenAb && g.opp && !g.combatDone) {            // Captivating Crew: take their best creature for the turn and attack with it
         const t = bestOppCreature(g, x => powerOf(g.opp, x) >= 2);
         if (t && (g.threatTurn !== g.turn || (g.threatN || 0) < 2) && canPay(a.threatenAb.cost, allUnits(g))) {
           pay(g, a.threatenAb.cost); g.threatN = (g.threatTurn === g.turn ? g.threatN || 0 : 0) + 1; g.threatTurn = g.turn;
@@ -8193,7 +8192,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       }
       if (a.survival && g.library.length && g.hand.length) {                                                  // Survival of the Fittest: discard a spare creature (or a spare land) for the best creature in the library
         const cost = { generic: 0, pips: [['G']], x: 0 };
-        const spare = g.hand.filter(h => (h.card.a.isCreature && discardValue(g, h) <= 3) || (h.card.a.isLand && g.battlefield.filter(q => q.asLand).length >= 6 && false)).sort((x, y) => discardValue(g, x) - discardValue(g, y))[0];
+        const spare = g.hand.filter(h => h.card.a.isCreature && discardValue(g, h) <= 3).sort((x, y) => discardValue(g, x) - discardValue(g, y))[0];
         const tgt = spare && bestTutorTarget(g, { filters: ['creature'] });
         if (spare && tgt && tgt.score > 30 && (p.survTurn !== g.turn || (p.survN || 0) < 2) && canPay(cost, allUnits(g))) {
           pay(g, cost); p.survN = (p.survTurn === g.turn ? p.survN || 0 : 0) + 1; p.survTurn = g.turn;
@@ -10151,7 +10150,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const game of [g, d]) game.battlefield.forEach(p => { p.dmg = 0; p.dt = false; p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });
     flushLeaves(g, ev); flushLeaves(d, ev);
     if (llD > 0) gainLife(d, llD, ev, null);
-    return { dmg, psn, hitters: hitters.filter(h => g.battlefield.includes(h) || true), lifelink: ll };
+    return { dmg, psn, hitters: hitters.slice(), lifelink: ll };
   }
 
   // ---------- Interaction: removal, bounce, burn at creatures, counterspells (mirror matches only) ----------
@@ -10252,7 +10251,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const d = g.opp;
     let best = null, bs = removalBar(g);
     for (const p of d.battlefield) {
-      if (!(f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) || !targetable(d, p) || p.token && false) continue;
+      if (!(f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) || !targetable(d, p)) continue;
       const sc = threat(d, g, p) + (p.token ? 1.5 : 0) - (p.card.a.castMv <= 1 ? 1 : 0);
       if (sc > bs) { bs = sc; best = p; }
     }
@@ -10275,7 +10274,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!d || (!creatureOnly && d.life <= n)) return null;
     let best = null, bs = pol(g, 'removalBar') === 'default' ? 2.5 : +pol(g, 'removalBar');
     for (const p of d.battlefield) {
-      if (!isCreaturePerm(p) || !targetable(d, p) || indestructible(d, p) && false) continue;
+      if (!isCreaturePerm(p) || !targetable(d, p)) continue;
       if (toughnessOf(d, p) - (p.dmg || 0) > n) continue;
       const sc = threat(d, g, p);
       if (sc > bs) { bs = sc; best = p; }
@@ -10371,8 +10370,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.senSeq === turnSeq(g)) return true;          // Sen Triplets
     if (p.asLand && !isBasicLand(p) && !mana && moonOf(g)) return true;          // Blood Moon: a nonbasic land is only a Mountain
     if (!bfInfo(g).abilStax && !otherPlayers(g).some(o => bfInfo(o).abilStax)) return false;          // nothing at the table stops abilities
-    const all = g.battlefield.map(q => ({ q, o: g })).concat(otherPlayers(g).flatMap(o => o.battlefield.map(q => ({ q, o }))));
-    for (const { q, o } of all) {
+    for (const o of [g].concat(otherPlayers(g))) for (const q of bfInfo(o).abilStaxers || NONE) {          // only the permanents that stop abilities (the board summary lists them)
       const as = q.card.a.abilStax; if (!as) continue;
       if ((as === 'needle' || as === 'revoker') && q.named && q.named === p.card.name && !(as === 'needle' && mana)) return true;          // "sources with the chosen name": yours too
       if (as === 'totem' && isCreaturePerm(p)) return true;          // Cursed Totem: every player's creatures

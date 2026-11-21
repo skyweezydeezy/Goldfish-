@@ -717,7 +717,7 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
    library, command zone, graveyard and exile are piles at the side like a home game; the log is a drawer.
    ===================================================================== */
 .log-close { display: none; float: right; padding: 2px 10px; font-size: 12px; }
-@media (max-width: 1180px), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
   :root { --hand-w: clamp(58px, 15.5vw, 112px); --pile-w: clamp(64px, 11vw, 110px); }
   body[data-view=table] .site-footer { display: none; }
   body[data-view=table] main { padding: 6px 6px 0; }
@@ -771,7 +771,7 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
 }
 /* cards size themselves to the row height (needs container queries: Safari 16+, recent Chrome) */
 @supports (height: 1cqh) {
-  @media (max-width: 1180px), (pointer: coarse) and (max-width: 1400px) {
+  @media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
     body[data-view=table] .bf-row { container-type: size; }
     body[data-view=table] .bf-row .mtg { --card-w: min(var(--bf-max, 98px), calc((100cqh - 20px) * 0.7176)); }
     body[data-view=table] .bf-row.lands .mtg { --card-w: min(var(--bf-max-l, 86px), calc((100cqh - 20px) * 0.7176)); }
@@ -783,8 +783,8 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
   body[data-view=table] .table-controls button { padding: 6px 10px; font-size: 15px; }
   body[data-view=table] .topbar .brand, body[data-view=table] .topbar .status-pill { display: none; }   /* more room for the table */
 }
-@media (min-width: 1401px), (min-width: 1181px) and (not (pointer: coarse)) { #tLog { display: none; } }
-@media (max-width: 1180px), (pointer: coarse) and (max-width: 1400px) {
+@media (min-width: 1401px), (min-width: 1181px) and (not (any-pointer: coarse)) { #tLog { display: none; } }
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
   body[data-view=table] #zCommand .pile-cards .mtg + .mtg { margin-left: calc(var(--card-w) * -0.72); }   /* two commanders overlap like a small fan */
 }
 @media (max-width: 600px) {
@@ -793,8 +793,8 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
   body[data-view=table] #tAutoToN { width: 34px; font-size: 13px; }
   body[data-view=table] .table-controls label.check { padding: 0 2px; }
 }
-@media (min-width: 700px) and (max-width: 1180px), (pointer: coarse) and (min-width: 700px) and (max-width: 1400px) { :root { --bf-max: 132px; --bf-max-l: 116px; } }   /* tablets: bigger cards when the rows have room */
-@media (max-width: 1180px), (pointer: coarse) and (max-width: 1400px) {
+@media (min-width: 700px) and (max-width: 1180px), (any-pointer: coarse) and (min-width: 700px) and (max-width: 1400px) { :root { --bf-max: 132px; --bf-max-l: 116px; } }   /* tablets: bigger cards when the rows have room */
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
   /* room for sideways (tapped) cards that grows with the card size */
   body[data-view=table] .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0; }
   body[data-view=table] .bf-row .stackgroup > .mtg.tapped:first-child { margin-left: calc(var(--card-w) * .16); }
@@ -848,7 +848,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
 .speed-bar label.speed { flex: 0 1 460px; gap: 10px; font-size: 22px; margin: 0; }
 .speed-bar label.speed input[type=range] { flex: 1; width: auto; min-width: 120px; height: 28px; accent-color: #4db3f5; cursor: pointer; }
 .speed-txt { min-width: 9.5em; font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 650; white-space: nowrap; }
-@media (max-width: 1180px), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
   body[data-view=table] .speed-bar { flex: none; margin: 0; padding: 5px 12px; gap: 10px; }
 }
 @media (max-width: 600px) {
@@ -1034,7 +1034,7 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
    Sideways: the whole game on one screen, nothing to scroll: small tabs, one toolbar row with the speed slider beside it, creatures and
    artifacts side by side over the lands, the four piles in a 2 x 2 block, and the hand peeking up from the bottom edge.
    ===================================================================== */
-@media (max-width: 1180px), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
   body[data-view=table] .table-main { grid-template-columns: minmax(0, 1fr); }          /* a long hand overlaps more; it never widens the table over the piles */
   body[data-view=table] .hand-zone { min-width: 0; }
 }
@@ -1048,7 +1048,7 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
   body[data-view=table] .hud-item { flex-direction: row; align-items: baseline; gap: 5px; }
   body[data-view=table] .hud-item .big, body[data-view=table] .hud-item > span:not(.lbl) { font-size: 15px; font-weight: 700; }
 }
-@media (max-width: 1180px) and (max-height: 500px), (pointer: coarse) and (max-width: 1400px) and (max-height: 500px) {
+@media (max-width: 1180px) and (max-height: 500px), (any-pointer: coarse) and (max-width: 1400px) and (max-height: 500px) {
   :root { --hand-w: clamp(84px, 13vw, 104px); --pile-w: 62px; }
   body[data-view=table] .topbar { padding: calc(3px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 3px max(8px, env(safe-area-inset-left)); gap: 6px; }
   body[data-view=table] .topbar .brand, body[data-view=table] .topbar .status-pill, body[data-view=table] .top-sound { display: none; }
@@ -1111,7 +1111,7 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 
 /* Practice table on a tablet (iPad, upright or sideways): the stats are one line (label beside the number) and the speed bar is slim,
    so the battlefield rows get the height and the cards on them are bigger. The speed bar sits above the game buttons. */
-@media (min-width: 700px) and (min-height: 501px) and (max-width: 1180px), (pointer: coarse) and (min-width: 700px) and (min-height: 501px) and (max-width: 1400px) {
+@media (min-width: 700px) and (min-height: 501px) and (max-width: 1180px), (any-pointer: coarse) and (min-width: 700px) and (min-height: 501px) and (max-width: 1400px) {
   body[data-view=table] .speed-bar { padding: 2px 12px; }
   body[data-view=table] .speed-bar label.speed input[type=range] { height: 22px; }
   body[data-view=table] .hud { padding: 4px 12px; gap: 18px; align-items: baseline; }

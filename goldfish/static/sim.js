@@ -248,12 +248,13 @@
   function parseEffects(text) {
     const fx = [];
     let neutral = false, approx = false, m;
+    text = text.replace(/(creature tokens?) named [^."“,]+?(?= with |[.,]|$)/gi, '$1');          // "a 2/2 Cat Soldier creature token named Ajani's Pridemate with ...": the name is not needed to make it
     const withQuotes = text, plain = text.replace(/ with ["“][^"”]*["”]/g, '');          // plain: without a token's own quoted ability (Moseo's Pest gains life when IT attacks, not when Moseo enters)
     let count = parseCountClause(text);
     const tokRe = new RegExp('create ' + NRE + ' (tapped )?(?:(\\d+|x)\\/(\\d+|x) )?([a-z ,]*?)((?:artifact |enchantment )*)creature tokens?(?: with ((?:[a-z ,]|toxic \\d+|vanishing \\d+)+?))?(?=\\.|,| that| for each| where| and (?:put|draw|create|it|["“](?:~|this creature) can\'t block)|$)', 'gi');          // numbers only in the keywords the engine plays (toxic, vanishing); a quoted ability only if it is "can't block"
     let tokFound = false;
     while ((m = tokRe.exec(text))) { fx.push(parseTokenSpec(m)); tokFound = true; }
-    if (!tokFound && plain !== text) { tokRe.lastIndex = 0; while ((m = tokRe.exec(plain))) fx.push(parseTokenSpec(m)); }          // a token with its own quoted ability (Moseo's Pest)
+    if (!tokFound && plain !== text) { tokRe.lastIndex = 0; while ((m = tokRe.exec(plain))) { fx.push(parseTokenSpec(m)); tokFound = true; } if (tokFound) text = plain; }          // a token with its own quoted ability (Moseo's Pest); what the quote says is the token's, not this card's (Ajani's Pridemate's counters)          // a token with its own quoted ability (Moseo's Pest)
     const artRe = new RegExp('create ' + NRE + ' (tapped )?(Treasure|Food|Clue|Blood|Map|Gold|Powerstone|Junk)(?: artifact)? tokens?', 'gi');
     while ((m = artRe.exec(text))) fx.push({ type: 'token', n: num(m[1]), tapped: !!m[2], creature: false, name: m[3][0].toUpperCase() + m[3].slice(1).toLowerCase(), artifact: true });
     // no maximum hand size for the rest of the game (Sea Gate Restoration, Ancient Silver Dragon), as an emblem (Tamiyo, Wrenn and Seven), or while you control a Saga (Jin-Gitaxias)
@@ -476,7 +477,7 @@
 
     if (/destroy|exile target|exile all|exile each|counter target|return target|tap target|tap up to|scry|surveil|mill|gains? \d+ life|gains? life|you gain|sacrifices?|fights?|discards|can't block|look at the top|reveal the top|reveals the top|return ~|explore|connive|goad|attach|return up to|return all|return each/i.test(text)) neutral = true;
     if (fx.some(f => f.type === 'exprIteration')) approx = false;
-    if (count && /"[^"]*for each[^"]*"/i.test(text) && !/for each/i.test(text.replace(/"[^"]*"/g, ''))) { count = null; if (/"[^"]*gets \+1\/\+1 for each artifact you control[^"]*"/i.test(text)) fx.forEach(f => { if (f.type === 'token') f.cda = 'artifacts you control'; }); }          // the "for each" belongs to the token's own ability (Urza's Construct), not to how many are made
+    if (count && /"[^"]*for each[^"]*"/i.test(withQuotes) && !/for each/i.test(withQuotes.replace(/"[^"]*"/g, ''))) { count = null; if (/"[^"]*gets \+1\/\+1 for each artifact you control[^"]*"/i.test(withQuotes)) fx.forEach(f => { if (f.type === 'token') f.cda = 'artifacts you control'; }); }          // the "for each" belongs to the token's own ability (Urza's Construct), not to how many are made
     if (count) fx.forEach(f => { f.count = count; if (/for each/i.test(text) && f.n !== 'X') f.mult = true; });
     return { fx, neutral, approx };
   }

@@ -307,7 +307,13 @@ const shot = process.env.VERSUS_SHOTS;
   await arrange('duel', { clear: true, hand: ['Samwise Gamgee'], mine: ['Teferi, Master of Time', 'Leyline of Anticipation'], lands: [['Plains', 3], ['Forest', 3]], oppClear: true });
   const tef = await iidOf('Teferi, Master of Time');
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
-  s = await until('duel', x => x.phase === 'respond' && x.turn >= 1, 90000);
+  s = await until('duel', x => (x.phase === 'respond' || (x.choice === 'protect' && x.step === 'end')) && x.turn >= 1, 90000);
+  if (s.choice === 'protect') {          // the engine asks first: the autopilot would activate Teferi here ("Not now": choose on the table)
+    sh = await sheet();
+    check("at the other player's end step you are asked whether Teferi, Master of Time activates (the autopilot's default)", /^End of the other player's turn: Teferi, Master of Time may activate a loyalty ability: respond\?/.test(sh.title) && sh.none === 'Not now' && sh.def.length === 1, sh.title);
+    await p.click('.ch-sheet .ch-none');
+    s = await until('duel', x => x.phase === 'respond' && x.turn >= 1, 30000);
+  } else check("at the other player's end step you are asked whether Teferi, Master of Time activates (the autopilot's default)", false, JSON.stringify(s));
   if (s.phase === 'respond') {
     const rs = await p.evaluate(iid => { const gm = window.__isfVersus.duel.game, me = gm.games[0], w = me.hand.find(i => i.card.name === 'Samwise Gamgee');
       return { teferi: document.querySelector('#tab-duel .vs-seat.me .mtg[data-iid="' + iid + '"]').classList.contains('vs-loyal'), text: document.querySelector('#tab-duel .vs-me').textContent, sam: !!(w && document.querySelector('#tab-duel .vs-hand .vs-card.can[data-iid="' + w.iid + '"]')), loyalty: me.battlefield.find(q => q.iid === iid).loyalty }; }, tef);

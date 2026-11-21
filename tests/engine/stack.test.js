@@ -11,7 +11,7 @@ const idx = JSON.parse(fs.readFileSync(path.join(DIR, 'index.json'), 'utf8')), s
 idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(DIR, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const load = n => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', n + '-loaded.json'), 'utf8'));
-const VY = load('veyran'), ZA = load('zul-ashur'), DT = load('death-tax');
+const VY = load('veyran'), ZA = load('zul-ashur'), DT = load('death-tax'), MM = load('mermaids');
 const plus = (src, names) => src.cards.concat(names.filter(n => !src.cards.some(c => c.name === n)).map(find));
 const O = { turns: 25, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
@@ -80,6 +80,22 @@ const named = (q, n) => q.options.findIndex(o => o.name === n);
 { const p = table([VY, ZA, DT]), [a, b, c] = p.games; G.podFocus(b, c); lands(b, 3, 'Swamp'); const nw = toHand(b, "Night's Whisper");
   const { qs } = play(p, cast(1, nw.iid), q => 'none');
   check('in a pod you are asked about a spell even when it is not you its caster faces', qs.length === 1 && qs[0].kind === 'counter' && /^them1 casts Night's Whisper/.test(qs[0].title), qs.map(q => q.title).join(' | ')); }
+
+// ---- what the autopilot would answer for you is asked, not skipped: protection, Spellskite, Cursecatcher, Teferi at their end step
+const roil = () => { const p = table([MM, VY]), [a, b] = p.games; lands(a, 2, 'Forest'); lands(a, 1, 'Island'); const sv = putOn(a, card(a, 'Svyelun of Sea and Sky')); lands(b, 3, 'Island'); toHand(a, 'Heroic Intervention'); const ir = toHand(b, 'Into the Roil'); return { p, a, b, sv, run: cast(1, ir.iid) }; };
+{ const { p, a, sv, run } = roil();
+  const { qs } = play(p, run);
+  const pq = qs.find(q => q.kind === 'protect');
+  check('removal at your creature, with Heroic Intervention in hand: first the stack ("does it resolve?", Heroic Intervention offered as a response)', qs[0].kind === 'counter' && qs[0].options.some(o => o.name === 'Heroic Intervention'), qs.map(q => q.kind).join(', '));
+  check('...then, as it resolves, the autopilot\'s answer is asked: "Svyelun of Sea and Sky is about to be returned to its owner\'s hand: respond?"', !!pq && /^Svyelun of Sea and Sky is about to be returned to its owner's hand: respond\?$/.test(pq.title) && pq.options.map(o => o.name).join() === 'Cast Heroic Intervention' && pq.def.length === 1 && pq.none === 'Not now', pq && pq.title);
+  check('...the default (the autopilot\'s answer) casts Heroic Intervention: Svyelun stays', a.battlefield.includes(sv) && a.graveyard.some(i => i.card.name === 'Heroic Intervention')); }
+{ const { p, a, sv, run } = roil();
+  play(p, run, q => 'none');
+  check('..."Not now": Into the Roil returns Svyelun to your hand, and Heroic Intervention stays in your hand', !a.battlefield.includes(sv) && a.hand.some(i => i.card.name === 'Svyelun of Sea and Sky') && a.hand.some(i => i.card.name === 'Heroic Intervention')); }
+{ const mk = () => { const p = G.newPod([G.buildDeck(MM.cards, MM.tokens), G.buildDeck(VY.cards, VY.tokens)], [O, O], 900, ['m', 'v'], 0, [0, 1]); p.games.forEach(g => G.keepOpening(g, [])); return p; };
+  const H = mk(), P = mk(); D.seat(H.games[0]); let same = true, n = 0;
+  for (let r = 0; r < 8 && H.match.winner == null && same; r++) for (let k = 0; k < 2; k++) { if (H.match.winner != null) break; const pid = H.match.order[k].pid; D.resolveSync(H.games, 0, gs => D.playPlan(gs, pid), () => 'auto'); D.playPlan(P.games, pid); n++; if (D.dump(H.games) !== D.dump(P.games)) { same = false; break; } }
+  check('a seat that is asked, every answer the default, plays the autopilot\'s game (Mermaids against Veyran, seed 900: Heroic Intervention against Into the Roil in round 3)', same && n >= 8, n + ' turns'); }
 
 // ---- the autopilot's games are unchanged
 { const r = G.podMonteCarlo([{ cards: VY.cards, tokens: VY.tokens, name: 'a' }, { cards: ZA.cards, tokens: ZA.tokens, name: 'b' }], O, 20, 9);

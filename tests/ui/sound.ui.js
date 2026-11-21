@@ -151,6 +151,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   n = await count(); await p.click('#mullHand');
   let got = await since(n);
   check('a mulligan shuffles, then deals', got.join(',').includes('shuffle,deal'), got.join(','));
+  await A(() => { const f = __isfFx.events; window.__fxCasts = 0; __isfFx.events = ev => { window.__fxCasts += (ev || []).filter(e => e && e.type === 'cast').length; return f(ev); }; });
   await clear(); await p.click('#keepHand');
   await p.check('#tFast');
   await p.click('#tAuto');
@@ -164,6 +165,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
     (await since(0)).forEach(x => seen.add(x));
   }
   check('twelve turns bring casts, attacks and new-turn chimes', (seen.has('card') || [...seen].some(x => /^card:/.test(x))) && seen.has('turn') && (seen.has('attack') || seen.has('declare')), [...seen].join(','));
+  check('the Practice table also hands every cast to the on-screen card effects', (await A(() => window.__fxCasts)) > 0, (await A(() => window.__fxCasts)) + ' casts');
   n = await count(); await p.click('#tUndo');
   check('undo has its own sound', (await since(n)).includes('undo'));
 

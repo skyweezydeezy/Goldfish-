@@ -1084,3 +1084,10 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
   /* the hand peeks up from the bottom: the name and the top of the picture show; tap a card for its menu and the full card */
   body[data-view=table] .hand-zone { grid-column: 1 / -1; grid-row: 3; height: calc(var(--hand-w) * .52); padding: 3px 6px 0; align-items: flex-start; justify-content: flex-start; overflow: hidden; }
 }
+
+/* ---- card effects (card-effects.js): the Lightning Bolt strike ---- */
+.fx-bolt { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 480; pointer-events: none; overflow: visible; }
+.fx-bolt path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.fx-bolt .fx-glow { stroke: #8fd0ff; opacity: .9; }
+.fx-bolt .fx-core { stroke: #fbfdff; }
+.fx-flash { position: fixed; inset: 0; z-index: 479; pointer-events: none; background: radial-gradient(ellipse at 50% 30%, rgba(225,240,255,.42), rgba(160,200,255,.18) 60%, rgba(120,170,255,.08)); }

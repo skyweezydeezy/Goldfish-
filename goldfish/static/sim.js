@@ -141,6 +141,16 @@
   }
   // the mana you could spend on this spell (restricted mana counts only for the spells it may pay for)
   function unitsFor(g, inst) { const prev = g._payFor; g._payFor = inst; try { return allUnits(g); } finally { g._payFor = prev; } }
+  // The list depends on the spell only through what the restricted sources (and Resonating Lute, Inga and Esika) make of it. Spells they treat alike
+  // get the same list, so while one choice is weighed (nothing changes in between) it is worked out once for each kind of spell.
+  function unitsForKind(g, inst, memo) {
+    const info = bfInfo(g); let k = '';
+    for (const p of info.producers) { const R = p.produce && p.produce.restrict; if (R) k += restrictOk(g, R, inst) ? '1' : '0'; }
+    if (info.lute) k += inst.card.a.isInstantSorcery ? 'L' : 'l';
+    if (info.ingaEsika) k += inst.card.a.isCreature ? 'I' : 'i';
+    let u = memo.get(k); if (u === undefined) memo.set(k, u = unitsFor(g, inst));
+    return u;
+  }
   // "Add {G} for each ...": what is counted
   function manaPer(s) {
     s = s.toLowerCase(); let m;
@@ -7424,11 +7434,11 @@ g.actSeq = (g.actSeq || 0) + 1;
       .concat(g.exile.filter(i => i.heldBy != null && i.anyMana && !i.card.a.isLand)).concat(g.exile.filter(i => i.warpCast || i.airbent || (i.foretoldTurn != null && i.foretoldTurn < g.turn)))          // warped cards wait in exile; Hostage Taker: cast the exiled card
       .concat(topCastable(g) ? [g.library[0]] : []);          // Bolas's Citadel: the top card, paid for with life
     let best = null, bestScore = -1, altarK = 0;
-    const rMana = bfInfo(g).restrictMana;
+    const rMana = bfInfo(g).restrictMana, kinds = rMana ? new Map() : null;
     for (const c of cands) {
       if (holdForCombo(g, c)) continue;
       if (castBlocked(g, c)) continue;          // not castable now
-      const units = rMana ? unitsFor(g, c) : units0;          // Cavern of Souls, Eldrazi Temple: the mana this spell could use
+      const units = rMana ? unitsForKind(g, c, kinds) : units0;          // Cavern of Souls, Eldrazi Temple: the mana this spell could use
       if (!lockWorth(g, c)) continue;
       if (faceChoice(g, c.card) === 'back') continue;          // this card is set to its back face (or the lab chose the commander's back face): never cast the front
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick) - (c.card.a.mv > 0 ? 0 : 0)));

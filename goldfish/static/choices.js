@@ -45,6 +45,7 @@
           <div class="ch-text hint">${esc(q.text)}${q.multi ? ` <b class="ch-count"></b>` : ''}</div>
           ${q.dest ? `<div class="ch-dest"><span>Goes to</span> <b>${esc(q.dest)}</b></div>` : ''}
           ${ts.length > 12 ? '<input class="ch-filter" type="search" placeholder="Filter by name or type…" aria-label="Filter the cards">' : ''}
+          ${q.stack && q.stack.length ? `<details class="ch-stack"><summary>On the stack · ${q.stack.length} <small>(top: ${esc(q.stack[0].name)})</small></summary><div class="ch-stack-list"></div></details>` : ''}
           <div class="ch-main"><div class="ch-spell"></div><div class="ch-opts"></div></div>
           <div class="ch-picked"></div>
           <div class="row wrap ch-btns">
@@ -54,6 +55,10 @@
           </div>
         </div>`;
       const $ = s => el.querySelector(s), box = $('.ch-opts');
+      if (q.stack && q.stack.length) {          // the stack, newest first: each item with whose it is and what it is
+        const KIND = { spell: 'spell', ability: 'triggered ability', triggered: 'triggered, waiting to go on the stack' };
+        for (const it of q.stack) { const b = h('div', 'ch-stack-item'); if (it.card) b.appendChild(A.cardEl(it.card, {})); b.appendChild(h('small', '', `${esc(it.who)} · ${KIND[it.kind] || it.kind}`)); if (it.text) b.title = it.text; $('.ch-stack-list').appendChild(b); }
+      }
       if (q.spell) { const c = A.cardEl(q.spell, { eager: true }); $('.ch-spell').append(c, h('small', '', esc(q.spellNote || 'being cast'))); } else $('.ch-spell').remove();
       for (const t of ts) {
         const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text') + (t.o.disabled ? ' off' : ''));

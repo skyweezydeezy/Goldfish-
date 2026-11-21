@@ -10554,6 +10554,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       d.hand.splice(d.hand.indexOf(c), 1);
       d.graveyard.push(c);
       d.spellsCast = (d.spellsCast || 0) + 1;
+      if (d.castTurn[c.card.uid] == null) d.castTurn[c.card.uid] = d.turn;                                  // a counterspell cast on the other player's turn counts as cast
       ev.push({ type: 'note', text: `${c.card.name} counters ${inst.card.name}${how === 'free' ? ' (free)' : ''}`, source: null });
       fireCastTriggers(d, c, ev);
       if (extraDraw > 0) draw(d, extraDraw, ev);          // Mystic Confluence's other modes

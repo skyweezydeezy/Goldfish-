@@ -274,7 +274,7 @@
     else if (/emblem with ["“]artifacts, creatures, enchantments, and lands you control have indestructible\.?["”]/i.test(withQuotes)) fx.push({ type: 'emblem', p: 0, t: 0, keywords: ['indestructible'], types: ['artifact', 'creature', 'enchantment', 'land'] });          // Elspeth, Knight-Errant
     // Gyome, Master Chef: Food equal to the nontoken creatures that entered this turn
     if ((m = text.match(/create a number of (Food|Treasure|Clue) tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn/i))) fx.push({ type: 'token', n: 'X', creature: false, artifact: true, name: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase(), count: { zone: 'special', what: 'nontoken creatures entered' } });
-    if (/create (?:a|one) (?:token that's a copy|copy)/i.test(text)) { const of = (text.match(/cop(?:y|ies) of (~|this \w+|(?:another )?target)/i) || [])[1] || ''; fx.push(Object.assign({ type: 'copyToken', self: /^(?:~|this )/i.test(of), target: /target/i.test(of) }, /cop(?:y|ies) of target artifact\b(?! creature| or creature)/i.test(text) ? { art: true } : {})); }          // a copy of itself, of a target, or of the permanent that triggered it
+    if (/create (?:a|one) (?:token that's a copy|copy)/i.test(text)) { const of = (text.match(/cop(?:y|ies) of (~|this \w+|(?:another )?target)/i) || [])[1] || ''; fx.push(Object.assign({ type: 'copyToken', self: /^(?:~|this )/i.test(of), target: /target/i.test(of) }, /cop(?:y|ies) of target artifact\b(?! creature| or creature)/i.test(text) ? { art: true } : {}, /except (?:it|the token|they|the tokens?)[^.]*\b(?:isn't|aren't|not) legendary/i.test(text) ? { notLegendary: true } : {})); }          // a copy of itself, of a target, or of the permanent that triggered it
     if ((m = text.match(/\binvestigates?( twice| three times)?/i))) fx.push({ type: 'token', n: m[1] ? (/twice/.test(m[1]) ? 2 : 3) : 1, creature: false, name: 'Clue', artifact: true });
 
     m = text.match(new RegExp('(?:you )?draws? ' + NRE + ' cards?', 'i'));
@@ -2188,7 +2188,7 @@
       if (/^you may cast spells from your hand without paying their mana costs/i.test(line)) { a.statics.omniscience = true; rec.status = 'ok'; continue; }          // Omniscience
       if (/^if you tap a permanent for mana, it produces three times as much of that mana instead/i.test(line)) { a.statics.manaTriple = true; rec.status = 'ok'; continue; }          // Nyxbloom Ancient
       { const c2 = line.match(/^you may have ~ enter as a copy of (another creature you control|a creature you control|any artifact or enchantment on the battlefield|any nonland permanent on the battlefield)/i); if (c2) { a.cloneOf = /creature you control/i.test(c2[1]) ? 'own creature' : /nonland/i.test(c2[1]) ? 'nonland permanent' : 'artifact or enchantment'; rec.status = 'ok'; continue; } }          // Sakashima, Glasspool Mimic, Mirrormade, Clever Impersonator
-      if (/^the "legend rule" doesn't apply to permanents you control/i.test(line)) { rec.status = 'ok'; continue; }
+      if (/^the "legend rule" doesn't apply to permanents you control/i.test(line)) { a.statics.noLegendRule = true; rec.status = 'ok'; continue; }
       if (/^when ~ dies, create a 3\/3 colorless phyrexian wurm artifact creature token with deathtouch and a 3\/3 colorless phyrexian wurm artifact creature token with lifelink/i.test(line)) { const w = k => ({ type: 'token', n: 1, creature: true, p: 3, t: 3, colors: [], subtypes: ['Phyrexian', 'Wurm'], keywords: [k], artifact: true, name: 'Phyrexian Wurm' }); a.triggers.push({ kinds: ['dies'], who: '~', fx: [w('deathtouch'), w('lifelink')], text: raw }); rec.status = 'ok'; continue; }          // Wurmcoil Engine
       if (/^\{1\}\{w\}, \{t\}: you may put an equipment card from your hand onto the battlefield/i.test(line)) { a.stoneforge = true; rec.status = 'ok'; continue; }          // Stoneforge Mystic
       if (/^during each of your turns, you may play a land and cast a permanent spell of each permanent type from your graveyard/i.test(line)) { a.muldrotha = true; a.statics.landsFromYard = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Muldrotha: one permanent spell from the graveyard each turn
@@ -4826,6 +4826,59 @@
     g.match.winner = g.pid; g.match.reason = why; g.match.turn = g.turn; g.killTurn = g.turn;
     ev.push({ type: 'kill', cmdr: why === 'commander', mirror: true });
   }
+  // ---------- State-based actions (Comprehensive Rules 704) ----------
+  // Checked whenever a player would get to act: after a spell or ability resolves, after combat damage, at the start and end of a turn.
+  // All of them are done at once, and checked again until none applies:
+  //   704.5f a creature with toughness 0 or less goes to its owner's graveyard (indestructible does not help)
+  //   704.5g/h a creature with lethal damage, or any damage from a deathtouch source, is destroyed (unless indestructible or regenerated)
+  //   704.5i a planeswalker with no loyalty goes to the graveyard
+  //   704.5j the legend rule: two or more legendary permanents with the same name; the controller keeps one (a person is asked)
+  //   704.5a a player with 0 or less life loses
+  // +1/+1 and -1/-1 counters cancel (704.5q) by themselves: a permanent keeps one signed count.
+  function legendKeep(g, ps) {
+    const att = p => g.battlefield.filter(q => q.attachedTo === p.iid).length;
+    const score = p => Math.max(0, p.counters || 0) * 2 + att(p) * 3 + (p.loyalty || 0) * 0.5 + (p.sick ? 0 : 1) + (p.tapped ? 0 : 0.25);
+    return ps.slice().sort((x, y) => score(y) - score(x) || g.battlefield.indexOf(x) - g.battlefield.indexOf(y))[0];
+  }
+  function sba(g, ev) {
+    if (g.dry || g.inSba) return;
+    g.inSba = true;
+    try {
+      for (let pass = 0; pass < 10; pass++) {
+        let did = false;
+        for (const x of [g].concat(otherPlayers(g))) {
+          if (x.dead) continue;
+          const gone = [];
+          for (const p of x.battlefield) {
+            if (isCreaturePerm(p)) {
+              const t = toughnessOf(x, p);
+              if (t <= 0) { gone.push({ p, why: 'toughness' }); continue; }
+              if ((p.dmg || 0) > 0 && (p.dmg >= t || p.dt) && !indestructible(x, p)) gone.push({ p, why: 'damage' });
+            } else if (p.card.a.isPlaneswalker && !p.asLand && (p.loyalty || 0) <= 0) gone.push({ p, why: 'loyalty' });
+          }
+          if (!(tableHas(x, 'statics.noLegendRule') && x.battlefield.some(q => q.card.a.statics.noLegendRule))) {          // Mirror Box, Mirror Gallery
+            const byName = new Map();
+            for (const p of x.battlefield) if (p.card.a.isLegendary && !gone.some(o => o.p === p)) { const l = byName.get(p.card.name); if (l) l.push(p); else byName.set(p.card.name, [p]); }
+            for (const [name, ps] of byName) {
+              if (ps.length < 2) continue;
+              let keep = legendKeep(x, ps);
+              if (x.ask) keep = decide(x, { kind: 'legend', options: ps, def: keep, what: name });
+              for (const p of ps) if (p !== keep) gone.push({ p, why: 'legend' });
+            }
+          }
+          for (const { p, why } of gone) {
+            if (!x.battlefield.includes(p)) continue;
+            if (why === 'damage' && regenerates(x, p, ev)) continue;
+            ev.push({ type: 'note', text: why === 'toughness' ? `${p.card.name} dies (its toughness is 0 or less)` : why === 'damage' ? `${p.card.name} dies (lethal damage)` : why === 'loyalty' ? `${p.card.name} has no loyalty left and goes to the graveyard` : `Legend rule: ${p.card.name} goes to the graveyard (only one with that name)`, source: p, sba: why });
+            leavePerm(x, p, ev); did = true;
+          }
+          if (gone.length) flushLeaves(x, ev);
+        }
+        for (const x of [g].concat(otherPlayers(g))) if (!x.dead && x.opp && x.life <= 0 && !matchOver(x)) checkDeath(x, ev);
+        if (!did) break;
+      }
+    } finally { g.inSba = false; }
+  }
   function checkDeath(g, ev) { if (g.opp && g.life <= 0) loseGame(g, ev || [], 'life'); }          // you lost your last life point: the other player wins
   function oppLifeLeft(g) { return g.opp ? g.opp.life : g.opts.oppLife - g.damage; }
   function dealToOpp(g, n, combat, loss) {
@@ -4977,7 +5030,7 @@
         case 'copyToken': {
           const cp = f.self ? source : subject || (f.target && f.art ? g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.a.isLegendary).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0] : f.target ? g.battlefield.filter(q => isCreaturePerm(q) && !q.card.a.isLegendary && !q.token).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0] : null);          // Saheeli's Artistry: "a copy of target artifact"          // "a copy of target creature": your best one
           if (cp && cp.card && !cp.asLand && g.battlefield.length < 250) {          // the same limit as createTokens (Scute Swarm copies itself with every land)
-            const inst = { iid: g.nextIid++, card: cp.card };
+            const inst = { iid: g.nextIid++, card: f.notLegendary ? unlegendary(g, cp.card) : cp.card };
             const perm = enterWithTriggers(g, inst, { token: true }, ev); perm.token = true;
             ev.push({ type: 'token', perm, inst, source });
           }
@@ -6852,7 +6905,7 @@
     if (a.sparkDouble) {                                                                                 // Spark Double: enters as a copy of a planeswalker or creature you control, with an extra counter
       const tgt = sparkTarget(g);
       if (!tgt) { g.graveyard.push(inst); return; }
-      const ci = { iid: inst.iid, card: tgt.card };
+      const ci = { iid: inst.iid, card: unlegendary(g, tgt.card) };          // "except it isn't legendary"
       const np = enterWithTriggers(g, ci, {}, ev); np.inst = inst; np.copyOf = tgt.card.name;
       if (tgt.card.a.isPlaneswalker) np.loyalty += 1; else addCounters(g, np, '+1/+1', 1, ev, np, true);
       ev.push({ type: 'note', text: `Spark Double enters as a copy of ${tgt.card.name}` });
@@ -7427,7 +7480,8 @@
   }
   // the two-faced cards of a deck whose back face can be cast as a spell (not a land): the ones a face setting applies to
   function faceCards(deck) { return (deck.unique || []).filter(c => c.layout === 'modal_dfc' && c.a.backCard && c.a.backCard.mana_cost && !c.a.backCard.a.isLand && !c.a.isLand); }
-  function castOne(g) {
+  function castOne(g) { const ev = castOne0(g); if (ev && ev.length) sba(g, ev); return ev; }          // after a spell resolves: state-based actions
+  function castOne0(g) {
     const units = allUnits(g), units0 = units;
     if (!units.length && !(g.library[0] && (tableHas(g, 'citadel') && g.battlefield.some(q => q.card.a.citadel))) && !(tableHas(g, 'kci') && g.battlefield.some(q => q.card.a.kci)) && !(bfInfo(g).aluren || (g.opp && bfInfo(g.opp).aluren))) return null;
     const isZ = p => /\bZombie\b/.test((p.card.type_line || '')) || p.zombie;
@@ -8350,7 +8404,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!it || !it.ok) return null;
     return activateLoyalty(g, p, it.ab, [], undefined, active);
   }
-  function useAbilities(g) {
+  function useAbilities(g) { const ev = useAbilities0(g); if (ev.length) sba(g, ev); return ev; }          // after an ability resolves: state-based actions
+  function useAbilities0(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
     // The Chain Veil: {4}, {T} lets every planeswalker activate once more this turn (worth it when one has already been used)
@@ -9268,6 +9323,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       two[0].temp = g.turn; g.hand.push(two[0]); g.exile.push(two[1]); ev.push({ type: 'note', text: `${q.card.name}: discarded, ${two[0].card.name} may be played this turn`, source: q });
     }
     eachTrigger(g, 'main', ev);
+    sba(g, ev);
     return ev;
   }
 
@@ -9450,6 +9506,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       let hitters = [];
       if (g.opp && !g.dry) { attackers = answerAttack(g, g.opp, attackers, ev); if (!attackers.length) break; protectLethal(g, g.opp, attackers, ev); instantWindow(g.opp, ev, 'combat'); attackers = attackers.filter(p => g.battlefield.includes(p)); }          // Angel's Grace, Teferi's Protection against a lethal attack          // the defender answers attackers at instant speed
       if (g.opp) { const r = resolveCombatVs(g, attackers, ev); dmg = r.dmg; hitters = r.hitters; vsLifelink = r.lifelink; psn = r.psn || 0; }
+      if (g.opp) sba(g, ev);          // combat damage dealt: state-based actions
       else for (const p of attackers) {
         if (!g.battlefield.includes(p)) continue;
         const steps = hasKw(g, p, 'double strike') ? 2 : 1, pw = (Math.max(0, dmgPow(g, p)) + (dmgPow(g, p) > 0 ? fireBonus(g) : 0)) * steps * infernoMult(g, p);
@@ -9701,6 +9758,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     });
     g.eot = { p: 0, t: 0, kw: new Set() };
     g.battlefield.forEach(p => { if (p.eotCard) { p.card = p.eotCard; know(g, p.card); p.eotCard = null; touch(g); } p.eotNoKw = false; p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
+    for (const x of [g].concat(otherPlayers(g))) x.battlefield.forEach(p => { p.dmg = 0; p.dt = false; });          // cleanup step: damage wears off every permanent
+    sba(g, ev);
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
     return iw.length ? iw.concat(ev) : ev;
   }
@@ -10239,7 +10298,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         for (const [game, list] of [[g, attackers], [d, [...blocks.values()].flat()]]) for (const p of list) if (alive(game, p) && isCreaturePerm(p) && toughnessOf(game, p) <= 0) { ev.push({ type: 'note', text: `${p.card.name} dies (no counters left)`, source: p }); leavePerm(game, p, ev); }          // Polukranos
       }
     }
-    for (const game of [g, d]) game.battlefield.forEach(p => { p.dmg = 0; p.dt = false; p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });
+    for (const game of [g, d]) game.battlefield.forEach(p => { p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });          // damage stays until the cleanup step
     flushLeaves(g, ev); flushLeaves(d, ev);
     if (llD > 0) gainLife(d, llD, ev, null);
     return { dmg, psn, hitters: hitters.slice(), lifelink: ll };
@@ -10538,6 +10597,14 @@ g.actSeq = (g.actSeq || 0) + 1;
   function yardLandBuff(g, p, k) { const b = p.card.a.yardLandBuff; return b && g.graveyard.filter(i => i.card.a.isLand).length >= b.n ? b[k] : 0; }
   function cardHasType(card, t) { const tl = (card.type_line || '').split('//')[0]; return new RegExp('\\b' + t + '\\b', 'i').test(tl); }
   // Likeness Looter, Sarkhan: a copy of a creature card, under another name, with extra text
+  // a copy "except it isn't legendary" (Miirym, Helm of the Host, Spark Double): the same card without the supertype
+  function unlegendary(g, card) {
+    if (!card.a.isLegendary) return card;
+    const key = 'nonlegendary:' + (card.uid || card.name); if (g.deck.tokenCache[key]) return g.deck.tokenCache[key];
+    const c = Object.assign({}, card, { uid: key, type_line: (card.type_line || '').replace(/\bLegendary\s+/, '') });
+    c.a = Object.assign({}, card.a, { isLegendary: false });
+    g.deck.tokenCache[key] = c; return c;
+  }
   function copyCardOf(g, card, name, extra, keyTag) {
     const key = 'copy:' + keyTag + ':' + (card.uid || card.name); if (g.deck.tokenCache[key]) return g.deck.tokenCache[key];
     const c = Object.assign({}, card, { uid: key, name, oracle_text: ((card.front_oracle != null ? card.front_oracle : card.oracle_text) || '').replace(new RegExp(card.name.split(' // ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), name) + (extra ? '\n' + extra : ''), front_oracle: null, faces: [] });
@@ -11115,7 +11182,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

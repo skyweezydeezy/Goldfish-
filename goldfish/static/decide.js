@@ -137,7 +137,7 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how]; }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
-        if (d.kind === 'target' || d.kind === 'sacrifice') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
+        if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
       }
       if (item.def) q.def.push(k);
       q.options.push(item);
@@ -175,6 +175,9 @@
       q.title = d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = 'Do not cast it';
+    } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)
+      q.title = `Legend rule: you control ${opts.length} ${d.what}`;
+      q.text = 'Only one legendary permanent with the same name can stay. Choose the one you keep; the others go to the graveyard.';
     } else if (d.kind === 'instant') {
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
       q.step = d.step;

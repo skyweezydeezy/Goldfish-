@@ -82,8 +82,14 @@ const lands = (g, n, b) => { for (let k = 0; k < n; k++) putOn(g, card(g, b || '
   const ev2 = []; G.instantWindow(a, ev2, 'end');
   check('...only once that turn', !ev2.some(x => /activates a loyalty ability/.test(x.text || ''))); }
 { const p = duel(true), [a] = p.games; const t = putOn(a, card(a, 'Teferi, Master of Time')); const l0 = t.loyalty;
-  G.instantWindow(a, [], 'end');
-  check('...but not for a person: they choose on the page', t.loyalty === l0); }
+  const run = gs => { const ev = []; G.instantWindow(gs[0], ev, 'end'); return ev; };
+  const r = AT(p.games, 0, run, []);
+  check("...a person is asked, with the autopilot's activation as the default (\"End of the other player's turn: Teferi, Master of Time may activate a loyalty ability: respond?\")", !r.done && r.ask.kind === 'protect' && /^End of the other player's turn: Teferi, Master of Time may activate a loyalty ability: respond\?$/.test(r.ask.title) && r.ask.def.length === 1, r.ask && r.ask.title);
+  AT(p.games, 0, run, [{ sig: r.ask.sig, pick: 'none' }]);
+  check('..."Not now": Teferi is left for the page (click him in the end-of-turn stop)', t.loyalty === l0 && !G.loyaltyState(a, t, a.opp).why); }
+{ const p = duel(true), [a] = p.games; const t = putOn(a, card(a, 'Teferi, Master of Time')); const l0 = t.loyalty;
+  G.instantWindow(a, [], 'end');          // "Autopilot decides": nothing is asked, the default is taken
+  check('...with "Autopilot decides" it is the autopilot\'s game: Teferi activates', t.loyalty === l0 + 1); }
 { const d = G.buildDeck(cards, SF.tokens), g = G.newGame(d, O, 3); g.hand = []; g.battlefield = []; const t = putOn(g, d.unique.find(c => c.name === 'Teferi, Master of Time'));
   check('goldfish (no other player): Teferi activates twice on your own turn, as before', !g.opp && G.loyaltyState(g, t).allowed === 2); }
 

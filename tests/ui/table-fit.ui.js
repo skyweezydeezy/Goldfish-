@@ -5,7 +5,7 @@ const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
-const DEVS = [['iPhone', devices['iPhone 13']], ['iPad portrait', devices['iPad (gen 7)']], ['iPad landscape', devices['iPad (gen 7) landscape']], ['iPhone sideways', devices['iPhone 13 landscape']], ['small iPhone sideways', devices['iPhone SE landscape']]];
+const DEVS = [['iPhone', devices['iPhone 13']], ['iPad portrait', devices['iPad (gen 7)']], ['iPad landscape', devices['iPad (gen 7) landscape']], ['iPad Pro landscape', devices['iPad Pro 11 landscape']], ['iPhone sideways', devices['iPhone 13 landscape']], ['small iPhone sideways', devices['iPhone SE landscape']]];
 const SIDEWAYS = n => /sideways/.test(n);
 (async () => {
   const b = await chromium.launch();

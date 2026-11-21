@@ -1387,6 +1387,10 @@
       items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
     }
     if (zone === 'battlefield' && obj.card.a.isPlaneswalker && !forViewer) items.push(['◆ Loyalty abilities…', () => openLoyalty(obj), 'primary']);          // the planeswalker menu: choose which ability
+    if (zone === 'battlefield' && obj.card.a.chainVeil && !forViewer) {          // The Chain Veil: {4}, {T}: each planeswalker may activate one more loyalty ability this turn
+      const why = G.chainVeilState(S.game, obj);
+      items.push([why ? `◆ The Chain Veil (${why})` : '◆ Activate: {4}, tap: one more loyalty ability for each planeswalker', () => { if (G.chainVeilState(S.game, obj)) { sfx('error'); return toast('The Chain Veil: ' + G.chainVeilState(S.game, obj)); } snap(); quiet(yours(x => G.useChainVeil(x, x.battlefield.find(y => y.iid === obj.iid))).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana for The Chain Veil'); } play(ev); })); }, why ? '' : 'primary']);
+    }
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
@@ -1963,6 +1967,58 @@
     const li = rows.map(r => `<li><b>${esc(r.name)}</b> ${pts(r.diff)} pts (z ${r.z.toFixed(1)}) · <span class="pill" title="${esc(VERDICT[r.verdict][1])}">${VERDICT[r.verdict][0]}</span> · ${r.castRate == null ? 'not drawn' : 'cast in ' + (100 * r.castRate).toFixed(0) + '% of games drawn'}${r.notSim.length ? ' · <i>not simulated: ' + esc(r.notSim[0].slice(0, 70)) + '</i>' : ''}${cut ? ` <button class="ghost" data-abcut="${esc(r.name)}">Cut</button>` : ''}</li>`).join('');
     return `<div class="sg"><h3>${title} (${rows.length})</h3><ul>${li}</ul></div>`;
   }
+  // ---- replacements for a card you cut: the most played Commander cards that do the same job, in the deck's colors, for at most one
+  // more mana, and not in the deck already (Scryfall, sorted by EDHREC rank). A list to pick from; the A/B test says whether a pick is better.
+  const AB_JOB = [['wipe', 'otag:board-wipe', 'board wipes'], ['counter', 'otag:counterspell', 'counterspells'], ['removal', 'otag:removal', 'removal'], ['tutor', 'otag:tutor', 'tutors'],
+    ['fast-mana', 'otag:ramp', 'ramp'], ['ramp', 'otag:ramp', 'ramp'], ['draw', 'otag:draw', 'card draw'], ['protection', 'otag:protection', 'protection'], ['recursion', 'otag:recursion', 'recursion'],
+    ['anthem', 'otag:anthem', 'anthems'], ['tokens', '(o:create o:token)', 'token makers'], ['sac-outlet', 'otag:sacrifice-outlet', 'sacrifice outlets'], ['grave-hate', 'otag:graveyard-hate', 'graveyard hate'], ['lifegain', 'otag:lifegain', 'lifegain']];
+  const abPickCache = new Map();
+  function abJob(card) {
+    const roles = typeof Profile !== 'undefined' && Profile.roles ? Profile.roles(card) : new Set();
+    const job = AB_JOB.find(j => roles.has(j[0]));
+    if (job) return { q: job[1], label: job[2] };
+    const type = ['Creature', 'Artifact', 'Enchantment', 'Planeswalker', 'Instant', 'Sorcery'].find(t => new RegExp('\\b' + t + '\\b').test((card.type_line || '').split(' // ')[0])) || 'Creature';
+    return { q: 't:' + type.toLowerCase(), label: type.toLowerCase() + 's' };
+  }
+  async function abPicks(card) {
+    const ids = new Set(); (S.deck.commanders.length ? S.deck.commanders.map(i => i.card) : S.cards).forEach(c => (c.color_identity || []).forEach(k => ids.add(k)));
+    const id = 'WUBRG'.split('').filter(k => ids.has(k)).join('') || 'C', mv = /\{X\}/.test(card.mana_cost || '') ? 7 : Math.max(2, Math.round(card.cmc || 0) + 1), job = abJob(card);          // one more mana than the card you cut; an X spell counts as up to 7
+    const q = `f:commander id<=${id} -t:land mv<=${mv} ${job.q}`, key = q;
+    if (!abPickCache.has(key)) {
+      const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=edhrec`, { headers: { Accept: 'application/json;q=0.9,*/*;q=0.8' } });
+      abPickCache.set(key, r.ok ? ((await r.json()).data || []) : []);
+    }
+    const have = new Set(S.cards.map(c => c.name.toLowerCase()));
+    const list = abPickCache.get(key).filter(c => !have.has(c.name.toLowerCase()) && !have.has(c.name.split(' // ')[0].toLowerCase())).slice(0, 10);
+    return { list, what: `${job.label}, up to ${mv} mana` };
+  }
+  const abLines = () => $('#abChanges').value.split('\n').map(l => l.trim()).filter(l => l && l !== '+' && l !== '-');
+  const abSetLines = ls => { $('#abChanges').value = ls.join('\n') + (ls.length ? '\n' : ''); };
+  async function abCut(btn) {
+    const name = btn.dataset.abcut, li = btn.closest('li'), card = S.cards.find(c => c.name === name);
+    let ls = abLines(); if (!ls.includes('- ' + name)) { ls.push('- ' + name); abSetLines(ls); }
+    btn.classList.add('on'); btn.textContent = 'Cut ✓';
+    if (!card || li.querySelector('.ab-picks')) return;
+    const box = h('div', 'ab-picks', '<span class="hint">Finding replacements…</span>'); li.appendChild(box);
+    let res; try { res = await abPicks(card); } catch (e) { res = null; }
+    if (!res || !res.list.length) { box.innerHTML = `<span class="hint">${res ? 'No replacement found for this card' : 'Replacements need the internet (Scryfall)'}: write your own as "+ Card" below.</span>`; return; }
+    box.innerHTML = '';
+    box.appendChild(h('div', 'ab-picks-head', `Replace with <span class="hint">· popular ${esc(res.what)}</span>`));
+    const strip = h('div', 'ab-strip'); box.appendChild(strip);
+    res.list.forEach(c => {
+      const img = (c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).small || '', usd = c.prices && (c.prices.usd || c.prices.usd_foil);
+      const b = h('button', 'ab-pick', `${img ? `<img alt="" loading="lazy" src="${esc(img)}">` : ''}<span>${esc(c.name)}</span><small>${usd ? '$' + esc(usd) : '—'}</small>`);
+      b.title = (c.type_line || '') + (c.oracle_text ? '\n' + c.oracle_text : '');
+      b.dataset.abpick = c.name;
+      b.addEventListener('click', () => {
+        const line = '+ ' + c.name; let l2 = abLines();
+        if (l2.includes(line)) { l2 = l2.filter(x => x !== line); b.classList.remove('on'); }
+        else { strip.querySelectorAll('.ab-pick.on').forEach(o => { l2 = l2.filter(x => x !== '+ ' + o.dataset.abpick); o.classList.remove('on'); }); const at = l2.indexOf('- ' + name); l2.splice(at < 0 ? l2.length : at + 1, 0, line); b.classList.add('on'); }
+        abSetLines(l2);
+      });
+      strip.appendChild(b);
+    });
+  }
   $('#abDiag').addEventListener('click', async () => {
     if (!need()) return;
     $('#abDiag').disabled = true; $('#abDiagOut').innerHTML = '';
@@ -1974,7 +2030,7 @@
       $('#abInfo').textContent = `${n.toLocaleString()} matches in ${sec}s: this deck wins ${(100 * d.winRate).toFixed(1)}% against ${opps.length} decks.`;
       const lose = d.losing, win = d.winning;
       $('#abDiagOut').innerHTML = `<div class="suggest">${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
-      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => { const t = $('#abChanges'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + '- ' + b.dataset.abcut + '\n+ '; t.focus(); }));
+      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => abCut(b)));
       if (typeof tidy === 'function') tidy($('#abDiagOut'));
     });
   });
@@ -2360,5 +2416,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

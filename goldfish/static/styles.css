@@ -662,6 +662,14 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .lb-nav:disabled { opacity: .25; }
 .lb-name { font-weight: 700; font-size: 16px; text-align: center; max-width: 92vw; overflow-wrap: anywhere; }
 .lb-tip { text-align: center; }
+/* A/B test: the replacements offered under a card you cut */
+.ab-picks { margin: 6px 0 10px; }
+.ab-picks-head { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
+.ab-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.ab-pick { flex: none; width: 108px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px; border-radius: 10px; background: var(--surface-2); border: 2px solid transparent; font-size: 11px; line-height: 1.2; color: var(--text-secondary); }
+.ab-pick img { width: 96px; border-radius: 5px; }
+.ab-pick small { color: var(--ice-2); font-weight: 700; }
+.ab-pick.on { border-color: var(--ice-2); color: var(--text-primary); background: var(--surface-3); }
 .lb-acts { width: min(92vw, 560px); }
 .lb-acts-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .lb-act { flex: 1 1 140px; min-height: 44px; }

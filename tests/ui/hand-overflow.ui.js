@@ -36,6 +36,15 @@ const shot = process.env.SHOTS;
     await p.click('#tab-duel .vs-new');
     await until(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; });
     await p.evaluate(() => document.querySelector('#tab-duel .vs-keep').click());
+    {          // the opponent may go first: answer its "does it resolve?" questions (the autopilot's pick) and pass its end step
+      const t0 = Date.now();
+      while (Date.now() - t0 < 90000) {
+        const st = await p.evaluate(() => { const g = window.__isfVersus.duel.game; return { done: g.phase === 'main' || !!g.over, sheet: !!document.querySelector('.ch-sheet .ch-auto'), respond: g.phase === 'respond' }; });
+        if (st.done) break;
+        if (st.sheet) await p.click('.ch-sheet .ch-auto'); else if (st.respond) await p.evaluate(() => { const b = document.querySelector('#tab-duel .vs-pass'); if (b) b.click(); });
+        await p.waitForTimeout(150);
+      }
+    }
     await until(() => { const g = window.__isfVersus.duel.game; return !!g.over || g.phase === 'main'; });
     await p.evaluate(() => { const gm = window.__isfVersus.duel.game, g = gm.games[gm.human]; while (g.hand.length < 40 && g.library.length) g.hand.push(g.library.shift()); window.__isfVersus.redraw('duel'); });
     await p.$eval('#tab-duel .vs-screen', e => { const bar = document.querySelector('.topbar'); window.scrollTo(0, e.getBoundingClientRect().top + scrollY - bar.offsetHeight - 4); });

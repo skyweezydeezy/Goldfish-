@@ -106,6 +106,13 @@
   const D = window.Decide, C = window.__isfChoices;
   const asking = mode => { const s = V[mode].q('.vs-ask'); return !s || s.value !== 'auto'; };
   const alive = gm => gm.human != null && !gm.games[gm.human].dead;
+  // Whose priority it is. gm.human is the seat played on this device; in a game against a person on another device (remote.js) that
+  // person's seat is gm.remote, and their turn runs through the same functions as yours.
+  const mainOf = (gm, pid) => gm.phase === 'main' && cur(gm).pid === pid;
+  const respOf = (gm, pid) => gm.phase === 'respond' && !!gm.respond && gm.respond.seat === pid;
+  const myMain = gm => mainOf(gm, gm.human), myResp = gm => respOf(gm, gm.human);
+  const bottomSeat = gm => (gm && gm.human != null ? gm.human : 0);           // the seat drawn along the bottom of the table
+  const named = (gm, pid, you, other) => (pid === gm.human && gm.match.names[pid] === 'You' ? you : other);
   // run a piece of the game that may wait for you. A question left open by a game that is gone just ends there.
   const go = (mode, p) => p.catch(e => {
     if (e === C.CANCELLED) return;
@@ -116,6 +123,7 @@
     const st = V[mode], q = st.q;
     q('.vs-new').disabled = true;
     try {
+      if (st.game && st.game.io) st.game.io.close();       // a game against a person on another device ends here
       const ps = await players(mode, t => info(mode, t)), o = gameOpts(mode);
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));
@@ -125,25 +133,64 @@
       const pod = G.newPod(decks, optsList, seed, ps.map(p => p.name), first, human ? [0] : null);
       pod.match.round = 1;
       if (human) D.seat(pod.games[0]);                        // your seat can be asked; every other seat is the autopilot's
-      st.game = { games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, phase: human ? 'mull' : null, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
+      st.game = { games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, remote: null, phase: human ? 'mull' : null, mulling: human ? { 0: true } : {}, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
         step: null, preview: null, choice: null, respond: null, acting: false, noStop: false };
       st.nodes = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
       st.game.looks = dealLooks(ps.length);                   // every player gets a random playmat-and-sleeves set
       q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
       sfx('shuffle'); if (human) sfx('deal', 0.4);
-      say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.order[0].pid === 0 ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
+      say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.names[pod.match.order[0].pid] === 'You' ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
       render(mode);
       { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
       if (!human) advance(mode);
     } finally { q('.vs-new').disabled = false; }
   }
+  // A game against a person on another device (remote.js). Both devices build the same game from the same seed, decks and options,
+  // and from then on exchange only moves and answers. setup: { seed, first, names, decks: [{ cards, tokens, policy }], opts, local }.
+  function startRemote(mode, setup, io) {
+    const st = V[mode], q = st.q;
+    if (st.game && st.game.io && st.game.io !== io) st.game.io.close();
+    C.close();
+    const decks = setup.decks.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
+    const optsList = setup.decks.map(p => Object.assign({}, setup.opts, { policy: p.policy || {} }));
+    const pod = G.newPod(decks, optsList, setup.seed, setup.names, setup.first, [0, 1]);
+    pod.match.round = 1;
+    pod.games.forEach(g => D.seat(g));
+    const me = setup.local, them = 1 - me;
+    st.game = { games: pod.games, match: pod.match, idx: 0, human: me, remote: them, io, phase: 'mull', mulling: { 0: true, 1: true }, bottom: new Set(), block: null, rounds: setup.opts.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
+      step: null, preview: null, choice: null, respond: null, acting: false, noStop: false, noStops: new Set(), inputs: { 0: [], 1: [] }, picks: { 0: [], 1: [] }, pickWait: {}, moves: 0, waiting: null };
+    st.nodes = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
+    st.game.looks = dealLooks(2, me);
+    q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
+    sfx('shuffle'); sfx('deal', 0.4);
+    const f = pod.match.order[0].pid;
+    say(mode, null, `New game against ${setup.names[them]}. ${f === me ? 'You go' : setup.names[f] + ' goes'} first. Both start at ${pod.games[0].life} life.`);
+    render(mode);
+    { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
+    return st.game;
+  }
+  // A message from the other device: a move or an answer of their seat (never of yours). own: one of your own, from the saved game,
+  // when a game is rejoined after a reload (it was sent before).
+  function feed(mode, msg, own) {
+    const gm = V[mode].game; if (!gm || gm.remote == null || !msg || gm.halted) return;
+    const seat = own ? gm.human : gm.remote;
+    if (msg.seat !== seat) return;
+    if (msg.t === 'act') {
+      if (!Object.prototype.hasOwnProperty.call(ACTIONS, msg.name) || (msg.args != null && !Array.isArray(msg.args))) return;
+      gm.inputs[seat].push({ name: msg.name, args: msg.args || [] }); pump(mode);
+    } else if (msg.t === 'pick' && typeof msg.sig === 'string') {
+      const a = { sig: msg.sig, pick: msg.pick }, w = gm.pickWait[seat];
+      if (w) { gm.pickWait[seat] = null; w(a); } else gm.picks[seat].push(a);
+    }
+  }
+  V.startRemote = startRemote; V.feed = feed; V.halt = (mode, why) => { const gm = V[mode].game; if (gm && gm.remote != null && !gm.halted) halt(mode, gm, why); };
   const cur = gm => gm.match.order[gm.idx];
   function step(gm) {                                        // move to the next seat; a new round when the order wraps
     gm.idx = (gm.idx + 1) % gm.match.order.length;
     if (gm.idx === 0) { gm.match.round++; if (gm.match.round > gm.rounds) gm.over = `No winner after ${gm.rounds} rounds.`; }
   }
   function finished(gm) {
-    if (gm.match.winner != null && !gm.over) gm.over = `${gm.match.names[gm.match.winner]} ${gm.match.winner === 0 ? 'win' : 'wins'} the game in round ${gm.match.round}.`;
+    if (gm.match.winner != null && !gm.over) gm.over = `${gm.match.names[gm.match.winner]} ${gm.match.names[gm.match.winner] === 'You' ? 'win' : 'wins'} the game in round ${gm.match.round}.`;
     return !!gm.over;
   }
   function announce(mode) { const gm = V[mode].game; if (finished(gm) && !gm.said) { gm.said = true; gm.phase = null; gm.step = null; say(mode, null, '🏁 ' + gm.over); } return !!gm.over; }
@@ -153,6 +200,12 @@
   // run(games) makes the call on the games it is given. auto: nobody is asked (the autopilot plays this for you).
   async function act(mode, run, auto) {
     const st = V[mode], gm = st.game;
+    if (gm.remote != null) {                                  // two people: each question goes to the seat it is for, here or on the other device
+      if (auto) return run(gm.games);
+      const r = await D.resolveSeats(gm.games, [gm.human, gm.remote].filter(s => !gm.games[s].dead), run, (q, view) => answer(mode, gm, q, () => choose(mode, gm, q, view)));
+      if (st.game !== gm) throw C.CANCELLED;
+      return r;
+    }
     if (!alive(gm) || auto || !asking(mode)) return run(gm.games);
     const r = await D.resolve(gm.games, gm.human, run, (q, view) => choose(mode, gm, q, view));
     if (st.game !== gm) throw C.CANCELLED;
@@ -162,6 +215,34 @@
     if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
     gm.preview = view; gm.choice = q; render(mode);          // the table shows the game as it stands at the moment of the question
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }
+  }
+  // The answer to a question of seat q.seat. Without a remote player: ask here (local). With one: the other player's answer comes from
+  // their device (and one of yours, when a game is rejoined, from the saved game); your own is asked here and sent to them. An answer
+  // to a different question than the one this device is at means the two games have parted ways: the game stops.
+  async function answer(mode, gm, q, local) {
+    if (gm.remote == null) return local();
+    if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;
+    const s = q.seat, queue = gm.picks[s];
+    if (s !== gm.human || queue.length) {
+      if (s !== gm.human) { gm.waiting = s; render(mode); }
+      const a = queue.length ? queue.shift() : await new Promise(r => { gm.pickWait[s] = r; });
+      if (gm.waiting === s) gm.waiting = null;
+      if (V[mode].game !== gm) throw C.CANCELLED;
+      if (!a || a.sig !== q.sig) throw halt(mode, gm, 'The two devices disagree about this game (a different question was answered), so it stops here.');
+      return a.pick;
+    }
+    const pick = asking(mode) ? await local() : 'auto';
+    if (V[mode].game !== gm) throw C.CANCELLED;
+    gm.io.send({ t: 'pick', seat: s, sig: q.sig, pick });
+    return pick;
+  }
+  // a pick is an option number when it names one: anything else from the other device is the autopilot's choice
+  const optionPick = (q, pick) => (pick === 'auto' || pick === 'none' || (Number.isInteger(pick) && pick >= 0 && pick < q.options.length) ? pick : 'auto');
+  function halt(mode, gm, why) {
+    gm.over = why; gm.halted = true; gm.phase = null; gm.step = null; C.close();
+    if (V[mode].game === gm) { say(mode, null, '⚠ ' + why); render(mode); }
+    if (gm.io) gm.io.halted(why);
+    return C.CANCELLED;
   }
 
   function say(mode, g, text, stepKey, quiet) {
@@ -175,11 +256,25 @@
   // the events of one step as one line of the log, under that step's name. Returns how many things it had to say.
   // always: the step is logged even when nothing happens in it (every turn goes through every step)
   function tell(mode, g, stepKey, ev, lead, always) {
-    const t = sum(g, ev || []);
+    const t = sum(g, ev || [], bottomSeat(V[mode].game));
     sfxEv(mode, ev);
     if (t.length || lead) say(mode, g, (lead ? lead + (t.length ? ' ' : '') : '') + t.join('; '), stepKey);
     else if (always && stepKey) say(mode, g, 'nothing happens', stepKey, true);
-    return t.length + (lead ? 1 : 0);
+    let n = 0;
+    for (const e of ev || []) if (e.type === 'cast' && e.inst && /\b(Instant|Sorcery)\b/.test(e.inst.card.type_line || '')) { const ch = G.chosenFor(g, e.inst.card); if (ch) { say(mode, g, `${e.inst.card.name}: the chosen ${ch.what} is ${ch.name}`, stepKey); n++; } }          // Kindred Dominance
+    return t.length + (lead ? 1 : 0) + n + sayChosen(mode, stepKey);
+  }
+  // "As ~ enters, choose a creature type" (Metallic Mimic, Cavern of Souls...): the type is announced once, when the permanent arrives
+  // (cast, played, put onto the battlefield, on any seat), and stays on its card as a tag (permEl)
+  function sayChosen(mode, stepKey) {
+    const gm = V[mode].game; if (!gm || !gm.games) return 0;
+    const seen = gm.chosenSaid || (gm.chosenSaid = new Set()); let n = 0;
+    for (const g of gm.games) for (const p of g.battlefield) {
+      const k = g.pid + ':' + p.iid; if (seen.has(k)) continue; seen.add(k);
+      const ch = G.chosenFor(g, p.card); if (!ch) continue;
+      say(mode, g, `${p.card.name.split(' // ')[0]}: the chosen ${ch.what} is ${ch.name}`, stepKey); n++;
+    }
+    return n;
   }
   // the beginning of a turn, one step at a time: untap, upkeep, draw, each lit on the strip (beat: the pause between steps) and logged,
   // with a quiet "nothing happens" line when nothing did; the first main phase's own triggers follow
@@ -234,7 +329,7 @@
   function askBlocks(mode, g, pv) {
     const gm = V[mode].game, me = gm.games[gm.human];
     return new Promise(done => {
-      gm.phase = 'block'; gm.block = { g, attackers: pv.attackers, sug: G.chooseBlocks(me, g, pv.attackers), done };
+      gm.block = { g, attackers: pv.attackers, sug: G.chooseBlocks(me, g, pv.attackers), done, was: gm.phase }; gm.phase = 'block';
       say(mode, g, `attacks you with ${pv.attackers.map(p => p.card.name).join(', ')}. Choose your blocks.`, 'combat');
       sfx('declare');
       render(mode);
@@ -242,18 +337,37 @@
   }
   function confirmBlocks(mode, map) {
     const gm = V[mode].game, b = gm.block; if (!b) return;
-    gm.phase = null; gm.block = null; render(mode);
+    gm.phase = b.was || null; gm.block = null; render(mode);          // a person attacking you: their main phase goes on
     b.done(map);
+  }
+  // A person attacks another person: the defender chooses the blocks, on whichever device they play. Only legal blocks are kept (each
+  // blocker once, a creature of the defender that can block that attacker), whoever sent them.
+  async function blocksOf(mode, gm, atk, attackers, def) {
+    if (!attackers.length || def.dead || !def.battlefield.some(b => attackers.some(a => G.canBlock(atk, a, def, b)))) return {};
+    const q = { kind: 'blocks', seat: def.pid, sig: 'blocks/' + attackers.map(p => p.iid).join(',') };
+    const map = await answer(mode, gm, q, () => askBlocks(mode, atk, { attackers }));
+    const out = {}, used = new Set();
+    if (map && typeof map === 'object') for (const a of attackers) {
+      const ids = [].concat(map[a.iid] || []).filter(id => !used.has(id) && def.battlefield.some(b => b.iid === id && G.canBlock(atk, a, def, b)));
+      if (ids.length) { ids.forEach(id => used.add(id)); out[a.iid] = ids; }
+    }
+    return out;
   }
   // The end of another player's turn: you may cast instants and cards with flash with the mana you left untapped, and use abilities
   // (the autopilot's ability pass without loyalty abilities and equipping, which are sorcery speed). With nothing to do the game goes on.
-  async function respondWindow(mode, g) {
-    const st = V[mode], gm = st.game;
-    if (!alive(gm) || finished(gm) || !asking(mode) || gm.noStop) return;
-    const me = gm.games[gm.human], abil = D.wouldUseAbilities(gm.games, me.pid), asked = gm.endAsked; gm.endAsked = false;
+  // seat: the player who may respond (you, or the person on the other device at the end of your turn). Between two people the window
+  // opens on what is on the table, never on a setting of one device, so both devices open it at the same moment.
+  async function respondWindow(mode, g, seat) {
+    const st = V[mode], gm = st.game, remote = gm.remote != null;
+    if (seat == null) seat = gm.human;
+    if (finished(gm) || (remote ? gm.games[seat].dead || gm.noStops.has(seat) : !alive(gm) || !asking(mode) || gm.noStop)) return;
+    const me = gm.games[seat], abil = D.wouldUseAbilities(gm.games, me.pid), asked = gm.endAsked; gm.endAsked = false;
     if ((asked || !D.instants(me).length) && !abil && !D.otherTurnWalkers(me, g).length) return;          // instants were just offered by the engine's end-step question
     gm.step = 'end';
-    await new Promise(done => { gm.phase = 'respond'; gm.respond = { g, done, abil }; render(mode); });
+    await new Promise(done => {
+      gm.phase = 'respond'; gm.respond = { g, done, abil, seat }; render(mode);
+      if (remote && seat === gm.human && !asking(mode)) setTimeout(() => input(mode, 'pass', false));          // "My choices: Autopilot decides"
+    });
     gm.phase = null; gm.respond = null; gm.step = null;
     if (st.game !== gm) throw C.CANCELLED;
   }
@@ -269,7 +383,7 @@
       while (!finished(gm) && st.game === gm) {
         const g = cur(gm);
         if (g.dead) { step(gm); continue; }
-        if (g.pid === gm.human) { await startHuman(mode, g); break; }
+        if (g.pid === gm.human || g.pid === gm.remote) { await startHuman(mode, g); break; }
         if (n <= 0) break;
         await computerTurn(mode, g, pace);
         n--;
@@ -293,93 +407,98 @@
     sfx('turn');
     const ev = await act(mode, gs => D.turn.begin(gs[g.pid]));
     const st = V[mode];
-    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(140 * A.slow()); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
+    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * A.slow()); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
     gm.phase = 'main'; gm.step = 'main1';
     announce(mode);
   }
-  function humanDone(mode, ev, stepKey) {                     // after any action of yours: log it, check for the end of the game
-    const gm = V[mode].game, g = gm.games[gm.human];
+  function humanDone(mode, ev, stepKey, g) {                  // after any action of a person: log it, check for the end of the game
+    const gm = V[mode].game; g = g || gm.games[gm.human];
     tell(mode, g, stepKey || gm.step, ev || []);
     announce(mode);
-    if (gm.respond) gm.respond.abil = D.wouldUseAbilities(gm.games, g.pid);
+    if (gm.respond) gm.respond.abil = D.wouldUseAbilities(gm.games, gm.respond.seat);
     render(mode);
   }
-  // one action of yours at a time: while it resolves, or waits for a choice, other clicks do nothing
-  const mine = (mode, fn) => go(mode, (async () => {
+  // a refusal (not enough mana, the land already played) is shown only to the person who tried it
+  const nope = (mode, gm, g, text) => { if (g.pid === gm.human) { sfx('error'); info(mode, text); } };
+  const note = (mode, gm, g, text) => { if (g.pid === gm.human) info(mode, text); };
+  // one action at a time: while it resolves, or waits for a choice, other clicks do nothing. seat: whose action it is.
+  const mine = (mode, seat, fn) => go(mode, (async () => {
     const gm = V[mode].game; if (gm.acting) return;
     gm.acting = true;
-    let next; try { next = await fn(gm, gm.games[gm.human]); } finally { gm.acting = false; }
+    let next; try { next = await fn(gm, gm.games[seat]); } finally { gm.acting = false; }
     if (typeof next === 'function') next(); else render(mode);
   })());
+  // a question a person answers on their own device (the face of a two-faced card, a loyalty ability)
+  const askHere = (mode, gm, q) => answer(mode, gm, q, async () => { gm.choice = q; render(mode); try { return await C.ask(q); } finally { gm.choice = null; } }).then(p => optionPick(q, p));
   // a counterspell is not cast from your hand in your main phase (there is nothing to counter): you are asked when an opponent casts a spell
   const reply = i => !!i.card.a.counter && !i.card.a.spellFx.length;
   const castable = (g, i) => !reply(i) && (G.canPay(G.effectiveCost(g, i), G.allUnits(g)) || G.canCastBack(g, i));          // a two-faced card glows when either face can be paid for
-  const playCard = (mode, iid, asLand) => mine(mode, async (gm, g) => {
-    const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
+  const playCard = (mode, seat, iid, asLand) => mine(mode, seat, async (gm, g) => {
+    const resp = respOf(gm, g.pid); if (!mainOf(gm, g.pid) && !resp) return;
     const find = gs => gs[g.pid].hand.concat(gs[g.pid].command).find(i => i.iid === iid), inst = find(gm.games); if (!inst) return;
     const a = inst.card.a;
-    if (resp) { if (!D.instants(g).includes(inst)) return sfx('error'), info(mode, `${inst.card.name} cannot be cast now: only instants and cards with flash.`); }
+    if (resp) { if (!D.instants(g).includes(inst)) return nope(mode, gm, g, `${inst.card.name} cannot be cast now: only instants and cards with flash.`); }
     else if (a.isLand || asLand) {
-      if (!G.canPlayLand(g)) return sfx('error'), info(mode, 'You have already played your land for this turn.');
+      if (!a.isLand && !a.mdfcLand) return;
+      if (!G.canPlayLand(g)) return nope(mode, gm, g, 'You have already played your land for this turn.');
       const ev = await act(mode, gs => { const r = G.playLandCard(gs[g.pid], find(gs), !a.isLand); return [r].concat(r.ev || []); });
-      info(mode, ''); return humanDone(mode, ev);
+      note(mode, gm, g, ''); return humanDone(mode, ev, null, g);
     }
-    if (!castable(g, inst)) return sfx('error'), info(mode, `Not enough mana for ${inst.card.name}.`);
+    if (!castable(g, inst)) return nope(mode, gm, g, `Not enough mana for ${inst.card.name}.`);
     // a two-faced card (Esika // The Prismatic Bridge): the face is chosen as it is cast
     let face = 0;
     const fq = !resp && D.faceQuestion(g, inst);
     if (fq) {
       if (fq.only) face = fq.options[0].face;
-      else { gm.choice = fq; render(mode); let pick; try { pick = await C.ask(fq); } finally { gm.choice = null; } face = (pick === 'auto' || pick == null ? fq.options[fq.def[0]] : fq.options[pick]).face; }
+      else { const pick = await askHere(mode, gm, fq); face = (pick === 'auto' || pick === 'none' ? fq.options[fq.def[0]] : fq.options[pick]).face; }
     }
     const ev = await act(mode, gs => face === 1 ? G.castBackFace(gs[g.pid], find(gs)) : G.castCard(gs[g.pid], find(gs)));
-    if (!ev) return info(mode, `${inst.card.name} was not cast.`);
-    info(mode, ''); humanDone(mode, ev);
+    if (!ev) return note(mode, gm, g, `${inst.card.name} was not cast.`);
+    note(mode, gm, g, ''); humanDone(mode, ev, null, g);
   });
   // a planeswalker's loyalty abilities: the menu (decide.js loyaltyQuestion), then the chosen ability resolves (its own choices asked)
-  const openLoyalty = (mode, iid) => mine(mode, async (gm, g) => {
-    const active = gm.phase === 'respond' && gm.respond ? gm.respond.g : null;          // another player's turn: Teferi, Master of Time
-    if (gm.phase !== 'main' && !active) return;
+  const openLoyalty = (mode, seat, iid) => mine(mode, seat, async (gm, g) => {
+    const active = respOf(gm, g.pid) ? gm.respond.g : null;          // another player's turn: Teferi, Master of Time
+    if (!mainOf(gm, g.pid) && !active) return;
     const perm = g.battlefield.find(q => q.iid === iid), q = D.loyaltyQuestion(g, perm, active);
     if (!q) return;
-    gm.choice = q; render(mode);
-    let pick; try { pick = await C.ask(q); } finally { gm.choice = null; }
+    const pick = await askHere(mode, gm, q);
     const k = pick === 'auto' ? q.def[0] : pick;
     if (k == null || k === 'none' || !q.options[k] || q.options[k].disabled) return render(mode);
     const idx = q.options[k].i;
     const ev = await act(mode, gs => G.useLoyalty(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid), idx, active && gs[active.pid]));
-    if (!ev) return info(mode, `${perm.card.name} cannot use that ability now.`);
-    info(mode, ''); humanDone(mode, ev);
+    if (!ev) return note(mode, gm, g, `${perm.card.name} cannot use that ability now.`);
+    note(mode, gm, g, ''); humanDone(mode, ev, null, g);
   });
   // The Chain Veil: {4}, {T}: each of your planeswalkers may activate one more loyalty ability this turn
-  const useVeil = (mode, iid) => mine(mode, async (gm, g) => {
-    if (gm.phase !== 'main') return;
+  const useVeil = (mode, seat, iid) => mine(mode, seat, async (gm, g) => {
+    if (!mainOf(gm, g.pid)) return;
     const why = G.chainVeilState(g, g.battlefield.find(q => q.iid === iid));
-    if (why) return info(mode, `The Chain Veil: ${why}.`);
+    if (why) return note(mode, gm, g, `The Chain Veil: ${why}.`);
     const ev = await act(mode, gs => G.useChainVeil(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid)));
-    if (!ev) return info(mode, 'Not enough mana for The Chain Veil.');
-    info(mode, ''); say(mode, g, ev.map(x => x.text).filter(Boolean).join('; '), gm.step);
-    humanDone(mode, ev);
+    if (!ev) return note(mode, gm, g, 'Not enough mana for The Chain Veil.');
+    note(mode, gm, g, ''); say(mode, g, ev.map(x => x.text).filter(Boolean).join('; '), gm.step);
+    humanDone(mode, ev, null, g);
   });
   // landcycling or transmute from your hand: the search fan asks which card you find
-  const cycleCard = (mode, iid, kind) => mine(mode, async (gm, g) => {
-    const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !(resp && kind === 'cycle')) return;
-    const find = gs => gs[g.pid].hand.find(i => i.iid === iid);
+  const cycleCard = (mode, seat, iid, kind) => mine(mode, seat, async (gm, g) => {
+    const resp = respOf(gm, g.pid); if (!mainOf(gm, g.pid) && !(resp && kind === 'cycle')) return;
+    const find = gs => gs[g.pid].hand.find(i => i.iid === iid); if (!find(gm.games)) return;
     const ev = await act(mode, gs => (kind === 'cycle' ? G.landcycleCard : G.transmuteCard)(gs[g.pid], find(gs), []));
-    if (!ev) return info(mode, 'Not enough mana for that.');
-    info(mode, ''); say(mode, g, ev.filter(e => e.text && /is cycled|Transmute:/.test(e.text)).map(e => e.text).join('; '), gm.step);
-    humanDone(mode, ev);
+    if (!ev) return note(mode, gm, g, 'Not enough mana for that.');
+    note(mode, gm, g, ''); say(mode, g, ev.filter(e => e.text && /is cycled|Transmute:/.test(e.text)).map(e => e.text).join('; '), gm.step);
+    humanDone(mode, ev, null, g);
   });
-  const useAbilities = mode => mine(mode, async (gm, g) => {
-    const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
+  const useAbilities = (mode, seat) => mine(mode, seat, async (gm, g) => {
+    const resp = respOf(gm, g.pid); if (!mainOf(gm, g.pid) && !resp) return;
     const ev = await act(mode, gs => { const x = gs[g.pid], out = []; if (resp) return D.instantAbilities(x); x.skipLoyalty = true; try { for (let k = 0; k < 12; k++) { const e = G.useAbilities(x); if (!e.length) break; out.push(...e); } } finally { x.skipLoyalty = false; } return out; });          // loyalty abilities are yours to choose: click the planeswalker
     const names = ev.filter(e => e.type === 'activate' || e.type === 'pw' || e.type === 'note').map(e => e.text || (e.perm && e.perm.card.name)).filter(Boolean);
     say(mode, g, names.length ? 'Abilities: ' + names.slice(0, 8).join('; ') : 'No ability worth using right now.', gm.step);
-    humanDone(mode, ev.filter(e => e.type !== 'note'));
+    humanDone(mode, ev.filter(e => e.type !== 'note'), null, g);
   });
   // "Attack…": the beginning of combat comes first (Hakbal's Merfolk explore, vehicles are crewed), then you choose your attackers
-  const beginAttack = mode => mine(mode, async (gm, g) => {
-    if (gm.phase !== 'main' || gm.attacked || gm.picking) return;
+  const beginAttack = (mode, seat) => mine(mode, seat, async (gm, g) => {
+    if (!mainOf(gm, g.pid) || gm.attacked || gm.picking) return;
     gm.step = 'combat';
     const pv = await act(mode, gs => D.turn.declare(gs[g.pid]));
     if (pv && pv.ev && pv.ev.length) { say(mode, g, 'Beginning of combat.', 'combat'); tell(mode, g, 'combat', pv.ev); }
@@ -387,35 +506,47 @@
     gm.picking = true; gm.target = null;
     gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
   });
-  const attack = (mode, iids, targetPid) => mine(mode, async (gm, g) => {
-    if (gm.phase !== 'main' || gm.attacked) return;
+  // Combat. Against the autopilot it blocks inside the engine. Against a person, who attacks is settled first (your attackers, or the
+  // autopilot's when it plays your turn), then that person chooses the blocks, then combat is fought with both.
+  async function fight(mode, gm, g, target, iids, auto) {
+    if (gm.remote == null) return act(mode, gs => { const x = gs[g.pid]; G.podFocus(x, target == null ? undefined : gs[target]); return D.turn.combat(x, iids ? { attackers: iids } : undefined); }, auto);
+    G.podFocus(g, target == null ? undefined : gm.games[target]);
+    let attackers, pre = [];
+    if (iids) attackers = iids.map(id => g.battlefield.find(p => p.iid === id)).filter(p => p && G.canAttack(g, p));
+    else { const pv = await act(mode, gs => D.turn.declare(gs[g.pid]), auto); attackers = pv ? pv.attackers : []; pre = pv ? pv.ev : []; }
+    const def = g.opp, blocks = def && !finished(gm) ? await blocksOf(mode, gm, g, attackers, def) : {};
+    const ev = finished(gm) ? [] : await act(mode, gs => D.turn.combat(gs[g.pid], { attackers: attackers.map(p => p.iid), blocks }), auto);
+    return pre.concat(ev);
+  }
+  const attack = (mode, seat, iids, targetPid) => mine(mode, seat, async (gm, g) => {
+    if (!mainOf(gm, g.pid) || gm.attacked || !Array.isArray(iids) || !gm.games[targetPid]) return;
     gm.step = 'combat'; gm.picking = null;
-    const ev = await act(mode, gs => { const x = gs[g.pid]; G.podFocus(x, gs[targetPid]); return D.turn.combat(x, { attackers: iids }); });
+    const ev = await fight(mode, gm, g, targetPid, iids.filter(Number.isInteger));
     gm.attacked = true;
     if (!ev.some(e => e.type === 'declare')) say(mode, g, 'No attack.', 'combat');
     tell(mode, g, 'combat', ev);
     gm.step = 'main2'; gm.inMain2 = true;                    // the second main phase has begun (its triggers resolved): ending the turn goes on to the end step
     if (!finished(gm)) tell(mode, g, 'main2', await act(mode, gs => D.turn.main2Mine(gs[g.pid])), null, true);
-    humanDone(mode, [], 'main2');
+    humanDone(mode, [], 'main2', g);
   });
-  const endHumanTurn = (mode, auto) => mine(mode, async (gm, g) => {
-    if (gm.phase !== 'main') return;
+  const endHumanTurn = (mode, seat, auto) => mine(mode, seat, async (gm, g) => {
+    if (!mainOf(gm, g.pid)) return;
     const pid = g.pid;
     gm.phase = null; gm.picking = null;
     if (auto) {                                               // the autopilot plays the rest of the turn as it would play its own, and nobody is asked
       tell(mode, g, gm.step, await act(mode, gs => D.turn.main1(gs[pid]), true));
       if (!gm.attacked && !finished(gm)) {
-        gm.step = 'combat'; tell(mode, g, 'combat', await act(mode, gs => { G.podFocus(gs[pid]); return D.turn.combat(gs[pid]); }, true), null, true);
+        gm.step = 'combat'; tell(mode, g, 'combat', await fight(mode, gm, g, null, null, true), null, true);
         gm.attacked = true; gm.step = 'main2'; tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid]), true), null, true);
       }
     } else {
       // Every step in order, each shown on the strip: beginning of combat (its triggers resolve: Hakbal explores, even while summoning
       // sick), combat with no attackers, the second main phase, then the end step and cleanup below. Nothing goes back to an earlier step.
-      const beat = async () => { render(mode); await sleep(140 * A.slow()); };
+      const beat = async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * A.slow()); };
       if (!gm.attacked && !finished(gm)) {
         gm.step = 'combat'; await beat();
         const pv = await act(mode, gs => D.turn.declare(gs[pid]));
-        say(mode, g, 'Beginning of combat' + (pv && pv.ev && sum(g, pv.ev).length ? '.' : ': nothing triggers.'), 'combat'); if (pv) tell(mode, g, 'combat', pv.ev);
+        say(mode, g, 'Beginning of combat' + (pv && pv.ev && sum(g, pv.ev, bottomSeat(gm)).length ? '.' : ': nothing triggers.'), 'combat'); if (pv) tell(mode, g, 'combat', pv.ev);
         if (!finished(gm)) { const cev = await act(mode, gs => D.turn.combat(gs[pid], { attackers: [] })); say(mode, g, 'No attack.', 'combat'); tell(mode, g, 'combat', cev.filter(e => e.type !== 'declare')); }
         gm.attacked = true;
       }
@@ -426,10 +557,81 @@
     if (!finished(gm)) tell(mode, g, 'end', await act(mode, gs => D.turn.end(gs[pid]), auto), null, true);
     if (!finished(gm)) tell(mode, g, 'end', D.turn.out(g));
     if (announce(mode)) return;
-    if (g.extraTurns > 0 && !g.dead) { g.extraTurns--; say(mode, g, 'You take an extra turn.'); await startHuman(mode, g); return; }
-    gm.step = null; step(gm);
-    return () => advance(mode);
+    if (g.extraTurns > 0 && !g.dead) { g.extraTurns--; say(mode, g, named(gm, pid, 'You take an extra turn.', 'takes an extra turn.')); await startHuman(mode, g); return; }
+    gm.step = null;
+    if (gm.remote == null) { step(gm); return () => advance(mode); }
+    const other = pid === gm.human ? gm.remote : gm.human;          // the other person may answer at the end of this turn, then their turn begins
+    return () => go(mode, (async () => { if (!finished(gm)) await respondWindow(mode, g, other); if (V[mode].game !== gm || finished(gm)) return render(mode); step(gm); await advanceRun(mode); })());
   });
+
+  // ---------- the opening hand ----------
+  // Mulligan, keep (with the cards to put on the bottom) or let the autopilot keep. Each seat's own shuffles use that seat's own random
+  // generator, so two people choosing at the same time end on the same game whatever order their choices arrive in.
+  function mullDone(mode, gm, g, text) {
+    gm.mulling[g.pid] = false;
+    if (g.pid === gm.human) { gm.phase = null; gm.bottom.clear(); }
+    say(mode, g, text);
+    if (Object.values(gm.mulling).every(x => !x)) advance(mode); else render(mode);
+  }
+  const MULL = {
+    mull(mode, seat) {
+      const gm = V[mode].game, g = gm.games[seat];
+      if (!gm.mulling[seat] || !((g.mulligans || 0) < 6 && 7 - G.mullCost(g, true) >= 1)) return;
+      G.dealOpening(g, true);
+      if (seat === gm.human) { gm.bottom.clear(); sfx('shuffle'); sfx('deal', 0.35); }
+      say(mode, g, named(gm, seat, 'You take a mulligan.', 'takes a mulligan.')); render(mode);
+    },
+    keep(mode, seat, ids) {
+      const gm = V[mode].game, g = gm.games[seat]; if (!gm.mulling[seat] || !Array.isArray(ids)) return;
+      const bottom = [...new Set(ids)].map(id => g.hand.find(i => i.iid === id));
+      if (bottom.length !== G.mullCost(g) || bottom.some(i => !i)) return;
+      G.keepOpening(g, bottom);
+      mullDone(mode, gm, g, named(gm, seat, `You keep ${g.hand.length} cards`, `keeps ${g.hand.length} cards`) + (g.mulligans ? ' after ' + g.mulligans + ' mulligan' + (g.mulligans === 1 ? '' : 's') : '') + '.');
+    },
+    mullAuto(mode, seat) {
+      const gm = V[mode].game, g = gm.games[seat]; if (!gm.mulling[seat]) return;
+      g.library.push(...g.hand); g.hand = []; G.shuffle(g.library, g.rnd); G.mulligan(g);
+      mullDone(mode, gm, g, named(gm, seat, `The autopilot keeps ${g.hand.length} cards for you.`, `keeps ${g.hand.length} cards (the autopilot chose).`));
+    },
+  };
+
+  // ---------- what a person does, as a list of moves ----------
+  // Every click that changes the game is a move: a name and its arguments. Against the autopilot it is made at once. Against a person
+  // on another device it is sent to them, and each device makes the moves of both seats in turn, each only when that seat has priority
+  // (its main phase, its window at the end of the other's turn, its opening hand). A move the rules do not allow does nothing, on both.
+  const pass = (mode, seat, noStop) => { const gm = V[mode].game; if (!respOf(gm, seat)) return; if (noStop) { if (gm.remote == null) gm.noStop = true; else gm.noStops.add(seat); } gm.respond.done(); };
+  const ACTIONS = { play: playCard, loyalty: openLoyalty, veil: useVeil, cycle: cycleCard, abilities: useAbilities, beginAttack, attack, end: endHumanTurn, pass,
+    mull: MULL.mull, keep: MULL.keep, mullAuto: MULL.mullAuto };
+  const RESPOND = new Set(['play', 'loyalty', 'cycle', 'abilities', 'pass']);
+  function ready(gm, seat, name) {
+    if (gm.over || gm.acting || gm.choice) return false;
+    if (MULL[name]) return !!gm.mulling[seat];
+    if (gm.phase === 'respond') return respOf(gm, seat) && RESPOND.has(name);
+    return name !== 'pass' && mainOf(gm, seat) && !gm.busy;
+  }
+  function input(mode, name, ...args) {
+    const gm = V[mode].game; if (!gm || !ACTIONS[name]) return;
+    if (gm.remote == null) return ACTIONS[name](mode, gm.human, ...args);
+    if (gm.inputs[gm.human].length || !ready(gm, gm.human, name)) return;
+    gm.io.send({ t: 'act', seat: gm.human, name, args });
+    gm.inputs[gm.human].push({ name, args });
+    pump(mode);
+  }
+  // make the next move whose seat has priority. Before each move (opening hands aside, which may cross) both devices are at the same
+  // point of the game, so that is where they compare fingerprints.
+  function pump(mode) {
+    const gm = V[mode].game; if (!gm || gm.remote == null || gm.pumping || gm.halted) return;
+    for (const s of [gm.human, gm.remote]) {
+      const qu = gm.inputs[s]; if (!qu.length || !ready(gm, s, qu[0].name)) continue;
+      const it = qu.shift();
+      if (gm.fast && !gm.inputs[0].length && !gm.inputs[1].length) gm.fast = false;          // the saved game is replayed: back to normal speed
+      if (!MULL[it.name]) { gm.moves++; gm.io.fp(gm.moves, gm.games); }
+      gm.pumping = true;
+      let r; try { r = ACTIONS[it.name](mode, s, ...(it.args || [])); } finally { gm.pumping = false; }
+      Promise.resolve(r).then(() => setTimeout(() => pump(mode)));
+      return;
+    }
+  }
 
   // ---------- drawing the game: an Arena-style table ----------
   // Every permanent is a card picture. Identical lands and tokens sit in stacks; each player has a library, command zone, graveyard
@@ -451,8 +653,8 @@
   // (you have priority), and one of its abilities can be paid for (once a turn: the engine's loyaltyState)
   // At the end of another player's turn only Teferi, Master of Time can (once each turn). The Chain Veil glows when it can be activated.
   const loyal = (gm, g, p) => { if (gm.human !== g.pid || gm.over || gm.picking || gm.choice || gm.acting || g.dead) return false;
-    if (gm.phase === 'respond' && gm.respond) return !!p.card.a.masterTime && G.loyaltyState(g, p, gm.respond.g).list.some(it => it.ok);
-    return gm.phase === 'main' && (p.card.a.chainVeil ? !G.chainVeilState(g, p) : G.loyaltyState(g, p).list.some(it => it.ok)); };
+    if (myResp(gm)) return !!p.card.a.masterTime && G.loyaltyState(g, p, gm.respond.g).list.some(it => it.ok);
+    return myMain(gm) && (p.card.a.chainVeil ? !G.chainVeilState(g, p) : G.loyaltyState(g, p).list.some(it => it.ok)); };
   function permEl(st, gm, g, p) {
     const e = node(st, `b${g.pid}:${p.iid}:${p.mdfc ? 1 : 0}:${p.card.uid}`, p.card, p.mdfc ? 1 : 0);
     e.classList.add('vs-pc'); e.dataset.iid = p.iid;
@@ -467,16 +669,17 @@
     }
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
     if ((p.card.a.isPlaneswalker || p.card.a.chainVeil) && loyal(gm, g, p)) { e.classList.add('vs-loyal'); e.title = p.card.a.chainVeil ? 'The Chain Veil: click to pay {4} and tap it; each planeswalker may activate one more loyalty ability this turn' : 'Loyalty abilities: click to choose one'; }          // your main phase, nothing else waiting
+    { const ch = G.chosenFor(g, p.card); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic: its type, on the card
     if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
     return e;
   }
   // The card exiled with a permanent by imprint (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) is drawn tucked behind that
   // permanent, labelled, and opens like any card. app.js knows which card it is (imprintOf) and reads the engine's notes (noteImprints).
   const { imprintOf, noteImprints } = A;
-  const sum = (g, ev) => { noteImprints(g, ev); return D.summary(g, ev, 0); };
+  const sum = (g, ev, viewer) => { noteImprints(g, ev); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
   // identical lands and tokens in the same state share a stack (up to three pictures and a ×N count)
   function stacks(st, gm, g, perms) {
-    const picking = !!gm.picking && gm.human === g.pid, groups = new Map();
+    const picking = !!gm.picking && gm.human === g.pid && myMain(gm), groups = new Map();
     perms.forEach(p => {
       const cre = G.isCreaturePerm(p), im = imprintOf(p);
       const k = (p.asLand || p.token) && !im ? [p.card.uid, p.card.name, p.tapped ? 1 : 0, p.mdfc ? 1 : 0, cre ? pt(g, p) + (p.sick ? 's' : '') + (p.counters || 0) : '',
@@ -519,8 +722,8 @@
   }
   // the four piles of a player: library, command zone, graveyard, exile
   function pilesEl(st, gm, g, mine) {
-    const resp = mine && gm.human === g.pid && gm.phase === 'respond' && !gm.over && !gm.choice;          // the end of another player's turn: instants and flash only
-    const box = h('div', 'vs-piles'), mayPlay = resp || (mine && gm.human === g.pid && gm.phase === 'main' && !gm.over && !gm.picking && !gm.choice);
+    const resp = mine && gm.human === g.pid && myResp(gm) && !gm.over && !gm.choice;          // the end of another player's turn: instants and flash only
+    const box = h('div', 'vs-piles'), mayPlay = resp || (mine && gm.human === g.pid && myMain(gm) && !gm.over && !gm.picking && !gm.choice);
     const pile = (cls, wide, short, n, inner) => {
       const p = h('div', 'vs-pile ' + cls, `<span class="vs-plbl"><span class="lw">${wide}</span><span class="ls">${short}</span>${n != null ? ` <b>${n}</b>` : ''}</span>`);
       p.dataset.pid = g.pid; p.appendChild(inner || h('div', 'vs-empty')); box.appendChild(p);
@@ -542,22 +745,24 @@
   // ---------- playmats and sleeves: a random set for every player (looks.js) ----------
   // Your own seat shows the playmat and sleeves you picked with 🎨, if you picked any; otherwise you are dealt a random set like everyone else.
   const myLook = () => { const L = window.__isfLooks, l = L && L.get(); return l && (l.mat !== 'frozen' || l.sleeve !== 'none') ? l : null; };
-  function dealLooks(n) {
+  function dealLooks(n, me) {
     const L = window.__isfLooks; if (!L) return [];
     const mine = myLook(), avoid = mine ? L.SETS.filter(s => s.mat === mine.mat || s.sleeve === mine.sleeve).map(s => s.id) : [];
     const deal = L.dealSets(n, avoid);
-    return mine ? [deal[n - 1]].concat(deal.slice(0, n - 1)) : deal;      // with your own pick, the opponents get first choice of the rest
+    const out = mine ? [deal[n - 1]].concat(deal.slice(0, n - 1)) : deal;      // with your own pick, the opponents get first choice of the rest
+    if (me) { const t = out[0]; out[0] = out[me]; out[me] = t; }          // your seat is not the first
+    return out;
   }
   // you picked a set an opponent was dealt: that opponent takes the set you were dealt instead, so no two players match
   function settleLooks(gm) {
-    const mine = myLook(); if (!mine || !gm.looks || !gm.looks.length) return;
-    let i = gm.looks.findIndex((x, k) => k > 0 && x && x.mat === mine.mat);
-    if (i < 0) i = gm.looks.findIndex((x, k) => k > 0 && x && x.sleeve === mine.sleeve);
-    if (i > 0) { const t = gm.looks[0]; gm.looks[0] = gm.looks[i]; gm.looks[i] = t; }
+    const mine = myLook(), me = bottomSeat(gm); if (!mine || !gm.looks || !gm.looks.length) return;
+    let i = gm.looks.findIndex((x, k) => k !== me && x && x.mat === mine.mat);
+    if (i < 0) i = gm.looks.findIndex((x, k) => k !== me && x && x.sleeve === mine.sleeve);
+    if (i >= 0) { const t = gm.looks[me]; gm.looks[me] = gm.looks[i]; gm.looks[i] = t; }
   }
   function dressSeat(st, gm, seat, pid) {
     const L = window.__isfLooks; if (!L || !gm.looks) return;
-    const look = (pid === 0 && myLook()) || gm.looks[pid]; if (!look) return;
+    const look = (pid === bottomSeat(gm) && myLook()) || gm.looks[pid]; if (!look) return;
     const key = look.mat + '|' + look.sleeve;
     if (st.lookKey[pid] !== key) {                            // only when it changes: the picture is set once and never reloads
       const s = L.styleOf(look);
@@ -583,12 +788,25 @@
     return h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
       `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
   }
+  // what the game is waiting for, when it is not waiting for you
+  function waitText(gm) {
+    if (gm.remote == null) return 'Waiting for the other players…';
+    const them = gm.match.names[gm.remote];
+    if (gm.io && !gm.io.connected()) return `Waiting for ${them}'s device to reconnect…`;
+    if (gm.waiting === gm.remote) return `${them} is deciding…`;
+    if (gm.phase === 'mull') return 'Your opening hand';
+    if (gm.mulling[gm.remote]) return `Waiting for ${them} to keep an opening hand…`;
+    if (gm.phase === 'block') return `${them} is attacking you`;
+    if (gm.phase === 'respond' && gm.respond) return gm.respond.seat === gm.human ? `End of ${them}'s turn` : `${them} may answer at the end of your turn…`;
+    if (cur(gm).pid === gm.human) return 'Your turn';
+    return `${them}'s turn`;
+  }
   // what you can do right now: mulligan, block, pick attackers, or the buttons of your main phase
   function ctlHtml(mode, gm) {
-    const g = gm.games[gm.human], mine = gm.phase === 'main' && !gm.over;
+    const g = gm.games[gm.human], mine = myMain(gm) && !gm.over;
     if (g.dead) return '<div class="hint">You are out of the game. The other players finish it.</div>';
     if (gm.choice) return `<div class="vs-ask"><b>${esc(gm.choice.title)}</b> <span class="hint">Your choice is open in the sheet over the table. The table shows the game at this moment.</span></div>`;
-    if (gm.phase === 'respond' && gm.respond) {
+    if (myResp(gm)) {
       const who = esc(gm.match.names[gm.respond.g.pid]), n = D.instants(g).length, tw = D.otherTurnWalkers(g, gm.respond.g);
       return `<div class="vs-ask"><b>End of ${who}'s turn</b> <span class="hint">${n ? `You may cast the glowing card${n === 1 ? '' : 's'} (instants and cards with flash) with your ${G.allUnits(g).length} untapped mana.` : 'No instant or flash card you can pay for.'}${tw.length ? ` ${esc(tw[0].card.name)} glows: click it for a loyalty ability (once each other player's turn).` : ''} Counterspells are asked when a spell is cast.${gm.respond.abil ? '' : ' No ability to use right now.'}</span></div>
         <div class="row wrap">${gm.respond.abil ? `<button class="vs-abil" title="The autopilot's ability pass, without loyalty abilities and equipping (those are sorcery speed)"><span class="wide">Use </span>abilities</button>` : ''}<button class="primary vs-pass">Pass</button><button class="ghost vs-nostop" title="Do not stop at the end of the other players' turns again in this game">Pass<span class="wide">, and do not stop here again</span></button></div>`;
@@ -611,7 +829,7 @@
         <div class="vs-blocks">${mineB.map(b => { const c0 = pick(b); return `<label class="vs-blockrow"><span><b>${esc(b.card.name)}</b> ${pt(g, b)}${esc(kws(g, b))}</span><select class="vs-blk" data-iid="${b.iid}"><option value="">Does not block</option>${as.filter(a => G.canBlock(atk, a, g, b)).map(a => `<option value="${a.iid}"${a.iid === c0 ? ' selected' : ''}>blocks ${esc(label(a))}</option>`).join('')}</select></label>`; }).join('')}</div>
         <div class="row wrap"><button class="primary vs-block-go">Confirm blocks</button><button class="vs-block-none">No blocks</button></div>`;
     }
-    if (gm.picking) {
+    if (gm.picking && mine) {
       const can = g.battlefield.filter(p => G.canAttack(g, p));
       const opps = G.podAlive(g), def = gm.target != null && opps.some(o => o.pid === gm.target) ? gm.target : (g.opp && !g.opp.dead ? g.opp.pid : (opps[0] && opps[0].pid));
       return `<div class="vs-ask"><b>Choose attackers</b> <span class="hint">${can.length ? `Beginning of combat is over. Click your creatures to send them or hold them back: <b>${[...gm.pick].filter(id => can.some(p => p.iid === id)).length}</b> of ${can.length} attacking. It starts on what the autopilot would send.` : 'No creature can attack.'} Blocks are chosen by the defending player.</span></div>
@@ -619,14 +837,14 @@
           <button class="primary vs-attack-go">Attack</button><button class="ghost vs-attack-all">All</button><button class="ghost vs-attack-none">None</button><button class="vs-noattack" title="Declare no attackers: combat ends and you go to your second main phase">No attack</button></div>`;
     }
     const units = G.allUnits(g).length;
-    return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : 'Waiting for the other players…')}</span></div>
+    return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
       ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
   function handEl(st, gm, g) {
     const box = h('div', 'vs-hand'), human = gm.human === g.pid, mull = human && gm.phase === 'mull';
-    const mine = human && gm.phase === 'main' && !gm.over && !gm.picking && !gm.choice, landOk = mine && G.canPlayLand(g), need = mull ? G.mullCost(g) : 0;
-    const quick = human && gm.phase === 'respond' && !gm.over && !gm.choice ? new Set(D.instants(g)) : null;          // the end of another player's turn
+    const mine = human && myMain(gm) && !gm.over && !gm.picking && !gm.choice, landOk = mine && G.canPlayLand(g), need = mull ? G.mullCost(g) : 0;
+    const quick = human && myResp(gm) && !gm.over && !gm.choice ? new Set(D.instants(g)) : null;          // the end of another player's turn
     g.hand.forEach(i => {
       const a = i.card.a, e = node(st, `h${g.pid}:${i.iid}`, i.card), slot = h('div', 'vs-slot');
       e.classList.add('vs-card'); e.dataset.iid = i.iid;
@@ -666,12 +884,12 @@
     if (st.table !== gm) {                                    // a new game: lay the table once
       st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.bar = null;
       st.seats = gm.games.map(() => h('div', 'vs-seat'));
-      const opps = h('div', 'vs-opps n' + (gm.games.length - 1));
-      opps.append(...st.seats.slice(1));
+      const opps = h('div', 'vs-opps n' + (gm.games.length - 1)), me = bottomSeat(gm);
+      opps.append(...st.seats.filter((x, i) => i !== me));
       st.mid = h('div', 'vs-mid');
-      q('.vs-arena').replaceChildren(opps, st.mid, st.seats[0]);
+      q('.vs-arena').replaceChildren(opps, st.mid, st.seats[me]);
     }
-    (gm.preview || gm.games).forEach(g => fillSeat(st, mode, gm, g, g.pid === 0));          // while you are asked something: the game as it stands at that moment
+    (gm.preview || gm.games).forEach(g => fillSeat(st, mode, gm, g, g.pid === bottomSeat(gm)));          // while you are asked something: the game as it stands at that moment
     st.mid.className = 'vs-mid' + (st.last && st.last.pid != null ? ' ' + SEAT[st.last.pid] : '');
     st.mid.innerHTML = st.last ? (st.last.who ? `<b>${esc(st.last.who)}</b> ` : '') + esc(st.last.text) : '';
     for (const k of [...st.nodes.keys()]) if (!st.used.has(k)) st.nodes.delete(k);
@@ -680,12 +898,14 @@
     // the bar is rewritten only when it changes (the step of the turn is lit in place), so its buttons stay put while a game plays itself
     const bar = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + C.stepsHtml(D) + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
-      : `<span class="hint">${gm.choice ? 'Your choice' : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
+      : `<span class="hint">${gm.choice ? 'Your choice' : gm.remote != null && !gm.over ? esc(waitText(gm)) : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
+      (gm.io ? `<span class="vs-conn ${gm.io.connected() ? 'on' : 'off'}" title="${gm.io.connected() ? 'Connected to the other device' : 'Not connected: the game waits until the other device is back'}">${gm.io.connected() ? '● Connected' : '○ Not connected'}</span>` : '') +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
         `<button class="ghost open-sound" title="Music and sound effects"><span class="sound-ic">${window.__isfAudio && !(window.__isfAudio.get().sfx || window.__isfAudio.get().music) ? '🔇' : '🔊'}</span><span class="wide"> Sound</span></button>` +
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
+    if (gm.remote != null) setTimeout(() => pump(mode));          // a move of the other player may be waiting for this moment
   }
   // In the card viewer, a card of yours shows the choices the table gives it: cast or play it, play it as a land, cycle it, the mulligan
   // bottom, sending a creature to attack. They are the table's own buttons and clicks, so the rules are the same.
@@ -728,25 +948,30 @@
       if (hit('vs-next')) return advance(mode, 1);
       if (hit('vs-nextround')) return advance(mode, gm.games.filter(g => !g.dead).length);
       if (hit('vs-toend')) return advance(mode, 9999);
-      if (gm.human == null || gm.over || gm.acting || gm.choice) return;
-      const g = gm.games[gm.human];
-      if (gm.phase === 'respond' && gm.respond) {             // the end of another player's turn
-        if (hit('vs-pass')) return gm.respond.done();
-        if (hit('vs-nostop')) { gm.noStop = true; return gm.respond.done(); }
-        if (hit('vs-abil')) return useAbilities(mode);
-        if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
-        const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
-        if (lw) { e.stopPropagation(); return openLoyalty(mode, +lw.dataset.iid); }
-        const c = t.closest('.vs-card.can');
-        if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
+      if (gm.phase === 'block' && gm.block && !gm.over) {      // an answer, not a move: asked in the middle of the attacker's move
+        if (hit('vs-block-none')) return confirmBlocks(mode, {});
+        if (hit('vs-block-go')) { const map = {}; root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) (map[sel.value] = map[sel.value] || []).push(+sel.dataset.iid); }); return confirmBlocks(mode, map); }
         return;
       }
-      if (gm.picking && gm.phase === 'main') {
+      if (gm.human == null || gm.over || gm.acting || gm.choice) return;
+      const g = gm.games[gm.human];
+      if (myResp(gm)) {                                       // the end of another player's turn
+        if (hit('vs-pass')) return input(mode, 'pass', false);
+        if (hit('vs-nostop')) return input(mode, 'pass', true);
+        if (hit('vs-abil')) return input(mode, 'abilities');
+        if (hit('vs-cycle')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-cycle').dataset.iid, 'cycle'); }
+        const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
+        if (lw) { e.stopPropagation(); return input(mode, 'loyalty', +lw.dataset.iid); }
+        const c = t.closest('.vs-card.can');
+        if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }
+        return;
+      }
+      if (gm.picking && myMain(gm)) {
         const can = () => g.battlefield.filter(p => G.canAttack(g, p)).map(p => p.iid);
         if (hit('vs-attack-all')) { gm.pick = new Set(can()); return render(mode); }
         if (hit('vs-attack-none')) { gm.pick = new Set(); return render(mode); }
-        if (hit('vs-noattack')) return attack(mode, [], +root.querySelector('.vs-target').value);          // the beginning of combat has happened: no way back to the first main phase
-        if (hit('vs-attack-go')) { const ok = new Set(can()); return attack(mode, [...gm.pick].filter(id => ok.has(id)), +root.querySelector('.vs-target').value); }
+        if (hit('vs-noattack')) return input(mode, 'attack', [], +root.querySelector('.vs-target').value);          // the beginning of combat has happened: no way back to the first main phase
+        if (hit('vs-attack-go')) { const ok = new Set(can()); return input(mode, 'attack', [...gm.pick].filter(id => ok.has(id)), +root.querySelector('.vs-target').value); }
         const stk = t.closest('.vs-seat.me .vs-stack.pickable');
         if (stk) {                                            // click a creature (or a stack of tokens) to send it or hold it back
           e.stopPropagation();
@@ -759,36 +984,30 @@
       }
       if (gm.phase === 'mull') {
         const need = G.mullCost(g);
-        const keep = bottom => { G.keepOpening(g, bottom); gm.phase = null; gm.bottom.clear(); say(mode, g, `You keep ${g.hand.length} cards${g.mulligans ? ' after ' + g.mulligans + ' mulligan' + (g.mulligans === 1 ? '' : 's') : ''}.`); advance(mode); };
-        if (hit('vs-keep')) { if (gm.bottom.size === need) keep(g.hand.filter(i => gm.bottom.has(i.iid))); return; }
-        if (hit('vs-mull')) { G.dealOpening(g, true); gm.bottom.clear(); sfx('shuffle'); sfx('deal', 0.35); say(mode, g, 'You take a mulligan.'); return render(mode); }
-        if (hit('vs-mull-auto')) { g.library.push(...g.hand); g.hand = []; G.shuffle(g.library, g.rnd); G.mulligan(g); gm.phase = null; gm.bottom.clear(); say(mode, g, `The autopilot keeps ${g.hand.length} cards for you.`); return advance(mode); }
+        if (hit('vs-keep')) { if (gm.bottom.size === need) input(mode, 'keep', g.hand.filter(i => gm.bottom.has(i.iid)).map(i => i.iid)); return; }
+        if (hit('vs-mull')) return input(mode, 'mull');
+        if (hit('vs-mull-auto')) return input(mode, 'mullAuto');
         const c = t.closest('.vs-hand .vs-card');
         if (c && need) { e.stopPropagation(); const id = +c.dataset.iid; if (gm.bottom.has(id)) gm.bottom.delete(id); else if (gm.bottom.size < need) gm.bottom.add(id); sfx('tap'); return render(mode); }
         return;
       }
-      if (gm.phase === 'block') {
-        if (hit('vs-block-none')) return confirmBlocks(mode, {});
-        if (hit('vs-block-go')) { const map = {}; root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) (map[sel.value] = map[sel.value] || []).push(+sel.dataset.iid); }); return confirmBlocks(mode, map); }
-        return;
-      }
-      if (gm.phase !== 'main') return;
-      if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
-      if (hit('vs-transmute')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-transmute').dataset.iid, 'transmute'); }
-      if (hit('vs-asland')) { e.stopPropagation(); return playCard(mode, +hit('vs-asland').dataset.iid, true); }
+      if (!myMain(gm)) return;
+      if (hit('vs-cycle')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-cycle').dataset.iid, 'cycle'); }
+      if (hit('vs-transmute')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-transmute').dataset.iid, 'transmute'); }
+      if (hit('vs-asland')) { e.stopPropagation(); return input(mode, 'play', +hit('vs-asland').dataset.iid, true); }
       const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
-      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? useVeil(mode, p.iid) : openLoyalty(mode, +lw.dataset.iid); }
+      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? input(mode, 'veil', p.iid) : input(mode, 'loyalty', +lw.dataset.iid); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
-      if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
-      if (hit('vs-abil')) return useAbilities(mode);
+      if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }
+      if (hit('vs-abil')) return input(mode, 'abilities');
       if (hit('vs-attack') && !gm.attacked) {
-        if (!D.quietBeginCombat(gm.games, g.pid)) return beginAttack(mode);          // something happens at the beginning of combat: it resolves first
+        if (!D.quietBeginCombat(gm.games, g.pid)) return input(mode, 'beginAttack');          // something happens at the beginning of combat: it resolves first
         gm.picking = true; gm.target = null;
         gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
         return render(mode);
       }
-      if (hit('vs-end')) return endHumanTurn(mode, false);
-      if (hit('vs-autoturn')) return endHumanTurn(mode, true);
+      if (hit('vs-end')) return input(mode, 'end', false);
+      if (hit('vs-autoturn')) return input(mode, 'end', true);
     });
   }
 
@@ -827,6 +1046,6 @@
 
   for (const mode of Object.keys(MODES)) { build(mode); wire(mode); }
   // you changed your playmat or sleeves with 🎨: redraw your seat on any table in play
-  window.addEventListener('isf-look', () => { for (const mode of Object.keys(MODES)) { const st = V[mode]; if (st.game && st.table) { settleLooks(st.game); st.lookKey[0] = null; render(mode); } } });
+  window.addEventListener('isf-look', () => { for (const mode of Object.keys(MODES)) { const st = V[mode]; if (st.game && st.table) { settleLooks(st.game); st.lookKey[bottomSeat(st.game)] = null; render(mode); } } });
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { if (MODES[b.dataset.tab]) fill(b.dataset.tab); }));
 })();

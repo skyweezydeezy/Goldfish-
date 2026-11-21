@@ -62,7 +62,15 @@ const DECK = ['1 Isochron Scepter', '1 Chrome Mox', '4 Lightning Bolt', '4 Shock
   await p.click('#tab-duel .vs-new');
   await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 60000 });
   await p.evaluate(() => document.querySelector('#tab-duel .vs-keep').click());
-  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g.phase === 'main' || g.phase === 'block' || g.over; }, null, { timeout: 60000 });
+  // the opponent may go first: each spell it casts asks "does it resolve?" (the stack), and its end step may stop for you. Let the
+  // autopilot answer for you until it is your main phase.
+  for (const t0 = Date.now(); Date.now() - t0 < 60000;) {
+    const st = await p.evaluate(() => { const g = window.__isfVersus.duel.game; return { done: g.phase === 'main' || g.phase === 'block' || !!g.over, sheet: !!document.querySelector('.ch-sheet .ch-auto'), respond: g.phase === 'respond' }; });
+    if (st.done) break;
+    if (st.sheet) await p.click('.ch-sheet .ch-auto'); else if (st.respond) await p.evaluate(() => { const b = document.querySelector('#tab-duel .vs-pass'); if (b) b.click(); });
+    await p.waitForTimeout(150);
+  }
+  await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g.phase === 'main' || g.phase === 'block' || g.over; }, null, { timeout: 5000 });
   const vs = await p.evaluate(() => {
     const G = window.Goldfish, gm = window.__isfVersus.duel.game, g = gm.games[0];
     const take = n => { let i = g.hand.find(x => x.card.name === n); if (!i) { const k = g.library.findIndex(x => x.card.name === n); i = g.library.splice(k, 1)[0]; g.hand.push(i); } return i; };

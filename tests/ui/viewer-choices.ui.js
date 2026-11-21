@@ -70,6 +70,15 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.selectOption('#tab-duel .vs-you', 'human'); await p.click('#tab-duel .vs-new');
   await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 90000 });
   await p.evaluate(() => document.querySelector('#tab-duel .vs-keep').click());
+  {          // the opponent may go first: answer its "does it resolve?" questions (the autopilot's pick) and pass its end step
+    const t0 = Date.now();
+    while (Date.now() - t0 < 90000) {
+      const st = await p.evaluate(() => { const g = window.__isfVersus.duel.game; return { done: g.phase === 'main' || !!g.over, sheet: !!document.querySelector('.ch-sheet .ch-auto'), respond: g.phase === 'respond' }; });
+      if (st.done) break;
+      if (st.sheet) await p.click('.ch-sheet .ch-auto'); else if (st.respond) await p.evaluate(() => { const b = document.querySelector('#tab-duel .vs-pass'); if (b) b.click(); });
+      await p.waitForTimeout(150);
+    }
+  }
   await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g.phase === 'main' || !!g.over; }, null, { timeout: 90000 });
   await p.evaluate(() => { const gm = window.__isfVersus.duel.game, g = gm.games[gm.human]; if (!g.hand.some(i => i.card.a.isLand)) { const k = g.library.findIndex(i => i.card.a.isLand); g.hand.push(g.library.splice(k, 1)[0]); } window.__isfVersus.redraw('duel'); });
   await p.waitForTimeout(500);

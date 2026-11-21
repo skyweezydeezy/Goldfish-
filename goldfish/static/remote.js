@@ -23,8 +23,25 @@
   // Shown to each player before their first connection. Nothing is sent until that player ticks "I understand and accept"; each side
   // sends the version it accepted in its hello, and a side whose version differs is refused, so both players always agreed to the same
   // text. Any change to what is shared must change this list and bump the version.
-  // Version 2 was accepted by the user (the project owner) on 2026-11-21.
-  const DISCLOSURE_VERSION = 2;
+  // Version 2 was accepted by the user (the project owner) on 2026-11-21, and version 3 (the relay) on 2026-11-21. Version 4 would add
+  // the relay service.
+  // The relay (TURN), approved by the user: for when the two devices find no direct path (Safari hides a device's local address from
+  // web pages, and many home routers will not pass traffic between two devices on the same network by their public address). The
+  // traffic through it is encrypted end to end. Two ways, the user chose the first:
+  //   servers: the ICE servers of one Metered credential, as the Metered dashboard shows them. Its login is public in this file and
+  //            does not expire; changing it means changing this file.
+  //   service: the web address of a service that holds the Metered secret key and hands out credentials that expire
+  //            (server/php/turn/ice.php, or /ice of server/turn-service.js). Not used.
+  const METERED = { username: '3ee4b0a0a24eab2f0cbece7b', credential: 'tzpAlPTE8yY+RLLX' };          // the user's Metered credential (public by design)
+  const RELAY = { name: 'Metered', service: null, servers: [
+    { urls: 'stun:stun.relay.metered.ca:80' },
+    Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, METERED),
+    Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, METERED),
+    Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, METERED),
+    Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, METERED),
+  ] };
+  const relayOn = !!(RELAY.servers || RELAY.service);
+  const DISCLOSURE_VERSION = RELAY.service ? 4 : relayOn ? 3 : 2;
   const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';
   const DISCLOSURE = [
     'Your whole deck list, your deck\'s autopilot settings and its name are sent to the other player\'s device.',
@@ -35,7 +52,8 @@
     'The other device\'s app could be changed by its owner. Moves it sends are checked before they are played, but what it can see cannot be hidden.',
     'The game\'s moves and both deck lists are saved in this browser so a game can be rejoined. They stay until you delete the game.',
     'Your device downloads the other player\'s card pictures from Scryfall, as it does for your own deck.',
-  ];
+  ].concat(relayOn ? [`When the two devices cannot reach each other directly, the game goes through ${RELAY.name}'s relay server. It sees both devices' network addresses and how much data passes, but the moves are encrypted, so it cannot read them.`] : [],
+    RELAY.service ? ['To use the relay, your device first asks the ICEYfish server for its address and login, so that server sees your network address too. It keeps no record of your games.'] : []);
   const accepted = () => +(localStorage.getItem(ACK_KEY) || 0) === DISCLOSURE_VERSION;
 
   // ---------- small helpers ----------
@@ -115,7 +133,7 @@
 
   // ---------- the connection ----------
   // S.link: { pc, ch, inviter }. S.game: the game in progress, whether or not the link is up.
-  const S = { link: null, game: null, ice: [{ urls: 'stun:stun.l.google.com:19302' }], lastSeen: 0, parts: new Map(), pending: null };
+  const S = { link: null, game: null, ice: null, relay: null, lastSeen: 0, parts: new Map(), pending: null, failAfter: 25000 };
   const PART = 15000;
   function open() { return !!(S.link && S.link.ch && S.link.ch.readyState === 'open'); }
   function raw(m) {
@@ -135,19 +153,61 @@
   }
   function wireChannel(ch) {
     S.link.ch = ch;
-    ch.onopen = () => { S.lastSeen = Date.now(); S.pending = null; status(''); hello(); show(); redraw(); };          // the codes are used up
+    ch.onopen = () => { S.lastSeen = Date.now(); S.pending = null; clearTimeout(S.link.timer); status(''); hello(); show(); redraw(); };          // the codes are used up
     ch.onclose = () => { redraw(); show(); };
     ch.onmessage = e => { S.lastSeen = Date.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } receive(m); };
   }
-  function newPeer(inviter) {
+  // What kinds of address a code carries: a local one (hidden behind a .local name by Safari), a public one (from the STUN server), a relay.
+  function kinds(sdp) {
+    const k = { local: 0, hidden: 0, public: 0, relay: 0 };
+    for (const m of String(sdp || '').matchAll(/a=candidate:\S+ \d+ \w+ \d+ (\S+) \d+ typ (\w+)/g)) {
+      if (m[2] === 'host') k[/\.local$/.test(m[1]) ? 'hidden' : 'local']++; else if (m[2] === 'srflx' || m[2] === 'prflx') k.public++; else if (m[2] === 'relay') k.relay++;
+    }
+    return k;
+  }
+  const said = k => [k.local && 'a local address', k.hidden && 'a hidden local address', k.public && 'a public address', k.relay && 'a relay'].filter(Boolean).join(', ') || 'no address at all';
+  // No connection after the codes: say so, and why, instead of "Connecting…" for ever
+  function watch() {
+    const L = S.link; if (!L) return;
+    clearTimeout(L.timer);
+    L.timer = setTimeout(() => { if (S.link === L && !open()) failed(); }, S.failAfter);
+  }
+  function failed() {
+    const L = S.link; if (!L || L.failedSaid) return;
+    L.failedSaid = true;
+    const mine = kinds(L.pc.localDescription && L.pc.localDescription.sdp), theirs = kinds(L.pc.remoteDescription && L.pc.remoteDescription.sdp);
+    const why = mine.relay || theirs.relay ? 'Even the relay server could not be reached: one of the networks may block it.'
+      : relayOn ? 'Neither device could reach the relay server, so there was no way through.'
+      : 'Safari hides each device\'s local address, and many home routers will not pass traffic between two devices on the same network by their public address. A relay server fixes this; it is not set up yet.';
+    status(`Could not connect. ${why} (This device offered ${said(mine)}; the other offered ${said(theirs)}.)`);
+  }
+  // The servers to connect through: Google's STUN server, and the relay's (written here, or from the relay service, kept until shortly
+  // before they expire). Without a relay the direct path is still tried.
+  const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
+  async function iceServers() {
+    if (S.ice) return S.ice;
+    if (RELAY.servers) return STUN.concat(RELAY.servers);
+    if (!RELAY.service) return STUN;
+    if (S.relay && S.relay.until > Date.now()) return STUN.concat(S.relay.servers);
+    try {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 6000);
+      const r = await fetch(RELAY.service, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(t));
+      const d = r.ok ? await r.json() : null;
+      const servers = d && Array.isArray(d.iceServers) ? d.iceServers.filter(x => x && (typeof x.urls === 'string' || Array.isArray(x.urls))) : [];
+      if (!servers.length) throw new Error('no relay servers');
+      S.relay = { servers, until: Math.min(Date.parse(d.expires) || 0, Date.now() + 6 * 3600 * 1000) - 30 * 60 * 1000 };
+      return STUN.concat(servers);
+    } catch (e) { status('The relay could not be reached, so only a direct connection is tried.'); return STUN; }
+  }
+  async function newPeer(inviter) {
     if (S.link && S.link.pc) try { S.link.pc.close(); } catch (e) {}
-    const pc = new RTCPeerConnection({ iceServers: S.ice });
+    const pc = new RTCPeerConnection({ iceServers: await iceServers() });
     S.link = { pc, ch: null, inviter };
-    pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) { redraw(); show(); } };
+    pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) { redraw(); show(); } if (pc.connectionState === 'failed' && !open() && S.link && S.link.pc === pc) failed(); };
     return pc;
   }
   async function invite() {
-    const pc = newPeer(true);
+    const pc = await newPeer(true);
     wireChannel(pc.createDataChannel('iceyfish', { ordered: true }));
     await pc.setLocalDescription(await pc.createOffer());
     await gathered(pc);
@@ -157,14 +217,16 @@
     const o = await unpack(code); if (o.kind !== 'answer') throw new Error('Paste the reply code your friend got after pasting your invite.');
     if (!S.link || !S.link.inviter) throw new Error('Make an invite first.');
     await S.link.pc.setRemoteDescription({ type: 'answer', sdp: o.sdp });
+    watch();
   }
   async function join(code) {
     const o = await unpack(code); if (o.kind !== 'offer') throw new Error('That is a reply code. Paste the invite your friend sent you.');
-    const pc = newPeer(false);
+    const pc = await newPeer(false);
     pc.ondatachannel = e => wireChannel(e.channel);
     await pc.setRemoteDescription({ type: 'offer', sdp: o.sdp });
     await pc.setLocalDescription(await pc.createAnswer());
     await gathered(pc);
+    watch();
     return pack({ proto: PROTO, kind: 'answer', sdp: pc.localDescription.sdp });
   }
   setInterval(() => {
@@ -361,7 +423,7 @@
       status('Making your reply…');
       return busy(hit('rm-reply'), join(box.querySelector('.rm-theirs').value).then(code => { status(''); show({ kind: 'reply', code }); }));
     }
-    if (hit('rm-connect')) { status('Connecting…'); return busy(hit('rm-connect'), acceptReply(box.querySelector('.rm-theirs').value).then(() => status('Connecting… (if nothing happens, make a new invite)'))); }
+    if (hit('rm-connect')) { status('Connecting…'); return busy(hit('rm-connect'), acceptReply(box.querySelector('.rm-theirs').value).then(() => status('Connecting…'))); }
     if (hit('rm-copy')) {
       const link = hit('rm-copy').dataset.what === 'link', code = box.querySelector('.rm-mine').value, text = link ? location.origin + location.pathname + '#isf-join=' + code : code;
       const copy = () => (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => status('Copied.'), () => { box.querySelector('.rm-mine').select(); status('Select the code and copy it.'); });
@@ -381,6 +443,6 @@
   }
 
   build(); fromLink();
-  window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, state: S, connected,
-    set ice(v) { S.ice = v; }, get ice() { return S.ice; } };
+  window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,
+    set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set relayService(v) { RELAY.service = v; S.relay = null; }, set relayServers(v) { RELAY.servers = v; } };
 })();

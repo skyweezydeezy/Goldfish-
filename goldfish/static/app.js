@@ -1387,6 +1387,10 @@
       items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
     }
     if (zone === 'battlefield' && obj.card.a.isPlaneswalker && !forViewer) items.push(['◆ Loyalty abilities…', () => openLoyalty(obj), 'primary']);          // the planeswalker menu: choose which ability
+    if (zone === 'battlefield' && obj.card.a.chainVeil && !forViewer) {          // The Chain Veil: {4}, {T}: each planeswalker may activate one more loyalty ability this turn
+      const why = G.chainVeilState(S.game, obj);
+      items.push([why ? `◆ The Chain Veil (${why})` : '◆ Activate: {4}, tap: one more loyalty ability for each planeswalker', () => { if (G.chainVeilState(S.game, obj)) { sfx('error'); return toast('The Chain Veil: ' + G.chainVeilState(S.game, obj)); } snap(); quiet(yours(x => G.useChainVeil(x, x.battlefield.find(y => y.iid === obj.iid))).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana for The Chain Veil'); } play(ev); })); }, why ? '' : 'primary']);
+    }
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {

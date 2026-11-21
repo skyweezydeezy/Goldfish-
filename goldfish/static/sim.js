@@ -586,6 +586,10 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      // "You may cast spells as though they had flash" (Leyline of Anticipation, Vedalken Orrery), "... creature spells ..." (Yeva),
+      // "... artifact spells ..." (Shimmer Myr), "creature cards you own have flash" (Teferi, Mage of Zhalfir): what can be cast at instant speed
+      { const fl = line.match(/^you may cast ([a-z ,]*?)\s*spells as though they had flash\.?$/i) || (/^creature cards you own (?:that aren't on the battlefield )?have flash\.?$/i.test(line) ? [line, 'creature'] : null);
+        if (fl && !/this turn/i.test(line)) { a.statics.flash = (a.statics.flash || []).concat(flashPhrases(fl[1])); rec.status = 'ok'; continue; } }
       if (!/^[IVX]+(?:, [IVX]+)* — /.test(raw)) {          // the match-side readers below never take a Saga chapter (it is read further down)
       // ---- rules batch 29: Mob Storm (Krenko, Mob Boss), the built-in Goblin deck
       { let bm;
@@ -2323,7 +2327,7 @@
           : /^you may reveal an artifact card you own from outside the game or choose a face-up artifact card you own in exile\. put that card into your hand/i.test(pwt) ? { fx: [{ type: 'karnWish' }] }          // Karn, the Great Creator: no sideboard here, so an artifact you own in exile
           : /^target player mills (\w+) cards\. draw a card\.?$/i.test(pwt) ? { fx: [{ type: 'mill', n: NUM[pwt.match(/mills (\w+) cards/i)[1].toLowerCase()] || 2 }, { type: 'draw', n: 1 }] }          // Jace, Wielder of Mysteries mills himself toward his empty-library win
           : /^target player mills (\w+) cards\.?$/i.test(pwt) ? { fx: [{ type: 'millOpp', n: NUM[pwt.match(/mills (\w+) cards/i)[1].toLowerCase()] || +pwt.match(/mills (\w+) cards/i)[1] || 20 }] }          // Jace Beleren
-          : /^until your next turn, you may cast sorcery spells as though they had flash/i.test(pwt) ? { fx: [], neutral: true }
+          : /^until your next turn, you may cast sorcery spells as though they had flash/i.test(pwt) ? { fx: [{ type: 'flashUntil', phrases: [['sorcery']] }] }
           : parseEffects(pwt);     // Sorin's -6 needs an opponent's creature
         a.pwAbilities.push({ cost, x: m[2] === 'X', fx: r.fx, text: raw });         // x marks "-X": a real "-1" is not the same thing
         rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
@@ -5237,6 +5241,7 @@
         }
         case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); checkDeath(g, ev); break;
         case 'tutor': tutor(g, f, ev, source); break;
+        case 'flashUntil': g.flashUntil = { phrases: f.phrases, until: g.turn + 1 }; ev.push({ type: 'note', text: 'Until your next turn you may cast sorcery spells as though they had flash', source }); break;
         case 'noMaxHand': if (f.source) { if (source) source.noMaxHand = true; } else g.noMaxHand = true; break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
         case 'counters': {
@@ -8106,12 +8111,56 @@ g.actSeq = (g.actSeq || 0) + 1;
     const info = bfInfo(g);
     return info.lifeWatch || (info.lifeThreshold > 0 && (g.lifeGainedThisTurn || 0) < info.lifeThreshold) || info.lifeAnthems.some(la => g.life < (g.opts.startLife || 40) + la.over) || (!!g.opp && g.life < 15);
   }
+  // ---------- Casting at instant speed ----------
+  // An instant, a card with flash, or a spell a flash-granting permanent covers (statics.flash: a list of phrases, each a list of words a
+  // spell must all match: [] = every spell, ['creature'], ['green', 'creature'], ['legendary'] or ['artifact']...), or one covered by an
+  // effect that lasts until your next turn (Teferi, Time Raveler's +1: sorcery spells).
+  function flashPhrases(txt) { const t = String(txt || '').toLowerCase().trim(); return t ? t.split(/,\s*(?:and |or )?| and | or /).map(x => x.trim().split(/\s+/).filter(w => w && !/^spells?$/.test(w))).filter(x => x.length) : [[]]; }          // "legendary spells and artifact" → [['legendary'], ['artifact']]
+  function flashWord(card, w) {
+    const tl = (card.type_line || '').toLowerCase(), cols = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' };
+    if (cols[w]) return (card.colors || []).includes(cols[w]);
+    if (w === 'colorless') return !(card.colors || []).length;
+    if (w === 'historic') return card.a.isLegendary || card.a.isArtifact || /\bSaga\b/.test(card.type_line || '');
+    if (w === 'multicolored') return (card.colors || []).length > 1;
+    return new RegExp('\\b' + w.replace(/s$/, '') + 's?\\b').test(tl);
+  }
+  const flashMatch = (phrases, card) => (phrases || []).some(ph => ph.every(w => flashWord(card, w)));
+  function instantSpeedFor(g, card) {
+    if (atInstantSpeed(card)) return true;
+    if (!g || !card || !card.a || card.a.isLand) return false;
+    if (g.flashUntil && g.turn < g.flashUntil.until && flashMatch(g.flashUntil.phrases, card)) return true;          // Teferi, Time Raveler: until your next turn
+    return g.battlefield.some(q => q.card.a.statics.flash && flashMatch(q.card.a.statics.flash, card));
+  }
+
   // ---------- Loyalty abilities ----------
   // A planeswalker's loyalty abilities are activated at sorcery speed, once a turn each planeswalker (twice with Oath of Teferi, once more
   // with The Chain Veil or Teferi, Master of Time), and only while its loyalty can pay the cost. The autopilot picks with autoLoyalty; a
   // person picks from the planeswalker menu (loyaltyState lists the abilities, what each costs and why one cannot be used; useLoyalty
   // activates the one they chose). Both go through activateLoyalty.
-  function loyaltyAllowed(g, p) { return 1 + g.battlefield.filter(q => q.card.a.oath).length + (g.pwBonusTurn === g.turn ? 1 : 0) + (p.card.a.masterTime ? 1 : 0); }
+  // active: whose turn it is, when it is not this player's own (Teferi, Master of Time activates on any player's turn, once each turn).
+  // Without another player (a goldfish game) Teferi gets his second activation on your own turn instead, as before.
+  const otherTurn = (g, active) => !!(active && active !== g);
+  const turnKey = active => active.pid + ':' + active.turn;
+  function loyaltyAllowed(g, p, active) {
+    const oath = g.battlefield.filter(q => q.card.a.oath).length;
+    if (otherTurn(g, active)) return p.card.a.masterTime ? 1 + oath : 0;
+    return 1 + oath + (g.pwBonusTurn === g.turn ? 1 : 0) + (p.card.a.masterTime && !g.opp ? 1 : 0);
+  }
+  // The Chain Veil: {4}, {T}: each planeswalker may activate one more loyalty ability this turn
+  function chainVeilState(g, p) {
+    if (!p || !p.card.a.chainVeil || !g.battlefield.includes(p)) return 'not The Chain Veil';
+    if (p.tapped) return 'it is tapped';
+    if (g.pwBonusTurn === g.turn) return 'already used this turn';
+    if (!canPay({ generic: 4, pips: [], x: 0 }, allUnits(g).filter(u => u.src !== p))) return 'needs {4} besides itself';
+    return null;
+  }
+  function useChainVeil(g, p, ev) {
+    ev = ev || [];
+    const vc = { generic: 4, pips: [], x: 0 };
+    p.tapped = true; const ok = canPay(vc, allUnits(g)) && pay(g, vc) != null; if (!ok) { p.tapped = false; return null; }
+    g.pwBonusTurn = g.turn; g.pwBonus = 1; ev.push({ type: 'note', text: `${p.card.name}: every planeswalker may activate again`, source: p });
+    return ev;
+  }
   function loyaltyAbilities(g, p) { return p.card.a.bolasAll ? p.card.a.pwAbilities.concat(...bothSides(g).filter(q => q !== p && q.card.a.isPlaneswalker).map(q => q.card.a.pwAbilities)) : p.card.a.pwAbilities; }          // Nicol Bolas, Dragon-God has the others' too
   function loyaltyBlocked(g, p) {
     if (bothSides(g).some(q => q.card.a.statics.noLoyalty)) return 'The Immortal Sun: no loyalty abilities can be activated';
@@ -8130,10 +8179,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     return best;
   }
-  function activateLoyalty(g, p, ab, ev, pwPlus) {
-    if (p.pwTurn !== g.turn) { p.pwTurn = g.turn; p.pwN = 0; }
+  function activateLoyalty(g, p, ab, ev, pwPlus, active) {
+    if (otherTurn(g, active)) { const k = turnKey(active); if (p.pwOther !== k) { p.pwOther = k; p.pwOtherN = 0; } p.pwOtherN++; }          // on another player's turn (Teferi, Master of Time)
+    else { if (p.pwTurn !== g.turn) { p.pwTurn = g.turn; p.pwN = 0; } p.pwN++; }
     if (pwPlus === undefined) pwPlus = g.battlefield.some(q => q.card.a.statics.pwPlus);
-    p.pwN++;
     p.loyalty += ab.x ? 0 : (ab.cost > 0 ? Math.floor((ab.cost + (bfInfo(g).cplusLz || 0)) * counterMult(g) / (othersHave(g, 'vorinHalf') ? 2 : 1)) : ab.cost);   // Doubling Season doubles + loyalty costs
     if (pwPlus) p.loyalty += 1;                                                                // Carth: "cost an additional [+1]"
     ev.push({ type: 'pw', perm: p, text: ab.text, cost: ab.cost, x: ab.x });
@@ -8146,11 +8195,12 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   // what the planeswalker menu shows: whether p can activate now (why: the reason it cannot), and each ability with its cost label
   // (+1, 0, −3, −X), whether it can be paid and the engine plays it (ok), and why not
-  function loyaltyState(g, p) {
-    const out = { why: null, used: 0, allowed: 1, list: [], auto: null };
+  function loyaltyState(g, p, active) {
+    const out = { why: null, used: 0, allowed: 1, list: [], auto: null, other: otherTurn(g, active) };
     if (!p || !g.battlefield.includes(p) || !p.card.a.isPlaneswalker) { out.why = 'not a planeswalker on the battlefield'; return out; }
-    out.allowed = loyaltyAllowed(g, p); out.used = p.pwTurn === g.turn ? (p.pwN || 0) : 0;
-    out.why = g.timeStopped === g.turn ? 'the turn has ended' : loyaltyBlocked(g, p) || (out.used >= out.allowed ? (out.allowed > 1 ? `used ${out.used} times this turn` : 'already used this turn') : null);
+    out.allowed = loyaltyAllowed(g, p, active);
+    out.used = out.other ? (p.pwOther === turnKey(active) ? (p.pwOtherN || 0) : 0) : (p.pwTurn === g.turn ? (p.pwN || 0) : 0);
+    out.why = out.other && !out.allowed ? 'only on your own turn' : g.timeStopped === g.turn ? 'the turn has ended' : loyaltyBlocked(g, p) || (out.used >= out.allowed ? (out.allowed > 1 ? `used ${out.used} times this turn` : 'already used this turn') : null);
     const abs = loyaltyAbilities(g, p);
     out.list = abs.map((ab, i) => {
       const label = ab.x ? '−X' : ab.cost > 0 ? '+' + ab.cost : ab.cost < 0 ? '−' + (-ab.cost) : '0';
@@ -8163,21 +8213,19 @@ g.actSeq = (g.actSeq || 0) + 1;
     return out;
   }
   // a person's choice: the ability at index i of loyaltyState's list. Returns the events, or null when it cannot be activated now.
-  function useLoyalty(g, p, i) {
-    const st = loyaltyState(g, p), it = st.list[i];
+  function useLoyalty(g, p, i, active) {
+    const st = loyaltyState(g, p, active), it = st.list[i];
     if (!it || !it.ok) return null;
-    return activateLoyalty(g, p, it.ab, []);
+    return activateLoyalty(g, p, it.ab, [], undefined, active);
   }
   function useAbilities(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
     // The Chain Veil: {4}, {T} lets every planeswalker activate once more this turn (worth it when one has already been used)
     for (const p of g.battlefield.slice()) {
-      if (!p.card.a.chainVeil || p.tapped || g.dry || g.pwBonusTurn === g.turn) continue;
+      if (!p.card.a.chainVeil || p.tapped || g.dry || g.pwBonusTurn === g.turn || g.skipLoyalty) continue;
       if (!g.battlefield.some(q => q.card.a.isPlaneswalker && q.pwTurn === g.turn && q.pwN >= 1 && q.loyalty > 1)) continue;
-      const vc = { generic: 4, pips: [], x: 0 };
-      p.tapped = true; const ok = canPay(vc, allUnits(g)) && pay(g, vc) != null; if (!ok) { p.tapped = false; continue; }
-      g.pwBonusTurn = g.turn; g.pwBonus = 1; ev.push({ type: 'note', text: `${p.card.name}: every planeswalker may activate again`, source: p });
+      useChainVeil(g, p, ev);
     }
     const pwPlus = g.battlefield.some(q => q.card.a.statics.pwPlus);
     for (const p of g.battlefield.slice()) {
@@ -10209,7 +10257,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Policy instantTiming: 'spare' (default) uses only leftover mana, 'hold' also keeps that interaction and its mana for their turn,
   // 'off' never acts on their turn.
   const INTERACT_FX = f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage' || (f.type === 'damage' && f.any);
-  const atInstantSpeed = card => /\bInstant\b/.test(card.type_line || '') || (card.keywords || []).includes('Flash');
+  function atInstantSpeed(card) { return /\bInstant\b/.test(card.type_line || '') || (card.keywords || []).includes('Flash'); }          // a function, so instantSpeedFor (above) can use it
   function isInstantInteraction(card) { const a = card.a; return !!a && atInstantSpeed(card) && !a.isLand && !a.counter && a.spellFx.some(INTERACT_FX); }
   // does at least one of these effects have something worth hitting on the other player's board?
   function interactionHit(g, fxs) {
@@ -10227,7 +10275,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       let best = null, bs = -Infinity;
       for (const c of me.hand) {
         const a = c.card.a;
-        if (!a || a.isLand || a.counter || !atInstantSpeed(c.card)) continue;
+        if (!a || a.isLand || a.counter || !instantSpeedFor(me, c.card)) continue;
         if (castBlocked(me, c)) continue;
         const fxs = a.spellFx.filter(INTERACT_FX);
         const drawish = step === 'end' && !fxs.length && a.isInstantSorcery && a.spellFx.some(f => f.type === 'draw');
@@ -10238,7 +10286,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (sc > bs) { bs = sc; best = c; }
       }
       if (me.ask) {                                                                                       // a person: any instant or flash card they can pay for, the autopilot's pick as the default, or not now
-        const opts = me.hand.filter(c => c.card.a && !c.card.a.isLand && !c.card.a.counter && atInstantSpeed(c.card) && canPay(effectiveCost(me, c), units));
+        const opts = me.hand.filter(c => c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(me, c.card) && canPay(effectiveCost(me, c), units));
         if (!opts.length) break;
         best = decide(me, { kind: 'instant', options: opts, def: best, optional: true, step, caster: me.opp });
       }
@@ -10249,6 +10297,11 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!r) break;
       ev.push({ type: 'note', text: `On the other player's turn (${step === 'combat' ? 'attackers declared' : 'end step'}): cast ${best.card.name}`, source: null }, ...r);
       cast++;
+    }
+    // Teferi, Master of Time: a loyalty ability on the other player's turn too (the autopilot uses it at their end step; a person chooses it on the page)
+    if (step === 'end' && !me.ask && !matchOver(me)) for (const p of me.battlefield.slice()) if (p.card.a.masterTime && p.card.a.isPlaneswalker) {
+      const st = loyaltyState(me, p, me.opp);
+      if (!st.why && st.auto) { ev.push({ type: 'note', text: `On the other player's turn (end step): ${p.card.name} activates a loyalty ability`, source: p }); activateLoyalty(me, p, st.auto, ev, undefined, me.opp); }
     }
     return cast;
   }
@@ -10929,7 +10982,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    postCombatTriggers, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

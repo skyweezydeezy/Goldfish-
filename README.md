@@ -333,4 +333,14 @@ Tap **Manage** on the Deck tab to rename, duplicate, copy, export or delete save
 
 ## Tests
 
-`node tests/run.js` runs the engine scenario tests offline (about 250 checks); `node tests/run.js --ui` runs the browser tests. See `tests/README.md`. Add a test file for every card or rule you add to the engine.
+`node tests/run.js` runs the engine scenario tests offline (about 4,400 checks in 109 files, run side by side: about 4 minutes on 4 processors); `node tests/run.js --ui` runs the browser tests. See `tests/README.md`. Add a test file for every card or rule you add to the engine.
+
+### Keeping the engine fast
+
+Most rules belong to one card, and a deck has only a few of them. Three habits in `goldfish/static/sim.js` keep a game from paying for the rest:
+
+- **Ask the table before walking a board.** `tableHas(g, 'rule')` is true only if some card at this table (every deck in the game, each token and copy as it appears) has that rule on its analysis (`card.a.rule`; `'statics.rule'` for `card.a.statics.rule`). Put it in front of a walk that looks for one card's rule: `tableHas(g, 'vilis') && g.battlefield.some(q => q.card.a.vilis)`.
+- **When a permanent's card changes** (a copy, a transform, a new stage), call `know(g, card)` right after, so the table learns the new card's rules. Entering the battlefield does this itself.
+- **In the ability loops** (`deckAbilities`, `raiderAbilities`, `batch4Abilities`, `tribeAbilities`, `deathTaxAbilities`, `zombieAbilities`), start each ability with its own card's rule (`if (a.rule && ...)`): a permanent whose card has none of the rules a loop mentions is skipped before the loop asks anything.
+
+`tests/engine/table-facts.test.js` checks all three on the built-in decks.

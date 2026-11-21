@@ -659,6 +659,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .lb-nav:disabled { opacity: .25; }
 .lb-name { font-weight: 700; font-size: 16px; text-align: center; max-width: 92vw; overflow-wrap: anywhere; }
 .lb-tip { text-align: center; }
+.lb-acts { width: min(92vw, 560px); }
+.lb-acts-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.lb-act { flex: 1 1 140px; min-height: 44px; }
+.lb-act.ghost { background: var(--surface-2); }          /* solid like the printings and shop rows, so the table behind the viewer does not show through the text */
 .lb-sec { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
 .lb-prints, .lb-shop { width: min(94vw, 560px); }
 .lb-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
@@ -810,13 +814,18 @@ select { max-width: 100%; text-overflow: ellipsis; }
   .lb-row { grid-column: 1; grid-row: 2 / span 6; width: auto; position: sticky; top: 16px; }
   .lb-faces .mtg, .lb-faces .mtg:only-child { width: min(34vw, 400px, calc((100vh - 120px) * .7176)); }
   .lb-faces .mtg:not(:only-child) { width: min(22vw, 300px, calc((100vh - 120px) * .7176)); }
-  .lb-name, .lb-tags, .lb-tip, .lb-shop, .lb-prints, .lb-cov { grid-column: 2; width: 100%; max-width: none; text-align: left; }
+  .lb-name, .lb-tags, .lb-tip, .lb-acts, .lb-shop, .lb-prints, .lb-cov { grid-column: 2; width: 100%; max-width: none; text-align: left; }
   .lb-name { grid-row: 2; font-size: 22px; }
   .lb-shop { grid-row: 3; }
   .lb-prints { grid-row: 4; }
   .lb-tags { grid-row: 5; justify-content: flex-start; }
   .lb-cov { grid-row: 6; }
   .lb-tip { grid-row: 7; }
+  /* with the game's choices on show they come straight after the name, and everything below moves down one row */
+  .lb-inner.has-acts .lb-row { grid-row: 2 / span 7; }
+  .lb-acts { grid-row: 3; }
+  .lb-inner.has-acts .lb-shop { grid-row: 4; } .lb-inner.has-acts .lb-prints { grid-row: 5; } .lb-inner.has-acts .lb-tags { grid-row: 6; }
+  .lb-inner.has-acts .lb-cov { grid-row: 7; } .lb-inner.has-acts .lb-tip { grid-row: 8; }
   .lb-strip { flex-wrap: wrap; overflow: visible; max-height: 330px; overflow-y: auto; }
 }
 .table-controls label.speed, label.speed { flex-direction: row; display: inline-flex; align-items: center; }

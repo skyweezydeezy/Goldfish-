@@ -651,6 +651,26 @@
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
   }
+  // In the card viewer, a card of yours shows the choices the table gives it: cast or play it, play it as a land, cycle it, the mulligan
+  // bottom, sending a creature to attack. They are the table's own buttons and clicks, so the rules are the same.
+  A.addViewerActions((card, el) => {
+    const root = el && el.closest ? el.closest('#tab-duel, #tab-pod') : null; if (!root) return null;
+    const mode = root.id === 'tab-pod' ? 'pod' : 'duel', gm = V[mode].game;
+    if (!gm || gm.human == null || gm.over || gm.acting || gm.choice) return null;
+    const iid = el.dataset.iid; if (iid == null || !el.closest('.vs-hand, .vs-seat.me')) return null;
+    const out = [];
+    const fresh = sel => () => { const t = root.querySelector(sel); if (t) t.click(); };
+    const cardSel = `.vs-card[data-iid="${iid}"]`;
+    if (el.classList.contains('vs-card') && el.classList.contains('can')) {
+      const label = gm.phase === 'mull' ? (gm.bottom.has(+iid) ? 'Keep it (take it off the bottom)' : 'Put it on the bottom') : (card.a && card.a.isLand ? '▶ Play land' : '▶ Cast');
+      out.push([label, fresh(cardSel + '.can'), 'primary']);
+    }
+    const slot = el.closest('.vs-slot');
+    if (slot) slot.querySelectorAll('button').forEach(b => { if (b.dataset.iid != null) out.push([b.textContent.trim(), fresh(`.vs-slot button.${[...b.classList].join('.')}[data-iid="${b.dataset.iid}"]`), '']); });
+    const stk = el.closest('.vs-seat.me .vs-stack.pickable');
+    if (stk && gm.picking) { const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id)); out.push([all ? 'Hold it back' : 'Attack with it', fresh(`.vs-seat.me .vs-stack.pickable[data-iids="${stk.dataset.iids}"]`), 'primary']); }
+    return out;
+  });
   function wire(mode) {
     const root = V[mode].root;
     root.addEventListener('change', e => { const gm = V[mode].game; if (gm && e.target.classList.contains('vs-target')) gm.target = +e.target.value; });

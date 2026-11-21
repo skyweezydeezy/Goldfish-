@@ -1110,7 +1110,10 @@
     ['manapool', 'ManaPool', (c, p) => (p || c.set) && (p ? p.cn : c.cn) ? `https://manapool.com/card/${enc((p ? p.set : c.set))}/${enc(p ? p.cn : c.cn)}/${slugOf(c.name)}` : `https://manapool.com/cards?q=${enc(c.name)}`],
   ];
   const LB_SCOPE = '.table, .vs-seat, .tags-results, .curve-wall, .land-wall, .coverage, .token-wall, .odds-picker, .replay, .hand-grid, .hand-stage';
-  const lb = { list: [], i: 0, sel: null };
+  const lb = { list: [], i: 0, sel: null, els: [] };
+  // Choices for the card on show, supplied by whichever table it was opened from: fn(card, element) -> [[label, run, style, stay], ...] or null.
+  const lbProviders = [];
+  const viewerActions = (card, el) => { for (const f of lbProviders) { const a = el && f(card, el); if (a && a.length) return a; } return null; };
   const printCache = new Map();
   async function fetchPrints(card) {
     if (printCache.has(card.name)) return printCache.get(card.name);
@@ -1135,6 +1138,7 @@
     elCache.clear(); renderDeck(); if (S.game) render();
     toast(`Now using the ${p.setName} printing`);
   }
+  lbProviders.push((card, el) => { const m = el.closest && el.closest('.table') && el.dataset.iid != null ? ctxModel(el, true) : null; return m ? m.items : null; });
   function lbClose() { lightbox.classList.remove('show'); document.body.classList.remove('modal-open'); }
   function lbGo(d) { if (lb.list.length < 2) return; lb.i = (lb.i + d + lb.list.length) % lb.list.length; lb.sel = null; paintLb(); lightbox.scrollTop = 0; }
   function paintLb() {
@@ -1162,6 +1166,20 @@
     row.appendChild(nav('next', '›', 1));
     wrap.appendChild(row);
     wrap.appendChild(h('div', 'lb-name', esc(card.name)));
+    { const acts = viewerActions(card, lb.els[lb.i]);          // what you can do with it in the game you are playing
+      if (acts) {
+        const box = h('div', 'lb-acts'); box.appendChild(h('div', 'lb-sec', 'In this game'));
+        const btns = h('div', 'lb-acts-row'); box.appendChild(btns);
+        acts.forEach(([label, run, style, stay]) => {
+          const b = h('button', (style === 'primary' ? 'primary ' : 'ghost ') + 'lb-act', esc(label));
+          b.addEventListener('click', () => {
+            if (stay) { const sc = lightbox.scrollTop; run(); paintLb(); lightbox.scrollTop = sc; }          // tap, counters: the viewer stays and updates
+            else { lbClose(); run(); }                                                                         // anything else: close it so the table shows the result
+          });
+          btns.appendChild(b);
+        });
+        wrap.appendChild(box); wrap.classList.add('has-acts');
+      } }
     { const tg = cardTagChips(card); if (tg) wrap.appendChild(tg); }
     if (lb.list.length > 1) wrap.appendChild(h('div', 'hint lb-tip', 'Swipe the card, or use ‹ › (or the arrow keys), to move between cards'));
 
@@ -1202,7 +1220,8 @@
           use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
           pr.appendChild(use);
         }
-        const t = strip.querySelector('.on'); if (t && t.scrollIntoView) t.scrollIntoView({ inline: 'center', block: 'nearest' });
+        const t = strip.querySelector('.on');          // bring the chosen printing to the middle of the strip, and only the strip: the viewer behind it must not scroll off the card
+        if (t) { const sr = strip.getBoundingClientRect(), tr = t.getBoundingClientRect(); strip.scrollLeft += (tr.left + tr.width / 2) - (sr.left + sr.width / 2); strip.scrollTop += (tr.top + tr.height / 2) - (sr.top + sr.height / 2); }
       });
     }
     if (card.a && card.a.coverage && card.a.coverage.length) {
@@ -1229,6 +1248,9 @@
     }
     zoom.classList.remove('show');   // the hover preview would sit on top of the viewer
     lb.list = list; lb.i = list.indexOf(card); lb.sel = null;
+    lb.els = list.map(() => null);                                       // the card on the table behind each entry, so its choices can be offered
+    if (sc && !Array.isArray(scopeEl)) { const seen = new Set(); sc.querySelectorAll('.mtg').forEach(e => { const c = cardOf(e); if (c && !e.closest('#lightbox') && !seen.has(c)) { seen.add(c); const k = list.indexOf(c); if (k >= 0) lb.els[k] = e; } }); }
+    if (scopeEl && scopeEl.nodeType === 1 && lb.i >= 0) lb.els[lb.i] = scopeEl;          // the very one you opened (not the first of a stack)
     paintLb(); lightbox.scrollTop = 0;
     lightbox.classList.add('show'); document.body.classList.add('modal-open');
   }
@@ -1300,13 +1322,15 @@
     e.preventDefault();
     openCtx(m, e.clientX, e.clientY);
   });
-  function openCtx(m, cx, cy) {
-    if (!S.game || m.dataset.iid == null) return;
+  // the choices for one card on the Goldfish table (what the menu lists). The card viewer shows the same ones (forViewer leaves out "View card").
+  // An item is [label, run, style, stay]: stay = the viewer stays open after it (tap, counters), otherwise it closes so you see what happened.
+  function ctxModel(m, forViewer) {
+    if (!S.game || m.dataset.iid == null) return null;
     const g = S.game, iid = +m.dataset.iid;
     const zones = { hand: g.hand, battlefield: g.battlefield, graveyard: g.graveyard, exile: g.exile, command: g.command };
     let zone = null, obj = null;
     for (const [z, arr] of Object.entries(zones)) { const f = arr.find(x => x.iid === iid); if (f) { zone = z; obj = f; } }
-    if (!obj) return;
+    if (!obj) return null;
     const inst = zone === 'battlefield' ? obj.inst : obj;
     const items = [];
     const act = fn => () => { snap(); fn(); G.touch(g); render(); };
@@ -1324,8 +1348,8 @@
       items.push([`▶ Cast the front: ${inst.card.name.split(' // ')[0]}`, () => castFace(inst, 0, m)]);
       items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
     }
-    if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary']);
-    items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
+    if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
+    if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
       if (inst.card.a.mdfcLand) items.push(['Play as land (back face)', () => playFromHand(inst, true, m, true)]);
       items.push(['Cast (ignore mana)', () => playFromHand(inst, true, m)]);
@@ -1339,17 +1363,22 @@
           const e = { type: 'tempt', n: ring.tempts, level: Math.min(4, ring.tempts), bearer: obj, ability: G.RING_TEXT[Math.min(4, ring.tempts) - 1] };
           describe([e]); sfxEv([e]); ringBanner(e);
         })]);
-        items.push(['+1/+1 counter', act(() => { G.addCounters(g, obj, '+1/+1', 1, [], null); })]);
-        items.push(['−1/−1 counter', act(() => { G.addCounters(g, obj, '-1/-1', 1, [], null); })]);
-        items.push([obj.sick ? 'Remove summoning sickness' : 'Give summoning sickness', act(() => { obj.sick = !obj.sick; })]);
+        items.push(['+1/+1 counter', act(() => { G.addCounters(g, obj, '+1/+1', 1, [], null); }), '', true]);
+        items.push(['−1/−1 counter', act(() => { G.addCounters(g, obj, '-1/-1', 1, [], null); }), '', true]);
+        items.push([obj.sick ? 'Remove summoning sickness' : 'Give summoning sickness', act(() => { obj.sick = !obj.sick; }), '', true]);
       }
-      if (obj.card.a.isPlaneswalker) { items.push(['Loyalty +1', act(() => { obj.loyalty++; })], ['Loyalty −1', act(() => { obj.loyalty--; })]); }
+      if (obj.card.a.isPlaneswalker) { items.push(['Loyalty +1', act(() => { obj.loyalty++; }), '', true], ['Loyalty −1', act(() => { obj.loyalty--; }), '', true]); }
       if (obj.card.a.isEquipment || obj.card.a.isAura) items.push(['Attach to best creature', act(() => { const b = g.battlefield.filter(G.isCreaturePerm).sort((x, y) => G.powerOf(g, y) - G.powerOf(g, x))[0]; obj.attachedTo = b ? b.iid : null; })]);
       items.push(['Sacrifice / destroy', move('graveyard')]);
     }
     ['hand', 'graveyard', 'exile'].filter(z => z !== zone && !(zone === 'battlefield' && z === 'graveyard')).forEach(z => items.push(['Move to ' + z, move(z)]));
     if (zone !== 'battlefield' && zone !== 'hand') items.push(['Move to battlefield', move('battlefield')]);
     if (!inst.card.isToken) items.push(['Put on top of library', move('library', true)], ['Put on bottom of library', move('library', false)]);
+    return { inst, items };
+  }
+  function openCtx(m, cx, cy) {
+    const model = ctxModel(m, false); if (!model) return;
+    const { inst, items } = model;
     ctx.innerHTML = '';
     ctx.appendChild(h('div', 'ctx-title', esc(inst.card.name)));
     items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', label); b.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); fn(); }); ctx.appendChild(b); });
@@ -2188,5 +2217,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

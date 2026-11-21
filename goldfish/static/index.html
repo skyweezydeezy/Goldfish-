@@ -70,6 +70,7 @@
       <div class="deck-view">
         <div id="deckTiles" class="tiles"></div>
         <div id="deckProfile" class="card-box suggest" hidden><div class="box-head"><h2>Strengths and weaknesses</h2><span class="hint">Read from the decklist with common deckbuilding rules of thumb. Run the simulation to add how fast it kills.</span></div><div id="profileList"></div></div>
+        <div id="deckCombos" class="card-box suggest" hidden><div class="box-head"><h2>Combos and win conditions</h2><span class="hint">Combos are found by rules text: every piece of the line must be in the list, and the autopilot plays them and tutors for the missing piece. Combos it does not know yet are not listed. Win conditions are the cards that end a game: the ones that say you win (or a player loses), and the big finishers.</span></div><div id="comboList"></div></div>
         <div id="deckTags" class="card-box" hidden>
           <div class="box-head"><h2>Tags</h2><span class="hint">What each card does, sorted into groups. Open a group and tap a tag to see those cards.</span></div>
           <div class="row wrap">
@@ -184,6 +185,7 @@
     </div>
     <div id="simTiles" class="tiles"></div>
     <div id="simSuggest" class="card-box suggest" hidden><div class="box-head"><h2>Suggestions</h2><span class="hint">From this run only, against a goldfish that never interacts. Nothing is saved or sent.</span></div><div id="suggestList"></div></div>
+    <div id="simWins" class="card-box suggest" hidden><div class="box-head"><h2>How games end</h2><span class="hint">What won each simulated game: a combo the engine knows, a card that says you win, commander damage, poison, an empty library, or plain damage and life loss (combat, burn, drain). Against a goldfish that never interacts.</span></div><div id="winList"></div></div>
     <div class="two-col">
       <div class="card-box"><div class="box-head"><h2>Mana available by turn</h2><span class="hint">Median line, shaded 10th–90th percentile</span></div><div id="chartMana" class="chart"></div></div>
       <div class="card-box"><div class="box-head"><h2>Hitting every land drop</h2><span class="hint">P(at least N lands on turn N)</span></div><div id="chartLands" class="chart"></div></div>

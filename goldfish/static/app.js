@@ -303,6 +303,42 @@
     $('#profileList').innerHTML = html ? html.replace(/(<details class="fold"><summary>Card counts<\/summary><p class="hint">Counted: [\s\S]*?<\/p>)/, '$1</details>') : '<div class="empty-note">Nothing stands out.</div>';
     tidy($('#profileList'));
     box.hidden = false;
+    renderCombos();
+    if (!sim) $('#simWins').hidden = true;          // a new list: the last run's wins are not this deck's
+  }
+
+  // ---- combos and win conditions: the combo lines the engine finds in the list (sim.js deckCombos) and the cards that end a game ----
+  function renderCombos() {
+    const box = $('#deckCombos');
+    if (!S.deck || !G.deckCombos) { box.hidden = true; return; }
+    const combos = G.deckCombos(S.deck), list = xs => xs.map(esc).join(', ');
+    const text = c => (c.faces && c.faces.length ? c.faces.map(f => f.oracle_text || '').join('\n') : c.oracle_text || '');
+    const wins = typeof Profile === 'undefined' ? [] : S.deck.unique.filter(c => Profile.roles(c).has('wincon'));
+    const outright = wins.filter(c => /you win the game|loses the game/i.test(text(c))), finishers = wins.filter(c => !outright.includes(c));
+    let html = '';
+    if (combos.length) html += `<div class="sg fold-items good"><b>${combos.length} combo${combos.length === 1 ? '' : 's'}</b><ul>${combos.map(c =>
+      `<li><b>${esc(c.name)}: ${esc(c.slots.map(s => s.cards[0] + (s.cards.length > 1 ? ' +' + (s.cards.length - 1) : '')).join(' + '))}</b>: ${esc(c.how)}<div class="hint">${c.slots.map(s => `${esc(s.label)}: ${list(s.cards)}`).join('<br>')}</div></li>`).join('')}</ul></div>`;
+    else html += '<div class="sg"><b>No combo found</b><p>None of the combo lines the engine knows has all its pieces in this list.</p></div>';
+    if (outright.length) html += `<div class="sg"><b>${outright.length} card${outright.length === 1 ? '' : 's'} that win${outright.length === 1 ? 's' : ''} outright</b><p>${list(outright.map(c => c.name))}</p></div>`;
+    if (finishers.length) html += `<div class="sg"><b>${finishers.length} finisher${finishers.length === 1 ? '' : 's'}</b><p>${list(finishers.map(c => c.name))}</p></div>`;
+    if (!wins.length) html += '<div class="sg warn"><b>No clear win condition</b><p>No card says you win, and no big finisher was found. Rules-text matching can miss unusual wordings.</p></div>';
+    $('#comboList').innerHTML = html;
+    tidy($('#comboList'));
+    box.hidden = false;
+  }
+
+  // ---- how the simulated games were won (winBy and winLines in the Monte Carlo result) ----
+  function renderWins(r) {
+    const box = $('#simWins');
+    if (!r || !r.winBy) { box.hidden = true; return; }
+    const LBL = { combo: 'Combo', effect: 'A card that wins', commander: 'Commander damage', poison: 'Poison', mill: 'Empty library', damage: 'Damage and life loss' };
+    const kinds = Object.keys(r.winBy).filter(k => r.winBy[k] > 0).sort((a, b) => r.winBy[b] - r.winBy[a]);
+    const won = kinds.reduce((s, k) => s + r.winBy[k], 0);
+    const head = kinds.map(k => `${LBL[k] || k} ${pct(r.winBy[k])}`).concat(won < 0.9995 ? [`not won by turn ${r.turns}: ${pct(1 - won)}`] : []).join(' · ');
+    const lines = (r.winLines || []).map(l => `<li>${pct(l.share)} of games, on average on turn ${l.avgTurn.toFixed(1)}: ${esc(l.text)}</li>`).join('');
+    $('#winList').innerHTML = `<div class="sg"><b>${esc(head || `No game won by turn ${r.turns}`)}</b>${lines ? `<ul>${lines}</ul>` : `<p>${won ? 'No combo and no card that says you win ended a game: every win came from damage.' : 'Play more turns or lower the opponent\'s life to see how this deck closes.'}</p>`}</div>`;
+    tidy($('#winList'));
+    box.hidden = false;
   }
 
   function deckCounts() {
@@ -2266,6 +2302,7 @@
       tile('Mana spent by T' + Math.min(6, T), r.agg.cumSpent[Math.min(6, T) - 1].mean.toFixed(1), 'avg total mana used');
     renderSuggestions(r, o);
     renderProfile(r);
+    renderWins(r);
 
     const tl = i => 'T' + (i + 1);
     C.band($('#chartMana'), r.agg.manaAvail.map((a, i) => ({ label: tl(i), mid: a.p50, lo: a.p10, hi: a.p90, a, s: r.agg.cumSpent[i], l: r.agg.lands[i] })), {

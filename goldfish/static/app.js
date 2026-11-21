@@ -1956,11 +1956,50 @@
     abRun({ diagnose: { cards: S.cards, tokens: S.tokens, opps }, opts: abOpts(), n, seed: rseed() }, (d, sec) => {
       $('#abInfo').textContent = `${n.toLocaleString()} matches in ${sec}s: this deck wins ${(100 * d.winRate).toFixed(1)}% against ${opps.length} decks.`;
       const lose = d.losing, win = d.winning;
-      $('#abDiagOut').innerHTML = `<div class="suggest">${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
+      const ranked = d.rows.filter(r => r.z < 0 && r.verdict !== 'engine' && !r.commander).slice(0, 10);
+      $('#abDiagOut').innerHTML = `<div class="suggest"><div class="sg"><h3>Swap suggestions: the 10 cards most linked to losing, with replacements (${ranked.length})</h3><p class="hint" data-fold>Click a replacement to choose it; click it again to undo. Replacements do the same job (ramp, draw, removal…), are the same kind of card at a similar mana value, fit the commander's colors and are the most played first (EDHREC). ✓ = the engine reads all of its text, so its result will mean something.</p><div id="abSwaps">${ranked.map((r, i) => abSwapRow(r, i)).join('')}</div></div>${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
       $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => { const t = $('#abChanges'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + '- ' + b.dataset.abcut + '\n+ '; t.focus(); }));
       if (typeof tidy === 'function') tidy($('#abDiagOut'));
+      abPicks = {}; abFillReplacements(ranked);
     });
   });
+  // ---- swap suggestions: card images ranked 1-10, replacements in the same order, click to choose ----
+  let abPicks = {};
+  const abImg = (card, cls) => { const u = card && imgFor(card); return u ? `<img class="${cls || ''}" src="${esc(u)}" alt="${esc(card.name)}" loading="lazy">` : `<span class="ab-noimg">${esc(card ? card.name : '?')}</span>`; };
+  function abSwapRow(r, i) {
+    const card = S.deck.unique.find(c => c.name === r.name);
+    return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
+  }
+  async function abFillReplacements(ranked) {
+    const ident = [...new Set(S.deck.commanders.flatMap(i => i.card.color_identity || []))];
+    const inDeck = new Set(S.deck.unique.map(c => c.name));
+    const taken = new Set();
+    for (let i = 0; i < ranked.length; i++) {
+      const box = $('#abRepl' + i); if (!box) return;                                                    // a new diagnosis replaced the list
+      const card = S.deck.unique.find(c => c.name === ranked[i].name);
+      const roles = typeof Profile !== 'undefined' && Profile.roles ? [...Profile.roles(card)] : [];
+      let found = [];
+      for (const q of Compare.replacementQueries(card, ident, roles)) {
+        const res = await Source.searchCards(q, 24);
+        for (const c of res) if (!inDeck.has(c.name) && !taken.has(c.name) && !found.some(x => x.name === c.name)) found.push(c);
+        if (found.length >= 8) break;
+      }
+      // the engine's reading of each candidate: fully simulated first, the most played first within that
+      found = found.slice(0, 8).map(c => { let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, c)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ } return { c, lvl }; })
+        .sort((a, b) => (a.lvl === 'ok' ? 0 : 1) - (b.lvl === 'ok' ? 0 : 1)).slice(0, 5);
+      found.forEach(x => taken.add(x.c.name));
+      box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-row="${i}" data-cut="${esc(ranked[i].name)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
+        : '<span class="hint">No replacement found (or Scryfall could not be reached).</span>';
+      box.querySelectorAll('.ab-repl').forEach(b => b.addEventListener('click', () => {
+        const row = b.dataset.row, on = abPicks[row] && abPicks[row].add === b.dataset.add;
+        box.querySelectorAll('.ab-repl').forEach(x => x.classList.remove('on'));
+        if (on) delete abPicks[row]; else { abPicks[row] = { cut: b.dataset.cut, add: b.dataset.add }; b.classList.add('on'); }
+        $('#abChanges').value = Object.keys(abPicks).sort((x, y) => x - y).map(k => `- ${abPicks[k].cut}\n+ ${abPicks[k].add}`).join('\n');
+        const n = Object.keys(abPicks).length;
+        $('#abInfo').textContent = n ? `${n} swap${n > 1 ? 's' : ''} chosen.${n > 2 ? ' More than two at once makes it hard to tell which one mattered.' : ''} Click "2. Test version 2".` : '';
+      }));
+    }
+  }
   $('#abRun').addEventListener('click', async () => {
     if (!need()) return;
     const ch = Compare.applyChanges($('#deckText').value, $('#abChanges').value);
@@ -1984,9 +2023,18 @@
       const row = (l, x) => `<tr><td>${l}</td><td>${(100 * x.v1).toFixed(1)}%</td><td>${(100 * x.v2).toFixed(1)}%</td><td>${pts(x.diff)} (z ${x.z.toFixed(1)})</td></tr>`;
       const opp = r.perOpp.map(p => `<li>${esc(p.name)}: ${(100 * p.v1).toFixed(0)}% → ${(100 * p.v2).toFixed(0)}%</li>`).join('');
       const nc = r.newCards.map(c => `<li><b>${esc(c.name)}</b> ${pts(c.diff)} pts (z ${c.z.toFixed(1)}) · ${VERDICT[c.verdict][0]}</li>`).join('');
-      $('#abOut').innerHTML = `<p><b>${head}</b></p><table class="labtable"><thead><tr><th>Run</th><th>Version 1</th><th>Version 2</th><th>Change</th></tr></thead><tbody>${row('Test', r.test)}${row('Fresh shuffles', r.confirm)}${row('Both', r.both)}</tbody></table>${r.h2h ? `<p class="hint">Head to head: version 2 wins ${(100 * r.h2h.v2).toFixed(1)}% of ${r.h2h.n} matches against version 1 (z ${r.h2h.z.toFixed(1)}).</p>` : ''}<div class="suggest"><div class="sg"><h3>By opponent (${r.perOpp.length})</h3><ul>${opp}</ul></div>${nc ? `<div class="sg"><h3>The cards you added</h3><ul>${nc}</ul></div>` : ''}</div><div class="row wrap"><button id="abUse" class="primary">Use version 2</button></div>`;
+      $('#abOut').innerHTML = `<p><b>${head}</b></p><div class="suggest"><div class="sg"><h3>The runs (3)</h3><table class="labtable"><thead><tr><th>Run</th><th>Version 1</th><th>Version 2</th><th>Change</th></tr></thead><tbody>${row('Test', r.test)}${row('Fresh shuffles', r.confirm)}${row('Both', r.both)}</tbody></table>${r.h2h ? `<p>Head to head: version 2 wins ${(100 * r.h2h.v2).toFixed(1)}% of ${r.h2h.n} matches against version 1 (z ${r.h2h.z.toFixed(1)}).</p>` : ''}</div><div class="sg"><h3>By opponent (${r.perOpp.length})</h3><ul>${opp}</ul></div>${nc ? `<div class="sg"><h3>The cards you added</h3><ul>${nc}</ul></div>` : ''}</div><div class="row wrap"><button id="abUse" class="primary">Use version 2</button><button id="abSave">Save as a new deck</button></div>`;
       if (typeof tidy === 'function') tidy($('#abOut'));
       $('#abUse').addEventListener('click', () => { $('#deckText').value = abV2.text; $('#loadDeck').click(); abOpps = null; toast('Version 2 is now the deck'); });
+      $('#abSave').addEventListener('click', () => {                                                  // keep version 1 as it is, and save version 2 under a new name
+        const all = getDecks(), meta = getMeta(), sel = $('#savedDecks'), cur = sel.selectedOptions[0];
+        const base = (cur && cur.value ? cur.textContent.split(' · ')[0] : abKey()).trim();
+        const name = (prompt('Save version 2 as a new deck:', uniqueName(base + ' v2', all)) || '').trim();
+        if (!name) return;
+        if (all[name] != null && !confirm(`"${name}" is already saved. Replace it?`)) return;
+        all[name] = abV2.text; meta[name] = { saved: Date.now(), from: 'ab-test' };
+        if (putDecks(all, meta)) { refreshSaved(); toast(`Saved "${name}"`); keepData(); }
+      });
       const log = JSON.parse(localStorage.getItem('gf_ab') || '{}'), k = abKey();
       (log[k] = log[k] || []).unshift({ at: new Date().toISOString().slice(0, 10), changes: $('#abChanges').value.trim(), diff: r.both.diff, z: r.both.z, verdict: r.verdict, n });
       log[k] = log[k].slice(0, 20); localStorage.setItem('gf_ab', JSON.stringify(log)); abRenderLog();

@@ -232,6 +232,12 @@
       <div id="plInfo" class="hint"></div>
       <div id="plOut"></div>
       <div id="plSaved" class="hint"></div>
+      <div class="row wrap lab-roles">
+        <button id="plRoles">Swaps by role</button>
+        <span class="hint" data-fold>Plays your deck against the opponents above (as many matches as the A/B test's Games setting), groups the cards linked to winning and losing by what they do (ramp, card draw, removal…) and says which kind of card the deck wants more of. It offers 2 cards of that kind to add and the 2 cards most linked to losing to remove; "Send to the A/B test" proves the change.</span>
+        <div id="plRolesProgress" class="progress"><div></div></div>
+      </div>
+      <div id="plRolesOut"></div>
     </div>
     <div class="card-box" id="abBox">
       <div class="box-head"><h2>A/B test <span class="pill approx">beta</span></h2><span class="hint">Make the deck better one or two cards at a time. 1. Diagnose: the deck plays other decks and each card gets a verdict: <b>card</b> (fully simulated and cast, so the number is about the card), <b>played</b> (drawn but rarely cast: mana, curve or the autopilot's timing) or <b>engine</b> (some of its text is not simulated: test it by hand). 2. Press Cut on a card and pick a replacement from the list under it (popular cards that do the same job, in your colors), or write the changes yourself (one card per line, "- Card" to cut, "+ Card" to add), and test version 2 against version 1: the same opponents and shuffles, then fresh shuffles, then head to head. Better only when both runs point the same way and together pass z 2. A commander swap works too: a commander may shine in a different shell.</span></div>

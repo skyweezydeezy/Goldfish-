@@ -2527,7 +2527,7 @@
         }
         if (r.fx.length || t.nth) a.triggers.push(t);
         rec.status = (r.fx.length || t.nth) ? (r.approx ? 'partial' : 'ok') : r.neutral ? 'neutral' : 'ignored';
-        if (t.discardKind && rec.status === 'ok') rec.tag = 'model';          // Waste Not: exact in a match; against a goldfish the kind of card discarded comes from a typical deck          // Waste Not: exact in a match; against a goldfish the kind of card it discards is drawn from a typical deck
+        // Waste Not (discardKind): exact in a match; against a goldfish, whose hand is a count, the kind of card discarded comes from a typical deck
         continue;
       }
       if ((m = line.match(/^(other )?([a-z ]*?)creatures you control get \+(\d+)\/\+(\d+)(?: and have ([a-z ,]+))?\.?$/i)) && !/until end of turn/i.test(line)) {

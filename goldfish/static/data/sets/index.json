@@ -301,9 +301,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 11,
+    "full": 12,
     "approx": 1,
-    "partial": 2,
+    "partial": 1,
     "none": 0
    }
   },
@@ -481,9 +481,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 16,
+    "full": 17,
     "approx": 0,
-    "partial": 1,
+    "partial": 0,
     "none": 1
    }
   },

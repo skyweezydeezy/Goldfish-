@@ -29,11 +29,13 @@
   // Shown to each player before host() or join(). Nothing is sent until that player ticks "I understand and accept"; the game does not
   // start until both have. Each side sends { ack: DISCLOSURE_VERSION } in the handshake, and a side whose version differs is refused,
   // so both players always agreed to the same text. Any change to what is shared must change this list and bump the version.
-  const DISCLOSURE_VERSION = 1;
+  const DISCLOSURE_VERSION = 2;
+  const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';
   const DISCLOSURE = [
     'Your whole deck list, your deck\'s autopilot settings and its name are sent to the other player\'s device.',
     'Both devices run the whole game, so the other device holds your hand, your library and the game\'s seed in memory. With the seed, a player who reads that memory can work out every card either of you will draw. The app does not show it, but it cannot stop someone who looks.',
     'The connection code holds your device\'s network address (your public IP address). Whoever receives the code, and whatever app you send it through, can see it.',
+    'To connect devices in different places, both devices contact Google\'s public STUN server, which learns both devices\' network addresses. It does not see your deck or your moves.',
     'Your name for the game and every move you make go to the other device.',
     'The other device\'s app could be changed by its owner. Moves it sends are checked before they are played, but what it can see cannot be hidden.',
     'The game\'s moves and both deck lists are saved in this browser so a game can be rejoined. They stay until you delete the game.',
@@ -44,10 +46,9 @@
   // host(): returns a promise of { code, ready } - code is pasted into the other device; ready resolves once it answers.
   // join(code): returns a promise of { ready } once the connection opens.
   // Both sides end up with the same RTCDataChannel; everything past this point talks over ch.send / ch.onmessage.
-  // No outside server until the user says yes. Without one, only devices on the same network connect. A STUN server (for example
-  // Google's) would let devices in different places connect, and that server would learn both devices' addresses (not the moves):
-  // if the user agrees, it is added here and to DISCLOSURE, and DISCLOSURE_VERSION goes up.
-  const ICE = [];
+  // Google's public STUN server, approved by the user: it lets devices in different places connect and learns both addresses,
+  // never the moves. No TURN relay, so some strict networks still will not connect. Listed in DISCLOSURE.
+  const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
   function host() { /* TODO: RTCPeerConnection, createDataChannel, local offer, wait for a pasted answer */ }
   function join(code) { /* TODO: parse the offer from code, createAnswer, return the answer to paste back */ }
 
@@ -73,5 +74,5 @@
   // stops the game and shows cb's message rather than guessing which side is right.
   function onFingerprintMismatch(cb) { /* TODO */ }
 
-  window.__isfRemote = { host, join, sent, next, onFingerprintMismatch, fingerprint, DISCLOSURE, DISCLOSURE_VERSION };
+  window.__isfRemote = { host, join, sent, next, onFingerprintMismatch, fingerprint, DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE };
 })();

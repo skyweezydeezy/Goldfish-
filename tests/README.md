@@ -122,3 +122,4 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | ui/viewer-everywhere | Every card on every tab opens in the card viewer: click, 🔍 corner or right-click (browser test) |
 | ui/desktop-viewer | PC: clicking a card opens the viewer (price, previous / next); the autopilot speed slider (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |
+| ui/viewer-choices | The card viewer offers the table's own in-game choices under the card name ("In this game"): on the Goldfish Table the menu's Tap / Untap (the viewer stays open and updates), Cast, Play land and moves (the viewer closes and it happens); in a played 1v1 game a card you can play offers Play land / Cast (browser test) |

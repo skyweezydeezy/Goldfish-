@@ -1,9 +1,19 @@
-importScripts('sim.js', 'suggest.js', 'profile.js', 'tags.js');
+importScripts('sim.js', 'suggest.js', 'profile.js', 'tags.js', 'compare.js');
 self.onmessage = (e) => {
   if (e.data.learn) {                                   // Policy lab: compare options by playing many games with each
     const l = e.data.learn;
     const res = self.Goldfish.comparePolicies(l.cards, l.tokens, e.data.opts, l.candidates, e.data.n, e.data.seed, l.mode, l.cardsB, l.tokensB, p => self.postMessage({ progress: p }));
     self.postMessage({ result: res });
+    return;
+  }
+  if (e.data.diagnose) {                                // A/B test, step 1: which cards are linked to winning and losing against other decks
+    const d = e.data.diagnose;
+    self.postMessage({ result: self.Compare.diagnose(self.Goldfish, d.cards, d.tokens, d.opps, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p })) });
+    return;
+  }
+  if (e.data.ab) {                                      // A/B test, step 2: version 2 against version 1, same opponents and seeds, then fresh seeds
+    const d = e.data.ab;
+    self.postMessage({ result: self.Compare.abTest(self.Goldfish, d.v1, d.v2, d.opps, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p })) });
     return;
   }
   if (e.data.pod) {                                     // 1v1 and Pod tabs: every seat on autopilot

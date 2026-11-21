@@ -26,7 +26,9 @@
 
   function ensure() {
     if (ctx || !AC) return ctx;
-    ctx = new AC();
+    // 'playback' asks for a bigger audio buffer: the browser then has room to keep up even when the computer is busy. Without it,
+    // Chrome and Edge on Windows can fall behind after a while and the music crackles like static. Effects land a few ms later.
+    try { ctx = new AC({ latencyHint: 'playback' }); } catch (e) { ctx = new AC(); }
     const comp = ctx.createDynamicsCompressor();            // keeps a pile-up of effects from clipping
     comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.connect(comp);
@@ -328,6 +330,15 @@
   }
 
   // Browsers only allow sound after a tap, click or key press: wake up on the first one.
+  // Start the sound again from scratch (the Sound panel's "Restart sound"): if it ever crackles, this clears it without a reload.
+  function restart() {
+    if (!ctx) return;
+    stopMusic();
+    const old = ctx; ctx = null; unlocked = false;
+    Object.assign(M, { wet: null, el: null, dest: null, comp: null, next: 0 });
+    try { old.close(); } catch (e) { /* already closed */ }
+    unlock();
+  }
   function unlock() {
     if (!AC || (!set.sfx && !set.music)) return;
     ensure();
@@ -365,7 +376,7 @@
     <div class="sound-row"><label class="check"><input id="sdBg" type="checkbox"> 🌙 Keep the music playing in the background</label></div>
     <div class="sound-row"><label class="check"><input id="sdCards" type="checkbox"> ✨ Special sounds for famous cards</label></div>
     <details id="sdCardList" class="sound-cards"><summary>Hear them</summary><div class="sound-card-grid"></div></details>
-    <div class="row wrap"><button id="sdTest" class="ghost">Play a test sound</button><button id="sdMute" class="ghost"></button></div>
+    <div class="row wrap"><button id="sdTest" class="ghost">Play a test sound</button><button id="sdMute" class="ghost"></button><button id="sdRestart" class="ghost" title="If the sound ever crackles or sounds like static, this starts it fresh">↻ Restart sound</button></div>
     <p id="sdNone" class="hint" hidden>This browser cannot play sound made by the page (no Web Audio).</p>
     <p class="hint">Saved in this browser only. The music and every effect are made by the app itself, so they are free to use, need no download and work offline. Sound effects stop while the app is in the background; the music does too, unless you keep it playing.</p>
   </div>`;
@@ -398,6 +409,7 @@
   $('#sdSfxVol').addEventListener('input', e => { set.sfxVol = +e.target.value; save(); });
   $('#sdSfxVol').addEventListener('change', () => play('card'));
   $('#sdTrack').addEventListener('change', e => { set.track = e.target.value; M.bar = 0; save(); });
+  $('#sdRestart').addEventListener('click', () => { restart(); setTimeout(() => play('card'), 300); });
   $('#sdTest').addEventListener('click', () => { if (!set.sfx) { set.sfx = true; save(); } play('win'); });
   $('#sdMute').addEventListener('click', () => { const on = !anyOn(); set.sfx = on; set.music = on; save(); });
   function open() { paint(); modal.classList.add('show'); document.body.classList.add('modal-open'); }
@@ -410,7 +422,7 @@
   document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.tab')) play('ui'); });
   paint();
 
-  window.__isfAudio = { play, events, addCards, playCard, cards: () => Object.values(CARDS).map(c => c.name), kit, open, close, TRACKS, SFX: Object.keys(SFX), played,
+  window.__isfAudio = { play, events, restart, addCards, playCard, cards: () => Object.values(CARDS).map(c => c.name), kit, open, close, TRACKS, SFX: Object.keys(SFX), played,
     get: () => Object.assign({}, set), set: o => { Object.assign(set, o); save(); },
     state: () => ({ supported: !!AC, unlocked, running: live(), music: M.on, bars: M.bar, ahead: ctx ? M.next - ctx.currentTime : 0 }), tick: () => tick() };
 })();

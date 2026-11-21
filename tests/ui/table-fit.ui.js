@@ -1,10 +1,12 @@
 // Goldfish Table on phones and tablets: the whole game fits on one screen (no scrolling), the hand is fully visible,
-// the piles sit beside the battlefield, and the game log opens as a drawer.
+// the piles sit beside the battlefield, and the game log opens as a drawer. A phone held sideways is too short for one screen:
+// there the page scrolls, the toolbar is on screen at the top, the battlefield rows keep room for cards and every hand card can be reached.
 const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
-const DEVS = [['iPhone', devices['iPhone 13']], ['iPad portrait', devices['iPad (gen 7)']], ['iPad landscape', devices['iPad (gen 7) landscape']]];
+const DEVS = [['iPhone', devices['iPhone 13']], ['iPad portrait', devices['iPad (gen 7)']], ['iPad landscape', devices['iPad (gen 7) landscape']], ['iPhone sideways', devices['iPhone 13 landscape']], ['small iPhone sideways', devices['iPhone SE landscape']]];
+const SIDEWAYS = n => /sideways/.test(n);
 (async () => {
   const b = await chromium.launch();
   for (const [name, dev] of DEVS) {
@@ -37,8 +39,19 @@ const DEVS = [['iPhone', devices['iPhone 13']], ['iPad portrait', devices['iPad 
         handBottom: Math.round(hand.bottom), cardsIn: cards.every(c => c.bottom <= innerHeight + 1 && c.top >= 0), pileBeside: lib.left >= main.right - 1 };
     });
     check(`${name}: the autopilot played to turn 6`, m.turn >= 6, 'turn ' + m.turn);
-    check(`${name}: the whole table fits on one screen`, m.page <= m.vh + 8, `page ${m.page}px, screen ${m.vh}px`);
-    check(`${name}: every hand card is fully on screen`, m.cardsIn);
+    if (!SIDEWAYS(name)) {
+      check(`${name}: the whole table fits on one screen`, m.page <= m.vh + 8, `page ${m.page}px, screen ${m.vh}px`);
+      check(`${name}: every hand card is fully on screen`, m.cardsIn);
+    } else {
+      const top = await p.evaluate(() => { scrollTo(0, 0); const t = document.querySelector('.table-controls').getBoundingClientRect(), bar = document.querySelector('.topbar').getBoundingClientRect();
+        return { controlsIn: t.top >= 0 && t.bottom <= innerHeight, bar: Math.round(bar.height), rows: [...document.querySelectorAll('.bf-row')].map(e => Math.round(e.getBoundingClientRect().height)) }; });
+      check(`${name}: the toolbar is on screen at the top and the tab bar is one row`, top.controlsIn && top.bar <= 70, `tab bar ${top.bar}px`);
+      check(`${name}: every battlefield row has room for cards`, top.rows.every(h => h >= 90), top.rows.join('/') + ' px');
+      const reach = await p.evaluate(async () => { const cards = [...document.querySelectorAll('#zHand .mtg')]; let ok = 0;
+        for (const c of cards) { c.scrollIntoView({ block: 'end' }); await new Promise(r => setTimeout(r, 30)); const r = c.getBoundingClientRect(); if (r.top >= 0 && r.bottom <= innerHeight + 1) ok++; }
+        scrollTo(0, 0); return { ok, n: cards.length }; });
+      check(`${name}: every hand card can be scrolled fully into view`, reach.n > 0 && reach.ok === reach.n, `${reach.ok}/${reach.n}`);
+    }
     check(`${name}: library and graveyard piles sit beside the battlefield`, m.pileBeside);
     await p.click('#tLog');
     await p.waitForTimeout(400);

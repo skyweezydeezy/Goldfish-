@@ -58,7 +58,7 @@
       </div>`;
     const q = s => root.querySelector(s);
     st.q = q; st.root = root; st.mode = mode;
-    st.nodes = new Map(); st.life = {};
+    st.nodes = new Map(); st.backs = new Map(); st.life = {};
     q('.vs-top').appendChild(A.speedBar());                       // the same 🐢…🐇 speed setting as the Goldfish Table
     q('.vs-new').addEventListener('click', () => newGame(mode).catch(e => info(mode, 'Could not start: ' + (e.message || e))));
     q('.vs-run').addEventListener('click', () => runSeries(mode).catch(e => { q('.vs-sinfo').textContent = 'Could not run: ' + (e.message || e); q('.vs-run').disabled = false; }));
@@ -135,7 +135,7 @@
       if (human) D.seat(pod.games[0]);                        // your seat can be asked; every other seat is the autopilot's
       st.game = { games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, remote: null, phase: human ? 'mull' : null, mulling: human ? { 0: true } : {}, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
         step: null, preview: null, choice: null, respond: null, acting: false, noStop: false };
-      st.nodes = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
+      st.nodes = new Map(); st.backs = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
       st.game.looks = dealLooks(ps.length);                   // every player gets a random playmat-and-sleeves set
       q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
       sfx('shuffle'); if (human) sfx('deal', 0.4);
@@ -159,7 +159,7 @@
     const me = setup.local, them = 1 - me;
     st.game = { games: pod.games, match: pod.match, idx: 0, human: me, remote: them, io, phase: 'mull', mulling: { 0: true, 1: true }, bottom: new Set(), block: null, rounds: setup.opts.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
       step: null, preview: null, choice: null, respond: null, acting: false, noStop: false, noStops: new Set(), inputs: { 0: [], 1: [] }, picks: { 0: [], 1: [] }, pickWait: {}, moves: 0, waiting: null };
-    st.nodes = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
+    st.nodes = new Map(); st.backs = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
     st.game.looks = dealLooks(2, me);
     q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
     sfx('shuffle'); sfx('deal', 0.4);
@@ -652,13 +652,39 @@
   const pt = (g, p) => `${G.powerOf(g, p)}/${G.toughnessOf(g, p)}`;
   const attacking = (gm, g, p) => !!(gm.phase === 'block' && gm.block && gm.block.g === g && gm.block.attackers.includes(p));
   function node(st, key, card, face) {
-    st.used.add(key);
+    st.used.add(key); if (st.seatKeys) st.seatKeys.push(key);
     let e = st.nodes.get(key);
     const fresh = !e;
     if (fresh) { e = A.cardEl(card, { face: face || 0, eager: true }); st.nodes.set(key, e); }
     e.className = 'mtg' + (card.commander ? ' commander' : '') + (fresh && st.drawn ? ' vs-new' : '');
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
     delete e.dataset.iid; e.removeAttribute('title');
+    return e;
+  }
+  // Card backs show the sleeve picture. A new box would have to paint that picture again (on phones it flashes at every redraw), so each
+  // back is made once per game and kept, like the card pictures; only its class changes.
+  // The sleeve picture itself is an <img> inside the back (the CSS background stays underneath while it loads): card faces are
+  // <img> too, and those never flashed when a redraw moved them; a background picture is painted again.
+  function backArt(st, e, pid) {
+    const url = (st.lookArt && st.lookArt[pid]) || '';
+    let im = e.querySelector(':scope > img.sleeve-art');
+    if (!url) { if (im) im.remove(); return e; }
+    if (!im) { im = document.createElement('img'); im.className = 'sleeve-art'; im.alt = ''; im.decoding = 'sync'; im.draggable = false; e.appendChild(im); }
+    if (im.getAttribute('src') !== url) im.setAttribute('src', url);
+    return e;
+  }
+  function backEl(st, key, cls, pid) {
+    let e = st.backs.get(key); if (!e) { e = h('div', ''); st.backs.set(key, e); }
+    if (e.className !== cls) e.className = cls;
+    return backArt(st, e, pid);
+  }
+  // the fan of card backs on a player's name plate (how many cards they hold), kept the same way
+  function backsEl(st, g) {
+    const n = Math.min(g.hand.length, 7), key = 'fan' + g.pid;
+    let e = st.backs.get(key); if (!e) { e = h('span', 'vs-backs'); e.append(h('b', '')); st.backs.set(key, e); }
+    const is = e.querySelectorAll('i'); for (let k = is.length; k < n; k++) e.insertBefore(h('i', ''), e.lastChild); for (let k = n; k < is.length; k++) is[k].remove();
+    e.querySelectorAll('i').forEach(i => backArt(st, i, g.pid));
+    e.lastChild.textContent = g.hand.length; e.title = `${g.hand.length} card${g.hand.length === 1 ? '' : 's'} in hand`;
     return e;
   }
   // can you use one of this planeswalker's loyalty abilities right now? It is yours, it is your main phase and nothing else is waiting
@@ -745,7 +771,7 @@
       p.dataset.pid = g.pid; p.appendChild(inner || h('div', 'vs-empty')); box.appendChild(p);
       return p;
     };
-    pile('lib', 'Library', 'Lib', g.library.length, g.library.length ? h('div', 'card-back' + (g.library.length > 1 ? ' pile' : '')) : null);
+    pile('lib', 'Library', 'Lib', g.library.length, g.library.length ? backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid) : null);
     let cz = null;
     if (g.command.length) {
       cz = h('div', 'vs-czone');
@@ -784,6 +810,7 @@
       const s = L.styleOf(look);
       Object.keys(s.vars).forEach(k => seat.style.setProperty(k, s.vars[k]));
       st.lookKey[pid] = key; st.lookOn[pid] = s.sleeved; st.lookName[pid] = s.name;
+      st.lookArt[pid] = s.sleeved ? ((String(s.vars['--sleeve-back'] || '').match(/url\("([^"]+)"\)/) || [])[1] || '') : '';          // the sleeve picture, for the card backs (backArt)
     }
     seat.classList.toggle('sleeved', !!st.lookOn[pid]);
     seat.dataset.set = st.lookName[pid] || '';
@@ -796,13 +823,15 @@
     gm.games.forEach(o => Object.keys(o.cmdrDamage || {}).forEach(k => { if (String(k).endsWith('>' + g.pid)) cd = Math.max(cd, o.cmdrDamage[k]); }));
     const prev = st.life[g.pid]; st.life[g.pid] = g.life;
     const flash = prev == null || g.dead ? '' : g.life < prev ? ' down' : g.life > prev ? ' up' : '';
-    const backs = mine ? '' : `<span class="vs-backs" title="${g.hand.length} card${g.hand.length === 1 ? '' : 's'} in hand">${'<i></i>'.repeat(Math.min(g.hand.length, 7))}<b>${g.hand.length}</b></span>`;
+    const backs = mine ? '' : '<span class="vs-backs-slot"></span>';          // filled below with the kept fan of backs (backsEl)
     const turn = !active ? '' : `<span class="vs-turn">▶ ${g.opp && !g.opp.dead && m.players.length > 2 ? 'attacking ' + esc(m.names[g.opp.pid]) : 'turn ' + (g.turn || 1)}</span>`;
     const set = st.lookName[g.pid] ? `<span class="vs-set" title="Playmat and sleeves: ${esc(st.lookName[g.pid])}">🎨 ${esc(st.lookName[g.pid])}</span>` : '';
     const rl = g.ring && g.ring.tempts > 0 ? Math.min(4, g.ring.tempts) : 0;
     const ring = rl ? `<span class="vs-ring" title="The Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×. ${esc(G.RING_TEXT.slice(0, rl).join(' '))}">💍 ${g.ring.tempts}</span>` : '';
-    return h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
+    const plate = h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
       `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
+    const slot = plate.querySelector('.vs-backs-slot'); if (slot) slot.replaceWith(backsEl(st, g));
+    return plate;
   }
   // what the game is waiting for, when it is not waiting for you
   function waitText(gm) {
@@ -879,12 +908,29 @@
     box.style.setProperty('--n', g.hand.length);                // a big hand overlaps more, so it never spills over the buttons
     return box;
   }
+  // Everything a computer player's seat shows, as one string: when it is the same as at the last redraw, the seat is left as it is.
+  // (Redrawing moves every card picture into new boxes; a game playing itself redraws many times a second, and on phones the moved
+  // pictures flash, tapped cards most of all. A seat a person plays is always redrawn: its buttons depend on much more.)
+  function seatSig(st, gm, g, mine) {
+    const P = p => [p.iid, p.card.uid, p.tapped ? 1 : 0, p.mdfc ? 1 : 0, p.counters || 0, p.loyalty || 0, p.sick ? 1 : 0, p.token ? 1 : 0, p.attachedTo == null ? '' : p.attachedTo,
+      G.isCreaturePerm(p) ? pt(g, p) : '', p.other ? JSON.stringify(p.other) : '', p.transformed ? 1 : 0, attacking(gm, g, p) ? 1 : 0, imprintOf(p) ? imprintOf(p).iid : ''];
+    const top = z => z.length ? z[z.length - 1].iid : '';
+    return JSON.stringify([mine ? 1 : 0, gm.over || '', cur(gm).pid, gm.phase || '', gm.picking ? 1 : 0, gm.block ? gm.block.attackers.map(a => a.iid) : '', gm.human, st.lookName[g.pid] || '',
+      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})),
+      g.hand.map(i => i.iid), g.command.map(i => i.iid), g.library.length, g.graveyard.length, top(g.graveyard), g.exile.length, top(g.exile), g.battlefield.map(P)]);
+  }
   // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.
   function fillSeat(st, mode, gm, g, mine) {
     const active = !gm.over && cur(gm).pid === g.pid, seat = st.seats[g.pid];
     seat.className = `vs-seat ${mine ? 'me' : 'opp'} ${SEAT[g.pid]}${active ? ' active' : ''}${g.dead ? ' out' : ''}`;
     seat.dataset.pid = g.pid;
     dressSeat(st, gm, seat, g.pid);
+    const sig = gm.human === g.pid ? null : seatSig(st, gm, g, mine);
+    if (sig && seat._sig === sig && seat.firstChild) { seat._keys.forEach(k => st.used.add(k)); return; }          // nothing on it changed: keep its cards where they are
+    st.seatKeys = [];
+    try { drawSeat(st, mode, gm, g, mine, seat); } finally { seat._sig = sig; seat._keys = st.seatKeys; st.seatKeys = null; }
+  }
+  function drawSeat(st, mode, gm, g, mine, seat) {
     const board = h('div', 'vs-board');
     if (g.dead) board.appendChild(h('div', 'vs-gone', 'Out of the game')); else board.append(fieldEl(st, gm, g, mine), pilesEl(st, gm, g, mine));
     const plate = plateEl(st, gm, g, mine);
@@ -898,7 +944,7 @@
     const st = V[mode], gm = st.game, q = st.q; if (!gm) return;
     st.used = new Set();
     if (st.table !== gm) {                                    // a new game: lay the table once
-      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.bar = null;
+      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.lookArt = {}; st.bar = null;
       st.seats = gm.games.map(() => h('div', 'vs-seat'));
       const opps = h('div', 'vs-opps n' + (gm.games.length - 1)), me = bottomSeat(gm);
       opps.append(...st.seats.filter((x, i) => i !== me));

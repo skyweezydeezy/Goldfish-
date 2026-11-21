@@ -26,11 +26,12 @@ function checkTable(g, where) {
       missing.push(where + ': ' + p.card.name + ' has "' + k + '"');
     for (const k in a.statics) if (a.statics[k] && !x.U['statics.' + k] && missing.length < 5) missing.push(where + ': ' + p.card.name + ' has "statics.' + k + '"'); }
 }
+function probeLoop(g) { for (const p of g.battlefield) { const a = p.card.a; if (a.chainVeil && !p.tapped) return p; if (a.oneRing) return p; } return null; }          // a loop of the same shape as the engine's ability loops
 const hashes = {};
 for (const x of decks) for (let i = 0; i < 2; i++) { const g = G.newGame(x.deck, O, (11 + i * 7919) >>> 0); G.mulligan(g);
   for (let t = 0; t < O.turns; t++) { G.playTurn(g); checkTable(g, x.d.file + ' turn ' + (t + 1)); for (let k = 0; g.extraTurns > 0 && k < 3; k++) { g.extraTurns--; G.playTurn(g); } }
   hashes[x.d.file + '|' + i] = crypto.createHash('sha1').update(state(g)).digest('hex').slice(0, 12); }
-if (child) { console.log(JSON.stringify({ hashes, land: G.inLoop(decks[0].deck.unique.find(c => /^Basic Land/.test(c.type_line || '')) || decks[0].deck.unique[0], G.useAbilities) })); process.exit(0); }
+if (child) { console.log(JSON.stringify({ hashes, land: G.inLoop(decks[0].deck.unique.find(c => /^Basic Land/.test(c.type_line || '')) || decks[0].deck.unique[0], probeLoop) })); process.exit(0); }
 
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };

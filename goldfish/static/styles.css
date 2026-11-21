@@ -160,6 +160,9 @@ label.small { font-size: 12px; }
 .mtg .fallback b { font-size: 11px; }
 .mtg .badge { position: absolute; right: 4px; top: 4px; background: rgba(0,0,0,.78); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; }
 .mtg .tag { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.78); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 99px; }
+/* what a permanent chose as it entered (Metallic Mimic, Cavern of Souls: a creature type; Cloud Key: a card type), on its picture */
+.mtg .tag.chosen { left: 50%; bottom: auto; top: 30%; transform: translateX(-50%); max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: rgba(245,209,122,.94); color: #1b1405; font-weight: 700; font-size: 11px; padding: 1px 8px; box-shadow: 0 1px 6px rgba(0,0,0,.6); z-index: 3; }
 .mtg.tapped { transform: rotate(90deg) scale(.9); filter: brightness(.78); }
 .mtg.sick::after { content: "💤"; position: absolute; left: 4px; top: 3px; font-size: 13px; filter: drop-shadow(0 0 2px #000); }
 .mtg.commander { box-shadow: 0 0 0 2px #d9a21b, 0 2px 8px rgba(0,0,0,.6); }

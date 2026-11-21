@@ -2848,6 +2848,53 @@
     if (a === undefined) { a = analyze(card, deckColors); if (a.backCard || a.stages) return a; if (ANALYSES.size >= 1500) ANALYSES.clear(); ANALYSES.set(key, a); }
     return a;
   }
+  // What a permanent chose as it entered, for the table to show and the log to say: "As ~ enters, choose a creature type" (Metallic
+  // Mimic, Cavern of Souls, Kindred Discovery, Vanquisher's Banner, Herald's Horn, Urza's Incubator...) names the deck's creature type
+  // (above: the deck's tribe, or the Policy lab's choice), and Cloud Key's "choose artifact, creature, ..." the card type it casts most.
+  // An instant or sorcery that chooses as it resolves (Kindred Dominance, Distant Melody, Kindred Summons) names it too, for the log.
+  // A choice made when an ability is activated (Riptide Shapeshifter) is not one: null.
+  function chosenFor(g, card) {
+    if (!card) return null;
+    const t = [card.oracle_text].concat((card.card_faces || []).map(f => f.oracle_text)).filter(Boolean).join('\n'), d = g && g.deck;
+    if (card.chosenType) return { what: 'creature type', name: card.chosenType };          // a person chose another type as it entered (cardForTribe)
+    if (/\bas [^.\n]*?enters(?: the battlefield)?(?: [^.,\n]*)?, choose a creature type/i.test(t) || (/\b(Instant|Sorcery)\b/.test(card.type_line || '') && /(^|\n)choose a creature type\./i.test(t))) return d && d.tribe ? { what: 'creature type', name: d.tribe } : null;
+    if (/\bas [^.\n]*?enters(?: the battlefield)?, choose artifact, creature, enchantment, instant, or sorcery/i.test(t)) return d && d.cardType ? { what: 'card type', name: d.cardType } : null;
+    return null;
+  }
+  // The creature types a person may choose for such a permanent: the types of the creatures in their deck, the most common first, the
+  // deck's own type (the learned one) at the top. counts: how many creature cards have each type.
+  function deckTribes(deck) {
+    const n = {};
+    for (const c of (deck && deck.unique) || []) {
+      const tl = String(c.type_line || '').split(' // ')[0];
+      if (!/\bCreature\b/.test(tl) || !/—/.test(tl)) continue;
+      for (const w of tl.split('—')[1].trim().split(/\s+/)) if (w) n[w] = (n[w] || 0) + (c.qty || 1);
+    }
+    for (const r of (deck && deck.tribeInfo && deck.tribeInfo.ranked) || []) if (!(r.type in n)) n[r.type] = 0;
+    const list = Object.keys(n).sort((x, y) => (y === deck.tribe) - (x === deck.tribe) || n[y] - n[x] || x.localeCompare(y));
+    return { list, counts: n };
+  }
+  // A card read again with another chosen creature type: the engine plays the permanent as chosen. Kept per card and type.
+  const TRIBE_CARDS = new WeakMap();
+  function cardForTribe(g, base, tribe) {
+    let m = TRIBE_CARDS.get(base); if (!m) TRIBE_CARDS.set(base, m = new Map());
+    if (m.has(tribe)) return m.get(tribe);
+    const t0 = curTribe, c0 = curCardType; curTribe = tribe; curCardType = (g.deck && g.deck.cardType) || c0;
+    let a; try { a = analyzeOnce(base, (g.deck && g.deck.deckColors) || COLORS); } finally { curTribe = t0; curCardType = c0; }
+    const card = Object.assign({}, base, { a, tribeBase: base, chosenType: tribe });
+    m.set(tribe, card); return card;
+  }
+  // "As ~ enters, choose a creature type", for a person: they choose among their deck's types (deckTribes), the learned type (the
+  // autopilot's, so "Autopilot decides" takes it) as the default. The default keeps the card as it is; another type re-reads it.
+  function chooseTribeOnEnter(g, inst) {
+    const base = inst.card.tribeBase || inst.card, d = g.deck;
+    if (!d || !d.tribe) return;
+    const ch = chosenFor(g, base); if (!ch || ch.what !== 'creature type') return;
+    const { list, counts } = deckTribes(d);
+    const pick = decide(g, { kind: 'tribe', options: list, def: d.tribe, counts, source: { card: base }, learned: d.tribe });
+    const want = pick && pick !== d.tribe ? cardForTribe(g, base, pick) : base;
+    if (inst.card !== want) inst.card = want;
+  }
   function buildDeck(cards, tokens, tribeChoice) {
     const ci = new Set();
     cards.forEach(c => (c.color_identity || []).forEach(x => ci.add(x)));
@@ -2861,7 +2908,7 @@
     const library = [], commanders = [];
     let iid = 0;
     for (const c of unique) for (let k = 0; k < (c.qty || 1); k++) (c.commander ? commanders : library).push({ iid: iid++, card: c });
-    return { library, commanders, unique, deckColors, tribe: curTribe, tribeInfo, tokens: tokens || [], tokenCache: {}, nextIid: iid + 100000 };
+    return { library, commanders, unique, deckColors, tribe: curTribe, cardType: curCardType, tribeInfo, tokens: tokens || [], tokenCache: {}, nextIid: iid + 100000 };
   }
 
   function ghostLandCard(deck) {
@@ -4155,6 +4202,7 @@
   }
   function enter(g, inst, o) {
     o = o || {};
+    if ((g.ask || inst.card.tribeBase) && !g.dry) chooseTribeOnEnter(g, inst);          // Metallic Mimic, Cavern of Souls: a person names the creature type
     const a = inst.card.a;
     const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: (a.fetchSpec || a.coffers || a.nykthos) ? null : a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: Math.floor(a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1) / (a.isPlaneswalker && !g.dry && g.opp && othersHave(g, 'vorinHalf') ? 2 : 1)), token: !!inst.card.isToken || !!o.token };          // o.token: a token copy of a card
     if (a.tendo) perm.charge = 1;
@@ -11426,7 +11474,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    postCombatTriggers, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

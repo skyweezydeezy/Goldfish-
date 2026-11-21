@@ -391,6 +391,24 @@ const shot = process.env.VERSUS_SHOTS;
   const seq = order.map(x => x.split(':')[0]).filter((x, k, l) => l[k - 1] !== x);
   check('the log walks the steps in order: draw, main, combat (beginning of combat, the explore, no attack), second main or end', seq.indexOf('main1') < seq.indexOf('combat') && order.some(x => /^combat: Beginning of combat/.test(x)) && order.some(x => /^combat: .*explores/.test(x)) && order.some(x => /^combat: No attack/.test(x)) && seq.indexOf('combat') === seq.length - 1 || seq.slice(-1)[0] === 'end' || seq.slice(-1)[0] === 'main2', order.join(' | '));
 
+  // ================= Metallic Mimic announces its creature type, and the type sits on the card =================
+  if (!(await state('duel')).over) {
+    await arrange('duel', { hand: ['Metallic Mimic'], lands: [['Island', 2]], untap: true });
+    check('Metallic Mimic glows in your hand', await clickHand('duel', 'Metallic Mimic'));
+    await passStack('duel');
+    await p.waitForSelector('.ch-sheet.tribe', { timeout: 15000 });
+    sh = await sheet();
+    check('as it enters, a sheet asks "Metallic Mimic: choose a creature type": your deck\'s types, the learned one (Merfolk) first and preselected', sh.title === 'Metallic Mimic: choose a creature type' && sh.names[0] === 'Merfolk' && sh.def.length === 1 && sh.def[0] === 'Merfolk' && sh.names.includes('Wizard') && /^learned/.test(sh.notes[0]) && sh.ok === 'Choose Merfolk', sh.names.slice(0, 6).join(', ') + ' / ' + sh.ok);
+    if (shot) await p.screenshot({ path: path.join(shot, 'chosen-type-sheet.png') });
+    await pickTile('Wizard'); await p.click('.ch-sheet .ch-ok');
+    await p.waitForFunction(() => !window.__isfVersus.duel.game.acting && !document.querySelector('.ch-sheet'), null, { timeout: 15000 });
+    const mm = await p.evaluate(() => { const gm = window.__isfVersus.duel.game, me = gm.games[0], q = me.battlefield.find(x => x.card.name === 'Metallic Mimic'), el = q && document.querySelector('#tab-duel .vs-seat.me .mtg[data-iid="' + q.iid + '"]'), tg = el && el.querySelector('.tag.chosen');
+      return { on: !!q, tag: tg && tg.textContent, title: tg && tg.title, chosen: q && q.card.chosenType, inside: !!(tg && el.contains(tg)), vis: !!(tg && tg.getBoundingClientRect().width > 10) }; });
+    check('choosing Wizard: Metallic Mimic shows "Wizard" on the card, and the engine plays it as a Wizard Mimic', mm.on && mm.tag === 'Wizard' && mm.chosen === 'Wizard' && mm.inside && mm.vis && /The chosen creature type: Wizard/.test(mm.title), JSON.stringify(mm));
+    check('...and the log announces it as it enters: "Metallic Mimic: the chosen creature type is Wizard"', (await log('duel', 6)).some(t => /Metallic Mimic: the chosen creature type is Wizard/.test(t)), (await log('duel', 3)).join(' || '));
+    if (shot) await p.screenshot({ path: path.join(shot, 'chosen-type-duel.png') });
+  }
+
   // ================= landcycling and transmute from your hand =================
   await loadDeck('frodo', 'Twisted Abomination', '1 Twisted Abomination\n1 Drift of Phantasms\n1 Island');
   await start('duel');
@@ -472,7 +490,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.click('[data-tab=sim]'); await p.selectOption(esel, 'auto');          // leave the deck's choices as they were
 
   // ================= the Goldfish Table asks too: Imperial Seal, and the cleanup discard =================
-  await loadDeck('frodo', 'Imperial Seal', '1 Imperial Seal\n1 The Chain Veil');
+  await loadDeck('frodo', 'Imperial Seal', '1 Imperial Seal\n1 The Chain Veil\n1 Metallic Mimic');
   await p.click('[data-tab=table]');
   await p.click('#tNew'); await p.waitForTimeout(600);
   await p.waitForFunction(() => window.__isf.game && !document.querySelector('.ch-sheet'), null, { timeout: 30000 }).catch(async () => { await p.click('.ch-sheet .ch-auto'); });
@@ -527,6 +545,14 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForTimeout(1500);
   const pv = await p.evaluate(() => { const g = window.__isf.game, v = g.battlefield.find(q => q.iid === window.__veil); return { tapped: v.tapped, glow: document.querySelector('.bf-row .mtg[data-iid="' + window.__pw + '"]').classList.contains('castable') }; });
   check('...activating it taps the Veil, and Elspeth can activate again (she glows)', pv.tapped && pv.glow, JSON.stringify(pv));
+
+  // the Practice table: the chosen type on Metallic Mimic too
+  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; const q = G.enter(g, { iid: g.nextIid++, card: g.deck.unique.find(x => x.name === 'Metallic Mimic') }, {}); q.sick = false; window.__mimic = q.iid; });
+  await p.click('#zLibrary .card-back'); await p.waitForTimeout(800);
+  const pm = await p.evaluate(() => { const g = window.__isf.game, el = document.querySelector('.bf-row .mtg[data-iid="' + window.__mimic + '"]'), tg = el && el.querySelector('.tag.chosen'); return { tag: tg && tg.textContent, tribe: g.deck.tribe }; });
+  check('Practice: Metallic Mimic shows its chosen type on the card (the deck\'s type)', !!pm.tag && pm.tag === pm.tribe, JSON.stringify(pm));
+  check('...and the Game log announces it', await p.$$eval('#gameLog li', (ls, t) => ls.some(l => l.textContent === 'Metallic Mimic: the chosen creature type is ' + t), pm.tribe), (await p.$$eval('#gameLog li', ls => ls.slice(-3).map(l => l.textContent))).join(' | '));
+  if (shot) await p.screenshot({ path: path.join(shot, 'chosen-type-practice.png') });
 
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 

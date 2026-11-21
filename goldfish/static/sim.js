@@ -4332,7 +4332,62 @@
     return perm;
   }
 
+  // ---------- The stack: triggered abilities (Comprehensive Rules 603.3, 405, 704.3) ----------
+  // While a player takes an action (a spell or an ability resolving, a step of the turn), abilities that trigger wait. At the next step boundary
+  // state-based actions are checked, then the waiting abilities go on the stack (the active player's first, so the other players' resolve
+  // first; each player's in the order they triggered) and resolve one at a time, newest first, with state-based actions after each; abilities
+  // that trigger meanwhile go on top. A trigger outside any action (a direct call) resolves at once, as before.
+  function actingHost(g) { if (g.acts > 0) return g; if (!g.opp && !g.match) return null; for (const o of otherPlayers(g)) if (o.acts > 0) return o; return null; }
+  const REPLACES = new WeakMap();          // "enters with counters", "as ~ enters": a replacement effect, part of entering (614.1c), not a trigger
+  const isReplacement = t => { let r = REPLACES.get(t); if (r === undefined) REPLACES.set(t, r = /^(?:~|this [a-z]+) enters (?:with|tapped)|^as (?:~|this [a-z]+) enters/i.test(t.text || '')); return r; };
   function fire(g, trig, source, ev, subject, amount) {
+    const h = isReplacement(trig) ? null : actingHost(g);
+    if (h) { (h.trigQ || (h.trigQ = [])).push({ g, trig, source, subject, amount, x: g.xValue, last: g.lastCast, much: g.thatMuch, sc: g.spellsCast }); return; }
+    fireNow(g, trig, source, ev, subject, amount);
+  }
+  // effects that cannot make a state-based action apply (no permanent leaves, enters or shrinks; a player's life is checked anyway)
+  const SBA_SAFE = new Set(['draw', 'gainLife', 'drain', 'loseLife', 'damage', 'scry', 'surveil', 'mill', 'treasure', 'food', 'poison']);
+  const sbaSafe = it => !it.trig.nth && it.trig.fx.every(f => SBA_SAFE.has(f.type) || (f.type === 'counters' && (f.kind === '+1/+1' || (f.kind && f.kind !== '-1/-1' && f.kind !== 'loyalty'))));
+  const tableVer = h => { let v = h.bfVer || 0; for (const o of otherPlayers(h)) v += o.bfVer || 0; return v; };
+  function activePlayer(h) { if (h.activeTurn !== false) return h; for (const o of otherPlayers(h)) if (o.activeTurn === true) return o; return h; }
+  function settle(h, ev) {
+    if (h.settling) return;
+    h.settling = true; h.acts = (h.acts || 0) + 1;
+    try {
+      const stack = h.stackItems || (h.stackItems = []);
+      let dirty = true;
+      for (let n = 0; ; n++) {
+        if (dirty) sba(h, ev); else for (const x of [h].concat(otherPlayers(h))) if (!x.dead && x.opp && x.life <= 0 && !matchOver(x)) checkDeath(x, ev);          // nothing changed that a state-based action looks at: only the players' life
+        dirty = false;
+        if (h.trigQ && h.trigQ.length) {
+          const q = h.trigQ.splice(0), ap = activePlayer(h);
+          const mine = q.filter(x => x.g === ap), rest = q.filter(x => x.g !== ap);
+          for (const it of mine.reverse()) stack.push(it);          // pushed first: resolves last (APNAP)
+          for (const it of rest.reverse()) stack.push(it);
+        }
+        if (!stack.length) break;
+        if (matchOver(h) || (h.match && h.match.winner != null)) { stack.length = 0; break; }
+        if (n > 600) {          // a loop that keeps triggering itself (Exquisite Blood + Sanguine Bond): the game is over for the other side
+          const it = stack[stack.length - 1]; stack.length = 0;
+          if (h.killTurn == null && !h.infinite) { ev.push({ type: 'note', text: `Infinite loop (${it.source && it.source.card ? it.source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null }); h.damage = Math.max(h.damage, h.opts.oppLife); if (h.opp) (isPod(h) ? podAlive(h) : [h.opp]).forEach(o => { o.life = 0; }); h.infinite = true; checkKill(h, ev); }
+          break;
+        }
+        const it = stack.pop(), x = it.g, px = x.xValue, pl = x.lastCast, pm = x.thatMuch, ps = x.spellsCast;
+        x.xValue = it.x; x.lastCast = it.last; x.thatMuch = it.much; x.spellsCast = it.sc;          // what the ability remembers from when it triggered (the spell's X, the amount, the spells cast before it)
+        const v0 = tableVer(h);
+        try { fireNow(x, it.trig, it.source, ev, it.subject, it.amount); } finally { x.xValue = px; x.lastCast = pl; x.thatMuch = pm; x.spellsCast = ps; }
+        dirty = tableVer(h) !== v0 || !sbaSafe(it);
+      }
+    } finally { h.acts--; h.settling = false; }
+  }
+  // an action: abilities that trigger during it wait, and when it is done they go on the stack and resolve
+  function acting(g, fn) {
+    g.acts = (g.acts || 0) + 1; let out;
+    try { out = fn(); } finally { g.acts--; }
+    if (!g.acts) { const ev = Array.isArray(out) ? out : out && Array.isArray(out.ev) ? out.ev : []; settle(g, ev); }
+    return out;
+  }
+  function fireNow(g, trig, source, ev, subject, amount) {
     fireOnce(g, trig, source, ev, subject, amount);
     if (!g.dry && source && source.iid != null && g.killTurn == null && isCreaturePerm(source) && bfInfo(g).wizardStaff && (tableHas(g, 'wizardStaff') && g.battlefield.some(q => q.card.a.wizardStaff && q.attachedTo === source.iid))) fireOnce(g, trig, source, ev, subject, amount);          // Wizard's Staff
     if (g.copierSeen && !g.dry && source && g.killTurn == null && !g.inCopy) {                                   // Strionic Resonator, Lithoform Engine: {2}, {T}: copy a triggered ability worth copying
@@ -4849,9 +4904,13 @@
         let did = false;
         for (const x of [g].concat(otherPlayers(g))) {
           if (x.dead) continue;
-          const gone = [];
+          const gone = [], info = bfInfo(x);
+          // a creature's toughness is only worked out when something could have brought it to 0 or made its damage lethal: damage, -1/-1
+          // counters, a minus effect until end of turn or from another player, a body of 0 (a 0/0 with counters, Tarmogoyf); otherwise skip it
+          const minus = (x.eot && x.eot.t < 0) || info.anthems.some(e => e.an.t < 0) || info.dyn.length > 0 || otherPlayers(x).some(o => bfInfo(o).oppMinus) || (tableHas(x, 'toxrill') && bothSides(x).some(q => q.card.a.toxrill));
           for (const p of x.battlefield) {
             if (isCreaturePerm(p)) {
+              if (!minus && !(p.dmg > 0) && !((p.counters || 0) < 0) && !((p.eotT || 0) < 0) && !p.slime && !p.animated && p.card.a.toughness > 0 && !p.card.a.cda && !p.card.a.perEach && !p.card.a.lifeBuff && !p.card.a.levelUp) continue;
               const t = toughnessOf(x, p);
               if (t <= 0) { gone.push({ p, why: 'toughness' }); continue; }
               if ((p.dmg || 0) > 0 && (p.dmg >= t || p.dt) && !indestructible(x, p)) gone.push({ p, why: 'damage' });
@@ -7496,7 +7555,7 @@
   }
   // the two-faced cards of a deck whose back face can be cast as a spell (not a land): the ones a face setting applies to
   function faceCards(deck) { return (deck.unique || []).filter(c => c.layout === 'modal_dfc' && c.a.backCard && c.a.backCard.mana_cost && !c.a.backCard.a.isLand && !c.a.isLand); }
-  function castOne(g) { const ev = castOne0(g); if (ev && ev.length) sba(g, ev); return ev; }          // after a spell resolves: state-based actions
+  function castOne(g) { return acting(g, () => castOne0(g)); }          // a spell is cast and resolves; then the stack (its triggers), state-based actions
   function castOne0(g) {
     const units = allUnits(g), units0 = units;
     if (!units.length && !(g.library[0] && (tableHas(g, 'citadel') && g.battlefield.some(q => q.card.a.citadel))) && !(tableHas(g, 'kci') && g.battlefield.some(q => q.card.a.kci)) && !(bfInfo(g).aluren || (g.opp && bfInfo(g.opp).aluren))) return null;
@@ -8420,7 +8479,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!it || !it.ok) return null;
     return activateLoyalty(g, p, it.ab, [], undefined, active);
   }
-  function useAbilities(g) { const ev = useAbilities0(g); if (ev.length) sba(g, ev); return ev; }          // after an ability resolves: state-based actions
+  function useAbilities(g) { return acting(g, () => useAbilities0(g)); }          // an ability resolves; then the stack and state-based actions
   function useAbilities0(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
@@ -8719,9 +8778,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     // In a pod the match record lists every player, and damage "to each opponent" walks that list: the copy gets its own list of stand-ins,
     // or a spell rehearsed on the copy would take life from the real players (and from the real self, who is not the copy).
     const m2 = g.match ? Object.assign({}, g.match, g.match.out ? { out: g.match.out.slice() } : {}) : undefined;
-    const standIn = x => Object.assign({}, x, { ask: null, match: m2, opp: null, battlefield: x.battlefield.map(p => Object.assign({}, p)), hand: x.hand.slice(), graveyard: x.graveyard.slice(), exile: x.exile.slice(), command: x.command.slice(), _bf: null, bfVer: (x.bfVer || 0) + 1 });
+    const standIn = x => Object.assign({}, x, { acts: 0, trigQ: [], stackItems: [], settling: false, ask: null, match: m2, opp: null, battlefield: x.battlefield.map(p => Object.assign({}, p)), hand: x.hand.slice(), graveyard: x.graveyard.slice(), exile: x.exile.slice(), command: x.command.slice(), _bf: null, bfVer: (x.bfVer || 0) + 1 });
     const opp2 = g.opp ? standIn(g.opp) : undefined;
-    const s = Object.assign({}, g, { match: m2, opp: opp2, ask: null,
+    const s = Object.assign({}, g, { acts: 0, trigQ: [], stackItems: [], settling: false, match: m2, opp: opp2, ask: null,
       rnd: () => 0.5, battlefield: g.battlefield.map(p => Object.assign({}, p)), hand: g.hand.slice(), library: g.library.slice(),
       command: g.command.slice(), graveyard: g.graveyard.slice(), exile: g.exile.slice(), castTurn: Object.assign({}, g.castTurn),
       drawTurn: Object.assign({}, g.drawTurn), floating: (g.floating || []).slice(), spentThisTurn: 0, cmdrCasts: Object.assign({}, g.cmdrCasts),
@@ -9254,7 +9313,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     g.oppHand = Math.max(0, g.oppHand - 1);                                             // it plays a card
   }
 
-  function beginTurn(g) {
+  function beginTurn(g) { return acting(g, () => beginTurn0(g)); }
+  function beginTurn0(g) {
     g.turn++;
     g.activeTurn = true; for (const o of otherPlayers(g)) o.activeTurn = false;          // whose turn it is ("during your turn")
     (g.match || g).seq = ((g.match || g).seq || 0) + 1;          // every player's turn counts: Angel's Grace lasts this one
@@ -9327,6 +9387,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const c = cands.find(i => !(i.card.a.isPlaneswalker && g.battlefield.some(q => q.card.name === i.card.name)) && !(i.card.a.isLegendary && g.battlefield.some(q => q.card.name === i.card.name)));
       if (c) { const gi = g.exile.indexOf(c); if (gi >= 0) { g.exile.splice(gi, 1); g.graveyard.push(c); } c.freeCast = true; const ce = castCard(g, c, true); if (ce) ev.push({ type: 'note', text: `Kaya's emblem: ${c.card.name} cast for free` }, ...ce); c.freeCast = false; }
     }
+    settle(g, ev);          // the upkeep's triggers resolve before the draw step
     marks.draw = ev.length;
     if (!(g.turn === 1 && g.opts.onPlay) && !(tableHas(g, 'skipDraw') && g.battlefield.some(p => p.card.a.skipDraw))) {                       // Necropotence skips the draw step
       const h0 = new Set(g.hand); g._firstDraw = true; draw(g, 1, ev); g._firstDraw = false; staxDraw(g, ev, g.hand.find(i => !h0.has(i)));
@@ -9343,11 +9404,12 @@ g.actSeq = (g.actSeq || 0) + 1;
       two[0].temp = g.turn; g.hand.push(two[0]); g.exile.push(two[1]); ev.push({ type: 'note', text: `${q.card.name}: discarded, ${two[0].card.name} may be played this turn`, source: q });
     }
     eachTrigger(g, 'main', ev);
-    sba(g, ev);
+    settle(g, ev);          // "at the beginning of your precombat main phase" triggers resolve before anything is cast
     return ev;
   }
 
-  function landStep(g) {
+  function landStep(g) { return acting(g, () => landStep0(g)); }
+  function landStep0(g) {
     if (!g.hand.some(i => i.card.a.isLand) && g.landsPlayedThisTurn < landsAllowed(g)) {
       if ((tableHas(g, 'statics.landsFromYard') && g.battlefield.some(q => q.card.a.statics.landsFromYard))) { const gl = g.graveyard.find(i => i.card.a.isLand && !i.card.a.fetch) || g.graveyard.find(i => i.card.a.isLand); if (gl) { g.graveyard.splice(g.graveyard.indexOf(gl), 1); g.hand.push(gl); } }          // Crucible of Worlds
       if (!g.hand.some(i => i.card.a.isLand) && g.battlefield.some(q => q.card.a.statics.landsFromTop || chipOn(g, q)) && g.library[0] && g.library[0].card.a.isLand) g.hand.push(g.library.shift());          // Oracle of Mul Daya
@@ -9438,10 +9500,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.combatPre !== g.turn && !matchOver(g)) { g.combatDone = true; eachTrigger(g, 'combat', ev); g.combatPre = g.turn; }
     return ev;
   }
-  function combat(g) {
+  function combat(g) { return acting(g, () => combat0(g)); }
+  function combat0(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;          // Time Stop, Mindslaver: no combat
-    if (g.combatPre === g.turn) { g.combatPre = null; g.combatDone = true; } else combatStart(g, ev);
+    if (g.combatPre === g.turn) { g.combatPre = null; g.combatDone = true; } else { combatStart(g, ev); settle(g, ev); }          // beginning of combat: its triggers resolve before attackers are declared
     let phases = 1;
     for (let ph = 0; ph < phases && ph < 6; ph++) {
       if (g.throttleTurn === g.turn && !g.dry) g.battlefield.forEach(q => { if (isCreaturePerm(q) && q.attackedTurn === g.turn) q.tapped = false; });          // Full Throttle: attackers untap at each combat
@@ -9499,6 +9562,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (t.minAttackers && attackers.length < t.minAttackers) continue;
         for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if (!t.filter || matchesFilter(p.card, t.filter)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
       }
+      settle(g, ev);          // attack triggers resolve before blockers and damage (tokens they make attacking join below)
       if (g._extraAtk && g._extraAtk.length) for (const r of g._extraAtk.splice(0)) if (g.battlefield.includes(r)) attackers.push(r);          // Kari Zev's Ragavan enters attacking
       if (!g.dry && !g.opp && ph === 0 && (attackers.length >= 2 || g.hand.some(c => c.card.a.ninjutsu) || g.command.some(c => c.card.a.cmdNinjutsu))) sneakStep(g, attackers, attackers, ev);          // sneak, ninjutsu (against a goldfish every attacker is unblocked)
       g.attackedThisTurn = true;
@@ -9654,7 +9718,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function postCombatTriggers(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
-    eachTrigger(g, 'postcombat', ev);
+    eachTrigger(g, 'postcombat', ev); settle(g, ev);          // "at the beginning of your postcombat main phase" triggers resolve first
     for (const sp of (tableHas(g, 'extraBeginning') ? g.battlefield.slice() : NONE)) if (sp.card.a.extraBeginning && !g.dry && !matchOver(g) && g.battlefield.includes(sp)) {
       ev.push({ type: 'note', text: `${sp.card.name}: an additional beginning phase (untap, upkeep, draw)`, source: sp });
       untapStep(g, ev); touch(g); eachTrigger(g, 'upkeep', ev); extraUpkeeps(g, ev); if (g.library.length) draw(g, 1, ev); g.sphinxTurn = g.turn;
@@ -9663,12 +9727,13 @@ g.actSeq = (g.actSeq || 0) + 1;
     flushLeaves(g, ev);
     return ev;
   }
-  function postCombat(g) {
+  function postCombat(g) { return acting(g, () => postCombat0(g)); }
+  function postCombat0(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
     if (!g.dry) for (const k of (tableHas(g, 'konaSurvival') ? g.battlefield.filter(q => q.card.a.konaSurvival && q.tapped) : [])) { const c = g.hand.filter(i => i.card.a.isPermanent && !i.card.a.isLand && !castBlocked(g, i)).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0];          // Kona, Rescue Beastie: survival
       if (c) { g.hand.splice(g.hand.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${k.card.name}: ${c.card.name} onto the battlefield`, source: k }); } }
-    eachTrigger(g, 'postcombat', ev);
+    eachTrigger(g, 'postcombat', ev); settle(g, ev);          // "at the beginning of your postcombat main phase" triggers resolve first
     for (const sp of (tableHas(g, 'extraBeginning') ? g.battlefield.slice() : NONE)) if (sp.card.a.extraBeginning && !g.dry && !matchOver(g) && g.battlefield.includes(sp)) {          // Sphinx of the Second Sun: another untap, upkeep and draw step
       ev.push({ type: 'note', text: `${sp.card.name}: an additional beginning phase (untap, upkeep, draw)`, source: sp });
       untapStep(g, ev); touch(g); eachTrigger(g, 'upkeep', ev); extraUpkeeps(g, ev); if (g.library.length) draw(g, 1, ev); g.sphinxTurn = g.turn;
@@ -9714,7 +9779,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     return ev;
   }
 
-  function endTurn(g) {
+  function endTurn(g) { return acting(g, () => endTurn0(g)); }
+  function endTurn0(g) {
     const iw = [];
     if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
     for (const i of g.hand.slice()) if (i.borrowed) { g.hand.splice(g.hand.indexOf(i), 1); const o = i.borrowed; i.borrowed = null; i.foreign = false; o.hand.push(i); }          // Sen Triplets: the cards you did not play go back to their owner's hand
@@ -9758,7 +9824,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry) { const vx = (tableHas(g, 'valakutEnd') ? g.battlefield.find(q => q.card.a.valakutEnd) : undefined), left = vx ? g.hand.filter(i => i.valakutEx) : [];          // Valakut Exploration: the cards still exiled go to the graveyard, that much damage to each opponent
       if (left.length) { for (const i of left) { g.hand.splice(g.hand.indexOf(i), 1); i.valakutEx = false; i.temp = null; g.graveyard.push(i); if (i.card.a.isLand) landToYard(g, ev, false); } ev.push({ type: 'note', text: `${vx.card.name}: ${left.length} exiled card${left.length === 1 ? '' : 's'} to the graveyard`, source: vx }); damageOpp(g, left.length, ev, vx); } }
     if (!g.dry && !bothSides(g).some(isCreaturePerm)) for (const x of [g].concat(otherPlayers(g))) for (const ps of (tableHas(x, 'pestEnd') ? x.battlefield.slice() : NONE)) if (ps.card.a.pestEnd) { leavePerm(x, ps, ev); ev.push({ type: 'note', text: `${ps.card.name} is sacrificed (no creatures on the battlefield)`, source: ps }); }          // Pestilence
-    eachTrigger(g, 'end', ev);
+    eachTrigger(g, 'end', ev); settle(g, ev);          // the end step's triggers resolve before the cleanup step (discard to hand size)
     if (!g.dry) for (const x of [g].concat(otherPlayers(g))) if (x.endFlicker && x.endFlicker.length) for (const i of x.endFlicker.splice(0)) { const at = x.exile.indexOf(i); if (at < 0) continue; x.exile.splice(at, 1); enterWithTriggers(x, i, {}, ev); ev.push({ type: 'note', text: `${i.card.name} returns to the battlefield (Flickerwisp)`, source: null }); }          // Flickerwisp
     if (!g.dry) for (const x of [g].concat(otherPlayers(g))) if (x.endReturn && x.endReturn.length) for (const i of x.endReturn.splice(0)) { const at = x.graveyard.indexOf(i); if (at < 0) continue; x.graveyard.splice(at, 1); enterWithTriggers(x, i, {}, ev); ev.push({ type: 'note', text: `Daretti's emblem: ${i.card.name} returns to the battlefield`, source: null }); }
     if (!g.dry && g.opp && (g.poisonDealt || 0) >= 3) for (const q of (tableHas(g, 'ixhel') ? g.battlefield.filter(x => x.card.a.ixhel) : [])) thiefLook(g, g.opp, 1, ev, q, false);          // Ixhel, Scion of Atraxa (corrupted)

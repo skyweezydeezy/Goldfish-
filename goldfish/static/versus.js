@@ -351,6 +351,19 @@
     if (!ev) return info(mode, `${perm.card.name} cannot use that ability now.`);
     info(mode, ''); humanDone(mode, ev);
   });
+  // a permanent's activated abilities (a Food: gain 3 life; Gilded Goose, Ashnod's Altar...), on your turn or in a response
+  const useAbility = (mode, iid) => mine(mode, async (gm, g) => {
+    if (gm.phase !== 'main' && !(gm.phase === 'respond' && gm.respond)) return;
+    const perm = g.battlefield.find(q => q.iid === iid), q = D.abilityQuestion(g, perm);
+    if (!q) return;
+    gm.choice = q; render(mode);
+    let pick; try { pick = await C.ask(q); } finally { gm.choice = null; }
+    if (pick == null || pick === 'none' || pick === 'auto' || !q.options[pick] || q.options[pick].disabled) return render(mode);
+    const ev = await act(mode, gs => G.useAbility(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid), q.options[pick].i));
+    if (!ev) return info(mode, `${perm.card.name} cannot use that ability now.`);
+    info(mode, ''); say(mode, g, `${perm.card.name}: ${q.options[pick].name}`, gm.step);
+    humanDone(mode, ev);
+  });
   // The Chain Veil: {4}, {T}: each of your planeswalkers may activate one more loyalty ability this turn
   const useVeil = (mode, iid) => mine(mode, async (gm, g) => {
     if (gm.phase !== 'main') return;
@@ -453,6 +466,9 @@
   const loyal = (gm, g, p) => { if (gm.human !== g.pid || gm.over || gm.picking || gm.choice || gm.acting || g.dead) return false;
     if (gm.phase === 'respond' && gm.respond) return !!p.card.a.masterTime && G.loyaltyState(g, p, gm.respond.g).list.some(it => it.ok);
     return gm.phase === 'main' && (p.card.a.chainVeil ? !G.chainVeilState(g, p) : G.loyaltyState(g, p).list.some(it => it.ok)); };
+  // a permanent of yours with an activated ability you can use right now (you have priority: your main phase, or a response)
+  const canActivate = (gm, g, p) => gm.human === g.pid && !gm.over && !gm.picking && !gm.choice && !gm.acting && !g.dead && !p.asLand
+    && (gm.phase === 'main' || (gm.phase === 'respond' && !!gm.respond)) && G.abilityMenu(g, p).some(it => it.ok);
   function permEl(st, gm, g, p) {
     const e = node(st, `b${g.pid}:${p.iid}:${p.mdfc ? 1 : 0}:${p.card.uid}`, p.card, p.mdfc ? 1 : 0);
     e.classList.add('vs-pc'); e.dataset.iid = p.iid;
@@ -466,6 +482,7 @@
       if (p.counters) e.appendChild(h('span', 'ctr' + (p.counters < 0 ? ' neg' : ''), (p.counters > 0 ? '+' : '') + p.counters));
     }
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
+    if (!p.card.a.isPlaneswalker && !p.card.a.chainVeil && canActivate(gm, g, p)) { e.classList.add('vs-loyal', 'vs-act'); e.title = 'Click to activate its abilities'; }
     if ((p.card.a.isPlaneswalker || p.card.a.chainVeil) && loyal(gm, g, p)) { e.classList.add('vs-loyal'); e.title = p.card.a.chainVeil ? 'The Chain Veil: click to pay {4} and tap it; each planeswalker may activate one more loyalty ability this turn' : 'Loyalty abilities: click to choose one'; }          // your main phase, nothing else waiting
     if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
     return e;
@@ -735,6 +752,8 @@
         if (hit('vs-nostop')) { gm.noStop = true; return gm.respond.done(); }
         if (hit('vs-abil')) return useAbilities(mode);
         if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
+        const ac = t.closest('.vs-seat.me .mtg.vs-act');     // a Food, Gilded Goose...: an ability in response
+        if (ac) { e.stopPropagation(); return useAbility(mode, +ac.dataset.iid); }
         const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
         if (lw) { e.stopPropagation(); return openLoyalty(mode, +lw.dataset.iid); }
         const c = t.closest('.vs-card.can');
@@ -776,6 +795,8 @@
       if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
       if (hit('vs-transmute')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-transmute').dataset.iid, 'transmute'); }
       if (hit('vs-asland')) { e.stopPropagation(); return playCard(mode, +hit('vs-asland').dataset.iid, true); }
+      const ac = t.closest('.vs-seat.me .mtg.vs-act');       // a glowing permanent with an activated ability (a Food: gain 3 life)
+      if (ac) { e.stopPropagation(); return useAbility(mode, +ac.dataset.iid); }
       const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
       if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? useVeil(mode, p.iid) : openLoyalty(mode, +lw.dataset.iid); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer

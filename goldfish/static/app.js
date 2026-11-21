@@ -905,7 +905,7 @@
   }
   async function nextTurn() {
     const g = S.game; snap();
-    if (!g.turnDone) { await doCombat(); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
+    if (!g.turnDone) { await doCombat(true); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
   async function play(ev) {
@@ -927,9 +927,15 @@
     const el = document.querySelector(`.table [data-iid="${iid}"]`);
     if (el) { el.classList.remove('glow'); void el.offsetWidth; el.classList.add('glow'); setTimeout(() => el.classList.remove('glow'), 700); }
   }
-  async function doCombat() {
+  // mine: your own turn (Next turn). The beginning of combat is its own step first: its triggers resolve before attackers, with their
+  // choices asked (Hakbal's Merfolk explore, even while Hakbal is summoning sick), then the attack, whose triggers ask too.
+  async function doCombat(mine) {
     const g = S.game;
-    const ev = G.combat(g);
+    if (mine) {
+      const pre = await yours(x => (G.matchOver(x) ? { ev: [] } : G.previewAttack(x)).ev);
+      if (pre.length) { log('<i>Beginning of combat</i>'); await play(pre); }
+    }
+    const ev = mine ? await yours(x => G.combat(x)) : G.combat(g);
     // split at declare / attack boundaries for a two-beat animation
     let batch = [];
     for (const e of ev) {
@@ -1116,6 +1122,12 @@
       const idx = q.options[k].i; snap();
       quiet(yours(x => G.useLoyalty(x, x.battlefield.find(y => y.iid === obj.iid), idx)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
     }).catch(() => { S.busy = false; });
+  }
+  // one of a permanent's activated abilities (or a graveyard card's, Cauldron Familiar), any time you have priority
+  function useAbilityUI(obj, zone, i, ab) {
+    if (!ab.ok) { sfx('error'); return toast(`${obj.card.name}: not now (${ab.why})`); }
+    snap();
+    quiet(yours(x => G.useAbility(x, x[zone].find(y => y.iid === obj.iid), i)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
   }
   function castFace(inst, face, el) { snap(); quiet(yours(x => face === 1 ? G.castBackFace(x, sameInst(x, inst)) : G.castCard(x, sameInst(x, inst))).then(ev => faceDone(ev, inst, face, el))); }
   function faceDone(ev, inst, face, el) {
@@ -1412,6 +1424,7 @@
       const why = G.chainVeilState(S.game, obj);
       items.push([why ? `◆ The Chain Veil (${why})` : '◆ Activate: {4}, tap: one more loyalty ability for each planeswalker', () => { if (G.chainVeilState(S.game, obj)) { sfx('error'); return toast('The Chain Veil: ' + G.chainVeilState(S.game, obj)); } snap(); quiet(yours(x => G.useChainVeil(x, x.battlefield.find(y => y.iid === obj.iid))).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana for The Chain Veil'); } play(ev); })); }, why ? '' : 'primary']);
     }
+    if (zone === 'battlefield' || zone === 'graveyard') G.abilityMenu(g, obj).forEach((ab, i) => items.push([`⚡ ${ab.label}${ab.cost ? ` (${ab.cost})` : ''}${ab.ok ? '' : ` — not now: ${ab.why}`}`, () => useAbilityUI(obj, zone, i, ab), ab.ok ? 'primary' : '']));          // activated abilities: Food, sacrifice outlets, {cost}: effect
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {

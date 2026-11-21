@@ -174,9 +174,9 @@
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`;
     } else if (d.kind === 'sacrifice') {
-      q.title = d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
+      q.title = d.ability ? `${d.ability}: sacrifice a creature` : d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
-      q.none = 'Do not cast it';
+      q.none = d.ability ? 'Cancel' : 'Do not cast it';
     } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)
       q.title = `Legend rule: you control ${opts.length} ${d.what}`;
       q.text = 'Only one legendary permanent with the same name can stay. Choose the one you keep; the others go to the graveyard.';
@@ -362,6 +362,20 @@
     return q;
   }
 
+  // ---------- a permanent's activated abilities ----------
+  // Opened by clicking a permanent of yours that has one (a Food, Gilded Goose, Ashnod's Altar, Walking Ballista...) whenever you have
+  // priority: your turn, or a response on another player's turn. One tile per ability with its cost; one that cannot be used now is shown
+  // with the reason. Returns null when the permanent has none.
+  function abilityQuestion(g, p) {
+    const list = p && p.card ? G.abilityMenu(g, p) : [];
+    if (!list.length) return null;
+    const options = list.map((it, k) => ({ k, i: k, name: it.label + (it.cost ? ` (${it.cost})` : ''), note: it.ok ? '' : it.why, disabled: !it.ok, def: false }));
+    const q = { kind: 'ability', what: null, seat: g.pid, multi: false, min: 1, max: 1, optional: true, none: 'Not now', source: p.card, options, def: [],
+      spell: p.card, spellNote: '', title: `${p.card.name}: activate an ability`, text: 'Choose one. These can be used any time you have priority: on your turn, or in a response.' };
+    q.sig = 'ability/' + p.iid + '/' + options.map(o => o.name).join('|');
+    return q;
+  }
+
   // ---------- a two-faced card: which face is cast ----------
   // Esika, Queen of the Hollows // The Prismatic Bridge, Jennifer Walters // The Sensational She-Hulk: the face is chosen as it is cast.
   // The question lists the faces you can pay for right now (as card pictures, each face with its cost and type); the default is the
@@ -414,7 +428,7 @@
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { loyaltyQuestion, faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, otherTurnWalkers, instantAbilities, wouldUseAbilities, quietBeginCombat };
+  const api = { loyaltyQuestion, abilityQuestion, faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, otherTurnWalkers, instantAbilities, wouldUseAbilities, quietBeginCombat };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

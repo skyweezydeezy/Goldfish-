@@ -1,104 +1,102 @@
 // Red Rum Raiders (Admiral Beckett Brass)
 // Bracket 4
 // COMMANDER
-1 Admiral Beckett Brass (XLN) 217
-// MAINBOARD
-1 Underground Sea (30A) 281
-1 Volcanic Island (30A) 282
-1 Badlands (30A) 273
-1 Watery Grave (EOE) 261
-1 Blood Crypt (EXP) 8
-1 Steam Vents (EXP) 12
-1 Polluted Delta (EXP) 17
-1 Bloodstained Mire (EXP) 18
-1 Scalding Tarn (EXP) 22
-1 Misty Rainforest (EXP) 25
-1 Dragonskull Summit (SLD) 458
-1 Sulfur Falls (PIP) 512
-1 Drowned Catacomb (OTC) 290
-1 Xander's Lounge (SNC) 294
-1 Command Tower (PMEI) 2026-13
-1 Mana Confluence (EXP) 42
-1 City of Brass (SCH) 41
-1 Cavern of Souls (LTC) 392z
-1 Ancient Tomb (EXP) 36
-1 Creeping Tar Pit (EOS) 144
-1 Blightstep Pathway (SLU) 12
-1 Shipwreck Marsh (FRA) 189
-1 Sunken Ruins (EXP) 27
-1 Graven Cairns (EXP) 28
-1 Island (J14) 2★
-1 Swamp (J14) 3★
-1 Mountain (J14) 4★
-1 Mountain (PL24) 5
-1 Underground River (BRO) 300
-1 Sulfurous Springs (DMU) 381
-1 Shivan Reef (DMU) 380
-1 Crumbling Necropolis (WHO) 859
-1 Darkslick Shores (ONE) 372
-1 Blackcleave Cliffs (ONE) 370
-1 Spirebluff Canal (SLD) 1373
-1 Island (SLP) 32
-1 Sol Ring (MPS) 24
-1 Mana Vault (MPS) 17
-1 Arcane Signet (SLD) 1641
-1 Demonic Tutor (STA) 90
-1 Vampiric Tutor (SOA) 165
-1 Mystical Tutor (SLD) 334
-1 Brainstorm (CMD) 40
-1 Ponder (P08) 6
-1 Preordain (J22) 63
-1 Force of Will (SOA) 149
-1 Mana Drain (OTP) 67
-1 Counterspell (SLD) 2664
-1 Fierce Guardianship (SLC) 86
-1 Pact of Negation (MP2) 16
-1 Deflecting Swat (CMM) 698
-1 Lightning Bolt (SLD) 675
-1 Chain Lightning (MP2) 26
-1 Fatal Push (SLP) 3
-1 Cut Down (SLZ) 279
-1 Arcane Adaptation (PXLN) 46s
-1 Conspiracy (TSB) 39
-1 Aggravated Assault (WOT) 96
-1 Treachery (UDS) 50
-1 Insurrection (CMM) 699
-1 Rhystic Study (WOT) 91
-1 Ragavan, Nimble Pilferer (H2R) 11
-1 Captain Lannery Storm (XLN) 136
-1 Malcolm, Keen-Eyed Navigator (SPG) 2
-1 Breeches, Brazen Plunderer (SPG) 6
-1 Kari Zev, Skyship Raider (PLST) AER-87
-1 Francisco, Fowl Marauder (LCC) 49
-1 Ramirez DePietro, Pillager (DMC) 38
-1 Malcolm, the Eyes (OTJ) 295
-1 Don Andres, the Renegade (LCC) 28
-1 Pitiless Plunderer (RIX) 81
-1 Siren Stormtamer (XLN) 79
-1 Hostage Taker (XLN) 223
-1 Spectral Sailor (M20) 76
-1 Greedy Freebooter (LCI) 109
-1 Dire Fleet Daredevil (RIX) 99
-1 Kitesail Larcenist (LCI) 364
-1 Corsair Captain (JMP) 11
-1 Gemcutter Buccaneer (LCC) 55
-1 Skeleton Crew (LCC) 53
-1 Corsairs of Umbar (LTC) 19
-1 Warkite Marauder (RIX) 60
-1 Forerunner of the Coalition (RIX) 72
-1 Spyglass Siren (LCI) 78
-1 Fearless Swashbuckler (DFT) 545
-1 Storm Fleet Sprinter (RIX) 172
-1 Fathom Fleet Captain (XLN) 106
-1 Dire Fleet Neckbreaker (RIX) 156
-1 Kitesail Freebooter (XLN) 110
-1 Daring Saboteur (XLN) 49
-1 Port Razer (CMR) 669
-1 Coercive Recruiter (CMR) 662
-1 Protean Raider (RIX) 167
-1 Reckless Lackey (OTJ) 140
-1 Changeling Outcast (SLD) 894
-1 Taurean Mauler (SLD) 1899
-1 Lightning-Rig Crew (XLN) 150
-1 Departed Deckhand (M19) 49
-1 Captivating Crew (XLN) 137
+1 Admiral Beckett Brass
+// DECK
+1 Underground Sea
+1 Volcanic Island
+1 Badlands
+1 Watery Grave
+1 Blood Crypt
+1 Steam Vents
+1 Polluted Delta
+1 Bloodstained Mire
+1 Scalding Tarn
+1 Misty Rainforest
+1 Dragonskull Summit
+1 Sulfur Falls
+1 Drowned Catacomb
+1 Xander's Lounge
+1 Command Tower
+1 Mana Confluence
+1 City of Brass
+1 Cavern of Souls
+1 Ancient Tomb
+1 Creeping Tar Pit
+1 Blightstep Pathway
+1 Shipwreck Marsh
+1 Sunken Ruins
+1 Graven Cairns
+2 Island
+1 Swamp
+2 Mountain
+1 Underground River
+1 Sulfurous Springs
+1 Shivan Reef
+1 Crumbling Necropolis
+1 Darkslick Shores
+1 Blackcleave Cliffs
+1 Spirebluff Canal
+1 Sol Ring
+1 Mana Vault
+1 Arcane Signet
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Demonic Tutor
+1 Vampiric Tutor
+1 Brainstorm
+1 Ponder
+1 Preordain
+1 Force of Will
+1 Mana Drain
+1 Counterspell
+1 Fierce Guardianship
+1 Pact of Negation
+1 Deflecting Swat
+1 Lightning Bolt
+1 Chain Lightning
+1 Fatal Push
+1 Cut Down
+1 Treachery
+1 Rhystic Study
+1 Ragavan, Nimble Pilferer
+1 Captain Lannery Storm
+1 Malcolm, Keen-Eyed Navigator
+1 Breeches, Brazen Plunderer
+1 Kari Zev, Skyship Raider
+1 Francisco, Fowl Marauder
+1 Ramirez DePietro, Pillager
+1 Malcolm, the Eyes
+1 Malcolm, Alluring Scoundrel
+1 Captain Storm, Cosmium Raider
+1 Mary Read and Anne Bonny
+1 Don Andres, the Renegade
+1 Pitiless Plunderer
+1 Siren Stormtamer
+1 Hostage Taker
+1 Spectral Sailor
+1 Greedy Freebooter
+1 Dire Fleet Daredevil
+1 Kitesail Larcenist
+1 Corsair Captain
+1 Gemcutter Buccaneer
+1 Skeleton Crew
+1 Corsairs of Umbar
+1 Warkite Marauder
+1 Forerunner of the Coalition
+1 Spyglass Siren
+1 Fearless Swashbuckler
+1 Storm Fleet Sprinter
+1 Fathom Fleet Captain
+1 Dire Fleet Neckbreaker
+1 Kitesail Freebooter
+1 Daring Saboteur
+1 Port Razer
+1 Coercive Recruiter
+1 Protean Raider
+1 Reckless Lackey
+1 Changeling Outcast
+1 Taurean Mauler
+1 Lightning-Rig Crew
+1 Departed Deckhand
+1 Captivating Crew

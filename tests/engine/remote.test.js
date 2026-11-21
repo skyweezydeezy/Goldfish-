@@ -54,16 +54,15 @@ const put = (g, c) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, car
     blocks: g => { const o = g.opp; if (!o) return; const as = o.battlefield.filter(G.isCreaturePerm); g.battlefield.forEach(b => as.forEach(a => G.canBlock(o, a, g, b))); if (as.length) G.chooseBlocks(g, o, as); },
   };
   const names = Object.keys(SRC), changed = {};
-  let looks = 0, scratch = 0;
+  let looks = 0;
   for (let s = 0; s < 16; s++) {
     const p = two([names[s % names.length], names[(s + 1) % names.length]], 300 + s, s % 2);
     for (let t = 0; t < 10 && p.match.winner == null; t++) for (const pid of [0, 1]) {
       if (p.match.winner != null) break;
       for (const [k, f] of Object.entries(LOOKS)) for (const g of p.games) {
-        const full = D.dump(p.games), before = D.dump(p.games, D.SCRATCH);
+        const before = D.dump(p.games, D.SCRATCH);
         f(g); looks++;
         if (D.dump(p.games, D.SCRATCH) !== before) changed[k] = (changed[k] || 0) + 1;
-        if (D.dump(p.games) !== full) scratch++;
       }
       D.playPlan(p.games, pid);
     }
@@ -74,7 +73,7 @@ const put = (g, c) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, car
   g.graveyard.push(...g.library.splice(0, 5));
   const full = D.dump(p.games), cmp = D.dump(p.games, D.SCRATCH);
   LOOKS.cast(g);
-  check('...though looking at Treasure Cruise with five cards in the graveyard writes its delve count (a scratch field the comparison skips)', D.dump(p.games) !== full && D.dump(p.games, D.SCRATCH) === cmp, scratch + ' scratch writes in the games above');
+  check('...though looking at Treasure Cruise with five cards in the graveyard writes its delve count (a scratch field the comparison skips)', D.dump(p.games) !== full && D.dump(p.games, D.SCRATCH) === cmp);
 }
 
 // ---- one engine call asks both people
@@ -89,10 +88,13 @@ const put = (g, c) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, car
   b.hand.push({ iid: b.nextIid++, card: card(b, /^Counterspell$/) });
   const run = gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === sw.iid));
   const before = D.dump(p.games);
-  const r = D.attemptSeats(p.games, [0, 1], run, {});
-  check('Alex (seat 0) casts Swords to Plowshares: the probe stops at Sam\'s (seat 1) counterspell question', !r.done && r.ask.kind === 'counter' && r.ask.seat === 1, r.ask && r.ask.kind);
+  const r0 = D.attemptSeats(p.games, [0, 1], run, {});
+  // Alex is asked first whether the spell resolves (the stack); passing it goes to Sam
+  const mine = !r0.done && r0.ask.seat === 0 ? { 0: [{ sig: r0.ask.sig, pick: 'none' }] } : {};
+  const r = D.attemptSeats(p.games, [0, 1], run, mine);
+  check('Alex (seat 0) casts Swords to Plowshares and passes: the probe stops at Sam\'s (seat 1) counterspell question', !r.done && r.ask.kind === 'counter' && r.ask.seat === 1, [r0.ask && r0.ask.seat + ':' + r0.ask.kind, r.ask && r.ask.seat + ':' + r.ask.kind].join(' then '));
   check('...the real game has not moved', D.dump(p.games) === before);
-  const r2 = D.attemptSeats(p.games, [0, 1], run, { 1: [{ sig: r.ask.sig, pick: 'none' }] });
+  const r2 = D.attemptSeats(p.games, [0, 1], run, Object.assign({}, mine, { 1: [{ sig: r.ask.sig, pick: 'none' }] }));
   check('Sam lets it resolve: the call goes through and Sam\'s creature is exiled', r2.done && !b.battlefield.includes(mystic) && b.hand.length === 1);
   const q = two(['frodo', 'veyran'], 7), [qa, qb] = q.games;
   D.turn.begin(qa);
@@ -104,9 +106,9 @@ const put = (g, c) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, car
   qb.hand.push({ iid: qb.nextIid++, card: card(qb, /^Counterspell$/) });
   let seen = [];
   (async () => {
-    const res = await D.resolveSeats(q.games, [0, 1], gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === sw2.iid)), qq => { seen.push(qq.seat + ':' + qq.kind); return qq.kind === 'counter' ? qq.options.findIndex(o => /Counterspell/.test(o.name)) : 'auto'; });
+    const res = await D.resolveSeats(q.games, [0, 1], gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === sw2.iid)), qq => { seen.push(qq.seat + ':' + qq.kind); return qq.kind === 'counter' && qq.seat === 1 ? qq.options.findIndex(o => /Counterspell/.test(o.name)) : qq.kind === 'resolve' ? 'none' : 'auto'; });
     check('resolveSeats: Sam counters it, so Swords and Counterspell are in the graveyards and the creature stays', !!res && qb.battlefield.includes(m2) && qa.graveyard.some(i => i.card.name === 'Swords to Plowshares') && qb.graveyard.some(i => i.card.name === 'Counterspell'), seen.join(' '));
-    check('...each question went to the seat it was for', seen.length >= 1 && seen.every(x => x.startsWith('1:counter') || x.startsWith('0:')));
+    check('...each question went to the seat it was for: Alex\'s about the spell Alex cast, Sam\'s about countering it', seen.includes('1:counter') && seen.every(x => x === '1:counter' || x.startsWith('0:')), seen.join(' '));
     console.log(`\n${pass} passed, ${fail} failed`);
     process.exit(fail ? 1 : 0);
   })();

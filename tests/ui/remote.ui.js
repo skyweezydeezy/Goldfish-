@@ -30,6 +30,7 @@ const BASE = 'http://127.0.0.1:8800/';
     });
     const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(label + ': ' + e.message));
+    p.on('console', m => { if (/^LAND NOT PLAYABLE/.test(m.text())) console.log(label + ': ' + m.text()); });
     p.label = label;
     return p;
   };
@@ -95,7 +96,7 @@ const BASE = 'http://127.0.0.1:8800/';
       const [a, c] = [await st(A), await st(B)];
       if (cond(a, c)) return true;
       for (const [p, s] of [[A, a], [B, c]]) {
-        if (s.choice && !o.keepChoice) await p.evaluate(() => { const x = document.querySelector('.ch-sheet .ch-auto'); if (x) x.click(); });
+        if (s.choice && o.keepChoice !== true && o.keepChoice !== p.label) await p.evaluate(() => { const x = document.querySelector('.ch-sheet .ch-auto'); if (x) x.click(); });
         else if (s.respond === s.local && !o.keepRespond) await p.evaluate(() => { const x = document.querySelector('#tab-duel .vs-pass'); if (x) x.click(); });
         else if (s.block && !o.keepBlock) await p.evaluate(() => { const x = document.querySelector('#tab-duel .vs-block-go'); if (x) x.click(); });
       }
@@ -134,7 +135,9 @@ const BASE = 'http://127.0.0.1:8800/';
   const landTurn = async seat => {
     const p = seat === 0 ? A : B;
     await until((a, c) => myMain(seat === 0 ? a : c, seat) && quiet(a) && quiet(c));
-    const played = await p.evaluate(s => { const g = window.__isfVersus.duel.game.games[s], l = g.hand.find(i => i.card.a.isLand); if (!l) return null; document.querySelector(`#tab-duel .vs-hand .vs-card[data-iid="${l.iid}"]`).click(); return l.iid; }, seat);
+    const played = await p.evaluate(s => { const gm = window.__isfVersus.duel.game, g = gm.games[s], l = g.hand.find(i => i.card.a.isLand); if (!l) return null; const e = document.querySelector(`#tab-duel .vs-hand .vs-card[data-iid="${l.iid}"]`);
+      if (!e.classList.contains('can')) console.log('LAND NOT PLAYABLE', l.card.name, JSON.stringify({ can: window.Goldfish.canPlayLand(g), landPlayed: g.landPlayed, turn: g.turn, phase: gm.phase, picking: gm.picking, choice: !!gm.choice, cls: e.className }));
+      e.click(); return l.iid; }, seat);
     if (played != null) {          // on both devices the land has left that hand (a fetch land or a bounce land changes the land count otherwise)
       await until((a, c) => quiet(a) && quiet(c) && !a.hands[seat].includes(played) && !c.hands[seat].includes(played), 30000);          // answering what the land asks on the way
     }
@@ -206,7 +209,7 @@ const BASE = 'http://127.0.0.1:8800/';
   await A.click(`#tab-duel .vs-hand .vs-card[data-iid="${T.land}"]`);
   await same('Alex plays a land: the same table');
   await A.click(`#tab-duel .vs-hand .vs-card[data-iid="${T.swords}"]`);
-  await until((a, c) => c.choice === 'counter' || (quiet(a) && quiet(c) && a.phase === 'main'), 30000, { keepChoice: true });
+  await until((a, c) => c.choice === 'counter' || (quiet(a) && quiet(c) && a.phase === 'main'), 30000, { keepChoice: 'B' });          // Alex's own question (does it resolve?) is answered on the way
   const sb = await st(B);
   check('Alex casts Swords to Plowshares: Sam is asked on Sam\'s device whether to counter it', sb.choice === 'counter' && /Alex casts Swords to Plowshares/.test(await B.$eval('.ch-sheet', e => e.textContent)));
   check('...while Alex\'s device says Sam is deciding', /Sam is deciding/.test(await A.$eval('#tab-duel .vs-bar', e => e.textContent)));

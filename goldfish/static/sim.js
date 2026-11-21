@@ -3684,7 +3684,7 @@
   function fireDies(g, p, equippers, ev) {
     if (g.killTurn != null) return;
     for (const y of [g].concat(otherPlayers(g))) { const ts = turnSeq(y); if (y.diedT !== ts) { y.diedT = ts; y.diedN = 0; } y.diedN++; }          // creatures that died this turn (Emeritus of Woe)
-    if (!g.dry && p.card.a.isLegendary && !p.token && p.card.a.isCreature) for (const q of (tableHas(g, 'ratadrabik') ? g.battlefield.filter(x => x.card.a.ratadrabik && x !== p) : [])) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: zombieCopy(g, p.card) }, {}, ev); np.token = true; ev.push({ type: 'note', text: `${q.card.name}: a 2/2 Zombie copy of ${p.card.name}`, source: q }); }          // Ratadrabik of Urborg
+    if (!g.dry && p.card.a.isLegendary && !p.token && p.card.a.isCreature) for (const q of (tableHas(g, 'ratadrabik') ? g.battlefield.filter(x => x.card.a.ratadrabik && x !== p) : [])) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: zombieCopy(g, p.card) }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `${q.card.name}: a 2/2 Zombie copy of ${p.card.name}`, source: q }); }          // Ratadrabik of Urborg
     if (!g.dry && !(p.owner && p.owner !== g)) { p._vatOil = true; for (const q of (tableHas(g, 'vatOil') ? g.battlefield.filter(x => x.card.a.vatOil && x !== p) : [])) q.other = Object.assign({}, q.other, { oil: ((q.other && q.other.oil) || 0) + 1 }); }          // Vat of Rebirth
     if (!g.dry && !p.card.a.ygra) for (const x of [g].concat(otherPlayers(g))) for (const q of (tableHas(x, 'ygra') ? x.battlefield.filter(y => y.card.a.ygra) : [])) addCounters(x, q, '+1/+1', q.card.a.ygra, ev, q);          // Ygra: a creature (a Food) died
     if (!g.dry && !p.decayed && matchesFilter(p.card, 'zombie')) for (const q of (tableHas(g, 'wilhelt') ? g.battlefield.filter(x => x.card.a.wilhelt && x !== p) : [])) { createTokens(g, { type: 'token', n: 1, tapped: false, creature: true, p: 2, t: 2, colors: ['B'], subtypes: ['Zombie'], keywords: [], artifact: false, name: 'Zombie' }, 1, ev, q); if (g._lastTok) g._lastTok.decayed = true; }          // Wilhelt, the Rotcleaver
@@ -4111,7 +4111,7 @@
   function enter(g, inst, o) {
     o = o || {};
     const a = inst.card.a;
-    const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: (a.fetchSpec || a.coffers || a.nykthos) ? null : a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: Math.floor(a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1) / (a.isPlaneswalker && !g.dry && g.opp && othersHave(g, 'vorinHalf') ? 2 : 1)), token: !!inst.card.isToken };
+    const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: (a.fetchSpec || a.coffers || a.nykthos) ? null : a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: Math.floor(a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1) / (a.isPlaneswalker && !g.dry && g.opp && othersHave(g, 'vorinHalf') ? 2 : 1)), token: !!inst.card.isToken || !!o.token };          // o.token: a token copy of a card
     if (a.tendo) perm.charge = 1;
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
     else if (a.isLand) perm.tapped = landEntersTapped(g, a);
@@ -4230,7 +4230,7 @@
       if (a.devour) { const fod = g.battlefield.filter(q => q !== perm && q.token && isCreaturePerm(q) && powerOf(g, q) <= 1).slice(0, 2); if (fod.length) { fod.forEach(q => leavePerm(g, q, ev || [])); flushLeaves(g, ev || []); addCounters(g, perm, '+1/+1', a.devour * fod.length, ev || [], perm); (ev || []).push({ type: 'note', text: `${inst.card.name} devours ${fod.length} token${fod.length === 1 ? '' : 's'}`, source: perm }); } }
       const gl = g.battlefield.find(q => q.graft > 0 && q !== perm); if (gl) { gl.graft--; addCounters(g, perm, '+1/+1', 1, ev || [], gl); }          // graft: the counter moves onto the creature that enters
       const sv = bfInfo(g).sovereigns;
-      if (sv && !perm.token && !o.silent && (a.mv || 0) >= 3) for (const q of sv) { const sc = q.card.a.statics.sovereign; if (q !== perm && canPay(sc, allUnits(g)) && pay(g, sc) != null) { const cp = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, {}, ev); cp.token = true; (ev || []).push({ type: 'note', text: `${q.card.name}: a token copy of ${inst.card.name}`, source: q }); break; } }          // Bramble Sovereign
+      if (sv && !perm.token && !o.silent && (a.mv || 0) >= 3) for (const q of sv) { const sc = q.card.a.statics.sovereign; if (q !== perm && canPay(sc, allUnits(g)) && pay(g, sc) != null) { const cp = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, { token: true }, ev); cp.token = true; (ev || []).push({ type: 'note', text: `${q.card.name}: a token copy of ${inst.card.name}`, source: q }); break; } }          // Bramble Sovereign
     }
     { const st = a.statics; if (st.taxAll || st.taxNoncreature || st.taxOpp || st.taxOffTurn) g.taxSeen = true; if (st.stony) g.stonySeen = true; if (st.torpor) g.torporSeen = true; if (st.cage) g.cageSeen = true; if (st.breachLand) g.breachSeen = true; }
     if (a.rip && !g.dry) { g.ripSeen = true; ripSweep(g); (ev || []).push({ type: 'note', text: `${inst.card.name}: every graveyard is exiled`, source: perm }); }
@@ -4266,7 +4266,7 @@
     if (!o.silent && isCreaturePerm(perm)) for (const q of (tableHas(g, 'statics.enterCounter') ? g.battlefield : NONE)) { const ec = q.card.a.statics.enterCounter; if (ec && q !== perm && matchesFilter(perm.card, ec.filter)) addCounters(g, perm, '+1/+1', ec.n === 'T' ? Math.max(0, toughnessOf(g, q)) : ec.n === 'C' ? Math.max(0, q.counters || 0) : ec.n, ev, q); }          // Metallic Mimic
     if (o.silent) return perm;
     if (a.saga && !g.dry) { perm.lore = 0; sagaAdvance(g, perm, ev); if (!g.battlefield.includes(perm)) return perm; }
-    if (inst.offspringPaid && !g.dry) { inst.offspringPaid = false; const tc = Object.assign({}, inst.card, { power: '1', toughness: '1', a: Object.assign({}, inst.card.a, { power: 1, toughness: 1 }) }); const tk = enterWithTriggers(g, { iid: g.nextIid++, card: tc }, {}, ev || []); tk.token = true; (ev || []).push({ type: 'note', text: `Offspring: a 1/1 token copy of ${inst.card.name}`, source: perm }); }
+    if (inst.offspringPaid && !g.dry) { inst.offspringPaid = false; const tc = Object.assign({}, inst.card, { power: '1', toughness: '1', a: Object.assign({}, inst.card.a, { power: 1, toughness: 1 }) }); const tk = enterWithTriggers(g, { iid: g.nextIid++, card: tc }, { token: true }, ev || []); tk.token = true; (ev || []).push({ type: 'note', text: `Offspring: a 1/1 token copy of ${inst.card.name}`, source: perm }); }
     if (!((g.torporSeen || (g.opp && g.opp.torporSeen)) && isCreaturePerm(perm) && (tableHas(g, 'statics.torpor') && bothSides(g).some(q => q.card.a.statics.torpor))) && !normEtbOn(g)) { const em = etbMult(g, perm); a.triggers.forEach(t => { if (t.kinds.includes('etb') || t.kinds.includes('etbStatic')) for (let k = 0; k < (t.kinds.includes('etb') ? em : 1); k++) fire(g, t, perm, ev, perm); }); }
     fireEnterWatchers(g, perm, ev);
     if (a.fetchSpec && !o.noCrack) {
@@ -4392,7 +4392,7 @@
       }
       if (a.encore && !g.combatDone && canPay(a.encore, units()) && pay(g, a.encore) != null) {                // encore: a hasty token copy that is sacrificed at the end of the turn
         g.graveyard.splice(g.graveyard.indexOf(i), 1); g.exile.push(i);
-        const np = enterWithTriggers(g, { iid: g.nextIid++, card: i.card }, {}, ev); np.token = true; np.sick = false; np.sacEnd = true;
+        const np = enterWithTriggers(g, { iid: g.nextIid++, card: i.card }, { token: true }, ev); np.token = true; np.sick = false; np.sacEnd = true;
         ev.push({ type: 'note', text: `Encore: a token copy of ${i.card.name} attacks this turn` }); return true;
       }
       if (a.worldBreaker && landsOn >= 9 && canPay(a.worldBreaker, units())) { const l = g.battlefield.filter(q => q.asLand).sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0]; if (l && pay(g, a.worldBreaker) != null) { leavePerm(g, l, ev); flushLeaves(g, ev); g.graveyard.splice(g.graveyard.indexOf(i), 1); g.hand.push(i); ev.push({ type: 'note', text: `${i.card.name} returns from the graveyard to your hand (sacrificed ${l.card.name})` }); return true; } }
@@ -4928,7 +4928,7 @@
           const cp = f.self ? source : subject || (f.target && f.art ? g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.a.isLegendary).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0] : f.target ? g.battlefield.filter(q => isCreaturePerm(q) && !q.card.a.isLegendary && !q.token).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0] : null);          // Saheeli's Artistry: "a copy of target artifact"          // "a copy of target creature": your best one
           if (cp && cp.card && !cp.asLand) {
             const inst = { iid: g.nextIid++, card: cp.card };
-            const perm = enterWithTriggers(g, inst, {}, ev); perm.token = true;
+            const perm = enterWithTriggers(g, inst, { token: true }, ev); perm.token = true;
             ev.push({ type: 'token', perm, inst, source });
           }
           break;
@@ -5055,7 +5055,7 @@
           if (ks.length) { g.life -= paid; ks.forEach(q => leavePerm(g.opp, q, ev)); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `Fire Covenant: ${paid} life, ${ks.map(q => q.card.name).join(', ')} die`, source }); } } break;
         case 'doubleSelfCounters': if (source && (source.counters || 0) > 0) addCounters(g, source, '+1/+1', source.counters, ev, source); break;          // Voracious Hydra
         case 'rionya': { const X = 1 + (g.isT === g.turn ? g.isN || 0 : 0); const t = g.battlefield.filter(q => q !== source && isCreaturePerm(q) && !q.card.a.isLegendary && !q.token).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0]; if (!t) break;          // Rionya: hasty copies for the turn
-          for (let k = 0; k < Math.min(X, 10); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: t.card }, {}, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.exileEnd = true; }
+          for (let k = 0; k < Math.min(X, 10); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: t.card }, { token: true }, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.exileEnd = true; }
           ev.push({ type: 'note', text: `${source ? source.card.name : 'Rionya'}: ${X} hasty cop${X === 1 ? 'y' : 'ies'} of ${t.card.name}`, source }); break; }
         case 'hulkSearch': {          // Protean Hulk: the best creatures from your library with total mana value N or less
           let left = f.n || 6; const got = []; const pool = g.library.filter(i => i.card.a.isCreature && !i.card.a.isLand).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0) || reanimateValue(g, y) - reanimateValue(g, x));
@@ -5069,7 +5069,7 @@
         case 'reanimateAllX': { const X = f.max != null ? f.max : (g.xValue || 0); const ls = g.graveyard.filter(i => (i.card.a.isCreature || (!f.creaturesOnly && i.card.a.isPlaneswalker)) && !i.card.a.isLand && (i.card.a.mv || 0) <= X); /* Raise the Past: a fixed mana value */ for (const i of ls) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } ev.push({ type: 'note', text: `X = ${X}: ${ls.length} card${ls.length === 1 ? '' : 's'} return`, source }); break; }          // Ascend from Avernus
         case 'wrennReveal': { const top = g.library.splice(0, f.n || 4); for (const i of top) (i.card.a.isLand ? g.hand : g.graveyard).push(i); ev.push({ type: 'note', text: `Revealed ${top.length}: ${top.filter(i => i.card.a.isLand).length} land${top.filter(i => i.card.a.isLand).length === 1 ? '' : 's'} to your hand, the rest to the graveyard`, source }); break; }          // Wrenn and Seven +1
         case 'landsFromHand': { const ls = g.hand.filter(i => i.card.a.isLand); for (const l of ls) { g.hand.splice(g.hand.indexOf(l), 1); enterWithTriggers(g, l, { tapped: true }, ev); } if (ls.length) ev.push({ type: 'note', text: `${ls.length} land${ls.length === 1 ? '' : 's'} from your hand onto the battlefield tapped`, source }); break; }          // Wrenn and Seven 0
-        case 'selfCopies': if (source && source.card) { for (let k = 0; k < (f.n || 1); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: source.card }, { tapped: !!f.tapped }, ev); np.token = true; if (f.tapped) np.tapped = true; } ev.push({ type: 'note', text: `${f.n || 1} token cop${(f.n || 1) === 1 ? 'y' : 'ies'} of ${source.card.name}`, source }); } break;          // Skyclave Relic, kicked
+        case 'selfCopies': if (source && source.card) { for (let k = 0; k < (f.n || 1); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: source.card }, { tapped: !!f.tapped, token: true }, ev); np.token = true; if (f.tapped) np.tapped = true; } ev.push({ type: 'note', text: `${f.n || 1} token cop${(f.n || 1) === 1 ? 'y' : 'ies'} of ${source.card.name}`, source }); } break;          // Skyclave Relic, kicked
         case 'subjToHand': if (subject && subject.inst && !subject.token) { const H = subject.owner || g, at = H.graveyard.indexOf(subject.inst); if (at >= 0) { H.graveyard.splice(at, 1); H.hand.push(subject.inst); ev.push({ type: 'note', text: `${subject.card.name} returns to its owner's hand`, source }); } } break;          // Sword of the Realms
         case 'edictGreatest': for (const o of (isPod(g) ? otherPlayers(g) : g.opp ? [g.opp] : [])) { if (bfInfo(o).tamiyo) continue; const cs = o.battlefield.filter(isCreaturePerm); if (!cs.length) continue;          // Will of the Abzan: their creature with the greatest power
           const mx = Math.max(...cs.map(q => powerOf(o, q))), v = cs.filter(q => powerOf(o, q) === mx).sort((x, y) => creatureValue(o, x) - creatureValue(o, y))[0];
@@ -5097,7 +5097,7 @@
         }
         case 'astralCopies': {          // Astral Dragon: two 3/3 flying Dragon copies of your best noncreature permanent
           const pick = g.battlefield.filter(q => !isCreaturePerm(q) && !q.asLand && !q.card.a.isLegendary && !q.token && !q.card.a.isAura).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (!pick) break;
-          const card = dragonCopy(g, pick.card); for (let k = 0; k < (f.n || 2); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card }, {}, ev); np.token = true; }
+          const card = dragonCopy(g, pick.card); for (let k = 0; k < (f.n || 2); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card }, { token: true }, ev); np.token = true; }
           ev.push({ type: 'note', text: `Two 3/3 flying Dragon copies of ${pick.card.name}`, source }); break;
         }
         case 'revealLandTapped': {          // The Regalia: the first land from the top onto the battlefield tapped, the rest to the bottom
@@ -6753,7 +6753,7 @@
       resolveSpellInner(g, inst, ev, a);
       if (inst._copies && !g.dry) {                                                                   // copies made when it was cast (Echoes of Eternity, Ulalek): a permanent's copy is a token
         const n = Math.min(6, inst._copies); inst._copies = 0;
-        if (a.isPermanent) for (let k = 0; k < n && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, {}, ev); np.token = true; ev.push({ type: 'note', text: `A token copy of ${inst.card.name} enters` }); }
+        if (a.isPermanent) for (let k = 0; k < n && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `A token copy of ${inst.card.name} enters` }); }
         else copySpell(g, inst, ev, n);
       }
     } finally { g.xValue = null; if (!g.dry && ripOn(g)) ripSweep(g); }
@@ -6816,7 +6816,7 @@
       castEv.perm = enterWithTriggers(g, inst, {}, ev);
       if (!g.dry && a.isCreature) for (const q of (tableHas(g, 'statics.copyType') ? g.battlefield.slice() : NONE)) {                                  // Reflections of Littjara: copy a spell of the chosen type (a creature spell's copy is a token)
         const ct = q.card.a.statics.copyType;
-        if (ct && matchesFilter(inst.card, ct) && g.battlefield.length < 250) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, {}, ev); np.token = true; ev.push({ type: 'note', text: `${q.card.name}: a copy of ${inst.card.name} is created`, source: q }); }
+        if (ct && matchesFilter(inst.card, ct) && g.battlefield.length < 250) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `${q.card.name}: a copy of ${inst.card.name} is created`, source: q }); }
       }
       if (a.sacUnlessEscaped && castEv.perm && !inst.escaping && !inst.escapedNow) { leavePerm(g, castEv.perm, ev); ev.push({ type: 'note', text: `${inst.card.name} is sacrificed (it did not escape)` }); }          // Uro, Kroxa
       if (a.cornucopia && castEv.perm) { castEv.perm.produce = { colors: new Set(COLORS), amount: Math.max(1, g.xValue || 1) }; touch(g); }          // Astral Cornucopia
@@ -8098,7 +8098,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (g.hand.some(h => !h.card.a.isLand && canPay(effectiveCost(g, h), allUnits(g)) && spellScore(g, h) > 0)) continue;
       pay(g, et.cost); g.graveyard.splice(g.graveyard.indexOf(i), 1); g.exile.push(i);
       const card = et.big ? Object.assign({}, i.card, { a: Object.assign({}, i.card.a, { power: 4, toughness: 4 }), isToken: true }) : Object.assign({}, i.card, { isToken: true });
-      const np = enterWithTriggers(g, { iid: g.nextIid++, card }, {}, ev); np.token = true; ev.push({ type: 'note', text: `${i.card.name} is ${et.big ? 'eternalized' : 'embalmed'}` }); return;
+      const np = enterWithTriggers(g, { iid: g.nextIid++, card }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `${i.card.name} is ${et.big ? 'eternalized' : 'embalmed'}` }); return;
     }
   }
   // Mermaids: Benthic Biomancer's adapt, Vorel, Survival of the Fittest. One action per call.
@@ -10339,7 +10339,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (a.bowRecycle && !g.dry && g.combatDone && !p.tapped && g.library.length < 10 && g.graveyard.length && !abilBlocked(g, p, false) && canPay(a.bowRecycle, allUnits(g)) && pay(g, a.bowRecycle) != null) {          // Bow of Nylea: a short library refilled
         p.tapped = true; const back = g.graveyard.slice().sort((x, y) => (y.card.a.isLand ? 0 : 1 + (y.card.a.mv || 0)) - (x.card.a.isLand ? 0 : 1 + (x.card.a.mv || 0))).slice(0, 4); back.forEach(i => { g.graveyard.splice(g.graveyard.indexOf(i), 1); g.library.push(i); }); ev.push({ type: 'note', text: `${p.card.name}: ${back.length} cards to the bottom of your library`, source: p }); return true; }
     if (a.vatCopy && p.vatCard && !g.dry && !g.combatDone && !p.tapped && !abilBlocked(g, p, false) && canPay(a.vatCopy, allUnits(g)) && pay(g, a.vatCopy) != null) {          // Mimic Vat: a hasty token copy, exiled at the end step
-        p.tapped = true; const np = enterWithTriggers(g, { iid: g.nextIid++, card: p.vatCard.i.card }, {}, ev); np.token = true; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.sick = false; np.exileEnd = true; ev.push({ type: 'note', text: `${p.card.name}: a token copy of ${p.vatCard.i.card.name} with haste`, source: p }); return true; }
+        p.tapped = true; const np = enterWithTriggers(g, { iid: g.nextIid++, card: p.vatCard.i.card }, { token: true }, ev); np.token = true; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.sick = false; np.exileEnd = true; ev.push({ type: 'note', text: `${p.card.name}: a token copy of ${p.vatCard.i.card.name} with haste`, source: p }); return true; }
     return false;
   }
   // Assault Formation: your creatures deal combat damage equal to their toughness

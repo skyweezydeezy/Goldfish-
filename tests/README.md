@@ -9,6 +9,11 @@ node tests/run.js --ui     # browser tests: needs `npm i playwright`, a Chromium
 python tests/launch/test_launch.py   # launch tests: the self-updater and the local server; no internet (a local server plays GitHub)
 ```
 
+Test files run side by side: one per processor core for the engine tests, 3 at a time for the browser tests. `--jobs N` sets the number
+(`--jobs 1` = one after another). Name files to run only those: `node tests/run.js --ui viewer cardview`. GitHub runs the engine tests on
+every pull request and every push to a work branch (`.github/workflows/tests.yml`), so before asking for a merge a session only needs to
+run the tests for what it changed and wait for the green check.
+
 The played 1v1 and Pod games have their own two files: `engine/decisions.test.js` (one scenario per decision point, and the proof that a
 played game with every default taken is the autopilot's game) and `ui/decisions.ui.js` (the same decision points in the browser).
 

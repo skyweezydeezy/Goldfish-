@@ -9346,6 +9346,21 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (n) ev.push({ type: 'note', text: `Sacrificed ${n} tokens to ${outlets[0].card.name}: ${watchers} death trigger${watchers > 1 ? 's' : ''} each` });
   }
   const postWork = g => g.battlefield.some(q => q.card.a.activated.some(ab => ab.late) || (q.holdTap === g.turn && !q.tapped) || q.card.a.fungus || q.card.a.sacDraw || q.card.a.lifeSurveil || q.card.a.flickerform) || g.hand.some(i => i.card.a.foretell) || (g.hand.some(i => !i.card.a.isLand) && (() => { const u = allUnits(g); return g.hand.some(i => !i.card.a.isLand && canPay(effectiveCost(g, i), u)); })());          // a spell that became castable in combat (Derevi's untapped land, a Treasure)
+  // A person's second main phase (the played 1v1 and Pod games): only what happens by itself there (its triggers, Sphinx of the Second
+  // Sun's extra beginning phase, decayed creatures that attacked). Everything postCombat does for the autopilot besides that (casting
+  // spells, sacrificing to outlets, Pestilence, plotting, cycling...) is the person's to do, so it is left out.
+  function postCombatTriggers(g) {
+    const ev = [];
+    if (g.timeStopped === g.turn && !g.dry) return ev;
+    eachTrigger(g, 'postcombat', ev);
+    for (const sp of g.battlefield.slice()) if (sp.card.a.extraBeginning && !g.dry && !matchOver(g) && g.battlefield.includes(sp)) {
+      ev.push({ type: 'note', text: `${sp.card.name}: an additional beginning phase (untap, upkeep, draw)`, source: sp });
+      untapStep(g, ev); touch(g); eachTrigger(g, 'upkeep', ev); extraUpkeeps(g, ev); if (g.library.length) draw(g, 1, ev); g.sphinxTurn = g.turn;
+    }
+    for (const p of g.battlefield.slice()) if (p.decayed && p.attackedTurn === g.turn) { ev.push({ type: 'note', text: `${p.card.name} (decayed) is sacrificed at end of combat`, source: p }); leavePerm(g, p, ev); }
+    flushLeaves(g, ev);
+    return ev;
+  }
   function postCombat(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
@@ -10868,7 +10883,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

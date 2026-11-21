@@ -297,6 +297,13 @@ const other = q => q.options.findIndex(o => !o.def);
   const ev = G.castCard(a, vt), mine = D.summary(a, ev, 0), theirs = D.summary(a, ev, 1);
   check('the log names the card you searched for, and keeps another player\'s hidden search unnamed', mine.some(t => /^Tutored .+ to the top/.test(t)) && theirs.some(t => /put a card on top/.test(t)) && !theirs.some(t => /^Tutored/.test(t)), mine.join('; ') + '  ||  ' + theirs.join('; ')); }
 
+// ---- a person's second main phase resolves its triggers and casts nothing for them
+{ const mk = () => { const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 5, /^Plains$/); lands(a, 3, /^Swamp$/); toHand(a, /^Swords to Plowshares$/); toHand(a, /^Sol Ring$/); putOn(p.games[1], card(p.games[1], /Grave Titan/)); return { p, a }; };
+  let s = mk(); const h0 = s.a.hand.length; D.turn.main2Mine(s.a);
+  check('a person\'s second main phase casts nothing for them (their cards stay in hand, their mana untapped)', s.a.hand.length === h0 && s.a.battlefield.filter(q => q.asLand).every(q => !q.tapped));
+  s = mk(); const h1 = s.a.hand.length; G.postCombat(s.a); G.castPhase(s.a);
+  check('...the autopilot\'s own second main phase does cast', s.a.hand.length < h1, h1 + ' -> ' + s.a.hand.length); }
+
 // ---- nobody seated: the autopilot is never asked
 { const p = pod(['death-tax', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); const a = p.games[0]; lands(a, 1, /^Swamp$/); const vt = toHand(a, /^Vampiric Tutor$/); const auto = G.bestTutorTarget(a, { filters: [] }).inst;
   const r = D.attempt(p.games, 0, cast(vt.iid), []);

@@ -369,7 +369,7 @@
     if (!ev.some(e => e.type === 'declare')) say(mode, g, 'No attack.', 'combat');
     tell(mode, g, 'combat', ev);
     gm.step = 'main2'; gm.inMain2 = true;                    // the second main phase has begun (its triggers resolved): ending the turn goes on to the end step
-    if (!finished(gm)) tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[g.pid])), null, true);
+    if (!finished(gm)) tell(mode, g, 'main2', await act(mode, gs => D.turn.main2Mine(gs[g.pid])), null, true);
     humanDone(mode, [], 'main2');
   });
   const endHumanTurn = (mode, auto) => mine(mode, async (gm, g) => {
@@ -393,7 +393,7 @@
         if (!finished(gm)) { const cev = await act(mode, gs => D.turn.combat(gs[pid], { attackers: [] })); say(mode, g, 'No attack.', 'combat'); tell(mode, g, 'combat', cev.filter(e => e.type !== 'declare')); }
         gm.attacked = true;
       }
-      if (!finished(gm) && !gm.inMain2) { gm.step = 'main2'; gm.inMain2 = true; await beat(); tell(mode, g, 'main2', await act(mode, gs => D.turn.main2(gs[pid])), null, true); }
+      if (!finished(gm) && !gm.inMain2) { gm.step = 'main2'; gm.inMain2 = true; await beat(); tell(mode, g, 'main2', await act(mode, gs => D.turn.main2Mine(gs[pid])), null, true); }
       if (!finished(gm)) { gm.step = 'end'; await beat(); }
     }
     gm.step = 'end';

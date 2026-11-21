@@ -64,7 +64,7 @@ T('krenko timing', () => { const g = bare(); const k = putOn(g, 'Krenko, Mob Bos
   check('...with Goblin Warchief (Goblins have haste) he taps before combat, so the tokens attack', k2.tapped && g2.battlefield.filter(q => q.token).length === 2); });
 
 T('labels', () => { const bad = NAMES.filter(n => by(n).a.coverage.some(v => v.status === 'ignored')); check('every line of these 12 cards is read now', bad.length === 0, bad.join(', '));
-  check('Zada says approximated (its copies are not made)', lineOf('Zada, Hedron Grinder', 'Whenever you cast').status === 'partial');
+  check('Zada is simulated: a pump on Zada is copied to your other creatures (tests/engine/unlearned-cards.test.js)', lineOf('Zada, Hedron Grinder', 'Whenever you cast').status === 'ok');
   check('Goblin Cratermaker\'s damage to a creature says Needs opponent', lineOf('Goblin Cratermaker', '{1}, Sacrifice ~: ~ deals').tag === 'opp'); });
 T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });

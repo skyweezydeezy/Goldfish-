@@ -2822,6 +2822,16 @@
 
   // ---------- Deck ----------
   // tribeChoice: a creature type for "choose a creature type" cards to name instead of the detected one (the Policy lab's "tribe" choice).
+  // Reading a card's rules text takes about a millisecond, and a deck is built again for every simulation, match-up and comparison. What is read
+  // depends only on the card itself, the deck's colors and its chosen tribe and card type, so it is kept and handed out again. Two-faced and staged
+  // cards are read each time (their other faces carry the card's place in the deck).
+  const ANALYSES = new Map();
+  function analyzeOnce(card, deckColors) {
+    const key = deckColors.join('') + '|' + (curTribe || '') + '|' + (curCardType || '') + '|' + (card.a ? JSON.stringify(card, (k, v) => k === 'a' ? undefined : v) : JSON.stringify(card));
+    let a = ANALYSES.get(key);
+    if (a === undefined) { a = analyze(card, deckColors); if (a.backCard || a.stages) return a; if (ANALYSES.size >= 1500) ANALYSES.clear(); ANALYSES.set(key, a); }
+    return a;
+  }
   function buildDeck(cards, tokens, tribeChoice) {
     const ci = new Set();
     cards.forEach(c => (c.color_identity || []).forEach(x => ci.add(x)));
@@ -2829,7 +2839,7 @@
     const tribeInfo = tribeOf(cards);
     curTribe = tribeChoice && tribeChoice !== 'auto' ? tribeChoice : tribeInfo.chosen;
     { const n = {}; for (const c of cards) if (!/\bLand\b/.test(c.type_line || '')) for (const ty of ['Artifact', 'Creature', 'Enchantment', 'Instant', 'Sorcery']) if (new RegExp('\\b' + ty + '\\b').test(c.type_line || '')) n[ty] = (n[ty] || 0) + (c.qty || 1); curCardType = Object.keys(n).sort((x, y) => n[y] - n[x])[0] || null; }
-    const unique = cards.map((c, i) => Object.assign({}, c, { uid: i, a: analyze(c, deckColors) }));
+    const unique = cards.map((c, i) => Object.assign({}, c, { uid: i, a: analyzeOnce(c, deckColors) }));
     unique.forEach(u => { if (u.a.backCard) u.a.backCard.uid = 'b:' + u.uid; });          // a transformed permanent is looked up by this id
     unique.forEach(u => { if (u.a.stages) u.a.stages.list.forEach(x => { x.card.uid = u.uid; }); });          // a staged card (station, Class, Case) keeps its id at every stage
     const library = [], commanders = [];

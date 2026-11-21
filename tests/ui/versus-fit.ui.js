@@ -28,7 +28,11 @@ const shot = process.env.SHOTS;
     await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
     await p.waitForTimeout(1200);
     const js = sel => p.evaluate(s => document.querySelector(s).click(), sel);
-    const until = async (cond, arg, ms = 90000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await p.evaluate(cond, arg)) return; await p.waitForTimeout(120); } throw new Error('timed out waiting for the game'); };
+    // wait for a game state; on the way take the default of anything the game asks (a question sheet, blocks, the end of a turn)
+    const answer = () => p.evaluate(() => { const a = document.querySelector('.ch-sheet .ch-auto'); if (a) return a.click();
+      for (const m of ['duel', 'pod']) { const v = window.__isfVersus && window.__isfVersus[m] && window.__isfVersus[m].game; if (!v) continue; const r = document.querySelector('#tab-' + m);
+        if (v.phase === 'block') { const b = r.querySelector('.vs-block-go'); if (b) b.click(); } else if (v.phase === 'respond') { const b = r.querySelector('.vs-pass'); if (b) b.click(); } } });
+    const until = async (cond, arg, ms = 90000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await p.evaluate(cond, arg)) return; await answer(); await p.waitForTimeout(120); } throw new Error('timed out waiting for the game'); };
     for (const mode of ['duel', 'pod']) {
       const label = `${name} ${mode === 'duel' ? '1v1' : 'Pod'}`;
       await p.click(`[data-tab=${mode}]`);

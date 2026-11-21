@@ -248,12 +248,13 @@
   function parseEffects(text) {
     const fx = [];
     let neutral = false, approx = false, m;
+    text = text.replace(/(creature tokens?) named [^."“,]+?(?= with |[.,]|$)/gi, '$1');          // "a 2/2 Cat Soldier creature token named Ajani's Pridemate with ...": the name is not needed to make it
     const withQuotes = text, plain = text.replace(/ with ["“][^"”]*["”]/g, '');          // plain: without a token's own quoted ability (Moseo's Pest gains life when IT attacks, not when Moseo enters)
     let count = parseCountClause(text);
     const tokRe = new RegExp('create ' + NRE + ' (tapped )?(?:(\\d+|x)\\/(\\d+|x) )?([a-z ,]*?)((?:artifact |enchantment )*)creature tokens?(?: with ((?:[a-z ,]|toxic \\d+|vanishing \\d+)+?))?(?=\\.|,| that| for each| where| and (?:put|draw|create|it|["“](?:~|this creature) can\'t block)|$)', 'gi');          // numbers only in the keywords the engine plays (toxic, vanishing); a quoted ability only if it is "can't block"
     let tokFound = false;
     while ((m = tokRe.exec(text))) { fx.push(parseTokenSpec(m)); tokFound = true; }
-    if (!tokFound && plain !== text) { tokRe.lastIndex = 0; while ((m = tokRe.exec(plain))) fx.push(parseTokenSpec(m)); }          // a token with its own quoted ability (Moseo's Pest)
+    if (!tokFound && plain !== text) { tokRe.lastIndex = 0; while ((m = tokRe.exec(plain))) { fx.push(parseTokenSpec(m)); tokFound = true; } if (tokFound) text = plain; }          // a token with its own quoted ability (Moseo's Pest); what the quote says is the token's, not this card's (Ajani's Pridemate's counters)          // a token with its own quoted ability (Moseo's Pest)
     const artRe = new RegExp('create ' + NRE + ' (tapped )?(Treasure|Food|Clue|Blood|Map|Gold|Powerstone|Junk)(?: artifact)? tokens?', 'gi');
     while ((m = artRe.exec(text))) fx.push({ type: 'token', n: num(m[1]), tapped: !!m[2], creature: false, name: m[3][0].toUpperCase() + m[3].slice(1).toLowerCase(), artifact: true });
     // no maximum hand size for the rest of the game (Sea Gate Restoration, Ancient Silver Dragon), as an emblem (Tamiyo, Wrenn and Seven), or while you control a Saga (Jin-Gitaxias)
@@ -476,7 +477,7 @@
 
     if (/destroy|exile target|exile all|exile each|counter target|return target|tap target|tap up to|scry|surveil|mill|gains? \d+ life|gains? life|you gain|sacrifices?|fights?|discards|can't block|look at the top|reveal the top|reveals the top|return ~|explore|connive|goad|attach|return up to|return all|return each/i.test(text)) neutral = true;
     if (fx.some(f => f.type === 'exprIteration')) approx = false;
-    if (count && /"[^"]*for each[^"]*"/i.test(text) && !/for each/i.test(text.replace(/"[^"]*"/g, ''))) { count = null; if (/"[^"]*gets \+1\/\+1 for each artifact you control[^"]*"/i.test(text)) fx.forEach(f => { if (f.type === 'token') f.cda = 'artifacts you control'; }); }          // the "for each" belongs to the token's own ability (Urza's Construct), not to how many are made
+    if (count && /"[^"]*for each[^"]*"/i.test(withQuotes) && !/for each/i.test(withQuotes.replace(/"[^"]*"/g, ''))) { count = null; if (/"[^"]*gets \+1\/\+1 for each artifact you control[^"]*"/i.test(withQuotes)) fx.forEach(f => { if (f.type === 'token') f.cda = 'artifacts you control'; }); }          // the "for each" belongs to the token's own ability (Urza's Construct), not to how many are made
     if (count) fx.forEach(f => { f.count = count; if (/for each/i.test(text) && f.n !== 'X') f.mult = true; });
     return { fx, neutral, approx };
   }
@@ -9346,6 +9347,21 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (n) ev.push({ type: 'note', text: `Sacrificed ${n} tokens to ${outlets[0].card.name}: ${watchers} death trigger${watchers > 1 ? 's' : ''} each` });
   }
   const postWork = g => g.battlefield.some(q => q.card.a.activated.some(ab => ab.late) || (q.holdTap === g.turn && !q.tapped) || q.card.a.fungus || q.card.a.sacDraw || q.card.a.lifeSurveil || q.card.a.flickerform) || g.hand.some(i => i.card.a.foretell) || (g.hand.some(i => !i.card.a.isLand) && (() => { const u = allUnits(g); return g.hand.some(i => !i.card.a.isLand && canPay(effectiveCost(g, i), u)); })());          // a spell that became castable in combat (Derevi's untapped land, a Treasure)
+  // A person's second main phase (the played 1v1 and Pod games): only what happens by itself there (its triggers, Sphinx of the Second
+  // Sun's extra beginning phase, decayed creatures that attacked). Everything postCombat does for the autopilot besides that (casting
+  // spells, sacrificing to outlets, Pestilence, plotting, cycling...) is the person's to do, so it is left out.
+  function postCombatTriggers(g) {
+    const ev = [];
+    if (g.timeStopped === g.turn && !g.dry) return ev;
+    eachTrigger(g, 'postcombat', ev);
+    for (const sp of g.battlefield.slice()) if (sp.card.a.extraBeginning && !g.dry && !matchOver(g) && g.battlefield.includes(sp)) {
+      ev.push({ type: 'note', text: `${sp.card.name}: an additional beginning phase (untap, upkeep, draw)`, source: sp });
+      untapStep(g, ev); touch(g); eachTrigger(g, 'upkeep', ev); extraUpkeeps(g, ev); if (g.library.length) draw(g, 1, ev); g.sphinxTurn = g.turn;
+    }
+    for (const p of g.battlefield.slice()) if (p.decayed && p.attackedTurn === g.turn) { ev.push({ type: 'note', text: `${p.card.name} (decayed) is sacrificed at end of combat`, source: p }); leavePerm(g, p, ev); }
+    flushLeaves(g, ev);
+    return ev;
+  }
   function postCombat(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
@@ -10868,7 +10884,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

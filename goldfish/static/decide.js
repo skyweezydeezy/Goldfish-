@@ -274,6 +274,7 @@
       try { return G.combat(g); } finally { g.forceAttackers = null; if (d) d.forcedBlocks = null; }
     },
     main2(g) { return G.matchOver(g) ? [] : G.postCombat(g); },
+    main2Mine(g) { return G.matchOver(g) ? [] : G.postCombatTriggers(g); },          // a person's second main phase: its triggers only; casting is theirs
     end(g) { return G.endTurn(g); },
     out(g) { const ev = []; if (g.match.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) G.eliminate(g, null, ev, 'empty'); return ev; },
   };

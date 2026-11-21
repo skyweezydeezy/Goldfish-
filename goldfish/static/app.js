@@ -79,10 +79,17 @@
     let latest = null; try { const r = await fetch('version.js', { cache: 'no-store' }); if (r.ok) latest = ((await r.text()).match(/ISF_VERSION = (\d+)/) || [])[1] || null; } catch (e) { /* offline: show the running version only */ }          // version.js holds the number: one more with every merge
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'ICEYfish version ' + v;
-    if (latest && +latest > +v) {
-      el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
-      el.addEventListener('click', async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* reload anyway */ } location.reload(); });
-    }
+    if (latest && +latest > +v) { el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.'; }          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
+    else el.title += '. Tap to check for a newer one.';
+    // A tap loads the newest version for certain. Asking the service worker to update and reloading straight away is not enough: the reload
+    // comes before the new worker is ready, so the old cached copy opens again. So: drop the old worker and the cached app files (card images
+    // stay), then reload; the page comes from the network and installs the new worker itself.
+    el.addEventListener('click', async () => {
+      el.disabled = true; el.textContent = '↻';          // as short as the number, so the top bar does not move
+      try { for (const reg of await navigator.serviceWorker.getRegistrations()) await reg.unregister(); } catch (e) { /* no service worker */ }
+      try { for (const k of await caches.keys()) if (k !== 'gf-img-v1') await caches.delete(k); } catch (e) { /* no cache storage */ }
+      location.reload();
+    });
   })();
 
   function opts() {
@@ -841,6 +848,18 @@
   });
 
   async function guard(fn) { if (S.busy || !S.game) return; S.busy = true; try { await fn(); } finally { S.busy = false; render(); } }
+  // Your own actions on the Goldfish Table ask you what the card asks for (a library search, a target, a mode, a discard...), the same
+  // way the 1v1 and Pod tables do: the engine call is tried on a copy of the game, each choice is asked in the sheet (choices.js), then
+  // the call is made for real with your answers (decide.js). The autopilot's own turn never asks.
+  async function yours(run) {
+    const g = S.game, D = window.Decide, C = window.__isfChoices;
+    if (!D || !C || !g.ask) return run(g);
+    const was = S.busy; S.busy = true;
+    try { const r = await D.resolve([g], 0, gs => run(gs[0]), q => C.ask(q)); if (S.game !== g) throw C.CANCELLED; return r; }
+    finally { S.busy = was; }
+  }
+  const sameInst = (x, inst) => x.hand.concat(x.command, x.graveyard, x.exile).find(i => i.iid === inst.iid) || (x.library[0] && x.library[0].iid === inst.iid ? x.library[0] : null);
+  const quiet = p => p.catch(e => { if (e && e.cancelled) return; console.error(e); toast('Something went wrong: ' + (e && e.message || e)); });
 
   function newTableGame() {
     if (!need()) return;
@@ -849,24 +868,27 @@
     startTableGame(g);
   }
   function startTableGame(g) {
+    if (window.__isfChoices) window.__isfChoices.close();                // a question of the game before this one
+    if (window.Decide) window.Decide.seat(g);                             // your choices are asked; the autopilot's turn still decides by itself
     S.game = g; S.undo = []; g.turnDone = false; elCache.clear();
     $('#gameLog').innerHTML = '';
     sfx('shuffle');
     log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => esc(c.card.name)).join(', ')}`);
-    beginTurnUI();
     render(true);
+    quiet(beginTurnUI(true).then(() => render(true)));
   }
-  function beginTurnUI() {
+  // person: your turn starting (upkeep choices are asked); otherwise the autopilot's
+  function beginTurnUI(person) {
     const g = S.game;
-    const ev = G.beginTurn(g); g.turnDone = false;
-    logTurn(g.turn);
-    describe(ev);
-    if (g.turn > 1) sfx('turn');
+    const done = ev => { g.turnDone = false; logTurn(g.turn); describe(ev); if (g.turn > 1) sfx('turn'); };
+    if (person) return yours(x => G.beginTurn(x)).then(done);
+    done(G.beginTurn(g));
+    return Promise.resolve();
   }
   async function nextTurn() {
     const g = S.game; snap();
-    if (!g.turnDone) { await doCombat(); await doPostCombat(); describe(G.endTurn(g)); }
-    beginTurnUI(); render();
+    if (!g.turnDone) { await doCombat(); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
+    await beginTurnUI(true); render();
   }
   async function play(ev) {
     // animate a batch of events: highlight sources, float damage, then re-render
@@ -904,8 +926,10 @@
     if (batch.length) await play(batch);
   }
   // postcombat main phase (Sorin of House Markov transforms here)
-  async function doPostCombat() {
-    const ev = G.postCombat(S.game);
+  // mine: your own turn (Next turn): the second main phase only resolves what happens by itself (its triggers); the autopilot's turn
+  // also casts and uses what it would
+  async function doPostCombat(mine) {
+    const ev = mine ? await yours(x => G.postCombatTriggers(x)) : G.postCombat(S.game);
     if (ev.length) await play(ev);
   }
   async function autoTurn() {
@@ -1010,7 +1034,8 @@
     if (S.undo.length > 80) S.undo.shift();
   }
   function undo() {
-    const s = S.undo.pop(); if (!s || S.busy) return;
+    if (S.busy) return;                                                  // the table is busy (a question is open): keep the undo step for later
+    const s = S.undo.pop(); if (!s) return;
     const g = S.game;
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
       floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems, ring: s.ring }, s.scal);
@@ -1042,8 +1067,7 @@
     if (a.isLand || asLand) {
       snap();
       if (!G.canPlayLand(g) && !force) toast('Extra land drop this turn');
-      const le = G.playLandCard(g, inst, !!asLand);
-      play([le, ...le.ev]);
+      quiet(yours(x => { const le = G.playLandCard(x, sameInst(x, inst), !!asLand); return [le, ...le.ev]; }).then(play));          // a fetch land asks which land
       return;
     }
     // a two-faced card (Esika // The Prismatic Bridge): choose the face as it is cast (the sheet from choices.js)
@@ -1054,14 +1078,15 @@
     }
     if (fq && fq.only && fq.options[0].face === 1) return castFace(inst, 1, el);
     snap();
-    const ev = G.castCard(g, inst, force);
+    quiet(yours(x => G.castCard(x, sameInst(x, inst), force)).then(ev => castDone(ev, inst, el, a)));
+  }
+  function castDone(ev, inst, el, a) {
     if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); sfx('error'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
     play(ev);
   }
 
-  function castFace(inst, face, el) {
-    const g = S.game; snap();
-    const ev = face === 1 ? G.castBackFace(g, inst) : G.castCard(g, inst);
+  function castFace(inst, face, el) { snap(); quiet(yours(x => face === 1 ? G.castBackFace(x, sameInst(x, inst)) : G.castCard(x, sameInst(x, inst))).then(ev => faceDone(ev, inst, face, el))); }
+  function faceDone(ev, inst, face, el) {
     if (!ev) { S.undo.pop(); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } sfx('error'); return toast(`Not enough mana for ${face === 1 ? 'the back face' : 'the front face'} of ${inst.card.name.split(' // ')[0]}`); }
     play(ev);
   }
@@ -1338,12 +1363,14 @@
       if (zone === 'battlefield') G.removePerm(g, obj); else zones[zone].splice(zones[zone].indexOf(obj), 1);
       if (inst.card.isToken && to !== 'battlefield') { log(`${esc(inst.card.name)} token ceases to exist`); return; }
       if (to === 'library') top ? g.library.unshift(inst) : g.library.push(inst);
-      else if (to === 'battlefield') { const ev = []; G.enterWithTriggers(g, inst, {}, ev); describe(ev); sfxEv(ev); }
+      else if (to === 'battlefield') { quiet(yours(x => { const ev = []; G.enterWithTriggers(x, sameInst(x, inst) || (x === g ? inst : { iid: inst.iid, card: inst.card }), {}, ev); return ev; }).then(ev => { describe(ev); sfxEv(ev); render(); })); return; }          // its enter triggers ask (a search, a target)
       else if (inst.card.commander && (to === 'graveyard' || to === 'exile')) { g.command.push(inst); log(`${esc(inst.card.name)} → command zone (tax now +${2 * (g.cmdrCasts[inst.iid] || 0)})`); return; }
       else zones[to].push(inst);
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
     });
     if (zone === 'hand' || zone === 'command') items.push([inst.card.a.isLand ? '▶ Play land' : '▶ Cast', () => playFromHand(inst, false, m), 'primary']);
+    if (zone === 'hand' && inst.card.a.typecycle) items.push([`🔎 ${inst.card.a.typecycle.basic ? 'Basic land' : inst.card.a.typecycle.type === 'land' ? 'Land' : inst.card.a.typecycle.type[0].toUpperCase() + inst.card.a.typecycle.type.slice(1)}cycle (search for a land)`, () => { snap(); quiet(yours(x => G.landcycleCard(x, sameInst(x, inst), [])).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana to cycle it'); } play(ev); })); }]);
+    if (zone === 'hand' && inst.card.a.transmute) items.push([`🔎 Transmute (search for a card with mana value ${inst.card.a.mv || 0})`, () => { snap(); quiet(yours(x => G.transmuteCard(x, sameInst(x, inst), [])).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana to transmute it'); } play(ev); })); }]);
     if ((zone === 'hand' || zone === 'command') && inst.card.layout === 'modal_dfc' && inst.card.a.backCard && !inst.card.a.isLand && !inst.card.a.backCard.a.isLand && inst.card.a.backCard.mana_cost) {          // a two-faced card: either face, named
       items.push([`▶ Cast the front: ${inst.card.name.split(' // ')[0]}`, () => castFace(inst, 0, m)]);
       items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);

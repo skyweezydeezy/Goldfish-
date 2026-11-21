@@ -45,6 +45,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   });
   await p.click('#tNext');
   await p.waitForTimeout(1500);
+  for (let k = 0; k < 4 && await p.$('.ch-sheet'); k++) { await p.click('.ch-sheet .ch-auto'); await p.waitForTimeout(600); }          // the cleanup step asks what to discard (eight cards in hand)
   const after = await p.evaluate(() => { const g = window.__isf.game; const s = g.battlefield.find(q => q.transformed); return s ? { name: s.card.name, loyalty: s.loyalty, damage: g.damage } : null; });
   check('Next turn runs the postcombat phase: Sorin transformed', after && after.name === 'Sorin, Ravenous Neonate', JSON.stringify(after));
   check('the log announces the transformation', await p.$$eval('#gameLog li', ls => ls.some(l => /transforms into Sorin, Ravenous Neonate/.test(l.textContent))));

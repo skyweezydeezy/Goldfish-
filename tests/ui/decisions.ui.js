@@ -150,8 +150,8 @@ const shot = process.env.VERSUS_SHOTS;
   await arrange('duel', { untap: true });
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
   // the opponent attacks: you are asked whether to cast an instant now (Swords to Plowshares); say "Not now" and keep it for the end step
-  let s = await until('duel', x => x.choice === 'instant' || x.phase === 'respond' || (x.phase === 'main' && x.turn >= 2));
-  if (s.choice === 'instant') {
+  let s = await until('duel', x => (x.choice === 'instant' && x.step === 'combat') || (x.choice === 'instant' && x.step === 'end') || x.phase === 'respond' || (x.phase === 'main' && x.turn >= 2));
+  if (s.choice === 'instant' && s.step === 'combat') {
     const iq = await sheet();
     check('when the opponent attacks you are asked whether to cast an instant, with "Not now"', /attacks: cast an instant\?/.test(iq.title) && iq.names.includes('Swords to Plowshares') && iq.none === 'Not now', iq.title + ' / ' + iq.names.join(', '));
     await p.click('.ch-sheet .ch-none');
@@ -159,7 +159,7 @@ const shot = process.env.VERSUS_SHOTS;
   // the end of the opponent's turn: the same question, "End of ...'s turn"; this time cast Swords to Plowshares
   s = await until('duel', x => (x.choice === 'instant' && x.step === 'end') || x.phase === 'respond' || (x.phase === 'main' && x.turn >= 2));
   const eq = s.choice === 'instant' ? await sheet() : null;
-  check('at the end of the opponent\'s turn you are asked again, with the End step lit', !!eq && /^End of Copy of your deck's turn: cast an instant\?/.test(eq.title) && eq.names.includes('Swords to Plowshares') && (await p.$$eval('#tab-duel .vs-steps i.on', is => is.map(i => i.textContent).join())) === 'End', eq ? eq.title : JSON.stringify(s) + ' ' + (await log('duel', 6)).join(' || '));
+  check('at the end of the opponent\'s turn you are asked again, with the End step lit', !!eq && /^End of Copy of your deck's turn: cast an instant\?/.test(eq.title) && eq.names.includes('Swords to Plowshares') && (await p.$$eval('#tab-duel .vs-steps i.on', is => is.map(i => i.textContent).join())) === 'End', eq ? eq.title : JSON.stringify(s) + ' ' + (await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return 'hand: ' + me.hand.map(i => i.card.name).join('/') + ' lands: ' + me.battlefield.filter(q => q.asLand).map(q => q.card.name[0] + (q.tapped ? 'T' : 'u')).join('') + ' gy: ' + me.graveyard.map(i => i.card.name).join('/'); })) + ' ' + (await log('duel', 16)).join(' || '));
   if (eq) {
     if (shot) await p.screenshot({ path: path.join(shot, 'choice-endstep.png') });
     const oppCre = await p.evaluate(() => window.__isfVersus.duel.game.games[1].battlefield.filter(q => window.Goldfish.isCreaturePerm(q)).length);
@@ -379,6 +379,37 @@ const shot = process.env.VERSUS_SHOTS;
   const dv = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; return { esika: me.battlefield.some(q => q.card.layout === 'modal_dfc' && /^Esika/.test(q.card.name)), bridge: me.battlefield.some(q => q.card.name === 'The Prismatic Bridge') }; });
   check('in a 1v1 game the same question comes up; choosing the front casts Esika', dv.esika && !dv.bridge, JSON.stringify(dv));
   await p.click('[data-tab=sim]'); await p.selectOption(esel, 'auto');          // leave the deck's choices as they were
+
+  // ================= the Goldfish Table asks too: Imperial Seal, and the cleanup discard =================
+  await loadDeck('frodo', 'Imperial Seal', '1 Imperial Seal');
+  await p.click('[data-tab=table]');
+  await p.click('#tNew'); await p.waitForTimeout(600);
+  await p.waitForFunction(() => window.__isf.game && !document.querySelector('.ch-sheet'), null, { timeout: 30000 }).catch(async () => { await p.click('.ch-sheet .ch-auto'); });
+  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; const k = g.library.findIndex(i => i.card.name === 'Imperial Seal'); g.hand.push(g.library.splice(k, 1)[0]);
+    const sw = g.deck.unique.find(x => x.name === 'Swamp'); const q = G.enter(g, { iid: g.nextIid++, card: sw }, {}); q.tapped = false; });
+  await p.click('#zLibrary .card-back'); await p.waitForTimeout(500);
+  const seal = await p.evaluate(() => window.__isf.game.hand.find(i => i.card.name === 'Imperial Seal').iid);
+  await p.evaluate(id => document.querySelector('#zHand .mtg[data-iid="' + id + '"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })), seal);
+  await p.click('#ctxMenu button >> text="▶ Cast"');
+  await p.waitForSelector('.ch-sheet.search', { timeout: 10000 });
+  sh = await sheet();
+  const lib = await p.evaluate(() => window.__isf.game.library.length);
+  check('Goldfish Table: casting Imperial Seal opens the search fan with your whole library, going on top', /Imperial Seal: search your library/.test(sh.title) && sh.fanned && sh.dest === 'Top of your library (after the shuffle)' && (await p.evaluate(() => window.__isfChoices.current().options.length)) === lib, sh.title + ' / ' + lib + ' cards');
+  const pickS = sh.names.find(n => !sh.def.includes(n) && n !== 'Imperial Seal');
+  await pickTile(pickS); await p.click('.ch-sheet .ch-ok');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet'), null, { timeout: 10000 }); await p.waitForTimeout(1200);
+  const gs = await p.evaluate(() => { const g = window.__isf.game; return { top: g.library[0].card.name, gy: g.graveyard.map(i => i.card.name), life: g.life, log: [...document.querySelectorAll('#gameLog li')].slice(-3).map(l => l.textContent).join(' | ') }; });
+  check('...the card you picked is on top of your library, the Seal in the graveyard, 2 life paid', gs.top === pickS && gs.gy.includes('Imperial Seal') && gs.life === 38, JSON.stringify(gs));
+  await p.evaluate(() => { const g = window.__isf.game; g.battlefield = g.battlefield.filter(q => !q.card.a.statics.noMaxHand); while (g.hand.length < 9) g.hand.push(g.library.shift()); });
+  await p.click('#tNext');
+  await p.waitForSelector('.ch-sheet.discard', { timeout: 20000 });
+  sh = await sheet();
+  check('Goldfish Table: Next turn with nine cards asks what to discard at cleanup', /End of turn: discard down to 7/.test(sh.title), sh.title);
+  await p.click('.ch-sheet .ch-auto'); await p.waitForSelector('.ch-sheet.discard', { timeout: 10000 }); await p.click('.ch-sheet .ch-auto');
+  await p.waitForFunction(() => !document.querySelector('.ch-sheet') && window.__isf.game.turn >= 2, null, { timeout: 20000 });
+  check('...and the next turn begins with seven cards (plus the one drawn)', await p.evaluate(() => window.__isf.game.hand.length === 8));
+  await p.click('#tAuto'); await p.waitForTimeout(2500);
+  check('Goldfish Table: "Autopilot turn" still plays by itself, without questions', !(await p.$('.ch-sheet')));
 
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
 

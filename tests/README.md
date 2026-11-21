@@ -4,7 +4,8 @@ Scenario tests for the simulation engine (`goldfish/static/sim.js`). They use a 
 (`fixtures/frodo-loaded.json` and `fixtures/veyran-loaded.json` and `fixtures/second-breakfast-loaded.json` and `fixtures/loyalty-program-loaded.json` and `fixtures/zul-ashur-loaded.json` and `fixtures/death-tax-loaded.json`, and others, real Scryfall data) so they run offline.
 
 ```
-node tests/run.js          # engine tests: fast, no network
+node tests/run.js          # engine tests: no network; the files run side by side, one per processor (about 4 minutes on 4 processors)
+node tests/run.js pod rules-batch29   # only the files whose names contain one of these;  --jobs 2 chooses how many at a time;  --slow lists the slowest files
 node tests/run.js --ui     # browser tests: needs `npm i playwright`, a Chromium, and internet (Scryfall); starts its own static server on :8800
 python tests/launch/test_launch.py   # launch tests: the self-updater and the local server; no internet (a local server plays GitHub)
 ```
@@ -106,6 +107,8 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | finale-of-devastation | Finale of Devastation fetches a creature of mana value X or less (never Craterhoof with a small X), from the library or the graveyard, and pumps +X/+X with haste only when X is 10 or more; 150 games. |
 | loyalty-cost | A loyalty ability is used only with enough loyalty to pay for it (no −8 with 5 loyalty); exactly enough is allowed and the planeswalker then dies. Every planeswalker in the set database with a minus ability is tried; 40 games. |
 | named-tokens | A token with a name is still made (Ajani's Pridemate from both Ajanis, Prossh's Kobolds), and a token's quoted ability is the token's, not the card's (no counter on Ajani); Urza's and Karn's Constructs still grow with your artifacts. |
+| token-copies | A token copy of a card is a token from the moment it enters: Miirym copies a Dragon once (not her own copies, about 25 before), The Great Henge draws nothing for a token copy |
+| table-facts | The two shortcuts of the engine tidy-up never change a game: every permanent's card is known to its table (`g.U`) after every turn of seeded goldfish games, matches and a pod with the built-in decks; and with the ability loops' skipping switched off (a second process that cannot read their source), the same seeded games play out exactly the same |
 | second-card | "Whenever you draw your second card each turn" (Alandra, Sky Dreamer; Jolrael; Gavi) fires once a turn, on the second card: wheels, the draw step, both players' counts in a match, 200 full games; "whenever you draw a card" still fires for every card. |
 | win-conditions | "You win the game" keeps its condition: Laboratory Maniac and Jace, Wielder of Mysteries (a draw from an empty library, Jace's -8), Hellkite Tyrant, Revel in Riches, Triskaidekaphile, Mechanized Production, Twenty-Toed Toad, Felidar Sovereign, Approach of the Second Sun (second cast, seventh from the top); counter wins check the counters on the card (Simic Ascendancy growth, Helix Pinnacle tower, Chance Encounter luck); conditions the engine cannot check never win; once a game is won the turn stops (no land, attack or second main phase afterwards). |
 | mirror | Mirror match: linked games, blocking, combat keywords, winning and losing, full matches |

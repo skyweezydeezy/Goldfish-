@@ -496,6 +496,18 @@
     say(mode, g, names.length ? 'Abilities: ' + names.slice(0, 8).join('; ') : 'No ability worth using right now.', gm.step);
     humanDone(mode, ev.filter(e => e.type !== 'note'), null, g);
   });
+  // one permanent's activated ability (a Food: gain 3 life; Gilded Goose, Ashnod's Altar...), on your turn or in a response
+  const useAbility = (mode, seat, iid) => mine(mode, seat, async (gm, g) => {
+    if (!mainOf(gm, g.pid) && !respOf(gm, g.pid)) return;
+    const perm = g.battlefield.find(q => q.iid === iid), q = D.abilityQuestion(g, perm);
+    if (!q) return;
+    const pick = await askHere(mode, gm, q);
+    if (pick == null || pick === 'none' || pick === 'auto' || !q.options[pick] || q.options[pick].disabled) return render(mode);
+    const ev = await act(mode, gs => G.useAbility(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid), q.options[pick].i));
+    if (!ev) return note(mode, gm, g, `${perm.card.name} cannot use that ability now.`);
+    note(mode, gm, g, ''); say(mode, g, `${perm.card.name}: ${q.options[pick].name}`, gm.step);
+    humanDone(mode, ev, null, g);
+  });
   // "Attack…": the beginning of combat comes first (Hakbal's Merfolk explore, vehicles are crewed), then you choose your attackers
   const beginAttack = (mode, seat) => mine(mode, seat, async (gm, g) => {
     if (!mainOf(gm, g.pid) || gm.attacked || gm.picking) return;
@@ -600,9 +612,9 @@
   // on another device it is sent to them, and each device makes the moves of both seats in turn, each only when that seat has priority
   // (its main phase, its window at the end of the other's turn, its opening hand). A move the rules do not allow does nothing, on both.
   const pass = (mode, seat, noStop) => { const gm = V[mode].game; if (!respOf(gm, seat)) return; if (noStop) { if (gm.remote == null) gm.noStop = true; else gm.noStops.add(seat); } gm.respond.done(); };
-  const ACTIONS = { play: playCard, loyalty: openLoyalty, veil: useVeil, cycle: cycleCard, abilities: useAbilities, beginAttack, attack, end: endHumanTurn, pass,
+  const ACTIONS = { play: playCard, loyalty: openLoyalty, veil: useVeil, cycle: cycleCard, abilities: useAbilities, ability: useAbility, beginAttack, attack, end: endHumanTurn, pass,
     mull: MULL.mull, keep: MULL.keep, mullAuto: MULL.mullAuto };
-  const RESPOND = new Set(['play', 'loyalty', 'cycle', 'abilities', 'pass']);
+  const RESPOND = new Set(['play', 'loyalty', 'cycle', 'abilities', 'ability', 'pass']);
   function ready(gm, seat, name) {
     if (gm.over || gm.acting || gm.choice) return false;
     if (MULL[name]) return !!gm.mulling[seat];
@@ -681,6 +693,9 @@
   const loyal = (gm, g, p) => { if (gm.human !== g.pid || gm.over || gm.picking || gm.choice || gm.acting || g.dead) return false;
     if (myResp(gm)) return !!p.card.a.masterTime && G.loyaltyState(g, p, gm.respond.g).list.some(it => it.ok);
     return myMain(gm) && (p.card.a.chainVeil ? !G.chainVeilState(g, p) : G.loyaltyState(g, p).list.some(it => it.ok)); };
+  // a permanent of yours with an activated ability you can use right now (you have priority: your main phase, or a response)
+  const canActivate = (gm, g, p) => gm.human === g.pid && !gm.over && !gm.picking && !gm.choice && !gm.acting && !g.dead && !p.asLand
+    && (myMain(gm) || myResp(gm)) && G.abilityMenu(g, p).some(it => it.ok);
   function permEl(st, gm, g, p) {
     const e = node(st, `b${g.pid}:${p.iid}:${p.mdfc ? 1 : 0}:${p.card.uid}`, p.card, p.mdfc ? 1 : 0);
     e.classList.add('vs-pc'); e.dataset.iid = p.iid;
@@ -694,6 +709,7 @@
       if (p.counters) e.appendChild(h('span', 'ctr' + (p.counters < 0 ? ' neg' : ''), (p.counters > 0 ? '+' : '') + p.counters));
     }
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
+    if (!p.card.a.isPlaneswalker && !p.card.a.chainVeil && canActivate(gm, g, p)) { e.classList.add('vs-loyal', 'vs-act'); e.title = 'Click to activate its abilities'; }
     if ((p.card.a.isPlaneswalker || p.card.a.chainVeil) && loyal(gm, g, p)) { e.classList.add('vs-loyal'); e.title = p.card.a.chainVeil ? 'The Chain Veil: click to pay {4} and tap it; each planeswalker may activate one more loyalty ability this turn' : 'Loyalty abilities: click to choose one'; }          // your main phase, nothing else waiting
     { const ch = G.chosenFor(g, p.card); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic: its type, on the card
     if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
@@ -1006,6 +1022,8 @@
         if (hit('vs-nostop')) return input(mode, 'pass', true);
         if (hit('vs-abil')) return input(mode, 'abilities');
         if (hit('vs-cycle')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-cycle').dataset.iid, 'cycle'); }
+        const ac = t.closest('.vs-seat.me .mtg.vs-act');     // a Food, Gilded Goose...: an ability in response
+        if (ac) { e.stopPropagation(); return input(mode, 'ability', +ac.dataset.iid); }
         const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
         if (lw) { e.stopPropagation(); return input(mode, 'loyalty', +lw.dataset.iid); }
         const c = t.closest('.vs-card.can');
@@ -1042,6 +1060,8 @@
       if (hit('vs-transmute')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-transmute').dataset.iid, 'transmute'); }
       if (hit('vs-asland')) { e.stopPropagation(); return input(mode, 'play', +hit('vs-asland').dataset.iid, true); }
       const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
+      const ac = t.closest('.vs-seat.me .mtg.vs-act');       // a glowing permanent with an activated ability (a Food: gain 3 life)
+      if (ac) { e.stopPropagation(); return input(mode, 'ability', +ac.dataset.iid); }
       if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? input(mode, 'veil', p.iid) : input(mode, 'loyalty', +lw.dataset.iid); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }

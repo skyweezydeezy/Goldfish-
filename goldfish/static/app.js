@@ -409,16 +409,13 @@
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
   const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
   const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket + (d.bracketEst ? '?' : '') : ''}</option>`;
+  // Every deck dropdown is tiered the same way: bracket first (highest first), then number of colors (fewest first), then color order
+  // (W U B R G) and name. A dropdown cannot nest groups, so each tier is its own heading: "Bracket 4 · Optimized · Two colors".
   function builtinOptions() {
     let html = '';
-    for (let b = 5; b >= 1; b--) {
-      const ds = BUILTIN.filter(d => d.bracket === b).sort(byColors);
-      if (ds.length) html += `<optgroup label="Bracket ${b} · ${BRACKET_NAME[b]}">` + ds.map(opt).join('') + '</optgroup>';
-    }
-    for (let k = 5; k >= 0; k--) {
-      const ds = BUILTIN.filter(d => !d.bracket && d.colors.length === k).sort(byColors);
-      if (ds.length) html += `<optgroup label="No bracket · ${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(opt).join('') + '</optgroup>';
-    }
+    const tier = (ds, head) => { for (let k = 0; k <= 5; k++) { const g = ds.filter(d => (d.colors || '').length === k).sort(byColors); if (g.length) html += `<optgroup label="${head} · ${COLOR_GROUP[k]}">` + g.map(opt).join('') + '</optgroup>'; } };
+    for (let b = 5; b >= 1; b--) tier(BUILTIN.filter(d => d.bracket === b), `Bracket ${b} · ${BRACKET_NAME[b]}`);
+    tier(BUILTIN.filter(d => !d.bracket), 'No bracket');
     return html;
   }
   const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
@@ -1891,7 +1888,7 @@
   }
   function fillLabOpponents() {
     const saved = Object.keys(getDecks()).sort();
-    $('#plOppList').innerHTML = BUILTIN.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)}</option>`).join('') + saved.map(n => `<option value="${esc(n)}">${esc(n)} (saved)</option>`).join('');
+    $('#plOppList').innerHTML = builtinOptions() + (saved.length ? `<optgroup label="Saved in this browser">${saved.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
   }
   function showLabOpponents() {
     const field = $('#plMode').value === 'field', sel = $('#plOpp').value === 'selected';

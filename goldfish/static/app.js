@@ -1549,7 +1549,15 @@
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
     $('#hPower').textContent = g.battlefield.reduce((s, p) => s + Math.max(0, G.powerOf(g, p)), 0);
     const mp = $('#hMana'); mp.innerHTML = '';
-    units.forEach(u => { const cs = [...u.colors]; const cls = cs.length > 1 ? 'M' : cs[0]; mp.appendChild(h('span', 'pip ' + cls + (u.floating ? ' floating' : ''), cs.length > 1 ? '' : cls)); });
+    // one pip per kind of mana with how many: "4× W 1× U". A source of several colors is its own kind (shown as a gold pip, its colors on hover)
+    const kinds = new Map();
+    units.forEach(u => { const cs = [...u.colors].sort((x, y) => 'WUBRGC'.indexOf(x) - 'WUBRGC'.indexOf(y)), key = cs.join('') + (u.floating ? '*' : ''); const k = kinds.get(key) || { cs, floating: !!u.floating, n: 0 }; k.n++; kinds.set(key, k); });
+    [...kinds.values()].sort((x, y) => 'WUBRGC'.indexOf(x.cs[0]) - 'WUBRGC'.indexOf(y.cs[0]) || x.cs.length - y.cs.length).forEach(k => {
+      const multi = k.cs.length > 1, cls = multi ? 'M' : k.cs[0];
+      const g2 = h('span', 'mana-kind', `<b>${k.n}×</b>`); const pip = h('span', 'pip ' + cls + (k.floating ? ' floating' : ''), multi ? '' : cls);
+      if (multi) pip.title = k.cs.join(' or '); if (k.floating) g2.title = 'floating (made this step)';
+      g2.appendChild(pip); mp.appendChild(g2);
+    });
     if (!units.length) mp.innerHTML = '<span class="hint">none</span>';
 
     if (first) return;

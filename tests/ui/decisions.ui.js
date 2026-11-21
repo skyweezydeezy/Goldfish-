@@ -79,7 +79,7 @@ const shot = process.env.VERSUS_SHOTS;
   const stackQ = () => p.evaluate(() => { const q = window.__isfChoices.current(); return q && (q.kind === 'resolve' || (q.kind === 'counter' && !q.options.length)) ? q.kind : null; });
   const passStack = async mode => {
     for (let k = 0; k < 8; k++) {
-      await p.waitForFunction(m => document.querySelector('.ch-sheet') || !window.__isfVersus[m].game.acting, mode, { timeout: 15000 });
+      await p.waitForFunction(m => { const g = window.__isfVersus[m].game; return document.querySelector('.ch-sheet') || (!g.acting && !g.busy) || g.over; }, mode, { timeout: 15000 });          // a sheet, or nothing going on (an action of yours, or another player's turn)
       if (!(await stackQ())) return;
       await p.click('.ch-sheet .ch-none'); await p.waitForTimeout(200);
     }
@@ -183,6 +183,7 @@ const shot = process.env.VERSUS_SHOTS;
     if (shot) await p.screenshot({ path: path.join(shot, 'choice-endstep.png') });
     const oppCre = await p.evaluate(() => window.__isfVersus.duel.game.games[1].battlefield.filter(q => window.Goldfish.isCreaturePerm(q)).length);
     await pickTile('Swords to Plowshares'); await p.click('.ch-sheet .ch-ok');
+    await passStack('duel');          // your instant waits on the stack first ("You cast Swords to Plowshares: does it resolve?"); its target is chosen as it resolves
     if (oppCre > 1) { await p.waitForSelector('.ch-sheet.target', { timeout: 10000 }); await p.click('.ch-sheet .ch-ok'); }          // one legal target is not a question
     s = await until('duel', x => x.phase === 'main' && x.turn >= 2);
     const sw = await p.evaluate(() => { const gm = window.__isfVersus.duel.game; return { gy: gm.games[0].graveyard.map(i => i.card.name), cre: gm.games[1].battlefield.filter(q => window.Goldfish.isCreaturePerm(q)).length }; });
@@ -361,7 +362,7 @@ const shot = process.env.VERSUS_SHOTS;
     gm.games[1].hand = [];                                                                       // no counterspell for the opponent this time
     me.battlefield = me.battlefield.filter(q => !q.asLand);
     ['Island', 'Forest', 'Island', 'Forest'].forEach(n => { const q = G.enterWithTriggers(me, { iid: me.nextIid++, card: me.deck.unique.find(c => c.name === n) }, {}, []); q.tapped = false; q.enteredTurn = 0; });
-    const k = me.library.findIndex(i => i.card.name === 'Force of Will'); me.library.unshift(me.library.splice(k, 1)[0]);
+    const fw = me.library.find(i => i.card.name === 'Force of Will') || me.hand.find(i => i.card.name === 'Force of Will'); [me.library, me.hand].forEach(z => { const j = z.indexOf(fw); if (j >= 0) z.splice(j, 1); }); me.library.unshift(fw);          // on top, wherever it was dealt (the library or the opening hand)
     window.__isfVersus.redraw('duel');
   });
   const hk = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], h = me.command.find(i => /^Hakbal/.test(i.card.name)), el = document.querySelector('#tab-duel .vs-seat.me .vs-czone .mtg.can[data-iid="' + h.iid + '"]'); if (el) el.click(); return !!el; });
@@ -369,7 +370,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForFunction(() => !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
   const cast = await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], h = me.battlefield.find(q => /^Hakbal/.test(q.card.name)); return { ok: !!h, sick: !!(h && h.sick), q: !!document.querySelector('.ch-sheet') }; });
   check('Hakbal is cast from the command zone in the first main phase (summoning sick), and nothing explores yet', hk && cast.ok && cast.sick && !cast.q, JSON.stringify(cast));
-  await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0], k = me.library.findIndex(i => i.card.name === 'Force of Will'); if (k > 0) me.library.unshift(me.library.splice(k, 1)[0]); });          // on top right before combat
+  await p.evaluate(() => { const me = window.__isfVersus.duel.game.games[0]; const fw = me.library.find(i => i.card.name === 'Force of Will') || me.hand.find(i => i.card.name === 'Force of Will'); [me.library, me.hand].forEach(z => { const j = z.indexOf(fw); if (j >= 0) z.splice(j, 1); }); me.library.unshift(fw); });          // on top right before combat
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
   await p.waitForSelector('.ch-sheet.explore', { timeout: 20000 });
   const at = await p.evaluate(() => ({ step: window.__isfVersus.duel.game.step, lit: [...document.querySelectorAll('#tab-duel .vs-steps i.on')].map(i => i.textContent).join() }));
@@ -469,7 +470,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.click('[data-tab=table]');
   await p.click('#tNew'); await p.waitForTimeout(600);
   await p.waitForFunction(() => window.__isf.game && !document.querySelector('.ch-sheet'), null, { timeout: 30000 }).catch(async () => { await p.click('.ch-sheet .ch-auto'); });
-  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; const k = g.library.findIndex(i => i.card.name === 'Imperial Seal'); g.hand.push(g.library.splice(k, 1)[0]);
+  await p.evaluate(() => { const G = window.Goldfish, g = window.__isf.game; if (!g.hand.some(i => i.card.name === 'Imperial Seal')) { const k = g.library.findIndex(i => i.card.name === 'Imperial Seal'); g.hand.push(g.library.splice(k, 1)[0]); }          // it may have been dealt into your hand
     const sw = g.deck.unique.find(x => x.name === 'Swamp'); const q = G.enter(g, { iid: g.nextIid++, card: sw }, {}); q.tapped = false; });
   await p.click('#zLibrary .card-back'); await p.waitForTimeout(500);
   const seal = await p.evaluate(() => window.__isf.game.hand.find(i => i.card.name === 'Imperial Seal').iid);

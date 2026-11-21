@@ -53,9 +53,11 @@ const BASE = 'http://127.0.0.1:8800/';
   check('Invite without ticking "I understand and accept" makes no code and says why', !(await A.$('#tab-duel .rm-mine')) && /accept/.test(await A.$eval('#tab-duel .rm-status', e => e.textContent)));
   await A.check('#tab-duel .rm-tick');
   await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const invite = await A.$eval('#tab-duel .rm-mine', e => e.value);
-  check('ticking it and Invite makes an invite code', /^ISF1z?\.[A-Za-z0-9_-]{40,}$/.test(invite), invite.length + ' characters');
+  check('ticking it and Invite makes an invite code, short enough for a QR code', /^ISF2z?\.[A-Za-z0-9_-]{40,}$/.test(invite) && invite.length < 400, invite.length + ' characters');
+  const qr = await A.evaluate(() => { const q = document.querySelector('#tab-duel .rm-qr'); return q && { link: q.dataset.link, svg: !!q.querySelector('svg path'), w: q.getBoundingClientRect().width }; });
+  check('...shown as a QR code of the invite link, for the friend to scan with the phone\'s camera', qr && qr.svg && qr.link === BASE + '#isf-join=' + invite && qr.w >= 150, JSON.stringify(qr && { w: qr.w, link: (qr.link || '').slice(0, 60) }));
   check('...after which the list folds to one line under the tagline', !!(await A.$('#tab-duel .rm-what')) && !(await A.$('#tab-duel .rm-tick')));
 
   // ---- the friend opens the invite link
@@ -65,11 +67,17 @@ const BASE = 'http://127.0.0.1:8800/';
   await B.fill('#tab-duel .rm-name', 'Sam');
   await B.check('#tab-duel .rm-tick');
   await B.click('#tab-duel .rm-reply');
-  await B.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
+  await B.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const reply = await B.$eval('#tab-duel .rm-mine', e => e.value);
-  check('the friend gets a reply code to send back', /^ISF1z?\./.test(reply) && reply !== invite);
-  await A.fill('#tab-duel .rm-theirs', reply);
-  await A.click('#tab-duel .rm-connect');
+  const rqr = await B.evaluate(() => { const q = document.querySelector('#tab-duel .rm-qr'); return q && q.dataset.link; });
+  check('the friend gets a reply, shown as a QR code of the reply link', /^ISF2z?\./.test(reply) && reply !== invite && rqr === BASE + '#isf-reply=' + reply);
+  // Alex scans it with the camera: it opens in a new tab of the same browser, which hands it to the tab with the invite
+  const A2 = await A.context().newPage();
+  await A2.goto(BASE + '#isf-reply=' + reply);
+  await A2.waitForSelector('#tab-duel .rm-box', { timeout: 30000 });
+  check('the scanned reply opens a new tab that says to go back to the tab with the invite', /Go back to the ICEYfish tab with your invite/.test(await A2.$eval('#tab-duel .rm-step', e => e.textContent)));
+  await A.bringToFront();
+  await A.evaluate(() => window.dispatchEvent(new Event('focus')));
   const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000 });
   await Promise.all([started(A), started(B)]);
 
@@ -170,12 +178,13 @@ const BASE = 'http://127.0.0.1:8800/';
   const rejoined = await st(B);
   check('Sam\'s device replays the saved game to exactly where it was', rejoined.fp === beforeReload.fp && rejoined.active === beforeReload.active, rejoined.fp + ' / ' + beforeReload.fp);
   await A.click('#tab-duel .rm-lost .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const invite2 = await A.$eval('#tab-duel .rm-mine', e => e.value);
   await B.click('#tab-duel .rm-join');
   await B.fill('#tab-duel .rm-theirs', invite2);
   await B.click('#tab-duel .rm-reply');
-  await B.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
+  await B.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
+  await A.click('#tab-duel .rm-paste summary');          // this time Alex pastes the reply (the fallback)
   await A.fill('#tab-duel .rm-theirs', await B.$eval('#tab-duel .rm-mine', e => e.value));
   await A.click('#tab-duel .rm-connect');
   await Promise.all([A, B].map(p => p.waitForFunction(() => window.__isfRemote.connected(), null, { timeout: 30000 })));

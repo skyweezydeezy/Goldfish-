@@ -52,7 +52,7 @@
       </div>
       <div class="card-box">
         <div class="box-head"><h2>Play many games</h2><span class="hint">Every seat on autopilot, with the decks chosen above. The first seat rotates.</span></div>
-        <div class="row wrap"><label>Games <input class="vs-n" type="number" min="20" max="10000" value="5000"></label><button class="primary vs-run">Run</button><div class="progress vs-prog"><div></div></div></div>
+        <div class="row wrap"><label>Games <input class="vs-n" title="10,000 games: every percentage is within about ±1 point of the true value (95% of the time). Fewer games run faster but are less precise: 5,000 → ±1.4, 2,500 → ±2." type="number" min="20" max="20000" value="10000"></label><button class="primary vs-run">Run</button><div class="progress vs-prog"><div></div></div></div>
         <div class="vs-sinfo hint"></div><div class="tiles vs-tiles"></div><div class="row wrap vs-samples"></div><div class="vs-slog"></div>
       </div>`;
     const q = s => root.querySelector(s);
@@ -796,7 +796,7 @@
     const st = V[mode], q = st.q, btn = q('.vs-run');
     btn.disabled = true; q('.vs-tiles').innerHTML = ''; q('.vs-samples').innerHTML = ''; q('.vs-slog').innerHTML = '';
     const ps = await players(mode, t => { q('.vs-sinfo').textContent = t; }), o = gameOpts(mode);
-    const n = Math.max(20, Math.min(10000, +q('.vs-n').value || 5000)), seed = (Math.random() * 0x7fffffff) >>> 0;
+    const n = Math.max(20, Math.min(20000, +q('.vs-n').value || 10000)), seed = (Math.random() * 0x7fffffff) >>> 0;
     const t0 = performance.now();
     if (st.worker) st.worker.terminate();
     st.worker = new Worker('worker.js');

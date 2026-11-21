@@ -621,6 +621,8 @@
         if (/^whenever ~ deals combat damage to a player, look at that player's hand\. you may cast a spell from among those cards without paying its mana cost\.?$/i.test(line)) { a.oniCast = true; MIRJ(); continue; }          // Silent-Blade Oni: their hand
         if (/^(?:flare star — )?if a wizard you control would deal damage to a permanent or player, it deals double that damage instead\.?$/i.test(line)) { a.flareStar = 'wizard'; rec.status = 'ok'; continue; }          // Trance Kuja
         if (/^if an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard\.?$/i.test(line)) { a.leng = true; rec.status = 'ok'; continue; }          // Library of Leng
+        { const bb = line.match(/^whenever ~ blocks(?: a creature)?, create an? (\d+)\/(\d+) ([a-z ]+?) creature tokens? with ([a-z, ]+?) that'?s blocking (?:that creature|it)\.?$/i);
+          if (bb) { a.blocksToken = specFromDesc(bb[1], bb[2], bb[3], bb[4]); rec.status = 'ok'; continue; } }          // Brimaz, King of Oreskos: the token joins the block
         if ((bm = line.match(/^whenever (?:~|smaug) attacks, (?:he|it) deals damage equal to the number of treasures you control to any target\.?$/i))) { a.smaug = true; rec.status = 'ok'; continue; }          // Smaug the Magnificent
         if ((bm = line.match(/^ninjutsu abilities you activate cost \{(\d+)\} less to activate\.?$/i))) { a.statics.ninjutsuLess = +bm[1]; rec.status = 'ok'; continue; }          // Silver-Fur Master
         if (/^\{3\}, \{t\}, return ~ to its owner's hand: search your library for a gate card, put it onto the battlefield, then shuffle\. if you control ten or more gates with different names, you win the game\.?$/i.test(line)) { a.mazesEnd = parseCost('{3}'); rec.status = 'ok'; continue; }          // Maze's End
@@ -9947,6 +9949,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry) for (const az of attackers.filter(x => x.card.a.anzrag)) if ((blocks.get(az) || []).length && g.anzragTurn !== g.turn) { g.anzragTurn = g.turn; g.battlefield.forEach(q => { if (isCreaturePerm(q)) q.tapped = false; }); g.extraCombats = (g.extraCombats || 0) + 1; ev.push({ type: 'note', text: `${az.card.name} is blocked: your creatures untap, one more combat`, source: az }); }          // Anzrag
     if (!g.dry && attackers.some(x => x.card.a.odric) && attackers.length >= 4 && blocks.size) { blocks.clear(); ev.push({ type: 'note', text: 'Odric: you choose the blocks (none)', source: null }); }          // Odric, Master Tactician
     afterBlocks(g, d, attackers, blocks, ev);
+      if (!g.dry) for (const [a0, bl0] of blocks) for (const b0 of bl0.slice()) if (b0.card.a.blocksToken && !b0._blockToken) { b0._blockToken = true; createTokens(d, b0.card.a.blocksToken, 1, ev, b0); if (d._lastTok) bl0.push(d._lastTok); }          // Brimaz: the token enters already blocking
     attackers = attackers.filter(a => !a.outOfCombat);
     const blockedSet = new Set(blocks.keys());
     if (!g.dry && g.hand.some(c => c.card.a.sneak || c.card.a.ninjutsu)) sneakStep(g, attackers, attackers.filter(x => !blockedSet.has(x)), ev);          // sneak and ninjutsu, once the blocks are known

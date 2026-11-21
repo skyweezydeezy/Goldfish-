@@ -35,8 +35,9 @@ const shot = process.env.VERSUS_SHOTS;
   const until = async (mode, cond, arg, ms, keepBlock) => {
     const t0 = Date.now();
     while (Date.now() - t0 < (ms || 90000)) {
-      const ask = await p.evaluate(m => { const g = window.__isfVersus[m].game; return !g ? '' : g.choice ? 'choice' : g.phase === 'block' ? 'block' : g.phase === 'respond' ? 'respond' : ''; }, mode);
-      if (ask === 'choice') await p.evaluate(() => { const b = document.querySelector('.ch-sheet .ch-auto'); if (b) b.click(); });
+      const ask = await p.evaluate(m => { const g = window.__isfVersus[m].game; return !g ? '' : g.choice ? (g.choice.kind === 'protect' ? 'protect' : 'choice') : g.phase === 'block' ? 'block' : g.phase === 'respond' ? 'respond' : ''; }, mode);
+      if (ask === 'choice' || (ask === 'protect' && !keepBlock)) await p.evaluate(() => { const b = document.querySelector('.ch-sheet .ch-auto'); if (b) b.click(); });
+      else if (ask === 'protect') await p.evaluate(() => { const b = document.querySelector('.ch-sheet .ch-none'); if (b) b.click(); });          // waiting for blocks: do not answer the attack itself (Settle the Wreckage), let it come
       else if (ask === 'respond') await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-pass').click(), mode);
       else if (ask === 'block' && !keepBlock) { blockAsks++; await p.evaluate(m => document.querySelector('#tab-' + m + ' .vs-block-go').click(), mode); }
       if (await p.evaluate(cond, arg)) return true;
@@ -66,7 +67,8 @@ const shot = process.env.VERSUS_SHOTS;
   await p.click('#tab-duel .vs-keep');
   await until('duel', () => { const g = window.__isfVersus.duel.game; return g.phase === 'main'; });
   check('...and you keep six', await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; return g.openingHand.length === 6 && g.bottomed.length === 1; }));
-  check('the game shows two seats at 40 life and waits for you on your turn', (await p.$$('#tab-duel .vs-seat')).length === 2 && (await p.$$eval('#tab-duel .vs-life', ls => ls.map(l => l.textContent))).every(t => +t <= 40 && +t > 0));
+  { const lives = await p.$$eval('#tab-duel .vs-life', ls => ls.map(l => l.textContent));          // 40 each at the start; the opponent may have gone first and gained or paid life
+    check('the game shows two seats with their life totals and waits for you on your turn', (await p.$$('#tab-duel .vs-seat')).length === 2 && lives.length === 2 && lives.every(t => /^\d+$/.test(t) && +t > 0) && await p.evaluate(() => window.__isfVersus.duel.game.phase === 'main'), lives.join(' / ')); }
   // the deal is random: make sure there is a land in hand (so something is playable), then redraw the table
   if (await p.evaluate(() => { const g = window.__isfVersus.duel.game.games[0]; if (g.hand.some(i => i.card.a.isLand)) return false; const k = g.library.findIndex(i => i.card.a.isLand); g.hand.push(g.library.splice(k, 1)[0]); return true; })) {
     await p.evaluate(() => window.__isfVersus.redraw('duel'));
@@ -95,11 +97,13 @@ const shot = process.env.VERSUS_SHOTS;
       const big = G.enterWithTriggers(op, { iid: op.nextIid++, card: cs[0] }, {}, []); big.sick = false; big.enteredTurn = 0; big.counters = 6;
       const small = G.enterWithTriggers(me, { iid: me.nextIid++, card: cs[cs.length - 1] }, {}, []); small.sick = false; small.tapped = false; window.__blk = small.iid; window.__big = big.iid;
       op.battlefield.forEach(q => { if (q !== big && G.isCreaturePerm(q)) q.tapped = true; });
+      op.hand = [];          // no removal for the set-up blocker (a Go for the Throat in its main phase left nothing to block with)
     });
     await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
     await until('duel', () => { const g = window.__isfVersus.duel.game; return g.over || g.phase === 'block' || (g.phase === 'main' && g.games[0].turn >= 4); }, null, 60000, true);
     const ph = await p.evaluate(() => window.__isfVersus.duel.game.phase);
-    check('when the computer attacks you and you can block, the game stops and asks for your blocks', ph === 'block' && (await p.$$('#tab-duel .vs-blk')).length >= 1, ph);
+    const why = ph === 'block' ? '' : (await p.$$eval('#tab-duel .vs-log .vs-line:not(.quiet)', ls => ls.slice(-8).map(l => l.textContent))).join(' || ');
+    check('when the computer attacks you and you can block, the game stops and asks for your blocks', ph === 'block' && (await p.$$('#tab-duel .vs-blk')).length >= 1, ph + (why ? ' · ' + why : ''));
     if (ph === 'block') check('...and the attacking creatures are marked on the opponent\'s battlefield', (await p.$$('#tab-duel .vs-seat.opp .mtg.attacking')).length >= 1);
     if (ph === 'block') {
       if (shot) await p.screenshot({ path: path.join(shot, 'block.png'), fullPage: true });
@@ -166,7 +170,8 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForSelector('#tab-duel .vs-play', { timeout: 30000 });
   {
     const fast = await timePlay(10), slowT = await timePlay(6);
-    check('Play runs the game by itself, and the turtle end is clearly slower than the rabbit end', slowT > fast * 2.5, `3 turns: rabbit ${fast} ms, turtle ${slowT} ms`);
+    // the slider makes each pause 3× longer; the engine's own work in those turns does not slow down, so the whole run is somewhat less than 3×
+    check('Play runs the game by itself, and the turtle end is clearly slower than the rabbit end', slowT > fast * 2, `3 turns: rabbit ${fast} ms, turtle ${slowT} ms`);
     check('Pause stops it', !(await p.evaluate(() => window.__isfVersus.duel.game.busy)));
   }
   await setSpeed(10);

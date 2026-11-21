@@ -327,9 +327,10 @@
   // Opened by clicking your planeswalker when you have priority (your main phase, nothing else waiting). One tile per ability with its
   // cost (+1, 0, −3, −X); an ability that cannot be used now is shown but cannot be picked, with the reason (not enough loyalty, already
   // used this turn, the engine does not play it). The autopilot's pick is marked; "Not now" closes the menu. Returns null for no planeswalker.
-  function loyaltyQuestion(g, p) {
+  // active: the player whose turn it is, on another player's turn (Teferi, Master of Time).
+  function loyaltyQuestion(g, p, active) {
     if (!p || !p.card || !p.card.a.isPlaneswalker) return null;
-    const st = G.loyaltyState(g, p);
+    const st = G.loyaltyState(g, p, active);
     if (!st.list.length) return null;
     const options = st.list.map((it, k) => ({ k, i: it.i, label: it.label, name: `${it.label}: ${it.text}`, note: it.ok ? (it.x ? 'the autopilot picks X' : '') : it.why, disabled: !it.ok, def: false }));
     const dk = st.auto ? st.list.findIndex(it => it.ab === st.auto) : -1;
@@ -338,7 +339,7 @@
     const q = { kind: 'loyalty', what: null, seat: g.pid, multi: false, min: 1, max: 1, optional: true, none: 'Not now', source: p.card, options, def: dk >= 0 ? [dk] : [],
       spell: p.card, spellNote: `loyalty ${p.loyalty}`, blocked: st.why,
       title: `${p.card.name.split(' // ')[0]}: loyalty abilities`,
-      text: st.why ? `Not now: ${st.why}.` : `Loyalty ${p.loyalty}. Choose one${left > 1 ? ` (${left} activations left this turn)` : ' (once a turn)'}.` };
+      text: st.why ? `Not now: ${st.why}.` : `Loyalty ${p.loyalty}. Choose one${st.other ? " (on another player's turn, once each turn)" : left > 1 ? ` (${left} activations left this turn)` : ' (once a turn)'}.` };
     q.sig = 'loyalty/' + p.iid + '/' + options.map(o => o.name).join('|');
     return q;
   }
@@ -366,11 +367,16 @@
   }
 
   // ---------- the end of another player's turn ----------
-  // Instants and cards with flash, cast with the mana that is still untapped. Counterspells are not offered here: they are asked when
-  // a spell is cast.
+  // Instants, cards with flash and spells a permanent lets you cast as though they had flash (Leyline of Anticipation, Vedalken Orrery,
+  // Teferi, Time Raveler's +1), cast with the mana that is still untapped. Counterspells are not offered here: they are asked when a
+  // spell is cast.
   const instantSpeed = card => /\bInstant\b/.test(card.type_line || '') || (card.keywords || []).includes('Flash');
   function instants(g) {
-    return g.hand.concat(g.command).filter(i => !i.card.a.isLand && !i.card.a.counter && instantSpeed(i.card) && G.canPay(G.effectiveCost(g, i), G.allUnits(g)));
+    return g.hand.concat(g.command).filter(i => !i.card.a.isLand && !i.card.a.counter && G.instantSpeedFor(g, i.card) && G.canPay(G.effectiveCost(g, i), G.allUnits(g)));
+  }
+  // planeswalkers that may activate a loyalty ability now, on another player's turn (Teferi, Master of Time)
+  function otherTurnWalkers(g, active) {
+    return g.battlefield.filter(p => p.card.a.isPlaneswalker && p.card.a.masterTime && G.loyaltyState(g, p, active).list.some(it => it.ok));
   }
   // the autopilot's ability pass without what can only be done at sorcery speed (loyalty abilities, equipping)
   function instantAbilities(g) {
@@ -390,7 +396,7 @@
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { loyaltyQuestion, faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, instantAbilities, wouldUseAbilities, quietBeginCombat };
+  const api = { loyaltyQuestion, faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, otherTurnWalkers, instantAbilities, wouldUseAbilities, quietBeginCombat };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

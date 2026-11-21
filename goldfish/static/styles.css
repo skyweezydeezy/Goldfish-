@@ -662,6 +662,14 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .lb-nav:disabled { opacity: .25; }
 .lb-name { font-weight: 700; font-size: 16px; text-align: center; max-width: 92vw; overflow-wrap: anywhere; }
 .lb-tip { text-align: center; }
+/* A/B test: the replacements offered under a card you cut */
+.ab-picks { margin: 6px 0 10px; }
+.ab-picks-head { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
+.ab-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.ab-pick { flex: none; width: 108px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px; border-radius: 10px; background: var(--surface-2); border: 2px solid transparent; font-size: 11px; line-height: 1.2; color: var(--text-secondary); }
+.ab-pick img { width: 96px; border-radius: 5px; }
+.ab-pick small { color: var(--ice-2); font-weight: 700; }
+.ab-pick.on { border-color: var(--ice-2); color: var(--text-primary); background: var(--surface-3); }
 .lb-acts { width: min(92vw, 560px); }
 .lb-acts-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .lb-act { flex: 1 1 140px; min-height: 44px; }
@@ -993,6 +1001,29 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .dm-backup { align-self: center; margin-left: auto; }
 .dm-backup.warn { color: var(--warning, #fab219); }
 
+/* A/B test: swap suggestions (cut card image, then replacement images in the same row) */
+.ab-swap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.06); }
+.ab-rank { font-weight: 700; min-width: 2.2em; opacity: .8; }
+.ab-cut { margin: 0; width: 120px; }
+.ab-cut img, .ab-repl img { width: 100%; border-radius: 6px; display: block; }
+.ab-cut figcaption { font-size: 12px; margin-top: 4px; line-height: 1.3; }
+.ab-arrow { font-size: 20px; opacity: .6; }
+.ab-repls { display: flex; gap: 8px; flex-wrap: wrap; }
+.ab-repl { width: 104px; padding: 3px; background: none; border: 2px solid transparent; border-radius: 9px; cursor: pointer; color: inherit; text-align: left; }
+.ab-repl:hover { border-color: rgba(120,190,255,.45); }
+.ab-repl.on { border-color: #4cc2ff; box-shadow: 0 0 0 2px rgba(76,194,255,.25); }
+.ab-repl small { display: block; font-size: 11px; margin-top: 3px; line-height: 1.25; }
+.ab-noimg { display: inline-block; padding: 30px 6px; font-size: 12px; border: 1px dashed rgba(255,255,255,.2); border-radius: 6px; }
+
+/* Teach these cards: a banner on the Build tab when a deck has cards the simulator does not fully read */
+.teach-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 14px; padding: 12px 16px; border-radius: 12px;
+  background: linear-gradient(90deg, rgba(76,194,255,.16), rgba(140,110,255,.14)); border: 1px solid rgba(120,190,255,.35); }
+.teach-banner[hidden] { display: none; }
+.teach-icon { font-size: 24px; }
+.teach-text { flex: 1 1 320px; }
+.teach-btn { display: inline-block; padding: 9px 18px; border-radius: 999px; background: #4cc2ff; color: #06121c; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.teach-btn:hover { filter: brightness(1.08); }
+.teach-how { flex-basis: 100%; margin: 0; }
 /* =====================================================================
    Practice table on an iPhone.
    Upright: a hand you can recognise (big cards, fanned over each other; tap one for its menu and the card viewer), thin stats and

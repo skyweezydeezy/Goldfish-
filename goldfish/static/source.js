@@ -262,7 +262,20 @@
     return state;
   }
 
-  const api = { init, loadDeck, parseDecklist, slim, state };
+  // Card search for replacement suggestions: Scryfall's search, most played first (EDHREC rank). Always asks Scryfall (the local mirror
+  // only searches names). Returns slimmed cards, or [] when nothing matches or Scryfall cannot be reached.
+  async function searchCards(q, max) {
+    const key = 'search:' + q;
+    const hit = cacheGet(key); if (hit) return hit.slice(0, max || 12);
+    try {
+      const r = await fetch(API + '/cards/search?order=edhrec&unique=cards&q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } });
+      if (!r.ok) return [];
+      const j = await r.json(), out = (j.data || []).slice(0, 24).map(c => slim(c));
+      cachePut(key, out);
+      return out.slice(0, max || 12);
+    } catch (e) { return []; }
+  }
+  const api = { init, loadDeck, parseDecklist, slim, state, searchCards };
   (typeof window !== 'undefined' ? window : globalThis).Source = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

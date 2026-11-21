@@ -78,7 +78,7 @@ T('ulamog', () => { const g = bare(); putOn(g, 'Ulamog, the Ceaseless Hunger'); 
   const g2 = bare(); cast(g2, 'Ulamog, the Defiler', 10); check('Ulamog, the Defiler: half the library, rounded up (92 -> 46)', g2.oppLib === 46, g2.oppLib); });
 T('sower', () => { const g = bare(); cast(g, 'Oblivion Sower', 6); const st = g.battlefield.filter(q => q.card.name === "Opponent's land");
   check("Oblivion Sower against a goldfish: four cards exiled, the lands among them (a typical deck's share, drawn at random) are yours and tap for {C}", g.oppLib === 88 && st.length <= 4 && st.every(q => q.asLand && q.produce && q.produce.colors.has('C')), g.oppLib + ' / ' + st.length);
-  check('...the line says Approximated (a goldfish has no real cards)', lineOf('Oblivion Sower', 'When you cast').tag === 'approx');
+  check('...the line counts as fully simulated: exact in a match, a typical deck against a goldfish (tests/engine/unlearned-cards.test.js)', lineOf('Oblivion Sower', 'When you cast').status === 'ok');
   const { g: a, b } = mirror(); b.library.unshift(...['Forest', 'Swamp', 'Shivan Dragon', 'Island'].map(n => inst(b, n))); cast(a, 'Oblivion Sower', 6);
   const mine = a.battlefield.filter(q => ['Forest', 'Swamp', 'Island'].includes(q.card.name));
   check('...in a match: its three lands among the four enter under your control, the Dragon stays in exile', mine.length === 3 && mine.every(q => q.owner === b) && b.exile.some(i => i.card.name === 'Shivan Dragon'), mine.length); });
@@ -111,7 +111,7 @@ T('waste not', () => { const { g: a, b } = mirror(); putOn(a, 'Waste Not'); a.ha
   check('Waste Not in a match: a creature discarded makes a Zombie, a land adds {B}{B}, the other card draws a card', z === 1 && bb >= 2 && a.hand.length === 1, `${z} zombie, ${bb} B, ${a.hand.length} card`);
   const g = bare(); putOn(g, 'Waste Not'); g.oppHand = 7; const h0 = g.hand.length; cast(g, 'Hymn to Tourach', 2);
   const z2 = g.battlefield.filter(q => q.token && /Zombie/.test(q.card.name)).length, d2 = g.hand.length - h0, b2 = g.floating.filter(u => u.colors.has('B') && u.colors.size === 1).length;
-  check("...against a goldfish its two discards trigger it twice, the kind of each card drawn from a typical deck (labelled Approximated)", z2 + d2 + b2 / 2 === 2 && by('Waste Not').a.coverage.every(v => v.tag === 'approx'), `${z2} / ${d2} / ${b2}`); });
+  check("...against a goldfish its two discards trigger it twice, the kind of each card drawn from a typical deck (its lines count as fully simulated)", z2 + d2 + b2 / 2 === 2 && by('Waste Not').a.coverage.every(v => v.status === 'ok'), `${z2} / ${d2} / ${b2}`); });
 
 T('junji', () => { const md = by('Junji, the Midnight Sky').a.triggers[0].fx[0].modes, has = (k, t) => md[k].some(f => f.type === t);
   check("Junji's modes: the opponent discards two and loses 2 life (the life loss was dropped); or a non-Dragon creature card returns (only your 2 life was read)", has(0, 'oppDiscard') && has(0, 'drain') && md[1].some(f => f.type === 'reanimate' && f.notType === 'dragon'), JSON.stringify(md.map(m => m.map(f => f.type)))); });

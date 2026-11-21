@@ -115,7 +115,7 @@ T('labels', () => { const mir = [["Teferi's Protection", 'Until'], ['Heroic Inte
   const ok = [['Crested Sunmare', 'Other'], ['Avacyn, Angel of Hope', 'Other'], ["Sephara, Sky's Blade", 'Other'], ['Svyelun of Sea and Sky', '~ has'], ['Greater Auramancy', 'Other'], ['Sterling Grove', 'Other'], ['Elspeth, Knight-Errant', '−8']];
   const bad2 = ok.filter(([n, st]) => { const v = lineOf(n, st); return !v || v.status !== 'ok'; }).map(([n, st]) => n + ' ' + st);
   check('...and the protection statics are simulated everywhere', bad2.length === 0, bad2.join(', '));
-  check("Shalai's line says Approximated: your own hexproof stops targeted discard, but targeted damage at a player is not told apart", lineOf('Shalai, Voice of Plenty', 'You').tag === 'approx'); });
+  check("Shalai's line is fully simulated: your own hexproof stops targeted discard and \"any target\" damage at you (tests/engine/unlearned-cards.test.js)", lineOf('Shalai, Voice of Plenty', 'You').status === 'ok'); });
 T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 

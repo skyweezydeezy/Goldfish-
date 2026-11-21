@@ -138,7 +138,29 @@
     qs.push(`${base}${t}${range}`);
     return qs;
   }
-  const api = { diagnose, abTest, applyChanges, cardRows, playField, replacementQueries, MATCH };
+  // The diagnosis grouped by what cards do: for each role (ramp, draw, removal...), the cards' links to winning pooled by inverse variance,
+  // so a role is "linked to winning" when its cards together say so. rolesOf(name) -> array of roles. Sorted, most linked to winning first.
+  const ROLE_NAME = { ramp: 'ramp', draw: 'card draw', removal: 'removal', wipe: 'board wipes', counter: 'counterspells', tutor: 'tutors', recursion: 'recursion', protection: 'protection' };
+  function roleSummary(rows, rolesOf) {
+    const by = {};
+    for (const r of rows) {
+      if (r.land || r.commander || !isFinite(r.z) || !r.z) continue;
+      const se = Math.abs(r.diff / r.z); if (!(se > 0)) continue;
+      for (const role of rolesOf(r.name) || []) {
+        if (!ROLE_NAME[role]) continue;
+        const b = by[role] || (by[role] = { role, name: ROLE_NAME[role], num: 0, den: 0, cards: [] });
+        b.num += r.diff / (se * se); b.den += 1 / (se * se); b.cards.push(r);
+      }
+    }
+    return Object.values(by).map(b => ({ role: b.role, name: b.name, n: b.cards.length, diff: b.num / b.den, z: b.num / Math.sqrt(b.den), cards: b.cards.sort((x, y) => x.z - y.z) }))
+      .sort((x, y) => y.z - x.z);
+  }
+  // A Scryfall search for good cards of a role in the deck's colors (most played first)
+  function roleQuery(role, identity) {
+    const ci = (identity && identity.length ? identity.join('') : 'C').toLowerCase();
+    return ROLE_TAG[role] ? `legal:commander id<=${ci} -is:digital -t:land ${ROLE_TAG[role]}` : null;
+  }
+  const api = { diagnose, abTest, applyChanges, cardRows, playField, replacementQueries, roleSummary, roleQuery, MATCH };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Compare = api;
 })(typeof self !== 'undefined' ? self : this);

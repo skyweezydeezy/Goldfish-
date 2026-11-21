@@ -23,14 +23,17 @@
   // Shown to each player before their first connection. Nothing is sent until that player ticks "I understand and accept"; each side
   // sends the version it accepted in its hello, and a side whose version differs is refused, so both players always agreed to the same
   // text. Any change to what is shared must change this list and bump the version.
-  // Version 2 was accepted by the user (the project owner) on 2026-11-21. Version 3 adds the relay, and is used once RELAY.service is set.
+  // Version 2 was accepted by the user (the project owner) on 2026-11-21. Version 3 adds the relay; version 4 also the relay service.
   // The relay (TURN), approved by the user: for when the two devices find no direct path (Safari hides a device's local address from
   // web pages, and many home routers will not pass traffic between two devices on the same network by their public address). The
-  // traffic through it is encrypted end to end. service: the web address that gives the site the relay's address and login, and holds
-  // the Metered secret key: server/php/turn/ice.php on shared hosting, or /ice of server/turn-service.js.
-  const RELAY = { name: 'Metered', service: null };
-  const relayOn = !!RELAY.service;
-  const DISCLOSURE_VERSION = relayOn ? 3 : 2;
+  // traffic through it is encrypted end to end. Two ways, the user chose the first:
+  //   servers: the ICE servers of one Metered credential, as the Metered dashboard shows them. Its login is public in this file and
+  //            does not expire; changing it means changing this file.
+  //   service: the web address of a service that holds the Metered secret key and hands out credentials that expire
+  //            (server/php/turn/ice.php, or /ice of server/turn-service.js). Not used.
+  const RELAY = { name: 'Metered', servers: null, service: null };
+  const relayOn = !!(RELAY.servers || RELAY.service);
+  const DISCLOSURE_VERSION = RELAY.service ? 4 : relayOn ? 3 : 2;
   const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';
   const DISCLOSURE = [
     'Your whole deck list, your deck\'s autopilot settings and its name are sent to the other player\'s device.',
@@ -41,8 +44,8 @@
     'The other device\'s app could be changed by its owner. Moves it sends are checked before they are played, but what it can see cannot be hidden.',
     'The game\'s moves and both deck lists are saved in this browser so a game can be rejoined. They stay until you delete the game.',
     'Your device downloads the other player\'s card pictures from Scryfall, as it does for your own deck.',
-  ].concat(relayOn ? [`When the two devices cannot reach each other directly, the game goes through ${RELAY.name}'s relay server. It sees both devices' network addresses and how much data passes, but the moves are encrypted, so it cannot read them.`,
-    'To use the relay, your device first asks the ICEYfish server for its address and login, so that server sees your network address too. It keeps no record of your games.'] : []);
+  ].concat(relayOn ? [`When the two devices cannot reach each other directly, the game goes through ${RELAY.name}'s relay server. It sees both devices' network addresses and how much data passes, but the moves are encrypted, so it cannot read them.`] : [],
+    RELAY.service ? ['To use the relay, your device first asks the ICEYfish server for its address and login, so that server sees your network address too. It keeps no record of your games.'] : []);
   const accepted = () => +(localStorage.getItem(ACK_KEY) || 0) === DISCLOSURE_VERSION;
 
   // ---------- small helpers ----------
@@ -170,11 +173,12 @@
       : 'Safari hides each device\'s local address, and many home routers will not pass traffic between two devices on the same network by their public address. A relay server fixes this; it is not set up yet.';
     status(`Could not connect. ${why} (This device offered ${said(mine)}; the other offered ${said(theirs)}.)`);
   }
-  // The servers to connect through: Google's STUN server, and the relay's when the ICEYfish server gives them (kept until shortly before
-  // they expire). Without them the direct path is still tried.
+  // The servers to connect through: Google's STUN server, and the relay's (written here, or from the relay service, kept until shortly
+  // before they expire). Without a relay the direct path is still tried.
   const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
   async function iceServers() {
     if (S.ice) return S.ice;
+    if (RELAY.servers) return STUN.concat(RELAY.servers);
     if (!RELAY.service) return STUN;
     if (S.relay && S.relay.until > Date.now()) return STUN.concat(S.relay.servers);
     try {
@@ -432,5 +436,5 @@
 
   build(); fromLink();
   window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,
-    set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set relayService(v) { RELAY.service = v; S.relay = null; } };
+    set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set relayService(v) { RELAY.service = v; S.relay = null; }, set relayServers(v) { RELAY.servers = v; } };
 })();

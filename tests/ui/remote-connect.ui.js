@@ -1,6 +1,6 @@
 // Browser test: how "Play a friend" connects (remote.js). The relay: the site asks the ICEYfish relay service (server/turn-service.js;
 // a fake one here) for the relay's servers and connects through them, and with the service down it says so and tries a direct
-// connection. No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever both devices say they could
+// connection; a fixed relay credential written into the site is used as it is. No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever both devices say they could
 // not connect and why. Needs playwright, the :8800 server and Scryfall.
 const { chromium } = require('playwright');
 const http = require('http');
@@ -61,7 +61,14 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
   const down = await A.evaluate(() => ({ conf: window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')), code: !!document.querySelector('#tab-duel .rm-mine') }));
   check('with the relay service down, the site says so and still makes an invite, for a direct connection only', said && down.code && down.conf.length === 1 && /stun:/.test(down.conf[0]), down.conf.join(', '));
-  await A.evaluate(() => { const R = window.__isfRemote; R.relayService = null; R.ice = []; R.state.failAfter = 3000; });
+  // a fixed credential written into the site: used as it is, no service asked
+  const before = asked.length;
+  await A.evaluate(() => { const R = window.__isfRemote; R.relayService = null; R.relayServers = [{ urls: 'turn:fixed.test.invalid:80', username: 'u-fixed', credential: 'p-fixed' }]; });
+  await A.click('#tab-duel .rm-invite');
+  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  const fixed = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));
+  check('with a fixed relay credential in the site, it connects through it (and STUN), asking no service', fixed.some(u => /turn:fixed\.test\.invalid:80/.test(u)) && fixed.some(u => /^stun:/.test(u)) && asked.length === before, fixed.join(', '));
+  await A.evaluate(() => { const R = window.__isfRemote; R.relayServers = null; R.ice = []; R.state.failAfter = 3000; });
 
   // ---- no way through
   await A.click('#tab-duel .rm-invite');

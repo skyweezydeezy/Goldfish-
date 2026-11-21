@@ -640,7 +640,7 @@
   const pt = (g, p) => `${G.powerOf(g, p)}/${G.toughnessOf(g, p)}`;
   const attacking = (gm, g, p) => !!(gm.phase === 'block' && gm.block && gm.block.g === g && gm.block.attackers.includes(p));
   function node(st, key, card, face) {
-    st.used.add(key);
+    st.used.add(key); if (st.seatKeys) st.seatKeys.push(key);
     let e = st.nodes.get(key);
     const fresh = !e;
     if (fresh) { e = A.cardEl(card, { face: face || 0, eager: true }); st.nodes.set(key, e); }
@@ -863,12 +863,29 @@
     box.style.setProperty('--n', g.hand.length);                // a big hand overlaps more, so it never spills over the buttons
     return box;
   }
+  // Everything a computer player's seat shows, as one string: when it is the same as at the last redraw, the seat is left as it is.
+  // (Redrawing moves every card picture into new boxes; a game playing itself redraws many times a second, and on phones the moved
+  // pictures flash, tapped cards most of all. A seat a person plays is always redrawn: its buttons depend on much more.)
+  function seatSig(st, gm, g, mine) {
+    const P = p => [p.iid, p.card.uid, p.tapped ? 1 : 0, p.mdfc ? 1 : 0, p.counters || 0, p.loyalty || 0, p.sick ? 1 : 0, p.token ? 1 : 0, p.attachedTo == null ? '' : p.attachedTo,
+      G.isCreaturePerm(p) ? pt(g, p) : '', p.other ? JSON.stringify(p.other) : '', p.transformed ? 1 : 0, attacking(gm, g, p) ? 1 : 0, imprintOf(p) ? imprintOf(p).iid : ''];
+    const top = z => z.length ? z[z.length - 1].iid : '';
+    return JSON.stringify([mine ? 1 : 0, gm.over || '', cur(gm).pid, gm.phase || '', gm.picking ? 1 : 0, gm.block ? gm.block.attackers.map(a => a.iid) : '', gm.human, st.lookName[g.pid] || '',
+      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})),
+      g.hand.map(i => i.iid), g.command.map(i => i.iid), g.library.length, g.graveyard.length, top(g.graveyard), g.exile.length, top(g.exile), g.battlefield.map(P)]);
+  }
   // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.
   function fillSeat(st, mode, gm, g, mine) {
     const active = !gm.over && cur(gm).pid === g.pid, seat = st.seats[g.pid];
     seat.className = `vs-seat ${mine ? 'me' : 'opp'} ${SEAT[g.pid]}${active ? ' active' : ''}${g.dead ? ' out' : ''}`;
     seat.dataset.pid = g.pid;
     dressSeat(st, gm, seat, g.pid);
+    const sig = gm.human === g.pid ? null : seatSig(st, gm, g, mine);
+    if (sig && seat._sig === sig && seat.firstChild) { seat._keys.forEach(k => st.used.add(k)); return; }          // nothing on it changed: keep its cards where they are
+    st.seatKeys = [];
+    try { drawSeat(st, mode, gm, g, mine, seat); } finally { seat._sig = sig; seat._keys = st.seatKeys; st.seatKeys = null; }
+  }
+  function drawSeat(st, mode, gm, g, mine, seat) {
     const board = h('div', 'vs-board');
     if (g.dead) board.appendChild(h('div', 'vs-gone', 'Out of the game')); else board.append(fieldEl(st, gm, g, mine), pilesEl(st, gm, g, mine));
     const plate = plateEl(st, gm, g, mine);

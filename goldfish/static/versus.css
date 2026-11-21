@@ -69,7 +69,10 @@
 .vs-stack > .mtg + .mtg { margin-left: calc(var(--vc) * -0.84); }
 .vs-cnt { position: absolute; right: -3px; top: -5px; z-index: 6; background: rgba(4,10,16,.92); color: #fff; font-weight: 800; font-size: 11px; padding: 1px 6px; border-radius: 99px; box-shadow: 0 0 0 1px rgba(143,216,255,.5); }
 /* tapped the Arena way: turned a little and dimmed, so a tapped card never covers its neighbours */
-.vs-arena .mtg.tapped { transform: rotate(13deg) scale(.92); filter: brightness(.66) saturate(.8); }
+.vs-arena .mtg.tapped { transform: rotate(13deg) scale(.92); filter: none; }
+/* dimmed with a dark layer, not a CSS filter: on iPhones a filtered card that is put back on the page can show undimmed for a frame,
+   so a game playing itself made tapped cards flash */
+.vs-arena .mtg.tapped::before { content: ''; position: absolute; inset: 0; z-index: 3; background: rgba(4, 10, 16, .38); pointer-events: none; }
 .vs-arena .mtg.vs-new { animation: vsnew .35s ease-out; }
 @keyframes vsnew { from { transform: scale(.55); opacity: 0; } }
 .vs-seat.opp .mtg.attacking { translate: 0 10px; box-shadow: 0 0 0 3px #ff6b4a, 0 0 18px rgba(255,107,74,.85); }

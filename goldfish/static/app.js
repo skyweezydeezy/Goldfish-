@@ -1019,6 +1019,19 @@
         case 'kill': log(`<b>☠ Goldfish dead on turn ${S.game.turn}${e.cmdr ? ' (21 commander damage)' : ''}</b>`); break;
       }
     }
+    for (const e of ev) if (e.type === 'cast' && e.inst && /\b(Instant|Sorcery)\b/.test(e.inst.card.type_line || '')) { const ch = G.chosenFor(S.game, e.inst.card); if (ch) log(`<b>${esc(e.inst.card.name)}</b>: the chosen ${ch.what} is <b>${esc(ch.name)}</b>`); }          // Kindred Dominance
+    sayChosen();
+  }
+  // "As ~ enters, choose a creature type" (Metallic Mimic, Cavern of Souls...): the type is announced once, when the permanent arrives,
+  // and stays on its card as a tag (permEl)
+  const CHOSEN_SAID = new WeakMap();                          // per game, kept off the game itself (copies and undo snapshots stay clean)
+  function sayChosen() {
+    const g = S.game; if (!g) return;
+    let seen = CHOSEN_SAID.get(g); if (!seen) CHOSEN_SAID.set(g, seen = new Set());
+    for (const p of g.battlefield) {
+      if (seen.has(p.iid)) continue; seen.add(p.iid);
+      const ch = G.chosenFor(g, p.card); if (ch) log(`<b>${esc(p.card.name.split(' // ')[0])}</b>: the chosen ${ch.what} is <b>${esc(ch.name)}</b>`);
+    }
   }
 
   function floatDamage(n) {
@@ -1490,6 +1503,7 @@
 
   function render(first) {
     const g = S.game; if (!g) return;
+    sayChosen();                                               // a permanent that chose a creature type as it entered, however it got there
     const before = new Map();
     $$('.table [data-iid]').forEach(e => before.set(e.dataset.iid, e.getBoundingClientRect()));
     const libRect = $('#zLibrary .card-back').getBoundingClientRect();
@@ -1606,6 +1620,7 @@
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + p.loyalty));
     if (p.card.a.isPlaneswalker && !S.busy && G.loyaltyState(g, p).list.some(it => it.ok)) { e.classList.add('castable'); e.title = 'Loyalty abilities: click for the menu'; }          // one of its loyalty abilities can be used now
     if (p.attachedTo != null) { const t = g.battlefield.find(q => q.iid === p.attachedTo); if (t) e.appendChild(h('span', 'tag', '→ ' + esc(t.card.name.split(',')[0]))); }
+    { const ch = G.chosenFor(g, p.card); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic, Cavern of Souls: the type it chose, on the card
     return e;
   }
 

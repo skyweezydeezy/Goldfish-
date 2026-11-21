@@ -153,7 +153,7 @@ T('labels', () => { const mir = [['Cyclonic Rift', 'Return'], ['Farewell', 'Exil
     ["Akroma's Vengeance", 'Destroy'], ['Jokulhaups', 'Destroy'], ['Dismantling Wave', 'When you cycle'], ['Descend upon the Sinful', 'Exile all creatures']];
   const bad2 = ok.filter(([n, st]) => { const v = lineOf(n, st); return !v || v.status !== 'ok'; }).map(([n, st]) => n + ' ' + st);
   check('...and the symmetric ones work in any game (the autopilot casts them only when they pay)', bad2.length === 0, bad2.join(', '));
-  const cm = lineOf('Cleansing Meditation', 'Threshold'); check("Cleansing Meditation's threshold says approximated (your enchantments do not come back)", cm && cm.status === 'partial' && cm.tag === 'approx');
+  const cm = lineOf('Cleansing Meditation', 'Threshold'); check("Cleansing Meditation's threshold is simulated: your enchantments come back (tests/engine/unlearned-cards.test.js)", cm && cm.status === 'ok');
   const rf = lineOf('Cyclonic Rift', 'Return'); check("Cyclonic Rift's single-target mode: Mirror matches only (a \"you don't control\" removal line did nothing against a goldfish)", rf && rf.mirror); });
 T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });

@@ -92,7 +92,7 @@ T('labels', () => { const mir = [['Defense Grid', 'Each'], ['Dragonlord Dromoka'
   const bad = mir.filter(([n, st]) => { const v = lineOf(n, st); return !v || !v.mirror; }).map(([n, st]) => n + ' ' + st);
   check('these lines say "Mirror matches only" (they said "Needs opponent" and did nothing anywhere)', bad.length === 0, bad.join(', '));
   check('Rule of Law, Archon of Emeria, Ethersworn Canonist and Grafdigger\'s Cage are simulated in any game', ['Rule of Law', 'Archon of Emeria', 'Ethersworn Canonist'].every(n => lineOf(n, 'Each').status === 'ok') && lineOf("Grafdigger's Cage", 'Players').status === 'ok');
-  check('Sen Triplets and Opposition Agent\'s control say Approximated (casting from their hand, choosing their card, are not built)', lineOf('Sen Triplets', 'At').tag === 'approx' && lineOf('Opposition Agent', 'You control').tag === 'approx'); });
+  check('Sen Triplets and Opposition Agent\'s control are simulated in a match (playing from their hand, choosing their card) and are opponent-only lines', lineOf('Sen Triplets', 'At').status === 'neutral' && lineOf('Sen Triplets', 'At').tag === 'opp' && lineOf('Opposition Agent', 'You control').status === 'neutral' && lineOf('Opposition Agent', 'You control').tag === 'opp'); });
 T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 

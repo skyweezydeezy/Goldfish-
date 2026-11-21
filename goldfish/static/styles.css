@@ -1012,6 +1012,9 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .ab-repl { width: 104px; padding: 3px; background: none; border: 2px solid transparent; border-radius: 9px; cursor: pointer; color: inherit; text-align: left; }
 .ab-repl:hover { border-color: rgba(120,190,255,.45); }
 .ab-repl.on { border-color: #4cc2ff; box-shadow: 0 0 0 2px rgba(76,194,255,.25); }
+.ab-cut, .ab-repl { position: relative; }
+.ab-zoom { position: absolute; top: 4px; right: 4px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: rgba(8,18,26,.82); box-shadow: 0 0 0 1px rgba(143,216,255,.45); font-size: 16px; line-height: 1; cursor: zoom-in; }
+.ab-zoom:hover { background: rgba(23,42,58,.95); }
 .ab-repl small { display: block; font-size: 11px; margin-top: 3px; line-height: 1.25; }
 .ab-noimg { display: inline-block; padding: 30px 6px; font-size: 12px; border: 1px dashed rgba(255,255,255,.2); border-radius: 6px; }
 
@@ -1084,3 +1087,24 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
   /* the hand peeks up from the bottom: the name and the top of the picture show; tap a card for its menu and the full card */
   body[data-view=table] .hand-zone { grid-column: 1 / -1; grid-row: 3; height: calc(var(--hand-w) * .52); padding: 3px 6px 0; align-items: flex-start; justify-content: flex-start; overflow: hidden; }
 }
+
+/* ---- card effects (card-effects.js): the Lightning Bolt strike ---- */
+.fx-bolt { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 480; pointer-events: none; overflow: visible; }
+.fx-bolt path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.fx-bolt .fx-glow { stroke: #8fd0ff; opacity: .9; }
+.fx-bolt .fx-core { stroke: #fbfdff; }
+.fx-flash { position: fixed; inset: 0; z-index: 479; pointer-events: none; background: radial-gradient(ellipse at 50% 30%, rgba(225,240,255,.42), rgba(160,200,255,.18) 60%, rgba(120,170,255,.08)); }
+/* the Cyclonic Rift tornado and the cards it throws */
+.fx-tornado { position: fixed; z-index: 478; pointer-events: none; overflow: visible; }
+.fx-funnel { position: absolute; left: 0; bottom: 0; overflow: visible; filter: drop-shadow(0 0 6px rgba(160, 200, 230, .35)); }
+.fx-ring { fill: rgba(150, 175, 195, .06); stroke: rgba(200, 220, 235, .55); stroke-linecap: round; animation: fx-spin linear infinite; }
+@keyframes fx-spin { to { stroke-dashoffset: -400; } }
+.fx-debris { fill: rgba(190, 200, 210, .8); animation: fx-whirl linear infinite; }
+@keyframes fx-whirl {
+  0%   { transform: translate(calc(var(--c) - var(--rx)), var(--y)) scale(.7); }
+  50%  { transform: translate(calc(var(--c) + var(--rx)), var(--y)) scale(1.15); }
+  100% { transform: translate(calc(var(--c) - var(--rx)), var(--y)) scale(.7); }
+}
+.fx-ghost { position: fixed !important; z-index: 479; margin: 0 !important; pointer-events: none; transform-origin: 50% 50%; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+.fx-mist { animation: fx-churn .7s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+@keyframes fx-churn { from { transform: skewX(-4deg) scaleX(.97); } to { transform: skewX(4deg) scaleX(1.03); } }

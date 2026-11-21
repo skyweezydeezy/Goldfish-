@@ -44,7 +44,7 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
     res.end(JSON.stringify({ iceServers: [{ urls: 'turn:relay.test.invalid:3478', username: 'u-test', credential: 'p-test' }], expires: new Date(Date.now() + 12 * 3600e3).toISOString() }));
   });
   await new Promise(r => relay.listen(0, '127.0.0.1', r));
-  await A.evaluate(u => { const R = window.__isfRemote; R.ice = null; R.relayService = u; R.state.failAfter = 60000; }, `http://127.0.0.1:${relay.address().port}`);
+  await A.evaluate(u => { const R = window.__isfRemote; R.ice = null; R.relayService = u; R.state.failAfter = 60000; }, `http://127.0.0.1:${relay.address().port}/ice`);
   await A.click('#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
   const conf = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));

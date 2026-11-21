@@ -26,8 +26,8 @@
   // Version 2 was accepted by the user (the project owner) on 2026-11-21. Version 3 adds the relay, and is used once RELAY.service is set.
   // The relay (TURN), approved by the user: for when the two devices find no direct path (Safari hides a device's local address from
   // web pages, and many home routers will not pass traffic between two devices on the same network by their public address). The
-  // traffic through it is encrypted end to end. service: the address of server/turn-service.js, which holds the Metered secret key and
-  // gives the site the relay's address and login.
+  // traffic through it is encrypted end to end. service: the web address that gives the site the relay's address and login, and holds
+  // the Metered secret key: server/php/turn/ice.php on shared hosting, or /ice of server/turn-service.js.
   const RELAY = { name: 'Metered', service: null };
   const relayOn = !!RELAY.service;
   const DISCLOSURE_VERSION = relayOn ? 3 : 2;
@@ -179,7 +179,7 @@
     if (S.relay && S.relay.until > Date.now()) return STUN.concat(S.relay.servers);
     try {
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 6000);
-      const r = await fetch(RELAY.service.replace(/\/$/, '') + '/ice', { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(t));
+      const r = await fetch(RELAY.service, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(t));
       const d = r.ok ? await r.json() : null;
       const servers = d && Array.isArray(d.iceServers) ? d.iceServers.filter(x => x && (typeof x.urls === 'string' || Array.isArray(x.urls))) : [];
       if (!servers.length) throw new Error('no relay servers');

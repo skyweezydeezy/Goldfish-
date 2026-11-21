@@ -10,7 +10,7 @@ const find = n => { for (const f of Object.values(store)) { const c = f.cards.fi
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Goblin Lackey', 'Conspicuous Snoop', 'Moggcatcher', 'Goblin Recruiter', 'Broadside Bombardiers', 'Zada, Hedron Grinder', 'Goblin Sharpshooter', 'Boggart Shenanigans',
   'Hellrider', 'Inferno Titan', 'Goblin Cratermaker', 'Mogg Fanatic'];
-const HELPERS = ['Forest', 'Island', 'Mountain', 'Swamp', 'Plains', 'Grave Titan', 'Serra Angel', 'Llanowar Elves', 'Krenko, Mob Boss', 'Shivan Dragon'];
+const HELPERS = ['Forest', 'Island', 'Mountain', 'Swamp', 'Plains', 'Grave Titan', 'Serra Angel', 'Llanowar Elves', 'Krenko, Mob Boss', 'Shivan Dragon', 'Goblin Warchief', 'Goblin Rabblemaster'];
 const all = NAMES.concat(HELPERS);
 const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n)));
 const deck = G.buildDeck(cards, base.tokens);
@@ -55,6 +55,13 @@ T('inferno titan', () => { const g = bare(); const o0 = oppLife(g); const it = p
   const o1 = oppLife(g); g.combatDone = false; G.combat(g); check('...attacks: 3 more, then its combat damage', o1 - oppLife(g) === 3 + 6, o1 - oppLife(g)); });
 T('mogg fanatic', () => { const g = bare(); const mf = putOn(g, 'Mogg Fanatic'); g.combatDone = true; ab(g); check('Mogg Fanatic: not sacrificed for nothing', g.battlefield.includes(mf));
   g.damage = g.opts.oppLife - 1; ab(g); check('...sacrificed for the last point of damage', !g.battlefield.includes(mf) && g.damage >= g.opts.oppLife, g.damage); });
+
+T('krenko timing', () => { const g = bare(); const k = putOn(g, 'Krenko, Mob Boss'); putOn(g, 'Goblin Rabblemaster'); g.combatDone = false; G.useAbilities(g);
+  check('Krenko, Mob Boss: before combat (no haste for the tokens) he waits', !k.tapped && !G.canAttack(g, k));
+  G.combat(g); const n = g.battlefield.filter(q => q.card.a.isCreature !== false && /Goblin/.test(q.card.type_line || '') || q.token && q.card.name === 'Goblin').length; const t0 = g.battlefield.filter(q => q.token).length; ab(g);
+  check("...after combat he taps, counting the Goblin Rabblemaster's combat token too", k.tapped && g.battlefield.filter(q => q.token).length - t0 === n, (g.battlefield.filter(q => q.token).length - t0) + ' made, ' + n + ' Goblins');
+  const g2 = bare(); const k2 = putOn(g2, 'Krenko, Mob Boss'); putOn(g2, 'Goblin Warchief'); g2.combatDone = false; G.useAbilities(g2);
+  check('...with Goblin Warchief (Goblins have haste) he taps before combat, so the tokens attack', k2.tapped && g2.battlefield.filter(q => q.token).length === 2); });
 
 T('labels', () => { const bad = NAMES.filter(n => by(n).a.coverage.some(v => v.status === 'ignored')); check('every line of these 12 cards is read now', bad.length === 0, bad.join(', '));
   check('Zada says approximated (its copies are not made)', lineOf('Zada, Hedron Grinder', 'Whenever you cast').status === 'partial');

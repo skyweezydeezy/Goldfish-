@@ -305,7 +305,7 @@ label.small { font-size: 12px; }
 .mtg .ctr { position: absolute; left: 4px; top: 22px; background: #0ca30c; color: #fff; font-size: 11px; font-weight: 800; padding: 0 5px; border-radius: 99px; }
 .mtg.token { outline: 1px dashed rgba(255,255,255,.35); outline-offset: -3px; }
 .stackgroup { align-items: flex-end; }
-.stack-count { align-self: center; margin-left: 6px; font-weight: 800; color: var(--text-secondary); }
+.stack-count { position: absolute; top: 4px; right: 4px; z-index: 5; min-width: 1.6em; padding: 2px 7px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 800; font-size: 14px; line-height: 1.2; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.45); pointer-events: none; }
 .bf-row:not(.lands) .stackgroup .mtg + .mtg { margin-left: -78px; }
 .pip.floating { outline: 2px dashed #fff; outline-offset: 1px; }
 .clickable { cursor: pointer; }

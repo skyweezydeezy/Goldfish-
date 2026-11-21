@@ -7439,7 +7439,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function fxValue(g, fx) {
     let v = 0;
     for (const f of fx) {
-      const n = f.n === 'GYCREATURES' ? g.graveyard.filter(i => i.card.a.isCreature).length : f.n === 'LIFEGAINED' ? (g.lifeGainedThisTurn || 0) : f.n === 'X' ? 2 : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
+      const n = f.n === 'GYCREATURES' ? g.graveyard.filter(i => i.card.a.isCreature).length : f.n === 'LIFEGAINED' ? (g.lifeGainedThisTurn || 0) : f.n === 'X' ? (f.count && f.type === 'token' ? Math.max(1, countFor(g, f.count, null)) : 2) : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
       if (f.type === 'token') v += n * (f.creature ? 1 + (+f.p || 0) : 0.8);
       if (f.type === 'draw') v += 1.5 * n;
       if (f.type === 'karnPlus') v += 1.6;
@@ -8081,6 +8081,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   function spareFainWork(g, fain) { return g.battlefield.some(q => q !== fain && q.token && /Food|Clue|Blood/.test(q.card.name || '')); }
   // when an ability that waits for the right moment is worth activating
+  const countedTokens = ab => ab.fx.some(f => f.type === 'token' && f.n === 'X' && f.count && f.creature);          // "create X tokens, where X is the number of ..." (Krenko, Mob Boss)
   function abilityGate(g, p, ab) {
     if (ab.gate === 'finishPing') return oppLifeLeft(g) <= (ab.n || 1) && g.killTurn == null;          // Mogg Fanatic: the last point of damage
     if (ab.gate === 'life') return lifeWanted(g) && (!ab.greenPerms || g.battlefield.filter(q => colorsOf(g, q.card).includes('G')).length >= ab.greenPerms);          // Sapseep Forest: two green permanents
@@ -8169,6 +8170,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (ab.late && !g.combatDone) continue;                                                    // scry and the like: with the mana left at the end of the turn
         if (ab.gate && !abilityGate(g, p, ab)) continue;
         if (ab.tap && (p.tapped || (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')))) continue;
+        if (ab.tap && !g.combatDone && !g.dry && isCreaturePerm(p) && countedTokens(ab) && !(hasKw(g, p, 'haste') && !(p.card.a.kw && p.card.a.kw.has('haste')))) { p.holdTap = g.turn; continue; }          // Krenko: tap after combat, when the turn's Goblins are in (before it, only if they get haste and can attack)
         if (ab.tap) p.tapped = true;                                                                       // {T} is part of the cost: its own mana cannot pay for it
         const xs = ab.cost.x ? Math.max(0, Math.floor((allUnits(g).length - (c1 => c1.generic + c1.pips.length)(actCost(g, p, ab.cost))) / ab.cost.x)) : 0;          // {X} in the cost: all the spare mana (Berta)
         if (ab.cost.x && xs < 1) { p.tapped = false; continue; }
@@ -9060,6 +9062,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (bfInfo(g).noAttack) return false;          // Glacial Chasm
     if ((g.isCast || 0) > 0 && arbiterOn(g)) return false;          // Angelic Arbiter: you cast a spell this turn
     if (p.sick && !hasKw(g, p, 'haste')) return false;
+    if (p.holdTap === g.turn) return false;          // Krenko stays home to tap after combat
     if (p.card.a.attackOnce && p.attackedTurn === g.turn) return false;                              // Port Razer: not the same player twice in a turn
     return dmgPow(g, p) > 0 || p.card.a.triggers.some(t => t.kinds.includes('attack'));
   }
@@ -9340,7 +9343,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     flushLeaves(g, ev);
     if (n) ev.push({ type: 'note', text: `Sacrificed ${n} tokens to ${outlets[0].card.name}: ${watchers} death trigger${watchers > 1 ? 's' : ''} each` });
   }
-  const postWork = g => g.battlefield.some(q => q.card.a.activated.some(ab => ab.late) || q.card.a.fungus || q.card.a.sacDraw || q.card.a.lifeSurveil || q.card.a.flickerform) || g.hand.some(i => i.card.a.foretell) || (g.hand.some(i => !i.card.a.isLand) && (() => { const u = allUnits(g); return g.hand.some(i => !i.card.a.isLand && canPay(effectiveCost(g, i), u)); })());          // a spell that became castable in combat (Derevi's untapped land, a Treasure)
+  const postWork = g => g.battlefield.some(q => q.card.a.activated.some(ab => ab.late) || (q.holdTap === g.turn && !q.tapped) || q.card.a.fungus || q.card.a.sacDraw || q.card.a.lifeSurveil || q.card.a.flickerform) || g.hand.some(i => i.card.a.foretell) || (g.hand.some(i => !i.card.a.isLand) && (() => { const u = allUnits(g); return g.hand.some(i => !i.card.a.isLand && canPay(effectiveCost(g, i), u)); })());          // a spell that became castable in combat (Derevi's untapped land, a Treasure)
   function postCombat(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;

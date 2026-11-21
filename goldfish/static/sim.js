@@ -2847,6 +2847,18 @@
     if (a === undefined) { a = analyze(card, deckColors); if (a.backCard || a.stages) return a; if (ANALYSES.size >= 1500) ANALYSES.clear(); ANALYSES.set(key, a); }
     return a;
   }
+  // What a permanent chose as it entered, for the table to show and the log to say: "As ~ enters, choose a creature type" (Metallic
+  // Mimic, Cavern of Souls, Kindred Discovery, Vanquisher's Banner, Herald's Horn, Urza's Incubator...) names the deck's creature type
+  // (above: the deck's tribe, or the Policy lab's choice), and Cloud Key's "choose artifact, creature, ..." the card type it casts most.
+  // An instant or sorcery that chooses as it resolves (Kindred Dominance, Distant Melody, Kindred Summons) names it too, for the log.
+  // A choice made when an ability is activated (Riptide Shapeshifter) is not one: null.
+  function chosenFor(g, card) {
+    if (!card) return null;
+    const t = [card.oracle_text].concat((card.card_faces || []).map(f => f.oracle_text)).filter(Boolean).join('\n'), d = g && g.deck;
+    if (/\bas [^.\n]*?enters(?: the battlefield)?(?: [^.,\n]*)?, choose a creature type/i.test(t) || (/\b(Instant|Sorcery)\b/.test(card.type_line || '') && /(^|\n)choose a creature type\./i.test(t))) return d && d.tribe ? { what: 'creature type', name: d.tribe } : null;
+    if (/\bas [^.\n]*?enters(?: the battlefield)?, choose artifact, creature, enchantment, instant, or sorcery/i.test(t)) return d && d.cardType ? { what: 'card type', name: d.cardType } : null;
+    return null;
+  }
   function buildDeck(cards, tokens, tribeChoice) {
     const ci = new Set();
     cards.forEach(c => (c.color_identity || []).forEach(x => ci.add(x)));
@@ -2860,7 +2872,7 @@
     const library = [], commanders = [];
     let iid = 0;
     for (const c of unique) for (let k = 0; k < (c.qty || 1); k++) (c.commander ? commanders : library).push({ iid: iid++, card: c });
-    return { library, commanders, unique, deckColors, tribe: curTribe, tribeInfo, tokens: tokens || [], tokenCache: {}, nextIid: iid + 100000 };
+    return { library, commanders, unique, deckColors, tribe: curTribe, cardType: curCardType, tribeInfo, tokens: tokens || [], tokenCache: {}, nextIid: iid + 100000 };
   }
 
   function ghostLandCard(deck) {
@@ -11321,7 +11333,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    postCombatTriggers, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, chosenFor, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

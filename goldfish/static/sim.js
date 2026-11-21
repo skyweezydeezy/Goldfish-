@@ -4408,6 +4408,7 @@
     h.settling = true; h.acts = (h.acts || 0) + 1;
     try {
       const stack = h.stackItems || (h.stackItems = []);
+      const dealt = () => [h].concat(otherPlayers(h)).reduce((t, x) => t + (x.damage || 0), 0), dealt0 = dealt();
       let dirty = true;
       for (let n = 0; ; n++) {
         if (dirty) sba(h, ev); else for (const x of [h].concat(otherPlayers(h))) if (!x.dead && x.opp && x.life <= 0 && !matchOver(x)) checkDeath(x, ev);          // nothing changed that a state-based action looks at: only the players' life
@@ -4422,7 +4423,8 @@
         if (matchOver(h) || (h.match && h.match.winner != null)) { stack.length = 0; break; }
         if (n > 600) {          // a loop that keeps triggering itself (Exquisite Blood + Sanguine Bond): the game is over for the other side
           const it = stack[stack.length - 1]; stack.length = 0;
-          if (h.killTurn == null && !h.infinite) { ev.push({ type: 'note', text: `Infinite loop (${it.source && it.source.card ? it.source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null }); h.damage = Math.max(h.damage, h.opts.oppLife); if (h.opp) (isPod(h) ? podAlive(h) : [h.opp]).forEach(o => { o.life = 0; }); h.infinite = true; checkKill(h, ev); }
+          if (dealt() <= dealt0) { if (!h.idleLoop) { h.idleLoop = true; ev.push({ type: 'note', text: `${it.source && it.source.card ? it.source.card.name : 'A trigger'} could repeat for ever, but the loop hurts nobody: it stops here`, source: null }); } break; }          // two blinkers blinking each other: a loop, not a win
+          if (h.killTurn == null && !h.infinite) { ev.push({ type: 'note', text: `Infinite loop (${it.source && it.source.card ? it.source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null }); h.damage = Math.max(h.damage, h.opts.oppLife); if (h.opp) (isPod(h) ? podAlive(h) : [h.opp]).forEach(o => { o.life = 0; }); h.infinite = true; { const halves = h.battlefield.filter(q => q.card.a.comboRole).map(q => q.card.name).filter((x, i, xs) => xs.indexOf(x) === i); h.loopText = halves.length >= 2 ? halves.join(' + ') + ': a loop that never stops' : (it.source && it.source.card ? it.source.card.name : 'a trigger') + ' keeps repeating'; } checkKill(h, ev); }
           break;
         }
         const it = stack.pop(), x = it.g, px = x.xValue, pl = x.lastCast, pm = x.thatMuch, ps = x.spellsCast;
@@ -5030,7 +5032,18 @@
       return;
     }
     const cmdrKill = g.opts.cmdrDamage !== false && Object.keys(g.cmdrDamage).length && Object.values(g.cmdrDamage).some(v => v >= 21);
-    if (g.damage >= g.opts.oppLife || cmdrKill) { g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: !!cmdrKill && g.damage < g.opts.oppLife }); }
+    if (g.damage >= g.opts.oppLife || cmdrKill) {
+      g.killTurn = g.turn; ev.push({ type: 'kill', cmdr: !!cmdrKill && g.damage < g.opts.oppLife });
+      if (!g.winBy) g.winBy = g.infinite ? { kind: 'combo', text: g.loopText || 'a loop of triggers' } : g.poisonWin ? { kind: 'poison' } : g.millWin ? { kind: 'mill' } : cmdrKill && g.damage < g.opts.oppLife ? { kind: 'commander' } : boardLoop(g) ? { kind: 'combo', text: boardLoop(g) } : { kind: 'damage' };
+    }
+  }
+  // a loop of triggers that is on the battlefield as the game ends (it reaches lethal long before the engine calls it infinite):
+  // both halves of the life loop, or a damage-for-each-draw creature wearing a draw-for-each-damage Aura (Niv-Mizzet + Curiosity)
+  function boardLoop(g) {
+    const blood = g.battlefield.find(q => q.card.a.comboRole === 'blood'), bond = g.battlefield.find(q => q.card.a.comboRole === 'bond');
+    if (blood && bond) return `${bond.card.name} + ${blood.card.name}: each drain gains life, each life gained drains`;
+    for (const au of g.battlefield) if (au.attachedTo != null && SLOT.curiosity(au.card)) { const c = g.battlefield.find(q => q.iid === au.attachedTo); if (c && SLOT.niv(c.card)) return `${c.card.name} + ${au.card.name}: each card drawn deals 1 damage, each damage draws a card`; }
+    return null;
   }
   // "Whenever enchanted creature deals damage to an opponent" (Curiosity): Auras attached to the creature that did it
   function enchDamage(g, src, n, ev) {
@@ -6203,10 +6216,10 @@
         } break;
         case 'thassa': {                                                                                    // Thassa's Oracle: win if devotion to blue is at least the cards left in the library
           const x = g.battlefield.reduce((t, q) => t + ((q.card.mana_cost || '').match(/\{(?:[^}]*\/)?U(?:\/[^}]*)?\}/g) || []).length, 0);
-          if (x >= g.library.length) { if (g.match) setWinner(g, ev, 'thassa'); else { g.damage = Math.max(g.damage, g.opts.oppLife); g.killTurn = g.killTurn == null ? g.turn : g.killTurn; ev.push({ type: 'kill', cmdr: false }); } ev.push({ type: 'note', text: `Thassa's Oracle: devotion ${x} is at least the library (${g.library.length}): you win`, source }); }
+          if (x >= g.library.length) { if (g.match) setWinner(g, ev, 'thassa'); else { g.damage = Math.max(g.damage, g.opts.oppLife); g.killTurn = g.killTurn == null ? g.turn : g.killTurn; if (!g.winBy) g.winBy = { kind: 'effect', text: source && source.card ? source.card.name : "Thassa's Oracle" }; ev.push({ type: 'kill', cmdr: false }); } ev.push({ type: 'note', text: `Thassa's Oracle: devotion ${x} is at least the library (${g.library.length}): you win`, source }); }
           break;
         }
-        case 'win': if (f.unlessOppLegend && g.opp && g.opp.battlefield.some(q => q.card.a.isLegendary && (isCreaturePerm(q) || q.card.a.isPlaneswalker))) break; if (g.match) setWinner(g, ev, 'effect'); else if (g.killTurn == null) { g.damage = Math.max(g.damage, g.opts.oppLife); g.killTurn = g.turn; ev.push({ type: 'note', text: `${source ? source.card.name : 'A card'}: you win the game`, source }); ev.push({ type: 'kill', cmdr: false }); } break;
+        case 'win': if (f.unlessOppLegend && g.opp && g.opp.battlefield.some(q => q.card.a.isLegendary && (isCreaturePerm(q) || q.card.a.isPlaneswalker))) break; if (g.match) setWinner(g, ev, 'effect'); else if (g.killTurn == null) { g.damage = Math.max(g.damage, g.opts.oppLife); g.killTurn = g.turn; if (!g.winBy) g.winBy = { kind: 'effect', text: source && source.card ? source.card.name : 'a card' }; ev.push({ type: 'note', text: `${source ? source.card.name : 'A card'}: you win the game`, source }); ev.push({ type: 'kill', cmdr: false }); } break;
         case 'deluge': {                                                                                      // Toxic Deluge: all creatures get -X/-X (the X life was paid on casting)
           const X = g.delugeX || 0;
           const dead = g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= X); dead.forEach(q => leavePerm(g, q, ev));
@@ -7119,14 +7132,69 @@
     outlet: c => comboKind(c).ballista || comboKind(c).xBurn || comboKind(c).drawEngine,
     blood: c => c.a.comboRole === 'blood',
     bond: c => c.a.comboRole === 'bond',
+    lifeCounter: c => !!comboKind(c).lifeCounter,
+    pinger: c => comboKind(c).pinger,
+    copier: c => comboKind(c).copier,
+    untapEnter: c => !c.a.isLegendary && (comboKind(c).untapEnter || comboKind(c).flickEnter),
+    twin: c => comboKind(c).twin,
+    untapOnly: c => comboKind(c).untapEnter,
+    copyMage: c => comboKind(c).copyMage,
+    copySpell: c => comboKind(c).copySpell,
+    undyingLord: c => comboKind(c).undyingLord,
+    trisk: c => triskLoops(c),
+    blinker: c => comboKind(c).blinker,
+    landUntap: c => comboKind(c).landUntap >= 3,
+    niv: c => c.a.triggers.some(t => t.kinds.includes('onDraw') && t.fx.some(f => f.type === 'damage' && f.any)),
+    curiosity: c => c.a.triggers.some(t => t.kinds.includes('enchDamage') && t.fx.some(f => f.type === 'draw')),
+    druid: c => !!c.a.druidUntap,
+    vizier: c => !!c.a.statics.vizier,
+    auraUntap: c => !!c.a.auraUntapU,
+    blueDork: c => c.a.isCreature && (c.a.kioraUntap || !!(c.a.produce && (c.a.produce.per || c.a.produce.dynamic || (c.a.produce.amount || 1) >= 2) && c.a.produce.colors.has('U'))),
   };
-  const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond']];
+  const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond'],
+    ['lifeCounter', 'pinger'], ['copier', 'untapEnter'], ['twin', 'untapOnly'], ['copyMage', 'copySpell'], ['undyingLord', 'trisk'], ['niv', 'curiosity'],
+    ['blinker', 'landUntap', 'outlet'], ['druid', 'vizier', 'outlet'], ['auraUntap', 'blueDork', 'outlet']];
+  // what the Build tab calls each line and each slot
+  const LINE_INFO = {
+    'emptier+winner': ['Empty-library win', 'Exile your whole library, then win the game with it empty.'],
+    'scepter+untapAll+outlet': ['Scepter loop', 'The untap-all instant on the copy artifact untaps your mana rocks every time: infinite mana, spent on the outlet.'],
+    'rock+enabler+outlet': ['Self-untapping rock', 'A rock that untaps itself for less than it makes: infinite mana, spent on the outlet.'],
+    'blood+bond': ['Life loop', 'Each life you gain drains the table, and each drain gains you life, until nobody else is left.'],
+    'lifeCounter+pinger': ['Lifelink pinger', 'The pinger removes a counter to deal 1 damage, lifelink gains 1 life, and the life gain puts the counter back.'],
+    'copier+untapEnter': ['Copy loop', 'Each hasty token copy untaps the copier as it enters: as many attackers as you want.'],
+    'twin+untapOnly': ['Copy loop (Aura)', 'The enchanted creature copies itself, and each copy untaps the original: as many hasty attackers as you want.'],
+    'copyMage+copySpell': ['Spell-copy loop', 'The mage copies the token spell, the copy makes another mage, and that one copies the spell again: as many hasty attackers as you want.'],
+    'undyingLord+trisk': ['Undying pinger', 'The pinger shoots with its counters, kills itself with the last ones and comes back with more.'],
+    'niv+curiosity': ['Draw and damage loop', 'Each card drawn deals 1 damage, and each damage draws a card.'],
+    'blinker+landUntap+outlet': ['Blink for mana', 'Blinking the creature untaps more lands than the blink costs: infinite mana, spent on the outlet.'],
+    'druid+vizier+outlet': ['Free untaps', 'The counter that pays for the untap is never put on the creature: infinite mana, spent on the outlet.'],
+    'auraUntap+blueDork+outlet': ['Untap Aura', 'The Aura untaps a creature that makes more mana than the untap costs: infinite mana, spent on the outlet.'],
+  };
+  const SLOT_INFO = { emptier: 'Empties the library', winner: 'Wins with an empty library', scepter: 'Copy artifact', untapAll: 'Untap-all instant', rock: 'Self-untapping rock', enabler: 'Makes the untap pay', outlet: 'Wins with infinite mana',
+    blood: 'Gains when they lose life', bond: 'Drains when you gain life', lifeCounter: 'Counter for each life gained', pinger: 'Removes a counter to deal 1', copier: 'Copies a creature', untapEnter: 'Untaps or blinks as it enters', twin: 'Copy Aura', untapOnly: 'Untaps as it enters',
+    copyMage: 'Copies a spell as it enters', copySpell: 'Token-copy spell', undyingLord: 'Gives undying', trisk: 'Pinger with counters', niv: 'Damage for each card drawn', curiosity: 'Card for each damage dealt', blinker: 'Blinks a creature',
+    landUntap: 'Untaps lands as it enters', druid: 'Untaps itself for a counter', vizier: 'Stops the counter', auraUntap: 'Untap Aura', blueDork: 'Creature that makes the mana' };
+  // Mikaeus + Triskelion: the pinger must come back with enough counters to shoot once and still kill itself (toughness + 1 on itself), and be non-Human
+  function triskLoops(c) { const n = comboKind(c).trisk; return n > 0 && !/\bHuman\b/.test(c.type_line || '') && n >= (parseInt(c.toughness, 10) || 0) + 1; }
+  // a different card for every slot of the line (one card cannot be both halves)
+  function lineCards(line, cards) {
+    const opts = line.map(sl => cards.filter(c => c.a && SLOT[sl](c)));
+    const pick = (i, used) => i === line.length || opts[i].some(c => !used.includes(c) && pick(i + 1, used.concat([c])));
+    return pick(0, []) ? opts : null;
+  }
   // the lines this deck can assemble at all (every slot has a card in the deck), cached on the deck
   function deckLines(g) {
     const d = g.deck; if (!d) return [];
     if (d._lines) return d._lines;
     const cards = d.unique || [];
-    return (d._lines = COMBO_LINES.filter(line => line.every(sl => cards.some(c => c.a && SLOT[sl](c)))));
+    return (d._lines = COMBO_LINES.filter(line => lineCards(line, cards)));
+  }
+  // for the Build tab: every combo the deck holds all the pieces of, with the cards that fill each slot
+  function deckCombos(deck) {
+    if (!deck) return [];
+    const cards = deck.unique || [];
+    return deckLines({ deck }).map(line => { const opts = lineCards(line, cards), info = LINE_INFO[line.join('+')] || [line.join(' + '), ''];
+      return { id: line.join('+'), name: info[0], how: info[1], slots: line.map((sl, i) => ({ slot: sl, label: SLOT_INFO[sl] || sl, cards: opts[i].map(c => c.name) })) }; });
   }
   // how much a card moves the best combo line forward: 1000 = it completes a line; one piece left after it = the Policy lab's comboChase
   // (60 by default, 150 eager, 0 = only fetch the last piece); two or more left = 0 (fetching ramp is better that early)
@@ -10026,12 +10094,27 @@ g.actSeq = (g.actSeq || 0) + 1;
     k.ballista = /remove a \+1\/\+1 counter from ~: (it|~) deals 1 damage to any target/i.test(t) || (/remove a \+1\/\+1 counter from/i.test(t) && /deals 1 damage to any target/i.test(t) && a.cost.x > 0);
     k.xBurn = a.cost.x > 0 && /deals x damage to (any target|target player|each opponent|target opponent)|each opponent loses x life/i.test(t);
     k.drawEngine = a.activated.some(x => !x.tap && x.fx.some(f => f.type === 'draw'));          // Thrasios: pay mana, draw (scry and reveal)
+    // C: two cards that go off on the battlefield
+    k.lifeCounter = /whenever you gain life, put a \+1\/\+1 counter on target creature/i.test(t) ? ((a.activated.find(x => x.fx.some(f => f.type === 'pumpOne' && (f.keywords || []).includes('lifelink'))) || {}).cost || null) : null;          // Heliod, Sun-Crowned: the cost of giving lifelink
+    k.pinger = /remove a \+1\/\+1 counter from [^:.]*: [^.]*deals 1 damage to any target/i.test(t);          // Walking Ballista, Triskelion
+    const ew = t.match(/enters with (\w+) \+1\/\+1 counters? on it/i);
+    k.trisk = k.pinger && !a.cost.x && ew ? (num(ew[1]) || 0) : 0;
+    k.copier = !!a.isCreature && /\{t\}: create a token that's a copy of target non-?legendary creature you control, except it has haste/i.test(t);          // Kiki-Jiki
+    k.twin = /enchanted creature has "\{t\}: create a token that's a copy of this creature, except it has haste/i.test(t);          // Splinter Twin
+    k.untapEnter = !!a.isCreature && (/when [^.]* enters, (?:choose one —\s*(?:•\s*)?)?(?:you may )?(?:tap or )?untap (?:another )?target (?:artifact or )?(?:permanent|creature)/i.test(t)
+      || /when [^.]* enters, untap all creatures you control/i.test(t) || /when [^.]* enters, gain control of target permanent until end of turn\. untap that permanent/i.test(t));          // Deceiver Exarch, Pestermite, Village Bell-Ringer, Zealous Conscripts
+    k.flickEnter = !!a.isCreature && /when [^.]* enters, (?:you may )?exile (?:another )?target (?:permanent|creature|non-\w+ creature) you control, then return (?:that card|it) to the battlefield under (?:its owner's|your) control/i.test(t);          // Felidar Guardian, Restoration Angel
+    k.copyMage = !!a.isCreature && /when [^.]* enters, copy target instant or sorcery spell/i.test(t);          // Dualcaster Mage
+    k.copySpell = !!a.isInstantSorcery && /create a token that's a copy of (?:that creature|target (?:artifact or )?creature)/i.test(t) && /\bhaste\b/i.test(t);          // Twinflame, Heat Shimmer, Molten Duplication
+    k.undyingLord = !!a.statics.grantUndying;          // Mikaeus, the Unhallowed
+    k.blinker = /each of those creatures has "\{1\}\{u\}: exile this creature, then return it to the battlefield under your control/i.test(t);          // Deadeye Navigator
+    k.landUntap = a.isCreature ? a.triggers.reduce((m, x) => x.kinds.includes('etb') ? x.fx.reduce((m2, f) => f.type === 'untapLands' ? Math.max(m2, +f.n || 0) : m2, m) : m, 0) : 0;          // Peregrine Drake, Palinchron, Great Whale
     return (a._combo = k);
   }
   function comboWin(g, ev, text) {
     if (g.killTurn != null || matchOver(g)) return true;
     ev.push({ type: 'note', text: 'Combo: ' + text, source: null });
-    g.comboWin = text;
+    g.comboWin = text; g.winBy = { kind: 'combo', text };
     if (g.match) setWinner(g, ev, 'combo');
     else { g.damage = Math.max(g.damage, g.opts.oppLife); checkKill(g, ev); }
     return true;
@@ -10066,7 +10149,49 @@ g.actSeq = (g.actSeq || 0) + 1;
       const c = nonland.filter(q => isCreaturePerm(q) && q !== st).sort((x, y) => amount(y) - amount(x))[0];
       if (c && amount(c) > st.card.a.untapper.cost + st.card.a.selfUntap) return { how: `${st.card.name} + ${c.card.name}`, colors: new Set(c.produce.colors) };
     }
+    // B6: Deadeye Navigator blinking a creature that untaps lands as it enters (Peregrine Drake): each {1}{U} blink untaps three or more lands
+    const dn = bf.find(q => comboKind(q.card).blinker);
+    if (dn) {
+      const dr = bf.find(q => q !== dn && isCreaturePerm(q) && comboKind(q.card).landUntap >= 3), lands = bf.filter(q => q.asLand && q.produce);
+      if (dr && lands.length >= 3 && lands.some(q => q.produce.colors.has('U')) && canPay({ generic: 1, pips: [['U']], x: 0 }, allUnits(g))) return { how: `${dn.card.name} + ${dr.card.name}`, colors: new Set(lands.flatMap(q => [...q.produce.colors])) };
+    }
     return null;
+  }
+  // C. Two cards that win from the battlefield (or, for the spell-copy loop, from the hand), recognised by rules text:
+  //   Heliod + a counter pinger with lifelink; Kiki-Jiki or Splinter Twin + a creature that untaps (or blinks) as it enters;
+  //   Dualcaster Mage + a token-copy spell; Mikaeus + Triskelion.
+  function boardCombo(g, ev) {
+    const bf = g.battlefield, hand = g.hand, kind = p => comboKind(p.card);
+    const ready = p => !p.tapped && !(p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste'));
+    const hel = bf.find(p => kind(p).lifeCounter);
+    if (hel) {
+      const pg = bf.find(p => p !== hel && kind(p).pinger && isCreaturePerm(p) && (p.counters || 0) >= 1), need = pg && !hasKw(g, pg, 'lifelink') ? kind(hel).lifeCounter : null;
+      if (pg && (!need || canPay(need, allUnits(g)))) { if (need) pay(g, need); return comboWin(g, ev, `${pg.card.name} with lifelink and ${hel.card.name}: every point of damage puts the counter back`); }
+    }
+    const kiki = bf.find(p => kind(p).copier && isCreaturePerm(p) && ready(p));
+    if (kiki) {
+      const u = bf.find(p => p !== kiki && isCreaturePerm(p) && !p.card.a.isLegendary && (kind(p).untapEnter || kind(p).flickEnter));
+      if (u) return comboWin(g, ev, `${kiki.card.name} copies ${u.card.name}, and each copy untaps ${kiki.card.name}: endless hasty attackers`);
+    }
+    for (const tw of bf) if (kind(tw).twin && tw.attachedTo != null) {
+      const c = bf.find(p => p.iid === tw.attachedTo);
+      if (c && isCreaturePerm(c) && ready(c) && kind(c).untapEnter) return comboWin(g, ev, `${tw.card.name} on ${c.card.name}: each copy untaps the original, endless hasty attackers`);
+    }
+    const mik = bf.find(p => kind(p).undyingLord);
+    if (mik) {
+      const tr = bf.find(p => p !== mik && isCreaturePerm(p) && triskLoops(p.card) && (p.counters || 0) >= (parseInt(p.card.toughness, 10) || 0) + 1);
+      if (tr) return comboWin(g, ev, `${tr.card.name} with undying from ${mik.card.name}: it shoots, kills itself and comes back with more counters`);
+    }
+    const mage = hand.find(i => kind(i).copyMage);
+    if (mage && bf.some(isCreaturePerm)) for (const sp of hand.filter(i => i !== mage && kind(i).copySpell)) {
+      const cost = sumCost(effectiveCost(g, sp), effectiveCost(g, mage));
+      if (!canPay(cost, allUnits(g))) continue;
+      pay(g, cost);
+      [sp, mage].forEach(i => { g.hand.splice(g.hand.indexOf(i), 1); });
+      g.graveyard.push(sp); enterWithTriggers(g, mage, {}, ev);
+      return comboWin(g, ev, `${mage.card.name} copies ${sp.card.name}, and every copy makes another ${mage.card.name}: endless hasty attackers`);
+    }
+    return false;
   }
   function comboLines(g, ev) {
     if (g.dry || g.killTurn != null || matchOver(g)) return;
@@ -10080,9 +10205,12 @@ g.actSeq = (g.actSeq || 0) + 1;
       pay(g, cost);
       [e, w].forEach(i => { g.hand.splice(g.hand.indexOf(i), 1); });
       g.graveyard.push(e); g.exile.push(...g.library); g.library = [];
+      const text = `${e.card.name} exiles the library, then ${w.card.name} wins`, before = g.killTurn;
       enterWithTriggers(g, w, {}, ev);
-      return comboWin(g, ev, `${e.card.name} exiles the library, then ${w.card.name} wins`);
+      if (before == null && g.killTurn != null) { g.comboWin = text; g.winBy = { kind: 'combo', text }; ev.push({ type: 'note', text: 'Combo: ' + text, source: null }); return true; }          // the winner's own enters ability ended the game
+      return comboWin(g, ev, text);
     }
+    if (boardCombo(g, ev)) return true;
     // B. infinite mana and an outlet
     const inf = infiniteMana(g);
     if (!inf) return;
@@ -10107,6 +10235,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     const k = comboKind(c.card);
     if (k.oracleWin && g.library.length > 6) return true;
     if (k.emptier && g.library.concat(g.hand).some(i => i !== c && (comboKind(i.card).oracleWin || comboKind(i.card).drawWin))) return true;
+    if (k.copyMage && g.hand.some(i => i !== c && comboKind(i.card).copySpell)) return true;          // Dualcaster Mage waits for the mana to cast both
+    if (k.copySpell && g.hand.some(i => i !== c && comboKind(i.card).copyMage)) return true;
     // Isochron Scepter: wait for the untap-all instant (Dramatic Reversal) while it is still in the library, unless nothing else is worth imprinting either
     if (c.card.a.imprint === 'scepter') {
       const isUntapAll = i => /\bInstant\b/.test(i.card.type_line || '') && i.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland');
@@ -10154,6 +10284,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const drawnNotCast = deck.unique.map(() => 0);
     const gameScores = [];
     let cmdrKills = 0, errors = 0, firstError = null;
+    const winBy = {}, winLines = new Map();          // how the won games were won, and which combo or "you win the game" card did it
     for (let i = 0; i < n; i++) {
       const s = (seed + i * 7919) >>> 0;
       let g;
@@ -10167,6 +10298,11 @@ g.actSeq = (g.actSeq || 0) + 1;
       cmdrBy[g.commanderCast != null ? g.commanderCast - 1 : T]++;
       killBy[g.killTurn != null ? g.killTurn - 1 : T]++;
       if (g.killTurn != null && g.turns[g.killTurn - 1] && g.turns[g.killTurn - 1].damage < opts.oppLife) cmdrKills++;
+      if (g.killTurn != null) {
+        const w = g.winBy || { kind: 'damage' };
+        winBy[w.kind] = (winBy[w.kind] || 0) + 1;
+        if (w.text) { const key = w.kind + '|' + w.text, r = winLines.get(key) || { kind: w.kind, text: w.text, n: 0, turns: 0 }; r.n++; r.turns += g.killTurn; winLines.set(key, r); }
+      }
       mulls[Math.min(7, g.mulligans)]++;
       openLands[Math.min(7, g.openingLands)]++;
       deck.unique.forEach((c, u) => {
@@ -10195,6 +10331,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       mulligans: Array.from(mulls, v => v / ok), openLands: Array.from(openLands, v => v / ok),
       castBy: castBy.map(a => Array.from(a, v => v / ok)), drawnNotCast: drawnNotCast.map(v => v / ok),
       cmdrKillShare: cmdrKills / ok,
+      winBy: Object.fromEntries(Object.entries(winBy).map(([k, v]) => [k, v / ok])),
+      winLines: [...winLines.values()].sort((a, b) => b.n - a.n).slice(0, 8).map(r => ({ kind: r.kind, text: r.text, share: r.n / ok, avgTurn: r.turns / r.n })),
       samples: { worst: pick(0.05), low: pick(0.25), median: pick(0.5), high: pick(0.75), best: pick(0.95) },
       hasCommander: deck.commanders.length > 0,
     };
@@ -11476,7 +11614,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, deckCombos, boardCombo, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

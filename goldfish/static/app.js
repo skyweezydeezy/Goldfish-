@@ -79,10 +79,17 @@
     let latest = null; try { const r = await fetch('version.js', { cache: 'no-store' }); if (r.ok) latest = ((await r.text()).match(/ISF_VERSION = (\d+)/) || [])[1] || null; } catch (e) { /* offline: show the running version only */ }          // version.js holds the number: one more with every merge
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'ICEYfish version ' + v;
-    if (latest && +latest > +v) {
-      el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.';          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
-      el.addEventListener('click', async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* reload anyway */ } location.reload(); });
-    }
+    if (latest && +latest > +v) { el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.'; }          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
+    else el.title += '. Tap to check for a newer one.';
+    // A tap loads the newest version for certain. Asking the service worker to update and reloading straight away is not enough: the reload
+    // comes before the new worker is ready, so the old cached copy opens again. So: drop the old worker and the cached app files (card images
+    // stay), then reload; the page comes from the network and installs the new worker itself.
+    el.addEventListener('click', async () => {
+      el.disabled = true; el.textContent = '↻';          // as short as the number, so the top bar does not move
+      try { for (const reg of await navigator.serviceWorker.getRegistrations()) await reg.unregister(); } catch (e) { /* no service worker */ }
+      try { for (const k of await caches.keys()) if (k !== 'gf-img-v1') await caches.delete(k); } catch (e) { /* no cache storage */ }
+      location.reload();
+    });
   })();
 
   function opts() {

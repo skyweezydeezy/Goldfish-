@@ -1,6 +1,6 @@
 // The version pill in the top bar, next to the card-source pill: it shows the version this copy of the app is running (the service
 // worker's cache version, "isf-v54" as "v54"), on a PC, an iPad and an iPhone. With the service worker installed it asks the worker;
-// when a newer version has been deployed it still shows only "v54", outlined, and a tap reloads into it.
+// when a newer version has been deployed it still shows only "v54", outlined, and one tap opens the new version.
 const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 let pass = 0, fail = 0;
@@ -29,10 +29,16 @@ const shot = process.env.SHOTS;
     const asked = await p.evaluate(() => new Promise(res => { const ch = new MessageChannel(); ch.port1.onmessage = e => res(e.data.version); navigator.serviceWorker.controller.postMessage('version', [ch.port2]); setTimeout(() => res(null), 2000); }));
     check('the service worker says which version it runs', asked === 'isf-v' + V, asked);
     check(`with it installed the pill shows v${V}`, (await p.textContent('#appVersion')) === 'v' + V);
-    await ctx.route('**/version.js', async route => { const r = await route.fetch(); route.fulfill({ response: r, body: (await r.text()).replace('ISF_VERSION = ' + V, 'ISF_VERSION = ' + (V + 1)) }); });
+    await ctx.route('**/version.js', async route => { try { const r = await route.fetch(); await route.fulfill({ response: r, body: (await r.text()).replace('ISF_VERSION = ' + V, 'ISF_VERSION = ' + (V + 1)) }); } catch (e) { /* the page reloaded while this request was on its way: the next request is served */ } });
     await p.reload(); await p.waitForFunction(() => document.querySelector('#appVersion').classList.contains('update'), null, { timeout: 15000 }).catch(() => {});
     const t = await p.textContent('#appVersion'), cls = await p.$eval('#appVersion', e => e.className);
     check(`when v${V + 1} is deployed it still shows only v${V}, and offers the update (outline, tap)`, t === `v${V}` && /update/.test(cls), t);
+    // one tap must land on the new version. (It used to ask the service worker to update and reload at once; the reload came before the
+    // new worker was ready, so the old cached copy opened again and the pill kept offering the update.)
+    await Promise.all([p.waitForNavigation({ timeout: 15000 }).catch(() => {}), p.click('#appVersion')]);
+    await p.waitForFunction(v => { const e = document.querySelector('#appVersion'); return e && !e.hidden && e.textContent === 'v' + v; }, V + 1, { timeout: 20000 }).catch(() => {});
+    const after = await p.evaluate(async () => ({ t: document.querySelector('#appVersion').textContent, update: document.querySelector('#appVersion').classList.contains('update'), caches: await caches.keys() }));
+    check(`one tap on the pill opens v${V + 1}, and the old offline copy is gone`, after.t === `v${V + 1}` && !after.update && !after.caches.includes('isf-v' + V), JSON.stringify(after));
     await ctx.close(); }
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

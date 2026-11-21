@@ -15,6 +15,12 @@
 .ch-main { display: flex; gap: 12px; min-height: 0; }
 .ch-spell { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; --card-w: clamp(84px, 14vw, 150px); }
 .ch-spell small { color: var(--muted); }
+/* the stack while you choose: one folded line, newest first when opened */
+.ch-stack summary { cursor: pointer; font-size: 13px; color: var(--text-secondary, #b9d0e0); }
+.ch-stack summary small { color: var(--muted); }
+.ch-stack-list { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 2px; -webkit-overflow-scrolling: touch; }
+.ch-stack-item { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; --card-w: 74px; max-width: 96px; text-align: center; }
+.ch-stack-item small { color: var(--muted); font-size: 11px; line-height: 1.2; }
 .ch-opts { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; align-content: start; grid-auto-rows: max-content; padding: 3px; -webkit-overflow-scrolling: touch; }          /* max-content rows: a tile is never squeezed to the height of a button */
 .ch-opt { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 5px; border-radius: 10px; background: var(--surface-2, #172a3a);
   border: 2px solid transparent; color: var(--text-primary, #eef7fd); font: inherit; font-size: 12px; text-align: center; cursor: pointer; }

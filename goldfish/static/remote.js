@@ -29,6 +29,7 @@
   // Shown to each player before host() or join(). Nothing is sent until that player ticks "I understand and accept"; the game does not
   // start until both have. Each side sends { ack: DISCLOSURE_VERSION } in the handshake, and a side whose version differs is refused,
   // so both players always agreed to the same text. Any change to what is shared must change this list and bump the version.
+  // Version 2 was accepted by the user (the project owner) on 2026-11-21.
   const DISCLOSURE_VERSION = 2;
   const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';
   const DISCLOSURE = [

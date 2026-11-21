@@ -783,15 +783,6 @@ button.tag-chip small { opacity: .7; margin-left: 3px; }
   body[data-view=table] .table-controls label.check { padding: 0 2px; }
 }
 @media (max-width: 1180px) and (min-width: 700px) { :root { --bf-max: 132px; --bf-max-l: 116px; } }   /* tablets: bigger cards when the rows have room */
-/* phones held sideways: too short for the one-screen table (the battlefield was left about 60 px and the hand fell below the screen).
-   There the page scrolls instead: the tab bar stays on top, then the toolbar, the stats, and the battlefield and hand at the size
-   they have in portrait. The brand, the status pills and the top sound button give their row to the tabs (the toolbar has 🔊). */
-@media (max-width: 1180px) and (max-height: 500px) {
-  body[data-view=table] .topbar .brand, body[data-view=table] .topbar .status-pill, body[data-view=table] .top-sound { display: none; }
-  body[data-view=table] main { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-  body[data-view=table] #tab-table.active { height: auto; }
-  body[data-view=table] .table { flex: none; height: 600px; }
-}
 @media (max-width: 1180px) {
   /* room for sideways (tapped) cards that grows with the card size */
   body[data-view=table] .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0; }
@@ -998,3 +989,64 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .data-help .fold-body p { margin: 6px 0; line-height: 1.45; }
 .dm-backup { align-self: center; margin-left: auto; }
 .dm-backup.warn { color: var(--warning, #fab219); }
+
+/* =====================================================================
+   Practice table on an iPhone.
+   Upright: a hand you can recognise (big cards, fanned over each other; tap one for its menu and the card viewer), thin stats and
+   speed rows so the battlefield keeps its room.
+   Sideways: the whole game on one screen, nothing to scroll: small tabs, one toolbar row with the speed slider beside it, creatures and
+   artifacts side by side over the lands, the four piles in a 2 x 2 block, and the hand peeking up from the bottom edge.
+   ===================================================================== */
+@media (max-width: 1180px) {
+  body[data-view=table] .table-main { grid-template-columns: minmax(0, 1fr); }          /* a long hand overlaps more; it never widens the table over the piles */
+  body[data-view=table] .hand-zone { min-width: 0; }
+}
+@media (max-width: 600px) {
+  :root { --hand-w: clamp(84px, 25vw, 112px); }
+  body[data-view=table] .hand-zone { justify-content: flex-start; }
+  body[data-view=table] .speed-bar { padding: 1px 10px; border-radius: 10px; }
+  body[data-view=table] .speed-bar label.speed { font-size: 16px; }
+  body[data-view=table] .speed-bar label.speed input[type=range] { height: 22px; }
+  body[data-view=table] .hud { padding: 3px 10px; gap: 12px; align-items: baseline; }
+  body[data-view=table] .hud-item { flex-direction: row; align-items: baseline; gap: 5px; }
+  body[data-view=table] .hud-item .big, body[data-view=table] .hud-item > span:not(.lbl) { font-size: 15px; font-weight: 700; }
+}
+@media (max-width: 1180px) and (max-height: 500px) {
+  :root { --hand-w: clamp(84px, 13vw, 104px); --pile-w: 62px; }
+  body[data-view=table] .topbar { padding: calc(3px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 3px max(8px, env(safe-area-inset-left)); gap: 6px; }
+  body[data-view=table] .topbar .brand, body[data-view=table] .topbar .status-pill, body[data-view=table] .top-sound { display: none; }
+  body[data-view=table] .tab { padding: 5px 12px; font-size: 13px; }
+  body[data-view=table] main { padding: 4px max(6px, env(safe-area-inset-right)) 0 max(6px, env(safe-area-inset-left)); }
+  body[data-view=table] #tab-table.active { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 26%); grid-template-rows: auto minmax(0, 1fr); gap: 4px 6px;
+    height: calc(100vh - var(--topbar-h, 40px) - 4px); height: calc(100dvh - var(--topbar-h, 40px) - 4px); }
+  body[data-view=table] .table-controls { grid-column: 1; grid-row: 1; min-width: 0; gap: 4px; }
+  body[data-view=table] .table-controls .bl { display: none; }
+  body[data-view=table] .table-controls button { padding: 4px 9px; min-height: 34px; font-size: 15px; }
+  body[data-view=table] .table-sound { display: inline-block; }          /* the top bar's sound button is hidden here */
+  body[data-view=table] #tAutoToN { width: 34px; font-size: 13px; }
+  body[data-view=table] .speed-bar { grid-column: 2; grid-row: 1; min-width: 0; padding: 0 8px; gap: 6px; border-radius: 10px; }
+  body[data-view=table] .speed-name, body[data-view=table] .speed-txt { display: none; }
+  body[data-view=table] .speed-bar label.speed { flex: 1 1 auto; font-size: 15px; gap: 4px; }
+  body[data-view=table] .speed-bar label.speed input[type=range] { min-width: 0; width: 100%; height: 22px; }
+
+  body[data-view=table] .table { grid-column: 1 / -1; grid-row: 2; gap: 4px; grid-template-columns: minmax(0, 1fr) var(--pile-w) var(--pile-w); grid-template-rows: auto repeat(2, minmax(0, 1fr)); }
+  body[data-view=table] .hud { padding: 2px 10px; gap: 14px; align-items: baseline; }
+  body[data-view=table] .hud-item { flex-direction: row; align-items: baseline; gap: 5px; }
+  body[data-view=table] .hud-item .lbl { font-size: 10px; }
+  body[data-view=table] .hud-item .big, body[data-view=table] .hud-item > span:not(.lbl) { font-size: 14px; font-weight: 700; }
+  body[data-view=table] #zLibrary { grid-column: 2; grid-row: 2; } body[data-view=table] #zCommand { grid-column: 3; grid-row: 2; }
+  body[data-view=table] #zGrave { grid-column: 2; grid-row: 3; } body[data-view=table] #zExile { grid-column: 3; grid-row: 3; }
+  body[data-view=table] .zone-pile { padding: 2px; }
+  body[data-view=table] .pile-label { font-size: 9px; margin-bottom: 1px; }
+  body[data-view=table] #zLibrary .card-back, body[data-view=table] .pile-cards .mtg, body[data-view=table] #zCommand .pile-cards .mtg { --card-w: calc(var(--pile-w) - 16px); width: calc(var(--pile-w) - 16px); }
+
+  body[data-view=table] .table-main { grid-row: 2 / 4; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 3px; padding: 4px; }
+  body[data-view=table] #zCreatures { grid-column: 1; grid-row: 1; } body[data-view=table] #zOther { grid-column: 2; grid-row: 1; }
+  body[data-view=table] #zLands { grid-column: 1 / -1; grid-row: 2; }
+  body[data-view=table] .bf-row { padding: 11px 5px 2px; gap: 5px; }
+  body[data-view=table] .row-label { font-size: 8px; top: 1px; }
+  body[data-view=table] .bf-row .mtg { --card-w: min(var(--bf-max, 98px), calc((100cqh - 14px) * 0.7176)); }
+  body[data-view=table] .bf-row.lands .mtg { --card-w: min(var(--bf-max-l, 86px), calc((100cqh - 14px) * 0.7176)); }
+  /* the hand peeks up from the bottom: the name and the top of the picture show; tap a card for its menu and the full card */
+  body[data-view=table] .hand-zone { grid-column: 1 / -1; grid-row: 3; height: calc(var(--hand-w) * .52); padding: 3px 6px 0; align-items: flex-start; justify-content: flex-start; overflow: hidden; }
+}

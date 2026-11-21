@@ -1084,7 +1084,7 @@
     const g = S.game, a = inst.card.a;
     if (a.isLand || asLand) {
       snap();
-      if (!G.canPlayLand(g) && !force) toast('Extra land drop this turn');
+      if (!G.canPlayLand(g)) { sfx('error'); toast("You've already played your land this turn"); return; }          // one land a turn, unless something lets you play more (Exploration, Azusa)
       quiet(yours(x => { const le = G.playLandCard(x, sameInst(x, inst), !!asLand); return [le, ...le.ev]; }).then(play));          // a fetch land asks which land
       return;
     }

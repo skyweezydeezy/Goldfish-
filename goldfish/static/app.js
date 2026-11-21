@@ -1943,6 +1943,71 @@
   }
   $('#plMode').addEventListener('change', showLabOpponents);
 
+  // ---------- Policy lab: swaps by role (the diagnosis grouped by what cards do: "more ramp", then 2 cards to add and 2 to remove) ----------
+  let plRolesWorker = null;
+  $('#plRoles').addEventListener('click', async () => {
+    if (!need()) return;
+    const btn = $('#plRoles'); btn.disabled = true; $('#plRolesOut').innerHTML = '';
+    let opps = [];
+    try { for (const v of labOpponents()) { const x = await loadOpponent(v, $('#plInfo')); if (x.cards.length) opps.push({ name: x.name, cards: x.cards, tokens: x.tokens, policy: x.policy || {} }); } }
+    catch (err) { $('#plInfo').textContent = 'Could not load an opponent deck: ' + (err.message || err); btn.disabled = false; return; }
+    if (!opps.length) { $('#plInfo').textContent = 'Pick at least one opponent (Opponents, above).'; btn.disabled = false; return; }
+    const n = Math.max(500, Math.min(10000, +$('#abN').value || 5000));
+    $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
+    if (plRolesWorker) plRolesWorker.terminate();
+    plRolesWorker = new Worker('worker.js');
+    const bar = $('#plRolesProgress div'); bar.style.width = '0';
+    const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
+    plRolesWorker.onerror = err => { btn.disabled = false; $('#plInfo').textContent = 'Swaps by role: ' + err.message; };
+    plRolesWorker.onmessage = async e => {
+      if (e.data.progress != null) { bar.style.width = (e.data.progress * 100).toFixed(1) + '%'; return; }
+      if (!e.data.result) return;
+      bar.style.width = '100%'; btn.disabled = false;
+      const d = e.data.result, byName = new Map(S.deck.unique.map(c => [c.name, c]));
+      const roles = Compare.roleSummary(d.rows, nm => { const c = byName.get(nm); return c && typeof Profile !== 'undefined' ? [...Profile.roles(c)] : []; });
+      // what to add: 1. a kind of card clearly linked to winning; 2. else what the deck profile says it is short on ("Little ramp"...);
+      // 3. else the kind most linked to winning, flagged as a guess
+      const PROFILE_ROLE = { 'ramp-low': 'ramp', 'draw-low': 'draw', 'removal-low': 'removal', 'wipes-none': 'wipe' };
+      let short = null; try { const ids = (Profile.analyze(S.deck) || {}).ids || []; const w = ids.find(x => PROFILE_ROLE[x.id]); if (w) short = { role: PROFILE_ROLE[w.id], label: w.label }; } catch (er) { /* no profile */ }
+      let overruled = null;
+      if (short) { const r = roles.find(x => x.role === short.role); if (r && r.z < -2) { overruled = { label: short.label, r }; short = null; } }          // the games say otherwise: that kind of card is clearly linked to losing in this deck
+      const clear = roles.find(r => r.diff > 0 && r.z > 2 && Compare.roleQuery(r.role, []));
+      const why = clear ? 'clear' : short ? 'profile' : 'guess';
+      const want = clear || (short && (roles.find(r => r.role === short.role) || { role: short.role, name: { ramp: 'ramp', draw: 'card draw', removal: 'removal', wipe: 'board wipes' }[short.role], diff: 0, z: 0, n: 0, cards: [] })) || roles.find(r => r.diff > 0 && Compare.roleQuery(r.role, []));
+      const removes = d.rows.filter(r => r.z < 0 && r.verdict === 'card' && !r.commander && !r.land && !(want && want.cards.includes(r))).slice(0, 2);
+      $('#plInfo').textContent = `${n.toLocaleString()} matches: this deck wins ${(100 * d.winRate).toFixed(1)}% against ${opps.length} decks.`;
+      const stat = r => r.n ? ` (your ${esc(r.name)} cards: ${pts(r.diff)} pts each, z ${r.z.toFixed(1)})` : ' (the deck has none yet)';
+      const head = !want ? (overruled ? `No kind of card stands out as linked to winning. The deck profile says "${esc(overruled.label)}", but in these games your ${esc(overruled.r.name)} cards are linked to losing (${pts(overruled.r.diff)} pts each, z ${overruled.r.z.toFixed(1)}), so no add is suggested; the removals below still apply.` : 'No kind of card stands out as linked to winning, and the deck profile finds nothing short.')
+        : why === 'clear' ? `More <b>${esc(want.name)}</b>: your ${esc(want.name)} cards are clearly linked to winning${stat(want).replace(/^ \(your [^:]+: /, ' (')}.`
+        : why === 'profile' ? `More <b>${esc(want.name)}</b>: the deck profile says "${esc(short.label)}"${stat(want)}. No kind of card is clearly linked to winning yet, so test it.`
+        : `Maybe more <b>${esc(want.name)}</b>: the kind of card most linked to winning, but not clearly${stat(want)}; test it.`;
+      const table = roles.map(r => `<li>${esc(r.name)}: ${pts(r.diff)} pts per card (z ${r.z.toFixed(1)}, ${r.n} card${r.n === 1 ? '' : 's'})</li>`).join('');
+      $('#plRolesOut').innerHTML = `<p>${head}</p><div class="suggest">${want ? `<div class="sg"><h3>Add (2)</h3><div class="ab-repls" id="plRolesAdd"><span class="hint">Finding cards…</span></div></div>` : ''}<div class="sg"><h3>Remove: the 2 cards most linked to losing (${removes.length})</h3><div class="ab-repls">${removes.map(r => `<figure class="ab-cut">${abImg(byName.get(r.name))}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)}</figcaption></figure>`).join('') || '<span class="hint">No card is clearly linked to losing.</span>'}</div></div><div class="sg"><h3>Every kind of card (${roles.length})</h3><ul>${table}</ul></div></div><div class="row wrap"><button id="plRolesSend" class="primary" disabled>Send to the A/B test</button></div>`;
+      if (typeof tidy === 'function') tidy($('#plRolesOut'));
+      let adds = [];
+      if (want) {
+        const ident = [...new Set(S.deck.commanders.flatMap(i => i.card.color_identity || []))], inDeck = new Set(S.deck.unique.map(c => c.name));
+        const found = (await Source.searchCards(Compare.roleQuery(want.role, ident), 24)).filter(c => !inDeck.has(c.name))
+          .map(c => { let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, c)], []).unique[0].a.coverageLevel; } catch (er) { /* unreadable */ } return { c, lvl }; })
+          .sort((x, y) => (x.lvl === 'ok' ? 0 : 1) - (y.lvl === 'ok' ? 0 : 1));
+        adds = found.slice(0, 2);
+        const box = $('#plRolesAdd');
+        if (box) box.innerHTML = adds.length ? adds.map(({ c, lvl }) => `<figure class="ab-cut">${abImg(c)}<figcaption><b>${esc(c.name)}</b><br>${lvl === 'ok' ? '✓ fully simulated' : lvl === 'partial' ? '◐ partly simulated' : '✗ not simulated'}</figcaption></figure>`).join('') : '<span class="hint">No card found (or Scryfall could not be reached).</span>';
+      }
+      const send = $('#plRolesSend');
+      if (send && (adds.length || removes.length)) {
+        send.disabled = false;
+        send.addEventListener('click', () => {
+          const lines = removes.map(r => '- ' + r.name).concat(adds.map(x => '+ ' + x.c.name));
+          $('#abChanges').value = lines.join('\n') + '\n';
+          $('#abBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          toast('Sent to the A/B test: press "2. Test version 2"');
+        });
+      }
+    };
+    plRolesWorker.postMessage({ diagnose: { cards: S.cards, tokens: S.tokens, opps }, opts: o, n, seed: rseed() });
+  });
+
   // ---------- A/B test (compare.js): diagnose, change one or two cards, test version 2 against version 1 ----------
   let abWorker = null, abOpps = null, abV2 = null;
   const abGames = () => Math.max(100, Math.min(10000, +$('#abN').value || 5000));

@@ -2910,7 +2910,7 @@
     let f = CARD_FACTS.get(card.a);
     if (f === undefined) {
       const set = new Set(), seen = new Set();
-      const walk = c => { if (!c || !c.a || seen.has(c.a)) return; seen.add(c.a); const a = c.a; for (const k in a) if (a[k]) set.add(k); if (a.statics) for (const k in a.statics) if (a.statics[k]) set.add('statics.' + k); walk(a.backCard); if (a.stages) for (const x of a.stages.list) walk(x.card); };
+      const walk = c => { if (!c || !c.a || seen.has(c.a)) return; seen.add(c.a); const a = c.a; for (const k in a) if (a[k] && k[0] !== '_') set.add(k); if (a.statics) for (const k in a.statics) if (a.statics[k]) set.add('statics.' + k); walk(a.backCard); if (a.stages) for (const x of a.stages.list) walk(x.card); };
       walk(card); f = [...set]; CARD_FACTS.set(card.a, f);
     }
     return f;
@@ -2932,7 +2932,7 @@
   function inLoop(card, fn) {
     const L = loopNames(fn); if (!L.ok) return true;
     let c = LOOP_CARDS.get(card.a); if (c === undefined) LOOP_CARDS.set(card.a, c = { asked: 0, yes: 0 });
-    if (!(c.asked & L.bit)) { c.asked |= L.bit; if (factsOf(card).some(f => f[0] !== '_' && !BASIC_FACTS.has(f) && L.names.has(f.indexOf('statics.') === 0 ? f.slice(8) : f))) c.yes |= L.bit; }
+    if (!(c.asked & L.bit)) { c.asked |= L.bit; if (factsOf(card).some(f => !BASIC_FACTS.has(f) && L.names.has(f.indexOf('statics.') === 0 ? f.slice(8) : f))) c.yes |= L.bit; }
     return (c.yes & L.bit) !== 0;
   }
   function deckFacts(deck) {          // a new game starts with what its deck's cards can do; 'cda', 'power' and 'toughness' are set on tokens after they are made
@@ -11000,7 +11000,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, castAftermath, comboPlan, deckLines, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

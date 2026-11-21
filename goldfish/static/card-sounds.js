@@ -183,7 +183,13 @@
     'Winter Orb': k => { k.wind({ pts: [[0, 1200], [1.6, 2200]], swirl: [3, 300], q: 3, dur: 1.7, vol: 0.18 }); for (let i = 0; i < 6; i++) k.metal({ at: 0.3 + i * 0.17, f: rnd(3500, 5200), ratios: [1, 2.9], dur: 0.4, vol: 0.05 }); },   // icy wind and ice crystals
 
     // ---- red: fire, lightning and chaos ----
-    'Lightning Bolt': k => { k.noise({ f: 2500, kind: 'highpass', dur: 0.09, vol: 0.38 }); k.noise({ f: 4500, f2: 250, q: 1.5, dur: 0.4, vol: 0.25 }); thunder(k, 0.12, false); },
+    'Lightning Bolt': k => {                                  // a magic bolt: an electric zap and sizzle, a crack, then thunder (the player's pick of four)
+      k.voice({ type: 'square', lp: 4000, pts: [[0, 3000], [0.25, 180]], dur: 0.3, vol: 0.12, vib: [60, 400] });            // the zap
+      k.crackle({ f: 6000, n: 40, dur: 0.6, vol: 0.2 });                                                                    // the sizzle
+      k.noise({ at: 0.03, f: 1800, kind: 'highpass', dur: 0.05, vol: 0.55, attack: 0.001 });                                 // the crack
+      k.tone({ at: 0.06, f: 90, f2: 30, dur: 0.8, vol: 0.45 });                                                              // the boom
+      k.wind({ at: 0.1, pts: [[0, 600], [0.3, 160], [1.6, 50]], kind: 'lowpass', q: 0.7, dur: 1.7, vol: 0.4, attack: 0.04, hold: 0.15 });   // thunder
+    },
     'Chaos Warp': k => { k.voice({ type: 'sine', pts: [[0, 300], [0.5, 900], [1, 200], [1.4, 600]], dur: 1.45, vib: [7, 160], vol: 0.12 }); k.wind({ pts: [[0, 500], [1.4, 1800]], swirl: [4, 600], q: 3, dur: 1.4, vol: 0.14 }); },
     'Vandalblast': k => { k.tone({ f: 120, f2: 30, dur: 1, vol: 0.45 }); k.noise({ f: 1500, kind: 'lowpass', dur: 0.9, vol: 0.32, attack: 0.005 }); k.crackle({ at: 0.15, f: 1800, n: 20, dur: 1, vol: 0.1 }); },   // an explosion and falling scrap
     'Strip Mine': k => { for (let i = 0; i < 3; i++) k.metal({ at: i * 0.32, f: 1250, ratios: [1, 2.2, 3.7], dur: 0.25, vol: 0.14 }); rumble(k, 0.9, 0.8); k.crackle({ at: 0.95, f: 900, n: 14, dur: 0.6, vol: 0.1 }); },   // pickaxe, then the rocks come down

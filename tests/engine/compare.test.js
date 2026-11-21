@@ -21,6 +21,18 @@ const O = { turns: 16 };
   check('a land is replaced by lands of any mana value; a card with no known job gets one search', l.length === 1 && /t:land/.test(l[0]) && !/cmc/.test(l[0]), l[0]);
   check('a colorless commander searches colorless cards', /id<=c /.test(C.replacementQueries({ type_line: 'Artifact', cmc: 1 }, [], [])[0])); }
 
+// ---- swaps by role: the diagnosis grouped by what cards do ----
+{ const rows = [
+    { name: 'Rock A', diff: 0.06, z: 3, land: false, commander: false }, { name: 'Rock B', diff: 0.04, z: 2, land: false, commander: false },
+    { name: 'Bolt', diff: -0.05, z: -2.5, land: false, commander: false }, { name: 'Chump', diff: -0.08, z: -4, land: false, commander: false },
+    { name: 'Cmdr', diff: 0.2, z: 6, land: false, commander: true }, { name: 'Dual', diff: 0.1, z: 3, land: true, commander: false }];
+  const roles = { 'Rock A': ['ramp'], 'Rock B': ['ramp'], 'Bolt': ['removal'], 'Chump': ['creature'], 'Cmdr': ['draw'], 'Dual': ['ramp'] };
+  const sum = C.roleSummary(rows, n => roles[n]);
+  check('ramp comes first: its two cards are both linked to winning, pooled (z 3 and 2 -> about 3.6)', sum[0].role === 'ramp' && sum[0].n === 2 && sum[0].z > 3.4 && sum[0].z < 3.8, sum.map(r => `${r.role} ${r.z.toFixed(2)}`).join(', '));
+  check('removal is listed as linked to losing', sum.some(r => r.role === 'removal' && r.z < 0));
+  check('the commander and lands are left out; roles with no add search ("creature") are left out', !sum.some(r => r.role === 'draw') && !sum.some(r => r.role === 'creature') && sum[0].n === 2);
+  check('a role search stays in the deck\'s colors, legal in Commander, no lands', C.roleQuery('ramp', ['G', 'U']) === 'legal:commander id<=gu -is:digital -t:land otag:ramp' && C.roleQuery('creature', []) === null); }
+
 // ---- diagnosis ----
 { const d = C.diagnose(G, me.cards, me.tokens, opps, O, 240, 7);
   check('diagnose plays the games and gives a win rate', d.errors === 0 && d.winRate >= 0 && d.winRate <= 1, d.winRate.toFixed(2));

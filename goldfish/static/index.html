@@ -63,7 +63,7 @@
             <label class="check"><input id="optOnPlay" type="checkbox"> On the play (skip T1 draw)</label>
             <label class="check"><input id="optCmdrFirst" type="checkbox" checked> Prioritize casting commander</label>
             <label>Opponent life <input id="optLife" type="number" min="1" max="200" value="40"></label>
-            <label>Games per simulation <input id="optN" type="number" min="200" max="50000" step="100" value="3000"></label>
+            <label>Games per simulation <input id="optN" title="10,000 games: every percentage is within about ±1 point of the true value (95% of the time). Fewer games run faster but are less precise: 5,000 → ±1.4, 2,500 → ±2." type="number" min="200" max="50000" step="100" value="10000"></label>
           </div>
         </details>
       </div>
@@ -196,7 +196,7 @@
       <div class="box-head"><h2>Mirror match <span class="pill approx">beta</span></h2><span class="hint">Your deck plays another deck, or itself. Both sides use the same autopilot: attacks, blocks, life totals, and the first player to 0 life (or 21 commander damage) loses.</span></div>
       <div class="row wrap">
         <label>Opponent <select id="mmOpp"><option value="">This deck (mirror)</option></select></label>
-        <label>Matches <input id="mmN" type="number" min="20" max="3000" value="400"></label>
+        <label>Matches <input id="mmN" title="10,000 games: every percentage is within about ±1 point of the true value (95% of the time). Fewer games run faster but are less precise: 5,000 → ±1.4, 2,500 → ±2." type="number" min="20" max="20000" value="10000"></label>
         <label>Max rounds <input id="mmT" type="number" min="5" max="40" value="20"></label>
         <button id="mmRun" class="primary">Run mirror match</button>
         <div id="mmProgress" class="progress"><div></div></div>
@@ -223,7 +223,7 @@
         <label id="plOppWrap">Opponents <select id="plOpp"><option value="random" selected>Random decks</option><option value="selected">Selected decks</option></select></label>
         <label id="plOppNWrap">How many <input id="plOppN" type="number" min="1" max="12" value="5"></label>
         <label id="plOppListWrap" style="display:none">Decks <select id="plOppList" multiple size="6"></select></label>
-        <label>Games per option <input id="plN" type="number" min="50" max="3000" value="400"></label>
+        <label>Games per option <input id="plN" title="10,000 games: every percentage is within about ±1 point of the true value (95% of the time). Fewer games run faster but are less precise: 5,000 → ±1.4, 2,500 → ±2." type="number" min="50" max="20000" value="10000"></label>
         <button id="plRun" class="primary">Run the lab</button>
         <div id="plProgress" class="progress"><div></div></div>
       </div>
@@ -232,6 +232,12 @@
       <div id="plInfo" class="hint"></div>
       <div id="plOut"></div>
       <div id="plSaved" class="hint"></div>
+      <div class="row wrap lab-roles">
+        <button id="plRoles">Swaps by role</button>
+        <span class="hint" data-fold>Plays your deck against the opponents above (as many matches as the A/B test's Games setting), groups the cards linked to winning and losing by what they do (ramp, card draw, removal…) and says which kind of card the deck wants more of. It offers 2 cards of that kind to add and the 2 cards most linked to losing to remove; "Send to the A/B test" proves the change.</span>
+        <div id="plRolesProgress" class="progress"><div></div></div>
+      </div>
+      <div id="plRolesOut"></div>
     </div>
     <div class="card-box" id="abBox">
       <div class="box-head"><h2>A/B test <span class="pill approx">beta</span></h2><span class="hint">Make the deck better one or two cards at a time. 1. Diagnose: the deck plays other decks and each card gets a verdict: <b>card</b> (fully simulated and cast, so the number is about the card), <b>played</b> (drawn but rarely cast: mana, curve or the autopilot's timing) or <b>engine</b> (some of its text is not simulated: test it by hand). 2. Press Cut on a card and pick a replacement from the list under it (popular cards that do the same job, in your colors), or write the changes yourself (one card per line, "- Card" to cut, "+ Card" to add), and test version 2 against version 1: the same opponents and shuffles, then fresh shuffles, then head to head. Better only when both runs point the same way and together pass z 2. A commander swap works too: a commander may shine in a different shell.</span></div>
@@ -239,7 +245,7 @@
         <label>Opponents <select id="abOpp"><option value="random" selected>Random decks</option><option value="selected">Selected decks</option></select></label>
         <label id="abOppNWrap">How many <input id="abOppN" type="number" min="1" max="20" value="8"></label>
         <label id="abOppListWrap" style="display:none">Decks <select id="abOppList" multiple size="6"></select></label>
-        <label>Games <input id="abN" type="number" min="100" max="10000" value="5000"></label>
+        <label>Games <input id="abN" title="10,000 games: every percentage is within about ±1 point of the true value (95% of the time). Fewer games run faster but are less precise: 5,000 → ±1.4, 2,500 → ±2." type="number" min="100" max="20000" value="10000"></label>
         <button id="abDiag" class="primary">1. Diagnose</button>
         <div id="abProgress" class="progress"><div></div></div>
       </div>
@@ -356,6 +362,7 @@
 <script src="tags.js"></script>
 <script src="audio.js"></script>
 <script src="card-sounds.js"></script>
+<script src="card-effects.js"></script>
 <script src="app.js"></script>
 <script src="decide.js"></script>
 <script src="choices.js"></script>

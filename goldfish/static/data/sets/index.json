@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20",
+ "updated": "2026-11-21",
  "sets": [
   {
    "code": "30a",
@@ -134,12 +134,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/akh.svg?1794805200",
    "partial": true,
-   "cards": 42,
-   "originals": 42,
+   "cards": 43,
+   "originals": 43,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 37,
+    "full": 38,
     "approx": 0,
     "partial": 3,
     "none": 2
@@ -296,14 +296,14 @@
    "set_type": "draft_innovation",
    "icon": "https://svgs.scryfall.io/sets/acr.svg?1794805200",
    "partial": true,
-   "cards": 13,
-   "originals": 13,
+   "cards": 14,
+   "originals": 14,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 11,
     "approx": 1,
-    "partial": 1,
+    "partial": 2,
     "none": 0
    }
   },
@@ -386,15 +386,15 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/bfz.svg?1794805200",
    "partial": true,
-   "cards": 42,
-   "originals": 42,
+   "cards": 43,
+   "originals": 43,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 37,
-    "approx": 0,
+    "full": 38,
+    "approx": 1,
     "partial": 2,
-    "none": 3
+    "none": 2
    }
   },
   {
@@ -476,14 +476,14 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/bng.svg?1794805200",
    "partial": true,
-   "cards": 17,
-   "originals": 17,
+   "cards": 18,
+   "originals": 18,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 16,
     "approx": 0,
-    "partial": 0,
+    "partial": 1,
     "none": 1
    }
   },
@@ -823,10 +823,10 @@
    "reprints": 697,
    "missing": 0,
    "coverage": {
-    "full": 595,
-    "approx": 14,
-    "partial": 79,
-    "none": 49
+    "full": 596,
+    "approx": 15,
+    "partial": 78,
+    "none": 48
    }
   },
   {
@@ -926,12 +926,12 @@
    "set_type": "core",
    "icon": "https://svgs.scryfall.io/sets/m20.svg?1794805200",
    "partial": true,
-   "cards": 35,
-   "originals": 35,
+   "cards": 36,
+   "originals": 36,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 30,
+    "full": 31,
     "approx": 2,
     "partial": 1,
     "none": 2
@@ -949,9 +949,9 @@
    "reprints": 4,
    "missing": 0,
    "coverage": {
-    "full": 30,
+    "full": 31,
     "approx": 1,
-    "partial": 6,
+    "partial": 5,
     "none": 0
    }
   },
@@ -1003,9 +1003,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 13,
+    "full": 14,
     "approx": 1,
-    "partial": 6,
+    "partial": 5,
     "none": 0
    }
   },
@@ -1106,12 +1106,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/dom.svg?1794805200",
    "partial": true,
-   "cards": 69,
-   "originals": 69,
+   "cards": 70,
+   "originals": 70,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 57,
+    "full": 58,
     "approx": 2,
     "partial": 8,
     "none": 2
@@ -2101,9 +2101,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 29,
+    "full": 30,
     "approx": 0,
-    "partial": 2,
+    "partial": 1,
     "none": 0
    }
   },
@@ -2222,12 +2222,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/isd.svg?1794805200",
    "partial": true,
-   "cards": 50,
-   "originals": 50,
+   "cards": 51,
+   "originals": 51,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 43,
+    "full": 44,
     "approx": 0,
     "partial": 6,
     "none": 1
@@ -2749,10 +2749,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 34,
+    "full": 35,
     "approx": 0,
     "partial": 5,
-    "none": 3
+    "none": 2
    }
   },
   {
@@ -2839,9 +2839,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 23,
+    "full": 24,
     "approx": 0,
-    "partial": 2,
+    "partial": 1,
     "none": 0
    }
   },
@@ -3050,12 +3050,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/mom.svg?1794805200",
    "partial": true,
-   "cards": 25,
-   "originals": 25,
+   "cards": 26,
+   "originals": 26,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 20,
+    "full": 21,
     "approx": 4,
     "partial": 1,
     "none": 0
@@ -3505,10 +3505,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 9,
+    "full": 10,
     "approx": 0,
     "partial": 0,
-    "none": 2
+    "none": 1
    }
   },
   {
@@ -3667,9 +3667,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 35,
+    "full": 36,
     "approx": 1,
-    "partial": 5,
+    "partial": 4,
     "none": 2
    }
   },
@@ -4693,9 +4693,9 @@
    "reprints": 237,
    "missing": 0,
    "coverage": {
-    "full": 280,
+    "full": 282,
     "approx": 1,
-    "partial": 51,
+    "partial": 49,
     "none": 9
    }
   },
@@ -4765,10 +4765,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 26,
+    "full": 27,
     "approx": 0,
     "partial": 0,
-    "none": 4
+    "none": 3
    }
   },
   {
@@ -4958,12 +4958,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/lci.svg?1794805200",
    "partial": true,
-   "cards": 38,
-   "originals": 38,
+   "cards": 39,
+   "originals": 39,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 36,
+    "full": 37,
     "approx": 2,
     "partial": 0,
     "none": 0
@@ -4981,9 +4981,9 @@
    "reprints": 27,
    "missing": 0,
    "coverage": {
-    "full": 48,
+    "full": 49,
     "approx": 0,
-    "partial": 1,
+    "partial": 0,
     "none": 0
    }
   },
@@ -5251,10 +5251,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 33,
+    "full": 34,
     "approx": 0,
     "partial": 2,
-    "none": 2
+    "none": 1
    }
   },
   {
@@ -5287,10 +5287,10 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 12,
+    "full": 13,
     "approx": 0,
     "partial": 0,
-    "none": 1
+    "none": 0
    }
   },
   {

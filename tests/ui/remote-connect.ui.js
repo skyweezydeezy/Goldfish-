@@ -1,7 +1,9 @@
-// Browser test: Duel against a friend when the two devices find no way to each other (remote.js). Instead of "Connecting…" for ever,
-// both devices say they could not connect and why: which kinds of address each code offered, and that a relay server is what fixes it.
-// The reply code is stripped of its addresses to make the failure certain. Needs playwright, the :8800 server and Scryfall.
+// Browser test: how "Play a friend" connects (remote.js). The relay: the site asks the ICEYfish relay service (server/turn-service.js;
+// a fake one here) for the relay's servers and connects through them, and with the service down it says so and tries a direct
+// connection. No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever both devices say they could
+// not connect and why. Needs playwright, the :8800 server and Scryfall.
 const { chromium } = require('playwright');
+const http = require('http');
 const fs = require('fs'), path = require('path');
 const UA = 'goldfish-calc-test/0.1';
 let pass = 0, fail = 0;
@@ -32,6 +34,36 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
     return p;
   };
   const [A, B] = [await device('A'), await device('B')];
+
+  // ---- the relay: a fake relay service that answers the site
+  const asked = [];
+  const relay = http.createServer((req, res) => {
+    asked.push({ path: req.url, origin: req.headers.origin });
+    const cors = { 'Access-Control-Allow-Origin': req.headers.origin || '*', 'Content-Type': 'application/json' };
+    res.writeHead(200, cors);
+    res.end(JSON.stringify({ iceServers: [{ urls: 'turn:relay.test.invalid:3478', username: 'u-test', credential: 'p-test' }], expires: new Date(Date.now() + 12 * 3600e3).toISOString() }));
+  });
+  await new Promise(r => relay.listen(0, '127.0.0.1', r));
+  await A.evaluate(u => { const R = window.__isfRemote; R.ice = null; R.relayService = u; R.state.failAfter = 60000; }, `http://127.0.0.1:${relay.address().port}`);
+  await A.click('#tab-duel .rm-invite');
+  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  const conf = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));
+  check('with the relay service set, the site asks it for the relay (GET /ice, from the site\'s own address)', asked.length === 1 && asked[0].path === '/ice' && asked[0].origin === 'http://127.0.0.1:8800', JSON.stringify(asked));
+  check('...and connects through the relay it gives, as well as Google\'s STUN server', conf.some(u => /turn:relay\.test\.invalid:3478/.test(u)) && conf.some(u => /stun:stun\.l\.google\.com/.test(u)), conf.join(', '));
+  await A.click('#tab-duel .rm-invite');
+  await A.waitForTimeout(500);
+  check('a second invite uses the relay servers it already has (not asked again)', asked.length === 1, asked.length);
+  relay.close();
+  await A.evaluate(u => { window.__isfRemote.relayService = u; }, 'http://127.0.0.1:9');          // nothing listens there
+  await A.click('#tab-duel .rm-invite');
+  await A.waitForFunction(() => /relay could not be reached/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 30000 }).catch(() => {});
+  const said = /relay could not be reached/.test(await A.$eval('#tab-duel .rm-status', e => e.textContent));
+  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  const down = await A.evaluate(() => ({ conf: window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')), code: !!document.querySelector('#tab-duel .rm-mine') }));
+  check('with the relay service down, the site says so and still makes an invite, for a direct connection only', said && down.code && down.conf.length === 1 && /stun:/.test(down.conf[0]), down.conf.join(', '));
+  await A.evaluate(() => { const R = window.__isfRemote; R.relayService = null; R.ice = []; R.state.failAfter = 3000; });
+
+  // ---- no way through
   await A.click('#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
   const invite = await A.$eval('#tab-duel .rm-mine', e => e.value);

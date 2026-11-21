@@ -396,11 +396,16 @@ const shot = process.env.VERSUS_SHOTS;
     await arrange('duel', { hand: ['Metallic Mimic'], lands: [['Island', 2]], untap: true });
     check('Metallic Mimic glows in your hand', await clickHand('duel', 'Metallic Mimic'));
     await passStack('duel');
+    await p.waitForSelector('.ch-sheet.tribe', { timeout: 15000 });
+    sh = await sheet();
+    check('as it enters, a sheet asks "Metallic Mimic: choose a creature type": your deck\'s types, the learned one (Merfolk) first and preselected', sh.title === 'Metallic Mimic: choose a creature type' && sh.names[0] === 'Merfolk' && sh.def.length === 1 && sh.def[0] === 'Merfolk' && sh.names.includes('Wizard') && /^learned/.test(sh.notes[0]) && sh.ok === 'Choose Merfolk', sh.names.slice(0, 6).join(', ') + ' / ' + sh.ok);
+    if (shot) await p.screenshot({ path: path.join(shot, 'chosen-type-sheet.png') });
+    await pickTile('Wizard'); await p.click('.ch-sheet .ch-ok');
     await p.waitForFunction(() => !window.__isfVersus.duel.game.acting && !document.querySelector('.ch-sheet'), null, { timeout: 15000 });
     const mm = await p.evaluate(() => { const gm = window.__isfVersus.duel.game, me = gm.games[0], q = me.battlefield.find(x => x.card.name === 'Metallic Mimic'), el = q && document.querySelector('#tab-duel .vs-seat.me .mtg[data-iid="' + q.iid + '"]'), tg = el && el.querySelector('.tag.chosen');
-      return { on: !!q, tag: tg && tg.textContent, title: tg && tg.title, tribe: me.deck.tribe, inside: !!(tg && el.contains(tg)), vis: !!(tg && tg.getBoundingClientRect().width > 10) }; });
-    check('Metallic Mimic on the battlefield shows its chosen type on the card ("Merfolk", the deck\'s type)', mm.on && mm.tag === mm.tribe && mm.tag === 'Merfolk' && mm.inside && mm.vis && /The chosen creature type: Merfolk/.test(mm.title), JSON.stringify(mm));
-    check('...and the log announces it as it enters: "Metallic Mimic: the chosen creature type is Merfolk"', (await log('duel', 6)).some(t => /Metallic Mimic: the chosen creature type is Merfolk/.test(t)), (await log('duel', 3)).join(' || '));
+      return { on: !!q, tag: tg && tg.textContent, title: tg && tg.title, chosen: q && q.card.chosenType, inside: !!(tg && el.contains(tg)), vis: !!(tg && tg.getBoundingClientRect().width > 10) }; });
+    check('choosing Wizard: Metallic Mimic shows "Wizard" on the card, and the engine plays it as a Wizard Mimic', mm.on && mm.tag === 'Wizard' && mm.chosen === 'Wizard' && mm.inside && mm.vis && /The chosen creature type: Wizard/.test(mm.title), JSON.stringify(mm));
+    check('...and the log announces it as it enters: "Metallic Mimic: the chosen creature type is Wizard"', (await log('duel', 6)).some(t => /Metallic Mimic: the chosen creature type is Wizard/.test(t)), (await log('duel', 3)).join(' || '));
     if (shot) await p.screenshot({ path: path.join(shot, 'chosen-type-duel.png') });
   }
 

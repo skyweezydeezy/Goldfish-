@@ -140,6 +140,7 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? 'learned · ' : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}` : 'named by your cards'); }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
         if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
@@ -205,6 +206,10 @@
       q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant or card with flash you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant or a card with flash (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
       q.none = 'Let it resolve';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
+    } else if (d.kind === 'tribe') {                                                                      // Metallic Mimic, Cavern of Souls, Kindred Discovery: "As ~ enters, choose a creature type"
+      q.title = `${sn || 'This permanent'}: choose a creature type`;
+      q.text = `As it enters it names a creature type, and plays as that type from now on. The types of your deck's creatures are listed; ★ is the learned type (${d.learned}), the one the autopilot names.`;
+      if (src) { q.spell = src; q.spellNote = 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;
       q.text = 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';

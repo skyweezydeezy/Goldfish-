@@ -6838,6 +6838,7 @@
       if (!land) { ev.push({ type: 'note', text: `${inst.card.name} is countered: no land to sacrifice` }); g.graveyard.push(inst); return; }
       ev.push({ type: 'note', text: `${inst.card.name}: sacrificed ${land.card.name}` }); leavePerm(g, land, ev); flushLeaves(g, ev);
     }
+    if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
     g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
     if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);
@@ -10763,16 +10764,42 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const k of bfInfo(g).noCounter || []) if (k === 'spells' || (k === 'instant and sorcery spells' && a.isInstantSorcery) || (k === 'creature spells' && a.isCreature) || (k === 'green spells' && (inst.card.colors || []).includes('G'))) return true;
     return false;
   }
+  // ---------- the stack, for a person: "does this resolve?" ----------
+  // Every spell waits on the stack while a person at the table may answer it (on Duel and Pod, with "Ask me"; the autopilot and
+  // "Autopilot decides" let it resolve unless they counter it). The caster may respond to their own spell first (ownPriority); then
+  // each other person is asked, even with nothing to answer with: a counterspell, an instant or flash card cast in response (it
+  // resolves first, and they are asked again), or "Let it resolve". A response is not itself paused for its own caster.
+  function responseCards(d, exclude) {
+    const units = manaUnits(d);
+    return d.hand.concat(d.command).filter(c => c !== exclude && c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(d, c.card) && !castBlocked(d, c) && canPay(effectiveCost(d, c), units));
+  }
+  function respondWith(d, c, ev, spell) {
+    const was = d.inWindow, wr = d.inResponse; d.inWindow = true; d.inResponse = true;
+    let r = null;
+    try { r = castCard(d, c); } finally { d.inWindow = was; d.inResponse = wr; }
+    if (!r) return false;
+    ev.push({ type: 'note', text: `In response to ${spell.card.name}: cast ${c.card.name}`, source: null }, ...r);
+    return true;
+  }
+  function ownPriority(g, inst, ev) {
+    for (let k = 0; k < 4 && !g.dead && !matchOver(g); k++) {
+      const pick = decide(g, { kind: 'resolve', options: responseCards(g, inst), def: null, optional: true, always: true, spell: inst });
+      if (!pick || !respondWith(g, pick, ev, inst)) break;
+    }
+  }
   function tryCounter(g, inst, ev, by) {
     const d = by || g.opp, a = inst.card.a;
-    if (!d || uncounterable(g, inst)) return false;
+    if (!d) return false;
+    const unc = uncounterable(g, inst), asked = !!d.ask && !g.dry && !d.dead;          // a person is asked about every spell, one that cannot be countered too
+    if (unc && !asked) return false;
+    if (unc) { personAnswer(g, d, inst, ev, [], null); return false; }
     if (!g.dry && !inst.noCounter && !by) {          // Mistrise Village: {U}, {T} before a spell worth protecting, while the other player holds cards
       const mv = (tableHas(g, 'uncounterAb') ? g.battlefield.find(q => q.card.a.uncounterAb && (q._hold || !q.tapped)) : undefined);
       if (mv && d.hand.length && (a.castMv >= 4 || a.comboRole || inst.card.commander) && canPay(mv.card.a.uncounterAb, allUnits(g).filter(u => u.src !== mv))) { mv._hold = false; mv.tapped = true; pay(g, mv.card.a.uncounterAb); inst.noCounter = true; ev.push({ type: 'note', text: `${mv.card.name}: ${inst.card.name} can't be countered`, source: mv }); return false; }
     }
     if (fieldCounter(g, d, inst, ev)) return true;          // Cursecatcher, Vodalian Hexcatcher, Kozilek
     if (!g.dry && (a.isArtifact || a.isInstantSorcery)) for (const o of [d].concat(isPod(g) ? otherPlayers(g).filter(x => x !== d) : [])) { const jg = (tableHas(o, 'jinCounter') ? o.battlefield.find(q => q.card.a.jinCounter && q.jinSeq !== turnSeq(o)) : undefined); if (jg) { jg.jinSeq = turnSeq(o); ev.push({ type: 'note', text: `${jg.card.name} counters ${inst.card.name}`, source: null }); (inst.card.commander ? g.command : g.graveyard).push(inst); return true; } }          // Jin-Gitaxias, Progress Tyrant
-    if (!d.hand.length) return false;
+    if (!d.hand.length && !asked) return false;
     const big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.statics.tokenRepl.length || a.statics.counterDouble || a.castMv >= 4;
     const cw = pol(d, 'counterWorth');                                                                 // the Policy lab: which spells deserve a counterspell
     const worth = cw === 'big' ? big : cw === 'two' ? (big || a.castMv >= 2) : cw === 'creatures' ? (big || a.castMv >= 3 || a.isCreature) : cw === 'engines' ? (big || a.castMv >= 3 || (!a.isCreature && a.isPermanent && a.triggers.length > 0)) : (big || a.castMv >= 3);
@@ -10802,7 +10829,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!person) break;
     }
     let way = (worth && !by && ways.find(w => w.auto)) || null;
-    if (person && ways.length) way = decide(d, { kind: 'counter', options: ways, def: way || null, optional: true, spell: inst, caster: g });
+    if (person) way = personAnswer(g, d, inst, ev, ways, way);
     if (way) {
       const c = way.c, how = way.how, pitch = way.pitch, cost = way.cost, ca = c.card.a, k = ca.counter;
       let unless = k.perSpell ? 1 + (g.spellsCast || 0) : k.unless, extraDraw = 0;
@@ -10837,6 +10864,17 @@ g.actSeq = (g.actSeq || 0) + 1;
       return true;
     }
     return false;
+  }
+  // a person answers another player's spell: a counterspell (the way it is paid), a response (cast first, then asked again), or nothing
+  function personAnswer(g, d, inst, ev, ways, def) {
+    for (let k = 0; k < 4 && !d.dead && !matchOver(d); k++) {
+      const resp = responseCards(d, null).map(c => ({ c, how: 'respond' }));
+      const pick = decide(d, { kind: 'counter', options: ways.concat(resp), def: k ? null : def, optional: true, always: true, spell: inst, caster: g, unc: !ways.length && uncounterable(g, inst) });
+      if (!pick || pick.how !== 'respond') return pick || null;
+      if (!respondWith(d, pick.c, ev, inst)) return null;
+      ways = ways.filter(w => d.hand.includes(w.c) && (w.how !== 'mana' || canPay(w.cost, manaUnits(d))) && (w.how !== 'cleave' || canPay(w.c.card.a.cleave, manaUnits(d))));
+    }
+    return null;
   }
   // Counters on the battlefield: Cursecatcher (sacrifice it: an instant or sorcery, unless its controller pays {1}), Vodalian Hexcatcher (sacrifice a
   // Merfolk: a noncreature spell, unless {1}), Kozilek, the Great Distortion (discard a card with the same mana value). Used for the spells tryCounter

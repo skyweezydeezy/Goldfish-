@@ -15,6 +15,11 @@ const cards = SF.cards.concat(['Oath of Teferi', 'Teferi, Temporal Archmage'].fi
 const O = { turns: 25, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
+// "Does it resolve?" (your own spell, or another player's that you have nothing to answer with) is passed by these wrappers: the
+// scenarios of the stack itself are in stack.test.js. r.asked counts the other questions only.
+const stackPass = q => q.kind === 'resolve' || (q.kind === 'counter' && !q.options.length);
+const AT = (games, pid, run, answers) => { const as = []; let i = 0, passes = 0; for (;;) { const r = D.attempt(games, pid, run, as); if (r.done) { r.asked -= passes; return r; } if (stackPass(r.ask)) { passes++; as.push({ sig: r.ask.sig, pick: 'none' }); continue; } if (answers && i < answers.length) { as.push(answers[i++]); continue; } return r; } };
+const RS = (games, pid, run, choose) => D.resolveSync(games, pid, run, q => stackPass(q) ? 'none' : choose(q));
 const duel = seat => { const p = G.newPod([G.buildDeck(cards, SF.tokens), G.buildDeck(ZA.cards, ZA.tokens)], [O, O], 5, ['you', 'them'], 0); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]); return p; };
 const card = (g, n) => g.deck.unique.find(c => c.name === n);
 const putOn = (g, c) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: c }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
@@ -52,10 +57,10 @@ const elspeth = g => putOn(g, card(g, "Elspeth, Sun's Champion"));
 { const p = duel(true), [a, b] = p.games; const k = putOn(a, card(a, 'Kaya the Inexorable')); const t1 = putOn(b, b.deck.unique.find(c => c.a.isCreature && c.a.power >= 2)), t2 = putOn(b, b.deck.unique.filter(c => c.a.isCreature && c.name !== t1.card.name)[0]); G.podFocus(a, b);
   const i = G.loyaltyState(a, k).list.findIndex(x => x.label === '−3');
   const run = gs => G.useLoyalty(gs[0], gs[0].battlefield.find(x => x.iid === k.iid), i);
-  const r = D.attempt(p.games, 0, run, []);
+  const r = AT(p.games, 0, run, []);
   check('an ability with a target asks for it (Kaya −3: exile target nonland permanent)', !r.done && r.ask.kind === 'target' && r.ask.options.some(o => o.iid === t2.iid), r.ask && r.ask.title);
   const kk = r.ask.options.findIndex(o => o.iid === t2.iid);
-  D.attempt(p.games, 0, run, [{ sig: r.ask.sig, pick: kk }]);
+  AT(p.games, 0, run, [{ sig: r.ask.sig, pick: kk }]);
   check('...and the chosen permanent is exiled, Kaya at loyalty 2', !b.battlefield.includes(t2) && b.battlefield.includes(t1) && k.loyalty === 2); }
 
 // ---- "Use abilities" for a person leaves loyalty abilities alone; the autopilot's pass is unchanged

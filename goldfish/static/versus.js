@@ -250,7 +250,7 @@
     const st = V[mode], gm = st.game;
     if (!alive(gm) || finished(gm) || !asking(mode) || gm.noStop) return;
     const me = gm.games[gm.human], abil = D.wouldUseAbilities(gm.games, me.pid), asked = gm.endAsked; gm.endAsked = false;
-    if ((asked || !D.instants(me).length) && !abil) return;          // instants were just offered by the engine's end-step question
+    if ((asked || !D.instants(me).length) && !abil && !D.otherTurnWalkers(me, g).length) return;          // instants were just offered by the engine's end-step question
     gm.step = 'end';
     await new Promise(done => { gm.phase = 'respond'; gm.respond = { g, done, abil }; render(mode); });
     gm.phase = null; gm.respond = null; gm.step = null;
@@ -335,6 +335,31 @@
     if (!ev) return info(mode, `${inst.card.name} was not cast.`);
     info(mode, ''); humanDone(mode, ev);
   });
+  // a planeswalker's loyalty abilities: the menu (decide.js loyaltyQuestion), then the chosen ability resolves (its own choices asked)
+  const openLoyalty = (mode, iid) => mine(mode, async (gm, g) => {
+    const active = gm.phase === 'respond' && gm.respond ? gm.respond.g : null;          // another player's turn: Teferi, Master of Time
+    if (gm.phase !== 'main' && !active) return;
+    const perm = g.battlefield.find(q => q.iid === iid), q = D.loyaltyQuestion(g, perm, active);
+    if (!q) return;
+    gm.choice = q; render(mode);
+    let pick; try { pick = await C.ask(q); } finally { gm.choice = null; }
+    const k = pick === 'auto' ? q.def[0] : pick;
+    if (k == null || k === 'none' || !q.options[k] || q.options[k].disabled) return render(mode);
+    const idx = q.options[k].i;
+    const ev = await act(mode, gs => G.useLoyalty(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid), idx, active && gs[active.pid]));
+    if (!ev) return info(mode, `${perm.card.name} cannot use that ability now.`);
+    info(mode, ''); humanDone(mode, ev);
+  });
+  // The Chain Veil: {4}, {T}: each of your planeswalkers may activate one more loyalty ability this turn
+  const useVeil = (mode, iid) => mine(mode, async (gm, g) => {
+    if (gm.phase !== 'main') return;
+    const why = G.chainVeilState(g, g.battlefield.find(q => q.iid === iid));
+    if (why) return info(mode, `The Chain Veil: ${why}.`);
+    const ev = await act(mode, gs => G.useChainVeil(gs[g.pid], gs[g.pid].battlefield.find(x => x.iid === iid)));
+    if (!ev) return info(mode, 'Not enough mana for The Chain Veil.');
+    info(mode, ''); say(mode, g, ev.map(x => x.text).filter(Boolean).join('; '), gm.step);
+    humanDone(mode, ev);
+  });
   // landcycling or transmute from your hand: the search fan asks which card you find
   const cycleCard = (mode, iid, kind) => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !(resp && kind === 'cycle')) return;
@@ -346,7 +371,7 @@
   });
   const useAbilities = mode => mine(mode, async (gm, g) => {
     const resp = gm.phase === 'respond'; if (gm.phase !== 'main' && !resp) return;
-    const ev = await act(mode, gs => { const x = gs[g.pid], out = []; if (resp) return D.instantAbilities(x); for (let k = 0; k < 12; k++) { const e = G.useAbilities(x); if (!e.length) break; out.push(...e); } return out; });
+    const ev = await act(mode, gs => { const x = gs[g.pid], out = []; if (resp) return D.instantAbilities(x); x.skipLoyalty = true; try { for (let k = 0; k < 12; k++) { const e = G.useAbilities(x); if (!e.length) break; out.push(...e); } } finally { x.skipLoyalty = false; } return out; });          // loyalty abilities are yours to choose: click the planeswalker
     const names = ev.filter(e => e.type === 'activate' || e.type === 'pw' || e.type === 'note').map(e => e.text || (e.perm && e.perm.card.name)).filter(Boolean);
     say(mode, g, names.length ? 'Abilities: ' + names.slice(0, 8).join('; ') : 'No ability worth using right now.', gm.step);
     humanDone(mode, ev.filter(e => e.type !== 'note'));
@@ -421,6 +446,12 @@
     delete e.dataset.iid; e.removeAttribute('title');
     return e;
   }
+  // can you use one of this planeswalker's loyalty abilities right now? It is yours, it is your main phase and nothing else is waiting
+  // (you have priority), and one of its abilities can be paid for (once a turn: the engine's loyaltyState)
+  // At the end of another player's turn only Teferi, Master of Time can (once each turn). The Chain Veil glows when it can be activated.
+  const loyal = (gm, g, p) => { if (gm.human !== g.pid || gm.over || gm.picking || gm.choice || gm.acting || g.dead) return false;
+    if (gm.phase === 'respond' && gm.respond) return !!p.card.a.masterTime && G.loyaltyState(g, p, gm.respond.g).list.some(it => it.ok);
+    return gm.phase === 'main' && (p.card.a.chainVeil ? !G.chainVeilState(g, p) : G.loyaltyState(g, p).list.some(it => it.ok)); };
   function permEl(st, gm, g, p) {
     const e = node(st, `b${g.pid}:${p.iid}:${p.mdfc ? 1 : 0}:${p.card.uid}`, p.card, p.mdfc ? 1 : 0);
     e.classList.add('vs-pc'); e.dataset.iid = p.iid;
@@ -434,6 +465,7 @@
       if (p.counters) e.appendChild(h('span', 'ctr' + (p.counters < 0 ? ' neg' : ''), (p.counters > 0 ? '+' : '') + p.counters));
     }
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
+    if ((p.card.a.isPlaneswalker || p.card.a.chainVeil) && loyal(gm, g, p)) { e.classList.add('vs-loyal'); e.title = p.card.a.chainVeil ? 'The Chain Veil: click to pay {4} and tap it; each planeswalker may activate one more loyalty ability this turn' : 'Loyalty abilities: click to choose one'; }          // your main phase, nothing else waiting
     if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
     return e;
   }
@@ -471,10 +503,13 @@
   }
   // creatures in the front row (facing the other players), lands and everything else in the back row
   function fieldEl(st, gm, g, mine) {
-    const cre = g.battlefield.filter(G.isCreaturePerm), lands = g.battlefield.filter(p => p.asLand && !G.isCreaturePerm(p)), other = g.battlefield.filter(p => !p.asLand && !G.isCreaturePerm(p));
-    const front = h('div', 'vs-row front'), back = h('div', 'vs-row back'), gl = h('div', 'vs-grp lands'), go = h('div', 'vs-grp other');
-    front.append(...stacks(st, gm, g, cre)); gl.append(...stacks(st, gm, g, lands)); go.append(...stacks(st, gm, g, other));
-    if (!cre.length) front.appendChild(h('span', 'vs-none', 'No creatures'));
+    // the front row: creatures, and planeswalkers at the opposite end of the same row; the back row: lands, and everything else
+    const walker = p => p.card.a.isPlaneswalker && !G.isCreaturePerm(p) && !p.asLand;
+    const cre = g.battlefield.filter(G.isCreaturePerm), pws = g.battlefield.filter(walker), lands = g.battlefield.filter(p => p.asLand && !G.isCreaturePerm(p)), other = g.battlefield.filter(p => !p.asLand && !G.isCreaturePerm(p) && !walker(p));
+    const front = h('div', 'vs-row front'), back = h('div', 'vs-row back'), gc = h('div', 'vs-grp creatures'), gw = h('div', 'vs-grp walkers'), gl = h('div', 'vs-grp lands'), go = h('div', 'vs-grp other');
+    gc.append(...stacks(st, gm, g, cre)); gw.append(...stacks(st, gm, g, pws)); gl.append(...stacks(st, gm, g, lands)); go.append(...stacks(st, gm, g, other));
+    if (!cre.length) gc.appendChild(h('span', 'vs-none', 'No creatures'));
+    front.append(gc); if (pws.length) front.append(gw);
     if (!lands.length && !other.length) gl.appendChild(h('span', 'vs-none', 'No lands yet'));
     back.append(gl, go);
     const f = h('div', 'vs-field');
@@ -494,7 +529,7 @@
     let cz = null;
     if (g.command.length) {
       cz = h('div', 'vs-czone');
-      g.command.forEach(i => { const e = node(st, `c${g.pid}:${i.iid}`, i.card); e.dataset.iid = i.iid; if (mayPlay) { e.classList.add('vs-card'); if (castable(g, i) && (!resp || D.instantSpeed(i.card))) e.classList.add('can'); } cz.appendChild(e); });
+      g.command.forEach(i => { const e = node(st, `c${g.pid}:${i.iid}`, i.card); e.dataset.iid = i.iid; if (mayPlay) { e.classList.add('vs-card'); if (castable(g, i) && (!resp || G.instantSpeedFor(g, i.card))) e.classList.add('can'); } cz.appendChild(e); });
     }
     pile('cmd', 'Command', 'Cmd', null, cz);
     const top = (zone, k) => { const i = zone[zone.length - 1]; return i ? node(st, `${k}${g.pid}:${i.iid}`, i.card) : null; };
@@ -553,8 +588,8 @@
     if (g.dead) return '<div class="hint">You are out of the game. The other players finish it.</div>';
     if (gm.choice) return `<div class="vs-ask"><b>${esc(gm.choice.title)}</b> <span class="hint">Your choice is open in the sheet over the table. The table shows the game at this moment.</span></div>`;
     if (gm.phase === 'respond' && gm.respond) {
-      const who = esc(gm.match.names[gm.respond.g.pid]), n = D.instants(g).length;
-      return `<div class="vs-ask"><b>End of ${who}'s turn</b> <span class="hint">${n ? `You may cast the glowing card${n === 1 ? '' : 's'} (instants and cards with flash) with your ${G.allUnits(g).length} untapped mana.` : 'No instant or flash card you can pay for.'} Counterspells are asked when a spell is cast.${gm.respond.abil ? '' : ' No ability to use right now.'}</span></div>
+      const who = esc(gm.match.names[gm.respond.g.pid]), n = D.instants(g).length, tw = D.otherTurnWalkers(g, gm.respond.g);
+      return `<div class="vs-ask"><b>End of ${who}'s turn</b> <span class="hint">${n ? `You may cast the glowing card${n === 1 ? '' : 's'} (instants and cards with flash) with your ${G.allUnits(g).length} untapped mana.` : 'No instant or flash card you can pay for.'}${tw.length ? ` ${esc(tw[0].card.name)} glows: click it for a loyalty ability (once each other player's turn).` : ''} Counterspells are asked when a spell is cast.${gm.respond.abil ? '' : ' No ability to use right now.'}</span></div>
         <div class="row wrap">${gm.respond.abil ? `<button class="vs-abil" title="The autopilot's ability pass, without loyalty abilities and equipping (those are sorcery speed)"><span class="wide">Use </span>abilities</button>` : ''}<button class="primary vs-pass">Pass</button><button class="ghost vs-nostop" title="Do not stop at the end of the other players' turns again in this game">Pass<span class="wide">, and do not stop here again</span></button></div>`;
     }
     if (gm.phase === 'mull') {
@@ -584,7 +619,7 @@
     }
     const units = G.allUnits(g).length;
     return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : 'Waiting for the other players…')}</span></div>
-      ${mine ? `<div class="row wrap"><button class="vs-abil"><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
+      ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
   function handEl(st, gm, g) {
@@ -699,6 +734,8 @@
         if (hit('vs-nostop')) { gm.noStop = true; return gm.respond.done(); }
         if (hit('vs-abil')) return useAbilities(mode);
         if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
+        const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
+        if (lw) { e.stopPropagation(); return openLoyalty(mode, +lw.dataset.iid); }
         const c = t.closest('.vs-card.can');
         if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
         return;
@@ -738,6 +775,8 @@
       if (hit('vs-cycle')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-cycle').dataset.iid, 'cycle'); }
       if (hit('vs-transmute')) { e.stopPropagation(); return cycleCard(mode, +hit('vs-transmute').dataset.iid, 'transmute'); }
       if (hit('vs-asland')) { e.stopPropagation(); return playCard(mode, +hit('vs-asland').dataset.iid, true); }
+      const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
+      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? useVeil(mode, p.iid) : openLoyalty(mode, +lw.dataset.iid); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
       if (c) { e.stopPropagation(); return playCard(mode, +c.dataset.iid, false); }
       if (hit('vs-abil')) return useAbilities(mode);

@@ -350,14 +350,35 @@
       for (let j = 0; j < Math.min(c.qty, 5); j++) { const e = cardEl(c); e.style.left = j * 4 + 'px'; e.style.top = j * 4 + 'px'; p.appendChild(e); }
       const n = Math.min(c.qty, 5); p.style.width = `calc(var(--land-card, 82px) + ${(n - 1) * 4}px)`; p.style.height = `calc(var(--land-card, 82px) * 680 / 488 + ${(n - 1) * 4}px)`;   // the box covers the whole fanned stack, so it centres
       g.appendChild(p);
-      const colors = [...c.a.produce.colors].map(x => `<span class="pip ${x}">${x}</span>`).join('');
+      const colors = [...((c.a.produce && c.a.produce.colors) || [])].map(x => `<span class="pip ${x}">${x}</span>`).join('');          // a land with no mana of its own (Maze of Ith, Glacial Chasm) has no colors
       g.appendChild(h('div', 'cnt', `${c.qty}× ${colors}${c.a.entersTapped ? ' <span title="enters tapped">⤵</span>' : ''}`));
       lw.appendChild(g);
     });
   }
 
+  // ---- Teach these cards: cards whose rules text the engine does not fully read become a pre-filled GitHub request (one click in
+  // the app, then Create on GitHub). Only the card names, the unread lines and the app version are sent, never the decklist.
+  const TEACH_REPO = 'https://github.com/skyweezydeezy/Goldfish-';
+  const unreadLines = c => (c.a.coverage || []).filter(r => r.status === 'ignored' || r.status === 'partial').map(r => r.text);
+  function teachUrl(cards) {
+    const list = cards.slice(0, 8);
+    const block = c => `${c.name}\nhttps://scryfall.com/search?q=${encodeURIComponent('!"' + c.name + '"')}\n` + unreadLines(c).slice(0, 4).map(t => '- ' + t.slice(0, 240)).join('\n');
+    const title = 'Teach: ' + list.map(c => c.name).join(', ').slice(0, 120) + (cards.length > list.length ? ` and ${cards.length - list.length} more` : '');
+    const q = new URLSearchParams({ template: 'teach-card.yml', title, labels: 'unlearned', cards: list.map(block).join('\n\n'), version: 'v' + (self.ISF_VERSION || '?') });
+    return `${TEACH_REPO}/issues/new?${q.toString()}`;
+  }
+  function teachButton(cards, label) { return `<a class="teach-btn" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  function renderTeach() {
+    const box = $('#teachBanner'); if (!box) return;
+    const cards = S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : [];
+    if (!cards.length) { box.hidden = true; box.innerHTML = ''; return; }
+    const names = cards.slice(0, 4).map(c => esc(c.name)).join(', ') + (cards.length > 4 ? ` and ${cards.length - 4} more` : '');
+    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    box.hidden = false;
+  }
   function renderCoverage() {
     if (!S.deck) return;
+    renderTeach();
     const only = $('#covOnlyGaps').checked;
     const box = $('#coverage'); box.innerHTML = '';
     const list = S.deck.unique.filter(c => !(c.a.isLand && /Basic/.test(c.type_line)));
@@ -409,16 +430,13 @@
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
   const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
   const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket + (d.bracketEst ? '?' : '') : ''}</option>`;
+  // Every deck dropdown is tiered the same way: bracket first (highest first), then number of colors (fewest first), then color order
+  // (W U B R G) and name. A dropdown cannot nest groups, so each tier is its own heading: "Bracket 4 · Optimized · Two colors".
   function builtinOptions() {
     let html = '';
-    for (let b = 5; b >= 1; b--) {
-      const ds = BUILTIN.filter(d => d.bracket === b).sort(byColors);
-      if (ds.length) html += `<optgroup label="Bracket ${b} · ${BRACKET_NAME[b]}">` + ds.map(opt).join('') + '</optgroup>';
-    }
-    for (let k = 5; k >= 0; k--) {
-      const ds = BUILTIN.filter(d => !d.bracket && d.colors.length === k).sort(byColors);
-      if (ds.length) html += `<optgroup label="No bracket · ${COLOR_GROUP[k]}${k === 5 ? ' (WUBRG)' : ''}">` + ds.map(opt).join('') + '</optgroup>';
-    }
+    const tier = (ds, head) => { for (let k = 0; k <= 5; k++) { const g = ds.filter(d => (d.colors || '').length === k).sort(byColors); if (g.length) html += `<optgroup label="${head} · ${COLOR_GROUP[k]}">` + g.map(opt).join('') + '</optgroup>'; } };
+    for (let b = 5; b >= 1; b--) tier(BUILTIN.filter(d => d.bracket === b), `Bracket ${b} · ${BRACKET_NAME[b]}`);
+    tier(BUILTIN.filter(d => !d.bracket), 'No bracket');
     return html;
   }
   const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
@@ -991,7 +1009,7 @@
         case 'tempt': log(`<b>💍 The Ring tempts you</b> (${e.n > 4 ? e.n + 'th' : ORD[e.n]} time): ${e.bearer ? '<b>' + nm(e.bearer) + '</b> is your Ring-bearer.' : 'you have no creature to carry it.'} <i>${esc(e.ability)}</i>`); break;
         case 'pump': log(`↳ ${e.all ? 'creatures get' : nm(e.perms[0]) + ' gets'} +${e.p}/+${e.t}${e.keywords && e.keywords.length ? ' and ' + e.keywords.join(', ') : ''} this turn`); break;
         case 'mana': log(`↳ added ${e.n} mana`); break;
-        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.x ? 'X' : e.cost}: <i>${esc(e.text)}</i> (loyalty ${e.perm.loyalty})`); break;
+        case 'pw': log(`<b>${nm(e.perm)}</b> ${e.cost > 0 ? '+' : ''}${e.x ? 'X' : e.cost}: <i>${esc(String(e.text || '').replace(/^[+−-]?(?:\d+|x|X):\s*/, ''))}</i> (loyalty ${e.perm.loyalty})`); break;          // the ability's text without its cost (the cost is written first)
         case 'equip': log(`Equipped ${nm(e.perm)} to ${nm(e.target)}`); break;
         case 'activate': log(`Activated ${nm(e.perm)}: <i>${esc(e.text)}</i>`); break;
         case 'note': log(`↳ ${esc(e.text)}`); break;
@@ -1085,6 +1103,20 @@
     play(ev);
   }
 
+  // Practice: a planeswalker's loyalty abilities, chosen in the same menu as on the Duel table (decide.js loyaltyQuestion)
+  function openLoyalty(obj) {
+    const g = S.game, D = window.Decide, C = window.__isfChoices;
+    if (!g || S.busy || !D || !C) return;
+    const q = D.loyaltyQuestion(g, obj); if (!q) return;
+    S.busy = true;
+    C.ask(q).then(pick => {
+      S.busy = false;
+      const k = pick === 'auto' ? q.def[0] : pick;
+      if (k == null || k === 'none' || !q.options[k] || q.options[k].disabled) return render();
+      const idx = q.options[k].i; snap();
+      quiet(yours(x => G.useLoyalty(x, x.battlefield.find(y => y.iid === obj.iid), idx)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
+    }).catch(() => { S.busy = false; });
+  }
   function castFace(inst, face, el) { snap(); quiet(yours(x => face === 1 ? G.castBackFace(x, sameInst(x, inst)) : G.castCard(x, sameInst(x, inst))).then(ev => faceDone(ev, inst, face, el))); }
   function faceDone(ev, inst, face, el) {
     if (!ev) { S.undo.pop(); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } sfx('error'); return toast(`Not enough mana for ${face === 1 ? 'the back face' : 'the front face'} of ${inst.card.name.split(' // ')[0]}`); }
@@ -1375,6 +1407,11 @@
       items.push([`▶ Cast the front: ${inst.card.name.split(' // ')[0]}`, () => castFace(inst, 0, m)]);
       items.push([`▶ Cast the back: ${inst.card.a.backCard.name}`, () => castFace(inst, 1, m)]);
     }
+    if (zone === 'battlefield' && obj.card.a.isPlaneswalker && !forViewer) items.push(['◆ Loyalty abilities…', () => openLoyalty(obj), 'primary']);          // the planeswalker menu: choose which ability
+    if (zone === 'battlefield' && obj.card.a.chainVeil && !forViewer) {          // The Chain Veil: {4}, {T}: each planeswalker may activate one more loyalty ability this turn
+      const why = G.chainVeilState(S.game, obj);
+      items.push([why ? `◆ The Chain Veil (${why})` : '◆ Activate: {4}, tap: one more loyalty ability for each planeswalker', () => { if (G.chainVeilState(S.game, obj)) { sfx('error'); return toast('The Chain Veil: ' + G.chainVeilState(S.game, obj)); } snap(); quiet(yours(x => G.useChainVeil(x, x.battlefield.find(y => y.iid === obj.iid))).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana for The Chain Veil'); } play(ev); })); }, why ? '' : 'primary']);
+    }
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {
@@ -1448,7 +1485,7 @@
   function clearState(e) {
     e.style.marginLeft = ''; e.style.marginRight = '';
     e.querySelectorAll('.pt,.ctr,.tag').forEach(x => x.remove());
-    e.classList.remove('tapped', 'token', 'sick', 'castable', 'ringbearer');
+    e.classList.remove('tapped', 'token', 'sick', 'castable', 'ringbearer'); e.removeAttribute('title');
   }
 
   function render(first) {
@@ -1459,7 +1496,9 @@
     const used = new Set();
 
     const rows = { zCreatures: [], zOther: [], zLands: [] };
-    g.battlefield.forEach(p => { rows[p.asLand ? 'zLands' : G.isCreaturePerm(p) ? 'zCreatures' : 'zOther'].push(p); });
+    const walker = p => p.card.a.isPlaneswalker && !G.isCreaturePerm(p) && !p.asLand;          // planeswalkers sit in the creature row, at its far end
+    g.battlefield.forEach(p => { rows[p.asLand ? 'zLands' : G.isCreaturePerm(p) || walker(p) ? 'zCreatures' : 'zOther'].push(p); });
+    rows.zCreatures.sort((x, y) => (walker(x) ? 1 : 0) - (walker(y) ? 1 : 0));
     for (const [id, list] of Object.entries(rows)) {
       const row = document.getElementById(id);
       const label = row.querySelector('.row-label');
@@ -1471,8 +1510,10 @@
         if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p);
       });
       const nodes = [label];
+      let spaced = false;
       for (const ps of groups.values()) {
         const sg = h('div', 'stackgroup');
+        if (id === 'zCreatures' && walker(ps[0])) { sg.classList.add('walker'); if (!spaced) { nodes.push(h('span', 'row-spacer')); spaced = true; } }
         if (ps.length === 1 && imprintOf(ps[0])) { sg.classList.add('imprint'); sg.appendChild(imprintEl(ps[0], used)); }
         (ps.length > 4 ? ps.slice(0, 4) : ps).forEach(p => sg.appendChild(permEl(p, used)));   // a big stack shows 4 cards and a count, not 100 images
         if (ps.length > 1) { const sc = h('span', 'stack-count', '×' + ps.length); sc.title = ps.length + ' × ' + ps[0].card.name; sg.appendChild(sc); }          // the pile's size, on the pile: a big stack shows only 4 cards
@@ -1555,6 +1596,7 @@
     // other kinds of counters (indestructible, shield...) as small labelled badges
     Object.keys(p.other || {}).forEach((k, i) => e.appendChild(h('span', 'ctr kind', `${esc(k)} ×${p.other[k]}`)).style.top = (44 + i * 18) + 'px');
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + p.loyalty));
+    if (p.card.a.isPlaneswalker && !S.busy && G.loyaltyState(g, p).list.some(it => it.ok)) { e.classList.add('castable'); e.title = 'Loyalty abilities: click for the menu'; }          // one of its loyalty abilities can be used now
     if (p.attachedTo != null) { const t = g.battlefield.find(q => q.iid === p.attachedTo); if (t) e.appendChild(h('span', 'tag', '→ ' + esc(t.card.name.split(',')[0]))); }
     return e;
   }
@@ -1891,7 +1933,7 @@
   }
   function fillLabOpponents() {
     const saved = Object.keys(getDecks()).sort();
-    $('#plOppList').innerHTML = BUILTIN.map(d => `<option value="builtin:${esc(d.file)}">${esc(d.name)}</option>`).join('') + saved.map(n => `<option value="${esc(n)}">${esc(n)} (saved)</option>`).join('');
+    $('#plOppList').innerHTML = builtinOptions() + (saved.length ? `<optgroup label="Saved in this browser">${saved.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
   }
   function showLabOpponents() {
     const field = $('#plMode').value === 'field', sel = $('#plOpp').value === 'selected';
@@ -1946,6 +1988,19 @@
     const li = rows.map(r => `<li><b>${esc(r.name)}</b> ${pts(r.diff)} pts (z ${r.z.toFixed(1)}) · <span class="pill" title="${esc(VERDICT[r.verdict][1])}">${VERDICT[r.verdict][0]}</span> · ${r.castRate == null ? 'not drawn' : 'cast in ' + (100 * r.castRate).toFixed(0) + '% of games drawn'}${r.notSim.length ? ' · <i>not simulated: ' + esc(r.notSim[0].slice(0, 70)) + '</i>' : ''}${cut ? ` <button class="ghost" data-abcut="${esc(r.name)}">Cut</button>` : ''}</li>`).join('');
     return `<div class="sg"><h3>${title} (${rows.length})</h3><ul>${li}</ul></div>`;
   }
+  // ---- replacements for a card you cut: the most played Commander cards that do the same job, in the deck's colors, for at most one
+  // more mana, and not in the deck already (Scryfall, sorted by EDHREC rank). A list to pick from; the A/B test says whether a pick is better.
+  const abLines = () => $('#abChanges').value.split('\n').map(l => l.trim()).filter(l => l && l !== '+' && l !== '-');
+  const abSetLines = ls => { $('#abChanges').value = ls.join('\n') + (ls.length ? '\n' : ''); };
+  // Cut on any card list: writes "- Card", then shows the same replacements as the ranked swap suggestions under the card
+  async function abCut(btn) {
+    const name = btn.dataset.abcut, li = btn.closest('li'), card = S.deck.unique.find(c => c.name === name);
+    let ls = abLines(); if (!ls.includes('- ' + name)) { ls.push('- ' + name); abSetLines(ls); }
+    btn.classList.add('on'); btn.textContent = 'Cut ✓';
+    if (!card || !li || li.querySelector('.ab-repls')) return;
+    const box = h('div', 'ab-repls ab-under', '<span class="hint">Finding replacements…</span>'); li.appendChild(box);
+    abShowRepls(box, name, await abFind(card, new Set()));
+  }
   $('#abDiag').addEventListener('click', async () => {
     if (!need()) return;
     $('#abDiag').disabled = true; $('#abDiagOut').innerHTML = '';
@@ -1956,11 +2011,67 @@
     abRun({ diagnose: { cards: S.cards, tokens: S.tokens, opps }, opts: abOpts(), n, seed: rseed() }, (d, sec) => {
       $('#abInfo').textContent = `${n.toLocaleString()} matches in ${sec}s: this deck wins ${(100 * d.winRate).toFixed(1)}% against ${opps.length} decks.`;
       const lose = d.losing, win = d.winning;
-      $('#abDiagOut').innerHTML = `<div class="suggest">${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
-      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => { const t = $('#abChanges'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + '- ' + b.dataset.abcut + '\n+ '; t.focus(); }));
+      const ranked = d.rows.filter(r => r.z < 0 && r.verdict !== 'engine' && !r.commander).slice(0, 10);
+      $('#abDiagOut').innerHTML = `<div class="suggest"><div class="sg"><h3>Swap suggestions: the 10 cards most linked to losing, with replacements (${ranked.length})</h3><p class="hint" data-fold>Click a replacement to choose it; click it again to undo. Replacements do the same job (ramp, draw, removal…), are the same kind of card at a similar mana value, fit the commander's colors and are the most played first (EDHREC). ✓ = the engine reads all of its text, so its result will mean something.</p><div id="abSwaps">${ranked.map((r, i) => abSwapRow(r, i)).join('')}</div></div>${abCardList('Cut candidates: fully simulated, cast, and linked to losing', lose.filter(r => r.verdict === 'card' && !r.commander), true)}${abCardList('Linked to losing, but it may be how it is played', lose.filter(r => r.verdict === 'play'), true)}${abCardList('Linked to losing, but the engine cannot judge it', lose.filter(r => r.verdict === 'engine'), false)}${abCardList('Linked to winning: keep', win, false)}</div><p class="hint">"Linked to", not "caused by": about ${Math.max(1, Math.round(d.rows.length * 0.045))} of ${d.rows.length} cards pass z 2 by chance alone. Testing the change is what tells.</p>`;
+      $$('#abDiagOut [data-abcut]').forEach(b => b.addEventListener('click', () => abCut(b)));
       if (typeof tidy === 'function') tidy($('#abDiagOut'));
+      abFillReplacements(ranked);
     });
   });
+  // ---- swap suggestions: card images ranked 1-10, replacements in the same order, click to choose ----
+  const abImg = (card, cls) => { const u = card && imgFor(card); return u ? `<img class="${cls || ''}" src="${esc(u)}" alt="${esc(card.name)}" loading="lazy">` : `<span class="ab-noimg">${esc(card ? card.name : '?')}</span>`; };
+  function abSwapRow(r, i) {
+    const card = S.deck.unique.find(c => c.name === r.name);
+    return `<div class="ab-swap" data-row="${i}"><span class="ab-rank">#${i + 1}</span><figure class="ab-cut">${abImg(card)}<figcaption><b>${esc(r.name)}</b><br>${pts(r.diff)} pts · z ${r.z.toFixed(1)} · ${VERDICT[r.verdict][0]}</figcaption></figure><span class="ab-arrow">→</span><div class="ab-repls" id="abRepl${i}"><span class="hint">Finding replacements…</span></div></div>`;
+  }
+  // Replacements for one card: the same job (by its roles), the same kind of card, a similar mana value, inside the deck's colors, the most
+  // played first; the ones the engine reads fully come first. taken: names already suggested elsewhere on the page.
+  async function abFind(card, taken) {
+    const ident = [...new Set(S.deck.commanders.flatMap(i => i.card.color_identity || []))];
+    const inDeck = new Set(S.deck.unique.map(c => c.name));
+    const roles = typeof Profile !== 'undefined' && Profile.roles ? [...Profile.roles(card)] : [];
+    let found = [];
+    for (const q of Compare.replacementQueries(card, ident, roles)) {
+      const res = await Source.searchCards(q, 24);
+      for (const c of res) if (!inDeck.has(c.name) && !(taken && taken.has(c.name)) && !found.some(x => x.name === c.name)) found.push(c);
+      if (found.length >= 8) break;
+    }
+    return found.slice(0, 8).map(c => { let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, c)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ } return { c, lvl }; })
+      .sort((x, y) => (x.lvl === 'ok' ? 0 : 1) - (y.lvl === 'ok' ? 0 : 1)).slice(0, 5);
+  }
+  // Choosing a replacement: "- Cut" and "+ Pick" go into the change box together (one pick per cut card). A second click takes the pick
+  // back, and the cut too unless you pressed Cut on that card yourself.
+  // Every place that offers replacements for the same card (ranked rows, Cut rows) shows the same choice.
+  function abToggle(cut, add) {
+    let ls = abLines();
+    const all = $$('#abDiagOut .ab-repl').filter(o => o.dataset.cut === cut), was = all.some(o => o.dataset.add === add && o.classList.contains('on'));
+    all.forEach(o => { if (o.classList.contains('on')) ls = ls.filter(x => x !== '+ ' + o.dataset.add); o.classList.remove('on'); });
+    const cutByHand = $$('#abDiagOut [data-abcut]').some(x => x.dataset.abcut === cut && x.classList.contains('on'));          // you pressed Cut yourself: the cut stays
+    if (was) { if (!cutByHand) ls = ls.filter(x => x !== '- ' + cut); }
+    else {
+      if (!ls.includes('- ' + cut)) ls.push('- ' + cut);
+      ls.splice(ls.indexOf('- ' + cut) + 1, 0, '+ ' + add);
+      all.forEach(o => { if (o.dataset.add === add) o.classList.add('on'); });
+    }
+    abSetLines(ls);
+    const n = ls.filter(x => x.startsWith('+ ')).length;
+    $('#abInfo').textContent = n ? `${n} swap${n > 1 ? 's' : ''} chosen.${n > 2 ? ' More than two at once makes it hard to tell which one mattered.' : ''} Click "2. Test version 2".` : '';
+  }
+  function abShowRepls(box, cut, found) {
+    box.innerHTML = found.length ? found.map(({ c, lvl }) => `<button class="ab-repl" data-cut="${esc(cut)}" data-add="${esc(c.name)}" title="${esc(c.name)}">${abImg(c)}<small>${lvl === 'ok' ? '✓ ' : lvl === 'partial' ? '◐ ' : '✗ '}${esc(c.name)}</small></button>`).join('')
+      : '<span class="hint">No replacement found (or Scryfall could not be reached): write your own as "+ Card" below.</span>';
+    box.querySelectorAll('.ab-repl').forEach(b => b.addEventListener('click', () => abToggle(b.dataset.cut, b.dataset.add)));
+  }
+  async function abFillReplacements(ranked) {
+    const taken = new Set();
+    for (let i = 0; i < ranked.length; i++) {
+      const box = $('#abRepl' + i); if (!box) return;                                                    // a new diagnosis replaced the list
+      const card = S.deck.unique.find(c => c.name === ranked[i].name);
+      const found = await abFind(card, taken);
+      found.forEach(x => taken.add(x.c.name));
+      abShowRepls(box, ranked[i].name, found);
+    }
+  }
   $('#abRun').addEventListener('click', async () => {
     if (!need()) return;
     const ch = Compare.applyChanges($('#deckText').value, $('#abChanges').value);
@@ -1983,10 +2094,20 @@
       const head = { better: `✓ Version 2 is better: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)})`, worse: `✗ Version 2 is worse: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)})`, unclear: `≈ No clear difference: ${pts(r.both.diff)} points (z ${r.both.z.toFixed(1)}). More games, or a bigger change, may tell.` }[r.verdict];
       const row = (l, x) => `<tr><td>${l}</td><td>${(100 * x.v1).toFixed(1)}%</td><td>${(100 * x.v2).toFixed(1)}%</td><td>${pts(x.diff)} (z ${x.z.toFixed(1)})</td></tr>`;
       const opp = r.perOpp.map(p => `<li>${esc(p.name)}: ${(100 * p.v1).toFixed(0)}% → ${(100 * p.v2).toFixed(0)}%</li>`).join('');
-      const nc = r.newCards.map(c => `<li><b>${esc(c.name)}</b> ${pts(c.diff)} pts (z ${c.z.toFixed(1)}) · ${VERDICT[c.verdict][0]}</li>`).join('');
-      $('#abOut').innerHTML = `<p><b>${head}</b></p><table class="labtable"><thead><tr><th>Run</th><th>Version 1</th><th>Version 2</th><th>Change</th></tr></thead><tbody>${row('Test', r.test)}${row('Fresh shuffles', r.confirm)}${row('Both', r.both)}</tbody></table>${r.h2h ? `<p class="hint">Head to head: version 2 wins ${(100 * r.h2h.v2).toFixed(1)}% of ${r.h2h.n} matches against version 1 (z ${r.h2h.z.toFixed(1)}).</p>` : ''}<div class="suggest"><div class="sg"><h3>By opponent (${r.perOpp.length})</h3><ul>${opp}</ul></div>${nc ? `<div class="sg"><h3>The cards you added</h3><ul>${nc}</ul></div>` : ''}</div><div class="row wrap"><button id="abUse" class="primary">Use version 2</button></div>`;
+      const unread = v2.cards.map(c => G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0]).filter(c => ch.adds.some(a => a.toLowerCase() === c.name.toLowerCase()) && c.a.coverageLevel !== 'ok');
+      const nc = r.newCards.map(c => `<li><b>${esc(c.name)}</b> ${pts(c.diff)} pts (z ${c.z.toFixed(1)}) · ${VERDICT[c.verdict][0]}</li>`).join('') + (unread.length ? `<li>🧠 ${unread.map(c => esc(c.name)).join(', ')}: not fully understood yet, so ${unread.length > 1 ? 'their' : 'its'} result is rough. ${teachButton(unread, 'Teach ' + (unread.length > 1 ? 'these cards' : 'this card'))}</li>` : '');
+      $('#abOut').innerHTML = `<p><b>${head}</b></p><div class="suggest"><div class="sg"><h3>The runs (3)</h3><table class="labtable"><thead><tr><th>Run</th><th>Version 1</th><th>Version 2</th><th>Change</th></tr></thead><tbody>${row('Test', r.test)}${row('Fresh shuffles', r.confirm)}${row('Both', r.both)}</tbody></table>${r.h2h ? `<p>Head to head: version 2 wins ${(100 * r.h2h.v2).toFixed(1)}% of ${r.h2h.n} matches against version 1 (z ${r.h2h.z.toFixed(1)}).</p>` : ''}</div><div class="sg"><h3>By opponent (${r.perOpp.length})</h3><ul>${opp}</ul></div>${nc ? `<div class="sg"><h3>The cards you added</h3><ul>${nc}</ul></div>` : ''}</div><div class="row wrap"><button id="abUse" class="primary">Use version 2</button><button id="abSave">Save as a new deck</button></div>`;
       if (typeof tidy === 'function') tidy($('#abOut'));
       $('#abUse').addEventListener('click', () => { $('#deckText').value = abV2.text; $('#loadDeck').click(); abOpps = null; toast('Version 2 is now the deck'); });
+      $('#abSave').addEventListener('click', () => {                                                  // keep version 1 as it is, and save version 2 under a new name
+        const all = getDecks(), meta = getMeta(), sel = $('#savedDecks'), cur = sel.selectedOptions[0];
+        const base = (cur && cur.value ? cur.textContent.split(' · ')[0] : abKey()).trim();
+        const name = (prompt('Save version 2 as a new deck:', uniqueName(base + ' v2', all)) || '').trim();
+        if (!name) return;
+        if (all[name] != null && !confirm(`"${name}" is already saved. Replace it?`)) return;
+        all[name] = abV2.text; meta[name] = { saved: Date.now(), from: 'ab-test' };
+        if (putDecks(all, meta)) { refreshSaved(); toast(`Saved "${name}"`); keepData(); }
+      });
       const log = JSON.parse(localStorage.getItem('gf_ab') || '{}'), k = abKey();
       (log[k] = log[k] || []).unshift({ at: new Date().toISOString().slice(0, 10), changes: $('#abChanges').value.trim(), diff: r.both.diff, z: r.both.z, verdict: r.verdict, n });
       log[k] = log[k].slice(0, 20); localStorage.setItem('gf_ab', JSON.stringify(log)); abRenderLog();
@@ -2343,5 +2464,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

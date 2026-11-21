@@ -123,7 +123,22 @@
     return { text: out.join('\n'), cuts, adds: adds.map(a => a.name), missing };
   }
 
-  const api = { diagnose, abTest, applyChanges, cardRows, playField, MATCH };
+  // Scryfall searches for cards that could replace this one: the same job (by its roles), the same kind of card, a similar mana value,
+  // inside the deck's color identity and legal in Commander. The first search is the strictest; the later ones loosen it.
+  const ROLE_TAG = { ramp: 'otag:ramp', draw: 'otag:draw', removal: 'otag:removal', wipe: 'otag:board-wipe', counter: 'otag:counterspell', tutor: 'otag:tutor', recursion: 'otag:recursion', protection: 'otag:protection' };
+  const MAIN_TYPES = ['Land', 'Creature', 'Planeswalker', 'Artifact', 'Enchantment', 'Instant', 'Sorcery', 'Battle'];
+  function replacementQueries(card, identity, roles) {
+    const ci = (identity && identity.length ? identity.join('') : 'C').toLowerCase();
+    const type = MAIN_TYPES.find(t => new RegExp('\\b' + t + '\\b').test(card.type_line || '')) || '';
+    const mv = Math.round(card.cmc || 0), tag = (roles || []).map(r => ROLE_TAG[r]).find(Boolean);
+    const base = `legal:commander id<=${ci} -is:digital`, t = type ? ` t:${type.toLowerCase()}` : '';
+    const range = type === 'Land' ? '' : ` cmc>=${Math.max(0, mv - 1)} cmc<=${mv + 1}`;
+    const qs = [];
+    if (tag) qs.push(`${base} ${tag}${t}${range}`, `${base} ${tag}${range}`);
+    qs.push(`${base}${t}${range}`);
+    return qs;
+  }
+  const api = { diagnose, abTest, applyChanges, cardRows, playField, replacementQueries, MATCH };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Compare = api;
 })(typeof self !== 'undefined' ? self : this);

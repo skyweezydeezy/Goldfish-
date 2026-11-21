@@ -1,0 +1,34 @@
+// Every deck dropdown is tiered the same way: bracket first (highest first), then number of colors (fewest first), then name order
+// inside a tier. Checked on the Build tab's deck list, the mirror opponent, the 1v1 and Pod opponents and the lab's opponent list.
+const { chromium } = require('playwright');
+let pass = 0, fail = 0;
+const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); localStorage.setItem('gf_decks', JSON.stringify({ 'My brew': '1 Forest' })); } catch (e) {} });
+  const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('http://127.0.0.1:8800/');
+  await p.waitForFunction(() => document.querySelectorAll('#savedDecks optgroup').length > 2, null, { timeout: 30000 });
+  await p.click('[data-tab=duel]'); await p.click('[data-tab=pod]'); await p.waitForTimeout(500);
+  await p.evaluate(() => { const m = document.querySelector('#plMode'), o = document.querySelector('#plOpp'); if (m && o) { m.value = 'field'; m.dispatchEvent(new Event('change', { bubbles: true })); o.value = 'selected'; o.dispatchEvent(new Event('change', { bubbles: true })); } });
+  await p.waitForTimeout(300);
+  const read = sel => p.$$eval(sel, els => els.map(el => [...el.querySelectorAll('optgroup')].map(g => ({ label: g.label, n: g.children.length, colors: [...g.children].map(o => (o.textContent.split(' · ')[1] || '').trim()) }))));
+  const COLORS = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
+  const rank = l => { const m = /^Bracket (\d)/.exec(l), k = COLORS.findIndex(c => l.endsWith('· ' + c)); return k < 0 ? null : (m ? (5 - +m[1]) * 10 : 60) + k; };
+  for (const [name, sel] of [['Build: deck list', '#savedDecks'], ['Simulate: mirror opponent', '#mmOpp'], ['Duel: opponent', '#tab-duel .vs-opp'], ['Pod: opponents', '#tab-pod .vs-opp'], ['Lab: opponents', '#plOppList']]) {
+    const lists = await read(sel);
+    check(`${name}: the dropdown is there`, lists.length > 0, lists.length + ' dropdown(s)');
+    for (const groups of lists.slice(0, 1)) {
+      const built = groups.filter(g => g.label !== 'Saved in this browser'), ranks = built.map(g => rank(g.label));
+      check(`${name}: every heading names a bracket and a number of colors`, built.length > 3 && ranks.every(r => r != null), built.map(g => g.label).slice(0, 3).join(' | '));
+      check(`${name}: brackets from the highest down, and inside a bracket from the fewest colors up`, ranks.every((r, i) => !i || r > ranks[i - 1]), ranks.join(','));
+      check(`${name}: the decks under a heading have that many colors`, built.every(g => { const k = COLORS.findIndex(c => g.label.endsWith('· ' + c)); return g.colors.every(c => (c === 'C' ? 0 : c.length) === k); }));
+      check(`${name}: saved decks come last, under their own heading`, groups[groups.length - 1].label === 'Saved in this browser' && groups[groups.length - 1].n === 1);
+    }
+  }
+  check('no page errors', !errs.length, errs[0]);
+  await b.close();
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(1); });

@@ -33,6 +33,11 @@
 .ch-btns { margin: 0; }
 .ch-auto small { color: var(--muted); font-size: 11.5px; }
 .ch-sheet.mode .ch-opts, .ch-sheet.explore .ch-opts { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+/* the planeswalker menu: one tile per loyalty ability; one that cannot be used now is dimmed, its reason in the note */
+.ch-sheet.loyalty .ch-opts { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.ch-sheet.loyalty .ch-opt.text { justify-content: flex-start; text-align: left; align-items: flex-start; }
+.ch-opt.off { opacity: .45; cursor: not-allowed; filter: grayscale(.4); }
+.ch-opt.off:hover { border-color: transparent; }
 .ch-opt.text.def { padding-top: 24px; }                          /* room for the ★ badge above the words */
 
 /* ---------- a library search, the Arena way: the cards fanned out; tap one (it lifts), then Submit ---------- */
@@ -77,6 +82,9 @@
 
 /* a step of the turn in which nothing happened: logged (every turn goes through every step), but quietly */
 .vs-line.quiet { opacity: .55; font-size: 11.5px; padding-top: 2px; padding-bottom: 2px; }
+
+/* your planeswalker when you can use a loyalty ability (your main phase, nothing else waiting): it glows; click it for the menu */
+.vs-arena .mtg.vs-loyal { cursor: pointer; box-shadow: 0 0 0 2px #7fdc7f, 0 0 14px rgba(12,163,12,.65); }
 
 /* what is asked and what is not, under the setup row */
 .vs-what { margin-top: 6px; }

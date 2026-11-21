@@ -39,18 +39,20 @@ const SIDEWAYS = n => /sideways/.test(n);
         handBottom: Math.round(hand.bottom), cardsIn: cards.every(c => c.bottom <= innerHeight + 1 && c.top >= 0), pileBeside: lib.left >= main.right - 1 };
     });
     check(`${name}: the autopilot played to turn 6`, m.turn >= 6, 'turn ' + m.turn);
+    check(`${name}: the whole table fits on one screen`, m.page <= m.vh + 8, `page ${m.page}px, screen ${m.vh}px`);
     if (!SIDEWAYS(name)) {
-      check(`${name}: the whole table fits on one screen`, m.page <= m.vh + 8, `page ${m.page}px, screen ${m.vh}px`);
       check(`${name}: every hand card is fully on screen`, m.cardsIn);
     } else {
-      const top = await p.evaluate(() => { scrollTo(0, 0); const t = document.querySelector('.table-controls').getBoundingClientRect(), bar = document.querySelector('.topbar').getBoundingClientRect();
-        return { controlsIn: t.top >= 0 && t.bottom <= innerHeight, bar: Math.round(bar.height), rows: [...document.querySelectorAll('.bf-row')].map(e => Math.round(e.getBoundingClientRect().height)) }; });
-      check(`${name}: the toolbar is on screen at the top and the tab bar is one row`, top.controlsIn && top.bar <= 70, `tab bar ${top.bar}px`);
-      check(`${name}: every battlefield row has room for cards`, top.rows.every(h => h >= 90), top.rows.join('/') + ' px');
-      const reach = await p.evaluate(async () => { const cards = [...document.querySelectorAll('#zHand .mtg')]; let ok = 0;
-        for (const c of cards) { c.scrollIntoView({ block: 'end' }); await new Promise(r => setTimeout(r, 30)); const r = c.getBoundingClientRect(); if (r.top >= 0 && r.bottom <= innerHeight + 1) ok++; }
-        scrollTo(0, 0); return { ok, n: cards.length }; });
-      check(`${name}: every hand card can be scrolled fully into view`, reach.n > 0 && reach.ok === reach.n, `${reach.ok}/${reach.n}`);
+      // sideways the hand peeks up from the bottom edge: the top of every card (its name) is on screen, and nothing needs scrolling
+      const top = await p.evaluate(() => { const t = document.querySelector('.table-controls').getBoundingClientRect(), bar = document.querySelector('.topbar').getBoundingClientRect();
+        const cards = [...document.querySelectorAll('#zHand .mtg')].map(e => e.getBoundingClientRect());
+        return { controlsIn: t.top >= 0 && t.bottom <= innerHeight, bar: Math.round(bar.height), rows: [...document.querySelectorAll('.bf-row')].map(e => Math.round(e.getBoundingClientRect().height)),
+          n: cards.length, peek: cards.filter(c => c.top >= 0 && c.top + 24 <= innerHeight).length, handW: cards.length ? Math.round(cards[0].width) : 0,
+          sound: (() => { const b = document.querySelector('.table-controls .table-sound'); return !!b && b.getBoundingClientRect().width > 0; })(), speed: document.querySelector('#tSpeed').getBoundingClientRect().width > 40 }; });
+      check(`${name}: the toolbar is on screen at the top and the tab bar is one small row`, top.controlsIn && top.bar <= 56, `tab bar ${top.bar}px`);
+      check(`${name}: every battlefield row has room for cards`, top.rows.every(h => h >= 60), top.rows.join('/') + ' px');
+      check(`${name}: the name of every hand card is on screen, on cards big enough to recognise`, top.n > 0 && top.peek === top.n && top.handW >= 80, `${top.peek}/${top.n}, ${top.handW}px wide`);
+      check(`${name}: the speed slider and the sound button are in the toolbar row`, top.sound && top.speed);
     }
     check(`${name}: library and graveyard piles sit beside the battlefield`, m.pileBeside);
     await p.click('#tLog');

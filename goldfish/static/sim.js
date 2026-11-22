@@ -1599,7 +1599,8 @@
         if ((mk = line.match(/^suspend (\d+)—((?:\{[^}]+\})+)/i))) { a.suspend = { n: +mk[1], cost: parseCost(mk[2]) }; rec.status = 'ok'; continue; }          // exiled with time counters, cast free when the last is removed
         if ((mk = line.match(/^exile ~ with (\w+) time counters on it/i))) { a.resuspend = num(mk[1]); rec.status = 'ok'; continue; }          // Inspiring Refrain: suspended again after it resolves
         if ((mk = line.match(/^overload ((?:\{[^}]+\})+)/i))) {
-          if (a.spellFx.some(f => f.type === 'mastery')) { a.overload = { cost: parseCost(mk[1]), fx: [{ type: 'mastery', all: true }] }; rec.status = 'ok'; }          // Mizzix's Mastery: every instant and sorcery in your graveyard
+          if (/^target noncreature artifact you control becomes a 0\/0 artifact creature\. put four \+1\/\+1 counters on each artifact that became a creature this way/im.test(text)) { a.spellFx = [{ type: 'animateArtifacts', p: 0, t: 0, one: true, perm: true, counters: 4 }]; a.overload = { cost: parseCost(mk[1]), fx: [{ type: 'animateArtifacts', p: 0, t: 0, perm: true, counters: 4 }] }; rec.status = 'ok'; }          // Rise and Shine
+          else if (a.spellFx.some(f => f.type === 'mastery')) { a.overload = { cost: parseCost(mk[1]), fx: [{ type: 'mastery', all: true }] }; rec.status = 'ok'; }          // Mizzix's Mastery: every instant and sorcery in your graveyard
           else if (/^return target nonland permanent you don't control to its owner's hand/im.test(text)) { a.overload = { cost: parseCost(mk[1]), fx: [{ type: 'bounceAll', what: 'nonland' }] }; rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }          // Cyclonic Rift: every nonland permanent you don't control
           else if (/^target creature you control gains protection from each color until end of turn/im.test(text)) { a.overloadProt = parseCost(mk[1]); rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }          // Eldritch Immunity: all your creatures, as an answer
           else if (/you don't control|destroy target (?:creature|land)|goad|protection from/i.test(text)) { rec.status = 'neutral'; rec.tag = 'opp'; }
@@ -1781,6 +1782,19 @@
         if (/^whenever you discard a card, choose one that hasn't been chosen this turn —$/i.test(line)) { T4(['discard'], [{ type: 'monument' }]); continue; }          // Monument to Endurance
         if (a.triggers.some(t => t.fx.some(f => f.type === 'monument')) && /^• (?:draw a card|create a treasure token|each opponent loses 3 life)\.?$/i.test(line)) { rec.status = 'ok'; continue; }
         if (/^\{u\}, \{t\}: the next spell you cast this turn has improvise/i.test(line)) { a.archway = true; rec.status = 'ok'; continue; }          // Archway of Innovation
+        // ---- Loaded Dice (Krark and Sakashima): the coin flip and the cards that turn artifacts into creatures ----
+        if (/^whenever you cast an instant or sorcery spell, flip a coin\. if you lose the flip, return that spell to its owner's hand\. if you win the flip, copy that spell/i.test(line)) { a.krark = true; rec.status = 'ok'; continue; }          // Krark, the Thumbless (see castCard)
+        if (/^~ has all activated abilities of all cards exiled with it/i.test(line)) { a.welder = true; rec.status = 'partial'; continue; }          // Myr Welder: the borrowed abilities are not used
+        if (/^activated abilities of creatures cost \{1\} less to activate/i.test(line)) { (a.statics.actReduce = a.statics.actReduce || []).push({ n: 1, who: 'creature' }); rec.status = 'ok'; continue; }          // Heartstone (see actCost)
+        if (/^\{x\}, \{t\}: tap x target noncreature artifacts/i.test(line)) { rec.status = 'neutral'; continue; }          // Synod Artificer: nothing to tap against a goldfish
+        if (/^\{x\}, \{t\}: untap x target noncreature artifacts/i.test(line)) { a.synodUntap = true; rec.status = 'partial'; continue; }          // Synod Artificer: the untap is not used yet
+        if (/^whenever ~ blocks or becomes blocked, it gets -4\/\+4 until end of turn/i.test(line)) { rec.status = 'neutral'; continue; }          // Karn, Silver Golem
+        if (/^\{1\}: target noncreature artifact becomes an artifact creature with power and toughness each equal to its mana value until end of turn/i.test(line)) { a.activated.push({ cost: parseCost('{1}'), tap: false, fx: [{ type: 'animateArtifact' }], gate: 'animateWorth', text: raw }); rec.status = 'ok'; continue; }          // Karn, Silver Golem
+        if (/^at the beginning of combat on your turn, target non-equipment artifact you control becomes an artifact creature with base power and toughness 3\/3 until end of turn\. untap it/i.test(line)) { T4(['combat'], [{ type: 'animateArtifacts', p: 3, t: 3, one: true, untap: true }]); continue; }          // Living Brain, Mechanical Marvel
+        if (/^each noncreature artifact is an artifact creature with power and toughness each equal to its mana value/i.test(line)) { a.marchMachines = true; rec.status = 'ok'; continue; }          // March of the Machines (see starfieldSync)
+        if (/^enchanted artifact is a creature with base power and toughness 5\/5 in addition to its other types/i.test(line)) { T4(['etb'], [{ type: 'animateArtifacts', p: 5, t: 5, one: true, perm: true }]); continue; }          // Ensoul Artifact: your best artifact, for as long as the game lasts
+        if (/^\{2\}\{u\}: until end of turn, target noncreature artifact you control becomes an artifact creature and gains flying/i.test(line)) { rec.status = 'partial'; continue; }          // Katsumasa, the Animator: a 1/1 flier for three mana is not activated
+        if (/^the first activated ability of an artifact you activate each turn costs \{2\} less to activate/i.test(line)) { rec.status = 'partial'; continue; }          // Tezzeret, Betrayer of Flesh: the discount is not applied
         if (/^when ~ enters, each noncreature artifact you control becomes a 4\/4 artifact creature until end of turn/i.test(line)) { T4(['etb'], [{ type: 'animateArtifacts', p: 4, t: 4 }]); continue; }          // Cyberdrive Awakener
         if (/^when ~ dies, return it to the battlefield tapped and transformed under its owner's control/i.test(line)) { a.dieTransform = true; rec.status = 'ok'; continue; }          // Ojer Taq (and the other Ojer gods)
         if ((mq = line.match(/^((?:\{[^}]+\})+), \{t\}: transform ~\. activate only if you attacked with three or more creatures this turn and only as a sorcery/i))) { a.templeCiv = parseCost(mq[1]); rec.status = 'ok'; continue; }          // Temple of Civilization
@@ -2330,6 +2344,7 @@
           : /^choose left or right/i.test(pwt) ? { fx: [], neutral: true }
           : /^reveal the top two cards of your library\. an opponent chooses one of them/i.test(pwt) ? { fx: [{ type: 'karnPlus' }] }
           : /^put a card you own with a silver counter on it from exile into your hand/i.test(pwt) ? { fx: [{ type: 'karnMinus' }] }
+          : /^target artifact becomes an artifact creature\. if it isn't a vehicle, it has base power and toughness 4\/4/i.test(pwt) ? { fx: [{ type: 'animateArtifacts', p: 4, t: 4, one: true, perm: true }] }          // Tezzeret, Betrayer of Flesh
           : /^artifacts you control become artifact creatures with base power and toughness (\d+)\/(\d+) until end of turn/i.test(pwt) ? { fx: [{ type: 'animateArtifacts', p: +pwt.match(/(\d+)\/(\d+)/)[1], t: +pwt.match(/(\d+)\/(\d+)/)[2] }] }
           : /^untap up to two target artifacts/i.test(pwt) ? { fx: [{ type: 'untapArtifacts', n: 2 }] }
           : /^each opponent who doesn't control a legendary creature or planeswalker loses the game/i.test(pwt) ? { fx: [{ type: 'win', unlessOppLegend: true }] }
@@ -3655,7 +3670,7 @@
     const gone = g.pendingLeaves || [];
     g.pendingLeaves = [];
     for (const p of gone) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('tokenLeave')) fire(g, t, q, ev, p);
-    if (!g.dry && g.battlefield.some(q => q.card.a.starfield || (q.animated && q.animated.starfield))) starfieldSync(g);          // Starfield of Nyx
+    if (!g.dry && g.battlefield.some(q => q.card.a.starfield || q.card.a.marchMachines || (q.animated && (q.animated.starfield || q.animated.march)))) starfieldSync(g);          // Starfield of Nyx
   }
   // A permanent is sacrificed or destroyed: a real card goes to the graveyard (a commander to the command zone), and "when ~ leaves the battlefield"
   // triggers fire with its power (Rapacious Guest).
@@ -4287,7 +4302,7 @@
     }
     const perm = enter(g, inst, o);
     const a = inst.card.a;
-    if (!g.dry && (a.starfield || (a.isEnchantment && (tableHas(g, 'starfield') && g.battlefield.some(q => q.card.a.starfield))))) starfieldSync(g);          // Starfield of Nyx
+    if (!g.dry && (a.starfield || a.marchMachines || (a.isArtifact && g.battlefield.some(q => q.card.a.marchMachines)) || (a.isEnchantment && (tableHas(g, 'starfield') && g.battlefield.some(q => q.card.a.starfield))))) starfieldSync(g);          // Starfield of Nyx
     if (!g.dry && perm.asLand && !o.tapped && /\bGate\b/.test(perm.card.type_line || '') && (tableHas(g, 'gondGate') && g.battlefield.some(q => q.card.a.gondGate))) perm.tapped = false;          // Gond Gate
     if (!g.dry && a.abilStax === 'totem') { g.needleSeen = true; if (g.opp) g.opp.needleSeen = true; }          // Cursed Totem: abilities are checked from now on
     if (!g.dry && isCreaturePerm(perm)) { const fe = (tableHas(g, 'ferocidon') ? bothSides(g).filter(q => q.card.a.ferocidon && q !== perm) : []).length; if (fe) { g.life -= fe * twinMult(g); checkDeath(g, ev || []); } }          // Rampaging Ferocidon: 1 damage to the entering creature's controller
@@ -5770,7 +5785,9 @@
         case 'tempCreatureMana': g.tempCreatureMana = g.turn + 1; touch(g); break;
         case 'putFromHand': for (let k = 0; k < (f.n || 1); k++) { const ok = c => !c.card.commander && !entryBlocked(g, c.card, 'other') && (c.card.a.mv || 0) <= f.maxMv && (f.kind === 'planeswalker' ? c.card.a.isPlaneswalker : f.kind === 'artifact' ? c.card.a.isArtifact : f.kind === 'creature' ? c.card.a.isCreature : f.kind === 'spacecraft' ? /Spacecraft/.test(c.card.type_line || '') : (c.card.a.isPermanent && !c.card.a.saga && !c.card.a.isLand)); const c = g.hand.filter(ok).sort((x, y) => y.card.a.mv - x.card.a.mv)[0]; if (!c) break; g.hand.splice(g.hand.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${c.card.name} is put onto the battlefield`, source }); } break;
         case 'damageEachCreature': { const mine = g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= n), theirs = g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g.opp, q) <= n) : []; theirs.forEach(q => leavePerm(g.opp, q, ev)); mine.forEach(q => leavePerm(g, q, ev)); if (g.opp) flushLeaves(g.opp, ev); flushLeaves(g, ev); break; }
-        case 'animateArtifacts': { const arts = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.asLand); (f.one ? arts.slice(0, 1) : arts).forEach(q => { q.animated = { p: f.p, t: f.t, kw: [] }; }); touch(g); break; }
+        case 'animateArtifacts': { const arts = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.asLand);
+          if (f.one) arts.sort((x, y) => (x.token ? 1 : 0) - (y.token ? 1 : 0) || (y.card.a.mv || 0) - (x.card.a.mv || 0));          // one target: the biggest real artifact
+          (f.one ? arts.slice(0, 1) : arts).forEach(q => { q.animated = { p: f.p, t: f.t, kw: f.kw || [], perm: !!f.perm }; if (f.untap) q.tapped = false; if (f.counters) addCounters(g, q, '+1/+1', f.counters, ev, source, true); }); touch(g); break; }
         case 'copyNext': g.copyNext = { turn: g.turn, n: f.n, times: f.times || 1 }; break;
         case 'reanimateTotal': { let left = n; const cs = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x)); for (const c of cs) { if ((c.card.a.mv || 0) > left) continue; left -= (c.card.a.mv || 0); g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); } break; }
         case 'gyReturnN': for (let k = 0; k < f.n; k++) { const w = f.what || ''; const ok = i => !i.card.commander && (/creature or land/.test(w) ? (i.card.a.isCreature || i.card.a.isLand) : /artifact, instant, or sorcery/.test(w) ? (i.card.a.isArtifact || i.card.a.isInstantSorcery) : /permanent/.test(w) ? i.card.a.isPermanent : /creature/.test(w) ? i.card.a.isCreature : /land/.test(w) ? i.card.a.isLand : true); const ctx = tutorContext(g); const t = g.graveyard.filter(ok).sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx))[0]; if (!t) break; g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); ev.push({ type: 'tutor', inst: t, source }); } break;
@@ -7112,6 +7129,13 @@
       }
       if (!g.dry && g.copyNext && g.copyNext.turn === g.turn && g.copyNext.n > 0 && a.spellFx.length && !a.counter) { g.copyNext.n--; for (let k = 0; k < g.copyNext.times; k++) { ev.push({ type: 'note', text: `A copy of ${inst.card.name} resolves` }); applyEffects(g, a.spellFx, null, ev, null); } }
       if (!g.dry && (tableHas(g, 'statics.copyAIS') && g.battlefield.some(q => q.card.a.statics.copyAIS)) && a.spellFx.length && !a.counter) { ev.push({ type: 'note', text: `A copy of ${inst.card.name} resolves (Jin-Gitaxias)` }); applyEffects(g, a.spellFx, null, ev, null); }
+      // Krark, the Thumbless: a coin for each one. Won: a copy. Lost: the spell goes back to your hand instead of resolving.
+      let flipLost = false;
+      if (!g.dry && a.isInstantSorcery && !a.counter) for (const kr of g.battlefield.filter(q => q.card.a.krark)) {
+        if (g.rnd() < 0.5) { ev.push({ type: 'note', text: `${kr.card.name}: flip won, ${inst.card.name} is copied`, source: kr }); copySpell(g, inst, ev, 1); }
+        else { flipLost = true; ev.push({ type: 'note', text: `${kr.card.name}: flip lost, ${inst.card.name} returns to your hand`, source: kr }); }
+      }
+      if (flipLost) inst.buybackPaid = true; else
       applyEffects(g, inst.overloaded ? a.overload.fx : a.spellFx, null, ev, null);
       const seventh = !g.dry && !inst.exileInstead && !inst.foreign && g.killTurn == null && !matchOver(g) && a.spellFx.some(f => f.cond && f.cond.kind === 'secondCast');          // Approach of the Second Sun, first cast: it goes into the library seventh from the top
       if (inst.buybackPaid && !seventh) { inst.buybackPaid = false; g.hand.push(inst); } else          // buyback: back to your hand
@@ -8813,6 +8837,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // when an ability that waits for the right moment is worth activating
   const countedTokens = ab => ab.fx.some(f => f.type === 'token' && f.n === 'X' && f.count && f.creature);          // "create X tokens, where X is the number of ..." (Krenko, Mob Boss)
   function abilityGate(g, p, ab) {
+    if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
     if (ab.gate === 'finishPing') return oppLifeLeft(g) <= (ab.n || 1) && g.killTurn == null;          // Mogg Fanatic: the last point of damage
     if (ab.gate === 'life') return lifeWanted(g) && (!ab.greenPerms || g.battlefield.filter(q => colorsOf(g, q.card).includes('G')).length >= ab.greenPerms);          // Sapseep Forest: two green permanents
     if (ab.gate === 'topDraw') { const c = g.library[0]; return !!c && (c.card.a.isLand ? g.landsPlayedThisTurn < landsAllowed(g) : canPay(effectiveCost(g, c), allUnits(g).filter(u => u.src !== p))); }
@@ -11496,6 +11521,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const q of g.battlefield) { const want = on && q.card.a.isEnchantment && !q.card.a.isAura && !q.card.a.isCreature && !q.asLand && sf.some(x => x !== q);
       if (want && !q.animated) { const mv = q.card.a.mv || 0; q.animated = { p: mv, t: mv, kw: [], starfield: true, perm: true }; q.sick = q.enteredTurn != null && q.enteredTurn >= g.turn; ch = true; }
       else if (!want && q.animated && q.animated.starfield) { q.animated = null; ch = true; } }
+    // March of the Machines: every noncreature artifact is a creature as big as its mana value (one that costs nothing dies)
+    const march = g.battlefield.some(q => q.card.a.marchMachines);
+    for (const q of g.battlefield) { const want = march && q.card.a.isArtifact && !q.card.a.isCreature && !q.asLand;
+      if (want && !q.animated) { const mv = q.token ? 0 : (q.card.a.mv || 0); q.animated = { p: mv, t: mv, kw: [], march: true, perm: true }; q.sick = q.enteredTurn != null && q.enteredTurn >= g.turn; ch = true; }
+      else if (!want && q.animated && q.animated.march) { q.animated = null; ch = true; } }
     if (ch) touch(g);
   }
   // Dictate of the Twin Gods, Furnace of Rath: damage doubled for each one on the table

@@ -1915,6 +1915,7 @@
         if (/^\{t\}, remove a gold counter from ~: draw a card/i.test(line)) { a.hoardDraw = true; rec.status = 'ok'; continue; }          // Dragon's Hoard
         if ((mm = line.match(/^((?:\{[^}]+\})+), remove a \+1\/\+1 counter from ~: target player searches their library for a basic land card, puts it onto the battlefield tapped/i))) { a.fertilid = parseCost(mm[1]); rec.status = 'ok'; continue; }
         if ((mm = line.match(/^((?:\{[^}]+\})+), \{t\}, sacrifice a token: draw a card/i))) { a.tokenDraw = parseCost(mm[1]); rec.status = 'ok'; continue; }          // Fountainport
+        if (/^when ~ enters, create a 0\/0 green and blue fractal creature token\. put x \+1\/\+1 counters on it and attach ~ to it/i.test(line)) { T(['etb'], [{ type: 'token', n: 1, tapped: false, creature: true, p: 0, t: 0, colors: ['G', 'U'], subtypes: ['Fractal'], keywords: [], artifact: false, name: 'Fractal' }, { type: 'counters', kind: '+1/+1', n: 'X', scope: 'lastToken', other: false, excl: false, types: [] }, { type: 'attachLastToken' }]); continue; }          // Fractal Harness: the counters go on the token it just made, before anything else can happen
         if (/^whenever equipped creature attacks, double the number of \+1\/\+1 counters on it/i.test(line)) { T(['equippedAttack'], [{ type: 'doubleSubjectCounters' }]); continue; }          // Fractal Harness
         if (/^whenever you attack, create a tapped and attacking x\/x green dinosaur creature token with trample, where x is the greatest power among other attacking creatures/i.test(line)) { T(['attackAny'], [{ type: 'attackTokenX' }], { once: true }); continue; }          // Ghalta and Mavren
         if ((mm = line.match(/^((?:\{[^}]+\})+), remove a \+1\/\+1 counter from a creature you control: create a 1\/1 green saproling creature token/i))) { a.ghaveToken = parseCost(mm[1]); rec.status = 'ok'; continue; }          // Ghave
@@ -4271,6 +4272,9 @@
 
   function enterWithTriggers(g, inst, o, ev) {
     o = o || {};
+    if (g.xValue > 0 && !inst.card.isToken && inst.card.a.cost && inst.card.a.cost.x && g.lastCast && g.lastCast.iid !== inst.iid && !g.lastCast.card.a.isPermanent) {          // X is the cast spell's: a card that spell puts onto the battlefield (Finale of Devastation finding The Goose Mother) enters with X = 0
+      const xv = g.xValue; g.xValue = 0; try { return enterWithTriggers(g, inst, o, ev); } finally { g.xValue = xv; }
+    }
     if (inst.card.a.cloneYardLand && !g.dry) {          // Echoing Deeps: enters tapped as a copy of the best land card in a graveyard
       const val = i => (i.card.a.produce ? i.card.a.produce.amount * 3 + i.card.a.produce.colors.size * 0.5 : 0) + (i.card.a.coffers || i.card.a.nykthos ? 6 : 0) + (i.card.a.fetch ? 2 : 0);
       const t = [g].concat(otherPlayers(g)).reduce((l, x) => l.concat(x.graveyard), []).filter(i => i.card.a.isLand && !i.card.a.cloneYardLand && !i.card.a.cloneLand).sort((x, y) => val(y) - val(x))[0];
@@ -5139,7 +5143,7 @@
       else if (n === 'HANDPLUS1') n = g.hand.length + 1;
       else if (n === 'HAND') n = g.hand.length;
       else if (n === 'POW2X') n = Math.max(0, Math.min(Math.pow(2, g.xValue || 1), g.library.length - 3));
-      else if (n === 'HALFX') n = Math.ceil((g.xValue || 1) / 2);
+      else if (n === 'HALFX') n = Math.ceil((g.xValue === 0 ? 0 : g.xValue || 1) / 2);
       else if (n === 'TWOX') n = 2 * (g.xValue || 1);
       else if (n === 'OTHERMV') n = g.battlefield.reduce((t, q) => t + (q !== source && !q.token ? (q.card.a.mv || 0) : 0), 0);
       else if (n === 'TO7') n = Math.max(0, 7 - g.hand.length);
@@ -5158,8 +5162,9 @@
       else if (n === 'GREATESTPOWER') n = Math.min(10, countWhat(g, 'greatest power among creatures you control', null));
       else if (n === 'OTHERC') n = g.battlefield.filter(q => isCreaturePerm(q) && q !== source).length;
       else if (n === 'ZGY') n = g.graveyard.filter(i => /\bZombie\b/.test(i.card.type_line || '')).length;      // Sorin: damage equal to the life you gained this turn
-      else if (n === 'X') n = f.count ? countFor(g, f.count, source) : (g.xValue || 1);
+      else if (n === 'X') n = f.count ? countFor(g, f.count, source) : (g.xValue === 0 ? 0 : g.xValue || 1);
       switch (f.type) {
+        case 'attachLastToken': if (source && g._lastTok && g.battlefield.includes(g._lastTok) && g.battlefield.includes(source)) { source.attachedTo = g._lastTok.iid; touch(g); } break;
         case 'token': {
           const spec = Object.assign({}, f);
           if (spec.p === 'X' || spec.t === 'X') { const x = countFor(g, f.count, source); if (spec.p === 'X') spec.p = x; if (spec.t === 'X') spec.t = x; }
@@ -7047,8 +7052,10 @@
       const val = (gg, q) => isCreaturePerm(q) ? creatureValue(gg, q) + 2 : (q.card.a.mv || 0);
       const pool = g.battlefield.filter(okc).map(q => ({ q, gg: g })).concat(g.opp && a.cloneOf !== 'own creature' ? g.opp.battlefield.filter(okc).map(q => ({ q, gg: g.opp })) : []).filter(x => !x.q.card.a.isLegendary || x.gg !== g || a.cloneOf === 'own creature').sort((x, y) => val(y.gg, y.q) - val(x.gg, x.q));
       if (pool[0]) {
-        const ci = { iid: inst.iid, card: pool[0].q.card }; const np = enterWithTriggers(g, ci, {}, ev); np.inst = inst; np.copyOf = pool[0].q.card.name;
-        ev.push({ type: 'note', text: `${inst.card.name} enters as a copy of ${pool[0].q.card.name}` }); castEv.perm = np; return;
+        let src = pool[0].q; if (g.ask && pool.length > 1) src = decide(g, { kind: 'target', what: 'copy', options: pool.map(x => x.q), def: src, source: inst }) || src;
+        const xAdd = a.cost.x && /enters with x additional \+1\/\+1 counters/i.test(inst.card.oracle_text || '') ? Math.max(0, g.xValue || 0) : 0;          // Altered Ego
+        const ci = { iid: inst.iid, card: src.card }; const np = enterWithTriggers(g, ci, {}, ev); np.inst = inst; np.copyOf = src.card.name; if (xAdd) addCounters(g, np, '+1/+1', xAdd, ev, null);
+        ev.push({ type: 'note', text: `${inst.card.name} enters as a copy of ${src.card.name}${xAdd ? ` with ${xAdd} additional +1/+1 counter${xAdd === 1 ? '' : 's'}` : ''}` }); castEv.perm = np; return;
       }
     }
     if (a.protean && g.attackedThisTurn && !g.dry) {                                                     // Protean Raider: raid - enter as a copy of the best creature on the battlefield
@@ -7398,6 +7405,7 @@
       if (f.colors && !f.colors.some(c => colorsOf(g, i.card).includes(c))) continue;
       if (f.maxMv != null && (i.card.a.mv || 0) > (f.maxMv === 'X' ? (g.xValue || 0) : f.maxMv)) continue;
       if (f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands)) continue;
+      if (f.dest === 'battlefield' && i.card.a.cost && i.card.a.cost.x && i.card.a.isCreature && !(i.card.a.toughness > 0)) continue;          // a 0/0 that "enters with X counters": put onto the battlefield without being cast, X is 0 and it dies
       const s = f.biggest ? (i.card.a.mv || 0) + tutorScore(chooser, i, ctx) * 0.001 : tutorScore(chooser, i, ctx);          // Natural Order: the biggest one
       if (s > bs) { bs = s; best = i; }
     }

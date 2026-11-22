@@ -45,5 +45,34 @@ const cast = (g, inst, pick) => { let q = null; const ev = D.resolveSync([g], 0,
   const n = hand(g2, 'Forgotten Ancient');
   if (n && n.card) { const r = cast(g2, n, x => 0); check('a spell without {X} asks nothing and gives Zimone no counter', !r.q && z2.counters === 0, z2.counters); }
 })();
+// ---- X is applied as the card enters: nothing can happen between entering and getting its counters
+(() => {
+  const g = fresh(true); const fa = G.enterWithTriggers(g, { iid: g.nextIid++, card: by('Forgotten Ancient') }, {}, []);
+  const ae = hand(g, 'Altered Ego'); cast(g, ae, x => 1);          // X = 2
+  const cp = g.battlefield.find(p => p.copyOf === 'Forgotten Ancient');
+  check('Altered Ego enters as a copy with X additional +1/+1 counters', cp && cp.counters === 2, cp && cp.counters);
+})();
+(() => {
+  const g = fresh(true); const fh = hand(g, 'Fractal Harness'); cast(g, fh, x => 2);          // X = 3
+  const tok = g.battlefield.find(p => p.card.name === 'Fractal'), eq = g.battlefield.find(p => p.card.name === 'Fractal Harness');
+  check('Fractal Harness: its 0/0 Fractal token gets X counters and survives', tok && tok.counters === 3, tok && tok.counters);
+  check('...and the Harness is attached to it', tok && eq && eq.attachedTo === tok.iid);
+})();
+(() => {
+  const g = fresh(true); const gm = { iid: g.nextIid++, card: by('The Goose Mother') }; g.library = [gm].concat(g.library.filter(i => !i.card.a.isCreature));
+  const fd = hand(g, 'Finale of Devastation'); cast(g, fd, x => 2);          // X = 3: finds The Goose Mother (mana value 2)
+  const p = g.battlefield.find(q => q.card.name === 'The Goose Mother');
+  check('Finale of Devastation, X = 3: the creature it finds was not cast, so its own X is 0 (no counters, no Food)', p && !(p.counters > 0) && !g.battlefield.some(q => q.card.name === 'Food'), p && (p.counters || 0));
+})();
+(() => {
+  const g = fresh(true); const hy = { iid: g.nextIid++, card: by('Primordial Hydra') }; g.library = [hy].concat(g.library.filter(i => !i.card.a.isCreature));
+  const fd = hand(g, 'Finale of Devastation'); cast(g, fd, x => 5);
+  check('...and it does not pick a 0/0 Hydra that would die at once', !g.graveyard.includes(hy) && !g.battlefield.some(q => q.card.name === 'Primordial Hydra'));
+})();
+(() => {
+  const g = fresh(true); const ac = hand(g, 'Astral Cornucopia'); cast(g, ac, x => 1);          // X = 2: six mana
+  const p = g.battlefield.find(q => q.card.name === 'Astral Cornucopia');
+  check('Astral Cornucopia, X = 2: it taps for two mana', p && p.produce && p.produce.amount === 2 && untapped(g) === 0, p && p.produce && p.produce.amount);
+})();
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

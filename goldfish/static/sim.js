@@ -125,7 +125,7 @@
   // is the spell (or the ability) being paid for one that restricted mana can pay?
   function restrictOk(g, R, ctx) {
     if (!ctx) return false;
-    if (ctx.abilityOf) { const sp = ctx.abilityOf; if (!R.abil) return false; return R.k === 'creature' ? isCreaturePerm(sp) : R.k === 'type' ? isCreaturePerm(sp) && matchesFilter(sp.card, R.t) : R.k === 'eldrazi' ? !colorsOf(g, sp.card).length && matchesFilter(sp.card, 'eldrazi') : false; }
+    if (ctx.abilityOf) { const sp = ctx.abilityOf; if (!R.abil) return false; return R.k === 'creature' ? isCreaturePerm(sp) : R.k === 'type' ? isCreaturePerm(sp) && matchesFilter(sp.card, R.t) : R.k === 'eldrazi' ? !colorsOf(g, sp.card).length && matchesFilter(sp.card, 'eldrazi') : R.k === 'artifact' ? !!sp.card.a.isArtifact : false; }
     const a = ctx.card.a, c = ctx.card;
     switch (R.k) {
       case 'creature': return a.isCreature;
@@ -1435,6 +1435,9 @@
         if ((mu = line.match(/^\{(\d|u)\}, \{t\}: untap target (artifact|creature|legendary permanent)\.?$/i))) { a.untapper = { what: mu[2].split(' ')[0].toLowerCase(), cost: /u/i.test(mu[1]) ? 1 : +mu[1] }; rec.status = 'ok'; continue; }
         if ((mu = line.match(/^\{(\d)\}: untap ~\.?$/i))) { a.selfUntap = +mu[1]; rec.status = 'ok'; continue; } }          // Basalt and Grim Monolith (see infiniteMana), Staff of Domination
       if (/^\{u\}: untap enchanted creature\.?$/i.test(line)) { a.auraUntapU = true; rec.status = 'ok'; continue; }
+      if (/^\{2\}, \{q\}: add one mana of any color\.?$/i.test(line)) { a.piliPala = true; rec.status = 'ok'; continue; }          // Pili-Pala: untaps for mana (with Grand Architect: see infiniteMana)
+      if (/^\{u\}: target artifact creature becomes blue until end of turn\.?$/i.test(line)) { rec.status = 'ok'; continue; }          // Grand Architect: what makes Pili-Pala blue for the ability below
+      if (/^tap an untapped blue creature you control: add \{c\}\{c\}\. spend this mana only to cast artifact spells or activate abilities of artifacts\.?$/i.test(line)) { a.statics.blueTap = true; rec.status = 'ok'; continue; }          // Grand Architect
       if (/^discard your hand, sacrifice ~: add three mana of any one color\. activate only as an instant/i.test(line)) { a.led = true; rec.status = 'ok'; continue; }          // Lion's Eye Diamond          // Freed from the Real, Pemmin's Aura (see infiniteMana)
       if (/^if one or more -1\/-1 counters would be put on a creature you control, that many -1\/-1 counters minus one are put on it instead/i.test(line)) { a.statics.vizier = true; rec.status = 'ok'; continue; }          // Vizier of Remedies
       // ---- built-in decks, full support: card selection (scry and surveil abilities, look-and-put, wheels, milling an opponent)
@@ -3252,6 +3255,7 @@
     if (st.swampDouble) info.swampDouble = true;
     if (st.creatureMana) info.creatureMana = true;
     if (st.legendMana) info.legendMana = true;
+    if (st.blueTap) info.blueTap = true;
     if (st.allForests) info.allForests = true;
     if (st.lossMult) info.lossMult *= st.lossMult;
     if (st.amulet) info.amulet = true;
@@ -3603,6 +3607,7 @@
       if (!isCreaturePerm(q) || q.tapped || q.produce || (q.sick && !hasKw(g, q, 'haste'))) continue;
       units.push({ src: q, colors: ANY_COLOR });
     }
+    if (info.blueTap && g._payFor && restrictOk(g, { k: 'artifact', abil: true }, g._payFor)) for (const q of g.battlefield) { if (isCreaturePerm(q) && !q.tapped && !q.produce && colorsOf(g, q.card).includes('U')) units.push({ src: q, colors: new Set(['C']) }, { src: q, colors: new Set(['C']) }); }          // Grand Architect: a blue creature taps for {C}{C}, for artifacts only (no {T}: summoning sickness does not matter)
     if (info.legendMana && !info.creatureMana) for (const q of g.battlefield) { if (isCreaturePerm(q) && q.card.a.isLegendary && !q.tapped && !q.produce) units.push({ src: q, colors: ANY_COLOR }); }          // Relic of Legends: no {T} in the cost, so summoning sickness does not matter
     if (info.swampDouble) for (const q of info.producers) { if (!q.tapped && q.asLand && (info.allSwamps || /\bSwamp\b/.test(q.card.type_line || ''))) units.push({ src: q, colors: new Set(['B']) }); }          // Crypt Ghast
     for (const h of g.hand) if (h.card.a.handMana && g.hand.length > 1) units.push({ src: { pseudo: true, handCard: h, produce: { colors: new Set([h.card.a.handMana]), amount: 1 } }, colors: new Set([h.card.a.handMana]) });          // Simian Spirit Guide
@@ -4966,6 +4971,7 @@
   // ---- pods: more than two players (also used for a played 1v1 game). Each player has one focused opponent (g.opp): the one it attacks
   // this turn and the one whose blockers, counterspells and removal it meets. Non-combat damage and life loss hit every opponent.
   const isPod = g => !!(g.match && g.match.pod);
+  const oneOnOne = g => !!g.opp && (!isPod(g) || podAlive(g).length === 1);          // one opponent left: a mirror match, or a Duel (a two-player pod), or a pod where the others are out
   function podAlive(g) { return g.match.players.filter(x => !x.dead && x !== g); }
   function threatOf(o) { return o.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(o, q)), 0) + o.hand.length * 0.6 + o.battlefield.filter(q => q.produce).length * 0.4; }
   function pickTarget(g) {                                                                                 // the biggest threat, leaning towards a player who is nearly out
@@ -5521,7 +5527,7 @@
           if (!t || threat(d, g, t) < 1) break;
           t.origCard = t.card; t.card = blankCard(g, t.card); know(d, t.card); source.hostileOn = { o: d, q: t }; touch(d); ev.push({ type: 'note', text: `${source.card.name}: ${t.origCard.name} loses all abilities while it stays`, source });
         } break;
-        case 'aminaSwap': if (g.opp && !isPod(g)) {          // Aminatou -6, in a 1v1: the nonland permanents change hands
+        case 'aminaSwap': if (g.opp && oneOnOne(g)) {          // Aminatou -6, in a 1v1 (a mirror match, or a Duel or pod down to two players): the nonland permanents change hands
           const d = g.opp, mine = g.battlefield.filter(q => !q.asLand && q !== source), theirs = d.battlefield.filter(q => !q.asLand);
           mine.forEach(q => stealPermToOpp(g, q)); theirs.forEach(q => stealPerm(g, q, ev, false)); ev.push({ type: 'note', text: `Aminatou: ${theirs.length} of their nonland permanents for ${mine.length} of yours`, source });
         } break;
@@ -8109,7 +8115,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (f.type === 'piles') { const [, small] = pilesOf(g, g.opp); v += small.reduce((t, q) => t + Math.max(0.5, threat(g.opp, g, q)), 0); }
         if (f.type === 'oppYard') v += Math.min(6, g.opp.graveyard.reduce((t, i) => t + yardWorth(g.opp, i), 0) * 0.5);
         if (f.type === 'tidebind') { const t = g.opp.battlefield.filter(q => (isCreaturePerm(q) || q.card.a.isArtifact || q.card.a.isPlaneswalker) && !q.asLand && hasAbilities(q.card)).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0]; if (t) v += threat(g.opp, g, t) * 0.6; }
-        if (f.type === 'aminaSwap' && !isPod(g)) v += g.opp.battlefield.filter(q => !q.asLand).reduce((t, q) => t + Math.max(0.5, threat(g.opp, g, q)), 0) - g.battlefield.filter(q => !q.asLand && !q.card.a.isPlaneswalker).reduce((t, q) => t + Math.max(0.5, threat(g, g.opp, q)), 0);
+        if (f.type === 'aminaSwap' && oneOnOne(g)) v += g.opp.battlefield.filter(q => !q.asLand).reduce((t, q) => t + Math.max(0.5, threat(g.opp, g, q)), 0) - g.battlefield.filter(q => !q.asLand && !q.card.a.isPlaneswalker).reduce((t, q) => t + Math.max(0.5, threat(g, g.opp, q)), 0);
         if (f.type === 'phaseOut' || f.type === 'phaseLink') { const t = pickRemovalTarget(g, { what: 'creature', how: 'exile' }); if (t) v += threat(g.opp, g, t) * (f.type === 'phaseLink' ? 1 : 0.6); }
       }
       if (f.type === 'oppDiscard') { const h = g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand); v += Math.min(n, h) * (0.6 + oppDiscardWorth(g)); }
@@ -10628,6 +10634,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
+    // Grand Architect + Pili-Pala: {U} makes Pili-Pala blue, it taps for {C}{C}, {2} and its untap symbol give one mana of any color back
+    { const ga = bf.find(q => q.card.a.statics.blueTap), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
+      if (ga && pp && allUnits(g).some(u => u.colors.has('U'))) return { how: `${ga.card.name} + ${pp.card.name}`, colors: new Set(COLORS) }; }
     // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes
     for (const m of nonland) {
       const u = comboKind(m.card).untapCost; if (u == null) continue;

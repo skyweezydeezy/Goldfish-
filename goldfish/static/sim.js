@@ -2813,6 +2813,8 @@
       const bad = a.coverage.filter(c => c.status === 'ignored' || c.status === 'partial').length;
       a.coverageLevel = !a.coverage.length || bad === 0 ? 'ok' : bad === a.coverage.length ? 'none' : 'partial';
     }
+    // an ability the engine has no rule of its own for, but can read as written: a person can activate it from the card's menu (the autopilot does not)
+    if (a.coverage.some(v => v.status === 'ignored')) { const mine = new Set(otherAbilities({ a, name: card.name || '' }).map(l => l.raw)); if (mine.size) for (const v of a.coverage) if (v.status === 'ignored' && mine.has((v.text || '').replace(/\([^)]*\)/g, '').trim())) { v.status = 'partial'; v.tag = 'yours'; } }
     return a;
   }
 
@@ -12310,7 +12312,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

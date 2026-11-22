@@ -318,6 +318,7 @@
 </main>
 
 <footer class="site-footer">
+  <p class="data-limit">Your decks and settings are saved in this browser only, and browsers limit how long they keep them (Safari: 7 days without a visit). <a href="#install">📲 Install ICEYfish on your Home Screen</a> to keep them.</p>
   <p><b>ICEYfish</b> is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.</p>
   <div class="tip">
     <a href="https://cash.app/$SWDMark" target="_blank" rel="noopener" class="tip-qr" title="Tip the developer on Cash App"><img src="donate-qr.jpg" alt="Cash App QR code for tips" width="96" height="96" loading="lazy"></a>
@@ -328,9 +329,11 @@
 <div id="deckManager" class="modal" role="dialog" aria-modal="true" aria-labelledby="dmTitle">
   <div class="modal-card">
     <div class="modal-head"><h2 id="dmTitle">Saved decks</h2><span id="dmCount" class="hint"></span><button id="dmClose" class="ghost">Close</button></div>
+    <p class="hint data-limit">Saved in this browser only, and browsers limit it: Safari deletes it after 7 days without a visit, private browsing and clearing website data remove it, and space is capped (about 5 MB). <a href="#install">Install the app</a> to keep it, and use <b>Export all</b> for a backup.</p>
+    <p class="hint data-limit-app" hidden>Saved on this device, in the installed app. Use <b>Export all</b> now and then for a backup.</p>
     <details class="fold data-help"><summary><b>How your saved data works</b></summary><div class="fold-body">
       <p><b>Where it lives.</b> Your saved decks, lab choices, tags, playmat and sound settings are kept in this browser, on this device. There is no account and nothing is sent to a server, so a different browser or device starts empty.</p>
-      <p><b>Can it be lost?</b> Yes, in a few cases: clearing your browser's history or website data, private browsing, uninstalling the browser, or a new device. Each browser keeps its own copy, so decks saved in one browser do not show up in another.</p>
+      <p><b>Can it be lost?</b> Yes, in a few cases: clearing your browser's history or website data, private browsing, uninstalling the browser, or a new device. Each browser also caps how much one website may keep (about 5 MB). Each browser keeps its own copy, so decks saved in one browser do not show up in another.</p>
       <p><b>iPhone and iPad.</b> Safari deletes a website's saved data when the site has not been opened for 7 days. An ICEYfish app on your Home Screen (Share, then Add to Home Screen) is not affected, but it keeps its own storage, separate from Safari: it starts empty. Before you switch, use <b>Export all</b> in Safari and <b>Import…</b> in the Home Screen app (or send yourself a <b>Share link</b>), then use the Home Screen app from then on.</p>
       <p><b>Android.</b> Chrome has no 7-day rule; it only clears a site's data by itself when the phone runs very low on storage. Installing ICEYfish (Add to Home screen, or Install app) uses the same saved data as the browser, so your decks are there either way. Samsung Internet, Firefox and Chrome each keep their own copy.</p>
       <p><b>Back up.</b> <b>Export all</b> saves one file with every deck and your settings. Keep it in Files, iCloud Drive or Google Drive. To restore it, or to move to another device, use <b>Import…</b> and pick the file.</p>
@@ -374,6 +377,7 @@
 <script src="choices.js"></script>
 <script src="versus.js"></script>
 <script src="remember.js"></script>
+<script src="install.js"></script>
 <script src="looks.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>

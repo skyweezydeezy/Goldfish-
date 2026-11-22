@@ -8140,7 +8140,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   const foodCostOf = g => ({ generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [], x: 0 });
   // the card's activated-ability lines that are not handled by a rule of their own above, read as written; once per card
   const OTHER_AB = new WeakMap();
-  const OWN_RULE = /^sacrifice (?:a|another) creature(?: or artifact)?: (?:scry|surveil|add)|^sacrifice ~: search your library for a basic|remove a \+1\/\+1 counter from ~: (?:it|~) deals 1 damage to any target|^pay 50 life|sacrifice (?:a|an|one|two|three|\d+) foods?|burden counter|^pay 1 life: exile the top|^\{g\}, \{t\}, discard a creature card: search|card from a graveyard\. (?:add|each opponent|you gain)|indestructible counter on ~|^equip\b|^cycling\b|^[+−-]?\d+:|^[−-]x:|loyalty abilit/i;
+  const OWN_RULE = /^sacrifice (?:a|another) creature(?: or artifact)?: (?:scry|surveil|add)|^sacrifice ~: search your library for a basic|remove a \+1\/\+1 counter from ~: (?:it|~) deals 1 damage to any target|^pay 50 life|sacrifice (?:a|an|one|two|three|\d+) foods?|burden counter|^pay 1 life: exile the top|^\{1\}, \{t\}: exile any number of cards from your hand|you may cast target zombie creature card|sacrifice a creature you control with mana value x|^\{g\}, \{t\}, discard a creature card: search|card from a graveyard\. (?:add|each opponent|you gain)|indestructible counter on ~|^equip\b|^cycling\b|^[+−-]?\d+:|^[−-]x:|loyalty abilit/i;
   const KW_GRANT = ['flying', 'first strike', 'double strike', 'deathtouch', 'haste', 'hexproof', 'indestructible', 'lifelink', 'menace', 'reach', 'trample', 'vigilance', 'shroud'];
   const grantList = t => KW_GRANT.filter(k => new RegExp('\\b' + k + '\\b', 'i').test(t || ''));
   // effects parseEffects does not read, for a person's activation: untap, pumps and keywords until end of turn, can't be blocked, adapt
@@ -8149,8 +8149,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     const pump = (g, q, dp, dt, kws, unb) => { if (dp) q.eotP = (q.eotP || 0) + dp; if (dt) q.eotT = (q.eotT || 0) + dt; if (kws.length || unb) q.eotKw = new Set([...(q.eotKw || []), ...kws, ...(unb ? ['unblockable'] : [])]); touch(g); };
     const pt = x => { const k = (x || '').match(/([+-]\d+)\/([+-]\d+)/); return k ? [+k[1], +k[2]] : [0, 0]; };
     if (/^untap ~$/i.test(t)) return (g, p) => { p.tapped = false; touch(g); };
-    if ((m = t.match(/^untap (?:another )?target (creature|artifact|permanent|land)$/i))) return (g, p, ev) => {
-      const w = m[1].toLowerCase(), opts = g.battlefield.filter(q => q !== p && q.tapped && (w === 'permanent' || (w === 'creature' ? isCreaturePerm(q) : w === 'land' ? q.asLand : q.card.a.isArtifact)));
+    if ((m = t.match(/^untap (?:another )?target (artifact creature|creature|artifact|permanent|land)$/i))) return (g, p, ev) => {
+      const w = m[1].toLowerCase(), opts = g.battlefield.filter(q => q !== p && q.tapped && (w === 'permanent' || (w === 'artifact creature' ? isCreaturePerm(q) && q.card.a.isArtifact : w === 'creature' ? isCreaturePerm(q) : w === 'land' ? q.asLand : q.card.a.isArtifact)));
       let q = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'untap', options: opts, def: q, source: p }); if (q) { q.tapped = false; touch(g); ev.push({ type: 'note', text: `${p.card.name} untaps ${q.card.name}`, source: p }); } };
     if ((m = t.match(/^(?:until end of turn, )?~ (?:gets ([+-]\d+\/[+-]\d+))?(?: and )?(?:gains? ([a-z ,]+?))?(?: until end of turn)?$/i)) && (m[1] || grantList(m[2]).length) && /until end of turn/i.test(t)) return (g, p) => pump(g, p, ...pt(m[1]), grantList(m[2]), false);
     if (/^~ can't be blocked this turn$/i.test(t)) return (g, p) => pump(g, p, 0, 0, [], true);
@@ -8206,6 +8206,15 @@ g.actSeq = (g.actSeq || 0) + 1;
       const o = g.battlefield.includes(q) ? g : otherPlayers(g).find(x => x.battlefield.includes(q)) || g, mine = Math.max(0, powerOf(g, p)), theirs = Math.max(0, powerOf(o, q));
       q.dmg = (q.dmg || 0) + mine; if (hasKw(g, p, 'deathtouch') && mine) q.dt = true; p.dmg = (p.dmg || 0) + theirs; if (hasKw(o, q, 'deathtouch') && theirs) p.dt = true; touch(g); touch(o);
       ev.push({ type: 'note', text: `${p.card.name} fights ${q.card.name} (${mine} and ${theirs} damage)`, source: p }); };
+    if (/^regenerate ~$/i.test(t)) return (g, p, ev) => { p.regenShield = true; touch(g); ev.push({ type: 'note', text: `${p.card.name} will regenerate the next time it would be destroyed this turn`, source: p }); };
+    if (/^exile another target creature, then return it to the battlefield tapped under its owner's control$/i.test(t)) return (g, p, ev) => {          // Eldrazi Displacer: one of yours, for its enter trigger again
+      const opts = g.battlefield.filter(q => q !== p && isCreaturePerm(q)); let q = opts.slice().sort((x, y) => (y.card.a.triggers.some(tr => tr.kinds.includes('etb')) ? 1 : 0) - (x.card.a.triggers.some(tr => tr.kinds.includes('etb')) ? 1 : 0))[0];
+      if (q && g.ask) q = decide(g, { kind: 'target', what: 'flicker', options: opts, def: q, source: p }); if (!q) return;
+      const inst = q.inst || { iid: q.iid, card: q.card }; leavePerm(g, q, ev, 'exile'); flushLeaves(g, ev);
+      const k = g.exile.findIndex(i => i.iid === inst.iid); if (k < 0) return; const back = g.exile.splice(k, 1)[0];
+      const perm = enterWithTriggers(g, back, { tapped: true }, ev); if (perm) perm.tapped = true; ev.push({ type: 'rampLand', inst: back, perm, source: p }); };
+    if ((m = t.match(/^each opponent with no cards in hand loses (\d+) life$/i))) return (g, p, ev) => { const o0 = g.opp; try { for (const o of otherPlayers(g)) if (!o.dead && !o.hand.length) { g.opp = o; damageOpp(g, +m[1], ev, p, true, true); } } finally { g.opp = o0; } };          // Tinybones, Trinket Thief
+    if (/^target player mills cards equal to the sacrificed creature's power$/i.test(t)) return (g, p, ev, gone) => { const n = Math.max(0, (gone && gone[0] && gone[0]._pow) || 0); if (n) applyEffects(g, [{ type: 'mill', n }], p, ev, null); ev.push({ type: 'note', text: `${p.card.name}: you mill ${n} card${n === 1 ? '' : 's'}`, source: p }); };          // Altar of Dementia (your own library)
     if ((m = t.match(/^adapt (\d+)$/i))) return (g, p, ev) => { if (!((p.counters || 0) > 0)) addCounters(g, p, '+1/+1', +m[1], ev, p); };
     if (/^double the number of \+1\/\+1 counters on each creature you control$/i.test(t)) return (g, p, ev) => { for (const q of g.battlefield.slice()) if (isCreaturePerm(q) && q.counters > 0) addCounters(g, q, '+1/+1', q.counters, ev, p); };
     return null;
@@ -8228,7 +8237,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         else if ((k = part.match(/^remove (a|an|two|three|\d+) ([a-z]+) counters? from ~$/i))) ln.other = { kind: k[2].toLowerCase(), n: num(k[1]) };
         else if (/^sacrifice ~$/i.test(part)) ln.sacSelf = true;
         else if ((k = part.match(/^remove a (?:\+1\/\+1 )?counter from a creature you control$/i))) ln.anyCounter = true;
-        else if ((k = part.match(/^untap (a|an|two|three|\d+) tapped creatures? you control$/i))) ln.untapN = /^an?$/i.test(k[1]) ? 1 : num(k[1]);
+        else if ((k = part.match(/^untap (a|an|[a-z]+|\d+) tapped creatures? you control$/i))) ln.untapN = /^an?$/i.test(k[1]) ? 1 : num(k[1]) || (k[1].toLowerCase() === 'fifteen' ? 15 : 99);
         else if ((k = part.match(/^sacrifice (a|an|another|two|three|ten|\d+) (?:other )?([a-z]+(?: or [a-z]+| [a-z]+)?)$/i))) ln.sac = { n: /^(?:a|an|another)$/i.test(k[1]) ? 1 : num(k[1]), other: /another|other/i.test(part), what: singular(k[2]).toLowerCase() };
         else if ((k = part.match(/^pay (\d+) life$/i))) ln.life += +k[1];
         else if ((k = part.match(/^discard (a|an|two) (creature |land )?cards?$/i))) ln.discard = { n: num(k[1]), what: (k[2] || '').trim().toLowerCase() };
@@ -8283,16 +8292,17 @@ g.actSeq = (g.actSeq || 0) + 1;
       });
     }
     (a.activated || []).forEach(ab => {
-      const c0 = actCost(g, p, ab.cost), xs = ab.cost.x ? Math.max(0, Math.floor((allUnits(g).length - (ab.tap ? 1 : 0) - c0.generic - c0.pips.length) / ab.cost.x)) : 0;
+      const c0 = actCost(g, p, ab.cost), xs = ab.cost.x ? Math.max(0, Math.floor((allUnits(g).filter(u => !(ab.tap && u.src === p)).length - c0.generic - c0.pips.length) / ab.cost.x)) : 0;          // {T} is part of the cost: its own mana cannot pay
       const c = ab.cost.x ? { generic: c0.generic + xs * ab.cost.x, pips: c0.pips, x: 0 } : c0;
       const why = blocked || (ab.tap ? sickTap(g, p) : null) || (ab.sacFood && foodsOf(g).length < ab.sacFood ? `it needs ${ab.sacFood === 1 ? 'a Food' : ab.sacFood + ' Foods'}` : null) || (ab.cost.x && xs < 1 ? 'not enough mana' : null) || (ab.gate && !abilityGate(g, p, ab) ? 'not now' : null);
       add(ab.text.replace(/^[^:]*:\s*/, '').replace(/~/g, p.card.name), ab.text.split(':')[0], why || (ab.tap ? (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })() : payWhy(c)), ev => {
+        let X = xs; if (xs > 1 && g.ask) { const opts = []; for (let k = 1; k <= xs; k++) opts.push(k); X = decide(g, { kind: 'x', options: opts, def: xs, source: p }); }          // {X} in the cost: you choose X
         if (ab.tap) p.tapped = true;
-        const prev = g._payFor; g._payFor = { abilityOf: p }; pay(g, c); g._payFor = prev;
+        const prev = g._payFor; g._payFor = { abilityOf: p }; pay(g, ab.cost.x ? { generic: c0.generic + X * ab.cost.x, pips: c0.pips, x: 0 } : c); g._payFor = prev;
         ev.push({ type: 'activate', perm: p, text: ab.text });
         if (ab.sacFood) sacrificeFoods(g, ab.sacFood, ev);
         if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }
-        const xv = g.xValue; if (xs) g.xValue = xs;
+        const xv = g.xValue; if (X) g.xValue = X;
         try { applyEffects(g, ab.fx, p, ev, null); } finally { g.xValue = xv; }
       });
     });
@@ -8366,6 +8376,27 @@ g.actSeq = (g.actSeq || 0) + 1;
         const o = g.battlefield.includes(t) ? g : otherPlayers(g).find(x => x.battlefield.includes(t)); if (o) { t.eotP = (t.eotP || 0) + X; t.eotT = (t.eotT || 0) - X; touch(o); }
         ev.push({ type: 'note', text: `${p.card.name}: ${X} Squirrel${X === 1 ? '' : 's'} sacrificed, ${t.card.name} gets +${X}/-${X}`, source: p });
       }); }
+    if (a.scrollRack) { const c = { generic: 1, pips: [], x: 0 };          // Scroll Rack: you choose the cards that go on top of your library
+      add('Put any number of cards from your hand on top of your library, then take that many from the top', '{1}, {T}', blocked || (p.tapped ? 'it is tapped' : null) || (g.hand.length ? null : 'your hand is empty') || (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })(), ev => {
+        const landsOn = g.battlefield.filter(q => q.asLand).length, reach = allUnits(g).length + 3;
+        let put = g.hand.filter(i => i.card.a.isLand ? landsOn >= 6 : (i.card.a.castMv || 0) > reach && !i.card.commander).slice(0, 3);
+        if (g.ask) put = decide(g, { kind: 'discard', options: g.hand.slice(), def: put, multi: true, pick: Math.min(g.hand.length, g.library.length), upTo: true, rack: true, source: p }) || [];
+        p.tapped = true; pay(g, c); p.rackTurn = g.turn; put.forEach(i => g.hand.splice(g.hand.indexOf(i), 1)); const got = g.library.splice(0, put.length); g.hand.push(...got); g.library.unshift(...put);
+        ev.push({ type: 'note', text: `${p.card.name}: put ${put.length} card${put.length === 1 ? '' : 's'} on top of the library and took ${put.length} new`, source: p });
+      }); }
+    if (a.sidisi) { const pairs = g.battlefield.filter(f => f !== p && isCreaturePerm(f) && g.graveyard.some(i => i.card.a.isCreature && (i.card.a.mv || 0) === (f.token ? 0 : f.card.a.mv || 0) + 1));          // Sidisi, Regent of the Mire
+      add('Sacrifice a creature with mana value X: return a creature card with mana value X plus 1 from your graveyard', '{T}', blocked || sickTap(g, p) || (pairs.length ? null : 'no creature with a card one mana value higher in your graveyard'), ev => {
+        let f = pairs.slice().sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0]; if (g.ask && pairs.length > 1) f = decide(g, { kind: 'sacrifice', options: pairs, def: f, ability: p.card.name, optional: true, source: p }); if (!f) return;
+        const x = f.token ? 0 : f.card.a.mv || 0, opts = g.graveyard.filter(i => i.card.a.isCreature && (i.card.a.mv || 0) === x + 1);
+        let c = opts.slice().sort((a1, b1) => reanimateValue(g, b1) - reanimateValue(g, a1))[0]; if (g.ask && opts.length > 1) c = decide(g, { kind: 'search', options: opts, def: c, f: { dest: 'battlefield' }, source: p }) || c;
+        p.tapped = true; leavePerm(g, f, ev); flushLeaves(g, ev); if (!g.graveyard.includes(c)) return;
+        g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${f.card.name}, ${c.card.name} returns`, source: p }, { type: 'rampLand', inst: c, perm, source: p });
+      }); }
+    if (a.zulAshur) { const zs = g.graveyard.filter(i => i.card.a.isCreature && matchesFilter(i.card, 'zombie') && i.zulCast !== g.turn);          // Zul Ashur, Lich Lord: then cast it from the graveyard (its menu there)
+      add('You may cast target Zombie creature card from your graveyard this turn', '{T}', blocked || sickTap(g, p) || (zs.length ? null : 'no Zombie creature card in your graveyard'), ev => {
+        let c = zs.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (g.ask && zs.length > 1) c = decide(g, { kind: 'search', options: zs, def: c, f: { dest: 'cast' }, source: p }) || c;
+        p.tapped = true; c.zulCast = g.turn; touch(g); ev.push({ type: 'note', text: `${p.card.name}: you may cast ${c.card.name} from your graveyard this turn`, source: p });
+      }); }
     if (a.foodSacMana) add('Add one mana of any color (tap it, sacrifice a Food)', '{T}, Sacrifice a Food', blocked || sickTap(g, p) || (foodsOf(g).length ? null : 'you control no Food'), ev => {
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
       ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });
@@ -8404,16 +8435,18 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (ln.once) p.abUsed = Object.assign({}, p.abUsed, { [usedKey]: g.turn });
         for (const d of dis) { g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d); ev.push({ type: 'note', text: `Discarded ${d.card.name}`, source: p }); }
         ev.push({ type: 'activate', perm: p, text: ln.raw.replace(/~/g, p.card.name) });
-        for (const q of gone) leavePerm(g, q, ev);
+        for (const q of gone) { q._pow = isCreaturePerm(q) ? powerOf(g, q) : 0; leavePerm(g, q, ev); }
         if (ln.sacSelf) leavePerm(g, p, ev);
         if (gone.length || ln.sacSelf) flushLeaves(g, ev);
-        if (ln.fx) applyEffects(g, ln.fx, p, ev, null); else ln.run(g, p, ev);
+        if (ln.fx) applyEffects(g, ln.fx, p, ev, null); else ln.run(g, p, ev, gone);
         if (ln.life) checkDeath(g, ev);
       });
       if (ln.sorcery || /^level \d/i.test(ln.effect)) out[out.length - 1].slow = true;          // sorcery speed: not in a response
     }
     return out;
   }
+  // a card in your graveyard that something lets you cast this turn (Zul Ashur): the card menu offers "Cast"
+  function yardCastable(g, inst) { return !!inst && g.graveyard.includes(inst) && !inst.card.a.isLand && (inst.zulCast === g.turn || inst.yardCastTurn === g.turn); }
   function abilityMenu(g, p) { return abilityList(g, p).map(({ label, cost, ok, why }) => ({ label, cost, ok, why })); }
   // a person's choice from abilityMenu: the events, or null when it cannot be used now. The stack and state-based actions follow (acting).
   function useAbility(g, p, i) {
@@ -11042,12 +11075,16 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (w) { const wc = { generic: w.n, pips: [], x: 0 }; if (canPay(wc, allUnits(g)) && g.life > w.life + 4) { pay(g, wc); if (w.life) g.life -= w.life; ev.push({ type: 'note', text: `Ward: paid {${w.n}}${w.life ? ' and ' + w.life + ' life' : ''} for ${t.card.name}`, source }); } else { ev.push({ type: 'note', text: `Ward: ${t.card.name}'s ward was not paid, the effect is countered`, source }); return 'fizzle'; } }
     const val = threat(d, g, t), cols = srcColors(g, source), lethal = kind === 'destroy' || kind === 'damage', units = () => allUnits(d);
     const ok = respondGate(d, `${t.card.name} is about to be ${kind === 'destroy' ? 'destroyed' : kind === 'exile' ? 'exiled' : kind === 'bounce' ? 'returned to its owner\'s hand' : (n || '') + ' damage'}${kind === 'damage' ? ' dealt to it' : ''}`, t, source);
-    if (val < 2.5) return false;
-    if (isCreaturePerm(t) || source == null) { const st = (tableHas(d, 'stormtamer') ? d.battlefield.find(q => q.card.a.stormtamer) : undefined); if (st && val >= 3 && canPay(st.card.a.stormtamer, units()) && ok(`Sacrifice ${st.card.name}: counter it`) && pay(d, st.card.a.stormtamer) != null) { leavePerm(d, st, ev); flushLeaves(d, ev); ev.push({ type: 'note', text: `${st.card.name} is sacrificed: the ${source ? 'ability' : 'spell'} is countered`, source: null }); return 'fizzle'; } }          // Siren Stormtamer
+    // a person is offered Siren Stormtamer and Spellskite whenever they can be used, also for a permanent the autopilot would not bother to save
+    const person = !!d.ask && !d.dead, why = `${t.card.name} is about to be ${kind === 'destroy' ? 'destroyed' : kind === 'exile' ? 'exiled' : kind === 'bounce' ? 'returned to its owner\'s hand' : (n || '') + ' damage'}${kind === 'damage' ? ' dealt to it' : ''}`;
+    const gate = (auto, what) => person ? decide(d, { kind: 'protect', options: [what], def: auto ? what : null, optional: true, why, target: t, source: source || null }) != null : auto;
+    if (val < 2.5 && !person) return false;
+    if (isCreaturePerm(t) || source == null) { const st = (tableHas(d, 'stormtamer') ? d.battlefield.find(q => q.card.a.stormtamer) : undefined); if (st && canPay(st.card.a.stormtamer, units()) && gate(val >= 3, `Sacrifice ${st.card.name}: counter it`) && pay(d, st.card.a.stormtamer) != null) { leavePerm(d, st, ev); flushLeaves(d, ev); ev.push({ type: 'note', text: `${st.card.name} is sacrificed: the ${source ? 'ability' : 'spell'} is countered`, source: null }); return 'fizzle'; } }          // Siren Stormtamer
     if (source && source.card && val >= 5) { const se = d.hand.find(c => c.card.a.abilityCounter && canPay(effectiveCost(d, c), units())); if (se && castProtection(d, se, ev, ok)) { ev.push({ type: 'note', text: `${se.card.name}: the ability of ${source.card.name} is countered`, source: null }); if (se.card.a.spellFx.some(f => f.type === 'draw')) draw(d, 1, ev); return 'fizzle'; } }          // Sublime Epiphany, Stifle
-    { const sk = kind !== 'damage' && (tableHas(d, 'spellskite') ? d.battlefield.find(q => q.card.a.spellskite && q !== t && !abilBlocked(d, q, false)) : undefined); if (sk && threat(d, g, t) > threat(d, g, sk) + 1 && (allUnits(d).some(u => u.colors.has('U')) || d.life > 8) && ok('Spellskite: it targets Spellskite instead')) {          // Spellskite
+    { const sk = kind !== 'damage' && (tableHas(d, 'spellskite') ? d.battlefield.find(q => q.card.a.spellskite && q !== t && !abilBlocked(d, q, false)) : undefined); if (sk && (allUnits(d).some(u => u.colors.has('U')) || d.life > (person ? 2 : 8)) && gate(val >= 2.5 && threat(d, g, t) > threat(d, g, sk) + 1 && (allUnits(d).some(u => u.colors.has('U')) || d.life > 8), 'Spellskite: it targets Spellskite instead')) {          // Spellskite
       if (allUnits(d).some(u => u.colors.has('U'))) pay(d, { generic: 0, pips: [['U']], x: 0 }); else d.life -= 2;
       ev.push({ type: 'note', text: `Spellskite: the ${source ? 'ability' : 'spell'} now targets Spellskite`, source: null }); leavePerm(d, sk, ev, kind === 'exile' ? 'exile' : kind === 'bounce' ? 'hand' : 'graveyard'); flushLeaves(d, ev); return 'fizzle'; } }
+    if (val < 2.5) return false;
     { const nw = d.hand.find(c => c.card.a.counter && c.card.a.counter.filter === 'targetsMine' && !castBlocked(d, c)); if (nw && threat(d, g, t) >= 4) { const free = nw.card.a.notWorld && isCreaturePerm(t) && powerOf(d, t) >= 7, cst = free ? { generic: 0, pips: [], x: 0 } : effectiveCost(d, nw);          // Not of This World
       if (canPay(cst, allUnits(d)) && ok(`Cast ${nw.card.name}: counter it`)) { pay(d, cst); d.hand.splice(d.hand.indexOf(nw), 1); d.graveyard.push(nw); fireCastTriggers(d, nw, ev); ev.push({ type: 'note', text: `${nw.card.name} counters the ${source ? 'ability' : 'spell'} aimed at ${t.card.name}${free ? ' (free)' : ''}`, source: null }); return 'fizzle'; } } }
     const swatFree = c => c.card.a.freeIfCommander && d.battlefield.some(q => q.card.commander);          // Deflecting Swat
@@ -12318,7 +12355,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

@@ -131,6 +131,7 @@
     uncounter: ['choose a target', 'Choose the permanent that loses its counters.'],
     copy: ['copy what?', 'Choose the permanent to copy.'],
     equip: ['equip which creature?', 'Choose the creature to attach it to.'],
+    flicker: ['flicker which creature?', 'Choose the creature to exile and return to the battlefield (it comes back untapped, its enter effects happen again).'],
   };
   function question(g, d) {
     const opts = d.options || [], multi = !!d.multi, m = g.match;
@@ -189,8 +190,10 @@
       q.text = 'Choose a land card from your hand to put onto the battlefield. If you do not, you draw a card.';
       q.none = 'Draw a card instead';
     } else if (d.kind === 'discard') {
+      if (d.rack) { q.title = `${sn}: which cards go on top of your library?`; q.text = 'Choose any number of cards from your hand. They go on top of your library, and you take that many cards from the top first.'; }
+      else {
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
-      q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`;
+      q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
       q.title = d.ability ? `${d.ability}: sacrifice a creature` : d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');

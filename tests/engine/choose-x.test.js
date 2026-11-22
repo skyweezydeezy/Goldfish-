@@ -74,5 +74,13 @@ const cast = (g, inst, pick) => { let q = null; const ev = D.resolveSync([g], 0,
   const p = g.battlefield.find(q => q.card.name === 'Astral Cornucopia');
   check('Astral Cornucopia, X = 2: it taps for two mana', p && p.produce && p.produce.amount === 2 && untapped(g) === 0, p && p.produce && p.produce.amount);
 })();
+(() => {                                                                                                   // an ability with {X} in its cost: you choose X too
+  const g = fresh(true); const be = G.enterWithTriggers(g, { iid: g.nextIid++, card: by('Berta, Wise Extrapolator') }, {}, []); be.sick = false; be.tapped = false;
+  const i = G.abilityMenu(g, be).findIndex(x => /Fractal/.test(x.label)); let q = null;
+  D.resolveSync([g], 0, gs => G.useAbility(gs[0], gs[0].battlefield.find(p => p.iid === be.iid), i), x => { if (x.kind !== 'x') return 'auto'; q = x; return 1; });
+  const tok = g.battlefield.find(p => p.card.name === 'Fractal');
+  check('Berta: {X}, {T} asks for X (1 to 6 with six lands)', q && q.options.length === 6, q && q.options.length);
+  check('...X = 2: a Fractal with two counters, two lands tapped', tok && tok.counters === 2 && untapped(g) === 4, tok && tok.counters + ' / ' + untapped(g));
+})();
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

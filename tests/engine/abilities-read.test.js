@@ -86,5 +86,17 @@ const table = (deck, nLands) => {
   if (inst) { sc.imprinted = { iid: g.nextIid++, card: inst }; const h0 = g.hand.length; use(sc, /copy the exiled card/);
     check('Isochron Scepter: {2}, {T}: a free copy of the imprinted instant (' + inst.name + ')', sc.tapped && g.hand.length > h0, g.hand.length - h0); } }
 
+{ const { g, put, use, by } = table(load('zul-ashur'), 3);
+  const si = put('Sidisi, Regent of the Mire'), cf = put('Carrion Feeder');          // mana value 1
+  const two = g.deck.unique.find(c => c.a.isCreature && (c.a.mv || 0) === 2 && !c.commander); const y = { iid: g.nextIid++, card: two }; g.graveyard.push(y);
+  use(si, /mana value X plus 1/);
+  check(`Sidisi: sacrifice Carrion Feeder (1): ${two.name} (2) returns from the graveyard`, si.tapped && !g.battlefield.includes(cf) && g.battlefield.some(q => q.card.name === two.name) && !g.graveyard.includes(y));
+  const zu = put('Zul Ashur, Lich Lord'); const z = g.graveyard.find(i => i.card.name === 'Carrion Feeder');
+  check('Zul Ashur: a Zombie creature card in the graveyard cannot be cast yet', !!z && !G.yardCastable(g, z));
+  use(zu, /cast target Zombie/);
+  check('...{T}: now it can be cast from the graveyard this turn', zu.tapped && G.yardCastable(g, z));
+  const ev = G.castCard(g, z);
+  check('...and casting it works', !!ev && !g.graveyard.includes(z) && g.battlefield.some(q => q.inst === z || q.iid === z.iid)); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

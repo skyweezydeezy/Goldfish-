@@ -37,5 +37,20 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: goldfish/static
+      # GitHub's artifact service sometimes does not list the artifact just uploaded ("No artifacts named github-pages were found").
+      # A re-run of the whole job would give the merge a second version number, so the deploy itself is tried again here.
       - id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - name: Wait before trying the deploy again
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: deployment2
+        if: steps.deployment.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - name: Wait longer before the last try
+        if: steps.deployment.outcome == 'failure' && steps.deployment2.outcome == 'failure'
+        run: sleep 90
+      - if: steps.deployment.outcome == 'failure' && steps.deployment2.outcome == 'failure'
         uses: actions/deploy-pages@v4

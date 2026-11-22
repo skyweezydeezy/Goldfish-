@@ -121,6 +121,17 @@
   const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
+  // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
+  const TARGET_WORDS = {
+    untap: ['untap what?', 'Choose the permanent to untap.'],
+    tap: ['tap what?', 'Choose the permanent to tap.'],
+    pump: ['choose a creature', 'Choose the creature that gets the bonus until end of turn.'],
+    double: ['choose a creature', 'Choose the creature whose power is doubled.'],
+    fight: ['choose what it fights', 'Choose the creature it fights: each deals damage equal to its power to the other.'],
+    uncounter: ['choose a target', 'Choose the permanent that loses its counters.'],
+    copy: ['copy what?', 'Choose the permanent to copy.'],
+    equip: ['equip which creature?', 'Choose the creature to attach it to.'],
+  };
   function question(g, d) {
     const opts = d.options || [], multi = !!d.multi, m = g.match;
     if (!opts.length && !d.always) return null;          // always: asked with nothing to pick too (a spell on the stack: "does it resolve?")
@@ -167,6 +178,7 @@
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
+      else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;

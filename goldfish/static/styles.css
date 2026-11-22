@@ -1126,3 +1126,4 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
   body[data-view=table] .hud-item .big, body[data-view=table] .hud-item > span:not(.lbl) { font-size: 17px; font-weight: 700; }
   body[data-view=table] .table-controls button { min-height: 36px; padding: 5px 11px; }
 }
+#tLoop.on { background: var(--accent); border-color: var(--accent); color: #fff; }

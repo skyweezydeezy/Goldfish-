@@ -192,7 +192,7 @@ class UpdateTests(unittest.TestCase):
         r = subprocess.run([sys.executable, "update.py"], cwd=self.root / "goldfish", env=env, capture_output=True, text=True, timeout=60)
         self.assertIn("Updated", r.stdout, r.stdout + r.stderr)
         port = 8791
-        srv = subprocess.Popen([sys.executable, "server.py", "--no-browser", "--no-update", "--port", str(port), "--scrymirror", str(self.tmp / "none")],
+        srv = subprocess.Popen([sys.executable, "server.py", "--no-browser", "--no-update", "--port", str(port), "--data-dir", str(self.tmp / "none")],
                                cwd=self.root / "goldfish", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             body = None
@@ -214,7 +214,7 @@ class RealAppTests(unittest.TestCase):
     def test_real_app_files_are_served(self):
         """The real goldfish folder starts and serves every file the service worker lists."""
         port = 8792
-        srv = subprocess.Popen([sys.executable, "server.py", "--no-browser", "--port", str(port), "--scrymirror", str(REPO_ROOT / "no-such-folder")],
+        srv = subprocess.Popen([sys.executable, "server.py", "--no-browser", "--port", str(port), "--data-dir", str(REPO_ROOT / "no-such-folder")],
                                cwd=REPO_ROOT / "goldfish", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))

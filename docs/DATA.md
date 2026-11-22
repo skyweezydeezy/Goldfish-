@@ -13,7 +13,7 @@ Everything stays on the player's device. There is no account, no analytics and n
 | The list currently in the text box (`gf_last`) | Browser `localStorage` | Overwritten on every edit | `app.js` |
 | Scryfall card data cache | Browser `localStorage` (prefixed keys) | 7 days; half is dropped when storage is full | `source.js` |
 | App files and card images | Service worker caches | Until a new app version | `sw.js` |
-| Local ScryMirror database and images | The player's own disk, read-only | Not copied | `server.py` |
+| Local copy of Scryfall data and images | The player's own disk, read-only | Not copied | `server.py` |
 
 **What leaves the device:** card names and identifiers are sent to Scryfall (`/cards/collection`, `/cards/named`) in hosted mode, or to the local `server.py` in PC mode. Nothing else is sent: no decklists, no simulation results and no identifiers for the player.
 
@@ -92,7 +92,7 @@ This changes what the app is:
 
 - Do we stay **device-only** (tiers A and B) on purpose, as a feature?
 - For tier A, which suggestions are trustworthy enough to show, given what the engine does not simulate (stack interaction, dies triggers, an opponent's board)?
-- Should a suggestion name specific replacement cards, or only describe the problem ("you need more 2-mana ramp")? Naming cards needs a card pool to search, such as Scryfall search in hosted mode or ScryMirror locally.
+- Should a suggestion name specific replacement cards, or only describe the problem ("you need more 2-mana ramp")? Naming cards needs a card pool to search, such as Scryfall search in hosted mode or a local Scryfall copy.
 - Tier A+: should a "field" of several saved decks, weighted by how often you meet them, be added as an opponent?
 - How do we show uncertainty? A suggestion from 500 games is noisier than one from 5,000.
 - If we ever do tier C: what exactly would be sent, who runs the server, and how does a player see and delete their data?

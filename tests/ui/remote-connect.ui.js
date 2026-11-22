@@ -1,4 +1,4 @@
-// Browser test: how "Play a friend" connects (remote.js). The relay: the site asks the ICEYFISH relay service (server/turn-service.js;
+// Browser test: how "Play a friend" connects (remote.js). The relay: the site asks the ICEYfish relay service (server/turn-service.js;
 // a fake one here) for the relay's servers and connects through them, and with the service down it says so and tries a direct
 // connection; a fixed relay credential written into the site is used as it is. No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever both devices say they could
 // not connect and why. Needs playwright, the :8800 server and Scryfall.
@@ -50,7 +50,7 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
   const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers);
   check('as shipped, the site connects through Metered\'s relay (TURN on 80 and 443, TURNS) with a login, as well as STUN', built.some(s => [].concat(s.urls).includes('turns:global.relay.metered.ca:443?transport=tcp') && s.username) && built.some(s => [].concat(s.urls).includes('turn:global.relay.metered.ca:80') && s.credential) && built.some(s => /^stun:/.test([].concat(s.urls)[0])), built.map(s => [].concat(s.urls).join(' ')).join(', '));
-  check('...and the list of what is shared says so (the relay line, version 3)', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 3 && R.DISCLOSURE.some(t => /Metered's relay server/.test(t)) && !R.DISCLOSURE.some(t => /ICEYFISH server/.test(t)); }));
+  check('...and the list of what is shared says so (the relay line, version 3)', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 3 && R.DISCLOSURE.some(t => /Metered's relay server/.test(t)) && !R.DISCLOSURE.some(t => /ICEYfish server/.test(t)); }));
   await A.evaluate(u => { const R = window.__isfRemote; R.relayServers = null; R.relayService = u; }, `http://127.0.0.1:${relay.address().port}/ice`);
   await A.click('#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });

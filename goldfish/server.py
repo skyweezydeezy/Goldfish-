@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ICEYFISH - local server.
+ICEYfish - local server.
 
 Reads card data and images straight from a local folder of Scryfall data:
     <folder>/data/scryfall.sqlite
@@ -365,7 +365,7 @@ def default_root():
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ICEYFISH")
+    ap = argparse.ArgumentParser(description="ICEYfish")
     ap.add_argument("--data-dir", dest="data_dir", help="Path to the local Scryfall data folder (default: the ICEYFISH_DATA_DIR environment variable)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
@@ -388,7 +388,7 @@ def main():
         print("[mirror] full report: http://127.0.0.1:%d/api/diagnose" % a.port)
     srv = ThreadingHTTPServer(("0.0.0.0" if a.lan else "127.0.0.1", a.port), Handler)
     url = f"http://127.0.0.1:{a.port}/"
-    print(f"ICEYFISH running at {url}  (Ctrl+C to stop)")
+    print(f"ICEYfish running at {url}  (Ctrl+C to stop)")
     if a.lan:
         import socket
         try:

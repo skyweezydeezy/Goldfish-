@@ -20,11 +20,11 @@
 
   const MATS = [
     { id: 'frozen', name: 'Frozen pond', css: '' },   // '' = the built-in look
-    // ICEYFISH originals (matching sets: each playmat has a sleeve of the same name)
+    // ICEYfish originals (matching sets: each playmat has a sleeve of the same name)
     { id: 'prism', name: 'Prism Nexus', image: 'looks/mat-prism.jpg', shop: '' },
     { id: 'tide', name: 'Sunken Gate', image: 'looks/mat-tide.jpg', shop: '' },
     { id: 'eclipse', name: 'Eclipse Spires', image: 'looks/mat-eclipse.jpg', shop: '' },
-    // the second wave of ICEYFISH originals (Drive: Magic Commanders / Playmats), upscaled with Real-ESRGAN x4plus; their sleeves are in Magic Commanders / Sleeves
+    // the second wave of ICEYfish originals (Drive: Magic Commanders / Playmats), upscaled with Real-ESRGAN x4plus; their sleeves are in Magic Commanders / Sleeves
     { id: 'angel', name: 'Sunlit Citadel', image: 'looks/mat-angel.jpg', shop: '' },
     { id: 'crystal', name: 'Moonlit Crystal City', image: 'looks/mat-crystal.jpg', shop: '' },
     { id: 'leviathan', name: 'Void Leviathan', image: 'looks/mat-leviathan.jpg', shop: '' },

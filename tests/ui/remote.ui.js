@@ -75,7 +75,7 @@ const BASE = 'http://127.0.0.1:8800/';
   const A2 = await A.context().newPage();
   await A2.goto(BASE + '#isf-reply=' + reply);
   await A2.waitForSelector('#tab-duel .rm-box', { timeout: 30000 });
-  check('the scanned reply opens a new tab that says to go back to the tab with the invite', /Go back to the ICEYFISH tab with your invite/.test(await A2.$eval('#tab-duel .rm-step', e => e.textContent)));
+  check('the scanned reply opens a new tab that says to go back to the tab with the invite', /Go back to the ICEYfish tab with your invite/.test(await A2.$eval('#tab-duel .rm-step', e => e.textContent)));
   await A.bringToFront();
   await A.evaluate(() => window.dispatchEvent(new Event('focus')));
   const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000 });

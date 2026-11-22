@@ -1,4 +1,4 @@
-/* ICEYFISH - 1v1 and Pod tabs: play your deck against computer opponents, or let autopilots play every seat. */
+/* ICEYfish - 1v1 and Pod tabs: play your deck against computer opponents, or let autopilots play every seat. */
 (function () {
   'use strict';
   const G = window.Goldfish, A = window.__isfApi;

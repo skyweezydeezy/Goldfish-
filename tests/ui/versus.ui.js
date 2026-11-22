@@ -203,7 +203,7 @@ const shot = process.env.VERSUS_SHOTS;
   // playmats and sleeves: every player is dealt a random set, all different; your own pick goes on your seat
   const seatLooks = () => p.$$eval('#tab-pod .vs-seat', ss => ss.map(s => ({ me: s.classList.contains('me'), set: s.dataset.set, sleeved: s.classList.contains('sleeved'),
     mat: getComputedStyle(s).backgroundImage, sleeve: s.style.getPropertyValue('--sleeve'), back: getComputedStyle(s.querySelector('.card-back')).backgroundImage })));
-  const lk = await seatLooks(), originals = await p.evaluate(() => window.__isfLooks.MATS.filter(m => m.image).map(m => m.name));          // the ICEYFISH original sets (art playmat + art sleeves)
+  const lk = await seatLooks(), originals = await p.evaluate(() => window.__isfLooks.MATS.filter(m => m.image).map(m => m.name));          // the ICEYfish original sets (art playmat + art sleeves)
   check('every player in the pod has a playmat-and-sleeves set', lk.length === 4 && lk.every(x => x.set && x.sleeved && x.mat !== 'none' && x.sleeve), lk.map(x => (x.me ? 'You: ' : '') + x.set).join(' | '));
   check('no two players have the same set', new Set(lk.map(x => x.set)).size === 4 && new Set(lk.map(x => x.mat)).size === 4);
   check(`the original designs are dealt first: every seat has one of the ${originals.length} original sets`, originals.length >= 9 && lk.every(x => originals.includes(x.set)), lk.map(x => x.set).join(' | '));

@@ -274,7 +274,7 @@
     const seen = gm.chosenSaid || (gm.chosenSaid = new Set()); let n = 0;
     for (const g of gm.games) for (const p of g.battlefield) {
       const k = g.pid + ':' + p.iid; if (seen.has(k)) continue; seen.add(k);
-      const ch = G.chosenFor(g, p.card); if (!ch) continue;
+      const ch = G.chosenOf(g, p); if (!ch) continue;
       say(mode, g, `${p.card.name.split(' // ')[0]}: the chosen ${ch.what} is ${ch.name}`, stepKey); n++;
     }
     return n;
@@ -730,7 +730,7 @@
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + (p.loyalty || 0)));
     if (!p.card.a.isPlaneswalker && !p.card.a.chainVeil && canActivate(gm, g, p)) { e.classList.add('vs-loyal', 'vs-act'); e.title = 'Click to activate its abilities'; }
     if ((p.card.a.isPlaneswalker || p.card.a.chainVeil) && loyal(gm, g, p)) { e.classList.add('vs-loyal'); e.title = p.card.a.chainVeil ? 'The Chain Veil: click to pay {4} and tap it; each planeswalker may activate one more loyalty ability this turn' : 'Loyalty abilities: click to choose one'; }          // your main phase, nothing else waiting
-    { const ch = G.chosenFor(g, p.card); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic: its type, on the card
+    { const ch = G.chosenOf(g, p); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic: its type, on the card
     if (g.ring && g.ring.tempts > 0 && g.ring.bearer === p.iid) { e.classList.add('ringbearer'); e.title = `Ring-bearer (the Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×)`; }
     return e;
   }

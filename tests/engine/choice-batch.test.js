@@ -54,6 +54,13 @@ run('Crop Rotation', t => { let want = null; const qs = play(t, q => { if (q.kin
 run('Badgermole Cub', t => { const l2 = t.a.deck.unique.find(x => x.a.isLand && !/Basic/.test(x.type_line || '')); G.enterWithTriggers(t.a, { iid: t.a.nextIid++, card: l2 }, {}, []);          // two kinds of land: something to choose between
   const qs = play(t), q = qs.find(x => x.what === 'earthbend');
   check('Badgermole Cub asks which land is earthbent', !!q && /choose a land/.test(q.title) && q.options.length === 6 && q.options.every(o => o.card.a.isLand), q ? q.title + ' [' + q.options.length + ']' : qs.map(x => x.kind + '/' + x.what).join(',')); });
+run('Bulk Up', t => { let want = null; const qs = play(t, q => { if (q.what !== 'double') return 'auto'; want = q.options.find(o => !o.def); return want.k; }), p = want && t.a.battlefield.find(x => x.iid === want.iid);
+  check('Bulk Up asks which creature has its power doubled; the chosen one gets it', !!want && !!p && (p.eotP || 0) > 0 && t.a.battlefield.filter(x => (x.eotP || 0) > 0).length === 1 && qs.some(q => q.what === 'double'), want && want.name); });
+run('Undying Malice', t => { let want = null; play(t, q => { if (q.what !== 'deathReturn') return 'auto'; want = q.options.find(o => !o.def); return want.k; });
+  check('Undying Malice asks which creature returns when it dies; the chosen one is marked', !!want && !!t.a.battlefield.find(x => x.iid === want.iid).deathReturn && t.a.battlefield.filter(x => x.deathReturn).length === 1, want && want.name); });
+run('Ghostly Flicker', t => { let picked = null; const qs = play(t, q => { if (q.what !== 'flickerTwo') return 'auto'; picked = q.options.filter(o => o.card.a.isCreature).slice(0, 2); return picked.map(o => o.k); }), q = qs.find(x => x.what === 'flickerTwo');
+  check('Ghostly Flicker asks for up to two of your permanents (creatures, artifacts, lands)', !!q && q.multi && q.min === 0 && q.max === 2 && q.options.some(o => o.card.a.isLand), q && q.title + ' [' + q.options.length + ']');
+  check('...the two chosen creatures are flickered (they come back summoning sick)', !!picked && picked.every(o => t.a.battlefield.some(x => x.card.name === o.name && x.sick)), picked && picked.map(o => o.name).join(', ')); });
 run('Bojuka Bog', t => { const [a, b, c] = t.p.games; G.podFocus(a, b); [b, c].forEach(o => { for (let k = 0; k < 3; k++) o.graveyard.push(o.library.pop()); });
   const qs = play(t, q => q.kind === 'player' ? q.options.findIndex(o => o.name === 'them2') : 'auto'), q = qs.find(x => x.kind === 'player');
   check('in a pod, Bojuka Bog asks whose graveyard: the player you face is the default', !!q && q.title === 'Bojuka Bog: choose an opponent' && q.options.length === 2 && q.options[q.def[0]].name === 'them1', q && q.title);

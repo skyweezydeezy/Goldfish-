@@ -7396,6 +7396,11 @@
     const a = inst.card.a, tl = (inst.card.type_line || '').toLowerCase();
     return filters.some(w => w === 'legendary' ? a.isLegendary : tl.includes(w));
   }
+  // Zimone, Infinite Analyst: the first spell with {X} each turn costs {1} less per +1/+1 counter on it (what effectiveCost takes off)
+  function xDiscountNow(g) {
+    const info = bfInfo(g); if (!info.xDiscount || g.xCastTurn === g.turn) return 0;
+    return info.xDiscount.reduce((t, z) => t + Math.max(0, z.counters || 0), 0);
+  }
   function bestTutorTarget(g, f) {
     // under Opposition Agent the Agent's controller makes the choice, and it picks what is best for itself: the card is exiled and it may play it
     const chooser = g._agent || g, ctx = tutorContext(chooser);
@@ -7639,6 +7644,7 @@
   function spellScore(g, c) {
     const a = c.card.a;
     let s = a.castMv + tribeBonus(g, c);
+    if (a.cost && a.cost.x && g.xCastTurn !== g.turn && pol(g, 'xEachTurn') === 'on') s += 45;          // the Policy lab: cast an X spell every turn ("first X spell each turn" payoffs)
     if (a.produce || a.rampLands || a.statics.extraLands) s += 100 - a.castMv;
     else if (a.statics.reducers.length) s += 80 - a.castMv;
     else if (c.card.commander && commanderBonus(g)) s += commanderBonus(g);
@@ -7807,7 +7813,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!lockWorth(g, c)) continue;
       if (faceChoice(g, c.card) === 'back') continue;          // this card is set to its back face (or the lab chose the commander's back face): never cast the front
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick)));
-      if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X
+      if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0) + xDiscountNow(g)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X (Zimone's discount pays for X too)
+      if (c.card.a.cost.x && 1 + (c.extraX || 0) < (+pol(g, 'xMin') || 1)) continue;          // the Policy lab: wait until X is big enough
       c.fromTop = g.library[0] === c; c.viaCitadel = c.fromTop && citadelOk(g) && !(topCastOk(g) && canPay(effectiveCost(g, c), units)); c.retracing = !!(g.graveyard.includes(c) && retraceOk(g, c) && !(c.card.a.yardCastIfZombie || c.zulCast === g.turn || c.card.a.escape || (g.wrennEmblem && c.card.a.isPermanent)));
       c.escaping = !!(c.card.a.escape && g.graveyard.includes(c) && !c.card.a.yardCastIfZombie);
       c.breaching = !!(g.graveyard.includes(c) && (tableHas(g, 'breach') && g.battlefield.some(q => q.card.a.breach)) && !c.retracing && !c.escaping && !(c.card.a.yardCastIfZombie || c.zulCast === g.turn || c.yardCastTurn === g.turn || (g.wrennEmblem && c.card.a.isPermanent)));
@@ -9277,7 +9284,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   // ---------- Policies (choices the engine can learn by trial and error) ----------
   // opts.policy holds named choices. The Policy lab (comparePolicies) plays many games with each option and keeps the one that does best.
-  const DEFAULT_POLICY = { faces: null, mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', exploreKeep: 'auto', tribeFirst: 'off', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
+  const DEFAULT_POLICY = { faces: null, mdfcFace: 'front', scepterHold: 'no', tribe: 'auto', fetchHold: 'never', necroGoal: 'current', sacMode: 'current', holdCounters: 'no', attackCaution: '0.5', keepLands: 'default', removalBar: 'default', counterWorth: 'default', instantTiming: 'spare', comboChase: 'default', exploreKeep: 'auto', tribeFirst: 'off', xMin: '1', xEachTurn: 'off', mullTo: 'default', commanderTiming: 'setting', lifeFloor: 'current', pwLoyalty: '0.1', pumpTiming: 'wait', wipeMargin: '3', tutorFocus: 'best' };       // fetchHold: 'never' = crack at once, 'whenShuffleHelps' = hold only when a shuffle would help (and crack by the end of the turn), 'untilNeeded' = hold until mana is needed or a shuffle helps, 'untilEnd' = hold until the end of the turn
   // ---------- Policy lab choices ----------
   // Each choice is described by what cards DO, never by card names, so any card that works the same way (by its rules text) brings it in.
   // needs: every entry must be met by at least one card in the deck; otherwise the lab does not offer the choice (a life-for-cards choice
@@ -9310,6 +9317,13 @@ g.actSeq = (g.actSeq || 0) + 1;
     { id: 'tribeFirst', key: 'tribeFirst', label: 'Tribal decks: cast creatures of your type first',
       needs: [], deckNeed: { what: 'a creature type the deck is built around', test: deck => !!deck.tribe, cards: deck => [deck.tribe] },
       options: [{ name: 'Best play first (default)', value: 'off' }, { name: 'Creatures of your type ahead of other spells', value: 'on' }, { name: 'Only those that pay off the type (lords, triggers)', value: 'payoffs' }] },
+    { id: 'xMin', key: 'xMin', label: 'X spells: the smallest X worth casting',
+      needs: [{ what: 'a spell with {X} in its mana cost', test: (a, c) => !!(a.cost && a.cost.x) && !a.isLand }],
+      options: [{ name: 'Any X (default)', value: '1' }, { name: 'Wait until X is 3 or more', value: '3' }, { name: 'Wait until X is 5 or more', value: '5' }] },
+    { id: 'xEachTurn', key: 'xEachTurn', label: 'X spells: cast one every turn',
+      needs: [{ what: 'a spell with {X} in its mana cost', test: (a, c) => !!(a.cost && a.cost.x) && !a.isLand },
+        { what: 'a card that rewards the first (or every) spell with {X} you cast', test: (a, c) => /spell (you cast )?with \{x\} in its mana cost/i.test(c.oracle_text || '') }],
+      options: [{ name: 'Best play first (default)', value: 'off' }, { name: 'Cast an X spell every turn when it is the first one', value: 'on' }] },
     { id: 'comboChase', key: 'comboChase', label: 'Tutors and combo pieces: how hard to chase the combo',
       needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) },
         { what: 'a piece of a combo the engine knows (library emptier and empty-library winner, untap-all instant and copy artifact, self-untapping rock and enabler, the two life-loop halves)', test: (a, c) => Object.keys(SLOT).some(k => !COMMON_SLOTS.has(k) && SLOT[k](c)) }],
@@ -12142,7 +12156,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

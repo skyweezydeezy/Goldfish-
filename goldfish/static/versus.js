@@ -200,19 +200,18 @@
         say(mode, null, rollText(roll, pod.match.names));
         say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.names[pod.match.order[0].pid] === 'You' ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
       };
-      if (st.looping) announce(); else say(mode, null, 'New game. Everyone rolls a D20 to see who goes first…');
+      const dice = !st.looping && !(!human && q('.vs-loop').checked) && localStorage.getItem('isf_dice') !== '0';          // the dice on screen: not between the games of a Loop, nor with dice switched off
+      if (dice) say(mode, null, 'New game. Everyone rolls a D20 to see who goes first…'); else announce();
       render(mode);
       if (!st.looping) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
       const gm = st.game;
-      if (!st.looping) {                                      // the dice on screen (not between the games of a Loop)
-        let told = false;
-        const tell = () => { if (told) return; told = true; gm.onRoll = null; announce(); const d = st.root.querySelector('.vs-dice'); if (d) d.remove(); };
-        gm.onRoll = tell;                                     // pressing Play or +1 turn while the dice tumble skips them
-        await showRoll(mode, roll, pod.match.names);
-        if (st.game !== gm) return;                           // a new game was started meanwhile
-        tell(); render(mode);
-      }
       if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
+      if (dice) {                                      // the dice on screen (not between the games of a Loop). They never hold the game up:
+        let told = false;                                     // the table tells who goes first when they land, or at once if a turn is played first
+        const tell = () => { if (told) return; told = true; gm.onRoll = null; const d = st.root.querySelector('.vs-dice'); if (d) d.remove(); if (st.game === gm) { announce(); render(mode); } };
+        gm.onRoll = tell;
+        showRoll(mode, roll, pod.match.names).then(tell, tell);
+      }
     } finally { q('.vs-new').disabled = false; }
   }
   // A game against a person on another device (remote.js). Both devices build the same game from the same seed, decks and options,

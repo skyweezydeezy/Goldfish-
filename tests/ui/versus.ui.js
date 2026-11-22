@@ -11,6 +11,7 @@ const shot = process.env.VERSUS_SHOTS;
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 1000 }, serviceWorkers: 'block' });
   await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
+  await ctx.addInitScript(() => localStorage.setItem('isf_dice', '0'));   // no 3D dice here (d20.ui and dice.ui test them): their animation slows this headless browser enough to upset the timing checks
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const r = route.request();
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

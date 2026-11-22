@@ -3001,6 +3001,11 @@
   }
   function chooseTribeOnEnter(g, inst, spell) {
     const base = inst.card.tribeBase || inst.card, d = g.deck;
+    if (spell && d && !d.tribe && (base.a.spellFx || []).some(f => TRIBE_FX.has(f.type)) && /(^|\n)choose a creature type\./i.test(base.oracle_text || '')) {          // no deck type: the type you control most of is the default (bestTribeOnBoard)
+      const def = bestTribeOnBoard(g), { list, counts } = deckTribes(d); if (!def) return;
+      const opts = [def].concat(list.filter(t => t !== def)), pick = decide(g, { kind: 'tribe', options: opts, def, counts, source: { card: base }, learned: def });
+      g._castTribe = pick || def; return;
+    }
     if (!d || !d.tribe) return;
     const ch = chosenFor(g, base); if (!ch || ch.what !== 'creature type') return;
     if (spell && !tribeMatters(g, base)) return;

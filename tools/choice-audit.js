@@ -116,6 +116,8 @@ for (const w of wanted) {
   if (!choices.length) { report.push({ name: c.name, choices: [] }); continue; }
   const pr = probe(c);
   let gaps = pr.cast ? choices.filter(k => !ANSWERS[k].some(a => pr.kinds.includes(a))) : [];
+  // a card in a graveyard may be asked as a search fan ('yardBack'), and with one card to take there is nothing to ask
+  if (gaps.includes('target') && /target [^.]*card[^.]*graveyard/i.test(castText(c)) && !/target (?!(?:[\w-]+ )*cards?\b)/i.test(castText(c)) && G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0].a.triggers.concat([{ fx: G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0].a.spellFx || [] }]).some(t => (t.fx || []).some(f => f.type === 'yardBack'))) gaps = gaps.filter(k => k !== 'target');
   // a creature type the engine plays the card without (its effects read the same with any type): work for the card rules engine first
   const engine = [];
   if (gaps.includes('tribe')) { const b = G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0], same = t => JSON.stringify([t.a.spellFx, t.a.triggers, t.a.statics]); if (same(G.cardForTribe(base.games[0], b, 'Wall')) === same(G.cardForTribe(base.games[0], b, 'Goblin')) && !(b.a.spellFx || []).some(f => /tribe|kindred|bidding/i.test(f.type))) { engine.push('tribe'); gaps = gaps.filter(k => k !== 'tribe'); } }

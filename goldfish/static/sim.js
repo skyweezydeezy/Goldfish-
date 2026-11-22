@@ -8111,7 +8111,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   const foodCostOf = g => ({ generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [], x: 0 });
   // the card's activated-ability lines that are not handled by a rule of their own above, read as written; once per card
   const OTHER_AB = new WeakMap();
-  const OWN_RULE = /^sacrifice (?:a|another) creature(?: or artifact)?: (?:scry|surveil|add)|^sacrifice ~: search your library for a basic|remove a \+1\/\+1 counter from ~: (?:it|~) deals 1 damage to any target|^pay 50 life|sacrifice (?:a|an|one|two|three|\d+) foods?|burden counter|^pay 1 life: exile the top|^\{g\}, \{t\}, discard a creature card: search|card from a graveyard\. (?:add|each opponent|you gain)|indestructible counter on ~|^equip\b|^cycling\b|^[+−-]?\d+:|^[−-]x:|loyalty abilit/i;
+  const OWN_RULE = /^sacrifice (?:a|another) creature(?: or artifact)?: (?:scry|surveil|add)|^sacrifice ~: search your library for a basic|remove a \+1\/\+1 counter from ~: (?:it|~) deals 1 damage to any target|^pay 50 life|sacrifice (?:a|an|one|two|three|\d+) foods?|burden counter|^pay 1 life: exile the top|^\{1\}, \{t\}: exile any number of cards from your hand|you may cast target zombie creature card|sacrifice a creature you control with mana value x|^\{g\}, \{t\}, discard a creature card: search|card from a graveyard\. (?:add|each opponent|you gain)|indestructible counter on ~|^equip\b|^cycling\b|^[+−-]?\d+:|^[−-]x:|loyalty abilit/i;
   const KW_GRANT = ['flying', 'first strike', 'double strike', 'deathtouch', 'haste', 'hexproof', 'indestructible', 'lifelink', 'menace', 'reach', 'trample', 'vigilance', 'shroud'];
   const grantList = t => KW_GRANT.filter(k => new RegExp('\\b' + k + '\\b', 'i').test(t || ''));
   // effects parseEffects does not read, for a person's activation: untap, pumps and keywords until end of turn, can't be blocked, adapt
@@ -8347,6 +8347,27 @@ g.actSeq = (g.actSeq || 0) + 1;
         const o = g.battlefield.includes(t) ? g : otherPlayers(g).find(x => x.battlefield.includes(t)); if (o) { t.eotP = (t.eotP || 0) + X; t.eotT = (t.eotT || 0) - X; touch(o); }
         ev.push({ type: 'note', text: `${p.card.name}: ${X} Squirrel${X === 1 ? '' : 's'} sacrificed, ${t.card.name} gets +${X}/-${X}`, source: p });
       }); }
+    if (a.scrollRack) { const c = { generic: 1, pips: [], x: 0 };          // Scroll Rack: you choose the cards that go on top of your library
+      add('Put any number of cards from your hand on top of your library, then take that many from the top', '{1}, {T}', blocked || (p.tapped ? 'it is tapped' : null) || (g.hand.length ? null : 'your hand is empty') || (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })(), ev => {
+        const landsOn = g.battlefield.filter(q => q.asLand).length, reach = allUnits(g).length + 3;
+        let put = g.hand.filter(i => i.card.a.isLand ? landsOn >= 6 : (i.card.a.castMv || 0) > reach && !i.card.commander).slice(0, 3);
+        if (g.ask) put = decide(g, { kind: 'discard', options: g.hand.slice(), def: put, multi: true, pick: Math.min(g.hand.length, g.library.length), upTo: true, rack: true, source: p }) || [];
+        p.tapped = true; pay(g, c); p.rackTurn = g.turn; put.forEach(i => g.hand.splice(g.hand.indexOf(i), 1)); const got = g.library.splice(0, put.length); g.hand.push(...got); g.library.unshift(...put);
+        ev.push({ type: 'note', text: `${p.card.name}: put ${put.length} card${put.length === 1 ? '' : 's'} on top of the library and took ${put.length} new`, source: p });
+      }); }
+    if (a.sidisi) { const pairs = g.battlefield.filter(f => f !== p && isCreaturePerm(f) && g.graveyard.some(i => i.card.a.isCreature && (i.card.a.mv || 0) === (f.token ? 0 : f.card.a.mv || 0) + 1));          // Sidisi, Regent of the Mire
+      add('Sacrifice a creature with mana value X: return a creature card with mana value X plus 1 from your graveyard', '{T}', blocked || sickTap(g, p) || (pairs.length ? null : 'no creature with a card one mana value higher in your graveyard'), ev => {
+        let f = pairs.slice().sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0]; if (g.ask && pairs.length > 1) f = decide(g, { kind: 'sacrifice', options: pairs, def: f, ability: p.card.name, optional: true, source: p }); if (!f) return;
+        const x = f.token ? 0 : f.card.a.mv || 0, opts = g.graveyard.filter(i => i.card.a.isCreature && (i.card.a.mv || 0) === x + 1);
+        let c = opts.slice().sort((a1, b1) => reanimateValue(g, b1) - reanimateValue(g, a1))[0]; if (g.ask && opts.length > 1) c = decide(g, { kind: 'search', options: opts, def: c, f: { dest: 'battlefield' }, source: p }) || c;
+        p.tapped = true; leavePerm(g, f, ev); flushLeaves(g, ev); if (!g.graveyard.includes(c)) return;
+        g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${p.card.name}: sacrificed ${f.card.name}, ${c.card.name} returns`, source: p }, { type: 'rampLand', inst: c, perm, source: p });
+      }); }
+    if (a.zulAshur) { const zs = g.graveyard.filter(i => i.card.a.isCreature && matchesFilter(i.card, 'zombie') && i.zulCast !== g.turn);          // Zul Ashur, Lich Lord: then cast it from the graveyard (its menu there)
+      add('You may cast target Zombie creature card from your graveyard this turn', '{T}', blocked || sickTap(g, p) || (zs.length ? null : 'no Zombie creature card in your graveyard'), ev => {
+        let c = zs.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (g.ask && zs.length > 1) c = decide(g, { kind: 'search', options: zs, def: c, f: { dest: 'cast' }, source: p }) || c;
+        p.tapped = true; c.zulCast = g.turn; touch(g); ev.push({ type: 'note', text: `${p.card.name}: you may cast ${c.card.name} from your graveyard this turn`, source: p });
+      }); }
     if (a.foodSacMana) add('Add one mana of any color (tap it, sacrifice a Food)', '{T}, Sacrifice a Food', blocked || sickTap(g, p) || (foodsOf(g).length ? null : 'you control no Food'), ev => {
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
       ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });
@@ -8395,6 +8416,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     return out;
   }
+  // a card in your graveyard that something lets you cast this turn (Zul Ashur): the card menu offers "Cast"
+  function yardCastable(g, inst) { return !!inst && g.graveyard.includes(inst) && !inst.card.a.isLand && (inst.zulCast === g.turn || inst.yardCastTurn === g.turn); }
   function abilityMenu(g, p) { return abilityList(g, p).map(({ label, cost, ok, why }) => ({ label, cost, ok, why })); }
   // a person's choice from abilityMenu: the events, or null when it cannot be used now. The stack and state-based actions follow (acting).
   function useAbility(g, p, i) {
@@ -12287,7 +12310,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

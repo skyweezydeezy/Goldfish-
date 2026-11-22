@@ -7,7 +7,7 @@ Reads card data and images straight from a local folder of Scryfall data:
     <folder>/data/images/normal/<set>/<cn>_en[_<face>].jpg
 
 Standard library only. Run:
-    python server.py                       (auto-detects the folder under ~/Documents)
+    python server.py                       (uses the ICEYFISH_DATA_DIR environment variable)
     python server.py --data-dir "D:\\path\\to\\folder" --port 8765
 """
 import argparse
@@ -357,17 +357,16 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def default_root():
-    home = Path.home()
-    for p in (home / "Documents" / "ScryMirror", home / "OneDrive" / "Documents" / "ScryMirror", HERE.parent / "ScryMirror"):
-        if p.exists():
-            return p
+    """Local card data folder from the ICEYFISH_DATA_DIR environment variable (or pass --data-dir)."""
+    env = os.environ.get("ICEYFISH_DATA_DIR")
+    if env and Path(env).exists():
+        return Path(env)
     return None
 
 
 def main():
     ap = argparse.ArgumentParser(description="ICEYFISH")
-    ap.add_argument("--scrymirror", dest="data_dir", help=argparse.SUPPRESS)
-    ap.add_argument("--data-dir", dest="data_dir", help="Path to the local Scryfall data folder (default: auto-detect under ~/Documents)")
+    ap.add_argument("--data-dir", dest="data_dir", help="Path to the local Scryfall data folder (default: the ICEYFISH_DATA_DIR environment variable)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
     ap.add_argument("--lan", action="store_true", help="Let other devices on your Wi-Fi (phone, iPad) open the app")

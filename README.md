@@ -30,7 +30,7 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
 2. Double-click `start.bat` (in the top folder, or the one inside `goldfish`). Keep the whole downloaded folder together; the launcher needs `server.py` and `static` beside it. Your browser opens at <http://127.0.0.1:8765>.
 
-It reads a folder of Scryfall card data and images that you keep on your PC (auto-detected under `Documents`, or pass `--data-dir`):
+It reads a folder of Scryfall card data and images that you keep on your PC (set the `ICEYFISH_DATA_DIR` environment variable, or pass `--data-dir`):
 
 - `data\scryfall.sqlite` for card data (Oracle text, mana cost, types, printings)
 - `data\images\normal\<set>\<cn>_en[_<face>].jpg` for the card images

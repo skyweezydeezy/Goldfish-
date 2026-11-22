@@ -1,6 +1,6 @@
 @echo off
 REM ICEYFISH - double-click to start.
-REM Auto-detects your local Scryfall data folder. To use another folder:
+REM Uses the ICEYFISH_DATA_DIR environment variable for your local Scryfall data folder. To use another folder:
 REM   start.bat --data-dir "D:\path\to\folder"
 cd /d "%~dp0"
 if not exist "server.py" (

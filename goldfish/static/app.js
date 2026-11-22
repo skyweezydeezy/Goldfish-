@@ -935,21 +935,47 @@
   const sameInst = (x, inst) => x.hand.concat(x.command, x.graveyard, x.exile).find(i => i.iid === inst.iid) || (x.library[0] && x.library[0].iid === inst.iid ? x.library[0] : null);
   const quiet = p => p.catch(e => { if (e && e.cancelled) return; console.error(e); toast('Something went wrong: ' + (e && e.message || e)); });
 
-  function newTableGame() {
-    if (!need()) return;
+  function newTableGame(auto) {
+    if (!need()) return null;
     const g = G.newGame(S.deck, opts(), rseed());
     G.mulligan(g);
-    startTableGame(g);
+    return startTableGame(g, auto);
   }
-  function startTableGame(g) {
+  // Loop: game after game by itself, with the settings already on screen. Each game: a new game, the autopilot plays to the turn in the
+  // "Autopilot to turn" box (or until the goldfish is dead), a short pause that follows the speed slider, then the next. Press again to stop.
+  let tableLoop = null;
+  const loopBtn = on => { const b = $('#tLoop'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  $('#tLoop').addEventListener('click', () => {
+    if (tableLoop) { tableLoop.stop = true; loopBtn(false); toast('Loop stops after this game'); return; }
+    if (!need()) return;
+    tableLoop = { stop: false, games: 0, kills: [] }; loopBtn(true); runTableLoop(tableLoop);
+  });
+  async function runTableLoop(L) {
+    try {
+      while (!L.stop) {
+        while (S.busy && !L.stop) await sleep(150);
+        if (L.stop) break;
+        await newTableGame(true);
+        const n = Math.max(1, +$('#tAutoToN').value || 6);
+        await guard(async () => { while (!L.stop && S.game && S.game.killTurn == null && (S.game.turn < n || (S.game.turn === n && !S.game.turnDone))) await autoTurn(); });
+        if (L.stop || !S.game) break;
+        const g = S.game; L.games++; if (g.killTurn != null) L.kills.push(g.killTurn);
+        const avg = L.kills.length ? L.kills.reduce((a, b) => a + b, 0) / L.kills.length : 0;
+        const line = `Loop · game ${L.games}: ${g.killTurn != null ? 'goldfish dead on turn ' + g.killTurn : 'goldfish alive after turn ' + g.turn} · killed in ${L.kills.length} of ${L.games}${L.kills.length ? ', average turn ' + avg.toFixed(1) : ''}`;
+        log(`<b>${esc(line)}</b>`); toast(line);
+        await sleep(2500 * slow());
+      }
+    } finally { if (tableLoop === L) tableLoop = null; loopBtn(false); }
+  }
+  function startTableGame(g, auto) {
     if (window.__isfChoices) window.__isfChoices.close();                // a question of the game before this one
-    if (window.Decide) window.Decide.seat(g);                             // your choices are asked; the autopilot's turn still decides by itself
+    if (window.Decide && !auto) window.Decide.seat(g);                    // your choices are asked; the autopilot's turn still decides by itself (a looped game asks nothing)
     S.game = g; S.undo = []; g.turnDone = false; elCache.clear();
     $('#gameLog').innerHTML = '';
     sfx('shuffle');
     log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => esc(c.card.name)).join(', ')}`);
     render(true);
-    quiet(beginTurnUI(true).then(() => render(true)));
+    return quiet(beginTurnUI(!auto).then(() => render(true)));
   }
   // person: your turn starting (upkeep choices are asked); otherwise the autopilot's
   function beginTurnUI(person) {

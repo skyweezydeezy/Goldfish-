@@ -36,6 +36,7 @@
           <label>Your seat <select class="vs-you"><option value="human">I play my deck</option><option value="auto">Autopilot plays my deck</option></select></label>
           <label title="Searches, targets, modes, discards, sacrifices, counterspells and the end of the other players' turns">My choices <select class="vs-ask"><option value="ask">Ask me</option><option value="auto">Autopilot decides</option></select></label>
           <label>Max rounds <input class="vs-rounds" type="number" min="5" max="40" value="25"></label>
+          <label class="check" title="Loop: with every seat on the autopilot (Your seat: Autopilot plays my deck), each game plays itself at the speed of the slider and the next one starts after a short pause, with the same decks and settings. Untick to stop after the game being played."><input class="vs-loop" type="checkbox"> 🔁 Loop</label>
           <button class="primary vs-new">New game</button>
         </div>
         <details class="vs-what hint"><summary>What you are asked when you play, and what the autopilot still decides</summary>
@@ -60,7 +61,8 @@
     st.q = q; st.root = root; st.mode = mode;
     st.nodes = new Map(); st.backs = new Map(); st.life = {};
     q('.vs-top').appendChild(A.speedBar());                       // the same 🐢…🐇 speed setting as the Goldfish Table
-    q('.vs-new').addEventListener('click', () => newGame(mode).catch(e => info(mode, 'Could not start: ' + (e.message || e))));
+    q('.vs-new').addEventListener('click', () => { V[mode].loopStats = null; newGame(mode).catch(e => info(mode, 'Could not start: ' + (e.message || e))); });
+    q('.vs-loop').addEventListener('change', e => { if (e.target.checked && q('.vs-you').value === 'human') info(mode, 'Loop plays games by themselves: set Your seat to "Autopilot plays my deck", then press New game.'); });
     q('.vs-run').addEventListener('click', () => runSeries(mode).catch(e => { q('.vs-sinfo').textContent = 'Could not run: ' + (e.message || e); q('.vs-run').disabled = false; }));
     fill(mode);
   }
@@ -141,8 +143,8 @@
       sfx('shuffle'); if (human) sfx('deal', 0.4);
       say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.names[pod.match.order[0].pid] === 'You' ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
       render(mode);
-      { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
-      if (!human) advance(mode);
+      if (!st.looping) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
+      if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
     } finally { q('.vs-new').disabled = false; }
   }
   // A game against a person on another device (remote.js). Both devices build the same game from the same seed, decks and options,
@@ -397,6 +399,22 @@
     if (st.game !== gm) return;
     announce(mode);
     render(mode);
+    loopNext(mode, gm);
+  }
+  // Loop: when a game with every seat on the autopilot ends, the next one starts after a short pause (it follows the speed slider), with
+  // the same decks and settings, and plays itself. A running tally of wins shows under the table.
+  async function loopNext(mode, gm) {
+    const st = V[mode], q = st.q;
+    if (!q('.vs-loop').checked || gm.human != null || gm.remote != null || !finished(gm) || gm.looped) return;
+    gm.looped = true;
+    const s = st.loopStats = st.loopStats || { games: 0, wins: {} };
+    s.games++; const w = gm.match.winner != null ? gm.match.names[gm.match.winner] : 'No winner'; s.wins[w] = (s.wins[w] || 0) + 1;
+    const tally = Object.entries(s.wins).sort((a, b) => b[1] - a[1]).map(([n, k]) => `${n} ${k}`).join(' · ');
+    info(mode, `🔁 Loop · ${s.games} game${s.games === 1 ? '' : 's'}: ${tally}. Next game in a moment (untick Loop to stop).`);
+    await sleep(2500 * (A.slow ? A.slow() : 1));
+    if (!q('.vs-loop').checked || st.game !== gm) return;
+    st.looping = true;
+    try { await newGame(mode); } catch (e) { info(mode, 'Loop stopped: ' + (e.message || e)); } finally { st.looping = false; }
   }
   const advance = (mode, howMany, pace) => go(mode, advanceRun(mode, howMany, pace));
 

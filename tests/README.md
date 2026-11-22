@@ -161,5 +161,6 @@ only one at a time (browser test, no internet) |
 | ui/desktop-viewer | PC: clicking a card opens the viewer (price, previous / next); the autopilot speed slider (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |
 | ui/ab-picks | A/B test: Cut on a card writes "- Card" and offers replacements under it (popular cards for the same job, in the deck's colors, not in the deck); tapping one writes "+ Pick", a second pick replaces it, another tap takes it back (browser test) |
+| ui/loop | Loop: Practice plays game after game to the turn in the "Autopilot to turn" box and reports each, pressing Loop again stops it; Duel with the autopilot in your seat starts the next game by itself when one ends, with a running tally (browser test) |
 | ui/deck-menus | Every deck dropdown (Build, mirror opponent, Duel, Pod, the lab) is tiered by bracket, highest first, then by number of colors; saved decks last (browser test) |
 | ui/viewer-choices | The card viewer offers the table's own in-game choices under the card name ("In this game"): on the Goldfish Table the menu's Tap / Untap (the viewer stays open and updates), Cast, Play land and moves (the viewer closes and it happens); in a played 1v1 game a card you can play offers Play land / Cast (browser test) |

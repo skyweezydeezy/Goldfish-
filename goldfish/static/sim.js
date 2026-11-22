@@ -2962,7 +2962,7 @@
   // A spell asks only when the type changes what it does: its effects read differently with another type (Kindred Charge), or it reads
   // the type as it resolves (Kindred Summons, Bloodline Bidding). One the engine does not play (Kindred Dominance) or plays without the
   // type (Distant Melody counts every permanent) is not asked: there would be nothing to choose.
-  const TRIBE_FX = new Set(['kindredSummons', 'bidding']);
+  const TRIBE_FX = new Set(['kindredSummons', 'bidding', 'tribeSpell']);          // tribeSpell: Kindred Charge, Distant Melody, Kindred Dominance (the engine reads g._castTribe)
   function tribeMatters(g, base) {
     const fx = base.a.spellFx || [];
     if (fx.some(f => TRIBE_FX.has(f.type))) return true;
@@ -3885,7 +3885,13 @@
     if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('dies') && /^(a creature|another creature|another nontoken creature|~ or another creature|one or more other creatures)$/.test(t.who) && !(t.nontoken && p.token)) { if (t.perTurn) { if (q.perTurnUsed === g.opp.turn) continue; q.perTurnUsed = g.opp.turn; } fireN(g.opp, t, q, ev, p); }
   }
   // best card in the graveyard for "return target <kind> card from your graveyard to your hand"
-  function gyTarget(g, f) {
+  // A person chooses the card in a graveyard themselves (Regrowth, Eternal Witness, Reanimate, Sun Titan, Mystic Sanctuary): every card
+  // the effect may take is offered, the autopilot's pick as the default ("no target" when it would take nothing).
+  function gyAsk(g, def, options, dest, source, theirs) {
+    if (!g.ask || g.dry || !options.length) return def;
+    return decide(g, { kind: 'target', what: 'graveyard', options, def: def || null, optional: true, dest, source: source || null, theirs: theirs || null });
+  }
+  function gyTarget(g, f, all) {
     const ctx = tutorContext(g);
     let best = null, bs = -Infinity;
     for (const i of g.graveyard) {
@@ -3893,6 +3899,7 @@
       if (i.card.commander) continue;
       const ok = (f.filter === 'zombie') ? /\bZombie\b/.test(i.card.type_line || '') : f.filter === 'historic' ? (a.isArtifact || a.isLegendary || /\bSaga\b/.test(i.card.type_line || '')) : f.filter === 'creature' ? a.isCreature : f.filter === 'artifact' ? a.isArtifact : f.filter === 'instsorc' ? a.isInstantSorcery : f.filter === 'permanent' ? (a.isPermanent && !a.isLand) : f.filter && f.filter.includes('|') ? matchesFilter(i.card, f.filter) : true;
       if (!ok) continue;
+      if (all) all.push(i);
       const sc = tutorScore(g, i, ctx);
       if (sc > bs) { bs = sc; best = i; }
     }
@@ -5407,7 +5414,7 @@
           if (milledCr.length && bfInfo(g).graveReaver && !g.dry) { const b = milledCr.filter(i => g.graveyard.includes(i)).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x))[0]; if (b) { g.graveyard.splice(g.graveyard.indexOf(b), 1); enterWithTriggers(g, b, {}, ev); ev.push({ type: 'note', text: `Colossal Grave-Reaver: ${b.card.name} is milled onto the battlefield`, source }); } }
           break;
         }
-        case 'gyReturn': { const t = gyTarget(g, f); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); ev.push({ type: 'tutor', inst: t, source }); } break; }
+        case 'gyReturn': { const all = g.ask && !g.dry && !f.random ? [] : null; let t = gyTarget(g, f, all); if (all) t = gyAsk(g, t, f.filter === 'instsorc' ? all.filter(i => i.card.a.isInstantSorcery) : all, 'hand', source); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); ev.push({ type: 'tutor', inst: t, source }); } break; }
         case 'gyReturnAll': {
           const back = g.graveyard.filter(i => !i.card.commander && (f.filter !== 'creature' || i.card.a.isCreature) && i.card.a.power <= f.maxPower);
           back.forEach(i => { g.graveyard.splice(g.graveyard.indexOf(i), 1); g.hand.push(i); });
@@ -6406,7 +6413,9 @@
           const k = f.n || 1;
           if (f.sacrifice) { const fl = fodderList(g, true); if (!fl.length) break; leavePerm(g, fl[0].p, ev); }
           for (let r = 0; r < k; r++) {
-            const b = bestReanimation(g, f); if (!b) break;
+            const all = g.ask && !g.dry ? [] : null; let b = bestReanimation(g, f, all);
+            if (all && all.length) { const pick = gyAsk(g, b ? b.i : null, all.map(c => c.i), 'battlefield', source, new Set(all.filter(c => c.y !== g.graveyard).map(c => c.i))); b = pick ? all.find(c => c.i === pick) : null; }
+            if (!b) break;
             b.y.splice(b.y.indexOf(b.i), 1);
             if (f.lose) { g.life -= b.i.card.a.mv; checkDeath(g, ev); }
             const np = enterWithTriggers(g, b.i, { tapped: !!f.tapped }, ev);
@@ -6446,8 +6455,10 @@
           break;
         }
         case 'yardToTop': {                                                                                    // put a creature card from your graveyard on top of your library (a tutor for a fatty or a recursion piece)
-          const b = g.graveyard.filter(i => (f.instsorc ? i.card.a.isInstantSorcery : f.any ? !i.card.a.isLand : i.card.a.isCreature) && !i.card.commander).sort((x, y) => (f.any ? tutorScore(g, y, tutorContext(g)) - tutorScore(g, x, tutorContext(g)) : reanimateValue(g, y) - reanimateValue(g, x)))[0];
-          if (b && (f.any || f.instsorc || reanimateValue(g, b) >= 5)) { g.graveyard.splice(g.graveyard.indexOf(b), 1); g.library.unshift(b); ev.push({ type: 'note', text: `${b.card.name} goes from the graveyard to the top of your library`, source }); }
+          const ys = g.graveyard.filter(i => (f.instsorc ? i.card.a.isInstantSorcery : f.any ? !i.card.a.isLand : i.card.a.isCreature) && !i.card.commander).sort((x, y) => (f.any ? tutorScore(g, y, tutorContext(g)) - tutorScore(g, x, tutorContext(g)) : reanimateValue(g, y) - reanimateValue(g, x)));
+          let b = ys[0]; if (b && !(f.any || f.instsorc || reanimateValue(g, b) >= 5)) b = null;
+          if (g.ask && !g.dry) b = gyAsk(g, b || null, ys, 'top', source);          // a person chooses the card (Mystic Sanctuary, Noxious Revival)
+          if (b) { g.graveyard.splice(g.graveyard.indexOf(b), 1); g.library.unshift(b); ev.push({ type: 'note', text: `${b.card.name} goes from the graveyard to the top of your library`, source }); }
           break;
         }
         case 'oppShrink': if (g.opp) {                                                                         // Massacre Wurm: creatures your opponents control get -N/-N until end of turn
@@ -6633,7 +6644,7 @@
     if (f.from === 'any' && g.opp) for (const i of g.opp.graveyard) if (i.card.a.isCreature && !i.card.commander) out.push({ i, y: g.opp.graveyard });
     return out;
   }
-  function bestReanimation(g, f) {
+  function bestReanimation(g, f, all) {
     let best = null, bs = -Infinity;
     for (const c of reanimateCandidates(g, f)) {
       if (f.maxMv != null && c.i.card.a.mv > (f.maxMv === 'LIFE' ? g.lifeGainedThisTurn || 0 : f.maxMv)) continue;
@@ -6642,6 +6653,7 @@
       if (f.legendary && !c.i.card.a.isLegendary) continue;
       if (f.subtype && !matchesFilter(c.i.card, f.subtype)) continue;
       if (f.notType && matchesFilter(c.i.card, f.notType)) continue;          // Junji: a non-Dragon creature card
+      if (all) all.push(c);
       const v = (f.permanent ? permReturnValue(g, c.i) : reanimateValue(g, c.i)) - (f.lose ? c.i.card.a.mv * 0.5 : 0);
       if (v <= 0) continue;
       if (f.lose && g.life <= c.i.card.a.mv + (g.opp ? 8 : 4)) continue;           // never pay life you cannot afford
@@ -7188,7 +7200,7 @@
         if (a.isPermanent) for (let k = 0; k < n && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `A token copy of ${inst.card.name} enters` }); }
         else copySpell(g, inst, ev, n);
       }
-    } finally { g.xValue = null; if (g._castTribe) { g._castTribe = null; if (inst.card.tribeBase) inst.card = inst.card.tribeBase; } if (!g.dry && ripOn(g)) ripSweep(g); }          // the spell's chosen type ends with it
+    } finally { g.xValue = null; if (g._oppWas) { const o0 = g._oppWas; g._oppWas = null; g.opp = !o0.dead ? o0 : (pickTarget(g) || o0); } if (g._castTribe) { g._castTribe = null; if (inst.card.tribeBase) inst.card = inst.card.tribeBase; } if (!g.dry && ripOn(g)) ripSweep(g); }          // the spell's chosen type ends with it
   }
   function resolveSpellInner(g, inst, ev, a) {
     if (g.castTurn[inst.card.uid] == null) g.castTurn[inst.card.uid] = g.turn;
@@ -7208,6 +7220,10 @@
     }
     if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
+    if (g.ask && !g.dry && a.isInstantSorcery && isPod(g) && !g._oppWas && /\btarget opponent\b/i.test(inst.card.oracle_text || '')) {          // in a pod a person chooses the opponent ("target opponent")
+      const os = podAlive(g);
+      if (os.length > 1 && os.includes(g.opp)) { const o = decide(g, { kind: 'player', options: os, def: g.opp, source: { card: inst.card } }); if (o && o !== g.opp) { g._oppWas = g.opp; g.opp = o; } }
+    }
     if (g.ask && !g.dry && a.isInstantSorcery && !inst.card.tribeBase) { const was = inst.card; chooseTribeOnEnter(g, inst, true); if (inst.card !== was) { a = inst.card.a; g._castTribe = inst.card.chosenType; } }          // Kindred Summons: a person names the creature type as it resolves
     g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
     if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);

@@ -1796,17 +1796,20 @@
         if (/^\{u\}, \{t\}: the next spell you cast this turn has improvise/i.test(line)) { a.archway = true; rec.status = 'ok'; continue; }          // Archway of Innovation
         // ---- Loaded Dice (Krark and Sakashima): the coin flip and the cards that turn artifacts into creatures ----
         if (/^whenever you cast an instant or sorcery spell, flip a coin\. if you lose the flip, return that spell to its owner's hand\. if you win the flip, copy that spell/i.test(line)) { a.krark = true; rec.status = 'ok'; continue; }          // Krark, the Thumbless (see castCard)
-        if (/^~ has all activated abilities of all cards exiled with it/i.test(line)) { a.welder = true; rec.status = 'partial'; continue; }          // Myr Welder: the borrowed abilities are not used
+        if (/^~ has all activated abilities of all cards exiled with it/i.test(line)) { a.welder = true; rec.status = 'ok'; continue; }          // Myr Welder: it exiles the best mana artifact from a graveyard and taps for its mana (deckAbilities)
         if (/^activated abilities of creatures cost \{1\} less to activate/i.test(line)) { (a.statics.actReduce = a.statics.actReduce || []).push({ n: 1, who: 'creature' }); rec.status = 'ok'; continue; }          // Heartstone (see actCost)
-        if (/^\{x\}, \{t\}: tap x target noncreature artifacts/i.test(line)) { rec.status = 'neutral'; continue; }          // Synod Artificer: nothing to tap against a goldfish
-        if (/^\{x\}, \{t\}: untap x target noncreature artifacts/i.test(line)) { a.synodUntap = true; rec.status = 'partial'; continue; }          // Synod Artificer: the untap is not used yet
+        if (/^\{x\}, \{t\}: tap x target noncreature artifacts/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Synod Artificer: tapping is for an opponent's artifacts
+        if (/^\{x\}, \{t\}: untap x target noncreature artifacts/i.test(line)) { a.synodUntap = true; rec.status = 'ok'; continue; }          // Synod Artificer: untaps mana artifacts that make more than they cost (deckAbilities)
         if (/^whenever ~ blocks or becomes blocked, it gets -4\/\+4 until end of turn/i.test(line)) { rec.status = 'neutral'; continue; }          // Karn, Silver Golem
         if (/^\{1\}: target noncreature artifact becomes an artifact creature with power and toughness each equal to its mana value until end of turn/i.test(line)) { a.activated.push({ cost: parseCost('{1}'), tap: false, fx: [{ type: 'animateArtifact' }], gate: 'animateWorth', text: raw }); rec.status = 'ok'; continue; }          // Karn, Silver Golem
         if (/^at the beginning of combat on your turn, target non-equipment artifact you control becomes an artifact creature with base power and toughness 3\/3 until end of turn\. untap it/i.test(line)) { T4(['combat'], [{ type: 'animateArtifacts', p: 3, t: 3, one: true, untap: true }]); continue; }          // Living Brain, Mechanical Marvel
         if (/^each noncreature artifact is an artifact creature with power and toughness each equal to its mana value/i.test(line)) { a.marchMachines = true; rec.status = 'ok'; continue; }          // March of the Machines (see starfieldSync)
         if (/^enchanted artifact is a creature with base power and toughness 5\/5 in addition to its other types/i.test(line)) { T4(['etb'], [{ type: 'animateArtifacts', p: 5, t: 5, one: true, perm: true }]); continue; }          // Ensoul Artifact: your best artifact, for as long as the game lasts
-        if (/^\{2\}\{u\}: until end of turn, target noncreature artifact you control becomes an artifact creature and gains flying/i.test(line)) { rec.status = 'partial'; continue; }          // Katsumasa, the Animator: a 1/1 flier for three mana is not activated
-        if (/^the first activated ability of an artifact you activate each turn costs \{2\} less to activate/i.test(line)) { rec.status = 'partial'; continue; }          // Tezzeret, Betrayer of Flesh: the discount is not applied
+        if (/^\{2\}\{u\}: until end of turn, target noncreature artifact you control becomes an artifact creature and gains flying/i.test(line)) { a.katsumasa = true; rec.status = 'ok'; continue; }          // Katsumasa, the Animator: spare mana animates an artifact (deckAbilities); its +1/+1 counters count
+        if (/^the first activated ability of an artifact you activate each turn costs \{2\} less to activate/i.test(line)) { a.tezDiscount = true; rec.status = 'ok'; continue; }          // Tezzeret, Betrayer of Flesh (actCost, pay)
+        if (/^equipped creature has "\{2\}, \{t\}: (?:~|this creature) deals 1 damage to any target" and "whenever a creature dies, untap (?:~|this creature)\."/i.test(line)) { a.thornbite = true; a.triggers.push({ kinds: ['dies'], fx: [{ type: 'untapEquipped' }], text: raw }); rec.status = 'ok'; continue; }          // Thornbite Staff (deckAbilities)
+        if (/^whenever a shaman creature enters, you may attach ~ to it\.?$/i.test(line)) { a.shamanAttach = true; rec.status = 'ok'; continue; }          // Thornbite Staff: free equip onto a Shaman (deckAbilities)
+        if (/^equipped creature has "\{3\}, \{q\}: (?:~|this creature) gets \+2\/\+2 until end of turn\."/i.test(line)) { a.umbral = true; rec.status = 'ok'; continue; }          // Umbral Mantle: on a creature that taps for 4+ mana, endless mana (infiniteMana)
         if (/^when ~ enters, each noncreature artifact you control becomes a 4\/4 artifact creature until end of turn/i.test(line)) { T4(['etb'], [{ type: 'animateArtifacts', p: 4, t: 4 }]); continue; }          // Cyberdrive Awakener
         if (/^when ~ dies, return it to the battlefield tapped and transformed under its owner's control/i.test(line)) { a.dieTransform = true; rec.status = 'ok'; continue; }          // Ojer Taq (and the other Ojer gods)
         if ((mq = line.match(/^((?:\{[^}]+\})+), \{t\}: transform ~\. activate only if you attacked with three or more creatures this turn and only as a sorcery/i))) { a.templeCiv = parseCost(mq[1]); rec.status = 'ok'; continue; }          // Temple of Civilization
@@ -4039,6 +4042,7 @@
     return Math.pow(2, bfInfo(g).cm);
   }
   function pay(g, cost) {
+    if (cost && cost._tez) g.tezTurn = g.turn;          // Tezzeret's discount is used up
     g._payTre = false; g._paySrcs = null;
     const units = allUnits(g);
     const idx = canPay(cost, units);
@@ -4537,6 +4541,12 @@
   }
   // "Activated abilities cost {2} less" (Training Grounds, Biomancer's Familiar for creatures; Power Artifact for the enchanted artifact), never below one mana
   function actCost(g, p, cost) {
+    if (cost && p && p.card.a.isArtifact && g.tezTurn !== g.turn && tableHas(g, 'tezDiscount') && g.battlefield.some(q => q.card.a.tezDiscount) && cost.generic > 0) {          // Tezzeret: {2} less, marked used when paid (pay)
+      const c0 = actCost0(g, p, cost); const c = { generic: Math.max(0, c0.generic - 2), pips: c0.pips, x: c0.x, _tez: true }; return c;
+    }
+    return actCost0(g, p, cost);
+  }
+  function actCost0(g, p, cost) {
     const ar = bfInfo(g).actReduce; if (!ar || !cost || !p) return cost;
     let red = 0; for (const r of ar) if (r.d.who === 'creature' ? isCreaturePerm(p) : r.d.who === 'artifact' ? p.card.a.isArtifact : r.src.attachedTo === p.iid) red += r.d.n;
     if (!red) return cost;
@@ -4605,6 +4615,28 @@
       const a = p.card.a;
       if (!inLoop(p.card, deckAbilities) && !p.faceDown && !(p.token && p.card.name === 'Lander')) continue;          // (morph and Lander tokens are asked about the permanent, not its card)
       if (!g.battlefield.includes(p)) continue;
+      if (a.katsumasa && !g.combatDone && !g.dry) {          // Katsumasa: {2}{U}: an artifact becomes a 1/1 flier until end of turn (its +1/+1 counters on top)
+        const t = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.tapped && !q.animated && q.enteredTurn < g.turn && (!q.produce || (q.counters || 0) >= 2)).sort((x, y) => (y.counters || 0) - (x.counters || 0))[0];
+        if (t) { t.held = true; const ok = payFor(p, { generic: 2, pips: [['U']], x: 0 }, false); t.held = false;
+          if (ok) { t.animated = { p: 1, t: 1, perm: false, untilTurn: null, kw: ['flying'] }; t.sick = false; touch(g); note(p, `${t.card.name} becomes a ${1 + (t.counters || 0)}/${1 + (t.counters || 0)} flier until end of turn`); return true; } }
+      }
+      if (a.welder && isCreaturePerm(p) && !p.tapped && !p.sick && !g.dry) {          // Myr Welder: exile the best mana artifact card from a graveyard; it then taps for that mana
+        const yards = [g].concat(g.opp ? [g.opp] : []), have = p.produce ? (p.produce.amount || 1) : 0;
+        let best = null, by = null, bv = have;
+        for (const o of yards) for (const i of o.graveyard) { const pr = i.card.a.isArtifact && i.card.a.produce; if (pr && (pr.amount || 1) > bv) { bv = pr.amount || 1; best = i; by = o; } }
+        if (best) { by.graveyard.splice(by.graveyard.indexOf(best), 1); g.exile.push(best); p.tapped = true; p.produce = Object.assign({}, best.card.a.produce); (p.welded = p.welded || []).push(best.card.name); touch(g); note(p, `exiled ${best.card.name}: it now taps for its mana`); return true; }
+      }
+      if (a.synodUntap && isCreaturePerm(p) && !p.tapped && !p.sick && p.synodTurn !== g.turn && !g.dry) {          // Synod Artificer: {X}, {T}: untap X mana artifacts that make more than they cost
+        p.held = true; const free = allUnits(g).length; p.held = false;
+        const tapped = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && q.tapped && q.produce && (q.produce.amount || 1) >= 2).sort((x, y) => (y.produce.amount || 1) - (x.produce.amount || 1));
+        let k = 0, gain = 0; for (let j = 0; j < Math.min(tapped.length, free); j++) { const gg = gain + (tapped[j].produce.amount || 1) - 1; if (gg > gain) { gain = gg; k = j + 1; } }
+        if (k && gain >= 2) { p.synodTurn = g.turn; if (payFor(p, { generic: k, pips: [], x: 0 }, true)) { tapped.slice(0, k).forEach(q => { q.tapped = false; }); touch(g); note(p, `paid ${k} to untap ${tapped.slice(0, k).map(q => q.card.name).join(', ')} (+${gain} mana)`); return true; } }
+      }
+      if (a.thornbite && !g.dry) {          // Thornbite Staff: free onto a Shaman; the equipped creature pings for {2} after combat
+        if (a.shamanAttach && !g.battlefield.some(q => q.iid === p.attachedTo && matchesFilter(q.card, 'shaman'))) { const sh = g.battlefield.find(q => isCreaturePerm(q) && matchesFilter(q.card, 'shaman')); if (sh) { p.attachedTo = sh.iid; touch(g); note(p, `attached to ${sh.card.name}`); return true; } }
+        const c = g.battlefield.find(q => q.iid === p.attachedTo && isCreaturePerm(q));
+        if (c && g.combatDone && !c.tapped && !(c.sick && !hasKw(g, c, 'haste')) && payFor(c, { generic: 2, pips: [], x: 0 }, true)) { note(p, `${c.card.name} deals 1 damage`); applyEffects(g, [{ type: 'damage', n: 1, any: true }], c, ev, null); return true; }
+      }
       if (a.kikiCopy && isCreaturePerm(p) && !p.tapped && !g.combatDone && !(p.sick && !hasKw(g, p, 'haste'))) {          // Kiki-Jiki: {T}: a hasty token copy, sacrificed at the end of the turn
         let best = null, bs = 1.5;
         for (const q of g.battlefield) { if (q === p || !isCreaturePerm(q) || q.card.a.isLegendary || q.phased) continue; let v = Math.max(0, powerOf(g, q)) * 0.6; for (const t of q.card.a.triggers) if (t.kinds.includes('etb')) { const fv = fxValue(g, t.fx); if (isFinite(fv)) v += fv; } if (v > bs) { bs = v; best = q; } }
@@ -5680,6 +5712,7 @@
           ev.push({ type: 'mana', n, source });
           break;
         case 'extraCombat': g.extraCombats++; ev.push({ type: 'note', text: 'Additional combat phase', source }); break;
+        case 'untapEquipped': { const c = source && g.battlefield.find(q => q.iid === source.attachedTo); if (c && c.tapped) { c.tapped = false; ev.push({ type: 'note', text: `${source.card.name}: ${c.card.name} untaps`, source }); } break; }          // Thornbite Staff
         case 'untapAll':
           g.battlefield.forEach(p => { if (f.what === 'permanents' || (f.what === 'lands' && p.asLand) || (f.what === 'creatures' && isCreaturePerm(p)) || (f.what === 'nonland' && !p.asLand)) p.tapped = false; });
           ev.push({ type: 'note', text: 'Untapped ' + f.what, source });
@@ -10603,6 +10636,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
+    // B3: Umbral Mantle on a creature that taps for 4 or more mana ({3}, {Q}: untap it, again and again)
+    if (tableHas(g, 'umbral')) for (const q of bf) { if (!isCreaturePerm(q) || !q.produce || !ready(q) || amount(q) < 4) continue; if (bf.some(e => e.card.a.umbral && e.attachedTo === q.iid)) return { how: `${q.card.name} + Umbral Mantle`, colors: new Set(q.produce.colors || ['C']) }; }
     // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes
     for (const m of nonland) {
       const u = comboKind(m.card).untapCost; if (u == null) continue;
@@ -12355,7 +12390,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

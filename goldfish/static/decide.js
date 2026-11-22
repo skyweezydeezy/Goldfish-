@@ -140,6 +140,7 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? 'learned · ' : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}` : 'named by your cards'); }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
@@ -194,6 +195,10 @@
       const lv = Math.min(4, d.n || 1), ord = ['', 'first', 'second', 'third', 'fourth'][d.n] || d.n + 'th';
       q.title = `💍 The Ring tempts you (${ord} time): choose your Ring-bearer`;
       q.text = `Your Ring-bearer has: ${G.RING_TEXT.slice(0, lv).map((t, i) => (i + 1) + '. ' + t.replace(/^Your Ring-bearer /, '').replace(/^Whenever your Ring-bearer /, 'whenever it ')).join(' ')}`;
+    } else if (d.kind === 'x') {
+      q.title = `${sn}: choose X`;
+      q.text = `X can be up to ${opts[opts.length - 1]} with the mana you have${d.less ? ` (your first X spell this turn costs {${d.less}} less)` : ''}.`;
+      q.spell = src; q.spellNote = 'being cast';
     } else if (d.kind === 'explore') {
       const pn = src ? src.name : 'Your creature';
       q.title = `${pn} explores: ${d.reveal.card.name}`;

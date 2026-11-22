@@ -148,6 +148,7 @@
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
       if (d.kind === 'mode') { item.name = fxLabel(o.mode); }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
+      else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
@@ -218,9 +219,9 @@
       q.spell = d.reveal.card; q.spellNote = 'revealed';
     } else if (d.kind === 'counter') {
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
-      const nc = opts.filter(o => o.how !== 'respond').length, nr = opts.length - nc;
+      const nc = opts.filter(o => o.how !== 'respond' && o.how !== 'ability').length, nr = opts.length - nc;
       q.title = `${who} casts ${d.spell.card.name}: does it resolve?`;
-      q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant or card with flash you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant or a card with flash (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
+      q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant, card with flash or ability you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant, a card with flash or an ability of one of your permanents (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
       q.none = 'Let it resolve';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     } else if (d.kind === 'tribe') {                                                                      // Metallic Mimic, Cavern of Souls, Kindred Discovery: "As ~ enters, choose a creature type"
@@ -234,7 +235,7 @@
       if (d.target && d.target.card) { q.spell = d.target.card; q.spellNote = 'yours'; }
     } else if (d.kind === 'resolve') {
       q.title = `You cast ${d.spell.card.name}: does it resolve?`;
-      q.text = `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant or a card with flash (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
+      q.text = `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant, a card with flash or an ability (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
       q.none = 'Pass';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     }

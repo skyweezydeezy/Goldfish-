@@ -38,5 +38,17 @@ const castAsking = (g, b, inst, pick) => { const qs = []; const ev = D.resolveSy
   G.castCard(g, inst);
   check('the autopilot does not waste Cursecatcher on a spell they can pay for', b.battlefield.includes(cc)); }
 
+// ---- an ability in response: with a spell on the stack, your permanents' abilities are offered next to your instants
+{ const g = bare(3), b = bare(4); G.linkMatch(g, b); D.seat(b);
+  for (let i = 0; i < 3; i++) { const p = G.enter(g, { iid: g.nextIid++, card: by('Island') }, {}); p.tapped = false; }
+  for (let i = 0; i < 2; i++) { const p = G.enter(b, { iid: b.nextIid++, card: by('Island') }, {}); p.tapped = false; }
+  const bb = G.enterWithTriggers(b, { iid: b.nextIid++, card: by('Benthic Biomancer') }, {}, []); bb.sick = false;
+  const spell = deck.unique.find(c => /\bSorcery\b|\bInstant\b/.test(c.type_line || '') && (c.a.mv || 0) <= 3 && !c.a.counter && !c.a.cost.x && c.a.spellFx.length);
+  const inst = { iid: g.nextIid++, card: spell }; g.hand.push(inst);
+  let n = 0; const { qs } = castAsking(g, b, inst, q => (q.kind === 'counter' && n++ === 0 ? q.options.findIndex(o => /Adapt/.test(o.name)) : 'none'));
+  const q = qs.find(x => x.kind === 'counter');
+  check('another player casts a spell: your Benthic Biomancer\'s adapt is offered as a response', !!q && q.options.some(o => /Benthic Biomancer: Adapt 1/.test(o.name) && /in response/.test(o.note)), q && q.options.map(o => o.name + ' [' + o.note + ']').join(' | '));
+  check('...using it: the counter is on it before the spell resolves, and you are asked again', bb.counters === 1 && qs.filter(x => x.kind === 'counter').length >= 2, bb.counters + ' / asked ' + qs.filter(x => x.kind === 'counter').length); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -8299,7 +8299,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       add('Equip a creature', c, blocked || (g.activeTurn === false ? 'only on your turn' : null) || (cs.length ? null : 'no creature to equip') || payWhy(c), ev => {
         const t = ownCreature(g, bestCreature(g, p) || cs[0], 'equip', p, p); if (!t) return;
         pay(g, c); p.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: p, target: t });
-      });
+      }); out[out.length - 1].slow = true;
     }
     if (a.oneRing) add('Put a burden counter on it, then draw a card for each burden counter', '{T}', blocked || (p.tapped ? 'it is tapped' : null), ev => {
       p.tapped = true; p.burden = (p.burden || 0) + 1; ev.push({ type: 'note', text: `${p.card.name}: burden counter ${p.burden}, draw ${p.burden}`, source: p }); draw(g, p.burden, ev);
@@ -8381,6 +8381,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (ln.fx) applyEffects(g, ln.fx, p, ev, null); else ln.run(g, p, ev);
         if (ln.life) checkDeath(g, ev);
       });
+      if (ln.sorcery || /^level \d/i.test(ln.effect)) out[out.length - 1].slow = true;          // sorcery speed: not in a response
     }
     return out;
   }
@@ -11852,6 +11853,18 @@ g.actSeq = (g.actSeq || 0) + 1;
     const units = manaUnits(d), cards = d.hand.concat(d.command);
     return peekCards(cards, () => cards.filter(c => c !== exclude && c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(d, c.card) && !castBlocked(d, c) && canPay(effectiveCost(d, c), units)));
   }
+  // a person's permanents with an ability they can use in a response (not the sorcery-speed ones): offered next to their instants
+  function responseAbilities(d) {
+    if (!d.ask || d.dry) return [];
+    const out = [];
+    for (const p of d.battlefield) { if (p.asLand) continue; abilityList(d, p).forEach((it, i) => { if (it.ok && !it.slow) out.push({ ability: true, p, i, card: p.card, iid: p.iid, label: it.label, cost: it.cost, c: p, how: 'ability' }); }); }
+    return out;
+  }
+  function respondAbility(d, o, ev, spell) {
+    const r = useAbility(d, o.p, o.i); if (!r) return false;
+    ev.push({ type: 'note', text: `In response to ${spell.card.name}: ${o.card.name}`, source: null }, ...r);
+    return true;
+  }
   function respondWith(d, c, ev, spell) {
     const was = d.inWindow, wr = d.inResponse; d.inWindow = true; d.inResponse = true;
     let r = null;
@@ -11862,8 +11875,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   function ownPriority(g, inst, ev) {
     for (let k = 0; k < 4 && !g.dead && !matchOver(g); k++) {
-      const pick = decide(g, { kind: 'resolve', options: responseCards(g, inst), def: null, optional: true, always: true, spell: inst });
-      if (!pick || !respondWith(g, pick, ev, inst)) break;
+      const pick = decide(g, { kind: 'resolve', options: responseCards(g, inst).concat(responseAbilities(g)), def: null, optional: true, always: true, spell: inst });
+      if (!pick || !(pick.ability ? respondAbility(g, pick, ev, inst) : respondWith(g, pick, ev, inst))) break;
     }
   }
   function tryCounter(g, inst, ev, by) {
@@ -11950,10 +11963,10 @@ g.actSeq = (g.actSeq || 0) + 1;
   // a person answers another player's spell: a counterspell (the way it is paid), a response (cast first, then asked again), or nothing
   function personAnswer(g, d, inst, ev, ways, def) {
     for (let k = 0; k < 4 && !d.dead && !matchOver(d); k++) {
-      const resp = responseCards(d, null).map(c => ({ c, how: 'respond' }));
+      const resp = responseCards(d, null).map(c => ({ c, how: 'respond' })).concat(responseAbilities(d));
       const pick = decide(d, { kind: 'counter', options: ways.concat(resp), def: k ? null : def, optional: true, always: true, spell: inst, caster: g, unc: !ways.length && uncounterable(g, inst) });
-      if (!pick || pick.how !== 'respond') return pick || null;
-      if (!respondWith(d, pick.c, ev, inst)) return null;
+      if (!pick || (pick.how !== 'respond' && pick.how !== 'ability')) return pick || null;
+      if (!(pick.ability ? respondAbility(d, pick, ev, inst) : respondWith(d, pick.c, ev, inst))) return null;
       ways = ways.filter(w => d.hand.includes(w.c) && (w.how !== 'mana' || canPay(w.cost, manaUnits(d))) && (w.how !== 'cleave' || canPay(w.c.card.a.cleave, manaUnits(d))));
     }
     return null;

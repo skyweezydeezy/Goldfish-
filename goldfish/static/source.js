@@ -87,7 +87,7 @@
       faces: faces.map(f => ({ name: f.name, mana_cost: f.mana_cost || '', type_line: f.type_line || '', oracle_text: f.oracle_text || '', power: f.power, toughness: f.toughness, loyalty: f.loyalty != null ? f.loyalty : null, colors: f.colors || null })),
       images: localImages || [],
       remote_images: remote.filter(Boolean),
-      token_refs: (card.all_parts || []).filter(p => p.component === 'token' || /Emblem/.test(p.type_line || '')).map(p => ({ id: p.id, name: p.name })),
+      token_refs: (card.all_parts || []).filter(p => p.component === 'token' || p.component === 'meld_result' || /Emblem/.test(p.type_line || '')).map(p => ({ id: p.id, name: p.name })),
     };
   }
 

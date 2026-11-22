@@ -458,17 +458,6 @@
    "learnedVs": "field"
   },
   {
-   "file": "loaded-dice.txt",
-   "name": "Loaded Dice (Krark, the Thumbless + Sakashima of a Thousand Faces)",
-   "commanders": [
-    "Krark, the Thumbless",
-    "Sakashima of a Thousand Faces"
-   ],
-   "colors": "UR",
-   "cards": 100,
-   "bracket": 4
-  },
-  {
    "file": "mermaids.txt",
    "name": "Mermaids (Hakbal of the Surging Soul)",
    "commanders": [

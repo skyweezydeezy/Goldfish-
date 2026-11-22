@@ -62,9 +62,9 @@
     const el = $('#mirrorStatus');
     if (st.mode === 'local') {
       const i = st.info;
-      el.textContent = `ScryMirror: ${i.names.toLocaleString()} card names${i.images ? '' : ' (no image folder!)'}`; el.className = 'status-pill ok'; el.title = i.root;
+      el.textContent = `Local cards (Scryfall data): ${i.names.toLocaleString()} card names${i.images ? '' : ' (no image folder!)'}`; el.className = 'status-pill ok'; el.title = i.root;
     } else {
-      el.textContent = st.info && st.info.error ? 'ScryMirror not found · using Scryfall live' : 'Cards: Scryfall (live)';
+      el.textContent = 'Cards: Scryfall (live)';
       el.className = 'status-pill ok'; el.title = 'Card data and images load from Scryfall in your browser.';
     }
   });
@@ -267,7 +267,7 @@
     const add = (cls, html) => msgs.appendChild(h('div', 'msg ' + cls, html));
     const cmdrs = S.deck.commanders.map(i => i.card.name);
     add('ok', `Loaded <b>${total}</b> cards${cmdrs.length ? ` · Commander: <b>${esc(cmdrs.join(' + '))}</b>` : ''}${cards.some(c => c._guessed) ? ' (guessed, mark it with *CMDR* to be sure)' : ''}`);
-    if (r.missing.length) add('err', `<b>${r.missing.length}</b> not found in ScryMirror: ${r.missing.map(m => esc(m.name)).join(', ')}`);
+    if (r.missing.length) add('err', `<b>${r.missing.length}</b> not found in the card data: ${r.missing.map(m => esc(m.name)).join(', ')}`);
     if ($('#optFormat').value === 'commander' && total !== 100) add('warn', `Commander decks are 100 cards. This list has ${total}.`);
     if (cmdrs.length) {
       const ci = new Set(); S.deck.commanders.forEach(i => (i.card.color_identity || []).forEach(c => ci.add(c)));
@@ -456,7 +456,7 @@
     if (!box.children.length) box.innerHTML = '<div class="empty-note">Every card in this deck is fully understood by the engine.</div>';
     const tw = $('#tokenWall'); tw.innerHTML = '';
     if ((S.deck.tokens || []).length) {
-      tw.appendChild(h('div', 'hint', 'Tokens this deck makes (from ScryMirror):'));
+      tw.appendChild(h('div', 'hint', 'Tokens this deck makes (Scryfall data):'));
       S.deck.tokens.forEach(t => {
         const fake = Object.assign({}, t, { uid: 'preview:' + t.name });
         previewCards.set(fake.uid, fake);           // so the card viewer can open token pictures too

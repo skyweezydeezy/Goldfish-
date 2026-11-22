@@ -6820,6 +6820,7 @@
   function fireCastTriggers(g, inst, ev, isCopy) {
     const a = inst.card.a;
     if (!isCopy && !g.dry) {
+      g._firstX = !!(a.cost && a.cost.x) && g.xCastTurn !== g.turn;          // "your first spell with {X} in its mana cost each turn" (Zimone)
       if (a.cost && a.cost.x) g.xCastTurn = g.turn;
       { const ts = turnSeq(g); if (g.castSeqT !== ts) { g.castSeqT = ts; g.castSeqN = 0; } g.castSeqN++; if (!a.isArtifact) g.nonArtSeq = ts; }          // Rule of Law, Ethersworn Canonist: spells cast this turn
       if (g.ajaniPoison && (a.isCreature || a.isPlaneswalker) && g.killTurn == null && !matchOver(g)) addPoison(g, g.ajaniPoison, ev, null, "Ajani's emblem");          // Ajani, Sleeper Agent: two poison counters for each creature or planeswalker spell
@@ -6845,6 +6846,8 @@
     for (const q of g.battlefield.slice()) {
       for (const t of q.card.a.triggers) {
         if (!t.kinds.includes('cast') || (isCopy && !a.isInstantSorcery)) continue;
+        if (t.firstX === undefined) t.firstX = /your first spell with \{x\} in its mana cost each turn/i.test(t.text || '');
+        if (t.firstX && (isCopy || !g._firstX)) continue;          // only the first X spell of the turn, not every spell
         if (castFilterOk(t, inst, g)) for (let k = 0; k < times; k++) fire(g, t, q, ev, null);
       }
     }
@@ -7517,6 +7520,17 @@
     let victim = null;
     if (inst.card.a.discardCost) { const dn = inst.card.a.discardCost === true ? 1 : inst.card.a.discardCost; let ds = g.hand.filter(h => h !== inst).sort((x, y) => discardValue(g, x) - discardValue(g, y)).slice(0, dn); if (ds.length < dn && !force) return null; if (g.ask && ds.length === dn) ds = decide(g, { kind: 'discard', options: g.hand.filter(h => h !== inst), def: ds, multi: true, pick: dn, cost: true, source: inst }); for (const d of ds) { g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d); if (d.card.a.isLand) landToYard(g, [], false); madness(g, d, []); } }
     if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g, inst.card.a); if (g.ask && !force) { const vs = g.battlefield.filter(q => isCreaturePerm(q) || (inst.card.a.sacArtifactAlso && q.card.a.isArtifact && !q.asLand)); if (vs.length) victim = decide(g, { kind: 'sacrifice', options: vs, def: victim, cost: true, source: inst }); } if (!victim && !force) return null; }
+    // X: a person chooses it (the autopilot puts all its spare mana into X). The most that can be paid counts every reduction, Zimone's included.
+    if (g.ask && !g.dry && !force && inst.card.a.cost.x && !inst.freeCast) {
+      const was = inst.extraX; let top = -1;
+      for (let e = 0; e <= 40; e++) { inst.extraX = e; if (canPay(effectiveCost(g, inst), allUnits(g))) top = e; else break; }
+      inst.extraX = was;
+      if (top >= 0) {
+        const xs = []; for (let x = 1; x <= top + 1; x++) xs.push(x);
+        const def = Math.min(top + 1, 1 + (was == null ? top : was));
+        inst.extraX = decide(g, { kind: 'x', options: xs, def, source: inst, less: g.xCastTurn !== g.turn && bfInfo(g).xDiscount ? bfInfo(g).xDiscount.reduce((t, z) => t + Math.max(0, z.counters || 0), 0) : 0 }) - 1;
+      }
+    }
     const ev = [];
     let n;
     let flashVictims = null;

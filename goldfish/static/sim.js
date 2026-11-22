@@ -599,6 +599,12 @@
       if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // draw, then a discard the generic reading dropped (only the draw was played)
       { let dm;
+        if (/^target creature you control deals damage equal to its power to each other creature and each opponent\.?$/i.test(raw)) { a.spellFx.push({ type: 'ignition' }); rec.status = 'ok'; continue; }          // Chandra's Ignition
+        if (/^target player mills half their library, rounded down\.?$/i.test(raw)) { a.spellFx.push({ type: 'millTarget', half: true }); rec.status = 'partial'; rec.tag = 'opp'; continue; }          // Traumatize (an opponent, in a match)
+        if ((dm = raw.match(/^(?:landfall — )?whenever a land you control enters, target player mills (\w+) cards\.?/i))) { a.triggers.push({ kinds: ['landfall'], fx: [{ type: 'millTarget', n: num(dm[1]) }], text: raw }); rec.status = 'partial'; rec.tag = 'opp'; continue; }          // Hedron Crab
+        if (/^when ~ enters, attach it to target (?:legendary )?creature you control\.?$/i.test(raw)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'attachSelf' }], text: raw }); rec.status = 'ok'; continue; }          // Mithril Coat
+        if (/^whenever (?:an equipment you control enters|~ or another equipment you control enters), you may attach (?:it|that equipment) to target creature you control\.?$/i.test(raw)) { a.triggers.push({ kinds: ['permEtb'], other: false, nontoken: false, filter: 'artifact', fx: [{ type: 'attachSubject' }], text: raw }); rec.status = 'ok'; continue; }          // Sigarda's Aid, Hammer of Nazahn
+        if (/^when (?:~|this creature) enters, exile up to two target artifacts and\/or enchantments\.?$/i.test(raw)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'removal', how: 'exile', what: 'artOrEnch' }, { type: 'removal', how: 'exile', what: 'artOrEnch' }], text: raw }); rec.status = 'ok'; rec.tag = undefined; continue; }          // Angel of the Ruins
         if ((dm = raw.match(/^(?:target player draws|draw) (\w+) cards\. then (?:that player discards|discard) two cards unless (?:they|you) discard an? (artifact|land) card\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 2, what: dm[2].toLowerCase() }); rec.status = 'ok'; continue; }          // Thirst for Knowledge, Compulsive Research
         if ((dm = raw.match(/^draw (\w+) cards\. then discard a card unless you attacked this turn\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 1, attacked: true }); rec.status = 'ok'; continue; }          // Chart a Course
         if (/^search your library for a card, put that card into your hand, discard a card at random, then shuffle\.?$/i.test(raw)) { a.spellFx.push({ type: 'tutor', filters: [], dest: 'hand' }, { type: 'discardUnless', n: 1, random: true }); rec.status = 'ok'; continue; }          // Gamble
@@ -5446,6 +5452,11 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
+          const dt = hasKw(g, c, 'deathtouch'); for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q) && q !== c) { q.dmg = (q.dmg || 0) + k; if (dt) q.dt = true; } touch(x); }
+          ev.push({ type: 'note', text: `${c.card.name} deals ${k} damage to each other creature and each opponent`, source }); damageOpp(g, k, ev, c); break; }
+        case 'millTarget': if (g.opp) { const k = f.half ? Math.floor(g.opp.library.length / 2) : n; if (k > 0) millOpp(g, Math.min(k, 200), ev, source); } break;          // Traumatize, Hedron Crab: an opponent's library (nothing against a goldfish)
+        case 'attachSubject': if (subject && g.battlefield.includes(subject) && subject.card.a.isEquipment) { const t = ownCreature(g, bestCreature(g, subject), 'equip', subject, subject); if (t) { subject.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: subject, target: t }); } } break;          // Sigarda's Aid, Hammer of Nazahn
         case 'discardUnless': {          // Thirst for Knowledge, Compulsive Research, Chart a Course, Gamble
           if (f.random) { discardRandom(g, f.n, ev, source ? source.card.name : 'Gamble'); break; }
           if (f.attacked && g.attackedThisTurn) break;

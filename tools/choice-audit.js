@@ -69,7 +69,7 @@ function choicesOf(c, a) {
   return out;
 }
 // which question answers which choice
-const ANSWERS = { search: ['search', 'land'], target: ['target'], 'player target': ['target'], mode: ['mode'], tribe: ['tribe'], color: ['color'], name: ['name'], x: ['x'], discard: ['discard'], sacrifice: ['sacrifice', 'target'] };
+const ANSWERS = { search: ['search', 'land'], target: ['target'], 'player target': ['target', 'player'], mode: ['mode'], tribe: ['tribe'], color: ['color'], name: ['name'], x: ['x'], discard: ['discard'], sacrifice: ['sacrifice', 'target'] };
 
 // ---- the table: a 3-player pod, seat 0 played by a person, turn 6, everything in play
 const load = n => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', n + '-loaded.json'), 'utf8'));
@@ -85,6 +85,8 @@ function table() {
     put(g, c => c.a.isArtifact && !c.a.isCreature && !c.a.isLand); put(g, c => c.a.isEnchantment && !c.a.isCreature);
     for (let k = 0; k < 3 && g.library.length; k++) g.hand.push(g.library.pop());
     for (let k = 0; k < 4 && g.library.length; k++) g.graveyard.push(g.library.pop());
+    // one card of each kind in every graveyard, so a card that returns one has something to choose between
+    for (const pick of [c => c.a.isCreature && !c.commander && (c.a.mv || 0) <= 2, c => c.a.isCreature && !c.commander && (c.a.mv || 0) >= 4, c => c.a.isInstantSorcery && /Instant/.test(c.type_line), c => c.a.isInstantSorcery && /Sorcery/.test(c.type_line), c => c.a.isArtifact && !c.a.isCreature, c => c.a.isEnchantment && !c.a.isCreature, c => c.a.isLand && /Basic/.test(c.type_line || ''), c => c.a.isLand && !/Basic/.test(c.type_line || '')]) { const c = g.deck.unique.find(pick); if (c) g.graveyard.push({ iid: g.nextIid++, card: c }); }
   });
   D.seat(p.games[0]);
   return p;
@@ -114,10 +116,16 @@ for (const w of wanted) {
   if (!choices.length) { report.push({ name: c.name, choices: [] }); continue; }
   const pr = probe(c);
   let gaps = pr.cast ? choices.filter(k => !ANSWERS[k].some(a => pr.kinds.includes(a))) : [];
+  // a card in a graveyard may be asked as a search fan ('yardBack'), and with one card to take there is nothing to ask
+  if (gaps.includes('target') && /target [^.]*card[^.]*graveyard/i.test(castText(c)) && !/target (?!(?:[\w-]+ )*cards?\b)/i.test(castText(c)) && G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0].a.triggers.concat([{ fx: G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0].a.spellFx || [] }]).some(t => (t.fx || []).some(f => f.type === 'yardBack'))) gaps = gaps.filter(k => k !== 'target');
   // a creature type the engine plays the card without (its effects read the same with any type): work for the card rules engine first
   const engine = [];
   if (gaps.includes('tribe')) { const b = G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0], same = t => JSON.stringify([t.a.spellFx, t.a.triggers, t.a.statics]); if (same(G.cardForTribe(base.games[0], b, 'Wall')) === same(G.cardForTribe(base.games[0], b, 'Goblin')) && !(b.a.spellFx || []).some(f => /tribe|kindred|bidding/i.test(f.type))) { engine.push('tribe'); gaps = gaps.filter(k => k !== 'tribe'); } }
-  if (gaps.includes('color')) { engine.push('color'); gaps = gaps.filter(k => k !== 'color'); }          // the engine does not model a chosen color yet (approximated)
+  
+  // a card the engine does not fully play (a rules line unread or approximated, a spell with no effect, modes it reads only in part):
+  // its choice cannot be asked before the card rules engine plays it
+  if (gaps.length) { const b = G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0], a = b.a, md = (a.spellFx || []).find(f => f.type === 'modal'), written = (textOf(c).match(/^[•+] /gm) || []).length;
+    if ((a.coverage || []).some(r => r.status && r.status !== 'ok') || (a.isInstantSorcery && !(a.spellFx || []).length) || (md && written > md.modes.length)) { engine.push(...gaps.map(k => k + ' (card not fully played)')); gaps = []; } }
   report.push({ name: c.name, choices, asked: pr.kinds, cast: pr.cast, err: pr.err, gaps, engine });
   if (++n % 250 === 0) process.stderr.write(`  ${n} cards with choices probed\n`);
 }
@@ -128,11 +136,12 @@ const byKind = {};
 gapped.forEach(r => r.gaps.forEach(k => { (byKind[k] = byKind[k] || []).push(r.name); }));
 console.log(`Choice audit: ${report.length} cards, ${withChoice.length} make a choice on cast or as they enter.`);
 console.log(`  asked as they should be: ${withChoice.length - gapped.length - notCast.length - engineOnly.length}`);
-console.log(`  a choice the engine plays without (the card rules engine first: a color, a creature type it does not use): ${engineOnly.length}`);
+console.log(`  a choice the engine plays without (the card rules engine first: a rules line it does not read or approximates): ${engineOnly.length}`);
 console.log(`  a choice not asked (gaps): ${gapped.length}`);
 console.log(`  not cast on the test table (no target, a condition): ${notCast.length}`);
 for (const k of Object.keys(byKind).sort((a, b) => byKind[b].length - byKind[a].length)) console.log(`\n${k} not asked (${byKind[k].length}): ${byKind[k].slice(0, 40).join(', ')}${byKind[k].length > 40 ? ', …' : ''}`);
 if (process.argv.includes('--all')) withChoice.filter(r => !r.gaps || !r.gaps.length).forEach(r => console.log(`  ok  ${r.name}: ${r.choices.join(', ')} → ${r.asked ? r.asked.join(', ') : ''}`));
-{ const eb = {}; withChoice.forEach(r => (r.engine || []).forEach(k => { (eb[k] = eb[k] || []).push(r.name); })); for (const k of Object.keys(eb)) console.log(`\n${k} the engine plays without (${eb[k].length}): ${eb[k].slice(0, 40).join(', ')}`); }
+{ const eb = {}; withChoice.forEach(r => (r.engine || []).forEach(k => { (eb[k] = eb[k] || []).push(r.name); })); const tot = {}; for (const k of Object.keys(eb)) { const kk = k.replace(/ \(card not fully played\)/, ''); tot[kk] = (tot[kk] || []).concat(eb[k]); } for (const k of Object.keys(tot).sort((x, y) => tot[y].length - tot[x].length)) console.log(`\n${k}: the engine first (${tot[k].length}): ${tot[k].slice(0, 25).join(', ')}${tot[k].length > 25 ? ', …' : ''}`); }
+{ const errs = report.filter(r => r.err); if (errs.length) { console.log(`\nENGINE ERRORS while playing (${errs.length}): ` + errs.slice(0, 20).map(r => `${r.name} [${r.err}]`).join('; ')); process.exitCode = 1; } }
 const missing = report.filter(r => r.missing); if (missing.length) console.log(`\nnot found in the card database: ${missing.map(r => r.name).join(', ')}`);
 if (arg('--json')) fs.writeFileSync(arg('--json'), JSON.stringify({ when: new Date().toISOString(), report }, null, 1));

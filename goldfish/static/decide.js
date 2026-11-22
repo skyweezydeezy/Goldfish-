@@ -84,6 +84,7 @@
     edict: 'an opponent sacrifices a creature', reanimate: 'return a creature from a graveyard', wrath: 'destroy creatures', treasure: 'make Treasure', scry: 'scry', mill: 'mill cards', discardSelf: 'discard', proliferate: 'proliferate',
     untapAll: 'untap permanents', extraTurn: 'take an extra turn', gyReturn: 'return a card from your graveyard', counter: 'counter a spell', loot: 'draw, then discard', food: 'make Food', tempt: 'the Ring tempts you' };
   const num = n => (typeof n === 'number' ? n : n === 'X' ? 'X' : null);
+  const cap = w => String(w || '').replace(/^./, c => c.toUpperCase());
   function fxLabel(fx) {
     return (fx || []).map(f => {
       const n = num(f.n);
@@ -98,6 +99,10 @@
         case 'bounce': return `return ${f.what === 'creature' ? 'a creature' : 'a permanent'} to its owner's hand`;
         case 'counters': return `put ${n == null ? '' : n + ' '}${f.kind || '+1/+1'} counter${n === 1 ? '' : 's'} on ${f.scope === 'each' ? 'each creature' : f.scope === 'self' ? 'this' : 'a creature'}`;
         case 'tutor': return `search your library for ${filterWords(f)}`;
+        case 'wrath': return `destroy all ${f.onlyType ? cap(f.onlyType) + ' ' : f.notType ? 'non-' + cap(f.notType) + ' ' : ''}creatures${f.minPower ? ' with power ' + f.minPower + ' or greater' : f.maxPower != null ? ' with power ' + f.maxPower + ' or less' : ''}`;
+        case 'sweep': return `destroy all ${f.what === 'artOrEnch' ? 'artifacts and enchantments' : (f.what || 'permanent') + 's'}${f.mvMax != null ? ' with mana value ' + f.mvMax + ' or less' : f.mvMin != null ? ' with mana value ' + f.mvMin + ' or greater' : ''}`;
+        case 'edict': return `each opponent sacrifices ${f.what === 'planeswalker' ? 'a planeswalker' : f.what === 'artifact' ? 'an artifact' : f.what === 'enchantment' ? 'an enchantment' : 'a ' + (f.what || 'creature')}`;
+        case 'exileYards': return 'exile all graveyards';
         default: return FX_WORDS[f.type] || f.type;
       }
     }).filter(Boolean).join(', then ') || 'no effect the engine plays';
@@ -131,6 +136,7 @@
     uncounter: ['choose a target', 'Choose the permanent that loses its counters.'],
     copy: ['copy what?', 'Choose the permanent to copy.'],
     equip: ['equip which creature?', 'Choose the creature to attach it to.'],
+    earthbend: ['choose a land', 'Choose the land that becomes a 0/0 creature with haste and gets the +1/+1 counters.'],
     flicker: ['flicker which creature?', 'Choose the creature to exile and return to the battlefield (it comes back untapped, its enter effects happen again).'],
   };
   function question(g, d) {
@@ -147,17 +153,20 @@
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
-      if (d.kind === 'mode') { item.name = fxLabel(o.mode); }
+      if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
+      else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? (d.spellAsk ? 'the autopilot\'s pick · ' : 'learned · ') : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}${d.spellAsk ? ' in your graveyard' : ''}` : 'named by your cards'); }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
-        if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
+        if (d.what === 'graveyard') { item.note = [d.theirs && d.theirs.has(o) ? "in another player's graveyard" : '', (o.card.type_line || '').split(' — ')[0]].filter(Boolean).join(' · '); }
+        else if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
       }
       if (item.def) q.def.push(k);
       q.options.push(item);
@@ -165,8 +174,8 @@
     const by = d.by && m && m.names ? m.names[d.by.pid] : 'An opponent';
     if (d.kind === 'search') {
       const f = d.f || {}, tapped = f.tapped ? ', tapped' : '';
-      const where = f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
-      q.dest = f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
+      const where = f.dest === 'graveyard' ? 'into your graveyard' : f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
+      q.dest = f.dest === 'graveyard' ? 'Your graveyard' : f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
       if (d.what === 'battlefield') { q.title = `${sn || 'Search'}: which land goes onto the battlefield?`; q.text = `Choose ${f.bf === 1 ? 'the land' : f.bf + ' lands'} to put onto the battlefield${tapped}; the rest go into your hand.`; }
       else { q.title = `${sn || 'Search'}: search your ${f.land ? 'library for ' + (f.land === 'basic' ? 'basic lands' : 'a land') : 'library'}`; q.text = `Choose ${filterWords(f)}. ${f.dest === 'split' ? 'Then ' + where.replace(/^one goes/, 'you choose which one goes') : (f.n > 1 ? 'They go ' : 'It goes ') + where}; your library is shuffled.`; }
       if (f.slot) { q.title = `${sn || 'Search'}: search for ${filterWords(f)} (${f.slot} of ${f.of})`; q.text = `Choose ${filterWords(f)}. It goes ${where}${f.slot < f.of ? '; the next search follows' : '; your library is then shuffled'}.`; }
@@ -175,7 +184,8 @@
     } else if (d.kind === 'target') {
       const f = d.f || {};
       if (d.what === 'removal') { q.title = `${sn || 'Removal'}: choose a target`; q.text = `Choose the permanent to ${f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'put into its owner\'s library' : 'destroy'}.`; q.none = 'No target (nothing happens)'; }
-      else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
+      else if (d.what === 'graveyard') { q.title = `${sn || 'Effect'}: choose a card in ${d.theirs && d.theirs.size ? 'a' : 'your'} graveyard`; q.text = `Choose the card that returns ${d.dest === 'battlefield' ? 'to the battlefield' : d.dest === 'top' ? 'to the top of your library' : 'to your hand'}. Only the cards it can take are listed.`; q.none = 'No target (nothing returns)'; q.fan = true; }
+            else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
       else if (d.what === 'burn') { q.title = `${sn || 'Damage'}: ${d.n} damage`; q.text = `Choose a creature this kills${d.face ? ', or deal the damage to the players' : ''}. Only creatures the damage would kill are listed: the engine does not keep damage on a creature that survives.`; q.none = d.face ? 'Deal it to the players' : 'No target (nothing happens)'; }
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
@@ -233,6 +243,14 @@
       q.text = d.spellAsk ? `It names a creature type: the creature cards of that type in your graveyard return to the battlefield. The types in your graveyard are listed; ★ is the autopilot's pick (${d.learned}), the type worth the most.`
         : `${spell ? 'As it resolves it names a creature type for what it does' : 'As it enters it names a creature type, and plays as that type from now on'}. The types of your deck's creatures are listed; ★ is the learned type (${d.learned}), the one the autopilot names.`;
       if (src) { q.spell = src; q.spellNote = spell ? 'resolving' : 'entering'; }
+    } else if (d.kind === 'player') {                                                                     // a pod: "target opponent"
+      q.title = `${sn || 'Spell'}: choose an opponent`;
+      q.text = 'It targets an opponent. ★ is the player you are facing this turn (the autopilot\'s pick).';
+      if (src) { q.spell = src; q.spellNote = 'resolving'; }
+    } else if (d.kind === 'color') {                                                                      // "As ~ enters, choose a color": Caged Sun, Utopia Sprawl, the Thriving lands
+      q.title = `${sn || 'This permanent'}: choose a color`;
+      q.text = 'As it enters it names a color, and plays with that color from now on. ★ is the autopilot\'s pick: the color most of your remaining cards have.';
+      if (src) { q.spell = src; q.spellNote = 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;
       q.text = d.def == null ? 'You can answer it this way; the autopilot would let it happen. Choose it, or "Not now".' : 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';

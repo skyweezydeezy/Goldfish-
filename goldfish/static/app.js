@@ -1119,7 +1119,7 @@
     let seen = CHOSEN_SAID.get(g); if (!seen) CHOSEN_SAID.set(g, seen = new Set());
     for (const p of g.battlefield) {
       if (seen.has(p.iid)) continue; seen.add(p.iid);
-      const ch = G.chosenFor(g, p.card); if (ch) log(`<b>${esc(p.card.name.split(' // ')[0])}</b>: the chosen ${ch.what} is <b>${esc(ch.name)}</b>`);
+      const ch = G.chosenOf(g, p); if (ch) log(`<b>${esc(p.card.name.split(' // ')[0])}</b>: the chosen ${ch.what} is <b>${esc(ch.name)}</b>`);
     }
   }
 
@@ -1717,7 +1717,7 @@
     if (p.card.a.isPlaneswalker) e.appendChild(h('span', 'pt loyalty', '◆ ' + p.loyalty));
     if (p.card.a.isPlaneswalker && !S.busy && G.loyaltyState(g, p).list.some(it => it.ok)) { e.classList.add('castable'); e.title = 'Loyalty abilities: click for the menu'; }          // one of its loyalty abilities can be used now
     if (p.attachedTo != null) { const t = g.battlefield.find(q => q.iid === p.attachedTo); if (t) e.appendChild(h('span', 'tag', '→ ' + esc(t.card.name.split(',')[0]))); }
-    { const ch = G.chosenFor(g, p.card); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic, Cavern of Souls: the type it chose, on the card
+    { const ch = G.chosenOf(g, p); if (ch) { const tg = e.appendChild(h('span', 'tag chosen', esc(ch.name))); tg.title = `The chosen ${ch.what}: ${ch.name}`; } }          // Metallic Mimic, Cavern of Souls: the type it chose, on the card
     return e;
   }
 

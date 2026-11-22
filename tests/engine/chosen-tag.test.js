@@ -89,8 +89,12 @@ const castMimic = (p, chooser) => { const a = p.games[0]; lands(a, 2); const mm 
   check('...and the card goes to the graveyard as the plain card (the choice ends with the spell)', a.graveyard.some(i => i.iid === ks.iid && !i.card.tribeBase) && !a._castTribe); }
 { const dk = G.buildDeck(CT.cards, CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; }); D.seat(pod.games[0]);
   const a = pod.games[0]; const dm = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Distant Melody') }; a.hand.push(dm); for (let k = 0; k < 6; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }
-  const qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === dm.iid)), q => { qs.push(q.kind); return 'auto'; });
-  check('Distant Melody (the engine counts every permanent, not one type) does not ask: there is nothing to choose yet', !qs.includes('tribe'), qs.join(', ')); }
+  const cre = a.deck.unique.filter(c => /Creature/.test(c.type_line || '') && !c.commander), mers = cre.filter(c => /Merfolk/.test(c.type_line)).slice(0, 3), sh = cre.find(c => /Shapeshifter/.test(c.type_line) && !/Merfolk/.test(c.type_line));
+  mers.concat([sh]).forEach(c => G.enterWithTriggers(a, { iid: a.nextIid++, card: c }, {}, []));
+  const h0 = a.hand.length, qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === dm.iid), true), q => { qs.push(q.kind); return q.kind === 'tribe' ? q.options.findIndex(o => o.name === 'Shapeshifter') : 'none'; });
+  check('Distant Melody asks for the creature type (the engine plays it with the type now)', qs.includes('tribe'), qs.join(', '));
+  const drew = a.hand.length - (h0 - 1), shapes = a.battlefield.filter(q => /Shapeshifter/.test(q.card.type_line || '') || q.card.a.changeling).length;
+  check('...choosing Shapeshifter draws one card for each Shapeshifter you control, not for each Merfolk', drew === shapes && shapes >= 1 && shapes < 4, `drew ${drew}, ${shapes} Shapeshifter(s), 3 Merfolk`); }
 { const bb = find('Bloodline Bidding');
   if (bb) { const dk = G.buildDeck(CT.cards.concat([bb]), CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; x.graveyard = []; }); D.seat(pod.games[0]);
     const a = pod.games[0]; for (let k = 0; k < 9; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === (k < 5 ? 'Swamp' : 'Island')) || a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }
@@ -104,6 +108,19 @@ const castMimic = (p, chooser) => { const a = p.games[0]; lands(a, 2); const mm 
     check('Bloodline Bidding asks which type returns: the types in your graveyard, the autopilot\'s (worth the most, Merfolk) preselected', !!tq && tq.options[tq.def[0]].name === 'Merfolk' && tq.options.some(o => o.name === otype) && /in your graveyard/.test(tq.options[0].note), tq && tq.options.map(o => o.name + ' (' + o.note + ')').join(', '));
     check(`...choosing ${otype}: that creature returns, the Merfolk stay in the graveyard`, a.battlefield.some(q => q.card.name === oth[0].name) && mer.every(c => a.graveyard.some(i => i.card.name === c.name)), a.battlefield.map(q => q.card.name).filter(n => !/Swamp|Island/.test(n)).join(', ')); }
   else console.log('SKIP  Bloodline Bidding is not in the set database'); }
+
+// ---- a color chosen as a permanent enters (Caged Sun)
+{ const cs = find('Caged Sun');
+  if (cs) { const mk = seat => { const pod = G.newPod([G.buildDeck(MM.cards.concat([cs]), MM.tokens), G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; }); if (seat) D.seat(pod.games[0]); return pod; };
+    const pod = mk(true), a = pod.games[0]; const i = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Caged Sun') }; a.hand.push(i);
+    const auto = G.autoColor(a, null); const qs = [];
+    D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(x => x.iid === i.iid), true), q => { qs.push(q); return q.kind === 'color' ? q.options.findIndex(o => o.name === 'Red') : 'none'; });
+    const q = qs.find(x => x.kind === 'color'), perm = a.battlefield.find(x => x.card.name === 'Caged Sun');
+    check('Caged Sun asks "choose a color": the five colors, the autopilot\'s (the color most of your cards have) preselected', !!q && q.title === 'Caged Sun: choose a color' && q.options.map(o => o.name).join() === 'White,Blue,Black,Red,Green' && q.options[q.def[0]].name === G.COLOR_NAME[auto], q && q.options.map(o => o.name + ' (' + o.note + ')').join(', '));
+    check('...choosing Red: the permanent\'s color is red, and its tag and log line say "color: Red"', perm && perm.chosenColor === 'R' && JSON.stringify(G.chosenOf(a, perm)) === '{"what":"color","name":"Red"}', perm && perm.chosenColor);
+    const p2 = mk(false), b = p2.games[0]; const j = { iid: b.nextIid++, card: b.deck.unique.find(c => c.name === 'Caged Sun') }; b.hand.push(j); G.castCard(b, j, true);
+    check('...the autopilot takes its own color unasked', b.battlefield.find(x => x.card.name === 'Caged Sun').chosenColor === G.autoColor(b, null)); }
+  else console.log('SKIP  Caged Sun is not in the set database'); }
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -317,7 +317,7 @@
     const outright = wins.filter(c => /you win the game|loses the game/i.test(text(c))), finishers = wins.filter(c => !outright.includes(c));
     let html = '';
     if (combos.length) html += `<div class="sg fold-items good"><b>${combos.length} combo${combos.length === 1 ? '' : 's'}</b><ul>${combos.map(c =>
-      `<li><b>${esc(c.name)}: ${esc(c.slots.map(s => s.cards[0] + (s.cards.length > 1 ? ' +' + (s.cards.length - 1) : '')).join(' + '))}</b>: ${esc(c.how)}<div class="hint">${c.slots.map(s => `${esc(s.label)}: ${list(s.cards)}`).join('<br>')}</div></li>`).join('')}</ul></div>`;
+      `<li><b>${esc(c.name)}: ${esc(c.slots.map(s => s.cards[0] + (s.cards.length > 1 ? ' +' + (s.cards.length - 1) : '')).join(' + '))}</b>: ${esc(c.how)}${c.open ? ' Nothing in this list wins with the mana yet: add an outlet (Walking Ballista, an X damage spell, a creature that draws or deals damage for mana).' : ''}<div class="hint">${c.slots.map(s => `${esc(s.label)}: ${list(s.cards)}`).join('<br>')}</div></li>`).join('')}</ul></div>`;
     else html += '<div class="sg"><b>No combo found</b><p>None of the combo lines the engine knows has all its pieces in this list.</p></div>';
     if (outright.length) html += `<div class="sg"><b>${outright.length} card${outright.length === 1 ? '' : 's'} that win${outright.length === 1 ? 's' : ''} outright</b><p>${list(outright.map(c => c.name))}</p></div>`;
     if (finishers.length) html += `<div class="sg"><b>${finishers.length} finisher${finishers.length === 1 ? '' : 's'}</b><p>${list(finishers.map(c => c.name))}</p></div>`;

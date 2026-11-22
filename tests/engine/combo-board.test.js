@@ -147,9 +147,9 @@ check('a deck with Heliod and Walking Ballista lists that one combo, with its ca
 dc = G.deckCombos(mkDeck(['Kiki-Jiki, Mirror Breaker', 'Zealous Conscripts', 'Felidar Guardian', 'Village Bell-Ringer', 'Mikaeus, the Unhallowed', 'Triskelion', 'Dualcaster Mage', 'Twinflame', 'Niv-Mizzet, Parun', 'Curiosity', 'Sanguine Bond', 'Exquisite Blood']));
 check('several combos are all listed, every untapper under the copy loop', ['copier+untapEnter', 'copyMage+copySpell', 'undyingLord+trisk', 'niv+curiosity', 'blood+bond'].every(id => dc.some(c => c.id === id)) && dc.length === 5 && dc.find(c => c.id === 'copier+untapEnter').slots[1].cards.length === 3, dc.map(c => c.id + ': ' + names(c)).join(' | '));
 dc = G.deckCombos(mkDeck(['Deadeye Navigator', 'Peregrine Drake', 'Grizzly Bears']));
-check('an infinite-mana pair with nothing to spend it on is not listed', dc.length === 0, dc.map(c => c.id).join(', '));
+check('an infinite-mana pair with nothing to spend it on is listed as open (no outlet)', dc.length === 1 && dc[0].open && dc[0].slots.length === 2, dc.map(c => c.id).join(', '));
 dc = G.deckCombos(mkDeck(['Deadeye Navigator', 'Peregrine Drake', 'Walking Ballista']));
-check('...with an outlet it is', dc.length === 1 && dc[0].id === 'blinker+landUntap+outlet');
+check('...with an outlet it is complete', dc.length === 1 && dc[0].id === 'blinker+landUntap+outlet' && !dc[0].open && dc[0].slots.length === 3);
 check('a deck with one half only lists nothing', G.deckCombos(mkDeck(['Heliod, Sun-Crowned', 'Kiki-Jiki, Mirror Breaker', 'Mikaeus, the Unhallowed', 'Twinflame', 'Grizzly Bears'])).length === 0);
 check('Heliod works with Triskelion too', G.deckCombos(mkDeck(['Heliod, Sun-Crowned', 'Triskelion'])).some(c => c.id === 'lifeCounter+pinger'));
 check('no deck, no list', G.deckCombos(null).length === 0);

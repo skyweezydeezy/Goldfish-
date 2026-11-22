@@ -131,6 +131,7 @@
     uncounter: ['choose a target', 'Choose the permanent that loses its counters.'],
     copy: ['copy what?', 'Choose the permanent to copy.'],
     equip: ['equip which creature?', 'Choose the creature to attach it to.'],
+    flicker: ['flicker which creature?', 'Choose the creature to exile and return to the battlefield (it comes back untapped, its enter effects happen again).'],
   };
   function question(g, d) {
     const opts = d.options || [], multi = !!d.multi, m = g.match;

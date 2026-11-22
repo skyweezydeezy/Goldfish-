@@ -2205,7 +2205,7 @@
       { const pr = line.match(/^((?:\{[^}]+\})+), pay (\d+) life: return target creature card from your graveyard to your hand/i); if (pr) { a.reclaim = { cost: parseCost(pr[1]), life: +pr[2] }; rec.status = 'ok'; continue; } }          // Phyrexian Reclamation
       if (/^\{t\}: creatures you control gain haste until end of turn/i.test(line)) { a.hasteAll = true; rec.status = 'ok'; continue; }          // Crashing Drawbridge
       if (/^each creature gets \+1\/\+1 for each other creature on the battlefield that shares at least one creature type with it/i.test(line)) { a.statics.coat = true; rec.status = 'ok'; continue; }          // Coat of Arms
-      if (/^creatures you control of the chosen color get \+1\/\+1/i.test(line)) { a.statics.anthems.push({ other: false, filter: '', p: 1, t: 1, keywords: [] }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Caged Sun: every creature counts as the chosen color
+      if (/^creatures you control of the chosen color get \+1\/\+1/i.test(line)) { a.statics.anthems.push({ other: false, filter: '', p: 1, t: 1, keywords: [], chosen: true }); rec.status = 'ok'; continue; }          // Caged Sun: every creature counts as the chosen color
       if (/^whenever a land's ability causes you to add one or more mana of the chosen color, add an additional one mana of that color/i.test(line)) { a.statics.landDouble = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }
       { const ec = line.match(/^echo ((?:\{[^}]+\})+)/i); if (ec) { a.echo = parseCost(ec[1]); rec.status = 'ok'; continue; } }          // Karmic Guide
       if (/^nonartifact spells you cast have improvise/i.test(line)) { a.statics.artifactMana = 'C'; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Inspiring Statuary: artifacts tap for mana (also for artifact spells here)
@@ -2267,7 +2267,7 @@
       if (/^as long as ~ is in your graveyard and you control an island, creatures you control have flying/i.test(line)) { a.wonderFly = true; rec.status = 'ok'; continue; }          // Wonder
       if (/^whenever a creature you control with flying enters, it gains haste until end of turn/i.test(line)) { a.triggers.push({ kinds: ['permEtb'], other: false, nontoken: false, filter: 'creature', needFlying: true, fx: [{ type: 'hasteSubject' }], text: raw }); rec.status = 'ok'; continue; }          // Dragon Tempest
       if (/^nontoken creatures you control are forest lands in addition to their other types/i.test(line)) { a.statics.creatureForest = true; rec.status = 'ok'; continue; }          // Ashaya, Soul of the Wild
-      if (/^creatures you control of the chosen color get \+1\/\+0/i.test(line)) { a.statics.anthems.push({ other: false, filter: '', p: 1, t: 0, keywords: [] }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Heraldic Banner: every creature counts as the chosen color
+      if (/^creatures you control of the chosen color get \+1\/\+0/i.test(line)) { a.statics.anthems.push({ other: false, filter: '', p: 1, t: 0, keywords: [], chosen: true }); rec.status = 'ok'; continue; }          // Heraldic Banner: every creature counts as the chosen color
       { const dl = line.match(/^if a triggered ability of a creature you control with power (\d+) or less triggers, that ability triggers an additional time/i); if (dl) { a.statics.trigDoublePower = +dl[1]; rec.status = 'ok'; continue; } }          // Delney
       if (/^if an opponent would lose life during your turn, they lose twice that much life instead/i.test(line)) { a.statics.lossMult = 2; rec.status = 'ok'; continue; }          // Bloodletter of Aclazotz
       if (/^if a source you control would deal damage to a permanent or player, it deals triple that damage/i.test(line)) { a.statics.lossMult = 3; rec.status = 'ok'; continue; }          // Fiery Emancipation, City on Fire
@@ -2851,6 +2851,9 @@
     }
     // an ability the engine has no rule of its own for, but can read as written: a person can activate it from the card's menu (the autopilot does not)
     if (a.coverage.some(v => v.status === 'ignored')) { const mine = new Set(otherAbilities({ a, name: card.name || '' }).map(l => l.raw)); if (mine.size) for (const v of a.coverage) if (v.status === 'ignored' && mine.has((v.text || '').replace(/\([^)]*\)/g, '').trim())) { v.status = 'partial'; v.tag = 'yours'; } }
+    { const cm = (card.oracle_text || '').match(/\bas (?:it|~|this [a-z]+|[A-Z][A-Za-z' ,]+) enters, choose a color(?: other than (white|blue|black|red|green))?/i);          // "As ~ enters, choose a color": kept on the permanent (chosenColor)
+      if (cm) { const L = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }, mm = (card.oracle_text || '').match(/\{T\}: Add (?:\{([WUBRG])\} or )?(one|two|three|four) mana of the chosen color/i);
+        a.choosesColor = { not: cm[1] ? L[cm[1].toLowerCase()] : null, mana: mm ? { base: mm[1] || null, amount: NUM[mm[2].toLowerCase()] || 1 } : null }; } }
     return a;
   }
 
@@ -3372,6 +3375,7 @@
     for (const { src, an } of info.anthems) {
       if (an.other && src === p) continue;
       if (!matchesFilter(p.card, an.filter)) continue;
+      if (an.chosen && src && src.chosenColor && !(p.card.colors || []).includes(src.chosenColor)) continue;          // Caged Sun, Heraldic Banner: creatures of the chosen color
       if (an.types && !an.types.some(t => t === 'creature' ? isCreaturePerm(p) : t === 'planeswalker' ? p.card.a.isPlaneswalker : t === 'enchantment' ? p.card.a.isEnchantment : t === 'artifact' ? p.card.a.isArtifact : t === 'land' ? (p.card.a.isLand || p.asLand) : false)) continue;          // "other creatures and planeswalkers", "other enchantments"
       dp += an.p; dt += an.t;
       if (an.keywords.length) { kw = kw || new Set(); an.keywords.forEach(k => kw.add(k)); }
@@ -3600,7 +3604,7 @@
     }
     for (const au of info.landAuras) {                                                                  // Wild Growth, Utopia Sprawl: the enchanted land taps for an additional mana
       const land = g.battlefield.find(x => x.iid === au.attachedTo);
-      if (land && !land.tapped) units.push({ src: land, colors: au.card.a.landAura.colors ? new Set(au.card.a.landAura.colors) : ANY_COLOR });
+      if (land && !land.tapped) units.push({ src: land, colors: au.card.a.landAura.colors ? new Set(au.card.a.landAura.colors) : au.chosenColor && au.card.a.choosesColor ? new Set([au.chosenColor]) : ANY_COLOR });
     }
     for (const q of (tableHas(g, 'powerMana') ? g.battlefield : NONE)) if (q.card.a.powerMana && !q.tapped && !(q.sick && !hasKw(g, q, 'haste'))) { const x = Math.max(0, powerOf(g, q)); for (let k = 0; k < x; k++) units.push({ src: q, colors: ANY_COLOR }); }          // Kami of Whispered Hopes
     if (info.creatureMana || (g.tempCreatureMana && g.tempCreatureMana >= g.turn)) for (const q of g.battlefield) {                                             // Cryptolith Rite: every creature taps for one mana of any color
@@ -4325,6 +4329,15 @@
     }
   }
 
+  // "choose a color": the color most cards in your library and hand have (not the one the card excludes)
+  function autoColor(g, not) { const cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) if (c !== not) cnt[c] = (cnt[c] || 0) + 1; return Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0] || (not === 'G' ? 'W' : 'G'); }
+  // the color chosen for a permanent as it entered: what it taps for, its anthem and its land Aura read it (also called for a person's choice)
+  function setChosenColor(g, perm, color) {
+    const cc = perm.card.a.choosesColor; perm.chosenColor = color;
+    if (cc && cc.mana) perm.produce = Object.assign({}, perm.produce || perm.card.a.produce || {}, { colors: new Set(cc.mana.base ? [cc.mana.base, color] : [color]), amount: cc.mana.amount });
+    if (perm.card.a.gauntletAnthem || perm.card.a.gauntletMana) perm.gauntletColor = color;
+    touch(g); bfInfo(g).byCard && bfInfo(g).byCard.clear();
+  }
   function enterWithTriggers(g, inst, o, ev) {
     o = o || {};
     if (g.xValue > 0 && !inst.card.isToken && inst.card.a.cost && inst.card.a.cost.x && g.lastCast && g.lastCast.iid !== inst.iid && !g.lastCast.card.a.isPermanent) {          // X is the cast spell's: a card that spell puts onto the battlefield (Finale of Devastation finding The Goose Mother) enters with X = 0
@@ -4367,7 +4380,8 @@
     if (g.nextCreatureCounter === g.turn && !g.dry && isCreaturePerm(perm) && !perm.token) { g.nextCreatureCounter = null; addCounters(g, perm, '+1/+1', 1, ev, perm); }          // "the next creature spell enters with an additional counter"
     if (a.fading) perm.fade = a.fading;
     if (a.vanishing) perm.other = Object.assign({}, perm.other, { time: a.vanishing });
-    if (a.gauntletAnthem || a.gauntletMana) { const cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) cnt[c] = (cnt[c] || 0) + 1; perm.gauntletColor = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0] || 'G'; g.gauntletSeen = true; if (g.opp) g.opp.gauntletSeen = true; touch(g); }          // Gauntlet of Power: your main color
+    if (a.choosesColor) setChosenColor(g, perm, autoColor(g, a.choosesColor.not));          // the autopilot's color: the one most of your cards have (a person is asked: the decision points)
+    if (a.gauntletAnthem || a.gauntletMana) { perm.gauntletColor = perm.chosenColor || autoColor(g, null); g.gauntletSeen = true; if (g.opp) g.opp.gauntletSeen = true; touch(g); }          // Gauntlet of Power: your main color
     if (a.besieged) { const pool = g.library.concat(g.hand).filter(i => !i.card.a.isLand); perm.siegeMode = pool.length && pool.filter(i => i.card.a.isArtifact).length / pool.length >= 0.3 ? 'mirran' : 'phyrexian'; }          // Mirrodin Besieged
     if (a.outpost) perm.siegeMode = (tableHas(g, 'sacOutlet') && g.battlefield.some(q => q.card.a.sacOutlet)) || g.battlefield.filter(q => q.token && isCreaturePerm(q)).length >= 4 ? 'dragons' : 'khans';          // Outpost Siege: Dragons when the board keeps losing creatures (tokens, a sacrifice outlet)
     if (a.frostcliff) perm.siegeMode = g.battlefield.filter(isCreaturePerm).length >= 4 ? 'temur' : 'frostJeskai';          // Frostcliff Siege: Temur with a wide board, else a card each combat
@@ -12391,7 +12405,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, setChosenColor, autoColor, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

@@ -16,7 +16,7 @@
   const G = window.Goldfish, D = window.Decide, A = window.__isfApi, V = window.__isfVersus;
   if (!G || !D || !A || !V || !V.startRemote) return;
   const { h, esc } = A;
-  const MODE = 'duel', PROTO = 1, APP = self.ISF_VERSION || 0;
+  const MODE = 'duel', PROTO = 2, APP = self.ISF_VERSION || 0;
   const KEY = 'isf_remote', NAME_KEY = 'isf_remote_name', ACK_KEY = 'isf_remote_ack';
 
   // ---------- what is shared, and the acknowledgement ----------
@@ -65,20 +65,46 @@
   const b64 = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
   const unb64 = s => { const t = atob(s.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
   async function squeeze(bytes, how) { const s = new Blob([bytes]).stream().pipeThrough(how); return new Uint8Array(await new Response(s).arrayBuffer()); }
-  // a connection code: the offer or answer, compressed where the browser can (iPhone Safari 16.4 and later can)
+  // A connection code: the offer or answer, cut down to what is not the same in every one (the connection keys, the security
+  // fingerprint, the addresses) so that it fits in a QR code; the rest of the description is written back on arrival.
+  const SETUP = { actpass: 'a', active: 'c', passive: 'p' }, TYP = { host: 'h', srflx: 's', prflx: 's', relay: 'r' };
+  function shrink(kind, sdp) {
+    const one = re => { const m = re.exec(sdp); return m ? m[1].trim() : ''; };
+    const fp = one(/a=fingerprint:(\S+ \S+)/), hex = fp.split(' ')[1] || '';
+    const c = [], seen = new Set();
+    for (const m of sdp.matchAll(/a=candidate:\S+ 1 udp \d+ (\S+) (\d+) typ (\w+)/gi)) {
+      const k = TYP[m[3]] + m[1] + ' ' + m[2]; if (!TYP[m[3]] || seen.has(k)) continue;
+      seen.add(k); c.push([TYP[m[3]], m[1], +m[2]]);
+    }
+    return { k: kind === 'offer' ? 'o' : 'a', m: one(/a=mid:(\S+)/) || '0', u: one(/a=ice-ufrag:(\S+)/), p: one(/a=ice-pwd:(\S+)/), h: fp.split(' ')[0],
+      f: b64(Uint8Array.from(hex.split(':').filter(Boolean).map(x => parseInt(x, 16)))), s: SETUP[one(/a=setup:(\w+)/)] || 'a', c };
+  }
+  function grow(o) {
+    const setup = Object.keys(SETUP).find(k => SETUP[k] === o.s) || 'actpass';
+    const fp = Array.from(unb64(o.f)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(':');
+    const name = { h: 'host', s: 'srflx', r: 'relay' }, base = { h: 2130706431, s: 1694498815, r: 16777215 };
+    const lines = ['v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 't=0 0', `a=group:BUNDLE ${o.m}`, 'a=msid-semantic: WMS', 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0',
+      `a=ice-ufrag:${o.u}`, `a=ice-pwd:${o.p}`, `a=fingerprint:${o.h || 'sha-256'} ${fp}`, `a=setup:${setup}`, `a=mid:${o.m}`, 'a=sctp-port:5000', 'a=max-message-size:262144'];
+    o.c.forEach(([t, addr, port], i) => lines.push(`a=candidate:${i + 1} 1 udp ${base[t] - i} ${addr} ${port} typ ${name[t]}${t === 'h' ? '' : ' raddr 0.0.0.0 rport 0'} generation 0`));
+    return lines.join('\r\n') + '\r\n';
+  }
+  const SAFE = /^[A-Za-z0-9+/=._:\- ]*$/;
   async function pack(obj) {
-    const raw = new TextEncoder().encode(JSON.stringify(obj));
-    if (typeof CompressionStream === 'function') return 'ISF1z.' + b64(await squeeze(raw, new CompressionStream('deflate-raw')));
-    return 'ISF1.' + b64(raw);
+    const raw = new TextEncoder().encode(JSON.stringify(shrink(obj.kind, obj.sdp)));
+    if (typeof CompressionStream === 'function') return 'ISF2z.' + b64(await squeeze(raw, new CompressionStream('deflate-raw')));
+    return 'ISF2.' + b64(raw);
   }
   async function unpack(code) {
-    code = String(code || '').trim().replace(/^.*#isf-join=/, '').replace(/\s+/g, '');
-    const m = /^ISF1(z?)\.([A-Za-z0-9_-]+)$/.exec(code); if (!m) throw new Error('That is not an ICEYfish code.');
-    let bytes = unb64(m[2]);
-    if (m[1]) { if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot read that code. Update it and try again.'); bytes = await squeeze(bytes, new DecompressionStream('deflate-raw')); }
+    code = String(code || '').trim().replace(/^.*#isf-(join|reply)=/, '').replace(/\s+/g, '');
+    const m = /^ISF(\d)(z?)\.([A-Za-z0-9_-]+)$/.exec(code); if (!m) throw new Error('That is not an ICEYfish code.');
+    if (+m[1] !== PROTO) throw new Error('That code is from a different version of the app. Reload both devices and try again.');
+    let bytes = unb64(m[3]);
+    if (m[2]) { if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot read that code. Update it and try again.'); bytes = await squeeze(bytes, new DecompressionStream('deflate-raw')); }
     const o = JSON.parse(new TextDecoder().decode(bytes));
-    if (!o || o.proto !== PROTO || typeof o.sdp !== 'string') throw new Error('That code is from a different version of the app.');
-    return o;
+    // what came from the other device goes into a connection description: only plain values, in their expected shapes
+    if (!o || (o.k !== 'o' && o.k !== 'a') || ![o.m, o.u, o.p, o.h, o.f].every(x => typeof x === 'string' && x.length < 300 && SAFE.test(x)) || !Array.isArray(o.c) || o.c.length > 40 ||
+      !o.c.every(x => Array.isArray(x) && 'hsr'.includes(x[0]) && typeof x[1] === 'string' && /^[A-Za-z0-9.:\-]{1,64}$/.test(x[1]) && Number.isInteger(x[2]) && x[2] > 0 && x[2] < 65536)) throw new Error('That code is damaged.');
+    return { proto: PROTO, kind: o.k === 'o' ? 'offer' : 'answer', sdp: grow(o) };
   }
 
   // ---------- what may come from the other device ----------
@@ -202,7 +228,7 @@
   async function newPeer(inviter) {
     if (S.link && S.link.pc) try { S.link.pc.close(); } catch (e) {}
     const pc = new RTCPeerConnection({ iceServers: await iceServers() });
-    S.link = { pc, ch: null, inviter };
+    S.link = { pc, ch: null, inviter, made: Date.now() };
     pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) { redraw(); show(); } if (pc.connectionState === 'failed' && !open() && S.link && S.link.pc === pc) failed(); };
     return pc;
   }
@@ -217,6 +243,7 @@
     const o = await unpack(code); if (o.kind !== 'answer') throw new Error('Paste the reply code your friend got after pasting your invite.');
     if (!S.link || !S.link.inviter) throw new Error('Make an invite first.');
     await S.link.pc.setRemoteDescription({ type: 'answer', sdp: o.sdp });
+    S.link.answered = true;
     watch();
   }
   async function join(code) {
@@ -391,13 +418,26 @@
     el.innerHTML = (sv && !sv.ended ? `<div class="rm-saved"><b>Your game against ${esc(sv.them || 'your friend')} is saved.</b> <div class="row wrap"><button class="primary rm-rejoin">Rejoin</button><button class="ghost rm-delete">Delete it</button></div></div>` : '') +
       (sv && sv.ended ? `<div class="rm-saved hint">Your last game against ${esc(sv.them || 'your friend')} is saved. <button class="ghost rm-delete">Delete it</button></div>` : '') + stepHtml();
   }
+  // The codes as QR codes: the friend scans the invite with the phone's camera, which opens the site ready to join; the inviter scans
+  // the friend's reply the same way, and the tab it opens hands the reply to the tab with the invite (both are this browser's).
+  // Copying and pasting stays as the fallback.
+  const linkFor = (kind, code) => location.origin + location.pathname + (kind === 'reply' ? '#isf-reply=' : '#isf-join=') + code;
+  const qrHtml = text => { try { return `<div class="rm-qr" data-link="${esc(text)}">${window.__isfQR.svg(text)}</div>`; } catch (e) { return ''; } };
+  const homeScreen = () => !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
   function stepHtml() {
     const p = S.pending; if (!p) return '';
-    if (p.kind === 'invite') return `<div class="rm-codes"><p><b>1.</b> Send this invite to your friend.</p><textarea class="rm-code rm-mine" readonly rows="3">${esc(p.code)}</textarea>
-      <div class="row wrap"><button class="rm-copy" data-what="link">Copy invite link</button><button class="ghost rm-copy" data-what="code">Copy code</button></div>
-      <p><b>2.</b> Paste the reply code they send back.</p><textarea class="rm-code rm-theirs" rows="3" placeholder="Their reply code"></textarea><div class="row wrap"><button class="primary rm-connect">Connect</button></div></div>`;
-    if (p.kind === 'join') return `<div class="rm-codes"><p><b>1.</b> Paste the invite your friend sent you.</p><textarea class="rm-code rm-theirs" rows="3" placeholder="Their invite">${esc(p.code || '')}</textarea><div class="row wrap"><button class="primary rm-reply">Make my reply</button></div></div>`;
-    if (p.kind === 'reply') return `<div class="rm-codes"><p><b>2.</b> Send this reply back to your friend. The game starts when they paste it.</p><textarea class="rm-code rm-mine" readonly rows="3">${esc(p.code)}</textarea><div class="row wrap"><button class="rm-copy" data-what="code">Copy reply</button></div></div>`;
+    const mine = code => `<textarea class="rm-code rm-mine" readonly rows="2" hidden>${esc(code)}</textarea>`;
+    if (p.kind === 'invite') return `<div class="rm-codes"><p><b>1.</b> Your friend scans this with their phone's camera.</p>${qrHtml(linkFor('invite', p.code))}${mine(p.code)}
+      <div class="row wrap"><button class="rm-copy" data-what="link">Share the link instead</button></div>
+      <p><b>2.</b> Then scan the code on their screen with your camera. It opens in a new tab: come back to this one and the game connects.</p>
+      ${homeScreen() ? '<p class="hint">You opened ICEYfish from the home screen: the camera opens links in Safari instead, so play in Safari, or paste their reply below.</p>' : ''}
+      <details class="rm-paste"${homeScreen() ? ' open' : ''}><summary>Or paste their reply</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their reply code"></textarea><div class="row wrap"><button class="primary rm-connect">Connect</button></div></details></div>`;
+    if (p.kind === 'join') return `<div class="rm-codes">${p.code ? '<p><b>1.</b> Your friend\'s invite is here.</p>' : ''}
+      <details class="rm-paste"${p.code ? '' : ' open'}><summary>${p.code ? 'The invite' : 'Paste the invite your friend sent you'}</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their invite">${esc(p.code || '')}</textarea></details>
+      <div class="row wrap"><button class="primary rm-reply">Join</button></div></div>`;
+    if (p.kind === 'reply') return `<div class="rm-codes"><p><b>2.</b> Show this to your friend: they scan it with their camera, and the game starts.</p>${qrHtml(linkFor('reply', p.code))}${mine(p.code)}
+      <div class="row wrap"><button class="rm-copy" data-what="link">Share the reply instead</button></div></div>`;
+    if (p.kind === 'handed') return `<div class="rm-codes"><p><b>Got your friend's reply.</b> Go back to the ICEYfish tab with your invite: the game connects there. You can close this tab.</p></div>`;
     return '';
   }
   function needAccept() {
@@ -425,22 +465,37 @@
     }
     if (hit('rm-connect')) { status('Connecting…'); return busy(hit('rm-connect'), acceptReply(box.querySelector('.rm-theirs').value).then(() => status('Connecting…'))); }
     if (hit('rm-copy')) {
-      const link = hit('rm-copy').dataset.what === 'link', code = box.querySelector('.rm-mine').value, text = link ? location.origin + location.pathname + '#isf-join=' + code : code;
+      const link = hit('rm-copy').dataset.what === 'link', code = box.querySelector('.rm-mine').value, text = link ? linkFor(S.pending && S.pending.kind, code) : code;
       const copy = () => (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => status('Copied.'), () => { box.querySelector('.rm-mine').select(); status('Select the code and copy it.'); });
-      if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) return navigator.share(link ? { title: 'ICEYfish: join my game', url: text } : { text }).catch(e => { if (!e || e.name !== 'AbortError') copy(); });          // on a phone: the share sheet (Messages)
+      if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) return navigator.share(link ? { title: S.pending && S.pending.kind === 'reply' ? 'ICEYfish: my reply' : 'ICEYfish: join my game', url: text } : { text }).catch(e => { if (!e || e.name !== 'AbortError') copy(); });          // on a phone: the share sheet (Messages)
       return copy();
     }
     if (hit('rm-rejoin')) { const sv = load(); if (!sv) return show(); status(''); S.pending = null; begin(sv.id, sv.local, sv.setup, sv); return; }
     if (hit('rm-delete')) { if (!confirm('Delete the saved game? It cannot be rejoined afterwards.')) return; forget(); S.game = null; show(); }
   }
-  // opened from an invite link: the Duel tab, with the code ready to join
+  // Opened from a link (or a scanned QR code). An invite: the Duel tab, ready to join. A reply: handed to the tab that made the invite.
+  const REPLY_KEY = 'isf_remote_reply';
   function fromLink() {
-    const m = /#isf-join=([A-Za-z0-9_.-]+)/.exec(location.hash); if (!m) return;
+    const m = /#isf-(join|reply)=([A-Za-z0-9_.-]+)/.exec(location.hash); if (!m) return;
     history.replaceState(null, '', location.pathname + location.search);
     const tab = document.querySelector('[data-tab=duel]'); if (tab) tab.click();
-    show({ kind: 'join', code: m[1] });
+    if (m[1] === 'reply') { localStorage.setItem(REPLY_KEY, JSON.stringify({ code: m[2], at: Date.now() })); show({ kind: 'handed' }); }
+    else show({ kind: 'join', code: m[2] });
     box.scrollIntoView({ block: 'start' });
   }
+  // the tab with the invite takes a reply another tab was handed, as soon as it is seen (or when this tab comes back to the front)
+  function takeReply() {
+    const L = S.link; if (!L || !L.inviter || open() || L.answered) return;
+    let r; try { r = JSON.parse(localStorage.getItem(REPLY_KEY) || 'null'); } catch (e) { r = null; }
+    if (!r || typeof r.code !== 'string' || !(r.at >= L.made)) return;
+    localStorage.removeItem(REPLY_KEY);
+    L.answered = true;
+    status('Connecting…');
+    acceptReply(r.code).catch(e => { L.answered = false; status(e.message || String(e)); });
+  }
+  window.addEventListener('storage', e => { if (e.key === REPLY_KEY) takeReply(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) takeReply(); });
+  window.addEventListener('focus', takeReply);
 
   build(); fromLink();
   window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,

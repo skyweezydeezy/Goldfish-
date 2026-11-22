@@ -314,3 +314,6 @@
 .vs-conn { font-size: 12px; white-space: nowrap; }
 .vs-conn.on { color: var(--good); }
 .vs-conn.off { color: var(--warning); }
+.rm-box .rm-qr { width: min(72vw, 300px); margin: 6px 0 8px; background: #fff; border-radius: 10px; padding: 6px; }
+.rm-box .rm-qr svg { display: block; width: 100%; height: auto; }
+.rm-box .rm-paste summary { cursor: pointer; color: var(--accent); font-size: 13px; margin: 6px 0; }

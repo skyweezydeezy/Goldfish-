@@ -47,13 +47,13 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   // the relay built into the site: Metered's servers with the user's credential
   await A.evaluate(() => { const R = window.__isfRemote; R.ice = null; R.state.failAfter = 60000; });
   await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
   const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers);
   check('as shipped, the site connects through Metered\'s relay (TURN on 80 and 443, TURNS) with a login, as well as STUN', built.some(s => [].concat(s.urls).includes('turns:global.relay.metered.ca:443?transport=tcp') && s.username) && built.some(s => [].concat(s.urls).includes('turn:global.relay.metered.ca:80') && s.credential) && built.some(s => /^stun:/.test([].concat(s.urls)[0])), built.map(s => [].concat(s.urls).join(' ')).join(', '));
   check('...and the list of what is shared says so (the relay line, version 3)', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 3 && R.DISCLOSURE.some(t => /Metered's relay server/.test(t)) && !R.DISCLOSURE.some(t => /ICEYfish server/.test(t)); }));
   await A.evaluate(u => { const R = window.__isfRemote; R.relayServers = null; R.relayService = u; }, `http://127.0.0.1:${relay.address().port}/ice`);
   await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
   const conf = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));
   check('with the relay service set, the site asks it for the relay (GET /ice, from the site\'s own address)', asked.length === 1 && asked[0].path === '/ice' && asked[0].origin === 'http://127.0.0.1:8800', JSON.stringify(asked));
   check('...and connects through the relay it gives, as well as Google\'s STUN server', conf.some(u => /turn:relay\.test\.invalid:3478/.test(u)) && conf.some(u => /stun:stun\.l\.google\.com/.test(u)), conf.join(', '));
@@ -65,21 +65,21 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   await A.click('#tab-duel .rm-invite');
   await A.waitForFunction(() => /relay could not be reached/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 30000 }).catch(() => {});
   const said = /relay could not be reached/.test(await A.$eval('#tab-duel .rm-status', e => e.textContent));
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
   const down = await A.evaluate(() => ({ conf: window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')), code: !!document.querySelector('#tab-duel .rm-mine') }));
   check('with the relay service down, the site says so and still makes an invite, for a direct connection only', said && down.code && down.conf.length === 1 && /stun:/.test(down.conf[0]), down.conf.join(', '));
   // a fixed credential written into the site: used as it is, no service asked
   const before = asked.length;
   await A.evaluate(() => { const R = window.__isfRemote; R.relayService = null; R.relayServers = [{ urls: 'turn:fixed.test.invalid:80', username: 'u-fixed', credential: 'p-fixed' }]; });
   await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 30000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
   const fixed = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));
   check('with a fixed relay credential in the site, it connects through it (and STUN), asking no service', fixed.some(u => /turn:fixed\.test\.invalid:80/.test(u)) && fixed.some(u => /^stun:/.test(u)) && asked.length === before, fixed.join(', '));
   await A.evaluate(() => { const R = window.__isfRemote; R.relayServers = null; R.ice = []; R.state.failAfter = 3000; });
 
   // ---- no way through
   await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
+  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const invite = await A.$eval('#tab-duel .rm-mine', e => e.value);
   check('the invite code says what it offers: a local address here', await A.evaluate(async c => { const R = window.__isfRemote, k = R.kinds((await R.unpack(c)).sdp); return k.local + k.hidden > 0; }, invite));
   // both codes with every address taken out: the two devices have no way to each other
@@ -87,9 +87,10 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   await B.click('#tab-duel .rm-join');
   await B.fill('#tab-duel .rm-theirs', await strip(invite));
   await B.click('#tab-duel .rm-reply');
-  await B.waitForSelector('#tab-duel .rm-mine', { timeout: 20000 });
+  await B.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const reply = await B.$eval('#tab-duel .rm-mine', e => e.value);
   const blind = await strip(reply);
+  await A.click('#tab-duel .rm-paste summary');
   await A.fill('#tab-duel .rm-theirs', blind);
   await A.click('#tab-duel .rm-connect');
   await A.waitForFunction(() => /Could not connect/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 15000 }).catch(() => {});

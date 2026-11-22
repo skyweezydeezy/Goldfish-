@@ -125,7 +125,7 @@
   // is the spell (or the ability) being paid for one that restricted mana can pay?
   function restrictOk(g, R, ctx) {
     if (!ctx) return false;
-    if (ctx.abilityOf) { const sp = ctx.abilityOf; if (!R.abil) return false; return R.k === 'creature' ? isCreaturePerm(sp) : R.k === 'type' ? isCreaturePerm(sp) && matchesFilter(sp.card, R.t) : R.k === 'eldrazi' ? !colorsOf(g, sp.card).length && matchesFilter(sp.card, 'eldrazi') : false; }
+    if (ctx.abilityOf) { const sp = ctx.abilityOf; if (!R.abil) return false; return R.k === 'creature' ? isCreaturePerm(sp) : R.k === 'type' ? isCreaturePerm(sp) && matchesFilter(sp.card, R.t) : R.k === 'eldrazi' ? !colorsOf(g, sp.card).length && matchesFilter(sp.card, 'eldrazi') : R.k === 'artifact' ? !!sp.card.a.isArtifact : false; }
     const a = ctx.card.a, c = ctx.card;
     switch (R.k) {
       case 'creature': return a.isCreature;
@@ -1435,6 +1435,9 @@
         if ((mu = line.match(/^\{(\d|u)\}, \{t\}: untap target (artifact|creature|legendary permanent)\.?$/i))) { a.untapper = { what: mu[2].split(' ')[0].toLowerCase(), cost: /u/i.test(mu[1]) ? 1 : +mu[1] }; rec.status = 'ok'; continue; }
         if ((mu = line.match(/^\{(\d)\}: untap ~\.?$/i))) { a.selfUntap = +mu[1]; rec.status = 'ok'; continue; } }          // Basalt and Grim Monolith (see infiniteMana), Staff of Domination
       if (/^\{u\}: untap enchanted creature\.?$/i.test(line)) { a.auraUntapU = true; rec.status = 'ok'; continue; }
+      if (/^\{2\}, \{q\}: add one mana of any color\.?$/i.test(line)) { a.piliPala = true; rec.status = 'ok'; continue; }          // Pili-Pala: untaps for mana (with Grand Architect: see infiniteMana)
+      if (/^\{u\}: target artifact creature becomes blue until end of turn\.?$/i.test(line)) { rec.status = 'ok'; continue; }          // Grand Architect: what makes Pili-Pala blue for the ability below
+      if (/^tap an untapped blue creature you control: add \{c\}\{c\}\. spend this mana only to cast artifact spells or activate abilities of artifacts\.?$/i.test(line)) { a.statics.blueTap = true; rec.status = 'ok'; continue; }          // Grand Architect
       if (/^discard your hand, sacrifice ~: add three mana of any one color\. activate only as an instant/i.test(line)) { a.led = true; rec.status = 'ok'; continue; }          // Lion's Eye Diamond          // Freed from the Real, Pemmin's Aura (see infiniteMana)
       if (/^if one or more -1\/-1 counters would be put on a creature you control, that many -1\/-1 counters minus one are put on it instead/i.test(line)) { a.statics.vizier = true; rec.status = 'ok'; continue; }          // Vizier of Remedies
       // ---- built-in decks, full support: card selection (scry and surveil abilities, look-and-put, wheels, milling an opponent)
@@ -3241,6 +3244,7 @@
     if (st.swampDouble) info.swampDouble = true;
     if (st.creatureMana) info.creatureMana = true;
     if (st.legendMana) info.legendMana = true;
+    if (st.blueTap) info.blueTap = true;
     if (st.allForests) info.allForests = true;
     if (st.lossMult) info.lossMult *= st.lossMult;
     if (st.amulet) info.amulet = true;
@@ -3592,6 +3596,7 @@
       if (!isCreaturePerm(q) || q.tapped || q.produce || (q.sick && !hasKw(g, q, 'haste'))) continue;
       units.push({ src: q, colors: ANY_COLOR });
     }
+    if (info.blueTap && g._payFor && restrictOk(g, { k: 'artifact', abil: true }, g._payFor)) for (const q of g.battlefield) { if (isCreaturePerm(q) && !q.tapped && !q.produce && colorsOf(g, q.card).includes('U')) units.push({ src: q, colors: new Set(['C']) }, { src: q, colors: new Set(['C']) }); }          // Grand Architect: a blue creature taps for {C}{C}, for artifacts only (no {T}: summoning sickness does not matter)
     if (info.legendMana && !info.creatureMana) for (const q of g.battlefield) { if (isCreaturePerm(q) && q.card.a.isLegendary && !q.tapped && !q.produce) units.push({ src: q, colors: ANY_COLOR }); }          // Relic of Legends: no {T} in the cost, so summoning sickness does not matter
     if (info.swampDouble) for (const q of info.producers) { if (!q.tapped && q.asLand && (info.allSwamps || /\bSwamp\b/.test(q.card.type_line || ''))) units.push({ src: q, colors: new Set(['B']) }); }          // Crypt Ghast
     for (const h of g.hand) if (h.card.a.handMana && g.hand.length > 1) units.push({ src: { pseudo: true, handCard: h, produce: { colors: new Set([h.card.a.handMana]), amount: 1 } }, colors: new Set([h.card.a.handMana]) });          // Simian Spirit Guide
@@ -10613,6 +10618,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
+    // Grand Architect + Pili-Pala: {U} makes Pili-Pala blue, it taps for {C}{C}, {2} and its untap symbol give one mana of any color back
+    { const ga = bf.find(q => q.card.a.statics.blueTap), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
+      if (ga && pp && allUnits(g).some(u => u.colors.has('U'))) return { how: `${ga.card.name} + ${pp.card.name}`, colors: new Set(COLORS) }; }
     // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes
     for (const m of nonland) {
       const u = comboKind(m.card).untapCost; if (u == null) continue;

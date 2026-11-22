@@ -596,6 +596,7 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // "You may cast spells as though they had flash" (Leyline of Anticipation, Vedalken Orrery), "... creature spells ..." (Yeva),
       // "... artifact spells ..." (Shimmer Myr), "creature cards you own have flash" (Teferi, Mage of Zhalfir): what can be cast at instant speed
       { const fl = line.match(/^you may cast ([a-z ,]*?)\s*spells as though they had flash\.?$/i) || (/^creature cards you own (?:that aren't on the battlefield )?have flash\.?$/i.test(line) ? [line, 'creature'] : null);
@@ -622,6 +623,15 @@
         if (/^\{5\}\{w\}, \{t\}: harness ~\.?$/i.test(line)) { a.harnessCost = parseCost('{5}{W}'); rec.status = 'ok'; continue; }          // The Mind Stone
         if (/^(?:∞ — )?at the beginning of your end step, exile up to one other target nonland permanent you control, then return that card to the battlefield under its owner's control\.?$/i.test(line)) { a.harnessFlicker = true; rec.status = 'ok'; continue; }
         if (/^~ deals x damage to each creature without flying and each player\.?$/i.test(line)) { a.spellFx.push({ type: 'earthquake' }); rec.status = 'ok'; continue; }          // Earthquake
+        // spells that choose a creature type as they resolve: the type is read when they resolve (the caster's choice, else the deck's type)
+        { const TS = (op, extra) => { a.spellFx.push(Object.assign({ type: 'tribeSpell', op }, extra || {})); rec.status = 'ok'; };
+          if (/^choose a creature type\. draw a card for each permanent you control of that type\.?$/i.test(raw)) { TS('melody'); continue; }          // Distant Melody, Harmonized Crescendo
+          if (/^choose a creature type\. destroy all creatures that aren't of the chosen type\.?$/i.test(raw)) { TS('dominance'); continue; }          // Kindred Dominance
+          if (/^choose a creature type\. return all creatures that aren't of the chosen type to their owners' hands\.?$/i.test(raw)) { TS('palisade'); continue; }          // Raise the Palisade
+          if (/^choose a creature type\. creatures that aren't of the chosen type get -(\d+)\/-(\d+) until end of turn\.?$/i.test(raw)) { TS('fear', { n: +raw.match(/-(\d+)\/-/)[1] }); continue; }          // Crippling Fear
+          if (/^choose a creature type\. target player draws x cards and loses x life, where x is the number of creatures they control of the chosen type\.?$/i.test(raw)) { TS('pact'); continue; }          // Pact of the Serpent
+          if (/^choose a creature type\. return up to two creature cards of that type from your graveyard to the battlefield\./i.test(raw)) { TS('voyage', { n: 2 }); continue; }          // Haunting Voyage (not foretold)
+        }
         if (/^~ deals x damage to each creature\.?$/i.test(line)) { a.spellFx.push({ type: 'sweepDamage', n: 'X', noExile: true }); rec.status = 'ok'; continue; }          // Starstorm
         if (/^whenever a creature attacks you or a planeswalker you control, that creature's controller loses 1 life and you gain 1 life\.?$/i.test(line)) { a.ravens = true; MIRJ(); continue; }          // Revenge of Ravens
         if (/^damage can't be prevented\.?$/i.test(line)) { a.noPrevent = true; rec.status = 'ok'; continue; }          // Sunspine Lynx
@@ -1435,6 +1445,7 @@
         if ((mu = line.match(/^\{(\d|u)\}, \{t\}: untap target (artifact|creature|legendary permanent)\.?$/i))) { a.untapper = { what: mu[2].split(' ')[0].toLowerCase(), cost: /u/i.test(mu[1]) ? 1 : +mu[1] }; rec.status = 'ok'; continue; }
         if ((mu = line.match(/^\{(\d)\}: untap ~\.?$/i))) { a.selfUntap = +mu[1]; rec.status = 'ok'; continue; } }          // Basalt and Grim Monolith (see infiniteMana), Staff of Domination
       if (/^\{u\}: untap enchanted creature\.?$/i.test(line)) { a.auraUntapU = true; rec.status = 'ok'; continue; }
+      if (/^equipped creature has "\{3\}, \{q\}: ~ gets \+2\/\+2 until end of turn\."\.?$/i.test(line)) { a.umbralMantle = true; rec.status = 'ok'; continue; }          // Umbral Mantle: {3} and the untap symbol (on a creature that taps for more than three mana: see infiniteMana)
       if (/^\{2\}, \{q\}: add one mana of any color\.?$/i.test(line)) { a.piliPala = true; rec.status = 'ok'; continue; }          // Pili-Pala: untaps for mana (with Grand Architect: see infiniteMana)
       if (/^\{u\}: target artifact creature becomes blue until end of turn\.?$/i.test(line)) { rec.status = 'ok'; continue; }          // Grand Architect: what makes Pili-Pala blue for the ability below
       if (/^tap an untapped blue creature you control: add \{c\}\{c\}\. spend this mana only to cast artifact spells or activate abilities of artifacts\.?$/i.test(line)) { a.statics.blueTap = true; rec.status = 'ok'; continue; }          // Grand Architect
@@ -5280,6 +5291,20 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'tribeSpell': {          // Kindred Charge, Distant Melody, Kindred Dominance, Raise the Palisade, Crippling Fear, Pact of the Serpent, Haunting Voyage
+          let tr = g._castTribe || (g.deck && g.deck.tribe) || null;
+          if (!tr) { const cnt = {}; for (const q of g.battlefield) if (isCreaturePerm(q)) for (const w of ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean)) cnt[w] = (cnt[w] || 0) + 1; tr = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x] || x.localeCompare(y))[0] || null; }          // no deck type: the type you have most of
+          if (!tr) break;
+          const is = q => matchesFilter(q.card, tr.toLowerCase()), sides = [g].concat(otherPlayers(g));
+          ev.push({ type: 'note', text: `Chosen creature type: ${tr}`, source: null });
+          if (f.op === 'charge') { for (const q of g.battlefield.filter(x => isCreaturePerm(x) && is(x))) { if (g.battlefield.length >= 250) break; const inst = { iid: g.nextIid++, card: q.card }; const np = enterWithTriggers(g, inst, { token: true }, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.exileEnd = true; ev.push({ type: 'token', perm: np, inst, source }); } }
+          else if (f.op === 'melody') { const k = g.battlefield.filter(is).length; if (k) draw(g, Math.min(k, 30), ev); }
+          else if (f.op === 'dominance') { for (const x of sides) { for (const q of x.battlefield.filter(c => isCreaturePerm(c) && !is(c) && !indestructible(x, c))) leavePerm(x, q, ev); flushLeaves(x, ev); } }
+          else if (f.op === 'palisade') { for (const x of sides) { for (const q of x.battlefield.filter(c => isCreaturePerm(c) && !is(c))) leavePerm(x, q, ev, 'hand'); flushLeaves(x, ev); } }
+          else if (f.op === 'fear') { for (const x of sides) { for (const q of x.battlefield) if (isCreaturePerm(q) && !is(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } }
+          else if (f.op === 'pact') { const k = g.battlefield.filter(q => isCreaturePerm(q) && is(q)).length; if (k) { draw(g, Math.min(k, 30), ev); g.life -= k; ev.push({ type: 'note', text: `Pact of the Serpent: you draw ${k} and lose ${k} life`, source: null }); checkDeath(g, ev); } }
+          else if (f.op === 'voyage') { const cs = g.graveyard.filter(i => i.card.a.isCreature && matchesFilter(i.card, tr.toLowerCase())).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x)).slice(0, f.n); for (const c of cs) { g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source: null }); } }
+          break; }
         case 'countersByToughness': for (const q of g.battlefield.slice()) if (q !== source && isCreaturePerm(q)) { const k = toughnessOf(g, q); if (k > 0) addCounters(g, q, '+1/+1', k, ev, source); } break;          // Canopy Gargantuan
         case 'lifeHalfStart': { const half = Math.ceil(((g.opts && g.opts.startLife) || 40) / 2); if (g.life !== half) { g.life = half; ev.push({ type: 'note', text: `${source ? source.card.name : 'The Endstone'}: your life total becomes ${half}`, source }); } break; }          // The Endstone
         case 'transform': if (source) transformPerm(g, source, ev, f.same); break;
@@ -5859,7 +5884,7 @@
         case 'revealUntilLands': { const X = Math.min(g.xValue || 1, g.match && g.match.players ? g.match.players.filter(q => !q.dead).length : g.opp ? 2 : 4); const lands = [], rest = []; while (g.library.length && lands.length < X) { const c = g.library.shift(); (c.card.a.isLand ? lands : rest).push(c); } lands.forEach(l => enterWithTriggers(g, l, { tapped: true }, ev)); g.library.push(...rest); ev.push({ type: 'note', text: `${lands.length} land${lands.length === 1 ? '' : 's'} onto the battlefield`, source }); break; }
         case 'doubleSelfPower': if (source) source.eotP = (source.eotP || 0) + Math.max(0, powerOf(g, source)); break;
         case 'attackTokenX': { const X = g.battlefield.filter(q => q.attacking && q !== source).reduce((m, q) => Math.max(m, powerOf(g, q)), 0); if (X > 0) { const n0 = g.battlefield.length; createTokens(g, { type: 'token', n: 1, tapped: true, creature: true, p: X, t: X, colors: ['G'], subtypes: ['Dinosaur'], keywords: ['trample'], artifact: false, name: 'Dinosaur' }, 1, ev, source); for (const r of g.battlefield.slice(n0)) if (r.token) { r.tapped = true; r.sick = false; r.attacking = true; r.attackedTurn = g.turn; (g._extraAtk = g._extraAtk || []).push(r); } } break; }
-        case 'meld': { const o2 = g.battlefield.find(q => q.card.name === f.other); if (source && o2 && g.battlefield.includes(source)) { for (const q of [source, o2]) { removePerm(g, q); if (q.inst) g.exile.push(q.inst); } createTokens(g, { type: 'token', n: 1, creature: true, p: 9, t: 10, colors: [], subtypes: ['Eldrazi', 'Angel'], keywords: ['flying', 'first strike', 'vigilance', 'lifelink'], artifact: false, name: 'Brisela, Voice of Nightmares' }, 1, ev, null); ev.push({ type: 'note', text: 'Gisela and Bruna meld into Brisela, Voice of Nightmares' }); } break; }
+        case 'meld': { const o2 = g.battlefield.find(q => q.card.name === f.other); if (source && o2 && g.battlefield.includes(source)) { for (const q of [source, o2]) { removePerm(g, q); if (q.inst) g.exile.push(q.inst); } createTokens(g, { type: 'token', n: 1, creature: true, p: 9, t: 10, colors: [], subtypes: ['Eldrazi', 'Angel'], keywords: ['flying', 'first strike', 'vigilance', 'lifelink'], artifact: false, name: 'Brisela, Voice of Nightmares' }, 1, ev, null); const br = g.battlefield.find(q => q.token && q.card.name === 'Brisela, Voice of Nightmares'); ev.push({ type: 'meld', parts: [source.card.name, o2.card.name], into: 'Brisela, Voice of Nightmares', perm: br || null, text: 'Gisela and Bruna meld into Brisela, Voice of Nightmares' }, { type: 'note', text: 'Gisela and Bruna meld into Brisela, Voice of Nightmares' }); } break; }          // the 'meld' event is for the table's picture and animation
         case 'populate': { const t = g.battlefield.filter(q => q.token && isCreaturePerm(q)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t) { applyEffects(g, [{ type: 'copyToken' }], source, ev, t); ev.push({ type: 'note', text: `Populate: a copy of ${t.card.name}`, source }); } break; }
         case 'energy': g.energy = (g.energy || 0) + (f.n || 1) + (bfInfo(g).cplusPlayer || 0); break;
         case 'guideAngel': if ((g.energy || 0) >= 3) { const t = g.battlefield.filter(q => q.attacking && isCreaturePerm(q)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t) { g.energy -= 3; addCounters(g, t, '+1/+1', 2, ev, source); t.flyCounter = true; ev.push({ type: 'note', text: `${source ? source.card.name : 'Guide of Souls'}: three energy for two counters and flying on ${t.card.name}`, source }); } } break;
@@ -8444,6 +8469,10 @@ g.actSeq = (g.actSeq || 0) + 1;
         let c = zs.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (g.ask && zs.length > 1) c = decide(g, { kind: 'search', options: zs, def: c, f: { dest: 'cast' }, source: p }) || c;
         p.tapped = true; c.zulCast = g.turn; touch(g); ev.push({ type: 'note', text: `${p.card.name}: you may cast ${c.card.name} from your graveyard this turn`, source: p });
       }); }
+    if (onBf && isCreaturePerm(p) && tableHas(g, 'umbralMantle') && g.battlefield.some(q => q.card.a.umbralMantle && q.attachedTo === p.iid)) { const c = { generic: 3, pips: [], x: 0 };          // Umbral Mantle's granted ability: {3}, untap it: +2/+2
+      add(`Untap ${p.card.name}: it gets +2/+2 until end of turn`, '{3}, {Q}', blocked || (p.tapped ? null : 'it is not tapped') || (p.sick && !hasKw(g, p, 'haste') ? 'it has summoning sickness' : null) || payWhy(c), ev => {
+        pay(g, c); p.tapped = false; p.eotP = (p.eotP || 0) + 2; p.eotT = (p.eotT || 0) + 2; touch(g); ev.push({ type: 'note', text: `Umbral Mantle: ${p.card.name} untaps and gets +2/+2`, source: p });
+      }); }
     if (a.foodSacMana) add('Add one mana of any color (tap it, sacrifice a Food)', '{T}, Sacrifice a Food', blocked || sickTap(g, p) || (foodsOf(g).length ? null : 'you control no Food'), ev => {
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
       ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });
@@ -10650,6 +10679,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
+    // Umbral Mantle (equip {0}) on a creature that taps for more than three mana: {3} untaps it, with mana left over each time round
+    { const um = bf.find(q => q.card.a.umbralMantle), makes = q => q.produce ? amount(q) : q.card.a.metalworker ? 2 * g.hand.filter(i => i.card.a.isArtifact).length : 0;          // Metalworker: {C}{C} for each artifact card in your hand
+      const c = um && bf.filter(q => isCreaturePerm(q) && !q.asLand && !(q.sick && !hasKw(g, q, 'haste')) && makes(q) > 3).sort((x, y) => makes(y) - makes(x))[0];
+      if (c && (um.attachedTo === c.iid || g.activeTurn !== false)) return { how: `${um.card.name} + ${c.card.name}`, colors: new Set((c.produce && c.produce.colors) || ['C']) }; }
     // Grand Architect + Pili-Pala: {U} makes Pili-Pala blue, it taps for {C}{C}, {2} and its untap symbol give one mana of any color back
     { const ga = bf.find(q => q.card.a.statics.blueTap), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
       if (ga && pp && allUnits(g).some(u => u.colors.has('U'))) return { how: `${ga.card.name} + ${pp.card.name}`, colors: new Set(COLORS) }; }

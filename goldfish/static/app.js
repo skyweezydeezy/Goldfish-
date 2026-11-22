@@ -322,9 +322,27 @@
     if (outright.length) html += `<div class="sg"><b>${outright.length} card${outright.length === 1 ? '' : 's'} that win${outright.length === 1 ? 's' : ''} outright</b><p>${list(outright.map(c => c.name))}</p></div>`;
     if (finishers.length) html += `<div class="sg"><b>${finishers.length} finisher${finishers.length === 1 ? '' : 's'}</b><p>${list(finishers.map(c => c.name))}</p></div>`;
     if (!wins.length) html += '<div class="sg warn"><b>No clear win condition</b><p>No card says you win, and no big finisher was found. Rules-text matching can miss unusual wordings.</p></div>';
-    $('#comboList').innerHTML = html;
+    $('#comboList').innerHTML = html + '<div id="comboBook"></div>';
     tidy($('#comboList'));
     box.hidden = false;
+    renderComboBook(combos);
+  }
+  // the combos Commander Spellbook knows in this list (a snapshot kept with the app: data/combos.json), beyond the ones the autopilot plays
+  let comboDb = null;
+  function renderComboBook(engine) {
+    if (typeof Combos === 'undefined') return;
+    const deck = S.deck;
+    comboDb = comboDb || fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    comboDb.then(db => {
+      const el = $('#comboBook'); if (!db || !el || S.deck !== deck) return;
+      const cmd = deck.commanders.map(i => i.card), id = cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null;
+      const r = Combos.find(db, deck.unique.map(c => c.name), id), more = r.included.filter(c => !Combos.played(c, engine));
+      const li = c => `<li><b>${c.cards.map(n => n === c.missing ? `add ${esc(n)}` : esc(n)).join(' + ')}</b>: ${esc(c.does.join('; '))}.${c.needs.length ? ` Also needs: ${esc(c.needs.join(', '))}.` : ''} <a href="${esc(c.url)}" target="_blank" rel="noopener">Steps on Commander Spellbook</a></li>`;
+      const group = (title, xs, cls, max) => xs.length ? `<div class="sg ${cls}"><b>${title}</b><ul>${xs.slice(0, max).map(li).join('')}</ul>${xs.length > max ? `<p>The ${max} most popular are shown.</p>` : ''}</div>` : '';
+      el.innerHTML = group(`${more.length} more in Commander Spellbook`, more, '', 40) + group(`${r.almost.length} one card away`, r.almost, '', 15)
+        + `<p class="hint" data-fold>Commander Spellbook snapshot of ${esc(db.fetched)}: its ${db.combos.length.toLocaleString()} most popular combos. The autopilot does not play the ones listed here; open one for what it does and a link to its steps.</p>`;
+      tidy(el);
+    });
   }
 
   // ---- how the simulated games were won (winBy and winLines in the Monte Carlo result) ----

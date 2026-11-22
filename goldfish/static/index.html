@@ -70,7 +70,7 @@
       <div class="deck-view">
         <div id="deckTiles" class="tiles"></div>
         <div id="deckProfile" class="card-box suggest" hidden><div class="box-head"><h2>Strengths and weaknesses</h2><span class="hint">Read from the decklist with common deckbuilding rules of thumb. Run the simulation to add how fast it kills.</span></div><div id="profileList"></div></div>
-        <div id="deckCombos" class="card-box suggest" hidden><div class="box-head"><h2>Combos and win conditions</h2><span class="hint">Combos are found by rules text: every piece of the line must be in the list, and the autopilot plays them and tutors for the missing piece. Combos it does not know yet are not listed. Win conditions are the cards that end a game: the ones that say you win (or a player loses), and the big finishers.</span></div><div id="comboList"></div></div>
+        <div id="deckCombos" class="card-box suggest" hidden><div class="box-head"><h2>Combos and win conditions</h2><span class="hint">Combos are found by rules text: every piece of the line must be in the list, and the autopilot plays them and tutors for the missing piece. Under them, the combos Commander Spellbook knows in this list that the autopilot does not play yet, and the ones a single card short, from a snapshot of its most popular combos kept with the app (nothing about your list is sent anywhere). Win conditions are the cards that end a game: the ones that say you win (or a player loses), and the big finishers.</span></div><div id="comboList"></div></div>
         <div id="deckTags" class="card-box" hidden>
           <div class="box-head"><h2>Tags</h2><span class="hint">What each card does, sorted into groups. Open a group and tap a tag to see those cards.</span></div>
           <div class="row wrap">
@@ -362,6 +362,7 @@
 <script src="compare.js"></script>
 <script src="profile.js"></script>
 <script src="tags.js"></script>
+<script src="combos.js"></script>
 <script src="audio.js"></script>
 <script src="card-sounds.js"></script>
 <script src="card-effects.js"></script>

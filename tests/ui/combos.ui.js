@@ -37,6 +37,14 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     check(`${name}: Felidar Sovereign is listed as a card that wins outright`, await p.$eval('#comboList', e => [...e.querySelectorAll('.sg')].some(s => /outright/.test(s.textContent) && /Felidar Sovereign/.test(s.textContent))));
     check(`${name}: the explanation of the section sits behind the ⓘ`, await p.$eval('#deckCombos .box-head', e => !!e.querySelector('.info-tog') && e.querySelector('.hint').classList.contains('folded')));
     check(`${name}: the section fits the screen width`, await p.$eval('#deckCombos', e => e.getBoundingClientRect().right <= innerWidth + 1));
+    // the Commander Spellbook snapshot: combos the autopilot does not play, and the ones a card short
+    await p.waitForFunction(() => document.querySelector('#comboBook .sg'), null, { timeout: 30000 });
+    const book = await p.$$eval('#comboBook .sg', xs => xs.map(x => ({ head: x.querySelector('summary').textContent, n: x.querySelectorAll('li').length, open: x.querySelector('details').open, link: (x.querySelector('a') || {}).href || '', first: (x.querySelector('li') || {}).textContent || '' })));
+    const away = book.find(g => /one card away/.test(g.head));
+    check(`${name}: the combos one card away are counted, folded, with the card to add`, !!away && away.n > 0 && away.n <= 15 && !away.open && /add /.test(away.first), book.map(g => g.head).join(' | '));
+    check(`${name}: each links to its steps on Commander Spellbook`, book.every(g => g.link.startsWith('https://commanderspellbook.com/combo/')), away && away.link);
+    check(`${name}: a combo the autopilot already plays is not repeated there`, !(await p.$$eval('#comboBook li b', bs => bs.map(b => b.textContent))).includes('Heliod, Sun-Crowned + Walking Ballista'));
+    check(`${name}: the snapshot's date sits behind an ⓘ`, await p.$eval('#comboBook', e => /snapshot of \d{4}-\d\d-\d\d/.test(e.textContent) && e.querySelector('.hint').classList.contains('folded')));
     if (shot) await p.screenshot({ path: `${shot}/combos-build-${name}.png` });
 
     // Simulate: how the games were won

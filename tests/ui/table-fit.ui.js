@@ -31,6 +31,9 @@ const SIDEWAYS = n => /sideways/.test(n);
     await p.click('[data-tab=table]'); await p.check('#tFast'); await p.fill('#tAutoToN', '6');
     await p.click('#tAutoTo', { position: { x: 12, y: 12 } });   // the button holds the turn box; tap its icon
     await p.waitForTimeout(14000);
+    // About one game in fifty the autopilot has played its whole hand by turn 6. The hand checks need cards to look at, so then two
+    // are drawn from the library (a tap on the pile), as a player would.
+    if (!(await p.$$('#zHand .mtg')).length) { for (let k = 0; k < 2; k++) { await p.click('#zLibrary .card-back'); await p.waitForTimeout(500); } }
     const m = await p.evaluate(() => {
       const r = s => document.querySelector(s).getBoundingClientRect();
       const hand = r('#zHand'), lib = r('#zLibrary'), main = r('.table-main');

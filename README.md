@@ -1,6 +1,6 @@
 # ICEYfish
 
-Paste a decklist and watch it goldfish. It uses your own card images from **ScryMirror**, plus exact draw math and a Monte Carlo simulation.
+Paste a decklist and watch it goldfish. Card data and images come from [Scryfall](https://scryfall.com), plus exact draw math and a Monte Carlo simulation.
 
 ## Use it on your phone or iPad (hosted version)
 
@@ -25,9 +25,9 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 
 **Card viewer:** every card on every tab opens in the viewer. Click (or tap) a card to open it; where a click picks the card instead (the Draw Odds picker, the 12 sample hands), use the 🔍 in its corner, right-click it, or long-press it on a phone; on the Goldfish Table a click opens the card's menu, where View card opens the viewer (Ctrl/⌘-click plays or taps a card at once, Shift-click casts it ignoring mana). On a wide screen the card sits on the left and its price, shop buttons and printings beside it. Swipe the card (or use the ‹ › buttons or arrow keys) to move to the next or previous card around it, pick another **printing** (with prices) and choose **Use this printing in my deck** to switch the art for this visit, and shop for it at **TCGplayer, Card Kingdom or ManaPool**. The shop links are plain links for now; affiliate parameters can be added in `AFFILIATE` near the top of the viewer code in `app.js`. The viewer also shows how the engine reads the card.
 
-**Same Wi-Fi only, using your PC's ScryMirror images:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
+**Same Wi-Fi only, using card images stored on your PC:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
 
-## Run it on your PC with your own ScryMirror (Windows)
+## Run it on your PC with a local copy of Scryfall data (Windows)
 
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
 2. Get the folder once: on GitHub choose **Code -> Download ZIP** and unzip it anywhere.
@@ -41,12 +41,12 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 - To start without checking: `start.bat --no-update`.
 - The check that this works (download the zip, run `start.bat` on Windows, the app answers) runs on GitHub after every push: see **Actions -> Launch check**.
 
-It reads `%USERPROFILE%\Documents\ScryMirror` by default:
+It reads a folder of Scryfall card data and images that you keep on your PC (set the `ICEYFISH_DATA_DIR` environment variable, or pass `--data-dir`):
 
 - `data\scryfall.sqlite` for card data (Oracle text, mana cost, types, printings)
 - `data\images\normal\<set>\<cn>_en[_<face>].jpg` for the card images
 
-Different location: `start.bat --scrymirror "D:\path\to\ScryMirror"` (or `python server.py --scrymirror ...`).
+Different location: `start.bat --data-dir "D:\path\to\folder"` (or `python server.py --data-dir ...`).
 Everything runs locally and only reads your files; nothing is uploaded.
 
 ## The five tabs
@@ -67,7 +67,7 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 - **Mana:** colored costs, hybrid, Phyrexian, X, taplands and check lands, fetches, MDFC land backs, rocks and dorks (with summoning sickness), Treasure, rituals and triggered mana, cost reducers ("Creature spells you cast cost {1} less"), extra land drops (Exploration, Burgeoning-style "put a land from your hand"), and commander tax.
 - **Triggers:** enters the battlefield, attacks, Landfall, "whenever you cast a (noncreature / instant or sorcery / creature…) spell", "whenever another creature / Elf / artifact enters", upkeep, beginning of combat, end step, combat damage to a player, and "whenever you draw".
 - **Effects:**
-  - creature tokens with power/toughness, colors and keywords, using the real token art from ScryMirror
+  - creature tokens with power/toughness, colors and keywords, using the real token art from Scryfall
   - **token replacement effects:** Doubling Season, Parallel Lives, Mondrak and Elspeth, Storm Slayer (they stack), Divine Visitation (creature tokens become Angels), Chatterfang and Peregrin Took (extra Squirrels or a Food), Academy Manufactor and Bilbo (Clue, Food and Treasure). Order used: conversions, then additions, then doublers. Doubling Season also doubles counters and starting/+ loyalty.
   - **token triggers:** "whenever a token enters / you create a token / a token leaves", including Belladonna Took's first-second-third-time-this-turn ability, Rosie Cotton, Mirkwood Bats, Nadier's Nightblade, Gyome, and Rapacious Guest's combat Food
   - **Food economy:** spends spare mana and Foods on "sacrifice a Food" abilities (Greta's cards and counters, Savvy Hunter and Peregrin Took's draws), with the payoffs: Nuka-Cola's Treasure, Rapacious Guest's counters, Mirkwood Bats and Nadier's Nightblade. Cabbage Merchant turns pairs of Foods into mana.
@@ -314,6 +314,7 @@ All 81 pairings of the nine decks play full mirror matches without errors, and e
 
 Cards are kept in a database filed by release set: one file per set in `goldfish/static/data/sets/` (`index.json` lists them all, [docs/SETS.md](docs/SETS.md) is the readable table). Each card's full record (rules text, types and the simulator's coverage report for it) is stored **once, in the set it was first printed in**. Every later set that reprints it lists only a small pointer (`name`, `set`, `cn`, `rarity` and `ref`, the set that holds the full record), so nothing is duplicated.
 
+- **Check imported cards for choices a person is not asked:** `node tools/choice-audit.js --since <commit>` reads the choices each card added to the pool since that commit makes on cast or as it enters (a search, a target, "choose one", a creature type, a color, a card name, X, a discard, a sacrifice), plays it for a seated person on a prepared pod, and lists the choices the game does not ask yet. Without `--since` it audits the whole pool; `--names "A;B"` checks single cards; `--json <file>` saves the report.
 - **Add a set:** `node tools/fetch-sets.js <code> [<code> ...]` with Scryfall set codes, for example `node tools/fetch-sets.js cmm c21`. Reprinted cards are filed in the set of their first printing, which is created as a "partial" set (only those cards) until you fetch the whole set.
 - **File the cards of your decks:** `node tools/fetch-sets.js --import-decks` adds every card of the decks in `tests/fixtures/*-loaded.json` under the set it was first printed in. The deck fixtures themselves are left as they are, because the tests read them.
 - **The most played cards:** `node tools/fetch-sets.js --top 1000` files the 1,000 most played Commander cards (Scryfall carries EDHREC's popularity rank) and lists them in `goldfish/static/data/top-cards.json`. Rules work goes down that list from the most played card.

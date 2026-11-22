@@ -13,13 +13,13 @@ const put = (g, n, sick) => { const p = G.enterWithTriggers(g, { iid: g.nextIid+
 const hand = (g, n) => g.hand.push({ iid: g.nextIid++, card: by(n) });
 
 check('Umbral Mantle: every line is read exactly', by('Umbral Mantle').a.coverage.every(v => v.status === 'ok'), by('Umbral Mantle').a.coverage.map(v => v.status).join(','));
-{ const g = bare(); put(g, 'Umbral Mantle'); put(g, 'Metalworker'); put(g, 'Walking Ballista'); hand(g, 'Sol Ring'); hand(g, 'Mana Vault');
+{ const g = bare(); const um = put(g, 'Umbral Mantle'), mw = put(g, 'Metalworker'); um.attachedTo = mw.iid; put(g, 'Walking Ballista'); hand(g, 'Sol Ring'); hand(g, 'Mana Vault');
   const ev = []; G.comboLines(g, ev);
-  check('Umbral Mantle + Metalworker with two artifact cards in hand (four mana a tap): infinite mana, Walking Ballista wins', g.killTurn != null && ev.some(e => /Umbral Mantle \+ Metalworker/.test(e.text || '')), ev.map(e => e.text).filter(Boolean).join(' | ')); }
-{ const g = bare(); put(g, 'Umbral Mantle'); put(g, 'Metalworker'); put(g, 'Walking Ballista'); hand(g, 'Sol Ring');
+  check('Umbral Mantle on Metalworker with two artifact cards in hand (four mana a tap): infinite mana, Walking Ballista wins', g.killTurn != null && ev.some(e => /Metalworker \+ Umbral Mantle/.test(e.text || '')), ev.map(e => e.text).filter(Boolean).join(' | ')); }
+{ const g = bare(); const um = put(g, 'Umbral Mantle'), mw = put(g, 'Metalworker'); um.attachedTo = mw.iid; put(g, 'Walking Ballista'); hand(g, 'Sol Ring');
   const ev = []; G.comboLines(g, ev);
   check('...not with one artifact card in hand (two mana a tap does not pay the {3})', g.killTurn == null); }
-{ const g = bare(); put(g, 'Umbral Mantle'); put(g, 'Metalworker', true); put(g, 'Walking Ballista'); hand(g, 'Sol Ring'); hand(g, 'Mana Vault');
+{ const g = bare(); const um = put(g, 'Umbral Mantle'), mw = put(g, 'Metalworker', true); um.attachedTo = mw.iid; put(g, 'Walking Ballista'); hand(g, 'Sol Ring'); hand(g, 'Mana Vault');
   const ev = []; G.comboLines(g, ev);
   check('...and not while Metalworker is summoning sick', g.killTurn == null); }
 { const g = bare(); const um = put(g, 'Umbral Mantle'), el = put(g, 'Llanowar Elves'); for (let i = 0; i < 3; i++) { const l = G.enter(g, { iid: g.nextIid++, card: by('Island') }, {}); l.tapped = false; }

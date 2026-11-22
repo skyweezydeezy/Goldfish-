@@ -2466,6 +2466,9 @@
       if (/^sacrifice ~: creatures you control gain indestructible until end of turn\. the ring tempts you/i.test(line)) { a.sacTempt = true; rec.status = 'ok'; continue; }      // Boromir, Warden of the Tower
       if (/^sacrifice a food: return ~ from your graveyard to the battlefield/i.test(line)) { a.gyReturn = { sacFood: 1 }; rec.status = 'ok'; continue; }          // Cauldron Familiar
       if (/^as an additional cost to cast this spell, sacrifice an artifact or creature/i.test(line) || /^as an additional cost to cast ~, sacrifice an artifact or creature/i.test(line)) { a.sacCreatureCost = true; a.sacArtifactAlso = true; rec.status = 'ok'; continue; }      // Deadly Dispute
+      if (/^as an additional cost to cast ~, sacrifice an artifact\.?$/i.test(line)) { a.sacArtifactCost = true; rec.status = 'ok'; continue; }          // Reshape: a spare artifact pays for it (castCard, spellScore)
+      if (/^\{2\}: untap target artifact creature\.?$/i.test(line)) { a.constructUntap = true; rec.status = 'ok'; continue; }          // Voltaic Construct: with an artifact creature that taps for 3+ mana, endless mana (infiniteMana)
+      if (/^\{t\}: target artifact creature's controller sacrifices it\. that player may search their library for a noncreature artifact card, put it onto the battlefield, then shuffle\.?$/i.test(line)) { a.arcum = true; rec.status = 'ok'; continue; }          // Arcum Dagsson: a spare artifact creature for the best noncreature artifact (deckAbilities)
       if (/^as an additional cost to cast ~, sacrifice a creature/i.test(line)) { a.sacCreatureCost = true; rec.status = 'ok'; continue; }      // Diabolic Intent
       {
         const bl = line.replace(/^•\s*/, '');
@@ -4745,6 +4748,15 @@
       if (a.sacLifePower && isCreaturePerm(p) && !p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && !g.dry) {          // Syr Ginger: sacrifice it for life equal to its power, when the life matters (low in a match, or a "whenever you gain life" payoff)
         const pw = Math.max(0, powerOf(g, p)), payoff = g.battlefield.some(q => q !== p && q.card.a.triggers.some(t => t.kinds.includes('lifeGain')));
         if (pw >= 2 && ((g.opp && g.life <= 10) || payoff) && payFor(p, a.sacLifePower, true)) { leavePerm(g, p, ev); flushLeaves(g, ev); gainLife(g, pw, ev, p); note(p, `sacrificed for ${pw} life`); return true; }
+      }
+      if (a.arcum && isCreaturePerm(p) && !p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && !g.dry) {          // Arcum Dagsson: {T}: sacrifice a spare artifact creature of yours for the best noncreature artifact in the library
+        const fod = g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.card.a.isArtifact && !q.card.commander && (q.token || ((q.card.a.mv || 0) <= 2 && !q.produce && !comboPlan(g, q.inst || q)))).sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0];
+        const sr = fod && searchRule(g);
+        if (fod && !(sr && sr.kind === 'cant')) {
+          const ctx = tutorContext(g); let best = null, bs = 60;
+          for (const i of g.library) { const ia = i.card.a; if (!ia.isArtifact || ia.isCreature || ia.isLand || entryBlocked(g, i.card, 'lib')) continue; const sc = tutorScore(g, i, ctx) + Math.max(0, ia.castMv - ctx.mana - 3) * 25 + ia.castMv * 8 + (ia.produce ? (ia.produce.amount || 1) * 30 : 0); if (sc > bs) { bs = sc; best = i; } }          // it enters for free: its cost is no drawback, bigger is better
+          if (best) { p.tapped = true; sacEvent(g, fod, ev); leavePerm(g, fod, ev); flushLeaves(g, ev); g.library.splice(g.library.indexOf(best), 1); shuffle(g.library, g.rnd); enterWithTriggers(g, best, {}, ev); note(p, `sacrificed ${fod.card.name}: ${best.card.name} onto the battlefield`); return true; }
+        }
       }
       if (a.katsumasa && !g.combatDone && !g.dry) {          // Katsumasa: {2}{U}: an artifact becomes a 1/1 flier until end of turn (its +1/+1 counters on top)
         const t = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.tapped && !q.animated && q.enteredTurn < g.turn && (!q.produce || (q.counters || 0) >= 2)).sort((x, y) => (y.counters || 0) - (x.counters || 0))[0];
@@ -7736,6 +7748,10 @@
     }
     return out.sort((x, y) => x.s - y.s);
   }
+  function pickArtifactFodder(g) {
+    const arts = g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.commander);
+    return arts.find(q => q.token && !/Treasure/.test(q.card.name || '')) || arts.find(q => q.token) || arts.find(q => !q.produce && (q.card.a.mv || 0) <= 1 && !comboPlan(g, q.inst || q)) || null;
+  }
   function pickSacrifice(g, a) {
     if (a && a.sacColor) return g.battlefield.filter(q => isCreaturePerm(q) && !q.card.commander && (q.card.colors || []).includes(a.sacColor)).sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0] || null;          // Natural Order: the least of your green creatures
     const l = fodderList(g, false);
@@ -7799,6 +7815,7 @@
     if (inst.card.a.enchantLand && !g.battlefield.some(q => q.asLand) && !force) return null;
     let victim = null;
     if (inst.card.a.discardCost) { const dn = inst.card.a.discardCost === true ? 1 : inst.card.a.discardCost; let ds = g.hand.filter(h => h !== inst).sort((x, y) => discardValue(g, x) - discardValue(g, y)).slice(0, dn); if (ds.length < dn && !force) return null; if (g.ask && ds.length === dn) ds = decide(g, { kind: 'discard', options: g.hand.filter(h => h !== inst), def: ds, multi: true, pick: dn, cost: true, source: inst }); for (const d of ds) { g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d); if (d.card.a.isLand) landToYard(g, [], false); madness(g, d, []); } }
+    if (inst.card.a.sacArtifactCost) { victim = pickArtifactFodder(g); if (!victim && !force) return null; }
     if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g, inst.card.a); if (g.ask && !force) { const vs = g.battlefield.filter(q => isCreaturePerm(q) || (inst.card.a.sacArtifactAlso && q.card.a.isArtifact && !q.asLand)); if (vs.length) victim = decide(g, { kind: 'sacrifice', options: vs, def: victim, cost: true, source: inst }); } if (!victim && !force) return null; }
     // X: a person chooses it (the autopilot puts all its spare mana into X). The most that can be paid counts every reduction, Zimone's included.
     if (g.ask && !g.dry && !force && inst.card.a.cost.x && !inst.freeCast) {
@@ -7927,6 +7944,7 @@
     { const ew = a.triggers.find(t => t.kinds.includes('etb') && t.fx.some(x => x.type === 'wrath')); if (ew && fxValue(g, ew.fx) < 0) return -1; }
     if (a.etbSweepX) { let bx = 0, bs = 2; const maxX = Math.max(0, allUnits(g).length - (a.cost.generic - (a.cost.x ? 1 : 0) + a.cost.pips.length)); for (let X = 1; X <= Math.min(10, maxX); X++) { const v = otherPlayers(g).reduce((t, o) => t + o.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(o, q) <= X).reduce((u, q) => u + creatureValue(o, q), 0), 0) - g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= X).reduce((u, q) => u + creatureValue(g, q), 0); if (v > bs) { bs = v; bx = X; } } if (!bx) return -1; c.extraX = bx - 1; s += 20; }          // Spiteful Banditry          // Sunblast Angel: not over your own tapped creatures
     if (a.sacCreatureCost && !pickSacrifice(g, a)) return -1;     // nothing cheap to sacrifice
+    if (a.sacArtifactCost && !pickArtifactFodder(g)) return -1;          // Reshape: no spare artifact
     if (a.sacColor) { const tf = a.spellFx.find(f => f.type === 'tutor'), t = tf && bestTutorTarget(g, tf); if (!t || (t.inst.card.a.mv || 0) < (pickSacrifice(g, a).card.a.mv || 0) + 3) return -1; }          // Natural Order: only for something much bigger than what it costs
     if (a.sacLandCost) { const sw = swapLand(g); if (!sw || landNow(g, sw) < 2) return -1; s += 10 + landNow(g, sw); }
     if (a.spellFx.some(f => f.type === 'berserk')) { if (!berserkLethal(g)) return -1; s += 50; }          // Crop Rotation: only for a land that makes more mana than the one it costs
@@ -10838,6 +10856,12 @@ g.actSeq = (g.actSeq || 0) + 1;
     // Umbral Mantle attached to Metalworker with two or more artifact cards in hand (four mana a tap; creatures with a fixed amount: B3 below)
     { const um = bf.find(q => q.card.a.umbral && q.attachedTo != null), c = um && bf.find(q => q.iid === um.attachedTo && q.card.a.metalworker && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')) && 2 * g.hand.filter(i => i.card.a.isArtifact).length > 3);
       if (c) return { how: `${c.card.name} + ${um.card.name}`, colors: new Set(['C']) }; }
+    // Voltaic Construct ({2}: untap target artifact creature) with an artifact creature that taps for three or more: Metalworker with two artifact cards in hand
+    if (tableHas(g, 'constructUntap') && bf.some(q => q.card.a.constructUntap)) {
+      const okc = q => isCreaturePerm(q) && q.card.a.isArtifact && !(q.sick && !hasKw(g, q, 'haste'));
+      const mw = bf.find(q => okc(q) && q.card.a.metalworker && 2 * g.hand.filter(i => i.card.a.isArtifact).length > 2) || bf.find(q => okc(q) && q.produce && (q.produce.amount || 1) >= 3);
+      if (mw) return { how: `${mw.card.name} + Voltaic Construct`, colors: new Set(mw.card.a.metalworker ? ['C'] : (mw.produce.colors || ['C'])) };
+    }
     // Grand Architect + Pili-Pala: {U} makes Pili-Pala blue, it taps for {C}{C}, {2} and its untap symbol give one mana of any color back
     { const ga = bf.find(q => q.card.a.statics.blueTap), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
       if (ga && pp && allUnits(g).some(u => u.colors.has('U'))) return { how: `${ga.card.name} + ${pp.card.name}`, colors: new Set(COLORS) }; }

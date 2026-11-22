@@ -1081,6 +1081,7 @@
       if (key) seen.set(key, item);
       items.push(item);
     }
+    if (window.Dice) window.Dice.fromEvents(items);                    // a die rolled or a coin flipped: show it in 3D
     const times = c => (c > 1 ? ` × ${c}` : '');
     for (const e of items) {
       switch (e.type) {

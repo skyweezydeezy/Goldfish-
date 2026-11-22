@@ -70,5 +70,40 @@ const castMimic = (p, chooser) => { const a = p.games[0]; lands(a, 2); const mm 
   const perm = a.battlefield.find(q => q.card.name === 'Metallic Mimic');
   check('a seated player with "Autopilot decides": the learned type, the card unchanged', perm && perm.card === a.deck.unique.find(c => c.name === 'Metallic Mimic')); }
 
+// ---- a spell that chooses a creature type as it resolves
+{ const dk = G.buildDeck(CT.cards, CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; }); D.seat(pod.games[0]);
+  const a = pod.games[0]; for (let k = 0; k < 8; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }
+  const mer = a.deck.unique.find(c => /Merfolk/.test(c.type_line || '') && /Creature/.test(c.type_line || '') && !c.commander), wiz = a.deck.unique.find(c => /Creature/.test(c.type_line || '') && !/Merfolk/.test(c.type_line || '') && !c.commander && ((c.type_line || '').split('—')[1] || '').trim());
+  const put = c => { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: c }, {}, []); q.sick = false; return q; };
+  put(mer); put(wiz);
+  // Kindred Summons: reveal until X creature cards of the chosen type (X = how many of that type you control), they enter
+  const other = ((wiz.type_line || '').split('—')[1] || '').trim().split(/\s+/)[0];
+  a.library = [mer, mer, wiz, mer].map(c => ({ iid: a.nextIid++, card: c })).concat(a.library);          // a Merfolk on top, then the other type
+  const ks = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Kindred Summons') }; a.hand.push(ks);
+  const before = a.battlefield.length;
+  const qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === ks.iid), true), q => { qs.push(q); return q.kind === 'tribe' ? q.options.findIndex(o => o.name === other) : 'none'; });
+  const tq = qs.find(q => q.kind === 'tribe');
+  check('Kindred Summons asks for the creature type as it resolves ("resolving"), the learned type preselected', !!tq && tq.title === 'Kindred Summons: choose a creature type' && /^As it resolves/.test(tq.text) && tq.spellNote === 'resolving' && tq.options[tq.def[0]].name === a.deck.tribe, tq && tq.title + ' / ' + tq.text.slice(0, 40));
+  const came = a.battlefield.slice(before).map(q => q.card.name);
+  check(`...choosing ${other}: a ${other} (${wiz.name}) is put onto the battlefield, no Merfolk`, came.includes(wiz.name) && !came.includes(mer.name), came.join(', ') || 'nothing');
+  check('...and the card goes to the graveyard as the plain card (the choice ends with the spell)', a.graveyard.some(i => i.iid === ks.iid && !i.card.tribeBase) && !a._castTribe); }
+{ const dk = G.buildDeck(CT.cards, CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; }); D.seat(pod.games[0]);
+  const a = pod.games[0]; const dm = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Distant Melody') }; a.hand.push(dm); for (let k = 0; k < 6; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }
+  const qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === dm.iid)), q => { qs.push(q.kind); return 'auto'; });
+  check('Distant Melody (the engine counts every permanent, not one type) does not ask: there is nothing to choose yet', !qs.includes('tribe'), qs.join(', ')); }
+{ const bb = find('Bloodline Bidding');
+  if (bb) { const dk = G.buildDeck(CT.cards.concat([bb]), CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; x.graveyard = []; }); D.seat(pod.games[0]);
+    const a = pod.games[0]; for (let k = 0; k < 9; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === (k < 5 ? 'Swamp' : 'Island')) || a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }
+    const cre = a.deck.unique.filter(c => /Creature/.test(c.type_line || '') && !c.commander);
+    const mer = cre.filter(c => /Merfolk/.test(c.type_line)).slice(0, 3), oth = cre.filter(c => !/Merfolk/.test(c.type_line) && ((c.type_line || '').split('—')[1] || '').trim()).slice(0, 1);
+    mer.concat(oth).forEach(c => a.graveyard.push({ iid: a.nextIid++, card: c }));
+    const otype = ((oth[0].type_line || '').split('—')[1] || '').trim().split(/\s+/)[0];
+    const b1 = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Bloodline Bidding') }; a.hand.push(b1);
+    const qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === b1.iid), true), q => { qs.push(q); return q.kind === 'tribe' ? q.options.findIndex(o => o.name === otype) : 'none'; });
+    const tq = qs.find(q => q.kind === 'tribe');
+    check('Bloodline Bidding asks which type returns: the types in your graveyard, the autopilot\'s (worth the most, Merfolk) preselected', !!tq && tq.options[tq.def[0]].name === 'Merfolk' && tq.options.some(o => o.name === otype) && /in your graveyard/.test(tq.options[0].note), tq && tq.options.map(o => o.name + ' (' + o.note + ')').join(', '));
+    check(`...choosing ${otype}: that creature returns, the Merfolk stay in the graveyard`, a.battlefield.some(q => q.card.name === oth[0].name) && mer.every(c => a.graveyard.some(i => i.card.name === c.name)), a.battlefield.map(q => q.card.name).filter(n => !/Swamp|Island/.test(n)).join(', ')); }
+  else console.log('SKIP  Bloodline Bidding is not in the set database'); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

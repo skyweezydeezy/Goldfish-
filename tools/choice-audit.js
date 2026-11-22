@@ -113,20 +113,26 @@ for (const w of wanted) {
   const choices = choicesOf(c, G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0].a);
   if (!choices.length) { report.push({ name: c.name, choices: [] }); continue; }
   const pr = probe(c);
-  const gaps = pr.cast ? choices.filter(k => !ANSWERS[k].some(a => pr.kinds.includes(a))) : [];
-  report.push({ name: c.name, choices, asked: pr.kinds, cast: pr.cast, err: pr.err, gaps });
+  let gaps = pr.cast ? choices.filter(k => !ANSWERS[k].some(a => pr.kinds.includes(a))) : [];
+  // a creature type the engine plays the card without (its effects read the same with any type): work for the card rules engine first
+  const engine = [];
+  if (gaps.includes('tribe')) { const b = G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0], same = t => JSON.stringify([t.a.spellFx, t.a.triggers, t.a.statics]); if (same(G.cardForTribe(base.games[0], b, 'Wall')) === same(G.cardForTribe(base.games[0], b, 'Goblin')) && !(b.a.spellFx || []).some(f => /tribe|kindred|bidding/i.test(f.type))) { engine.push('tribe'); gaps = gaps.filter(k => k !== 'tribe'); } }
+  if (gaps.includes('color')) { engine.push('color'); gaps = gaps.filter(k => k !== 'color'); }          // the engine does not model a chosen color yet (approximated)
+  report.push({ name: c.name, choices, asked: pr.kinds, cast: pr.cast, err: pr.err, gaps, engine });
   if (++n % 250 === 0) process.stderr.write(`  ${n} cards with choices probed\n`);
 }
 
 // ---- the report
-const withChoice = report.filter(r => r.choices && r.choices.length), gapped = withChoice.filter(r => r.gaps && r.gaps.length), notCast = withChoice.filter(r => r.cast === false);
+const withChoice = report.filter(r => r.choices && r.choices.length), gapped = withChoice.filter(r => r.gaps && r.gaps.length), notCast = withChoice.filter(r => r.cast === false), engineOnly = withChoice.filter(r => r.engine && r.engine.length && !(r.gaps && r.gaps.length));
 const byKind = {};
 gapped.forEach(r => r.gaps.forEach(k => { (byKind[k] = byKind[k] || []).push(r.name); }));
 console.log(`Choice audit: ${report.length} cards, ${withChoice.length} make a choice on cast or as they enter.`);
-console.log(`  asked as they should be: ${withChoice.length - gapped.length - notCast.length}`);
+console.log(`  asked as they should be: ${withChoice.length - gapped.length - notCast.length - engineOnly.length}`);
+console.log(`  a choice the engine plays without (the card rules engine first: a color, a creature type it does not use): ${engineOnly.length}`);
 console.log(`  a choice not asked (gaps): ${gapped.length}`);
 console.log(`  not cast on the test table (no target, a condition): ${notCast.length}`);
 for (const k of Object.keys(byKind).sort((a, b) => byKind[b].length - byKind[a].length)) console.log(`\n${k} not asked (${byKind[k].length}): ${byKind[k].slice(0, 40).join(', ')}${byKind[k].length > 40 ? ', …' : ''}`);
 if (process.argv.includes('--all')) withChoice.filter(r => !r.gaps || !r.gaps.length).forEach(r => console.log(`  ok  ${r.name}: ${r.choices.join(', ')} → ${r.asked ? r.asked.join(', ') : ''}`));
+{ const eb = {}; withChoice.forEach(r => (r.engine || []).forEach(k => { (eb[k] = eb[k] || []).push(r.name); })); for (const k of Object.keys(eb)) console.log(`\n${k} the engine plays without (${eb[k].length}): ${eb[k].slice(0, 40).join(', ')}`); }
 const missing = report.filter(r => r.missing); if (missing.length) console.log(`\nnot found in the card database: ${missing.map(r => r.name).join(', ')}`);
 if (arg('--json')) fs.writeFileSync(arg('--json'), JSON.stringify({ when: new Date().toISOString(), report }, null, 1));

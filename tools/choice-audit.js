@@ -119,7 +119,7 @@ for (const w of wanted) {
   // a creature type the engine plays the card without (its effects read the same with any type): work for the card rules engine first
   const engine = [];
   if (gaps.includes('tribe')) { const b = G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0], same = t => JSON.stringify([t.a.spellFx, t.a.triggers, t.a.statics]); if (same(G.cardForTribe(base.games[0], b, 'Wall')) === same(G.cardForTribe(base.games[0], b, 'Goblin')) && !(b.a.spellFx || []).some(f => /tribe|kindred|bidding/i.test(f.type))) { engine.push('tribe'); gaps = gaps.filter(k => k !== 'tribe'); } }
-  if (gaps.includes('color')) { engine.push('color'); gaps = gaps.filter(k => k !== 'color'); }          // the engine does not model a chosen color yet (approximated)
+  
   report.push({ name: c.name, choices, asked: pr.kinds, cast: pr.cast, err: pr.err, gaps, engine });
   if (++n % 250 === 0) process.stderr.write(`  ${n} cards with choices probed\n`);
 }

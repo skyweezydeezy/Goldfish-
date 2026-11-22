@@ -5265,7 +5265,8 @@
       const card = tokenCard(g.deck, gr.spec);
       for (let i = 0; i < gr.n && g.battlefield.length < 250 && made < 100; i++, made++) {
         const inst = { iid: g.nextIid++, card };
-        if (gr.spec.cda && !card.a.cda) card.a.cda = { what: gr.spec.cda, t: true };                          // Construct tokens: +1/+1 for each artifact you control
+        if (gr.spec.cda && !card.a.cda && !(card.a.statics.selfPerArtifact && /artifact/.test(gr.spec.cda))) card.a.cda = { what: gr.spec.cda, t: true };          // (not when the token's own printed text already says it: it would count twice)
+                                 // Construct tokens: +1/+1 for each artifact you control
         const perm = enterWithTriggers(g, inst, { tapped: gr === groups[0] ? spec.tapped : false }, ev); g._lastTok = perm;
         ev.push({ type: 'token', perm, inst, source });
       }
@@ -8980,7 +8981,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       }
       if (a.urzaSaga && (p.lore || 1) >= 2 && !p.tapped && (p.constructTurn !== g.turn) && sp(p, { generic: 2, pips: [], x: 0 })) {          // Urza's Saga II
         p.constructTurn = g.turn; createTokens(g, { type: 'token', n: 1, creature: true, p: 0, t: 0, colors: [], subtypes: ['Construct'], keywords: [], artifact: true, name: 'Construct' }, 1, ev, p);
-        const tk = g.battlefield[g.battlefield.length - 1]; if (tk && tk.token) tk.card.a.cda = { what: 'artifacts you control', t: true };
+        const tk = g.battlefield[g.battlefield.length - 1]; if (tk && tk.token && !tk.card.a.statics.selfPerArtifact) tk.card.a.cda = { what: 'artifacts you control', t: true };
         ev.push({ type: 'note', text: "Urza's Saga: a Construct token", source: p }); return;
       }
       if (a.lifeDraw && !p.tapped && g.hand.length < 5 && g.library.length && g.life > (g.opp ? 24 : 16)) {          // War Room

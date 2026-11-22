@@ -2932,7 +2932,7 @@
   // A spell asks only when the type changes what it does: its effects read differently with another type (Kindred Charge), or it reads
   // the type as it resolves (Kindred Summons, Bloodline Bidding). One the engine does not play (Kindred Dominance) or plays without the
   // type (Distant Melody counts every permanent) is not asked: there would be nothing to choose.
-  const TRIBE_FX = new Set(['kindredSummons', 'bidding']);
+  const TRIBE_FX = new Set(['kindredSummons', 'bidding', 'tribeSpell']);          // tribeSpell: Kindred Charge, Distant Melody, Kindred Dominance (the engine reads g._castTribe)
   function tribeMatters(g, base) {
     const fx = base.a.spellFx || [];
     if (fx.some(f => TRIBE_FX.has(f.type))) return true;

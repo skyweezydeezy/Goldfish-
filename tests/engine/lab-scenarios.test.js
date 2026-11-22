@@ -176,6 +176,27 @@ check('the board wipe choice is for matches only', G.LAB_CHOICES.find(c => c.id 
   check('tribe first never boosts a card outside the tribe', G.tribeBonus(g({ tribeFirst: 'on' }), other) === 0);
 }
 
+// ---- X spells: Zimone's discount pays for X; the smallest X worth casting; one X spell every turn ----
+{
+  const zim = card('Zimone, Infinite Analyst', 'Legendary Creature — Human Wizard', 'The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone.\nWhenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone.', { mana_cost: '{1}{G}{U}', cmc: 3, power: '1', toughness: '1' });
+  const draw = card('Homebrew Genius', 'Sorcery', 'Draw X cards.', { mana_cost: '{X}{U}', cmc: 1 });
+  const deck = G.buildDeck(forest(30).concat([zim, draw]), []);
+  const g = G.newGame(deck, withPol({}), 3); g.turn = 6; g.hand = []; g.battlefield = [];
+  for (let k = 0; k < 4; k++) G.enter(g, g.library.find(i => i.card.name === 'Forest' && !g.battlefield.some(p => p.inst === i)), {});
+  const z = G.enter(g, g.library.find(i => i.card.name === 'Zimone, Infinite Analyst'), {}); z.counters = 4;
+  check('Zimone with 4 counters: the first X spell this turn costs 4 less', G.xDiscountNow(g) === 4);
+  g.xCastTurn = g.turn;
+  check('...and nothing once an X spell was cast this turn', G.xDiscountNow(g) === 0);
+  check('both X choices are offered to a deck with X spells and an X payoff', applies(deck, 'xMin') && applies(deck, 'xEachTurn'));
+  check('a deck with X spells but no X payoff gets only the smallest-X choice', applies(G.buildDeck(forest(30).concat([draw]), []), 'xMin') && !applies(G.buildDeck(forest(30).concat([draw]), []), 'xEachTurn'));
+  const gh = G.newGame(deck, withPol({ xEachTurn: 'on' }), 4); gh.turn = 5; const inst = gh.library.find(i => i.card.name === 'Homebrew Genius');
+  const off = G.spellScore(Object.assign({}, gh, { opts: withPol({}) }), inst), on = G.spellScore(gh, inst);
+  check('"cast an X spell every turn" ranks the first X spell of the turn higher', on > off, `${off} -> ${on}`);
+  const ld = n => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', n + '-loaded.json'), 'utf8'));
+  const res = G.comparePolicies(forest(30).concat([zim, draw, Object.assign({}, draw, { name: 'Homebrew Genius 2' })]), [], O, [{ name: 'any', policy: {} }, { name: '3', policy: { xMin: '3' } }, { name: 'each', policy: { xEachTurn: 'on' } }], 30, 5, 'goldfish');
+  check('the X choices run end to end without errors', res.errors === 0 && res.rows.length === 3, res.errors);
+}
+
 // ---- the lab runs the new choices end to end ----
 {
   const r = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'soul-brokers-loaded.json'), 'utf8'));

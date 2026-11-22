@@ -7128,8 +7128,29 @@
     scepter: c => c.a.imprint === 'scepter',
     untapAll: c => /\bInstant\b/.test(c.type_line || '') && c.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'),
     rock: c => comboKind(c).untapCost != null,
-    enabler: c => comboKind(c).powerArtifact || comboKind(c).rings || !!c.a.statics.nonlandDouble,
-    outlet: c => comboKind(c).ballista || comboKind(c).xBurn || comboKind(c).drawEngine,
+    enabler: c => comboKind(c).powerArtifact || comboKind(c).rings || !!c.a.statics.nonlandDouble || comboKind(c).monument || comboKind(c).tripler,
+    outlet: c => comboKind(c).ballista || comboKind(c).xBurn || comboKind(c).drawEngine || comboKind(c).manaPing,
+    castPing: c => comboKind(c).castPing,
+    keyUntap: c => !!(c.a.untapper && c.a.untapper.what === 'artifact'), rings: c => comboKind(c).rings,
+    bigRock: c => !!(c.a.isArtifact && c.a.produce && !c.a.isLand && (c.a.produce.per || c.a.produce.dynamic || (c.a.produce.amount || 1) >= 3)),
+    copyAb: c => comboKind(c).copyAb, tezz: c => comboKind(c).tezz,
+    bouncer: c => comboKind(c).bouncer,
+    plusRock: c => !!(c.a.isArtifact && !c.a.isCreature && !c.a.isLand && c.a.produce && (c.a.produce.amount || 1) > (c.a.castMv || 0)),
+    freeRock: c => !!(c.a.isArtifact && !c.a.isCreature && !c.a.isLand && c.a.produce && (c.a.produce.amount || 1) >= (c.a.castMv || 0)),
+    recur: c => comboKind(c).recurCast || !!comboKind(c).recurCost,
+    sacPays: c => !!comboKind(c).sacMana, sacAny: c => comboKind(c).sacFree, deathTreasure: c => comboKind(c).deathTreasure, deathDrain: c => comboKind(c).deathDrain,
+    thune: c => comboKind(c).thune, lifeCounterAny: c => !!comboKind(c).lifeCounter || comboKind(c).thune, persistGain: c => comboKind(c).persistGain,
+    breach: c => comboKind(c).breach, stormMill: c => comboKind(c).stormMill, ritualRock: c => comboKind(c).led || comboKind(c).petal, led: c => comboKind(c).led, wheel: c => comboKind(c).wheel, finisher: c => comboKind(c).finisher,
+    approach: c => comboKind(c).approach, anyTutor: c => comboKind(c).anyTutor,
+    peer: c => comboKind(c).peer, drawPunish: c => comboKind(c).oppDrawPing > 0,
+    reservoir: c => comboKind(c).reservoir, top: c => comboKind(c).top, citadel: c => comboKind(c).citadel, forge: c => comboKind(c).forge, artReducer: c => comboKind(c).artReducer, fleshraker: c => comboKind(c).fleshraker,
+    hermit: c => comboKind(c).hermit, emptyWinner: c => comboKind(c).oracleWin || (comboKind(c).drawWin && !!c.a.isPlaneswalker), adNauseam: c => comboKind(c).adNauseam, grace: c => comboKind(c).grace,
+    assault: c => !!comboKind(c).assault, combatMana: c => comboKind(c).attackMana >= 5 || comboKind(c).dmgTreasure,
+    najeela: c => comboKind(c).najeela, derevi: c => comboKind(c).derevi,
+    snoop: c => comboKind(c).snoop, gobCopier: c => comboKind(c).copier && /\bGoblin\b/.test(c.type_line || ''),
+    krenko: c => comboKind(c).krenko && !!c.commander, gobSac: c => comboKind(c).gobSac, gobHaste: c => comboKind(c).gobHaste,
+    ulalek: c => comboKind(c).ulalek, echoes: c => comboKind(c).echoes, echoesOrCopy: c => comboKind(c).echoes || comboKind(c).copyAb, unsealing: c => comboKind(c).unsealing,
+    selfDrawPing: c => comboKind(c).selfDrawPing, poisonNine: c => comboKind(c).poisonNine, counterTwice: c => comboKind(c).counterTwice,
     blood: c => c.a.comboRole === 'blood',
     bond: c => c.a.comboRole === 'bond',
     lifeCounter: c => !!comboKind(c).lifeCounter,
@@ -7153,7 +7174,17 @@
   };
   const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond'],
     ['lifeCounter', 'pinger'], ['copier', 'untapEnter'], ['twin', 'untapOnly'], ['copyMage', 'copySpell'], ['undyingLord', 'trisk'], ['niv', 'curiosity'],
-    ['blinker', 'landUntap', 'outlet'], ['druid', 'vizier', 'outlet'], ['auraUntap', 'blueDork', 'outlet']];
+    ['blinker', 'landUntap', 'outlet'], ['druid', 'vizier', 'outlet'], ['auraUntap', 'blueDork', 'outlet'],
+    ['scepter', 'untapAll', 'castPing'], ['keyUntap', 'rings', 'bigRock', 'outlet'], ['copyAb', 'tezz', 'bigRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'castPing'],
+    ['recur', 'sacPays', 'deathDrain'], ['recur', 'deathTreasure', 'sacAny', 'deathDrain'], ['thune', 'pinger'], ['persistGain', 'sacAny', 'lifeCounterAny', 'deathDrain'],
+    ['breach', 'stormMill', 'ritualRock'], ['breach', 'led', 'wheel', 'finisher'], ['approach', 'anyTutor'], ['peer', 'drawPunish'],
+    ['reservoir', 'blood'], ['top', 'citadel', 'reservoir'], ['top', 'forge', 'fleshraker'], ['top', 'forge', 'artReducer', 'finisher'],
+    ['hermit', 'emptyWinner'], ['adNauseam', 'grace', 'winner'], ['assault', 'combatMana'], ['najeela', 'derevi'], ['snoop', 'gobCopier'], ['krenko', 'gobSac', 'gobHaste'], ['ulalek', 'echoes', 'fleshraker'],
+    ['ulalek', 'echoesOrCopy', 'unsealing', 'outlet'], ['peer', 'selfDrawPing'], ['poisonNine', 'counterTwice']];
+  // slots that ordinary cards fill too: on their own they do not make a deck a combo deck
+  const COMMON_SLOTS = new Set(['anyTutor', 'freeRock', 'plusRock', 'bigRock', 'sacAny', 'sacPays', 'deathDrain', 'finisher', 'rings']);
+  // a line that also needs something of the whole list
+  const LINE_NEEDS = { 'hermit+emptyWinner': cards => !cards.some(c => /\bBasic\b/.test(c.type_line || '')) };
   // what the Build tab calls each line and each slot
   const LINE_INFO = {
     'emptier+winner': ['Empty-library win', 'Exile your whole library, then win the game with it empty.'],
@@ -7168,11 +7199,47 @@
     'niv+curiosity': ['Draw and damage loop', 'Each card drawn deals 1 damage, and each damage draws a card.'],
     'blinker+landUntap+outlet': ['Blink for mana', 'Blinking the creature untaps more lands than the blink costs: infinite mana, spent on the outlet.'],
     'druid+vizier+outlet': ['Free untaps', 'The counter that pays for the untap is never put on the creature: infinite mana, spent on the outlet.'],
+    'scepter+untapAll+castPing': ['Scepter storm', 'The copy artifact casts the untap-all instant again and again, and every cast hurts each opponent.'],
+    'keyUntap+rings+bigRock+outlet': ['Key loop', 'The untap ability and its copy untap both the key and a big rock: infinite mana, spent on the outlet.'],
+    'copyAb+tezz+bigRock+outlet': ['Copied untap', 'The planeswalker\'s untap is copied again and again, untapping the copier and a rock each time: infinite mana, spent on the outlet.'],
+    'bouncer+plusRock+freeRock+outlet': ['Bounce loop', 'Two cheap rocks bounce and recast each other for more mana than they cost: infinite mana, spent on the outlet.'],
+    'bouncer+plusRock+freeRock+castPing': ['Bounce storm', 'Two cheap rocks bounce and recast each other for ever, and every cast hurts each opponent.'],
+    'recur+sacPays+deathDrain': ['Sacrifice loop', 'The creature is sacrificed for the mana that brings it back, and every death drains the table.'],
+    'recur+deathTreasure+sacAny+deathDrain': ['Sacrifice loop (Treasure)', 'Each death makes the Treasure that brings the creature back, and every death drains the table.'],
+    'thune+pinger': ['Lifelink pinger (all creatures)', 'With lifelink on the pinger, every point of damage puts its counter back.'],
+    'persistGain+sacAny+lifeCounterAny+deathDrain': ['Persist loop', 'The counter from gaining life cancels the persist counter, so the creature dies and returns for ever, and every death drains the table.'],
+    'breach+stormMill+ritualRock': ['Breach storm', 'The mill spell and the rock are recast from the graveyard again and again; each cast mills more, until every library is empty.'],
+    'breach+led+wheel+finisher': ['Breach wheel', 'A new hand of seven again and again from the graveyard, until the card that wins is found.'],
+    'approach+anyTutor': ['Second sun', 'Cast it once, tutor it back, cast it again: you win.'],
+    'peer+drawPunish': ['Forced draw', 'An opponent draws half their library and loses half their life, and is hurt for every card drawn.'],
+    'reservoir+blood': ['Fifty for fifty', 'With 51 life or more: 50 life paid deals 50 damage, which gains 50 life back.'],
+    'top+citadel+reservoir': ['Top of the library', 'The top card is cast for 1 life and drawn back again and again; each cast gains more life than the last, until 50 damage can be dealt as often as needed.'],
+    'top+forge+fleshraker': ['Top of the library (Spawn)', 'Each cast from the top makes a Spawn that pays for the next and deals 1 damage.'],
+    'top+forge+artReducer+finisher': ['Top of the library (free)', 'The top card costs nothing to recast, so the whole library is drawn and the card that wins is found.'],
+    'hermit+emptyWinner': ['Whole library to the graveyard', 'With no basic land in the list, one activation empties the library; then the empty-library card wins.'],
+    'adNauseam+grace+winner': ['Draw the library', 'You cannot lose this turn, so the whole library is put into your hand, and the empty-library card wins.'],
+    'assault+combatMana': ['Combat after combat', 'Each attack makes the mana for another combat phase.'],
+    'najeela+derevi': ['Combat after combat (untap)', 'Every creature that hits untaps a land, and the lands pay for another combat with more attackers.'],
+    'snoop+gobCopier': ['Goblin copies', 'With the copier on top of the library, the creature copies itself with haste, and every copy does the same.'],
+    'krenko+gobSac+gobHaste': ['Goblin storm', 'The Goblins are sacrificed for mana and the commander is cast again with haste, making more Goblins every time.'],
+    'ulalek+echoes+fleshraker': ['Eldrazi copies', 'Every copy of an Eldrazi spell makes Spawn that pay for the next copy, and each creature that enters deals 1 damage.'],
+    'ulalek+echoesOrCopy+unsealing+outlet': ['Eldrazi copies (mana)', 'Every copy of a mid-sized Eldrazi makes two Spawn, which pay for the next copy with mana to spare: infinite mana, spent on the outlet.'],
+    'peer+selfDrawPing': ['Forced draw (yours)', 'You draw half your library, and each opponent loses 1 life for every card.'],
+    'poisonNine+counterTwice': ['Nine poison, doubled', 'The planeswalker enters with twice its loyalty and uses its last ability at once; the nine poison counters are doubled.'],
     'auraUntap+blueDork+outlet': ['Untap Aura', 'The Aura untaps a creature that makes more mana than the untap costs: infinite mana, spent on the outlet.'],
   };
   const SLOT_INFO = { emptier: 'Empties the library', winner: 'Wins with an empty library', scepter: 'Copy artifact', untapAll: 'Untap-all instant', rock: 'Self-untapping rock', enabler: 'Makes the untap pay', outlet: 'Wins with infinite mana',
     blood: 'Gains when they lose life', bond: 'Drains when you gain life', lifeCounter: 'Counter for each life gained', pinger: 'Removes a counter to deal 1', copier: 'Copies a creature', untapEnter: 'Untaps or blinks as it enters', twin: 'Copy Aura', untapOnly: 'Untaps as it enters',
     copyMage: 'Copies a spell as it enters', copySpell: 'Token-copy spell', undyingLord: 'Gives undying', trisk: 'Pinger with counters', niv: 'Damage for each card drawn', curiosity: 'Card for each damage dealt', blinker: 'Blinks a creature',
+    castPing: 'Hurts for each spell cast', keyUntap: 'Untaps an artifact', rings: 'Copies the ability', bigRock: 'Rock that makes three or more', copyAb: 'Copies the ability', tezz: 'Untaps two artifacts',
+    bouncer: 'Returns a permanent for each spell', plusRock: 'Rock that makes more than it costs', freeRock: 'Rock that pays for itself', recur: 'Comes back from the graveyard', sacPays: 'Sacrifice for mana', sacAny: 'Sacrifice outlet',
+    deathTreasure: 'Treasure for each death', deathDrain: 'Drains for each death', thune: 'Counter on every creature for life gained', lifeCounterAny: 'Counter for life gained', persistGain: 'Persist, gains life as it enters',
+    breach: 'Recasts from the graveyard', stormMill: 'Storm mill spell', ritualRock: 'Free rock that is sacrificed for mana', led: 'Three mana for your hand', wheel: 'New hand of seven', finisher: 'Wins once found',
+    approach: 'Wins on the second cast', anyTutor: 'Finds it again', peer: 'Half the library drawn', drawPunish: 'Hurts for each card an opponent draws', reservoir: '50 life for 50 damage', top: 'Draws and returns to the top',
+    citadel: 'Casts the top card for life', forge: 'Casts the top card', artReducer: 'Makes it free', fleshraker: 'Spawn and 1 damage', hermit: 'Empties the library', emptyWinner: 'Wins with an empty library',
+    adNauseam: 'Draws the library for life', grace: 'You cannot lose this turn', assault: 'Another combat phase', combatMana: 'Mana from combat', najeela: 'Another combat phase', derevi: 'Untaps for each hit',
+    snoop: 'Uses the abilities of the top card', gobCopier: 'Goblin that copies a creature', krenko: 'Doubles your Goblins', gobSac: 'Goblins for mana', gobHaste: 'Haste for Goblins', ulalek: 'Copies Eldrazi spells', echoes: 'Triggers again',
+    echoesOrCopy: 'Triggers or copies again', unsealing: 'Two Spawn for each mid-sized creature spell', selfDrawPing: 'Hurts for each card you draw', poisonNine: 'Nine poison counters', counterTwice: 'Doubles counters',
     landUntap: 'Untaps lands as it enters', druid: 'Untaps itself for a counter', vizier: 'Stops the counter', auraUntap: 'Untap Aura', blueDork: 'Creature that makes the mana' };
   // Mikaeus + Triskelion: the pinger must come back with enough counters to shoot once and still kill itself (toughness + 1 on itself), and be non-Human
   function triskLoops(c) { const n = comboKind(c).trisk; return n > 0 && !/\bHuman\b/.test(c.type_line || '') && n >= (parseInt(c.toughness, 10) || 0) + 1; }
@@ -7187,14 +7254,20 @@
     const d = g.deck; if (!d) return [];
     if (d._lines) return d._lines;
     const cards = d.unique || [];
-    return (d._lines = COMBO_LINES.filter(line => lineCards(line, cards)));
+    return (d._lines = COMBO_LINES.filter(line => lineCards(line, cards) && (!LINE_NEEDS[line.join('+')] || LINE_NEEDS[line.join('+')](cards))));
   }
   // for the Build tab: every combo the deck holds all the pieces of, with the cards that fill each slot
   function deckCombos(deck) {
     if (!deck) return [];
-    const cards = deck.unique || [];
-    return deckLines({ deck }).map(line => { const opts = lineCards(line, cards), info = LINE_INFO[line.join('+')] || [line.join(' + '), ''];
-      return { id: line.join('+'), name: info[0], how: info[1], slots: line.map((sl, i) => ({ slot: sl, label: SLOT_INFO[sl] || sl, cards: opts[i].map(c => c.name) })) }; });
+    const cards = deck.unique || [], full = deckLines({ deck }), out = [];
+    const row = (line, open) => { const opts = lineCards(line, cards), id = line.join('+') + (open ? '+' + open : ''), info = LINE_INFO[id] || [id.split('+').join(' + '), ''];
+      return { id, name: info[0], how: open ? info[1].replace(/, spent on the outlet\.$/, '.') : info[1], open: !!open, slots: line.map((sl, i) => ({ slot: sl, label: SLOT_INFO[sl] || sl, cards: opts[i].map(c => c.name) })) }; };
+    for (const line of COMBO_LINES) {
+      if (full.includes(line)) { out.push(row(line)); continue; }
+      // infinite mana with nothing in the list to spend it on: still worth knowing
+      if (line[line.length - 1] === 'outlet') { const head = line.slice(0, -1); if (lineCards(head, cards) && !full.some(f => head.every((sl, i) => f[i] === sl))) out.push(row(head, 'outlet')); }
+    }
+    return out;
   }
   // how much a card moves the best combo line forward: 1000 = it completes a line; one piece left after it = the Policy lab's comboChase
   // (60 by default, 150 eager, 0 = only fetch the last piece); two or more left = 0 (fetching ramp is better that early)
@@ -7273,6 +7346,7 @@
     const a = inst.card.a;
     if (a.isLegendary && ctx.names.has(inst.card.name)) return -1000;                 // legend rule: a second copy would be useless
     let s = comboNeed(g, inst);
+    if ((g.winSpellCasts || 0) >= 1 && comboKind(inst.card).approach) s += 1500;          // cast once already: the second cast wins the game
     if (a.comboRole) {
       if (ctx.roles.has(a.comboRole)) s -= 500;                                        // you already have that half
       else if (ctx.roles.has(a.comboRole === 'blood' ? 'bond' : 'blood')) s += 1000;  // it completes the combo
@@ -9113,7 +9187,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       options: [{ name: 'Best play first (default)', value: 'off' }, { name: 'Creatures of your type ahead of other spells', value: 'on' }, { name: 'Only those that pay off the type (lords, triggers)', value: 'payoffs' }] },
     { id: 'comboChase', key: 'comboChase', label: 'Tutors and combo pieces: how hard to chase the combo',
       needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) },
-        { what: 'a piece of a combo the engine knows (library emptier and empty-library winner, untap-all instant and copy artifact, self-untapping rock and enabler, the two life-loop halves)', test: (a, c) => Object.values(SLOT).some(f => f(c)) }],
+        { what: 'a piece of a combo the engine knows (library emptier and empty-library winner, untap-all instant and copy artifact, self-untapping rock and enabler, the two life-loop halves)', test: (a, c) => Object.keys(SLOT).some(k => !COMMON_SLOTS.has(k) && SLOT[k](c)) }],
       options: [{ name: 'Fetch the next-to-last piece when nothing better is needed (default)', value: 'default' }, { name: 'Eager: fetch the next-to-last piece over ramp', value: 'eager' }, { name: 'Only fetch the piece that completes the combo', value: 'off' }] },
     { id: 'tutorFocus', key: 'tutorFocus', label: 'What tutors look for (when no combo piece is needed)',
       needs: [{ what: 'a card that searches the library for a card', test: a => a.spellFx.some(f => f.type === 'tutor') || a.triggers.some(t => t.fx.some(f => f.type === 'tutor')) }],
@@ -10142,8 +10216,76 @@ g.actSeq = (g.actSeq || 0) + 1;
     k.copySpell = !!a.isInstantSorcery && /create a token that's a copy of (?:that creature|target (?:artifact or )?creature)/i.test(t) && /\bhaste\b/i.test(t);          // Twinflame, Heat Shimmer, Molten Duplication
     k.undyingLord = !!a.statics.grantUndying;          // Mikaeus, the Unhallowed
     k.blinker = /each of those creatures has "\{1\}\{u\}: exile this creature, then return it to the battlefield under your control/i.test(t);          // Deadeye Navigator
+    moreKinds(k, t, a, card);
     k.landUntap = a.isCreature ? a.triggers.reduce((m, x) => x.kinds.includes('etb') ? x.fx.reduce((m2, f) => f.type === 'untapLands' ? Math.max(m2, +f.n || 0) : m2, m) : m, 0) : 0;          // Peregrine Drake, Palinchron, Great Whale
     return (a._combo = k);
+  }
+  // D. More pieces, for the combos in moreCombos and the extra infinite-mana loops. Read from rules text like the rest.
+  function moreKinds(k, t, a, card) {
+    const T = r => r.test(t), kw = n => (card.keywords || []).some(x => String(x).toLowerCase() === n) || new RegExp('(^|\\n)' + n + '\\b', 'i').test(t);
+    k.monument = T(/whenever you tap a permanent for \{c\}, add an additional \{c\}/i);          // Forsaken Monument
+    k.tripler = T(/if you tap a permanent for mana, it produces three times as much/i);          // Nyxbloom Ancient
+    k.copyAb = T(/\{2\}, \{t\}: copy target activated or triggered ability you control/i);          // Lithoform Engine
+    k.tezz = !!a.isPlaneswalker && T(/\+1: untap up to two target artifacts/i);          // Tezzeret the Seeker
+    k.bouncer = T(/whenever you cast a spell,[\s\S]{0,140}?return target (?:nonland )?permanent to its owner's hand/i);          // Tidespout Tyrant, Hullbreaker Horror
+    k.castPing = T(/whenever you cast (?:a|an) (?:noncreature |instant or sorcery )?spell,[^.]*(?:deals? \d+ damage to each opponent|each opponent loses \d+ life)/i)
+      || T(/whenever you cast or copy an instant or sorcery spell, [^.]*(?:each opponent loses \d+ life|deals? \d+ damage to each opponent)/i);          // Vivi Ornitier, Professor Onyx
+    k.manaPing = a.activated.some(x => !x.tap && /^(?:\{[^}]+\})+: /.test(x.text || '') && x.fx.some(f => f.type === 'damage' || f.type === 'drain' || f.type === 'loseLife') && /any target|each opponent|target (?:player|opponent)/i.test(x.text || ''));
+    // sacrifice loops
+    k.recurCast = !!a.isCreature && T(/you may cast (?:this card|~|[^.\n]*?) from your graveyard as long as you control a zombie/i);          // Gravecrawler
+    const rc = t.match(/(?:^|\n)((?:\{[^}]+\})+): return (?:this card|[^.\n]*?) from your graveyard to the battlefield/i);
+    k.recurCost = a.isCreature && rc ? parseCost(rc[1]) : null;          // Reassembling Skeleton
+    k.sacMana = T(/(?:^|\n)sacrifice a(?:nother)? creature: add one mana of any color/i) ? { any: 1, c: 0 } : T(/(?:^|\n)sacrifice a(?:nother)? creature: add \{c\}\{c\}/i) ? { any: 0, c: 2 }
+      : T(/(?:^|\n)pay 1 life, sacrifice another creature: create a treasure token/i) ? { any: 1, c: 0 } : null;          // Phyrexian Altar, Ashnod's Altar, Warren Soultrader
+    k.sacFree = !!k.sacMana || T(/(?:^|\n)sacrifice a(?:nother)? creature:/i);          // Viscera Seer, Woe Strider, Yahenni, Goblin Bombardment
+    k.sacPing = T(/(?:^|\n)sacrifice a(?:nother)? creature: [^.]*deals \d+ damage to any target/i);
+    k.deathTreasure = T(/whenever another creature you control dies, create a treasure token/i);          // Pitiless Plunderer
+    k.deathScion = T(/whenever another nontoken creature you control dies, create a 1\/1 colorless eldrazi scion/i);          // Sifter of Skulls
+    k.deathDouble = T(/if a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time/i);          // Teysa Karlov
+    k.deathDrain = k.sacPing || T(/whenever [^.]*(?:creature|~)[^.]* dies, [^.]*(?:each opponent loses \d+ life|target (?:player|opponent) loses \d+ life|deals \d+ damage to (?:any target|each opponent|target player))/i);          // Blood Artist, Zulaport Cutthroat
+    k.thune = T(/whenever you gain life, put a \+1\/\+1 counter on each creature you control/i);          // Archangel of Thune
+    k.persistGain = !!a.isCreature && kw('persist') && T(/when [^.]* enters, you gain \d+ life/i);          // Kitchen Finks
+    // Underworld Breach
+    k.breach = T(/each nonland card in your graveyard has escape/i);
+    k.stormMill = !!a.isInstantSorcery && kw('storm') && T(/mills three cards/i);          // Brain Freeze
+    k.led = T(/discard your hand, sacrifice [^:]*: add three mana of any one color|sacrifice [^:]*, discard your hand: add three mana of any one color/i);          // Lion's Eye Diamond
+    k.petal = !!a.isArtifact && !a.castMv && T(/\{t\}, sacrifice [^:]*: add one mana of any color/i);          // Lotus Petal
+    k.wheel = T(/each player discards their hand, then draws seven cards/i);          // Wheel of Fortune
+    // one spell and a card that punishes
+    k.approach = a.spellFx.some(f => f.cond && f.cond.kind === 'secondCast');          // Approach of the Second Sun
+    k.anyTutor = [a.spellFx].concat(a.triggers.map(x => x.fx), a.activated.map(x => x.fx)).some(fx => (fx || []).some(f => f.type === 'tutor' && (!(f.filters || []).length || (f.filters || []).includes('sorcery')) && f.dest !== 'battlefield'));
+    k.peer = T(/target player draws cards equal to half the number of cards in their library/i);          // Peer into the Abyss
+    const od = t.match(/whenever an opponent draws a card, [^.]*?(?:deals? (\d+) damage to (?:that player|them)|(?:that player|they) loses? (\d+) life)/i);
+    k.oppDrawPing = od ? +(od[1] || od[2]) : 0;          // Nekusar, Underworld Dreams, Sheoldred, Razorkin Needlehead
+    k.selfDrawPing = T(/whenever you draw a card, (?:each opponent loses 1 life|[^.]* deals 1 damage to (?:any target|each opponent))/i);          // Psychosis Crawler, Niv-Mizzet
+    k.reservoir = T(/pay 50 life: [^.]* deals 50 damage to any target/i);          // Aetherflux Reservoir
+    k.top = T(/\{t\}: draw a card, then put [^.]* on top of its owner's library/i);          // Sensei's Divining Top
+    k.citadel = T(/you may play lands and cast spells from the top of your library\. if you cast a spell this way, pay life equal to its mana value/i);          // Bolas's Citadel
+    k.forge = T(/you may cast artifact spells and colorless spells from the top of your library/i);          // Mystic Forge
+    k.artReducer = T(/colorless spells you cast cost \{\d\} less|spells you cast of the chosen type cost \{1\} less|artifact spells you cast cost \{\d\} less/i);          // Ugin the Ineffable, Cloud Key, Foundry Inspector
+    k.fleshraker = T(/whenever another colorless creature you control enters, [^.]* deals 1 damage to each opponent/i);          // Glaring Fleshraker
+    k.hermit = T(/reveal cards from the top of your library until you reveal a basic land card/i);          // Hermit Druid
+    k.adNauseam = T(/reveal the top card of your library and put that card into your hand\. you lose life equal to its mana value\. you may repeat this process/i);
+    k.grace = T(/you can't lose the game this turn/i);          // Angel's Grace
+    // combat loops
+    const as = t.match(/(?:^|\n)((?:\{[^}]+\})+): untap all creatures you control\. after this main phase, there is an additional combat phase/i);
+    k.assault = as ? parseCost(as[1]) : null;          // Aggravated Assault
+    const am = t.match(/whenever [^.]* attacks, add ((?:\{[wubrgc]\})+)/i);
+    k.attackMana = am ? am[1].split('}').length - 1 : 0;          // Savage Ventmaw
+    k.dmgTreasure = T(/whenever a creature you control deals combat damage to a player, create that many treasure tokens/i);          // Old Gnawbone
+    k.najeela = T(/untap all attacking creatures\. they gain trample, lifelink, and haste until end of turn\. after this phase, there is an additional combat phase/i);
+    k.derevi = T(/whenever a creature you control deals combat damage to a player, you may tap or untap target permanent/i);
+    k.snoop = T(/as long as the top card of your library is a goblin card, [^.]* has all activated abilities of that card/i);          // Conspicuous Snoop
+    k.recruiter = T(/search your library for any number of goblin cards/i);          // Goblin Recruiter
+    k.krenko = T(/\{t\}: create x 1\/1 red goblin creature tokens, where x is the number of goblins you control/i);
+    k.gobSac = T(/(?:^|\n)sacrifice a goblin: add \{r\}/i);          // Skirk Prospector
+    k.gobHaste = T(/goblins you control have haste|other goblin creatures you control get \+1\/\+1 and have haste/i);          // Goblin Warchief, Goblin Chieftain
+    k.ulalek = T(/whenever you cast an eldrazi spell, you may pay \{c\}\{c\}\. if you do, copy all spells you control/i);
+    k.echoes = T(/if a triggered ability of a colorless spell you control or another colorless permanent you control triggers, that ability triggers an additional time/i);          // Echoes of Eternity
+    k.unsealing = T(/whenever you cast a creature spell with mana value 4, 5, or 6, create two 0\/1 colorless eldrazi spawn/i);          // Kozilek's Unsealing
+    k.poisonNine = !!a.isPlaneswalker && T(/if target player has fewer than nine poison counters, they get a number of poison counters equal to the difference/i);          // Vraska, Betrayal's Sting
+    k.counterTwice = T(/if you would put one or more counters on a permanent or player, put twice that many/i);          // Vorinclex, Monstrous Raider
+    k.finisher = k.oracleWin || k.drawWin || k.ballista || k.xBurn;
   }
   function comboWin(g, ev, text) {
     if (g.killTurn != null || matchOver(g)) return true;
@@ -10158,16 +10300,19 @@ g.actSeq = (g.actSeq || 0) + 1;
     const bf = g.battlefield, ready = q => !q.asLand && q.produce && !(q.sick && isCreaturePerm(q) && !hasKw(g, q, 'haste'));
     const nonland = bf.filter(ready);
     const kinnan = bf.some(q => q.card.a.statics.nonlandDouble);
-    const amount = q => (q.produce.per ? perAmount(g, q) : (q.produce.amount || 1)) + (kinnan ? 1 : 0);
+    const mon = bf.find(q => comboKind(q.card).monument), trip = bf.find(q => comboKind(q.card).tripler);
+    const amount = q => ((q.produce.per ? perAmount(g, q) : (q.produce.amount || 1)) + (kinnan ? 1 : 0) + (mon && q.produce.colors && q.produce.colors.size === 1 && q.produce.colors.has('C') ? 1 : 0)) * (trip ? 3 : 1);
+    if (g.loopMana && g.loopMana.turn === g.turn) return g.loopMana.inf;          // a loop that already started this turn (Ulalek's copies)
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
-    if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])) };
+    if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
     // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes
     for (const m of nonland) {
       const u = comboKind(m.card).untapCost; if (u == null) continue;
       const k = amount(m);
       const pa = bf.some(q => comboKind(q.card).powerArtifact), rings = bf.some(q => comboKind(q.card).rings);
-      if (k > u || (pa && k > u - 2) || (rings && 2 * k > u + 2)) return { how: `${m.card.name} + ${kinnan && k > u ? 'Kinnan' : pa ? 'Power Artifact' : 'Rings of Brighthearth'}`, colors: new Set(m.produce.colors || ['C']) };
+      if (k > u || (pa && k > u - 2) || (rings && 2 * k > u + 2)) { const base = k / (trip ? 3 : 1) - (mon ? 1 : 0) - (kinnan ? 1 : 0), self = base > u, why = self ? null : trip && base * 3 > u ? trip.card.name : mon && base + 1 > u ? mon.card.name : kinnan && k > u ? 'Kinnan' : pa ? 'Power Artifact' : 'Rings of Brighthearth';
+        return { how: `${m.card.name}${why ? ' + ' + why : ''}`, colors: new Set(m.produce.colors || ['C']) }; }
     }
     // B3: an Aura that untaps its creature for {U} (Freed from the Real) on a creature that makes two or more mana with a blue one, or on Kiora's Follower with such a permanent to untap
     const twoBlue = q => q.produce && amount(q) >= 2 && q.produce.colors.has('U');
@@ -10183,6 +10328,17 @@ g.actSeq = (g.actSeq || 0) + 1;
       const c = nonland.filter(q => isCreaturePerm(q) && q !== st).sort((x, y) => amount(y) - amount(x))[0];
       if (c && amount(c) > st.card.a.untapper.cost + st.card.a.selfUntap) return { how: `${st.card.name} + ${c.card.name}`, colors: new Set(c.produce.colors) };
     }
+    // B7: an artifact untapper (Voltaic Key) copied by Rings of Brighthearth untaps itself and a rock that makes more than the {1} + {2} it costs
+    { const key = bf.find(q => q.card.a.untapper && q.card.a.untapper.what === 'artifact' && !q.tapped), rings = bf.find(q => comboKind(q.card).rings);
+      if (key && rings) { const r = nonland.filter(q => q !== key && q.card.a.isArtifact).sort((x, y) => amount(y) - amount(x))[0]; if (r && amount(r) > key.card.a.untapper.cost + 2) return { how: `${key.card.name} + ${rings.card.name} + ${r.card.name}`, colors: new Set(r.produce.colors || ['C']) }; } }
+    // B8: a planeswalker's "+1: untap up to two target artifacts" copied again and again by Lithoform Engine ({2}), with a rock that makes three or more
+    { const le = bf.find(q => comboKind(q.card).copyAb && !q.tapped), tz = bf.find(q => comboKind(q.card).tezz && (q.loyalty || 0) > 0);
+      if (le && tz) { const r = nonland.filter(q => q !== le && q.card.a.isArtifact).sort((x, y) => amount(y) - amount(x))[0]; if (r && amount(r) > 2) return { how: `${le.card.name} + ${tz.card.name} + ${r.card.name}`, colors: new Set(r.produce.colors || ['C']) }; } }
+    // B9: "whenever you cast a spell, return target permanent to its owner's hand" with two cheap rocks that bounce and recast each other for more than they cost
+    { const bo = bf.find(q => comboKind(q.card).bouncer);
+      if (bo) { const rocks = bf.filter(q => !q.token && !q.asLand && q.produce && q.card.a.isArtifact && !q.card.a.isCreature).map(q => q.card).concat(g.hand.filter(i => i.card.a.isArtifact && !i.card.a.isCreature && !i.card.a.isLand && i.card.a.produce).map(i => i.card))
+          .map(c => ({ c, net: ((c.a.produce.amount || 1) + (mon && c.a.produce.colors.size === 1 && c.a.produce.colors.has('C') ? 1 : 0)) * (trip ? 3 : 1) - (c.a.castMv || 0) })).filter(x => x.net >= 0).sort((x, y) => y.net - x.net);
+        if (rocks.length >= 2 && rocks[0].net + rocks[1].net > 0 && rocks[0].c !== rocks[1].c) return { how: `${bo.card.name} + ${rocks[0].c.name} + ${rocks[1].c.name}`, colors: new Set([...rocks[0].c.a.produce.colors, ...rocks[1].c.a.produce.colors]), casts: true }; } }
     // B6: Deadeye Navigator blinking a creature that untaps lands as it enters (Peregrine Drake): each {1}{U} blink untaps three or more lands
     const dn = bf.find(q => comboKind(q.card).blinker);
     if (dn) {
@@ -10227,6 +10383,126 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     return false;
   }
+  // E. More combos, each recognised by rules text and checked against the board: sacrifice loops, Underworld Breach, a punisher with
+  //    Peer into the Abyss, Aetherflux Reservoir, Hermit Druid, Ad Nauseam, Aggravated Assault, Najeela, Goblin loops, Sensei's Divining Top, Ulalek.
+  function moreCombos(g, ev) {
+    const bf = g.battlefield, hand = g.hand, gy = g.graveyard, K = p => comboKind(p.card);
+    const ready = p => !p.tapped && !(p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste'));
+    const on = f => bf.find(p => f(K(p))), inHand = f => hand.find(i => f(K(i))), afford = c => canPay(c, allUnits(g));
+    const castNow = (i, extra) => { const c = extra ? sumCost(effectiveCost(g, i), extra) : effectiveCost(g, i); if (!afford(c)) return false; pay(g, c); g.hand.splice(g.hand.indexOf(i), 1); return true; };
+    const NONE0 = { generic: 0, pips: [], x: 0 };
+    // --- a creature that comes back from the graveyard, a sacrifice outlet that pays for it, and a card that drains for each death ---
+    const drain = on(k => k.deathDrain);
+    if (drain) {
+      const mult = on(k => k.deathDouble) ? 2 : 1;
+      for (const r of bf.filter(p => isCreaturePerm(p) && !p.token && (K(p).recurCast || K(p).recurCost))) {
+        if (K(r).recurCast && !bf.some(p => p !== r && isCreaturePerm(p) && /\bZombie\b/.test(p.card.type_line || ''))) continue;
+        const cost = K(r).recurCast ? effectiveCost(g, { card: r.card, iid: -1 }) : K(r).recurCost, pips = cost.pips.length, total = pips + cost.generic;
+        const tre = bf.filter(p => p !== r && K(p).deathTreasure).length * mult, sci = bf.filter(p => p !== r && K(p).deathScion).length * mult;
+        for (const o of bf.filter(p => p !== r && K(p).sacFree && !(isCreaturePerm(p) && p.sick && /\{t\}/i.test(comboText(p.card).split('\n').find(l => /sacrifice a(?:nother)? creature:/i.test(l)) || '')))) {
+          const m = K(o).sacMana || { any: 0, c: 0 }, any = m.any + tre, c = m.c + sci;
+          if (any >= pips && any + c >= total) return comboWin(g, ev, `${r.card.name} is sacrificed to ${o.card.name} and comes back${tre ? ' on the Treasure it leaves' : ''}, over and over: ${drain.card.name} drains for every death`);
+        }
+      }
+      // persist with a counter for each life gained (Kitchen Finks + Heliod or Archangel of Thune): the -1/-1 counter is cancelled every time
+      const finks = bf.find(p => K(p).persistGain && isCreaturePerm(p)), lc = on(k => k.lifeCounter || k.thune), so = finks && bf.find(p => p !== finks && K(p).sacFree);
+      if (finks && lc && so) return comboWin(g, ev, `${finks.card.name} is sacrificed to ${so.card.name} and persists back; ${lc.card.name} cancels the counter each time, and ${drain.card.name} drains for every death`);
+    }
+    // --- Archangel of Thune + a counter pinger that has lifelink ---
+    { const th = on(k => k.thune), pg = th && bf.find(p => p !== th && K(p).pinger && isCreaturePerm(p) && (p.counters || 0) >= 1 && hasKw(g, p, 'lifelink'));
+      if (pg) return comboWin(g, ev, `${pg.card.name} with lifelink and ${th.card.name}: every point of damage puts the counter back`); }
+    // --- Aetherflux Reservoir: 50 life paid comes straight back (Exquisite Blood), or the top of the library is cast for life again and again ---
+    { const rs = on(k => k.reservoir);
+      if (rs) {
+        const bl = bf.find(p => p.card.a.comboRole === 'blood');
+        if (bl && g.life >= 51) return comboWin(g, ev, `${rs.card.name} + ${bl.card.name}: 50 life paid, 50 damage dealt, 50 life gained, again and again`);
+        const ct = on(k => k.citadel), tp = on(k => k.top) || (g.library[0] && K(g.library[0]).top ? g.library[0] : null);
+        if (ct && tp && g.life >= 12) return comboWin(g, ev, `${tp.card.name} + ${ct.card.name} + ${rs.card.name}: the top card is cast for 1 life and drawn back, each cast gains more life than the last`);
+      } }
+    // --- Sensei's Divining Top cast from the top of the library by Mystic Forge, free or paid for by an Eldrazi Spawn ---
+    { const fg = on(k => k.forge), tp = fg && (bf.find(p => K(p).top && !p.tapped) || (g.library[0] && K(g.library[0]).top ? g.library[0] : null));
+      if (tp) {
+        const fr = on(k => k.fleshraker);
+        if (fr && afford({ generic: 1, pips: [], x: 0 })) return comboWin(g, ev, `${tp.card.name} + ${fg.card.name} + ${fr.card.name}: each cast makes a Spawn that pays for the next and deals 1 damage`);
+        const rd = on(k => k.artReducer), fin = rd && g.library.concat(hand).find(i => K(i).finisher);
+        if (fin) return comboWin(g, ev, `${tp.card.name} + ${fg.card.name} + ${rd.card.name}: the library is drawn for free and ${fin.card.name} is found`);
+      } }
+    // --- Underworld Breach: a storm mill spell recast from the graveyard, paid for by a rock that is recast with it ---
+    { const br = on(k => k.breach) || inHand(k => k.breach), zone = hand.concat(gy), fz = zone.find(i => K(i).stormMill);
+      if (br && fz) {
+        const all = zone.concat(bf), led = all.find(i => K(i).led), pet = all.find(i => K(i).petal), wh = zone.find(i => K(i).wheel);
+        const brCost = bf.includes(br) ? NONE0 : effectiveCost(g, br), cards = gy.length + hand.length;
+        const go = text => { if (!bf.includes(br)) { pay(g, brCost); g.hand.splice(g.hand.indexOf(br), 1); enterWithTriggers(g, br, {}, ev); } return comboWin(g, ev, text); };
+        if (led && cards >= 5 && afford(brCost)) return go(`${br.card.name} + ${led.card.name} + ${fz.card.name}: each recast mills more, until every library is empty`);
+        if (pet && cards >= 8 && afford(sumCost(brCost, effectiveCost(g, fz)))) return go(`${br.card.name} + ${pet.card.name} + ${fz.card.name}: each recast mills more, until every library is empty`);
+      }
+      const wh = br && hand.concat(gy).find(i => K(i).wheel), led2 = wh && hand.concat(gy, bf).find(i => K(i).led), fin = led2 && g.library.concat(hand, gy).find(i => K(i).finisher);
+      if (fin && bf.includes(br)) return comboWin(g, ev, `${br.card.name} + ${led2.card.name} + ${wh.card.name}: a new hand of seven again and again, until ${fin.card.name} is found`);
+    }
+    // --- Peer into the Abyss with a card that hurts for every card drawn ---
+    { const pr = inHand(k => k.peer);
+      if (pr) {
+        const pun = on(k => k.oppDrawPing > 0);
+        if (pun && castNow(pr)) { g.graveyard.push(pr); return comboWin(g, ev, `${pr.card.name} with ${pun.card.name}: the opponent draws half its library and loses half its life`); }
+        const self = on(k => k.selfDrawPing), n = Math.ceil(g.library.length / 2);
+        if (self && n >= oppLifeLeft(g) && castNow(pr)) { g.graveyard.push(pr); return comboWin(g, ev, `${pr.card.name} with ${self.card.name}: ${n} cards drawn, 1 life lost by each opponent for every one`); }
+      } }
+    // --- a planeswalker that enters with twice its loyalty and gives nine poison counters, doubled (Vraska, Betrayal's Sting + Vorinclex) ---
+    { const vx = on(k => k.counterTwice), vr = vx && inHand(k => k.poisonNine);
+      if (vr && castNow(vr)) { enterWithTriggers(g, vr, {}, ev); return comboWin(g, ev, `${vr.card.name} enters with twice its loyalty beside ${vx.card.name}: nine poison counters at once, doubled`); } }
+    // --- Hermit Druid in a deck with no basic land: the whole library goes to the graveyard, then an empty-library winner ---
+    { const hd = bf.find(p => K(p).hermit && ready(p));
+      if (hd && !g.library.some(i => /\bBasic\b/.test(i.card.type_line || ''))) {
+        const w = hand.find(i => K(i).oracleWin || (K(i).drawWin && i.card.a.isPlaneswalker));
+        if (w && castNow(w, { generic: 0, pips: [['G']], x: 0 })) {
+          hd.tapped = true; g.graveyard.push(...g.library); g.library = [];
+          const text = `${hd.card.name} puts the whole library into the graveyard, then ${w.card.name} wins`, before = g.killTurn;
+          enterWithTriggers(g, w, {}, ev);
+          if (before == null && g.killTurn != null) { g.comboWin = text; g.winBy = { kind: 'combo', text }; ev.push({ type: 'note', text: 'Combo: ' + text, source: null }); return true; }
+          return comboWin(g, ev, text);
+        } } }
+    // --- Ad Nauseam with Angel's Grace: the whole library in hand, and a way to win with none left ---
+    { const an = inHand(k => k.adNauseam), ag = an && inHand(k => k.grace), w = ag && g.library.concat(hand).find(i => K(i).oracleWin || K(i).drawWin);
+      if (w && afford(sumCost(effectiveCost(g, an), effectiveCost(g, ag)))) { pay(g, sumCost(effectiveCost(g, an), effectiveCost(g, ag))); [an, ag].forEach(i => { g.hand.splice(g.hand.indexOf(i), 1); g.graveyard.push(i); });
+        return comboWin(g, ev, `${ag.card.name} + ${an.card.name}: the whole library is drawn, then ${w.card.name} wins`); } }
+    // --- combat after combat: Aggravated Assault paid for by the attack, Najeela with Derevi ---
+    { const aa = on(k => k.assault);
+      if (aa) {
+        const need = K(aa).assault.generic + K(aa).assault.pips.length, atk = bf.filter(p => isCreaturePerm(p) && ready(p));
+        const vm = atk.find(p => K(p).attackMana >= need);
+        if (vm) return comboWin(g, ev, `${vm.card.name} + ${aa.card.name}: each attack pays for the next combat`);
+        const gn = on(k => k.dmgTreasure), pw = atk.reduce((t, p) => t + Math.max(0, powerOf(g, p)), 0);
+        if (gn && pw >= need && !g.opp) return comboWin(g, ev, `${gn.card.name} + ${aa.card.name}: the Treasures from each combat pay for the next`);
+      }
+      const nj = bf.find(p => K(p).najeela && isCreaturePerm(p) && ready(p)), dv = nj && on(k => k.derevi);
+      if (dv) { const five = { generic: 0, pips: [['W'], ['U'], ['B'], ['R'], ['G']], x: 0 };
+        if (afford(Object.assign({}, five, { generic: 1 })) || (afford(five) && bf.some(p => p !== nj && isCreaturePerm(p) && ready(p)))) return comboWin(g, ev, `${nj.card.name} + ${dv.card.name}: every hit untaps a land, and the lands pay for another combat`); } }
+    // --- Goblins: Conspicuous Snoop with a copier on top of the library; Krenko sacrificed for mana and cast again ---
+    { const sn = bf.find(p => K(p).snoop && isCreaturePerm(p) && ready(p));
+      if (sn && !sn.card.a.isLegendary) {
+        const isCop = i => K(i).copier && /\bGoblin\b/.test(i.card.type_line || '');
+        if (g.library[0] && isCop(g.library[0])) return comboWin(g, ev, `${sn.card.name} with ${g.library[0].card.name} on top of the library: it copies itself, and every copy does the same`);
+        const rec = inHand(k => k.recruiter), kk = rec && g.library.find(isCop);
+        if (kk && castNow(rec)) { g.library.splice(g.library.indexOf(kk), 1); g.library.unshift(kk); enterWithTriggers(g, rec, {}, ev);
+          return comboWin(g, ev, `${rec.card.name} puts ${kk.card.name} on top of the library: ${sn.card.name} copies itself, and every copy does the same`); }
+      }
+      const kr = bf.find(p => K(p).krenko && isCreaturePerm(p) && p.card.commander && !p.tapped), gs = kr && on(k => k.gobSac), gh = gs && on(k => k.gobHaste);
+      if (gh && bf.filter(p => isCreaturePerm(p) && /\bGoblin\b/.test(p.card.type_line || '')).length >= 6) return comboWin(g, ev, `${kr.card.name} + ${gs.card.name} + ${gh.card.name}: the Goblins are sacrificed for mana, ${kr.card.name} is cast again with haste and makes more than before`);
+    }
+    // --- Ulalek copies an Eldrazi spell; with Echoes of Eternity every copy triggers again ---
+    { const ul = on(k => k.ulalek), ec = ul && (on(k => k.echoes) || bf.find(p => K(p).copyAb && !p.tapped)), CC = { generic: 0, pips: [['C'], ['C']], x: 0 };
+      if (ec) {
+        const fr = on(k => k.fleshraker), un = bf.find(p => /whenever you cast a creature spell with mana value 4, 5, or 6, create two 0\/1 colorless eldrazi spawn/i.test(comboText(p.card)));
+        const sp = hand.find(i => /\bEldrazi\b/.test(i.card.type_line || '') && i.card.a.isCreature && (fr || (i.card.a.castMv >= 4 && i.card.a.castMv <= 6)) && afford(sumCost(effectiveCost(g, i), CC)));
+        if (sp && (fr || un)) {
+          castNow(sp, CC); enterWithTriggers(g, sp, {}, ev);
+          if (fr && K(ec).echoes) return comboWin(g, ev, `${ul.card.name} + ${ec.card.name} + ${fr.card.name}: every copy of ${sp.card.name} makes Spawn that pay for the next copy, and each one that enters deals 1 damage`);
+          g.loopMana = { turn: g.turn, inf: { how: `${ul.card.name} + ${ec.card.name} + ${un.card.name}`, colors: new Set(['C']) } };
+          ev.push({ type: 'note', text: `${ul.card.name} copies ${sp.card.name} again and again: as many copies and as much colorless mana as you want`, source: null });
+        }
+      } }
+    return false;
+  }
   function comboLines(g, ev) {
     if (g.dry || g.killTurn != null || matchOver(g)) return;
     const hand = g.hand;
@@ -10245,6 +10521,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       return comboWin(g, ev, text);
     }
     if (boardCombo(g, ev)) return true;
+    if (moreCombos(g, ev)) return true;
     // B. infinite mana and an outlet
     const inf = infiniteMana(g);
     if (!inf) return;
@@ -10253,6 +10530,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (ballista) return comboWin(g, ev, `infinite mana (${inf.how}) into Walking Ballista`);
     const burn = hand.find(i => comboKind(i.card).xBurn && i.card.a.cost.pips.every(p => p.some(c => inf.colors.has(c)) || canPay({ generic: 0, pips: [p], x: 0 }, allUnits(g))));
     if (burn) return comboWin(g, ev, `infinite mana (${inf.how}) into ${burn.card.name}`);
+    const cp = inf.casts && g.battlefield.find(p => comboKind(p.card).castPing);          // the loop casts a spell every time round: Vivi Ornitier, Professor Onyx
+    if (cp) return comboWin(g, ev, `${inf.how}: a spell cast every time round, and ${cp.card.name} hits for each one`);
+    const mp = g.battlefield.find(p => comboKind(p.card).manaPing && p.card.a.activated.some(x => !x.tap && x.fx.some(f => f.type === 'damage' || f.type === 'drain' || f.type === 'loseLife') && x.cost && x.cost.pips.every(pp => pp.some(c => inf.colors.has(c) || c === 'C'))));
+    if (mp) return comboWin(g, ev, `infinite mana (${inf.how}) into ${mp.card.name}`);
     const engine = g.battlefield.find(p => comboKind(p.card).drawEngine && !(p.sick && isCreaturePerm(p) && /\{T\}/.test(comboText(p.card)) && !hasKw(g, p, 'haste')));
     if (engine) {
       const finisher = g.library.concat(hand).find(i => { const k = comboKind(i.card); return k.oracleWin || k.drawWin || k.ballista || k.xBurn; }) || g.battlefield.find(p => comboKind(p.card).drawWin);
@@ -10269,6 +10550,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     const k = comboKind(c.card);
     if (k.oracleWin && g.library.length > 6) return true;
     if (k.emptier && g.library.concat(g.hand).some(i => i !== c && (comboKind(i.card).oracleWin || comboKind(i.card).drawWin))) return true;
+    if (k.peer && g.library.concat(g.hand, g.command).some(i => i !== c && (comboKind(i.card).oppDrawPing > 0)) && !g.battlefield.some(p => comboKind(p.card).oppDrawPing > 0) && g.turn < 9) return true;          // Peer into the Abyss waits for its punisher
+    if ((k.adNauseam && g.hand.some(i => comboKind(i.card).grace)) || (k.grace && g.hand.some(i => comboKind(i.card).adNauseam))) return true;
     if (k.copyMage && g.hand.some(i => i !== c && comboKind(i.card).copySpell)) return true;          // Dualcaster Mage waits for the mana to cast both
     if (k.copySpell && g.hand.some(i => i !== c && comboKind(i.card).copyMage)) return true;
     // Isochron Scepter: wait for the untap-all instant (Dramatic Reversal) while it is still in the library, unless nothing else is worth imprinting either
@@ -11648,7 +11931,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, deckCombos, boardCombo, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, deckCombos, boardCombo, moreCombos, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

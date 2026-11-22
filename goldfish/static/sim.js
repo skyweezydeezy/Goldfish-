@@ -758,6 +758,18 @@
         if (/^whenever another creature enters, ~ deals 1 damage to that creature's controller\.?$/i.test(line)) { a.ferocidon = true; rec.status = 'ok'; continue; }          // Rampaging Ferocidon
         if (/^when you cast your next instant or sorcery spell this turn, copy that spell\. you may choose new targets for the copy\.?$/i.test(line)) { a.spellFx.push({ type: 'nextSpellCopy' }); rec.status = 'ok'; continue; }          // Twinferno
         if (/^target creature you control gains double strike until end of turn\.?$/i.test(line)) { a.spellFx.push({ type: 'pumpOne', self: false, p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }
+        if (/^if you would gain life, you gain twice that much life instead\.?$/i.test(line)) { a.statics.lifeDouble = (a.statics.lifeDouble || 0) + 1; rec.status = 'ok'; continue; }          // Rhox Faithmender, Boon Reflection (gainLife)
+        { const rv = line.match(/^when ~ enters, reveal the top (\w+) cards of your library\. put all (\w+) (creature )?cards (?:with mana value (\d+) or less )?(?:revealed this way |from among them )?(onto the battlefield|into your hand)/i);          // Goblin Ringleader, Muxus
+          if (rv) { const nn = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }[rv[1].toLowerCase()] || +rv[1] || 0; a.triggers.push({ kinds: ['etb'], fx: [{ type: 'revealAll', n: nn, filter: rv[2].toLowerCase(), creature: !!rv[3], maxMv: rv[4] ? +rv[4] : null, dest: /battlefield/i.test(rv[5]) ? 'battlefield' : 'hand' }], text: raw }); rec.status = 'ok'; continue; } }
+        { const bh = line.match(/^when ~ enters, reveal the top (\w+) cards of your library\. put all creature cards of the chosen type revealed this way into your hand/i);          // Brass Herald: the deck's creature type
+          if (bh) { const nn = { two: 2, three: 3, four: 4, five: 5, six: 6 }[bh[1].toLowerCase()] || +bh[1] || 0; a.triggers.push({ kinds: ['etb'], fx: [{ type: 'revealAll', n: nn, filter: '@tribe', creature: true, maxMv: null, dest: 'hand' }], text: raw }); rec.status = 'ok'; continue; } }
+        if (/^when ~ dies, you gain life equal to its power\.?$/i.test(line)) { a.triggers.push({ kinds: ['dies'], who: '~', fx: [{ type: 'gainLife', n: 'SELFPOWER' }], text: raw }); rec.status = 'ok'; continue; }          // Conclave Mentor
+        if (/^\{t\}: create a token that's a copy of target nonlegendary creature you control, except it has haste\. sacrifice it at the beginning of the next end step/i.test(line)) { a.kikiCopy = true; rec.status = 'ok'; continue; }          // Kiki-Jiki (deckAbilities); the untapper combo is in comboLines
+        if (/^\+1: you gain life equal to the number of creatures you control plus the number of planeswalkers you control/i.test(line)) { a.pwAbilities.push({ cost: 1, x: false, fx: [{ type: 'gainLifeCount', what: 'creaturesPws' }], text: raw }); rec.status = 'ok'; continue; }          // Ajani, Strength of the Pride
+        if (/^you may cast ~ as though it had flash\. if you cast it any time a sorcery couldn't have been cast/i.test(line)) { rec.status = 'ok'; continue; }          // Necromancy: cast at sorcery speed, so the creature stays (its sacrifice rider never applies)
+        { const fg = line.match(/^((?:\{[^}]+\})+), \{t\}(, sacrifice ~)?: you may cast spells this turn as though they had flash\.?$/i);          // Alchemist's Refuge, Emergence Zone (instantWindow, end step)
+          if (fg) { a.flashGrant = { cost: parseCost(fg[1]), sac: !!fg[2] }; rec.status = 'ok'; continue; } }
+        if (/^as long as ~ isn't on the battlefield, it's a 1\/1 insect creature in addition to its other types/i.test(line)) { a.creatureOffField = true; rec.status = 'ok'; continue; }          // Grist: a creature card for tutors and reanimation
         if (/^you may cast legendary spells and artifact spells as though they had flash\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }          // Gandalf the White: everything is cast at sorcery speed here
         if (/^if a legendary permanent or an artifact entering or leaving the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time\.?$/i.test(line)) { a.statics.etbDouble = 'legendOrArt'; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // (entering only)
         if ((bm = line.match(/^\{(\d)\}: exile another target creature you control, then return it to the battlefield under its owner's control\.?$/i))) { a.flickerAb = { cost: parseCost('{' + bm[1] + '}') }; rec.status = 'ok'; continue; }          // Emiel the Blessed
@@ -2625,7 +2637,7 @@
     // ...and lines that were labelled "no solo effect" although what they do is to an opponent (or to every player alike)
     const OPP_TOO = /^return all attacking creatures|^when ~ dies, you gain control of all enchantments|can block only creatures with flying|^the owner of target permanent shuffles it|^revolt — destroy|^other \w+ creatures you control attack each combat if able|return target spell you don't control|^target player discards|target player exiles a card from their hand|^−\d+: separate all permanents target player controls|you control target player during that player's next turn|^as ~ enters, choose a (?:nonland )?card name|^~ has first strike during your turn|^as ~ enters, choose a number|gains shroud until end of turn|look at the top three cards of that player's library|return each nonland permanent you don't control|^when ~ enters, return target spell or permanent|^untap ~ during each other player's untap step|^\{u\}: tap enchanted creature|^as ~ enters, choose khans or dragons|^each player sacrifices|^each player chooses from among the permanents they control|^return all lands to their owners' hands|counter it unless you sacrifice a land|that player sacrifices a land of their choice|^when there are no lands on the battlefield, sacrifice|for each soot counter on ~|each player gains control of all nonland permanents/i;
     // lines the broad "doesn't matter solo" filter swallowed, although they change a solo game
-    const REAL_SOLO_EFFECT = /search your library for (a|an|up to [a-z]+) (?!basic land)[^.]*cards?\b|sacrifice an? [a-z ]+: add \{|\bloses? life equal\b|\btransform|\bexile ~, then return|return [^.]*from your graveyard/i;
+    const REAL_SOLO_EFFECT = /reveal the top [^.]*cards of your library\. put all|gains? twice that much life|you gain life equal|create a token that's a copy|search your library for (a|an|up to [a-z]+) (?!basic land)[^.]*cards?\b|sacrifice an? [a-z ]+: add \{|\bloses? life equal\b|\btransform|\bexile ~, then return|return [^.]*from your graveyard/i;
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
@@ -3274,6 +3286,7 @@
     if (a.perEquip) info.perEquip = { p: (info.perEquip ? info.perEquip.p : 0) + a.perEquip.p, t: (info.perEquip ? info.perEquip.t : 0) + a.perEquip.t };          // Bruenor Battlehammer
     if (st.millLands) info.millLands = true;
     if (st.lifePlus) info.lifePlus = (info.lifePlus || 0) + st.lifePlus;
+    if (st.lifeDouble) info.lifeDouble = (info.lifeDouble || 0) + st.lifeDouble;
     if (st.krrik) info.krrik = true;
     if (q.card.a.marvin) (info.marvins = info.marvins || []).push(q);
     if (st.counterPlusAll) info.cplusAll = (info.cplusAll || 0) + st.counterPlusAll;
@@ -4592,6 +4605,11 @@
       const a = p.card.a;
       if (!inLoop(p.card, deckAbilities) && !p.faceDown && !(p.token && p.card.name === 'Lander')) continue;          // (morph and Lander tokens are asked about the permanent, not its card)
       if (!g.battlefield.includes(p)) continue;
+      if (a.kikiCopy && isCreaturePerm(p) && !p.tapped && !g.combatDone && !(p.sick && !hasKw(g, p, 'haste'))) {          // Kiki-Jiki: {T}: a hasty token copy, sacrificed at the end of the turn
+        let best = null, bs = 1.5;
+        for (const q of g.battlefield) { if (q === p || !isCreaturePerm(q) || q.card.a.isLegendary || q.phased) continue; let v = Math.max(0, powerOf(g, q)) * 0.6; for (const t of q.card.a.triggers) if (t.kinds.includes('etb')) { const fv = fxValue(g, t.fx); if (isFinite(fv)) v += fv; } if (v > bs) { bs = v; best = q; } }
+        if (best) { p.tapped = true; const np = enterWithTriggers(g, { iid: g.nextIid++, card: best.card }, { token: true }, ev); np.token = true; np.sick = false; np.sacEnd = true; note(p, `a hasty token copy of ${best.card.name}, sacrificed at the end of the turn`); }
+      }
       if (a.engineer && isCreaturePerm(p) && !p.tapped && !(p.sick && !hasKw(g, p, 'haste'))) {                  // Goblin Engineer: a spare artifact for a better one from the graveyard
         const t = g.graveyard.filter(i => i.card.a.isArtifact && (i.card.a.mv || 0) <= a.engineer.maxMv && (i.card.a.mv || 0) >= 1).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0];
         const fod = t && g.battlefield.filter(q => q !== p && q.card.a.isArtifact && q.token && !isCreaturePerm(q)).sort((x, y) => (x.produce || x.sacMana ? 1 : 0) - (y.produce || y.sacMana ? 1 : 0))[0];
@@ -5092,6 +5110,7 @@
     if (!(n > 0)) return;
     if (g.noGainSeen && (tableHas(g, 'noLifeGain') && bothSides(g).some(q => q.card.a.noLifeGain))) return;          // Sulfuric Vortex: players can't gain life
     n += bfInfo(g).lifePlus || 0;          // Cleric Class: that much plus 1
+    if (bfInfo(g).lifeDouble) n *= Math.pow(2, bfInfo(g).lifeDouble);          // Rhox Faithmender: twice that much (after the +1: the bigger order)
     g.life += n;
     g.lifeGainedThisTurn = (g.lifeGainedThisTurn || 0) + n;               // "if you gained 3 or more life this turn"
     ev.push({ type: 'life', n, total: g.life, source });
@@ -5232,6 +5251,16 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'gainLifeCount': gainLife(g, g.battlefield.filter(q => isCreaturePerm(q) || q.card.a.isPlaneswalker).length, ev, source); break;          // Ajani, Strength of the Pride's +1
+        case 'revealAll': {          // Goblin Ringleader, Muxus: reveal the top cards, the matching ones to hand or battlefield, the rest to the bottom
+          const top = g.library.splice(0, Math.min(f.n || 0, g.library.length));
+          const flt = f.filter === '@tribe' ? String((g.deck && g.deck.tribe) || '').toLowerCase() : f.filter;          // Brass Herald: the chosen type is the deck's tribe
+          const hits = !flt ? [] : top.filter(i => matchesFilter(i.card, flt) && (!f.creature || i.card.a.isCreature) && (f.maxMv == null || (i.card.a.mv || 0) <= f.maxMv)), rest = top.filter(i => !hits.includes(i));
+          for (const i of hits) { if (f.dest === 'battlefield' && !entryBlocked(g, i.card, 'lib')) enterWithTriggers(g, i, {}, ev); else g.hand.push(i); }
+          shuffle(rest, g.rnd); g.library.push(...rest);
+          ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}revealed ${top.length}: ${hits.length ? hits.map(i => i.card.name).join(', ') : 'nothing'} ${f.dest === 'battlefield' ? 'onto the battlefield' : 'into your hand'}`, source });
+          break;
+        }
         case 'transform': if (source) transformPerm(g, source, ev, f.same); break;
         case 'scry': scry(g, Math.min(n, 5), ev, source); break;
         case 'surveilHand': {
@@ -6462,7 +6491,7 @@
   // How good is this creature card to bring back from a graveyard? (mana value, size, enters-the-battlefield value, evasion)
   function reanimateValue(g, inst) {
     const a = inst.card.a;
-    if (!a.isCreature || a.shuffleBack || a.yardShuffle) return -1;          // Blightsteel, Kozilek, Ulamog never stay in a graveyard
+    if ((!a.isCreature && !a.creatureOffField) || a.shuffleBack || a.yardShuffle) return -1;          // Blightsteel, Kozilek, Ulamog never stay in a graveyard; Grist is a creature card there
     let v = a.mv * 1.0 + Math.max(0, a.power) * 0.8 + (a.kw && (a.kw.has('flying') || a.kw.has('lifelink') || a.kw.has('deathtouch')) ? 1.5 : 0);
     for (const t of a.triggers) if (t.kinds.includes('etb')) { const fv = fxValue(g, t.fx); if (isFinite(fv)) v += fv * 1.5; }          // a dynamic count (Diregraf Colossus) is not a number here
     return v;
@@ -7418,7 +7447,7 @@
   function tutorMatches(inst, filters) {
     if (!filters || !filters.length) return true;
     const a = inst.card.a, tl = (inst.card.type_line || '').toLowerCase();
-    return filters.some(w => w === 'legendary' ? a.isLegendary : tl.includes(w));
+    return filters.some(w => w === 'legendary' ? a.isLegendary : tl.includes(w) || (w === 'creature' && a.creatureOffField));          // Grist is a creature card in the library
   }
   // Zimone, Infinite Analyst: the first spell with {X} each turn costs {1} less per +1/+1 counter on it (what effectiveCost takes off)
   function xDiscountNow(g) {
@@ -11480,8 +11509,24 @@ g.actSeq = (g.actSeq || 0) + 1;
       : f.type === 'edict' ? d.battlefield.filter(isCreaturePerm).length > 0 && d.battlefield.filter(isCreaturePerm).length <= 2
       : d.battlefield.some(p => isCreaturePerm(p) && targetable(d, p) && threat(d, g, p) > 3.5));
   }
+  // Alchemist's Refuge, Emergence Zone: at the end of the other player's turn, pay for flash and cast the best spell the leftover mana allows
+  function flashLandWindow(me, ev) {
+    if (!tableHas(me, 'flashGrant')) return;
+    const fl = me.battlefield.find(q => q.card.a.flashGrant && !q.tapped); if (!fl) return;
+    const fg = fl.card.a.flashGrant, units0 = manaUnits(me).filter(u => u.src !== fl);
+    let best = null, bs = 3;
+    for (const c of me.hand) { const ca = c.card.a; if (ca.isLand || ca.counter || ca.cost.x) continue; const cost = effectiveCost(me, c); if (!canPay({ generic: cost.generic + fg.cost.generic, pips: cost.pips.concat(fg.cost.pips), x: 0 }, units0)) continue; const sc = spellScore(me, c); if (sc > bs) { bs = sc; best = c; } }
+    if (!best) return;
+    fl.tapped = true; if (pay(me, fg.cost) == null) { fl.tapped = false; return; }
+    if (fg.sac) { leavePerm(me, fl, ev); flushLeaves(me, ev); }
+    me.inWindow = true; let r = null;
+    try { r = castCard(me, best); } finally { me.inWindow = false; }
+    if (r) ev.push({ type: 'note', text: `${fl.card.name}: flash this turn; cast ${best.card.name} at the end of the other player's turn`, source: null }, ...r);
+  }
   function instantWindow(me, ev, step) {
-    if (!me || me.dry || me.dead || matchOver(me) || !me.opp || pol(me, 'instantTiming') === 'off') return 0;
+    if (!me || me.dry || me.dead || matchOver(me) || !me.opp) return 0;
+    if (step === 'end') flashLandWindow(me, ev);
+    if (pol(me, 'instantTiming') === 'off') return 0;
     let cast = 0;
     for (let k = 0; k < 4 && !matchOver(me); k++) {
       const units = manaUnits(me);
@@ -12273,7 +12318,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, xDiscountNow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

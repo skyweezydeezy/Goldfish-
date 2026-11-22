@@ -260,6 +260,7 @@
   function tell(mode, g, stepKey, ev, lead, always) {
     const t = sum(g, ev || [], bottomSeat(V[mode].game));
     sfxEv(mode, ev);
+    if (window.Dice) window.Dice.fromEvents(ev);                          // a die rolled or a coin flipped: show it in 3D
     if (t.length || lead) say(mode, g, (lead ? lead + (t.length ? ' ' : '') : '') + t.join('; '), stepKey);
     else if (always && stepKey) say(mode, g, 'nothing happens', stepKey, true);
     let n = 0;

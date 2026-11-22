@@ -1,7 +1,7 @@
 @echo off
 REM ICEYfish - double-click to start. It first gets the newest version, then opens the app.
-REM Uses %USERPROFILE%\Documents\ScryMirror by default. To use another folder:
-REM   start.bat --scrymirror "D:\ScryMirror"
+REM Uses the ICEYFISH_DATA_DIR environment variable for your local Scryfall data folder. To use another folder:
+REM   start.bat --data-dir "D:\path\to\folder"
 REM To start without checking for a new version:  start.bat --no-update
 cd /d "%~dp0"
 if not exist "server.py" (

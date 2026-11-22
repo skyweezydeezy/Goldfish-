@@ -14,7 +14,7 @@ async function identities(names) {
   for (let i = 0; i < uniq.length; i += 75) {
     const r = await fetch('https://api.scryfall.com/cards/collection', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'i-see-fish-deck-index/1.0' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'iceyfish-deck-index/1.0' },
       body: JSON.stringify({ identifiers: uniq.slice(i, i + 75).map(name => ({ name })) }),
     });
     if (!r.ok) throw new Error('Scryfall returned ' + r.status);

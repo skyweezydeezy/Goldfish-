@@ -130,6 +130,8 @@
 
   // ---- the sound effects ----
   const SFX = {
+    dice:      () => { for (let i = 0; i < 9; i++) { const at = i * 0.07 + Math.random() * 0.03; noise({ at, f: 2200 + Math.random() * 1600, q: 3, dur: 0.03, vol: 0.14 }); tone({ at, f: 900 + Math.random() * 700, dur: 0.03, vol: 0.05, type: 'triangle' }); }
+                     tone({ at: 0.7, f: 260, f2: 180, dur: 0.07, vol: 0.18, type: 'triangle' }); noise({ at: 0.7, f: 1400, q: 2, dur: 0.05, vol: 0.14 }); },   // dice rattling across the table, then landing
     ui:        () => tone({ f: 1250, dur: 0.035, vol: 0.05 }),
     card:      () => { noise({ f: 2600, f2: 900, dur: 0.1, vol: 0.2 }); tone({ f: 190, f2: 95, at: 0.05, dur: 0.09, vol: 0.22 }); },
     land:      () => { noise({ f: 900, f2: 300, kind: 'lowpass', dur: 0.09, vol: 0.2 }); tone({ f: 120, f2: 68, at: 0.02, dur: 0.16, vol: 0.28 }); },

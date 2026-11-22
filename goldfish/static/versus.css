@@ -301,3 +301,26 @@
 /* the 🔊 button: on tablets the one in the top bar is right there; on phones the top bar is only the tabs on these two tabs, so it sits in the game toolbar */
 @media (min-width: 601px) and (max-width: 760px) { .vs-bar .open-sound { display: none; } }
 @media (max-width: 600px) { body[data-view=duel] .top-sound, body[data-view=pod] .top-sound { display: none; } }
+/* ---- who goes first: the D20 roll (versus.js showRoll) ---- */
+.vs-dice { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); z-index: 460; pointer-events: none; animation: vs-dice-in .25s ease-out both; }
+.vs-dice.bye { animation: vs-dice-out .4s ease-in both; }
+@keyframes vs-dice-in { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
+@keyframes vs-dice-out { to { opacity: 0; transform: translate(-50%, -54%) scale(.97); } }
+.vs-dice-card { background: linear-gradient(180deg, rgba(23, 42, 58, .96), rgba(14, 28, 40, .96)); border: 1px solid var(--border); border-radius: 16px; padding: 14px 20px 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); text-align: center; }
+.vs-dice-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 34px; }   /* room for the dice to bounce up as they tumble */
+.vs-dice-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+.vs-die { position: relative; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: opacity .3s, filter .3s; }
+.vs-die .dice-stage { width: 100px; height: 100px; }                 /* the 3D d20 of dice.js tumbles in here */
+.vs-die b { font-size: 22px; font-weight: 800; line-height: 26px; min-height: 26px; color: #fff; font-variant-numeric: tabular-nums; }
+.vs-die span { font-size: 12.5px; max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+/* each player's die in their seat colour (the dice.js d20 is blue by default, seat a's colour) */
+.vs-die.b .d20-face { background: linear-gradient(160deg, #ffe7a3, #e2a92c 60%, #9c6b0f); }
+.vs-die.c .d20-face { background: linear-gradient(160deg, #b8f2c8, #3fae66 60%, #1d6b3a); }
+.vs-die.d .d20-face { background: linear-gradient(160deg, #ffd0ee, #d066ad 60%, #8a2f6c); }
+.vs-die.out { opacity: .35; filter: grayscale(.6); }
+.vs-die.win .dice-stage { filter: drop-shadow(0 0 10px #f5d17a) drop-shadow(0 0 20px rgba(245, 209, 122, .6)); animation: vs-win .5s ease-out; }
+.vs-die.win b, .vs-die.win span { color: #f5d17a; font-weight: 700; }
+@keyframes vs-win { 40% { transform: scale(1.12); } }
+.vs-dice-say { margin-top: 10px; min-height: 20px; font-weight: 700; color: #f5d17a; }
+@media (max-width: 600px) { .vs-dice { top: 38%; width: calc(100vw - 24px); } .vs-dice-row { gap: 4px; } .vs-die { width: 76px; } .vs-die .dice-stage { width: 76px; height: 76px; } .vs-die b { font-size: 19px; } }
+@media (prefers-reduced-motion: reduce) { .vs-dice, .vs-dice.bye { animation: none; } }

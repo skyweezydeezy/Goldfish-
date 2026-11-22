@@ -599,6 +599,12 @@
       if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // draw, then a discard the generic reading dropped (only the draw was played)
       { let dm;
+        if (/^target creature you control deals damage equal to its power to each other creature and each opponent\.?$/i.test(raw)) { a.spellFx.push({ type: 'ignition' }); rec.status = 'ok'; continue; }          // Chandra's Ignition
+        if (/^target player mills half their library, rounded down\.?$/i.test(raw)) { a.spellFx.push({ type: 'millTarget', half: true }); rec.status = 'partial'; rec.tag = 'opp'; continue; }          // Traumatize (an opponent, in a match)
+        if ((dm = raw.match(/^(?:landfall — )?whenever a land you control enters, target player mills (\w+) cards\.?/i))) { a.triggers.push({ kinds: ['landfall'], fx: [{ type: 'millTarget', n: num(dm[1]) }], text: raw }); rec.status = 'partial'; rec.tag = 'opp'; continue; }          // Hedron Crab
+        if (/^when ~ enters, attach it to target (?:legendary )?creature you control\.?$/i.test(raw)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'attachSelf' }], text: raw }); rec.status = 'ok'; continue; }          // Mithril Coat
+        if (/^whenever (?:an equipment you control enters|~ or another equipment you control enters), you may attach (?:it|that equipment) to target creature you control\.?$/i.test(raw)) { a.triggers.push({ kinds: ['permEtb'], other: false, nontoken: false, filter: 'artifact', fx: [{ type: 'attachSubject' }], text: raw }); rec.status = 'ok'; continue; }          // Sigarda's Aid, Hammer of Nazahn
+        if (/^when (?:~|this creature) enters, exile up to two target artifacts and\/or enchantments\.?$/i.test(raw)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'removal', how: 'exile', what: 'artOrEnch' }, { type: 'removal', how: 'exile', what: 'artOrEnch' }], text: raw }); rec.status = 'ok'; rec.tag = undefined; continue; }          // Angel of the Ruins
         if ((dm = raw.match(/^(?:target player draws|draw) (\w+) cards\. then (?:that player discards|discard) two cards unless (?:they|you) discard an? (artifact|land) card\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 2, what: dm[2].toLowerCase() }); rec.status = 'ok'; continue; }          // Thirst for Knowledge, Compulsive Research
         if ((dm = raw.match(/^draw (\w+) cards\. then discard a card unless you attacked this turn\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 1, attacked: true }); rec.status = 'ok'; continue; }          // Chart a Course
         if (/^search your library for a card, put that card into your hand, discard a card at random, then shuffle\.?$/i.test(raw)) { a.spellFx.push({ type: 'tutor', filters: [], dest: 'hand' }, { type: 'discardUnless', n: 1, random: true }); rec.status = 'ok'; continue; }          // Gamble
@@ -2475,6 +2481,9 @@
       if (/^sacrifice ~: creatures you control gain indestructible until end of turn\. the ring tempts you/i.test(line)) { a.sacTempt = true; rec.status = 'ok'; continue; }      // Boromir, Warden of the Tower
       if (/^sacrifice a food: return ~ from your graveyard to the battlefield/i.test(line)) { a.gyReturn = { sacFood: 1 }; rec.status = 'ok'; continue; }          // Cauldron Familiar
       if (/^as an additional cost to cast this spell, sacrifice an artifact or creature/i.test(line) || /^as an additional cost to cast ~, sacrifice an artifact or creature/i.test(line)) { a.sacCreatureCost = true; a.sacArtifactAlso = true; rec.status = 'ok'; continue; }      // Deadly Dispute
+      if (/^as an additional cost to cast ~, sacrifice an artifact\.?$/i.test(line)) { a.sacArtifactCost = true; rec.status = 'ok'; continue; }          // Reshape: a spare artifact pays for it (castCard, spellScore)
+      if (/^\{2\}: untap target artifact creature\.?$/i.test(line)) { a.constructUntap = true; rec.status = 'ok'; continue; }          // Voltaic Construct: with an artifact creature that taps for 3+ mana, endless mana (infiniteMana)
+      if (/^\{t\}: target artifact creature's controller sacrifices it\. that player may search their library for a noncreature artifact card, put it onto the battlefield, then shuffle\.?$/i.test(line)) { a.arcum = true; rec.status = 'ok'; continue; }          // Arcum Dagsson: a spare artifact creature for the best noncreature artifact (deckAbilities)
       if (/^as an additional cost to cast ~, sacrifice a creature/i.test(line)) { a.sacCreatureCost = true; rec.status = 'ok'; continue; }      // Diabolic Intent
       {
         const bl = line.replace(/^•\s*/, '');
@@ -4763,6 +4772,15 @@
         const pw = Math.max(0, powerOf(g, p)), payoff = g.battlefield.some(q => q !== p && q.card.a.triggers.some(t => t.kinds.includes('lifeGain')));
         if (pw >= 2 && ((g.opp && g.life <= 10) || payoff) && payFor(p, a.sacLifePower, true)) { leavePerm(g, p, ev); flushLeaves(g, ev); gainLife(g, pw, ev, p); note(p, `sacrificed for ${pw} life`); return true; }
       }
+      if (a.arcum && isCreaturePerm(p) && !p.tapped && !(p.sick && !hasKw(g, p, 'haste')) && !g.dry) {          // Arcum Dagsson: {T}: sacrifice a spare artifact creature of yours for the best noncreature artifact in the library
+        const fod = g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.card.a.isArtifact && !q.card.commander && (q.token || ((q.card.a.mv || 0) <= 2 && !q.produce && !comboPlan(g, q.inst || q)))).sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0];
+        const sr = fod && searchRule(g);
+        if (fod && !(sr && sr.kind === 'cant')) {
+          const ctx = tutorContext(g); let best = null, bs = 60;
+          for (const i of g.library) { const ia = i.card.a; if (!ia.isArtifact || ia.isCreature || ia.isLand || entryBlocked(g, i.card, 'lib')) continue; const sc = tutorScore(g, i, ctx) + Math.max(0, ia.castMv - ctx.mana - 3) * 25 + ia.castMv * 8 + (ia.produce ? (ia.produce.amount || 1) * 30 : 0); if (sc > bs) { bs = sc; best = i; } }          // it enters for free: its cost is no drawback, bigger is better
+          if (best) { p.tapped = true; sacEvent(g, fod, ev); leavePerm(g, fod, ev); flushLeaves(g, ev); g.library.splice(g.library.indexOf(best), 1); shuffle(g.library, g.rnd); enterWithTriggers(g, best, {}, ev); note(p, `sacrificed ${fod.card.name}: ${best.card.name} onto the battlefield`); return true; }
+        }
+      }
       if (a.katsumasa && !g.combatDone && !g.dry) {          // Katsumasa: {2}{U}: an artifact becomes a 1/1 flier until end of turn (its +1/+1 counters on top)
         const t = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.tapped && !q.animated && q.enteredTurn < g.turn && (!q.produce || (q.counters || 0) >= 2)).sort((x, y) => (y.counters || 0) - (x.counters || 0))[0];
         if (t) { t.held = true; const ok = payFor(p, { generic: 2, pips: [['U']], x: 0 }, false); t.held = false;
@@ -5434,6 +5452,11 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
+          const dt = hasKw(g, c, 'deathtouch'); for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q) && q !== c) { q.dmg = (q.dmg || 0) + k; if (dt) q.dt = true; } touch(x); }
+          ev.push({ type: 'note', text: `${c.card.name} deals ${k} damage to each other creature and each opponent`, source }); damageOpp(g, k, ev, c); break; }
+        case 'millTarget': if (g.opp) { const k = f.half ? Math.floor(g.opp.library.length / 2) : n; if (k > 0) millOpp(g, Math.min(k, 200), ev, source); } break;          // Traumatize, Hedron Crab: an opponent's library (nothing against a goldfish)
+        case 'attachSubject': if (subject && g.battlefield.includes(subject) && subject.card.a.isEquipment) { const t = ownCreature(g, bestCreature(g, subject), 'equip', subject, subject); if (t) { subject.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: subject, target: t }); } } break;          // Sigarda's Aid, Hammer of Nazahn
         case 'discardUnless': {          // Thirst for Knowledge, Compulsive Research, Chart a Course, Gamble
           if (f.random) { discardRandom(g, f.n, ev, source ? source.card.name : 'Gamble'); break; }
           if (f.attacked && g.attackedThisTurn) break;
@@ -7774,6 +7797,10 @@
     }
     return out.sort((x, y) => x.s - y.s);
   }
+  function pickArtifactFodder(g) {
+    const arts = g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.commander);
+    return arts.find(q => q.token && !/Treasure/.test(q.card.name || '')) || arts.find(q => q.token) || arts.find(q => !q.produce && (q.card.a.mv || 0) <= 1 && !comboPlan(g, q.inst || q)) || null;
+  }
   function pickSacrifice(g, a) {
     if (a && a.sacColor) return g.battlefield.filter(q => isCreaturePerm(q) && !q.card.commander && (q.card.colors || []).includes(a.sacColor)).sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0] || null;          // Natural Order: the least of your green creatures
     const l = fodderList(g, false);
@@ -7837,6 +7864,7 @@
     if (inst.card.a.enchantLand && !g.battlefield.some(q => q.asLand) && !force) return null;
     let victim = null;
     if (inst.card.a.discardCost) { const dn = inst.card.a.discardCost === true ? 1 : inst.card.a.discardCost; let ds = g.hand.filter(h => h !== inst).sort((x, y) => discardValue(g, x) - discardValue(g, y)).slice(0, dn); if (ds.length < dn && !force) return null; if (g.ask && ds.length === dn) ds = decide(g, { kind: 'discard', options: g.hand.filter(h => h !== inst), def: ds, multi: true, pick: dn, cost: true, source: inst }); for (const d of ds) { g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d); if (d.card.a.isLand) landToYard(g, [], false); madness(g, d, []); } }
+    if (inst.card.a.sacArtifactCost) { victim = pickArtifactFodder(g); if (!victim && !force) return null; }
     if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g, inst.card.a); if (g.ask && !force) { const vs = g.battlefield.filter(q => isCreaturePerm(q) || (inst.card.a.sacArtifactAlso && q.card.a.isArtifact && !q.asLand)); if (vs.length) victim = decide(g, { kind: 'sacrifice', options: vs, def: victim, cost: true, source: inst }); } if (!victim && !force) return null; }
     // X: a person chooses it (the autopilot puts all its spare mana into X). The most that can be paid counts every reduction, Zimone's included.
     if (g.ask && !g.dry && !force && inst.card.a.cost.x && !inst.freeCast) {
@@ -7965,6 +7993,7 @@
     { const ew = a.triggers.find(t => t.kinds.includes('etb') && t.fx.some(x => x.type === 'wrath')); if (ew && fxValue(g, ew.fx) < 0) return -1; }
     if (a.etbSweepX) { let bx = 0, bs = 2; const maxX = Math.max(0, allUnits(g).length - (a.cost.generic - (a.cost.x ? 1 : 0) + a.cost.pips.length)); for (let X = 1; X <= Math.min(10, maxX); X++) { const v = otherPlayers(g).reduce((t, o) => t + o.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(o, q) <= X).reduce((u, q) => u + creatureValue(o, q), 0), 0) - g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= X).reduce((u, q) => u + creatureValue(g, q), 0); if (v > bs) { bs = v; bx = X; } } if (!bx) return -1; c.extraX = bx - 1; s += 20; }          // Spiteful Banditry          // Sunblast Angel: not over your own tapped creatures
     if (a.sacCreatureCost && !pickSacrifice(g, a)) return -1;     // nothing cheap to sacrifice
+    if (a.sacArtifactCost && !pickArtifactFodder(g)) return -1;          // Reshape: no spare artifact
     if (a.sacColor) { const tf = a.spellFx.find(f => f.type === 'tutor'), t = tf && bestTutorTarget(g, tf); if (!t || (t.inst.card.a.mv || 0) < (pickSacrifice(g, a).card.a.mv || 0) + 3) return -1; }          // Natural Order: only for something much bigger than what it costs
     if (a.sacLandCost) { const sw = swapLand(g); if (!sw || landNow(g, sw) < 2) return -1; s += 10 + landNow(g, sw); }
     if (a.spellFx.some(f => f.type === 'berserk')) { if (!berserkLethal(g)) return -1; s += 50; }          // Crop Rotation: only for a land that makes more mana than the one it costs
@@ -10877,6 +10906,12 @@ g.actSeq = (g.actSeq || 0) + 1;
     // Umbral Mantle attached to Metalworker with two or more artifact cards in hand (four mana a tap; creatures with a fixed amount: B3 below)
     { const um = bf.find(q => q.card.a.umbral && q.attachedTo != null), c = um && bf.find(q => q.iid === um.attachedTo && q.card.a.metalworker && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')) && 2 * g.hand.filter(i => i.card.a.isArtifact).length > 3);
       if (c) return { how: `${c.card.name} + ${um.card.name}`, colors: new Set(['C']) }; }
+    // Voltaic Construct ({2}: untap target artifact creature) with an artifact creature that taps for three or more: Metalworker with two artifact cards in hand
+    if (tableHas(g, 'constructUntap') && bf.some(q => q.card.a.constructUntap)) {
+      const okc = q => isCreaturePerm(q) && q.card.a.isArtifact && !(q.sick && !hasKw(g, q, 'haste'));
+      const mw = bf.find(q => okc(q) && q.card.a.metalworker && 2 * g.hand.filter(i => i.card.a.isArtifact).length > 2) || bf.find(q => okc(q) && q.produce && (q.produce.amount || 1) >= 3);
+      if (mw) return { how: `${mw.card.name} + Voltaic Construct`, colors: new Set(mw.card.a.metalworker ? ['C'] : (mw.produce.colors || ['C'])) };
+    }
     // Grand Architect + Pili-Pala: {U} makes Pili-Pala blue, it taps for {C}{C}, {2} and its untap symbol give one mana of any color back
     { const ga = bf.find(q => q.card.a.statics.blueTap), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
       if (ga && pp && allUnits(g).some(u => u.colors.has('U'))) return { how: `${ga.card.name} + ${pp.card.name}`, colors: new Set(COLORS) }; }

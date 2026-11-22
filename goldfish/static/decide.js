@@ -154,7 +154,7 @@
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
-      else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? 'learned · ' : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}` : 'named by your cards'); }
+      else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? (d.spellAsk ? 'the autopilot\'s pick · ' : 'learned · ') : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}${d.spellAsk ? ' in your graveyard' : ''}` : 'named by your cards'); }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
         if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
@@ -229,8 +229,10 @@
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     } else if (d.kind === 'tribe') {                                                                      // Metallic Mimic, Cavern of Souls, Kindred Discovery: "As ~ enters, choose a creature type"
       q.title = `${sn || 'This permanent'}: choose a creature type`;
-      q.text = `As it enters it names a creature type, and plays as that type from now on. The types of your deck's creatures are listed; ★ is the learned type (${d.learned}), the one the autopilot names.`;
-      if (src) { q.spell = src; q.spellNote = 'entering'; }
+      const spell = (src && /\b(Instant|Sorcery)\b/.test(src.type_line || '')) || d.spellAsk;
+      q.text = d.spellAsk ? `It names a creature type: the creature cards of that type in your graveyard return to the battlefield. The types in your graveyard are listed; ★ is the autopilot's pick (${d.learned}), the type worth the most.`
+        : `${spell ? 'As it resolves it names a creature type for what it does' : 'As it enters it names a creature type, and plays as that type from now on'}. The types of your deck's creatures are listed; ★ is the learned type (${d.learned}), the one the autopilot names.`;
+      if (src) { q.spell = src; q.spellNote = spell ? 'resolving' : 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;
       q.text = d.def == null ? 'You can answer it this way; the autopilot would let it happen. Choose it, or "Not now".' : 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';

@@ -2929,10 +2929,21 @@
   }
   // "As ~ enters, choose a creature type", for a person: they choose among their deck's types (deckTribes), the learned type (the
   // autopilot's, so "Autopilot decides" takes it) as the default. The default keeps the card as it is; another type re-reads it.
-  function chooseTribeOnEnter(g, inst) {
+  // A spell asks only when the type changes what it does: its effects read differently with another type (Kindred Charge), or it reads
+  // the type as it resolves (Kindred Summons, Bloodline Bidding). One the engine does not play (Kindred Dominance) or plays without the
+  // type (Distant Melody counts every permanent) is not asked: there would be nothing to choose.
+  const TRIBE_FX = new Set(['kindredSummons', 'bidding']);
+  function tribeMatters(g, base) {
+    const fx = base.a.spellFx || [];
+    if (fx.some(f => TRIBE_FX.has(f.type))) return true;
+    const other = (deckTribes(g.deck).list.find(t => t !== g.deck.tribe)) || 'Wall';
+    return JSON.stringify(cardForTribe(g, base, other).a.spellFx) !== JSON.stringify(fx);
+  }
+  function chooseTribeOnEnter(g, inst, spell) {
     const base = inst.card.tribeBase || inst.card, d = g.deck;
     if (!d || !d.tribe) return;
     const ch = chosenFor(g, base); if (!ch || ch.what !== 'creature type') return;
+    if (spell && !tribeMatters(g, base)) return;
     const { list, counts } = deckTribes(d);
     const pick = decide(g, { kind: 'tribe', options: list, def: d.tribe, counts, source: { card: base }, learned: d.tribe });
     const want = pick && pick !== d.tribe ? cardForTribe(g, base, pick) : base;
@@ -5421,7 +5432,10 @@
         case 'tribeReanimate': {          // Bloodline Bidding: the creature type worth the most in your graveyard comes back
           const cs = g.graveyard.filter(i => i.card.a.isCreature); if (!cs.length) break; const types = {};
           for (const i of cs) for (const t of ((i.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean)) types[t] = (types[t] || 0) + (i.card.a.mv || 0) + 1;
-          const best = Object.keys(types).sort((x, y) => types[y] - types[x])[0]; if (!best) break; const back = cs.filter(i => matchesFilter(i.card, best.toLowerCase()));
+          let best = Object.keys(types).sort((x, y) => types[y] - types[x])[0]; if (!best) break;
+          if (g.ask && !g.dry) { const counts = {}; for (const t of Object.keys(types)) counts[t] = cs.filter(i => matchesFilter(i.card, t.toLowerCase())).length;          // a person names the type: those in their graveyard, the autopilot's (worth the most) first
+            const list = Object.keys(types).sort((x, y) => (y === best) - (x === best) || types[y] - types[x] || x.localeCompare(y)); best = decide(g, { kind: 'tribe', options: list, def: best, counts, learned: best, source: source || null, spellAsk: true }) || best; }
+          const back = cs.filter(i => matchesFilter(i.card, best.toLowerCase()));
           for (const i of back) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } ev.push({ type: 'note', text: `Chose ${best}: ${back.length} creature card${back.length === 1 ? '' : 's'} return`, source }); break;
         }
         case 'endure': {          // endure X: X +1/+1 counters on the creature, or an X/X Spirit when the creature is a small utility one
@@ -5797,7 +5811,7 @@
         case 'doublePower': { const t = bestCreature(g); if (t) { t.eotP = (t.eotP || 0) + Math.max(0, powerOf(g, t)); ev.push({ type: 'note', text: `${t.card.name}'s power is doubled`, source }); } break; }
         case 'treasuresPower': { const k = Math.min(20, Math.max(0, (source && source.lastPower) || 0)); if (k) createTokens(g, { type: 'token', n: 1, tapped: true, creature: false, name: 'Treasure', artifact: true }, k, ev, source); break; }
         case 'agadeem': { const X = g.xValue || 1; const seen = new Set(); const cs = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander && (i.card.a.mv || 0) <= X).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x)); for (const c of cs) { if (seen.has(c.card.a.mv)) continue; seen.add(c.card.a.mv); g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); } break; }
-        case 'bidding': { const t = g.deck.tribe; const cs = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander && (!t || matchesFilter(i.card, t))); for (const c of cs.slice(0, 30)) { g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); } ev.push({ type: 'note', text: `${cs.length} creature cards return to the battlefield`, source }); break; }
+        case 'bidding': { const t = g._castTribe || g.deck.tribe; const cs = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander && (!t || matchesFilter(i.card, t))); for (const c of cs.slice(0, 30)) { g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); } ev.push({ type: 'note', text: `${cs.length} creature cards return to the battlefield`, source }); break; }
         case 'ultimatum': { const seen = new Set(g.battlefield.map(q => q.card.a.isLegendary ? q.card.name : null)); const cs = g.graveyard.filter(i => i.card.a.isPermanent && !i.card.commander); let k = 0; for (const c of cs) { if (seen.has(c.card.name)) continue; seen.add(c.card.name); g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); k++; } ev.push({ type: 'note', text: `${k} permanents return from the graveyard`, source }); break; }
         case 'halfLife': damageOpp(g, Math.ceil(oppLifeLeft(g) / 2), ev, source); break;
         case 'stitch': { if (g.graveyard.length >= 7) { const b = bestReanimation(g, { from: 'own' }); if (b) { b.y.splice(b.y.indexOf(b.i), 1); enterWithTriggers(g, b.i, {}, ev); } } else { const t = gyTarget(g, { filter: 'creature' }); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); } } break; }
@@ -5992,7 +6006,7 @@
           break;
         }
         case 'kindredSummons': {                                                                             // Kindred Summons: reveal until X creature cards of your type, all onto the battlefield
-          const tr = g.deck.tribe || curTribe; if (!tr) break;
+          const tr = g._castTribe || g.deck.tribe || curTribe; if (!tr) break;
           const X = g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, tr)).length, hits = [], rest = [];
           while (g.library.length && hits.length < X) { const c = g.library.shift(); (c.card.a.isCreature && matchesFilter(c.card, tr) && !entryBlocked(g, c.card, 'lib') ? hits : rest).push(c); }
           g.library.push(...rest); shuffle(g.library, g.rnd); hits.forEach(c => enterWithTriggers(g, c, {}, ev));
@@ -7068,7 +7082,7 @@
         if (a.isPermanent) for (let k = 0; k < n && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `A token copy of ${inst.card.name} enters` }); }
         else copySpell(g, inst, ev, n);
       }
-    } finally { g.xValue = null; if (!g.dry && ripOn(g)) ripSweep(g); }
+    } finally { g.xValue = null; if (g._castTribe) { g._castTribe = null; if (inst.card.tribeBase) inst.card = inst.card.tribeBase; } if (!g.dry && ripOn(g)) ripSweep(g); }          // the spell's chosen type ends with it
   }
   function resolveSpellInner(g, inst, ev, a) {
     if (g.castTurn[inst.card.uid] == null) g.castTurn[inst.card.uid] = g.turn;
@@ -7088,6 +7102,7 @@
     }
     if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
+    if (g.ask && !g.dry && a.isInstantSorcery && !inst.card.tribeBase) { const was = inst.card; chooseTribeOnEnter(g, inst, true); if (inst.card !== was) { a = inst.card.a; g._castTribe = inst.card.chosenType; } }          // Kindred Summons: a person names the creature type as it resolves
     g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
     if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);
     if (a.moxDiamond) {                                                                                  // Mox Diamond: discard a land to put it onto the battlefield, otherwise it goes to the graveyard

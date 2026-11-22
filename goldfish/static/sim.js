@@ -4931,6 +4931,7 @@
   // ---- pods: more than two players (also used for a played 1v1 game). Each player has one focused opponent (g.opp): the one it attacks
   // this turn and the one whose blockers, counterspells and removal it meets. Non-combat damage and life loss hit every opponent.
   const isPod = g => !!(g.match && g.match.pod);
+  const oneOnOne = g => !!g.opp && (!isPod(g) || podAlive(g).length === 1);          // one opponent left: a mirror match, or a Duel (a two-player pod), or a pod where the others are out
   function podAlive(g) { return g.match.players.filter(x => !x.dead && x !== g); }
   function threatOf(o) { return o.battlefield.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(o, q)), 0) + o.hand.length * 0.6 + o.battlefield.filter(q => q.produce).length * 0.4; }
   function pickTarget(g) {                                                                                 // the biggest threat, leaning towards a player who is nearly out
@@ -5481,7 +5482,7 @@
           if (!t || threat(d, g, t) < 1) break;
           t.origCard = t.card; t.card = blankCard(g, t.card); know(d, t.card); source.hostileOn = { o: d, q: t }; touch(d); ev.push({ type: 'note', text: `${source.card.name}: ${t.origCard.name} loses all abilities while it stays`, source });
         } break;
-        case 'aminaSwap': if (g.opp && !isPod(g)) {          // Aminatou -6, in a 1v1: the nonland permanents change hands
+        case 'aminaSwap': if (g.opp && oneOnOne(g)) {          // Aminatou -6, in a 1v1 (a mirror match, or a Duel or pod down to two players): the nonland permanents change hands
           const d = g.opp, mine = g.battlefield.filter(q => !q.asLand && q !== source), theirs = d.battlefield.filter(q => !q.asLand);
           mine.forEach(q => stealPermToOpp(g, q)); theirs.forEach(q => stealPerm(g, q, ev, false)); ev.push({ type: 'note', text: `Aminatou: ${theirs.length} of their nonland permanents for ${mine.length} of yours`, source });
         } break;
@@ -8068,7 +8069,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (f.type === 'piles') { const [, small] = pilesOf(g, g.opp); v += small.reduce((t, q) => t + Math.max(0.5, threat(g.opp, g, q)), 0); }
         if (f.type === 'oppYard') v += Math.min(6, g.opp.graveyard.reduce((t, i) => t + yardWorth(g.opp, i), 0) * 0.5);
         if (f.type === 'tidebind') { const t = g.opp.battlefield.filter(q => (isCreaturePerm(q) || q.card.a.isArtifact || q.card.a.isPlaneswalker) && !q.asLand && hasAbilities(q.card)).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0]; if (t) v += threat(g.opp, g, t) * 0.6; }
-        if (f.type === 'aminaSwap' && !isPod(g)) v += g.opp.battlefield.filter(q => !q.asLand).reduce((t, q) => t + Math.max(0.5, threat(g.opp, g, q)), 0) - g.battlefield.filter(q => !q.asLand && !q.card.a.isPlaneswalker).reduce((t, q) => t + Math.max(0.5, threat(g, g.opp, q)), 0);
+        if (f.type === 'aminaSwap' && oneOnOne(g)) v += g.opp.battlefield.filter(q => !q.asLand).reduce((t, q) => t + Math.max(0.5, threat(g.opp, g, q)), 0) - g.battlefield.filter(q => !q.asLand && !q.card.a.isPlaneswalker).reduce((t, q) => t + Math.max(0.5, threat(g, g.opp, q)), 0);
         if (f.type === 'phaseOut' || f.type === 'phaseLink') { const t = pickRemovalTarget(g, { what: 'creature', how: 'exile' }); if (t) v += threat(g.opp, g, t) * (f.type === 'phaseLink' ? 1 : 0.6); }
       }
       if (f.type === 'oppDiscard') { const h = g.opp ? g.opp.hand.length : (g.oppHand == null ? 7 : g.oppHand); v += Math.min(n, h) * (0.6 + oppDiscardWorth(g)); }

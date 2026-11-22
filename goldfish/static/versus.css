@@ -317,3 +317,29 @@
 .rm-box .rm-qr { width: min(72vw, 300px); margin: 6px 0 8px; background: #fff; border-radius: 10px; padding: 6px; }
 .rm-box .rm-qr svg { display: block; width: 100%; height: auto; }
 .rm-box .rm-paste summary { cursor: pointer; color: var(--accent); font-size: 13px; margin: 6px 0; }
+
+/* ---- who goes first: the D20 roll (versus.js showRoll) ---- */
+.vs-dice { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); z-index: 460; pointer-events: none; animation: vs-dice-in .25s ease-out both; }
+.vs-dice.bye { animation: vs-dice-out .4s ease-in both; }
+@keyframes vs-dice-in { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
+@keyframes vs-dice-out { to { opacity: 0; transform: translate(-50%, -54%) scale(.97); } }
+.vs-dice-card { background: linear-gradient(180deg, rgba(23, 42, 58, .96), rgba(14, 28, 40, .96)); border: 1px solid var(--border); border-radius: 16px; padding: 14px 20px 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); text-align: center; }
+.vs-dice-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; }
+.vs-dice-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+.vs-die { position: relative; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: opacity .3s, filter .3s; }
+.vs-die svg { width: 72px; height: 72px; overflow: visible; }
+.vs-die .d20-out { fill: #1d3a52; stroke: var(--die, #8fd8ff); stroke-width: 3; stroke-linejoin: round; }
+.vs-die .d20-in { fill: rgba(255, 255, 255, .06); stroke: var(--die, #8fd8ff); stroke-width: 1.5; stroke-linejoin: round; opacity: .7; }
+.vs-die .d20-edge { stroke: var(--die, #8fd8ff); stroke-width: 1.2; opacity: .45; fill: none; }
+.vs-die b { position: absolute; top: 25px; left: 0; right: 0; font-size: 22px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
+.vs-die span { font-size: 12.5px; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.vs-die.a { --die: var(--ice, #8fd8ff); } .vs-die.b { --die: #f7cf6f; } .vs-die.c { --die: #7fd69a; } .vs-die.d { --die: #e79ad0; }
+.vs-die.rolling svg { animation: vs-tumble .32s linear infinite; }
+@keyframes vs-tumble { 0% { transform: rotate(0) translateY(0); } 25% { transform: rotate(90deg) translateY(-6px); } 50% { transform: rotate(180deg) translateY(0); } 75% { transform: rotate(270deg) translateY(-4px); } 100% { transform: rotate(360deg) translateY(0); } }
+.vs-die.out { opacity: .35; filter: grayscale(.6); }
+.vs-die.win svg { filter: drop-shadow(0 0 10px var(--die)) drop-shadow(0 0 18px var(--die)); animation: vs-win .5s ease-out; }
+.vs-die.win span { color: #fff; font-weight: 700; }
+@keyframes vs-win { 40% { transform: scale(1.15); } }
+.vs-dice-say { margin-top: 10px; min-height: 20px; font-weight: 700; color: #f5d17a; }
+@media (max-width: 600px) { .vs-dice { top: 38%; width: calc(100vw - 24px); } .vs-dice-row { gap: 8px; } .vs-die { width: 70px; } .vs-die svg { width: 58px; height: 58px; } .vs-die b { top: 19px; font-size: 19px; } }
+@media (prefers-reduced-motion: reduce) { .vs-dice, .vs-dice.bye { animation: none; } }

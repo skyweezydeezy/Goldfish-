@@ -121,6 +121,59 @@
     console.error(e); const gm = V[mode].game; if (gm) { gm.busy = false; gm.acting = false; }
     info(mode, 'Something went wrong: ' + (e && e.message || e));
   });
+  // ---------- who goes first: everyone rolls a D20, the highest goes first, a tie rolls again ----------
+  // The rolls come from the game's seed, so both devices of a game against a person on another device see the same dice.
+  // forced: the seat that must win (a game saved before the dice existed); the dice are then made to agree with it.
+  function rollFirst(n, seed, forced) {
+    let s = (seed ^ 0x0d20d20) >>> 0;
+    const rnd = () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const rounds = []; let who = Array.from({ length: n }, (_, i) => i);
+    for (let k = 0; k < 12; k++) {
+      const r = who.map(pid => ({ pid, v: 1 + Math.floor(rnd() * 20) })), top = Math.max(...r.map(x => x.v));
+      rounds.push(r); who = r.filter(x => x.v === top).map(x => x.pid);
+      if (who.length === 1) break;
+    }
+    if (who.length > 1) { rounds[rounds.length - 1].find(x => x.pid === who[0]).v = 20; rounds[rounds.length - 1].forEach(x => { if (x.pid !== who[0] && x.v === 20) x.v = 19; }); who = [who[0]]; }
+    let first = who[0];
+    if (forced != null && forced !== first) {              // swap the winning roll with the seat that went first
+      const last = rounds[rounds.length - 1], a = last.find(x => x.pid === first), b = last.find(x => x.pid === forced);
+      if (b) { [a.v, b.v] = [b.v, a.v]; } else { rounds.push(last.map(x => ({ pid: x.pid, v: x.pid === forced ? 20 : Math.min(x.v, 19) }))); }
+      first = forced;
+    }
+    return { rounds, first };
+  }
+  const rollText = (roll, names) => '🎲 Rolled a D20 to see who goes first: ' + roll.rounds.map((r, i) => (i ? 'tie, roll again: ' : '') + r.map(x => `${names[x.pid]} ${x.v}`).join(', ')).join('; ') + '.';
+  // The roll on screen: a die for every player tumbles and lands, ties roll again, and the winner's die lights up.
+  // Resolves when it has faded away. Never blocks a click.
+  function showRoll(mode, roll, names) {
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const box = h('div', 'vs-dice'); box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite');
+    const seat = pid => SEAT[pid] || 'a', label = pid => names[pid] === 'You' ? 'You' : names[pid];
+    const die = pid => `<div class="vs-die ${seat(pid)}" data-pid="${pid}"><svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="50,4 93,28 93,72 50,96 7,72 7,28" class="d20-out"/><polygon points="50,24 76,68 24,68" class="d20-in"/><path d="M50 4 L50 24 M93 28 L76 68 M7 28 L24 68 M93 72 L76 68 M7 72 L24 68 M50 96 L76 68 M50 96 L24 68 M50 24 L93 28 M50 24 L7 28" class="d20-edge"/></svg><b>?</b><span>${esc(label(pid))}</span></div>`;
+    box.innerHTML = `<div class="vs-dice-card"><div class="vs-dice-title">Roll for first</div><div class="vs-dice-row">${roll.rounds[0].map(x => die(x.pid)).join('')}</div><div class="vs-dice-say"></div></div>`;
+    (V[mode].root || document.body).appendChild(box);
+    const say = t => { box.querySelector('.vs-dice-say').textContent = t; };
+    const D = pid => box.querySelector(`.vs-die[data-pid="${pid}"]`);
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    return (async () => {
+      for (let i = 0; i < roll.rounds.length; i++) {
+        const r = roll.rounds[i];
+        box.querySelectorAll('.vs-die').forEach(d => d.classList.toggle('out', !r.some(x => x.pid === +d.dataset.pid)));
+        if (!reduce) {
+          sfx('dice');
+          r.forEach(x => { const d = D(x.pid); d.classList.add('rolling'); });
+          for (let t = 0; t < 14; t++) { r.forEach(x => { D(x.pid).querySelector('b').textContent = 1 + Math.floor(Math.random() * 20); }); await wait(55 + t * 6); }
+        }
+        r.forEach(x => { const d = D(x.pid); d.classList.remove('rolling'); d.querySelector('b').textContent = x.v; });
+        const top = Math.max(...r.map(x => x.v)), tied = r.filter(x => x.v === top);
+        if (tied.length > 1 && i < roll.rounds.length - 1) { say(`Tie on ${top}! ${tied.map(x => label(x.pid)).join(' and ')} roll again.`); await wait(reduce ? 900 : 1100); }
+      }
+      const w = D(roll.first); w.classList.add('win');
+      say(label(roll.first) === 'You' ? 'You go first!' : `${label(roll.first)} goes first.`);
+      await wait(reduce ? 1600 : 1400);
+      box.classList.add('bye'); await wait(400); box.remove();
+    })();
+  }
   async function newGame(mode) {
     const st = V[mode], q = st.q;
     q('.vs-new').disabled = true;
@@ -129,7 +182,7 @@
       const ps = await players(mode, t => info(mode, t)), o = gameOpts(mode);
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));
-      const seed = (Math.random() * 0x7fffffff) >>> 0, first = Math.floor(Math.random() * ps.length);
+      const seed = (Math.random() * 0x7fffffff) >>> 0, roll = rollFirst(ps.length, seed), first = roll.first;          // a D20 each: the highest goes first
       const human = q('.vs-you').value === 'human';
       C.close();                                              // a question of the game before this one
       const pod = G.newPod(decks, optsList, seed, ps.map(p => p.name), first, human ? [0] : null);
@@ -141,9 +194,19 @@
       st.game.looks = dealLooks(ps.length);                   // every player gets a random playmat-and-sleeves set
       q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
       sfx('shuffle'); if (human) sfx('deal', 0.4);
-      say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.names[pod.match.order[0].pid] === 'You' ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
+      const announce = () => {                                // who goes first is told once the dice have landed
+        say(mode, null, rollText(roll, pod.match.names));
+        say(mode, null, `New game. ${pod.match.names[pod.match.order[0].pid]} ${pod.match.names[pod.match.order[0].pid] === 'You' ? 'go' : 'goes'} first. Everyone starts at ${pod.games[0].life} life.`);
+      };
+      if (st.looping) announce(); else say(mode, null, 'New game. Everyone rolls a D20 to see who goes first…');
       render(mode);
       if (!st.looping) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
+      const gm = st.game;
+      if (!st.looping) {                                      // the dice on screen (not between the games of a Loop)
+        await showRoll(mode, roll, pod.match.names);
+        if (st.game !== gm) return;                           // a new game was started meanwhile
+        announce(); render(mode);
+      }
       if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
     } finally { q('.vs-new').disabled = false; }
   }
@@ -166,6 +229,8 @@
     q('.vs-game').hidden = false; q('.vs-log').innerHTML = '';
     sfx('shuffle'); sfx('deal', 0.4);
     const f = pod.match.order[0].pid;
+    { const shown = setup.names.map((n, i) => i === me ? 'You' : n), roll = rollFirst(2, setup.seed, setup.first);          // the same dice on both devices
+      say(mode, null, rollText(roll, shown)); if (!setup.rejoin) showRoll(mode, roll, shown); }
     say(mode, null, `New game against ${setup.names[them]}. ${f === me ? 'You go' : setup.names[f] + ' goes'} first. Both start at ${pod.games[0].life} life.`);
     render(mode);
     { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
@@ -185,6 +250,7 @@
       if (w) { gm.pickWait[seat] = null; w(a); } else gm.picks[seat].push(a);
     }
   }
+  V.rollFirst = rollFirst;                                  // remote.js: the inviter's dice
   V.startRemote = startRemote; V.feed = feed; V.halt = (mode, why) => { const gm = V[mode].game; if (gm && gm.remote != null && !gm.halted) halt(mode, gm, why); };
   const cur = gm => gm.match.order[gm.idx];
   function step(gm) {                                        // move to the next seat; a new round when the order wraps

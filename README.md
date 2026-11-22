@@ -245,6 +245,8 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 
 **Special sounds for famous cards:** 58 of the most played cards have their own sound, on theme, instead of the ordinary card sound: a tornado for Cyclonic Rift, a farmer digging and a rooster for Cultivate, a ringing bell for Sol Ring, an anvil and a cow for Swords to Plowshares, a demon's whisper for Demonic Tutor, bats for Vampiric Tutor, coins for Smothering Tithe, thunder for Lightning Bolt and more. Hear them all in the Sound panel under **Hear them**, or turn them off there. They are made in the browser too. Adding one is one entry in `goldfish/static/card-sounds.js`. Casting **Cyclonic Rift** sends a tornado across the opponents' side of the table in Duel and Pod, and every card it returned spins up into the wind and flies into its owner's hand. Casting **Lightning Bolt** strikes lightning across the screen (one soft flash; devices set to reduce motion get the bolt without the flash); more on-screen effects go in `goldfish/static/card-effects.js`.
 
+**Who goes first in Duel and Pod:** everyone rolls a D20 and the highest goes first; a tie rolls again. The dice tumble on screen for a couple of seconds before the game starts, and the rolls go in the game log. Against a person on another device both see the same dice (they come from the game's shared seed). Games played back to back with Loop skip the dice on screen.
+
 **Manual tools** on the Goldfish Table handle anything the engine doesn't:
 - **+ Token** creates any token, including the ones your deck makes.
 - Right-click a card to add or remove +1/+1 counters, change loyalty, sacrifice it, toggle summoning sickness, attach it, or move it between zones.

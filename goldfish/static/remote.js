@@ -305,7 +305,8 @@
     try { deck = cleanDeck(m.deck); } catch (e) { return refuse('The deck it sent cannot be used: ' + e.message + '.'); }
     let mine; try { mine = myDeck(); } catch (e) { return refuse(e.message); }
     let names = [myName(), cleanName(m.name)]; if (names[0] === names[1]) names = [names[0], names[1] + ' (2)'];
-    const setup = { seed: crypto.getRandomValues(new Uint32Array(1))[0] >>> 1, first: crypto.getRandomValues(new Uint8Array(1))[0] & 1, names, decks: [mine, deck], opts: myOpts() };
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0] >>> 1;
+    const setup = { seed, first: V.rollFirst(2, seed).first, names, decks: [mine, deck], opts: myOpts() };          // who goes first: a D20 each, the same dice on both devices
     const id = rid();
     raw({ t: 'setup', id, setup });
     begin(id, 0, setup);
@@ -350,7 +351,7 @@
     };
     g.io = io;
     document.querySelector('[data-tab=duel]').click();
-    const gm = V.startRemote(MODE, Object.assign({}, setup, { local }), io);
+    const gm = V.startRemote(MODE, Object.assign({}, setup, { local, rejoin: !!replay }), io);          // a rejoined game does not roll its dice again
     g.gm = gm;
     if (replay) {                                            // a reload: the saved moves are played again, quickly, before anything new
       gm.fast = true;

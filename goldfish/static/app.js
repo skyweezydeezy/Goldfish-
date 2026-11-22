@@ -184,8 +184,8 @@
   }
 
   // Every rules line that is not simulated says why: it needs an opponent, does nothing solo, or is still in development.
-  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated', unsim: "Can't be simulated" };
-  const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly', unsim: 'Depends on something outside the game (card art, a toy, the time of day, a random card name), so the engine leaves it out' };
+  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated', unsim: "Can't be simulated", yours: 'Yours to use' };
+  const TAG_HELP = { yours: 'You can use this ability yourself from the card\'s menu (Practice, Duel, Pod). The autopilot does not use it, so simulations leave it out', dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly', unsim: 'Depends on something outside the game (card art, a toy, the time of day, a random card name), so the engine leaves it out' };
   function pillHtml(x) {
     const side = x.back ? '<span class="pill back" title="A rule on the back face of this double-faced card">Back</span> ' : '';
     if (x.mirror) return side + '<span class="pill opp" title="Does nothing against a goldfish. It is used in a Mirror match (Simulation tab).">Mirror matches only</span> ';

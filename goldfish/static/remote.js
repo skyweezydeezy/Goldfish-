@@ -423,18 +423,17 @@
   // Copying and pasting stays as the fallback.
   const linkFor = (kind, code) => location.origin + location.pathname + (kind === 'reply' ? '#isf-reply=' : '#isf-join=') + code;
   const qrHtml = text => { try { return `<div class="rm-qr" data-link="${esc(text)}">${window.__isfQR.svg(text)}</div>`; } catch (e) { return ''; } };
-  const homeScreen = () => !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
   function stepHtml() {
     const p = S.pending; if (!p) return '';
     const mine = code => `<textarea class="rm-code rm-mine" readonly rows="2" hidden>${esc(code)}</textarea>`;
     if (p.kind === 'invite') return `<div class="rm-codes"><p><b>1.</b> Your friend scans this with their phone's camera.</p>${qrHtml(linkFor('invite', p.code))}${mine(p.code)}
       <div class="row wrap"><button class="rm-copy" data-what="link">Share the link instead</button></div>
-      <p><b>2.</b> Then scan the code on their screen with your camera. It opens in a new tab: come back to this one and the game connects.</p>
-      ${homeScreen() ? '<p class="hint">You opened ICEYfish from the home screen: the camera opens links in Safari instead, so play in Safari, or paste their reply below.</p>' : ''}
-      <details class="rm-paste"${homeScreen() ? ' open' : ''}><summary>Or paste their reply</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their reply code"></textarea><div class="row wrap"><button class="primary rm-connect">Connect</button></div></details></div>`;
+      <p><b>2.</b> Then scan the code on their screen.</p>
+      <div class="row wrap"><button class="primary rm-scan">📷 Scan their code</button></div>
+      <details class="rm-paste"><summary>Or paste their reply</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their reply code"></textarea><div class="row wrap"><button class="primary rm-connect">Connect</button></div></details></div>`;
     if (p.kind === 'join') return `<div class="rm-codes">${p.code ? '<p><b>1.</b> Your friend\'s invite is here.</p>' : ''}
       <details class="rm-paste"${p.code ? '' : ' open'}><summary>${p.code ? 'The invite' : 'Paste the invite your friend sent you'}</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their invite">${esc(p.code || '')}</textarea></details>
-      <div class="row wrap"><button class="primary rm-reply">Join</button></div></div>`;
+      <div class="row wrap"><button class="primary rm-reply">Join</button>${p.code ? '' : '<button class="rm-scan">📷 Scan their invite</button>'}</div></div>`;
     if (p.kind === 'reply') return `<div class="rm-codes"><p><b>2.</b> Show this to your friend: they scan it with their camera, and the game starts.</p>${qrHtml(linkFor('reply', p.code))}${mine(p.code)}
       <div class="row wrap"><button class="rm-copy" data-what="link">Share the reply instead</button></div></div>`;
     if (p.kind === 'handed') return `<div class="rm-codes"><p><b>Got your friend's reply.</b> Go back to the ICEYfish tab with your invite: the game connects there. You can close this tab.</p></div>`;
@@ -447,6 +446,69 @@
     status('Read what is shared and tick "I understand and accept" first.');
     return true;
   }
+  // did the relay answer from this device? Said when a code is made, so a dead relay login is seen at once.
+  function relayNote() {
+    const L = S.link; if (!relayOn || S.ice || !L || !L.pc.localDescription) return '';
+    return kinds(L.pc.localDescription.sdp).relay ? '' : `${RELAY.name}'s relay did not answer from this device, so only a direct connection can work. Check the relay login in the ${RELAY.name} dashboard, or try another network.`;
+  }
+  // ---------- the camera: scan the other device's QR code inside the app ----------
+  // The picture stays on this device: frames are read here (the browser's own reader where it has one, else vendor/jsqr.js) and never
+  // sent or kept. What a scanned code holds is treated as a pasted one.
+  let scanning = null;
+  const loadJsQR = () => window.jsQR ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = 'vendor/jsqr.js'; el.onload = ok; el.onerror = () => no(new Error('The code reader could not be loaded.')); document.head.appendChild(el); });
+  function stopScan() { const sc = scanning; if (!sc) return; scanning = null; cancelAnimationFrame(sc.raf); if (sc.stream) sc.stream.getTracks().forEach(t => t.stop()); sc.el.remove(); }
+  function scanned(text) {
+    const m = /ISF\d(z?)\.[A-Za-z0-9_-]+/.exec(String(text)); if (!m) return false;
+    const code = m[0];
+    stopScan();
+    unpack(code).then(o => {
+      if (o.kind === 'offer') {
+        if (S.link && S.link.inviter && !open() && S.pending && S.pending.kind === 'invite') throw new Error('That is an invite. Scan the reply on your friend\'s screen (they tap Join first).');
+        if (!S.game || S.game.ended) myDeck();
+        status('Making your reply…');
+        return join(code).then(reply => { show({ kind: 'reply', code: reply }); status(relayNote()); });
+      }
+      status('Connecting…');
+      return acceptReply(code);
+    }).catch(e => status(e.message || String(e)));
+    return true;
+  }
+  async function scan() {
+    stopScan();
+    const el = h('div', 'rm-scanner');
+    el.innerHTML = '<video playsinline muted></video><p class="rm-scan-hint">Point the camera at the code on the other screen.</p><button class="rm-scan-close">Cancel</button>';
+    const sc = scanning = { el, stream: null, raf: 0 };
+    el.querySelector('.rm-scan-close').addEventListener('click', stopScan);
+    document.body.appendChild(el);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser gives the page no camera.');
+      const native = 'BarcodeDetector' in window ? new window.BarcodeDetector({ formats: ['qr_code'] }) : null;
+      if (!native) await loadJsQR();
+      sc.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+      if (scanning !== sc) return sc.stream.getTracks().forEach(t => t.stop());
+      const v = el.querySelector('video'); v.srcObject = sc.stream; await v.play();
+      const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+      let busyFrame = false, last = 0;
+      const tick = async t => {
+        if (scanning !== sc) return;
+        sc.raf = requestAnimationFrame(tick);
+        if (busyFrame || t - last < 120 || !v.videoWidth) return;
+        busyFrame = true; last = t;
+        try {
+          const k = Math.min(1, 900 / Math.max(v.videoWidth, v.videoHeight)); cv.width = Math.round(v.videoWidth * k); cv.height = Math.round(v.videoHeight * k);
+          cx.drawImage(v, 0, 0, cv.width, cv.height);
+          let text = '';
+          if (native) { const r = await native.detect(cv); text = r[0] ? r[0].rawValue : ''; }
+          else { const d = cx.getImageData(0, 0, cv.width, cv.height), r = window.jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' }); text = r ? r.data : ''; }
+          if (text && !scanned(text)) el.querySelector('.rm-scan-hint').textContent = 'That is not an ICEYfish code.';
+        } catch (e) {} finally { busyFrame = false; }
+      };
+      sc.raf = requestAnimationFrame(tick);
+    } catch (e) {
+      stopScan();
+      status(e && e.name === 'NotAllowedError' ? 'The camera was not allowed. Allow it for this site in the browser\'s settings, or paste the code instead.' : 'The camera could not be used: ' + (e.message || e) + ' Paste the code instead.');
+    }
+  }
   const busy = (btn, p) => { btn.disabled = true; return p.catch(e => status(e.message || String(e))).finally(() => { btn.disabled = false; }); };
   function onClick(e) {
     const t = e.target, hit = c => t.closest('.' + c);
@@ -454,14 +516,16 @@
       if (needAccept()) return;
       if (!S.game || S.game.ended) { try { myDeck(); } catch (err) { return status(err.message); } }
       status('Making an invite…'); show(null);
-      return busy(hit('rm-invite'), invite().then(code => { status(''); show({ kind: 'invite', code }); }));
+      return busy(hit('rm-invite'), invite().then(code => { show({ kind: 'invite', code }); status(relayNote()); }));
     }
     if (hit('rm-join')) { if (needAccept()) return; status(''); return show({ kind: 'join', code: '' }); }
     if (hit('rm-reply')) {
       if (needAccept()) return;
       if (!S.game || S.game.ended) { try { myDeck(); } catch (err) { return status(err.message); } }
       status('Making your reply…');
-      return busy(hit('rm-reply'), join(box.querySelector('.rm-theirs').value).then(code => { status(''); show({ kind: 'reply', code }); }));
+      return busy(hit('rm-reply'), join(box.querySelector('.rm-theirs').value).then(code => { show({ kind: 'reply', code }); status(relayNote()); }));
+    }
+    if (hit('rm-scan')) { if (needAccept()) return; return scan();
     }
     if (hit('rm-connect')) { status('Connecting…'); return busy(hit('rm-connect'), acceptReply(box.querySelector('.rm-theirs').value).then(() => status('Connecting…'))); }
     if (hit('rm-copy')) {
@@ -498,6 +562,6 @@
   window.addEventListener('focus', takeReply);
 
   build(); fromLink();
-  window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,
+  window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, scanned, state: S, connected,
     set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set relayService(v) { RELAY.service = v; S.relay = null; }, set relayServers(v) { RELAY.servers = v; } };
 })();

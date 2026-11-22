@@ -17,7 +17,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8800/');
   await p.selectOption('#optFormat', '60');
-  await p.fill('#deckText', ['4 Gilded Goose', '4 Sam, Loyal Attendant', '4 Hakbal of the Surging Soul', '4 Llanowar Elves', '24 Forest', '20 Island'].join('\n'));
+  await p.fill('#deckText', ['4 Gilded Goose', '4 Sam, Loyal Attendant', '4 Hakbal of the Surging Soul', '4 Llanowar Elves', '4 Stonecoil Serpent', '20 Forest', '20 Island'].join('\n'));
   await p.click('#loadDeck');
   await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
   await p.click('[data-tab=table]');
@@ -69,6 +69,25 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.waitForTimeout(2500);
   const hk = await p.evaluate(() => { const g = window.__isf.game, q = g.battlefield.find(x => /Hakbal/.test(x.card.name)); return q ? q.counters || 0 : -1; });
   check('Hakbal got the +1/+1 counter from exploring', hk >= 1, hk);
+  // ---- a spell with {X}: casting it asks for X
+  await p.evaluate(() => {
+    const G = window.Goldfish, g = window.__isf.game, card = n => g.deck.unique.find(c => c.name === n);
+    g.battlefield = []; for (let i = 0; i < 4; i++) { const q = G.enter(g, { iid: g.nextIid++, card: card('Forest') }, {}); q.tapped = false; }
+    g.hand = [{ iid: g.nextIid++, card: card('Stonecoil Serpent') }]; G.touch(g);
+  });
+  await p.click('#zLibrary .card-back'); await p.waitForTimeout(500);
+  const sx = await p.evaluate(() => window.__isf.game.hand.find(i => /Stonecoil/.test(i.card.name)).iid);
+  await p.click(`#zHand .mtg[data-iid="${sx}"]`, { modifiers: ['Control'] });
+  const xq = await p.waitForSelector('.ch-sheet.x', { timeout: 8000 }).then(() => true, () => false);
+  check('casting Stonecoil Serpent asks for X', xq);
+  if (xq) {
+    const names = await p.$$eval('.ch-sheet .ch-opt', bs => bs.map(x => x.textContent.trim().slice(0, 6)));
+    check('...X = 1 to 4 with four lands', names.length === 4, names.join(','));
+    check('...listed in number order, the most you can pay preselected', names.map(s => s.match(/X = (\d+)/)[1]).join(',') === '1,2,3,4' && await p.$eval('.ch-sheet .ch-opt:last-child', b => b.classList.contains('sel')), names.join(','));
+    await p.click('.ch-sheet .ch-opt:has-text("X = 2")'); await p.click('.ch-sheet .ch-ok'); await p.waitForTimeout(1200);
+    const sp = await p.evaluate(() => { const g = window.__isf.game, q = g.battlefield.find(x => /Stonecoil/.test(x.card.name)); return q ? q.counters : -1; });
+    check('...X = 2: it enters with two counters', sp === 2, sp);
+  }
   // ---- 1v1: a Food of yours glows; clicking it asks which ability, and cracking it gains 3 life
   await p.click('[data-tab=duel]');
   for (const sel of await p.$$('#tab-duel .vs-opp')) await sel.selectOption('');

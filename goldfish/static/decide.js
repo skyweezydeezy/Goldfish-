@@ -121,6 +121,18 @@
   const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
+  // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
+  const TARGET_WORDS = {
+    untap: ['untap what?', 'Choose the permanent to untap.'],
+    tap: ['tap what?', 'Choose the permanent to tap.'],
+    pump: ['choose a creature', 'Choose the creature that gets the bonus until end of turn.'],
+    double: ['choose a creature', 'Choose the creature whose power is doubled.'],
+    fight: ['choose what it fights', 'Choose the creature it fights: each deals damage equal to its power to the other.'],
+    uncounter: ['choose a target', 'Choose the permanent that loses its counters.'],
+    copy: ['copy what?', 'Choose the permanent to copy.'],
+    equip: ['equip which creature?', 'Choose the creature to attach it to.'],
+    flicker: ['flicker which creature?', 'Choose the creature to exile and return to the battlefield (it comes back untapped, its enter effects happen again).'],
+  };
   function question(g, d) {
     const opts = d.options || [], multi = !!d.multi, m = g.match;
     if (!opts.length && !d.always) return null;          // always: asked with nothing to pick too (a spell on the stack: "does it resolve?")
@@ -137,9 +149,11 @@
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
       if (d.kind === 'mode') { item.name = fxLabel(o.mode); }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
+      else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? 'learned · ' : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}` : 'named by your cards'); }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
@@ -166,6 +180,7 @@
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
+      else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;
@@ -175,8 +190,10 @@
       q.text = 'Choose a land card from your hand to put onto the battlefield. If you do not, you draw a card.';
       q.none = 'Draw a card instead';
     } else if (d.kind === 'discard') {
+      if (d.rack) { q.title = `${sn}: which cards go on top of your library?`; q.text = 'Choose any number of cards from your hand. They go on top of your library, and you take that many cards from the top first.'; }
+      else {
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
-      q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`;
+      q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
       q.title = d.ability ? `${d.ability}: sacrifice a creature` : d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
       q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
@@ -194,6 +211,10 @@
       const lv = Math.min(4, d.n || 1), ord = ['', 'first', 'second', 'third', 'fourth'][d.n] || d.n + 'th';
       q.title = `💍 The Ring tempts you (${ord} time): choose your Ring-bearer`;
       q.text = `Your Ring-bearer has: ${G.RING_TEXT.slice(0, lv).map((t, i) => (i + 1) + '. ' + t.replace(/^Your Ring-bearer /, '').replace(/^Whenever your Ring-bearer /, 'whenever it ')).join(' ')}`;
+    } else if (d.kind === 'x') {
+      q.title = `${sn}: choose X`;
+      q.text = `X can be up to ${opts[opts.length - 1]} with the mana you have${d.less ? ` (your first X spell this turn costs {${d.less}} less)` : ''}.`;
+      q.spell = src; q.spellNote = 'being cast';
     } else if (d.kind === 'explore') {
       const pn = src ? src.name : 'Your creature';
       q.title = `${pn} explores: ${d.reveal.card.name}`;
@@ -201,9 +222,9 @@
       q.spell = d.reveal.card; q.spellNote = 'revealed';
     } else if (d.kind === 'counter') {
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
-      const nc = opts.filter(o => o.how !== 'respond').length, nr = opts.length - nc;
+      const nc = opts.filter(o => o.how !== 'respond' && o.how !== 'ability').length, nr = opts.length - nc;
       q.title = `${who} casts ${d.spell.card.name}: does it resolve?`;
-      q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant or card with flash you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant or a card with flash (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
+      q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant, card with flash or ability you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant, a card with flash or an ability of one of your permanents (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
       q.none = 'Let it resolve';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     } else if (d.kind === 'tribe') {                                                                      // Metallic Mimic, Cavern of Souls, Kindred Discovery: "As ~ enters, choose a creature type"
@@ -212,12 +233,12 @@
       if (src) { q.spell = src; q.spellNote = 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;
-      q.text = 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';
+      q.text = d.def == null ? 'You can answer it this way; the autopilot would let it happen. Choose it, or "Not now".' : 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';
       q.none = 'Not now';
       if (d.target && d.target.card) { q.spell = d.target.card; q.spellNote = 'yours'; }
     } else if (d.kind === 'resolve') {
       q.title = `You cast ${d.spell.card.name}: does it resolve?`;
-      q.text = `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant or a card with flash (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
+      q.text = `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant, a card with flash or an ability (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
       q.none = 'Pass';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     }

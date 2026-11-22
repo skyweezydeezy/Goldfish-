@@ -106,7 +106,7 @@ const shot = process.env.VERSUS_SHOTS;
   // ---- the stack: your spell waits, and you may respond to it before the other player answers
   const stk = await p.evaluate(() => { const s = document.querySelector('.ch-sheet'), gm = window.__isfVersus.duel.game; return { kind: gm.choice && gm.choice.kind, spell: !!s.querySelector('.ch-spell .mtg'), note: (s.querySelector('.ch-spell small') || {}).textContent, ok: s.querySelector('.ch-ok').hidden, inHand: gm.games[0].hand.some(i => i.card.name === 'Vampiric Tutor') }; });
   check('casting it first puts it on the stack: "You cast Vampiric Tutor: does it resolve?", the card shown "on the stack", Pass', stk.kind === 'resolve' && sh.title === 'You cast Vampiric Tutor: does it resolve?' && stk.spell && stk.note === 'on the stack' && sh.none === 'Pass' && stk.inHand, sh.title + ' / ' + JSON.stringify(stk));
-  check('...your instants you can pay for are offered as responses (Anguished Unmaking, Swords to Plowshares)', sh.names.includes('Anguished Unmaking') && sh.names.includes('Swords to Plowshares') && sh.notes.every(n => /in response: it resolves first/.test(n)), sh.names.join(', ') + ' / ' + sh.notes.join(' | '));
+  check('...your instants you can pay for are offered as responses (Anguished Unmaking, Swords to Plowshares)', sh.names.includes('Anguished Unmaking') && sh.names.includes('Swords to Plowshares') && sh.notes.every(n => /in response: (?:it resolves first|activate)/.test(n)), sh.names.join(', ') + ' / ' + sh.notes.join(' | '));
   if (shot) await p.screenshot({ path: path.join(shot, 'choice-stack.png') });
   await p.click('.ch-sheet .ch-none');
   await p.waitForSelector('.ch-sheet.search', { timeout: 10000 });

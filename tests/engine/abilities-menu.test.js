@@ -108,6 +108,48 @@ const find = (g, p, re) => G.abilityMenu(g, p).findIndex(x => re.test(x.label));
   const ev = G.useAbility(g, he, 0);
   check('Heliod: {1}{W}: another creature gains lifelink', ev && ev.some(e => e.type === 'activate') && untapped(g) === 0);
 })();
+// ---- Skullclamp, The One Ring, Necropotence, Fauna Shaman, Deathrite Shaman, Mondrak
+(() => {
+  const g = fresh(); lands(g, 1); const clamp = put(g, 'Skullclamp'); const fam = put(g, 'Cauldron Familiar'); const h0 = g.hand.length;
+  const ev = G.useAbility(g, clamp, find(g, clamp, /^Equip/));
+  check('Skullclamp: equip a 1/1 for {1}: it dies and you draw two', ev && !g.battlefield.includes(fam) && g.hand.length === h0 + 2, `hand ${h0}->${g.hand.length}`);
+})();
+(() => {
+  const g = fresh(); const ring = put(g, 'The One Ring'); const h0 = g.hand.length;
+  G.useAbility(g, ring, find(g, ring, /burden/));
+  check('The One Ring: tap for a burden counter and a card', ring.tapped && ring.burden === 1 && g.hand.length === h0 + 1);
+})();
+(() => {
+  const g = fresh(); const nec = put(g, 'Necropotence'); const h0 = g.hand.length, l0 = g.life;
+  G.useAbility(g, nec, 0);
+  check('Necropotence: pay 1 life for a card', g.life === l0 - 1 && g.hand.length === h0 + 1);
+})();
+(() => {
+  const g = fresh(); const forest = deck.unique.find(c => c.name === 'Forest'); const l = G.enter(g, { iid: g.nextIid++, card: forest }, {}); l.tapped = false;
+  const fs = put(g, 'Fauna Shaman'); const d = { iid: g.nextIid++, card: by('Cauldron Familiar') }; g.hand.push(d);
+  const ev = G.useAbility(g, fs, 0);
+  check('Fauna Shaman: discard a creature card, search for a creature card', ev && g.graveyard.includes(d) && fs.tapped && g.hand.length === 1 && g.hand[0].card.a.isCreature, g.hand.map(i => i.card.name).join(','));
+})();
+(() => {
+  const g = fresh(); const dr = put(g, 'Deathrite Shaman'); g.graveyard.push({ iid: g.nextIid++, card: plains });
+  const m = G.abilityMenu(g, dr);
+  check('Deathrite Shaman: three abilities, only the land one usable with a land in the graveyard', m.length === 3 && m[0].ok && !m[1].ok && !m[2].ok, m.map(x => x.ok).join(','));
+  const fl = g.floating.length; G.useAbility(g, dr, 0);
+  check('...it exiles the land for one mana', g.floating.length === fl + 1 && g.exile.some(i => i.card.name === 'Plains') && dr.tapped);
+})();
+(() => {
+  const g = fresh(); lands(g, 3); const mo = put(g, 'Mondrak, Glory Dominus'); food(g); food(g);
+  const i = find(g, mo, /indestructible/), m = G.abilityMenu(g, mo)[i];
+  check('Mondrak: its indestructible-counter ability is listed', i >= 0, JSON.stringify(m));
+})();
+(() => {                                                                                                  // Chatterfang: {B}, sacrifice X Squirrels: +X/-X
+  const g = fresh(); const sw = deck.unique.find(c => c.name === 'Swamp'); const l = G.enter(g, { iid: g.nextIid++, card: sw }, {}); l.tapped = false;
+  const ch = put(g, 'Chatterfang, Squirrel General'); const fam = put(g, 'Cauldron Familiar');
+  G.createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['G'], subtypes: ['Squirrel'], keywords: [], artifact: false, name: 'Squirrel' }, 1, [], null);
+  const i = find(g, ch, /Squirrels/), n0 = g.battlefield.filter(q => q.card.name === 'Squirrel').length;
+  const ev = G.useAbility(g, ch, i);
+  check('Chatterfang: sacrifice a Squirrel token (not itself): a creature gets +1/-1', ev && g.battlefield.includes(ch) && g.battlefield.filter(q => q.card.name === 'Squirrel').length === n0 - 1 && ev.some(e => /\+1\/-1/.test(e.text || '')), ev && ev.map(e => e.text || e.type).join(' | '));
+})();
 // the autopilot's game is unchanged: it never sees the menu
 check('the menu is exported', typeof G.abilityMenu === 'function' && typeof G.useAbility === 'function');
 

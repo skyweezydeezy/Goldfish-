@@ -101,6 +101,7 @@
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
       minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 10000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
+      bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
     };
   }
   $('#optFormat').addEventListener('change', () => {
@@ -183,8 +184,8 @@
   }
 
   // Every rules line that is not simulated says why: it needs an opponent, does nothing solo, or is still in development.
-  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated', unsim: "Can't be simulated" };
-  const TAG_HELP = { dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly', unsim: 'Depends on something outside the game (card art, a toy, the time of day, a random card name), so the engine leaves it out' };
+  const TAG_LABEL = { dev: 'In development', opp: 'Needs opponent', solo: 'No solo effect', approx: 'Approximated', unsim: "Can't be simulated", yours: 'Yours to use' };
+  const TAG_HELP = { yours: 'You can use this ability yourself from the card\'s menu (Practice, Duel, Pod). The autopilot does not use it, so simulations leave it out', dev: 'A real effect when playing alone that is not built yet', opp: 'Only matters against an opponent, so it does nothing in a goldfish', solo: 'Does nothing when you play alone (for example lifegain or scry)', approx: 'Simulated roughly, not exactly', unsim: 'Depends on something outside the game (card art, a toy, the time of day, a random card name), so the engine leaves it out' };
   function pillHtml(x) {
     const side = x.back ? '<span class="pill back" title="A rule on the back face of this double-faced card">Back</span> ' : '';
     if (x.mirror) return side + '<span class="pill opp" title="Does nothing against a goldfish. It is used in a Mirror match (Simulation tab).">Mirror matches only</span> ';
@@ -261,7 +262,7 @@
     S.tokens = r.tokens || [];
     S.deck = G.buildDeck(cards, S.tokens, currentPolicy().tribe);
     S.byUid = S.deck.unique;
-    S.game = null; S.sim = null; S.oddsSel.clear();
+    S.game = null; S.sim = null; S.bookCombos = []; S.oddsSel.clear();
     const msgs = $('#deckMsgs'); msgs.innerHTML = '';
     const add = (cls, html) => msgs.appendChild(h('div', 'msg ' + cls, html));
     const cmdrs = S.deck.commanders.map(i => i.card.name);
@@ -317,14 +318,33 @@
     const outright = wins.filter(c => /you win the game|loses the game/i.test(text(c))), finishers = wins.filter(c => !outright.includes(c));
     let html = '';
     if (combos.length) html += `<div class="sg fold-items good"><b>${combos.length} combo${combos.length === 1 ? '' : 's'}</b><ul>${combos.map(c =>
-      `<li><b>${esc(c.name)}: ${esc(c.slots.map(s => s.cards[0] + (s.cards.length > 1 ? ' +' + (s.cards.length - 1) : '')).join(' + '))}</b>: ${esc(c.how)}<div class="hint">${c.slots.map(s => `${esc(s.label)}: ${list(s.cards)}`).join('<br>')}</div></li>`).join('')}</ul></div>`;
+      `<li><b>${esc(c.name)}: ${esc(c.slots.map(s => s.cards[0] + (s.cards.length > 1 ? ' +' + (s.cards.length - 1) : '')).join(' + '))}</b>: ${esc(c.how)}${c.open ? ' Nothing in this list wins with the mana yet: add an outlet (Walking Ballista, an X damage spell, a creature that draws or deals damage for mana).' : ''}<div class="hint">${c.slots.map(s => `${esc(s.label)}: ${list(s.cards)}`).join('<br>')}</div></li>`).join('')}</ul></div>`;
     else html += '<div class="sg"><b>No combo found</b><p>None of the combo lines the engine knows has all its pieces in this list.</p></div>';
     if (outright.length) html += `<div class="sg"><b>${outright.length} card${outright.length === 1 ? '' : 's'} that win${outright.length === 1 ? 's' : ''} outright</b><p>${list(outright.map(c => c.name))}</p></div>`;
     if (finishers.length) html += `<div class="sg"><b>${finishers.length} finisher${finishers.length === 1 ? '' : 's'}</b><p>${list(finishers.map(c => c.name))}</p></div>`;
     if (!wins.length) html += '<div class="sg warn"><b>No clear win condition</b><p>No card says you win, and no big finisher was found. Rules-text matching can miss unusual wordings.</p></div>';
-    $('#comboList').innerHTML = html;
+    $('#comboList').innerHTML = html + '<div id="comboBook"></div>';
     tidy($('#comboList'));
     box.hidden = false;
+    renderComboBook(combos);
+  }
+  // the combos Commander Spellbook knows in this list (a snapshot kept with the app: data/combos.json), beyond the ones the autopilot plays
+  let comboDb = null;
+  function renderComboBook(engine) {
+    if (typeof Combos === 'undefined') return;
+    const deck = S.deck;
+    comboDb = comboDb || fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    comboDb.then(db => {
+      const el = $('#comboBook'); if (!db || !el || S.deck !== deck) return;
+      const cmd = deck.commanders.map(i => i.card), id = cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null;
+      const r = Combos.find(db, deck.unique.map(c => c.name), id), more = r.included.filter(c => !Combos.played(c, engine));
+      S.bookCombos = Combos.goldfished(r, engine);
+      const li = c => `<li><b>${c.cards.map(n => n === c.missing ? `add ${esc(n)}` : esc(n)).join(' + ')}</b>: ${esc(c.does.join('; '))}.${c.needs.length ? ` Also needs: ${esc(c.needs.join(', '))}.` : ''}${!c.missing && c.goldfish && c.kind ? ' The goldfish counts it.' : !c.missing && c.goldfish && c.loops ? ' The goldfish counts it once a card that turns the loop into damage is out.' : ''} <a href="${esc(c.url)}" target="_blank" rel="noopener">Steps on Commander Spellbook</a></li>`;
+      const group = (title, xs, cls, max) => xs.length ? `<div class="sg ${cls}"><b>${title}</b><ul>${xs.slice(0, max).map(li).join('')}</ul>${xs.length > max ? `<p>The ${max} most popular are shown.</p>` : ''}</div>` : '';
+      el.innerHTML = group(`${more.length} more in Commander Spellbook`, more, '', 40) + group(`${r.almost.length} one card away`, r.almost, '', 15)
+        + `<p class="hint" data-fold>Commander Spellbook snapshot of ${esc(db.fetched)}: its ${db.combos.length.toLocaleString()} most popular combos. The goldfish counts ${S.bookCombos.length} of the ones in this list: those that win, make infinite mana, or loop beside a card that turns the loop into damage, and need nothing it cannot check. It does not play out their steps; once every card is where the combo starts and the mana is there, the combo counts. The rest are listed for you to read.</p>`;
+      tidy(el);
+    });
   }
 
   // ---- how the simulated games were won (winBy and winLines in the Monte Carlo result) ----
@@ -915,21 +935,47 @@
   const sameInst = (x, inst) => x.hand.concat(x.command, x.graveyard, x.exile).find(i => i.iid === inst.iid) || (x.library[0] && x.library[0].iid === inst.iid ? x.library[0] : null);
   const quiet = p => p.catch(e => { if (e && e.cancelled) return; console.error(e); toast('Something went wrong: ' + (e && e.message || e)); });
 
-  function newTableGame() {
-    if (!need()) return;
+  function newTableGame(auto) {
+    if (!need()) return null;
     const g = G.newGame(S.deck, opts(), rseed());
     G.mulligan(g);
-    startTableGame(g);
+    return startTableGame(g, auto);
   }
-  function startTableGame(g) {
+  // Loop: game after game by itself, with the settings already on screen. Each game: a new game, the autopilot plays until the goldfish is
+  // dead (or turn LOOP_CAP, for a deck that cannot win), a short pause that follows the speed slider, then the next. Press again to stop.
+  let tableLoop = null; const LOOP_CAP = 30;
+  const loopBtn = on => { const b = $('#tLoop'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  $('#tLoop').addEventListener('click', () => {
+    if (tableLoop) { tableLoop.stop = true; loopBtn(false); toast('Loop stops after this game'); return; }
+    if (!need()) return;
+    tableLoop = { stop: false, games: 0, kills: [] }; loopBtn(true); runTableLoop(tableLoop);
+  });
+  async function runTableLoop(L) {
+    try {
+      while (!L.stop) {
+        while (S.busy && !L.stop) await sleep(150);
+        if (L.stop) break;
+        await newTableGame(true);
+        const n = LOOP_CAP;                                              // play until the goldfish is dead (a deck that cannot win stops at this turn)
+        await guard(async () => { while (!L.stop && S.game && S.game.killTurn == null && (S.game.turn < n || (S.game.turn === n && !S.game.turnDone))) await autoTurn(); });
+        if (L.stop || !S.game) break;
+        const g = S.game; L.games++; if (g.killTurn != null) L.kills.push(g.killTurn);
+        const avg = L.kills.length ? L.kills.reduce((a, b) => a + b, 0) / L.kills.length : 0;
+        const line = `Loop · game ${L.games}: ${g.killTurn != null ? 'goldfish dead on turn ' + g.killTurn : 'no kill by turn ' + g.turn} · killed in ${L.kills.length} of ${L.games}${L.kills.length ? ', average turn ' + avg.toFixed(1) : ''}`;
+        log(`<b>${esc(line)}</b>`); toast(line);
+        await sleep(2500 * slow());
+      }
+    } finally { if (tableLoop === L) tableLoop = null; loopBtn(false); }
+  }
+  function startTableGame(g, auto) {
     if (window.__isfChoices) window.__isfChoices.close();                // a question of the game before this one
-    if (window.Decide) window.Decide.seat(g);                             // your choices are asked; the autopilot's turn still decides by itself
+    if (window.Decide && !auto) window.Decide.seat(g);                    // your choices are asked; the autopilot's turn still decides by itself (a looped game asks nothing)
     S.game = g; S.undo = []; g.turnDone = false; elCache.clear();
     $('#gameLog').innerHTML = '';
     sfx('shuffle');
     log(`Kept ${g.hand.length} cards${g.mulligans ? ` after ${g.mulligans} mulligan${g.mulligans > 1 ? 's' : ''}` : ''}: ${g.hand.map(c => esc(c.card.name)).join(', ')}`);
     render(true);
-    quiet(beginTurnUI(true).then(() => render(true)));
+    return quiet(beginTurnUI(!auto).then(() => render(true)));
   }
   // person: your turn starting (upkeep choices are asked); otherwise the autopilot's
   function beginTurnUI(person) {
@@ -1035,6 +1081,7 @@
       if (key) seen.set(key, item);
       items.push(item);
     }
+    if (window.Dice) window.Dice.fromEvents(items);                    // a die rolled or a coin flipped: show it in 3D
     const times = c => (c > 1 ? ` × ${c}` : '');
     for (const e of items) {
       switch (e.type) {
@@ -1462,6 +1509,7 @@
       log(`${esc(inst.card.name)} → ${to}${to === 'library' ? (top ? ' (top)' : ' (bottom)') : ''}`);
     });
     if (zone === 'hand' || zone === 'command') items.push([inst.card.a.isLand ? '▶ Play land' : '▶ Cast', () => playFromHand(inst, false, m), 'primary']);
+    if (zone === 'graveyard' && G.yardCastable(g, inst)) items.push(['▶ Cast from your graveyard', () => playFromHand(inst, false, m), 'primary']);          // Zul Ashur let you cast it this turn
     if (zone === 'hand' && inst.card.a.typecycle) items.push([`🔎 ${inst.card.a.typecycle.basic ? 'Basic land' : inst.card.a.typecycle.type === 'land' ? 'Land' : inst.card.a.typecycle.type[0].toUpperCase() + inst.card.a.typecycle.type.slice(1)}cycle (search for a land)`, () => { snap(); quiet(yours(x => G.landcycleCard(x, sameInst(x, inst), [])).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana to cycle it'); } play(ev); })); }]);
     if (zone === 'hand' && inst.card.a.transmute) items.push([`🔎 Transmute (search for a card with mana value ${inst.card.a.mv || 0})`, () => { snap(); quiet(yours(x => G.transmuteCard(x, sameInst(x, inst), [])).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana to transmute it'); } play(ev); })); }]);
     if ((zone === 'hand' || zone === 'command') && inst.card.layout === 'modal_dfc' && inst.card.a.backCard && !inst.card.a.isLand && !inst.card.a.backCard.a.isLand && inst.card.a.backCard.mana_cost) {          // a two-faced card: either face, named
@@ -1473,7 +1521,7 @@
       const why = G.chainVeilState(S.game, obj);
       items.push([why ? `◆ The Chain Veil (${why})` : '◆ Activate: {4}, tap: one more loyalty ability for each planeswalker', () => { if (G.chainVeilState(S.game, obj)) { sfx('error'); return toast('The Chain Veil: ' + G.chainVeilState(S.game, obj)); } snap(); quiet(yours(x => G.useChainVeil(x, x.battlefield.find(y => y.iid === obj.iid))).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana for The Chain Veil'); } play(ev); })); }, why ? '' : 'primary']);
     }
-    if (zone === 'battlefield' || zone === 'graveyard') G.abilityMenu(g, obj).forEach((ab, i) => items.push([`⚡ ${ab.label}${ab.cost ? ` (${ab.cost})` : ''}${ab.ok ? '' : ` — not now: ${ab.why}`}`, () => useAbilityUI(obj, zone, i, ab), ab.ok ? 'primary' : '']));          // activated abilities: Food, sacrifice outlets, {cost}: effect
+    if (zone === 'battlefield' || zone === 'graveyard' || zone === 'hand' || zone === 'command') G.abilityMenu(g, obj).forEach((ab, i) => items.push([`⚡ ${ab.label}${ab.cost ? ` (${ab.cost})` : ''}${ab.ok ? '' : ` — not now: ${ab.why}`}`, () => useAbilityUI(obj, zone, i, ab), ab.ok ? 'primary' : '']));          // activated abilities: Food, sacrifice outlets, {cost}: effect
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {

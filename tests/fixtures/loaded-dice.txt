@@ -1,0 +1,83 @@
+// Loaded Dice (Krark, the Thumbless + Sakashima of a Thousand Faces)
+// Bracket 4
+// Format: Commander (paper), Bracket 4
+// COMMANDER
+1 Krark, the Thumbless
+1 Sakashima of a Thousand Faces
+// MAIN
+1 Volcanic Island
+1 Steam Vents
+1 Sulfur Falls
+1 Spirebluff Canal
+1 Shivan Reef
+1 Izzet Boilerworks
+1 Scalding Tarn
+1 Misty Rainforest
+1 Wooded Foothills
+1 Flooded Strand
+1 Ancient Tomb
+1 Mana Confluence
+1 Sol Ring
+1 Mana Vault
+1 Arcane Signet
+1 Izzet Signet
+1 Talisman of Creativity
+1 Thran Dynamo
+1 Grim Monolith
+1 Basalt Monolith
+1 Dreamstone Hedron
+1 Gilded Lotus
+1 Chromatic Orrery
+1 Empowered Autogenerator
+1 Coveted Jewel
+1 Nyx Lotus
+1 Solar Array
+1 Voltaic Construct
+1 Myr Welder
+1 Heartstone
+1 Training Grounds
+1 Metalworker
+1 Synod Artificer
+1 Staff of Domination
+1 Freed from the Real
+1 Pemmin's Aura
+1 Karn, the Great Creator
+1 Karn, Silver Golem
+1 Living Brain, Mechanical Marvel
+1 March of the Machines
+1 Ensoul Artifact
+1 Rise and Shine
+1 Cyberdrive Awakener
+1 Katsumasa, the Animator
+1 Tezzeret, Betrayer of Flesh
+1 Ultron, Artificial Malevolence
+1 Umbral Mantle
+1 Thornbite Staff
+1 Kiki-Jiki, Mirror Breaker
+1 Krenko, Mob Boss
+1 Spark Double
+1 Auton Soldier
+1 Sakashima the Impostor
+1 Storm-Kiln Artist
+1 Heat Shimmer
+1 Molten Duplication
+1 Ashnod's Altar
+1 Phyrexian Altar
+1 Altar of Dementia
+1 Goblin Bombardment
+1 Walking Ballista
+1 Banefire
+1 Comet Storm
+1 Thassa's Oracle
+1 Force of Will
+1 Mana Drain
+1 Counterspell
+1 Fierce Guardianship
+1 Swan Song
+1 Cyclonic Rift
+1 Lightning Bolt
+1 Brainstorm
+1 Ponder
+1 Preordain
+12 Island
+12 Mountain

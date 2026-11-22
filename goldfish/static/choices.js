@@ -24,7 +24,8 @@
       if (o.def) { t.ks.splice(t.def, 0, o.k); t.def++; t.o = o; } else t.ks.push(o.k);
     }
     if (q.kind === 'search') out.sort((x, y) => x.o.name.localeCompare(y.o.name));
-    out.sort((x, y) => (y.def ? 1 : 0) - (x.def ? 1 : 0));
+    if (q.kind === 'x') out.sort((x, y) => parseInt(x.o.name.replace(/\D+/g, ''), 10) - parseInt(y.o.name.replace(/\D+/g, ''), 10));          // X = 0, 1, 2…: in number order, the autopilot's value still preselected
+    else out.sort((x, y) => (y.def ? 1 : 0) - (x.def ? 1 : 0));
     out.forEach((t, i) => { t.i = i; });
     return out;
   }

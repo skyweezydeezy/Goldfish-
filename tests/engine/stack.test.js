@@ -45,7 +45,7 @@ const named = (q, n) => q.options.findIndex(o => o.name === n);
 { const p = table([VY, ZA]), [a, b] = p.games; lands(b, 3, 'Swamp'); const nw = toHand(b, "Night's Whisper");
   const { qs } = play(p, cast(1, nw.iid), q => 'none');
   const q = qs[0];
-  check('another player casts a spell: you are asked "them casts Night\'s Whisper: does it resolve?" even with an empty hand', qs.length === 1 && q.kind === 'counter' && q.title === "them casts Night's Whisper: does it resolve?" && q.none === 'Let it resolve' && q.options.length === 0 && /You have no counterspell, instant or card with flash/.test(q.text), q && q.title + ' / ' + q.text);
+  check('another player casts a spell: you are asked "them casts Night\'s Whisper: does it resolve?" even with an empty hand', qs.length === 1 && q.kind === 'counter' && q.title === "them casts Night's Whisper: does it resolve?" && q.none === 'Let it resolve' && q.options.length === 0 && /You have no counterspell, instant, card with flash or ability/.test(q.text), q && q.title + ' / ' + q.text);
   check('...Let it resolve: it resolves', b.graveyard.some(i => i.card.name === "Night's Whisper")); }
 { const p = table([VY, ZA]), [a, b] = p.games; lands(b, 3, 'Swamp'); lands(a, 2, 'Island'); const cs = toHand(a, 'Counterspell'), bs = toHand(a, 'Brainstorm'); const nw = toHand(b, "Night's Whisper");
   const { qs } = play(p, cast(1, nw.iid), q => named(q, 'Counterspell'));

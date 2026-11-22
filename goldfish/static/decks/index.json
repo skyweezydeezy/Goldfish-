@@ -642,6 +642,16 @@
    "bracket": 3
   },
   {
+   "file": "moving-parts.txt",
+   "name": "Moving Parts (Urza, Lord High Artificer)",
+   "commanders": [
+    "Urza, Lord High Artificer"
+   ],
+   "colors": "U",
+   "cards": 100,
+   "bracket": 4
+  },
+  {
    "file": "second-draw.txt",
    "name": "Second Draw (Alandra)",
    "commanders": [
@@ -664,6 +674,13 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
+  },
+  {
+   "file": "tooks-adventure.txt",
+   "name": "Took's Adventure",
+   "commanders": [],
+   "colors": "W",
+   "cards": 60
   },
   {
    "file": "tookens.txt",

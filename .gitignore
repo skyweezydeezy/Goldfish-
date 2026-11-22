@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
-ScryMirror/
+*.sqlite
 .deck-cache/
 .goldfish-install.json
 .goldfish-update-tmp/

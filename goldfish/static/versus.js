@@ -149,7 +149,9 @@
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const box = h('div', 'vs-dice'); box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite');
     const seat = pid => SEAT[pid] || 'a', label = pid => names[pid] === 'You' ? 'You' : names[pid];
-    const die = pid => `<div class="vs-die ${seat(pid)}" data-pid="${pid}"><svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="50,4 93,28 93,72 50,96 7,72 7,28" class="d20-out"/><polygon points="50,24 76,68 24,68" class="d20-in"/><path d="M50 4 L50 24 M93 28 L76 68 M7 28 L24 68 M93 72 L76 68 M7 72 L24 68 M50 96 L76 68 M50 96 L24 68 M50 24 L93 28 M50 24 L7 28" class="d20-edge"/></svg><b>?</b><span>${esc(label(pid))}</span></div>`;
+    // each player's die is the 3D d20 of dice.js (Dice.rollInto), tinted in their seat colour; the number it lands on shows under it too
+    const n3d = !!(window.Dice && window.Dice.rollInto), size = roll.rounds[0].length > 2 ? 34 : 42;
+    const die = pid => `<div class="vs-die ${seat(pid)}${n3d ? ' d3' : ''}" data-pid="${pid}"><div class="dice-stage"></div><b>&nbsp;</b><span>${esc(label(pid))}</span></div>`;
     box.innerHTML = `<div class="vs-dice-card"><div class="vs-dice-title">Roll for first</div><div class="vs-dice-row">${roll.rounds[0].map(x => die(x.pid)).join('')}</div><div class="vs-dice-say"></div></div>`;
     (V[mode].root || document.body).appendChild(box);
     const say = t => { box.querySelector('.vs-dice-say').textContent = t; };
@@ -157,17 +159,17 @@
     const wait = ms => new Promise(r => setTimeout(r, ms));
     return (async () => {
       for (let i = 0; i < roll.rounds.length; i++) {
+        if (!box.isConnected) return;                         // skipped
         const r = roll.rounds[i];
         box.querySelectorAll('.vs-die').forEach(d => d.classList.toggle('out', !r.some(x => x.pid === +d.dataset.pid)));
-        if (!reduce) {
-          sfx('dice');
-          r.forEach(x => { const d = D(x.pid); d.classList.add('rolling'); });
-          for (let t = 0; t < 14; t++) { r.forEach(x => { D(x.pid).querySelector('b').textContent = 1 + Math.floor(Math.random() * 20); }); await wait(55 + t * 6); }
-        }
-        r.forEach(x => { const d = D(x.pid); d.classList.remove('rolling'); d.querySelector('b').textContent = x.v; });
+        if (!reduce) sfx('dice');
+        r.forEach(x => { D(x.pid).querySelector('b').innerHTML = '&nbsp;'; });
+        if (n3d) await Promise.all(r.map(x => window.Dice.rollInto(D(x.pid).querySelector('.dice-stage'), x.v, { size, ms: 1300 + Math.random() * 300 })));
+        r.forEach(x => { D(x.pid).querySelector('b').textContent = x.v; });
         const top = Math.max(...r.map(x => x.v)), tied = r.filter(x => x.v === top);
         if (tied.length > 1 && i < roll.rounds.length - 1) { say(`Tie on ${top}! ${tied.map(x => label(x.pid)).join(' and ')} roll again.`); await wait(reduce ? 900 : 1100); }
       }
+      if (!box.isConnected) return;
       const w = D(roll.first); w.classList.add('win');
       say(label(roll.first) === 'You' ? 'You go first!' : `${label(roll.first)} goes first.`);
       await wait(reduce ? 1600 : 1400);
@@ -203,9 +205,12 @@
       if (!st.looping) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
       const gm = st.game;
       if (!st.looping) {                                      // the dice on screen (not between the games of a Loop)
+        let told = false;
+        const tell = () => { if (told) return; told = true; gm.onRoll = null; announce(); const d = st.root.querySelector('.vs-dice'); if (d) d.remove(); };
+        gm.onRoll = tell;                                     // pressing Play or +1 turn while the dice tumble skips them
         await showRoll(mode, roll, pod.match.names);
         if (st.game !== gm) return;                           // a new game was started meanwhile
-        announce(); render(mode);
+        tell(); render(mode);
       }
       if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
     } finally { q('.vs-new').disabled = false; }
@@ -444,6 +449,7 @@
   // pace = true: keep playing, one step per pause of the 🐢…🐇 slider, until the game ends or Pause is pressed.
   async function advanceRun(mode, howMany, pace) {
     const st = V[mode], gm = st.game; if (!gm || gm.busy) return;
+    if (gm.onRoll) gm.onRoll();                               // the dice for who goes first are still tumbling: skip them
     gm.busy = true; gm.playing = !!pace;
     gm.quiet = gm.human == null && !pace && howMany > 1;       // every seat on autopilot, played out at once: no sound
     try {

@@ -61,6 +61,7 @@ const shots = process.env.D20_SHOTS;
     await p.waitForSelector('.vs-dice', { timeout: 30000 });
     const n = mode === 'duel' ? 2 : 4;
     check(`${mode}: a D20 for every player appears`, (await p.$$('.vs-dice .vs-die')).length === n);
+    check(`${mode}: each is the 3D d20 model (twenty faces)`, await p.evaluate(() => [...document.querySelectorAll('.vs-dice .vs-die')].every(d => d.querySelectorAll('.d20-face').length === 20)));
     if (shots) { await p.waitForTimeout(300); await p.screenshot({ path: `${shots}/d20-${mode}-rolling.png` }); }
     await p.waitForSelector('.vs-die.win', { timeout: 10000 });
     const r = await p.evaluate(m => {
@@ -76,10 +77,17 @@ const shots = process.env.D20_SHOTS;
     check(`${mode}: once they land, the log has the rolls and who goes first`, /Rolled a D20 to see who goes first/.test(log2) && /goes first\.|go first\./.test(log2), log2.slice(0, 220));
     check(`${mode}: nobody plays until the dice are done`, r.turnsPlayed === 0, r.turnsPlayed + ' turns');
     // with every seat on autopilot the game waits for Play or +1 turn, as before the dice
-    await p.click(`#tab-${mode} .vs-next`);
+    await p.evaluate(m => document.querySelector(`#tab-${m} .vs-next`).click(), mode);          // (a mouse click can land under the sticky top bar)
     check(`${mode}: the dice go away, then the game plays (+1 turn)`, await p.waitForFunction(m => __isfVersus[m].game.games.some(g => g.turn > 0), mode, { timeout: 20000 }).then(() => true, () => false));
     check(`${mode}: the player who won the roll takes the first turn`, await p.evaluate(m => { const gm = __isfVersus[m].game, f = gm.match.order[0].pid; return gm.games[f].turn === 1 && gm.games.every(g => g.pid === f || g.turn === 0); }, mode));
   }
+  // pressing +1 turn while the dice tumble skips them
+  await p.evaluate(() => { document.querySelector('[data-tab=duel]').click(); document.querySelector('#tab-duel .vs-new').click(); });
+  await p.waitForSelector('#tab-duel .vs-dice', { timeout: 30000 });
+  await p.evaluate(() => document.querySelector('#tab-duel .vs-next').click());
+  await p.waitForTimeout(150);
+  const sk = await p.evaluate(() => ({ dice: !!document.querySelector('.vs-dice'), log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].map(e => e.textContent).join(' | ') }));
+  check('pressing +1 turn while the dice tumble skips them, and the log still has the rolls first', !sk.dice && /Rolled a D20/.test(sk.log) && sk.log.indexOf('Rolled a D20') < sk.log.indexOf('turn 1'), sk.log.slice(0, 200));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

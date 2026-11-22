@@ -324,22 +324,20 @@
 @keyframes vs-dice-in { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
 @keyframes vs-dice-out { to { opacity: 0; transform: translate(-50%, -54%) scale(.97); } }
 .vs-dice-card { background: linear-gradient(180deg, rgba(23, 42, 58, .96), rgba(14, 28, 40, .96)); border: 1px solid var(--border); border-radius: 16px; padding: 14px 20px 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); text-align: center; }
-.vs-dice-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; }
+.vs-dice-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 34px; }   /* room for the dice to bounce up as they tumble */
 .vs-dice-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
-.vs-die { position: relative; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: opacity .3s, filter .3s; }
-.vs-die svg { width: 72px; height: 72px; overflow: visible; }
-.vs-die .d20-out { fill: #1d3a52; stroke: var(--die, #8fd8ff); stroke-width: 3; stroke-linejoin: round; }
-.vs-die .d20-in { fill: rgba(255, 255, 255, .06); stroke: var(--die, #8fd8ff); stroke-width: 1.5; stroke-linejoin: round; opacity: .7; }
-.vs-die .d20-edge { stroke: var(--die, #8fd8ff); stroke-width: 1.2; opacity: .45; fill: none; }
-.vs-die b { position: absolute; top: 25px; left: 0; right: 0; font-size: 22px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
-.vs-die span { font-size: 12.5px; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
-.vs-die.a { --die: var(--ice, #8fd8ff); } .vs-die.b { --die: #f7cf6f; } .vs-die.c { --die: #7fd69a; } .vs-die.d { --die: #e79ad0; }
-.vs-die.rolling svg { animation: vs-tumble .32s linear infinite; }
-@keyframes vs-tumble { 0% { transform: rotate(0) translateY(0); } 25% { transform: rotate(90deg) translateY(-6px); } 50% { transform: rotate(180deg) translateY(0); } 75% { transform: rotate(270deg) translateY(-4px); } 100% { transform: rotate(360deg) translateY(0); } }
+.vs-die { position: relative; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: opacity .3s, filter .3s; }
+.vs-die .dice-stage { width: 100px; height: 100px; }                 /* the 3D d20 of dice.js tumbles in here */
+.vs-die b { font-size: 22px; font-weight: 800; line-height: 26px; min-height: 26px; color: #fff; font-variant-numeric: tabular-nums; }
+.vs-die span { font-size: 12.5px; max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+/* each player's die in their seat colour (the dice.js d20 is blue by default, seat a's colour) */
+.vs-die.b .d20-face { background: linear-gradient(160deg, #ffe7a3, #e2a92c 60%, #9c6b0f); }
+.vs-die.c .d20-face { background: linear-gradient(160deg, #b8f2c8, #3fae66 60%, #1d6b3a); }
+.vs-die.d .d20-face { background: linear-gradient(160deg, #ffd0ee, #d066ad 60%, #8a2f6c); }
 .vs-die.out { opacity: .35; filter: grayscale(.6); }
-.vs-die.win svg { filter: drop-shadow(0 0 10px var(--die)) drop-shadow(0 0 18px var(--die)); animation: vs-win .5s ease-out; }
-.vs-die.win span { color: #fff; font-weight: 700; }
-@keyframes vs-win { 40% { transform: scale(1.15); } }
+.vs-die.win .dice-stage { filter: drop-shadow(0 0 10px #f5d17a) drop-shadow(0 0 20px rgba(245, 209, 122, .6)); animation: vs-win .5s ease-out; }
+.vs-die.win b, .vs-die.win span { color: #f5d17a; font-weight: 700; }
+@keyframes vs-win { 40% { transform: scale(1.12); } }
 .vs-dice-say { margin-top: 10px; min-height: 20px; font-weight: 700; color: #f5d17a; }
-@media (max-width: 600px) { .vs-dice { top: 38%; width: calc(100vw - 24px); } .vs-dice-row { gap: 8px; } .vs-die { width: 70px; } .vs-die svg { width: 58px; height: 58px; } .vs-die b { top: 19px; font-size: 19px; } }
+@media (max-width: 600px) { .vs-dice { top: 38%; width: calc(100vw - 24px); } .vs-dice-row { gap: 4px; } .vs-die { width: 76px; } .vs-die .dice-stage { width: 76px; height: 76px; } .vs-die b { font-size: 19px; } }
 @media (prefers-reduced-motion: reduce) { .vs-dice, .vs-dice.bye { animation: none; } }

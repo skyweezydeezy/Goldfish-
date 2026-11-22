@@ -85,18 +85,30 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const hold = (box, ms) => new Promise(r => setTimeout(() => { box.classList.add('out'); setTimeout(() => { box.remove(); r(); }, 300); }, ms));
 
+  // the twenty faces of a d20 into `body`; returns the rotation that shows face n at the front. size: the edge length in px
+  function buildD20(body, n, size) {
+    const faces = icosa(size || 46);
+    for (const f of faces) {
+      const t = document.createElement('div'); t.className = 'd20-face'; t.style.width = f.w + 'px'; t.style.height = f.h + 'px';
+      t.style.transform = css(f.M, f.o[0], f.o[1], f.o[2]); t.innerHTML = `<span>${f.n}</span>`; if (f.n === 6 || f.n === 9) t.firstChild.classList.add('dot');
+      body.appendChild(t);
+    }
+    return faces.find(f => f.n === n).front;
+  }
+  // A d20 that tumbles inside any element and lands on n (Duel and Pod roll one each to see who goes first). Resolves when it has landed.
+  // opts: { size: edge length in px (46), ms: how long it tumbles (1300) }. The element should be a .dice-stage (it gives the perspective).
+  function rollInto(stage, n, opts) {
+    const o = opts || {}; stage.textContent = '';
+    const body = document.createElement('div'); body.className = 'die d20'; stage.appendChild(body);
+    return spin(body, buildD20(body, n, o.size), o.ms || 1300, 3 + Math.random() * 2);
+  }
+
   function die(x) {
     const box = card(x, `rolls a d${x.die}…`), stage = box.querySelector('.dice-stage');
     const body = document.createElement('div'); body.className = 'die d' + x.die; stage.appendChild(body);
     let final;
     if (x.die === 20) {
-      const faces = icosa(46);
-      for (const f of faces) {
-        const t = document.createElement('div'); t.className = 'd20-face'; t.style.width = f.w + 'px'; t.style.height = f.h + 'px';
-        t.style.transform = css(f.M, f.o[0], f.o[1], f.o[2]); t.innerHTML = `<span>${f.n}</span>`; if (f.n === 6 || f.n === 9) t.firstChild.classList.add('dot');
-        body.appendChild(t);
-      }
-      final = faces.find(f => f.n === x.n).front;
+      final = buildD20(body, x.n, 46);
     } else {
       const s = 30, faces = [[1, [1, 0, 0, 0, 1, 0, 0, 0, 1]], [6, axisAngle(0, 1, 0, Math.PI)], [2, axisAngle(0, 1, 0, Math.PI / 2)], [5, axisAngle(0, 1, 0, -Math.PI / 2)], [3, axisAngle(1, 0, 0, -Math.PI / 2)], [4, axisAngle(1, 0, 0, Math.PI / 2)]];
       for (const [n, R] of faces) {
@@ -147,5 +159,5 @@
     if (list.length) show(list);
     return list.length;
   }
-  window.Dice = { fromEvents, read, show };
+  window.Dice = { fromEvents, read, show, rollInto };
 })();

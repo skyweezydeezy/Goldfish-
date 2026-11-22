@@ -163,6 +163,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | ui/looks | Playmat and sleeve picker (browser test) |
 | ui/sound | Music and sound effects: the Sound panel, special sounds for famous cards, real audio output measured, an effect for each action, mute, reload, phones (browser test) |
 | ui/card-effects | On-screen card effects: the Lightning Bolt strike, the Cyclonic Rift tornado on the Practice table, its single flash, reduced motion, | ui/rift | Cyclonic Rift in a real Duel game: the tornado, exactly the opponent's returned cards fly into their hand, lands stay (browser test) |
+| ui/d20 | Who goes first in Duel and Pod: a D20 each, fair over 20,000 rolls, ties roll again, the same dice on both devices, the dice on screen before play (browser test) |
 only one at a time (browser test, no internet) |
 | ui/duel-steady | Duel playing itself: redraws that change nothing move no card; tapped cards are dimmed by a dark layer, not a CSS filter; card backs are kept across redraws and show the sleeve art as an image (they flashed on phones) (browser test) |
 | ui/table-fit | Goldfish Table fits one screen on iPhone and iPad (portrait and landscape), piles beside the battlefield, log drawer; a phone held sideways scrolls instead, with the toolbar on top, room for cards and every hand card reachable (browser test) |

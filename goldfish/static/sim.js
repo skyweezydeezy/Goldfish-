@@ -624,6 +624,7 @@
         if (/^(?:∞ — )?at the beginning of your end step, exile up to one other target nonland permanent you control, then return that card to the battlefield under its owner's control\.?$/i.test(line)) { a.harnessFlicker = true; rec.status = 'ok'; continue; }
         if (/^~ deals x damage to each creature without flying and each player\.?$/i.test(line)) { a.spellFx.push({ type: 'earthquake' }); rec.status = 'ok'; continue; }          // Earthquake
         if (/^you draw cards equal to the sacrificed creature's power, then you gain life equal to its toughness\.?$/i.test(line)) { a.spellFx.push({ type: 'sacStats' }); rec.status = 'ok'; continue; }          // Momentous Fall
+        if (/^each player draws x cards\.?$/i.test(line)) { a.spellFx.push({ type: 'draw', n: 'X' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Prosperity (your cards; the others' are not counted)
         if (/^draw cards equal to the power of target creature you control\.?$/i.test(line)) { a.spellFx.push({ type: 'drawBestPower' }); rec.status = 'ok'; continue; }          // Soul's Majesty
         if (/^each opponent loses two times x life\. you gain life equal to the life lost this way\.?$/i.test(line)) { a.spellFx.push({ type: 'drainGain', mult: 2 }); rec.status = 'ok'; continue; }          // Debt to the Deathless
         // spells that choose a creature type as they resolve: the type is read when they resolve (the caster's choice, else the deck's type)
@@ -2563,6 +2564,16 @@
         if (/^whenever one or more creatures die, put a ([a-z]+) counter on ~\.?$/i.test(line)) { const r = parseEffects(line.replace(/^[^,]*, /, '')); TR(['dies'], r.fx, { who: 'a creature you control', perTurn: false, nontoken: false }, 'partial'); continue; }          // Chainsaw (your creatures)
         if (/^at the beginning of combat on your turn, populate\.?$/i.test(line)) { TR(['combat'], [{ type: 'populate' }]); continue; }          // Nesting Dovehawk
         if (/^at the beginning of your upkeep, you may return target creature card from your graveyard to the battlefield\.?$/i.test(line)) { TR(['upkeep'], [{ type: 'reanimate', from: 'own' }]); continue; }          // Reya Dawnbringer
+        // ---- rules batch 31
+        if ((bm = line.match(/^whenever an? ([a-z]+) you control dies, (.+)$/i)) && !/^(?:creature|permanent|artifact|token)$/i.test(bm[1])) { const r = parseEffects(bm[2]); if (r.fx.length) { TR(['dies'], r.fx, { who: 'a creature you control', subtype: bm[1].toLowerCase(), perTurn: false, nontoken: false }, /you may pay/i.test(bm[2]) ? 'partial' : 'ok'); continue; } }          // Bishop of Wings, Atla Palani, Slimefoot (a "you may pay" cost is not charged: approximated)
+        if ((bm = line.match(/^whenever ~ or another nontoken ([a-z]+) you control enters, (.+)$/i))) { const r = parseEffects(bm[2]); if (r.fx.length) { TR(['permEtb'], r.fx, { other: false, nontoken: true, filter: bm[1].toLowerCase() }); continue; } }          // Arahbo, the First Fang
+        if ((bm = line.match(/^when ~ enters, each opponent loses life equal to the number of ([a-z]+)s you control\. you gain life equal to the life lost this way\.?$/i))) { TR(['etb'], [{ type: 'perType', op: 'drainGain', filter: bm[1].toLowerCase() }]); continue; }          // Malakir Bloodwitch
+        if ((bm = line.match(/^when ~ enters, it deals damage to any target equal to the number of ([a-z]+)s you control\.?$/i))) { TR(['etb'], [{ type: 'perType', op: 'damage', filter: bm[1].toLowerCase() }]); continue; }          // Omnath, Locus of the Roil
+        if (/^whenever ~ attacks, return up to one target artifact card from your graveyard to the battlefield\.?$/i.test(line)) { TR(['attack'], [{ type: 'yardBack', what: 'artifact', dest: 'battlefield' }]); continue; }          // Salvation Engine
+        if (/^when ~ dies, put target creature card from your graveyard on top of your library\.?$/i.test(line)) { TR(['dies'], [{ type: 'yardBack', what: 'creature', dest: 'top' }], { who: '~' }); continue; }          // Golgari Thug
+        if (/^when ~ enters, return target enchantment card that isn't a god from your graveyard to your hand\.?$/i.test(line)) { TR(['etb'], [{ type: 'yardBack', what: 'enchantment', dest: 'hand', not: 'god' }]); continue; }          // Heliod, the Radiant Dawn
+        if ((bm = line.match(/^at the beginning of your end step, if you have fewer than (\w+) cards in hand, draw cards equal to the difference\.?$/i))) { TR(['end'], [{ type: 'drawTo', n: num(bm[1]) }]); continue; }          // The Ten Rings
+        if ((bm = line.match(/^whenever a creature you control with power (\d+) or less attacks, ~ deals (\d+) damage to the player or planeswalker that creature is attacking\.?$/i))) { TR(['attackAny'], [{ type: 'damage', n: +bm[2] }], { once: false, maxPow: +bm[1] }); continue; }          // Raid Bombardment
         // ---- rules batch 30
         if (/^when ~ enters, each player gets a poison counter\.?$/i.test(line)) { TR(['etb'], [{ type: 'poison', n: 1 }], null, 'partial'); continue; }          // Ichor Rats (the opponents' counter)
         if (/^whenever another creature you control enters, that creature gets \+2\/\+0 and gains haste until end of turn\.?$/i.test(line)) { TR(['permEtb'], [{ type: 'subjectPump', p: 2, t: 0, keywords: ['haste'] }], { other: true, nontoken: false, filter: 'creature' }); continue; }          // Ogre Battledriver
@@ -4384,6 +4395,8 @@
     }
   }
 
+  // the creature type you control most of (a choose-a-type spell in a deck with no type of its own)
+  function bestTribeOnBoard(g) { const cnt = {}; for (const q of g.battlefield) if (isCreaturePerm(q)) for (const w of ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean)) cnt[w] = (cnt[w] || 0) + 1; return Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x] || x.localeCompare(y))[0] || null; }
   // "choose a color": the color most cards in your library and hand have (not the one the card excludes)
   function autoColor(g, not) { const cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) if (c !== not) cnt[c] = (cnt[c] || 0) + 1; return Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0] || (not === 'G' ? 'W' : 'G'); }
   // the color chosen for a permanent as it entered: what it taps for, its anthem and its land Aura read it (also called for a person's choice)
@@ -5399,6 +5412,13 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'perType': { const k = g.battlefield.filter(q => matchesFilter(q.card, f.filter)).length; if (!k) break; if (f.op === 'damage') damageOpp(g, k, ev, source); else { damageOpp(g, k, ev, source, false, true); gainLife(g, k * Math.max(1, otherPlayers(g).filter(o => !o.dead).length), ev, source); } break; }          // Malakir Bloodwitch, Omnath, Locus of the Roil
+        case 'yardBack': { const opts = g.graveyard.filter(i => (f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'enchantment' ? i.card.a.isEnchantment : i.card.a.isCreature) && !(f.not && matchesFilter(i.card, f.not)) && !(source && source.inst === i));          // Salvation Engine, Golgari Thug, Heliod
+          let c = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c && g.ask && !g.dry && opts.length > 1) c = decide(g, { kind: 'search', options: opts, def: c, optional: true, f: { dest: f.dest === 'top' ? 'library' : f.dest }, source }); if (!c) break;
+          g.graveyard.splice(g.graveyard.indexOf(c), 1);
+          if (f.dest === 'battlefield') { const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source }); } else if (f.dest === 'top') { g.library.unshift(c); ev.push({ type: 'note', text: `${c.card.name} is put on top of your library`, source }); } else { g.hand.push(c); ev.push({ type: 'note', text: `${c.card.name} returns to your hand`, source }); }
+          break; }
+        case 'drawTo': { const k = (f.n || 0) - g.hand.length; if (k > 0) draw(g, Math.min(k, 30), ev); break; }          // The Ten Rings
         case 'subjectPump': if (subject && g.battlefield.includes(subject)) { subject.eotP = (subject.eotP || 0) + (f.p || 0); subject.eotT = (subject.eotT || 0) + (f.t || 0); if (f.keywords && f.keywords.length) subject.eotKw = new Set([...(subject.eotKw || []), ...f.keywords]); touch(g); } break;          // Ogre Battledriver
         case 'randomSpellBack': { const cs = g.graveyard.filter(i => i.card.a.isInstantSorcery); if (cs.length) { const c = cs[Math.floor(g.rnd() * cs.length)]; g.graveyard.splice(g.graveyard.indexOf(c), 1); g.hand.push(c); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${c.card.name} returns to your hand`, source }); } break; }          // Exalted Flamer of Tzeentch
         case 'drawBestPower': { let t = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; t = ownCreature(g, t, 'pump', source); const k = t ? Math.max(0, powerOf(g, t)) : 0; if (k) draw(g, Math.min(k, 30), ev); break; }          // Soul's Majesty
@@ -5406,7 +5426,7 @@
         case 'drainGain': { const X = Math.max(1, g.xValue || 1) * (f.mult || 1), k = Math.max(1, otherPlayers(g).filter(o => !o.dead).length); damageOpp(g, X, ev, source, false, true); gainLife(g, X * k, ev, source); break; }          // Debt to the Deathless
         case 'tribeSpell': {          // Kindred Charge, Distant Melody, Kindred Dominance, Raise the Palisade, Crippling Fear, Pact of the Serpent, Haunting Voyage
           let tr = g._castTribe || (g.deck && g.deck.tribe) || null;
-          if (!tr) { const cnt = {}; for (const q of g.battlefield) if (isCreaturePerm(q)) for (const w of ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean)) cnt[w] = (cnt[w] || 0) + 1; tr = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x] || x.localeCompare(y))[0] || null; }          // no deck type: the type you have most of
+          if (!tr) tr = bestTribeOnBoard(g);          // no deck type: the type you have most of
           if (!tr) break;
           const is = q => matchesFilter(q.card, tr.toLowerCase()), sides = [g].concat(otherPlayers(g));
           ev.push({ type: 'note', text: `Chosen creature type: ${tr}`, source: null });
@@ -10391,7 +10411,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
         if (!t.kinds.includes('attackAny')) continue;
         if (t.minAttackers && attackers.length < t.minAttackers) continue;
-        for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if (!t.filter || matchesFilter(p.card, t.filter)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
+        for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if ((!t.filter || matchesFilter(p.card, t.filter)) && !(t.maxPow != null && powerOf(g, p) > t.maxPow)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
       }
       settle(g, ev);          // attack triggers resolve before blockers and damage (tokens they make attacking join below)
       if (g._extraAtk && g._extraAtk.length) for (const r of g._extraAtk.splice(0)) if (g.battlefield.includes(r)) attackers.push(r);          // Kari Zev's Ragavan enters attacking
@@ -12570,7 +12590,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenOf, COLOR_NAME, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, setChosenColor, autoColor, eachTrigger, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, setChosenColor, autoColor, eachTrigger, bestTribeOnBoard, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

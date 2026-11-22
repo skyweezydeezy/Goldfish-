@@ -109,5 +109,18 @@ const castMimic = (p, chooser) => { const a = p.games[0]; lands(a, 2); const mm 
     check(`...choosing ${otype}: that creature returns, the Merfolk stay in the graveyard`, a.battlefield.some(q => q.card.name === oth[0].name) && mer.every(c => a.graveyard.some(i => i.card.name === c.name)), a.battlefield.map(q => q.card.name).filter(n => !/Swamp|Island/.test(n)).join(', ')); }
   else console.log('SKIP  Bloodline Bidding is not in the set database'); }
 
+// ---- a color chosen as a permanent enters (Caged Sun)
+{ const cs = find('Caged Sun');
+  if (cs) { const mk = seat => { const pod = G.newPod([G.buildDeck(MM.cards.concat([cs]), MM.tokens), G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; }); if (seat) D.seat(pod.games[0]); return pod; };
+    const pod = mk(true), a = pod.games[0]; const i = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Caged Sun') }; a.hand.push(i);
+    const auto = G.autoColor(a, null); const qs = [];
+    D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(x => x.iid === i.iid), true), q => { qs.push(q); return q.kind === 'color' ? q.options.findIndex(o => o.name === 'Red') : 'none'; });
+    const q = qs.find(x => x.kind === 'color'), perm = a.battlefield.find(x => x.card.name === 'Caged Sun');
+    check('Caged Sun asks "choose a color": the five colors, the autopilot\'s (the color most of your cards have) preselected', !!q && q.title === 'Caged Sun: choose a color' && q.options.map(o => o.name).join() === 'White,Blue,Black,Red,Green' && q.options[q.def[0]].name === G.COLOR_NAME[auto], q && q.options.map(o => o.name + ' (' + o.note + ')').join(', '));
+    check('...choosing Red: the permanent\'s color is red, and its tag and log line say "color: Red"', perm && perm.chosenColor === 'R' && JSON.stringify(G.chosenOf(a, perm)) === '{"what":"color","name":"Red"}', perm && perm.chosenColor);
+    const p2 = mk(false), b = p2.games[0]; const j = { iid: b.nextIid++, card: b.deck.unique.find(c => c.name === 'Caged Sun') }; b.hand.push(j); G.castCard(b, j, true);
+    check('...the autopilot takes its own color unasked', b.battlefield.find(x => x.card.name === 'Caged Sun').chosenColor === G.autoColor(b, null)); }
+  else console.log('SKIP  Caged Sun is not in the set database'); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

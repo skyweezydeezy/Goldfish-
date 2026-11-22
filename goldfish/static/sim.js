@@ -2942,6 +2942,9 @@
   // (above: the deck's tribe, or the Policy lab's choice), and Cloud Key's "choose artifact, creature, ..." the card type it casts most.
   // An instant or sorcery that chooses as it resolves (Kindred Dominance, Distant Melody, Kindred Summons) names it too, for the log.
   // A choice made when an ability is activated (Riptide Shapeshifter) is not one: null.
+  const COLOR_NAME = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
+  // what this permanent chose as it entered: its creature type or card type (chosenFor), or its color (Caged Sun, Utopia Sprawl)
+  function chosenOf(g, p) { return chosenFor(g, p.card) || (p.chosenColor ? { what: 'color', name: COLOR_NAME[p.chosenColor] || p.chosenColor } : null); }
   function chosenFor(g, card) {
     if (!card) return null;
     const t = [card.oracle_text].concat((card.card_faces || []).map(f => f.oracle_text)).filter(Boolean).join('\n'), d = g && g.deck;
@@ -4432,7 +4435,9 @@
     if (g.nextCreatureCounter === g.turn && !g.dry && isCreaturePerm(perm) && !perm.token) { g.nextCreatureCounter = null; addCounters(g, perm, '+1/+1', 1, ev, perm); }          // "the next creature spell enters with an additional counter"
     if (a.fading) perm.fade = a.fading;
     if (a.vanishing) perm.other = Object.assign({}, perm.other, { time: a.vanishing });
-    if (a.choosesColor) setChosenColor(g, perm, autoColor(g, a.choosesColor.not));          // the autopilot's color: the one most of your cards have (a person is asked: the decision points)
+    if (a.choosesColor) { const auto = autoColor(g, a.choosesColor.not); let col = auto;          // a person chooses the color, the autopilot's as the default
+      if (g.ask && !g.dry) { const opts = COLORS.filter(c => c !== a.choosesColor.not), cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) cnt[c] = (cnt[c] || 0) + 1; col = decide(g, { kind: 'color', options: opts, def: opts.includes(auto) ? auto : opts[0], counts: cnt, source: { card: inst.card } }) || auto; }
+      setChosenColor(g, perm, col); }          // the autopilot's color: the one most of your cards have (a person is asked: the decision points)
     if (a.gauntletAnthem || a.gauntletMana) { perm.gauntletColor = perm.chosenColor || autoColor(g, null); g.gauntletSeen = true; if (g.opp) g.opp.gauntletSeen = true; touch(g); }          // Gauntlet of Power: your main color
     if (a.besieged) { const pool = g.library.concat(g.hand).filter(i => !i.card.a.isLand); perm.siegeMode = pool.length && pool.filter(i => i.card.a.isArtifact).length / pool.length >= 0.3 ? 'mirran' : 'phyrexian'; }          // Mirrodin Besieged
     if (a.outpost) perm.siegeMode = (tableHas(g, 'sacOutlet') && g.battlefield.some(q => q.card.a.sacOutlet)) || g.battlefield.filter(q => q.token && isCreaturePerm(q)).length >= 4 ? 'dragons' : 'khans';          // Outpost Siege: Dragons when the board keeps losing creatures (tokens, a sacrifice outlet)
@@ -12543,7 +12548,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
-    postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
+    postCombatTriggers, chosenOf, COLOR_NAME, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, setChosenColor, autoColor, eachTrigger, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };

@@ -3,7 +3,7 @@
 // also scanned back and must read exactly the text it was made from (texts of 1 to 950 characters, QR versions 1 to 24).
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawnSync } = require('child_process');
-const qr = require('../../goldfish/static/qr.js');
+const qr = require('../../parked/remote/qr.js');
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
 const text = n => { let t = ''; for (let i = 0; i < n; i++) t += 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.#:/'[(i * 7 + n) % 68]; return t; };

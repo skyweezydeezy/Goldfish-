@@ -5,6 +5,7 @@
 // own comparison before every move), a land and a spell each, a spell of one player countered by the other, an attack blocked by
 // the other player, a reload and rejoin with the game going on where it was, and a winner on both devices.
 const { chromium } = require('playwright');
+const park = require('../lib/parked-remote.js');          // Play a friend is parked: loaded from parked/remote
 const fs = require('fs'), path = require('path');
 const UA = 'goldfish-calc-test/0.1';
 let pass = 0, fail = 0;
@@ -18,6 +19,7 @@ const BASE = 'http://127.0.0.1:8800/';
   const errs = [];
   const device = async label => {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 950 }, serviceWorkers: 'block' });
+    await park(ctx);
     await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); s.bg = false; s.sfx = false; s.music = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } catch (e) {} });
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const r = route.request();

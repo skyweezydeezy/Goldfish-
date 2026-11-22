@@ -1,5 +1,9 @@
 /* ICEYfish - Duel against a friend on another device.
 
+   PARKED: taken out of the app at the user's request (it did not connect on their iPhone and iPad). Not loaded by index.html and not
+   deployed. To bring it back: move this folder's files into goldfish/static (vendor/ too), add qr.js and remote.js after versus.js
+   in index.html and the three files to SHELL in sw.js. The tests load it from here (tests/lib/parked-remote.js).
+
    Both devices run the whole game from the same seed, decks and options; only moves and answers cross between them (versus.js makes
    the moves: startRemote, feed). This file owns the rest: the list of what is shared and each player's acceptance of it, the
    connection (WebRTC, set up by passing two codes by hand: no server of ours), the message log, the comparison of the two games, and
@@ -32,14 +36,7 @@
   //            does not expire; changing it means changing this file.
   //   service: the web address of a service that holds the Metered secret key and hands out credentials that expire
   //            (server/php/turn/ice.php, or /ice of server/turn-service.js). Not used.
-  const METERED = { username: '3ee4b0a0a24eab2f0cbece7b', credential: 'tzpAlPTE8yY+RLLX' };          // the user's Metered credential (public by design)
-  const RELAY = { name: 'Metered', service: null, servers: [
-    { urls: 'stun:stun.relay.metered.ca:80' },
-    Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, METERED),
-    Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, METERED),
-    Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, METERED),
-    Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, METERED),
-  ] };
+  const RELAY = { name: 'Metered', service: null, servers: null };          // servers: the ICE servers of a Metered credential (none now: the one used while this was live was public and should be deleted)
   const relayOn = !!(RELAY.servers || RELAY.service);
   const DISCLOSURE_VERSION = RELAY.service ? 4 : relayOn ? 3 : 2;
   const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';

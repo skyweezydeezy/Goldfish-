@@ -3,6 +3,7 @@
 // connection; a fixed relay credential written into the site is used as it is. No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever both devices say they could
 // not connect and why. Needs playwright, the :8800 server and Scryfall.
 const { chromium } = require('playwright');
+const park = require('../lib/parked-remote.js');          // Play a friend is parked: loaded from parked/remote
 const http = require('http');
 const fs = require('fs'), path = require('path');
 const UA = 'goldfish-calc-test/0.1';
@@ -11,10 +12,11 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8');
 
 (async () => {
-  const b = await chromium.launch({ args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] });
+  const b = await chromium.launch({ args: ['--disable-features=WebRtcHideLocalIpsWithMdns,LocalNetworkAccessChecks'] });
   const errs = [];
   const device = async label => {
     const ctx = await b.newContext({ serviceWorkers: 'block' });
+    await park(ctx);
     await ctx.addInitScript(() => { localStorage.setItem('isf_sound', JSON.stringify({ bg: false, sfx: false, music: false })); });
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const r = route.request(), cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
@@ -44,13 +46,7 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
     res.end(JSON.stringify({ iceServers: [{ urls: 'turn:relay.test.invalid:3478', username: 'u-test', credential: 'p-test' }], expires: new Date(Date.now() + 12 * 3600e3).toISOString() }));
   });
   await new Promise(r => relay.listen(0, '127.0.0.1', r));
-  // the relay built into the site: Metered's servers with the user's credential
   await A.evaluate(() => { const R = window.__isfRemote; R.ice = null; R.state.failAfter = 60000; });
-  await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
-  const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers);
-  check('as shipped, the site connects through Metered\'s relay (TURN on 80 and 443, TURNS) with a login, as well as STUN', built.some(s => [].concat(s.urls).includes('turns:global.relay.metered.ca:443?transport=tcp') && s.username) && built.some(s => [].concat(s.urls).includes('turn:global.relay.metered.ca:80') && s.credential) && built.some(s => /^stun:/.test([].concat(s.urls)[0])), built.map(s => [].concat(s.urls).join(' ')).join(', '));
-  check('...and the list of what is shared says so (the relay line, version 3)', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 3 && R.DISCLOSURE.some(t => /Metered's relay server/.test(t)) && !R.DISCLOSURE.some(t => /ICEYfish server/.test(t)); }));
   await A.evaluate(u => { const R = window.__isfRemote; R.relayServers = null; R.relayService = u; }, `http://127.0.0.1:${relay.address().port}/ice`);
   await A.click('#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });

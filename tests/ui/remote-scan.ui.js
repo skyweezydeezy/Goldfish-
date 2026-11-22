@@ -3,8 +3,9 @@
 // camera frames (with jsQR, as on Safari, which has no reader of its own) and shows B's reply; the reply handed to A's scanner connects
 // the two and the game starts. Needs playwright, the :8800 server and Scryfall.
 const { chromium } = require('playwright');
+const park = require('../lib/parked-remote.js');          // Play a friend is parked: loaded from parked/remote
 const fs = require('fs'), os = require('os'), path = require('path');
-const qr = require('../../goldfish/static/qr.js');
+const qr = require('../../parked/remote/qr.js');
 const UA = 'goldfish-calc-test/0.1';
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
@@ -25,6 +26,7 @@ function film(text, file) {
   const errs = [];
   const device = async (b, label, opts) => {
     const ctx = await b.newContext(Object.assign({ viewport: { width: 1280, height: 950 }, serviceWorkers: 'block' }, opts || {}));
+    await park(ctx);
     await ctx.addInitScript(() => { localStorage.setItem('isf_sound', JSON.stringify({ bg: false, sfx: false, music: false })); try { delete window.BarcodeDetector; } catch (e) {} window.BarcodeDetector = undefined; delete window.BarcodeDetector; });
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const r = route.request(), cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

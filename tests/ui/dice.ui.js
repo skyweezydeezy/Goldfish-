@@ -1,6 +1,6 @@
 // Dice and coins (dice.js): the game's own notes are read ("Rolled a d20: 14", "Lae'zel's Acrobatics: rolled 7", "Delina rolls 17",
 // "Rolled 5: 5 Faerie Dragons", "Krark: flip won / flip lost"), and a 3D d20, d6 or coin lands on the result the game used, front and upright.
-// Clicks pass through the overlay, and it does not pause anything.
+// Clicks pass through the overlay, and it does not pause anything. A meld (Gisela + Bruna) shows the two cards sliding into Brisela.
 const { chromium } = require('playwright');
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
@@ -37,6 +37,17 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.waitForSelector('.dice-box.done', { timeout: 5000 });
   const face = await p.evaluate(() => { const L = document.querySelector('.dice-layer'); L.style.pointerEvents = 'auto'; const s = document.querySelector('.dice-box .dice-stage').getBoundingClientRect(); const el = document.elementFromPoint(s.left + s.width / 2, s.top + s.height / 2); L.style.pointerEvents = ''; return el && el.textContent; });
   check('a lost flip lands on LOSE', face === 'LOSE' && /loses the flip/.test(await p.$eval('.dice-box .dice-cap', e => e.textContent)), face);
+  // ---- Meld: Gisela and Bruna slide together into Brisela (her picture from the permanent the game made) ----
+  await p.waitForFunction(() => !document.querySelector('.dice-box'), null, { timeout: 6000 });
+  const px = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="63" height="88"><rect width="63" height="88" fill="#634"/></svg>');
+  await p.evaluate(px => window.Dice.fromEvents([{ type: 'meld', parts: ['Gisela, the Broken Blade', 'Bruna, the Fading Light'], into: 'Brisela, Voice of Nightmares', perm: { card: { remote_images: [px] } } }]), px);
+  await p.waitForSelector('.meld-box', { timeout: 4000 });
+  const alts = await p.$$eval('.meld-box img', xs => xs.map(x => x.alt));
+  check('meld: both halves and the melded card are shown', alts.join(' | ') === 'Gisela, the Broken Blade | Bruna, the Fading Light | Brisela, Voice of Nightmares', alts.join(' | '));
+  check('meld: the melded card uses the picture of the permanent the game made', (await p.$eval('.meld-box .meld-into', i => i.src)) === px);
+  await p.waitForSelector('.meld-box.done', { timeout: 4000 });
+  check('meld: the caption ends on the melded card', /into Brisela, Voice of Nightmares/.test(await p.$eval('.meld-box .dice-cap', e => e.textContent)));
+  check('meld: shown even with dice animations turned off', await p.evaluate(() => { localStorage.setItem('isf_dice', '0'); const n = window.Dice.fromEvents([{ type: 'meld', parts: ['A', 'B'], into: 'C', perm: null }, { type: 'note', text: 'Rolled a d20: 3' }]); localStorage.removeItem('isf_dice'); return n === 1; }));
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

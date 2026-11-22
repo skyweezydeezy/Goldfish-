@@ -69,7 +69,7 @@ function choicesOf(c, a) {
   return out;
 }
 // which question answers which choice
-const ANSWERS = { search: ['search', 'land'], target: ['target'], 'player target': ['target'], mode: ['mode'], tribe: ['tribe'], color: ['color'], name: ['name'], x: ['x'], discard: ['discard'], sacrifice: ['sacrifice', 'target'] };
+const ANSWERS = { search: ['search', 'land'], target: ['target'], 'player target': ['target', 'player'], mode: ['mode'], tribe: ['tribe'], color: ['color'], name: ['name'], x: ['x'], discard: ['discard'], sacrifice: ['sacrifice', 'target'] };
 
 // ---- the table: a 3-player pod, seat 0 played by a person, turn 6, everything in play
 const load = n => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', n + '-loaded.json'), 'utf8'));
@@ -85,6 +85,8 @@ function table() {
     put(g, c => c.a.isArtifact && !c.a.isCreature && !c.a.isLand); put(g, c => c.a.isEnchantment && !c.a.isCreature);
     for (let k = 0; k < 3 && g.library.length; k++) g.hand.push(g.library.pop());
     for (let k = 0; k < 4 && g.library.length; k++) g.graveyard.push(g.library.pop());
+    // one card of each kind in every graveyard, so a card that returns one has something to choose between
+    for (const pick of [c => c.a.isCreature && !c.commander && (c.a.mv || 0) <= 2, c => c.a.isCreature && !c.commander && (c.a.mv || 0) >= 4, c => c.a.isInstantSorcery && /Instant/.test(c.type_line), c => c.a.isInstantSorcery && /Sorcery/.test(c.type_line), c => c.a.isArtifact && !c.a.isCreature, c => c.a.isEnchantment && !c.a.isCreature, c => c.a.isLand && /Basic/.test(c.type_line || ''), c => c.a.isLand && !/Basic/.test(c.type_line || '')]) { const c = g.deck.unique.find(pick); if (c) g.graveyard.push({ iid: g.nextIid++, card: c }); }
   });
   D.seat(p.games[0]);
   return p;
@@ -117,7 +119,7 @@ for (const w of wanted) {
   // a creature type the engine plays the card without (its effects read the same with any type): work for the card rules engine first
   const engine = [];
   if (gaps.includes('tribe')) { const b = G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0], same = t => JSON.stringify([t.a.spellFx, t.a.triggers, t.a.statics]); if (same(G.cardForTribe(base.games[0], b, 'Wall')) === same(G.cardForTribe(base.games[0], b, 'Goblin')) && !(b.a.spellFx || []).some(f => /tribe|kindred|bidding/i.test(f.type))) { engine.push('tribe'); gaps = gaps.filter(k => k !== 'tribe'); } }
-  if (gaps.includes('color')) { engine.push('color'); gaps = gaps.filter(k => k !== 'color'); }          // the engine does not model a chosen color yet (approximated)
+  
   report.push({ name: c.name, choices, asked: pr.kinds, cast: pr.cast, err: pr.err, gaps, engine });
   if (++n % 250 === 0) process.stderr.write(`  ${n} cards with choices probed\n`);
 }

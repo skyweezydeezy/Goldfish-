@@ -4974,7 +4974,7 @@
           const gone = [], info = bfInfo(x);
           // a creature's toughness is only worked out when something could have brought it to 0 or made its damage lethal: damage, -1/-1
           // counters, a minus effect until end of turn or from another player, a body of 0 (a 0/0 with counters, Tarmogoyf); otherwise skip it
-          const minus = (x.eot && x.eot.t < 0) || info.anthems.some(e => e.an.t < 0) || info.dyn.length > 0 || otherPlayers(x).some(o => bfInfo(o).oppMinus) || (tableHas(x, 'toxrill') && bothSides(x).some(q => q.card.a.toxrill));
+          const minus = (x.eot && x.eot.t < 0) || info.anthems.some(e => e.an.t < 0) || info.dyn.length > 0 || otherPlayers(x).some(o => bfInfo(o).oppMinus) || (tableHas(x, 'toxrill') && bothSides(x).some(q => q.card.a.toxrill)) || (tableHas(x, 'attachBonus') && x.battlefield.some(q => q.attachedTo != null && q.card.a.attachBonus && q.card.a.attachBonus.t < 0));          // Skullclamp's -1
           for (const p of x.battlefield) {
             if (isCreaturePerm(p)) {
               if (!minus && !(p.dmg > 0) && !((p.counters || 0) < 0) && !((p.eotT || 0) < 0) && !p.slime && !p.animated && p.card.a.toughness > 0 && !p.card.a.cda && !p.card.a.perEach && !p.card.a.lifeBuff && !p.card.a.levelUp) continue;
@@ -8120,6 +8120,40 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (a.reservoir) add('Pay 50 life: 50 damage to an opponent', 'Pay 50 life', blocked || (g.life >= 50 ? null : `you have ${g.life} life`), ev => {
       g.life -= 50; ev.push({ type: 'note', text: `${p.card.name}: paid 50 life for 50 damage`, source: p }); damageOpp(g, 50, ev, p);
     });
+    if (a.equip) {                                                                                        // equip: sorcery speed, you choose the creature (Skullclamp)
+      const c = actCost(g, p, a.equip.cost), cs = g.battlefield.filter(q => isCreaturePerm(q) && q !== p && q.iid !== p.attachedTo);
+      add('Equip a creature', c, blocked || (g.activeTurn === false ? 'only on your turn' : null) || (cs.length ? null : 'no creature to equip') || payWhy(c), ev => {
+        const t = ownCreature(g, bestCreature(g, p) || cs[0], 'equip', p, p); if (!t) return;
+        pay(g, c); p.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: p, target: t });
+      });
+    }
+    if (a.oneRing) add('Put a burden counter on it, then draw a card for each burden counter', '{T}', blocked || (p.tapped ? 'it is tapped' : null), ev => {
+      p.tapped = true; p.burden = (p.burden || 0) + 1; ev.push({ type: 'note', text: `${p.card.name}: burden counter ${p.burden}, draw ${p.burden}`, source: p }); draw(g, p.burden, ev);
+    });
+    if (a.necroDig) add('Pay 1 life: put the top card of your library into your hand', 'Pay 1 life', blocked || (g.library.length ? null : 'your library is empty') || (g.life > 1 ? null : 'you have 1 life'), ev => {
+      const c = g.library.shift(); g.hand.push(c); g.life--; ev.push({ type: 'note', text: `Necropotence: paid 1 life for a card (life ${g.life})`, source: p }); checkDeath(g, ev);
+    });
+    if (a.fauna) { const c = { generic: 0, pips: [['G']], x: 0 }, ds = g.hand.filter(i => i.card.a.isCreature);
+      add('Discard a creature card: search your library for a creature card', '{G}, {T}', blocked || sickTap(g, p) || (ds.length ? null : 'no creature card in your hand') || (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })(), ev => {
+        let d = ds.slice().sort((x, y) => tutorScore(g, x, tutorContext(g)) - tutorScore(g, y, tutorContext(g)))[0];
+        if (g.ask) d = decide(g, { kind: 'discard', options: ds, def: d, source: p }); if (!d) return;
+        p.tapped = true; pay(g, c); g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d);
+        ev.push({ type: 'note', text: `${p.card.name}: discarded ${d.card.name}`, source: p }); tutor(g, { type: 'tutor', filters: ['creature'], dest: 'hand' }, ev, p);
+      }); }
+    if (a.deathrite) {
+      const yards = [g.graveyard].concat(otherPlayers(g).map(o => o.graveyard)), find = test => { for (const y of yards) { const i = y.find(test); if (i) return { y, i }; } return null; };
+      const use = (label, cost, test, none, then) => { const c = cost ? { generic: 0, pips: [[cost]], x: 0 } : { generic: 0, pips: [], x: 0 };
+        add(label, (cost ? `{${cost}}, ` : '') + '{T}', blocked || sickTap(g, p) || (find(test) ? null : none) || (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })(), ev => {
+          const f = find(test); p.tapped = true; pay(g, c); f.y.splice(f.y.indexOf(f.i), 1); g.exile.push(f.i); ev.push({ type: 'note', text: `${p.card.name} exiles ${f.i.card.name}`, source: p }); then(ev); }); };
+      use('Exile a land card from a graveyard: add one mana of any color', '', i => i.card.a.isLand, 'no land card in a graveyard', () => g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true }));
+      use('Exile an instant or sorcery card from a graveyard: each opponent loses 2 life', 'B', i => i.card.a.isInstantSorcery, 'no instant or sorcery card in a graveyard', ev => damageOpp(g, 2, ev, p));
+      use('Exile a creature card from a graveyard: you gain 2 life', 'G', i => i.card.a.isCreature, 'no creature card in a graveyard', ev => gainLife(g, 2, ev, p));
+    }
+    if (a.indCounterAb && a.indCounterAb.sac) { const ic = a.indCounterAb, fod = g.battlefield.filter(q => q !== p && (isCreaturePerm(q) || q.card.a.isArtifact) && !q.asLand).sort((x, y) => (y.token ? 1 : 0) - (x.token ? 1 : 0) || creatureValue(g, x) - creatureValue(g, y)).slice(0, ic.sac);
+      add(`Sacrifice ${fod.length === ic.sac ? fod.map(q => q.card.name).join(' and ') : 'two other artifacts and/or creatures'}: an indestructible counter on ${p.card.name}`, ic.cost, blocked || (fod.length === ic.sac ? null : 'not enough other artifacts or creatures') || payWhy(ic.cost), ev => {
+        pay(g, ic.cost); fod.forEach(q => leavePerm(g, q, ev)); flushLeaves(g, ev); p.other = Object.assign({}, p.other, { indestructible: 1 }); touch(g);
+        ev.push({ type: 'note', text: `${p.card.name}: an indestructible counter`, source: p });
+      }); }
     if (a.foodSacMana) add('Add one mana of any color (tap it, sacrifice a Food)', '{T}, Sacrifice a Food', blocked || sickTap(g, p) || (foodsOf(g).length ? null : 'you control no Food'), ev => {
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
       ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });

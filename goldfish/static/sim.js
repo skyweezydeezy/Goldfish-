@@ -8109,6 +8109,27 @@ g.actSeq = (g.actSeq || 0) + 1;
       const opts = minus ? eachFoe(g, () => g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)) : []).concat(mine) : mine;
       let q = minus ? opts[0] : mine.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'pump', options: opts, def: q, source: p });
       if (q) { const o = g.battlefield.includes(q) ? g : otherPlayers(g).find(x => x.battlefield.includes(q)) || g; pump(o, q, dp, dt, grantList(m[4]), unb); ev.push({ type: 'note', text: `${p.card.name}: ${q.card.name} ${m[3] ? 'gets ' + m[3] : unb ? "can't be blocked" : 'gains ' + grantList(m[4]).join(', ')}`, source: p }); } };
+    if ((m = t.match(/^(tap|untap) enchanted creature$/i))) return (g, p) => { const q = g.battlefield.find(x => x.iid === p.attachedTo); if (q) { q.tapped = /^tap/i.test(m[1]); touch(g); } };
+    if ((m = t.match(/^enchanted creature (?:gets ([+-]\d+\/[+-]\d+))?(?: and )?(?:gains ([a-z ,]+?))? until end of turn$/i)) && (m[1] || grantList(m[2]).length)) return (g, p) => { const q = g.battlefield.find(x => x.iid === p.attachedTo); if (q) pump(g, q, ...pt(m[1]), grantList(m[2]), false); };
+    if ((m = t.match(/^tap target (creature|permanent|artifact)/i))) return (g, p, ev) => {
+      const w = m[1].toLowerCase(), okq = q => !q.tapped && (w === 'permanent' || (w === 'creature' ? isCreaturePerm(q) : q.card.a.isArtifact));
+      const opts = eachFoe(g, () => g.opp ? g.opp.battlefield.filter(q => okq(q) && targetable(g.opp, q)) : []).concat(g.battlefield.filter(q => q !== p && okq(q)));
+      let q = opts[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'tap', options: opts, def: q, source: p }); if (q) { q.tapped = true; touch(g); ev.push({ type: 'note', text: `${p.card.name} taps ${q.card.name}`, source: p }); } };
+    if ((m = t.match(/^~ deals (\d+) damage to each creature and each player$/i))) return (g, p, ev) => { applyEffects(g, [{ type: 'sweepDamage', n: +m[1], noExile: true }], p, ev, null); damageOpp(g, +m[1], ev, p); g.life -= +m[1]; ev.push({ type: 'note', text: `${p.card.name}: ${m[1]} damage to each creature and each player`, source: p }); checkDeath(g, ev); };
+    if (/^populate$/i.test(t)) return (g, p, ev) => applyEffects(g, [{ type: 'populate' }], p, ev, null);
+    if (/^double the number of each kind of counter on target/i.test(t)) return (g, p, ev) => {
+      const opts = g.battlefield.filter(q => (q.counters || 0) > 0 || (q.other && Object.values(q.other).some(v => v > 0)) || (q.loyalty && false));
+      let q = opts.slice().sort((x, y) => (y.counters || 0) - (x.counters || 0))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'double', options: opts, def: q, source: p }); if (!q) return;
+      if (q.counters > 0) addCounters(g, q, '+1/+1', q.counters, ev, p); if (q.other) for (const k of Object.keys(q.other)) if (q.other[k] > 0) addCounters(g, q, k, q.other[k], ev, p); };
+    if ((m = t.match(/^level (\d+)$/i))) return (g, p, ev) => { const nx = (p.card.a.levels || []).find(l => l.level === +m[1]); if (!nx || (p.level || 1) !== nx.level - 1) return; p.level = nx.level; stageSync(g, p); touch(g); ev.push({ type: 'note', text: `${p.card.name} reaches level ${nx.level}`, source: p }); const lfx = p.card.a.levelFx; if (lfx && lfx[nx.level]) applyEffects(g, lfx[nx.level], p, ev, null); };
+    if ((m = t.match(/^return ~ from your graveyard to (the battlefield( tapped)?|your hand)$/i))) return Object.assign((g, p, ev) => { if (!g.graveyard.includes(p)) return; g.graveyard.splice(g.graveyard.indexOf(p), 1);
+      if (/hand/i.test(m[1])) { g.hand.push(p); ev.push({ type: 'note', text: `${p.card.name} returns to your hand` }); } else { const perm = enterWithTriggers(g, p, { tapped: !!m[2] }, ev); if (perm && m[2]) perm.tapped = true; ev.push({ type: 'rampLand', inst: p, perm, source: null }); } }, { yard: true });
+    if (/^you may put a creature card from your hand onto the battlefield\. that creature gains haste\. sacrifice the creature at the beginning of the next end step$/i.test(t)) return (g, p, ev) => {          // Sneak Attack
+      const opts = g.hand.filter(i => i.card.a.isCreature); let c = opts.slice().sort((x, y) => (y.card.a.power || 0) - (x.card.a.power || 0))[0]; if (c && g.ask) c = decide(g, { kind: 'search', options: opts, def: c, optional: true, f: { dest: 'battlefield' }, source: p }); if (!c) return;
+      g.hand.splice(g.hand.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); if (perm) { perm.sick = false; perm.eotKw = new Set([...(perm.eotKw || []), 'haste']); perm.sneakTurn = g.turn; touch(g); } ev.push({ type: 'rampLand', inst: c, perm, source: p }); };
+    if (/^reveal cards from the top of your library until you reveal a basic land card\. put that card into your hand and all other cards revealed this way into your graveyard$/i.test(t)) return (g, p, ev) => { let k = 0; while (g.library.length) { const c = g.library.shift(); if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '')) { g.hand.push(c); break; } g.graveyard.push(c); k++; } ev.push({ type: 'note', text: `${p.card.name}: a basic land to your hand, ${k} card${k === 1 ? '' : 's'} into the graveyard`, source: p }); };          // Hermit Druid
+    if (/^exile the top card of your library$/i.test(t)) return (g, p, ev) => { const c = g.library.shift(); if (c) { g.exile.push(c); ev.push({ type: 'note', text: `${p.card.name} exiles ${c.card.name} from the top of your library`, source: p }); } };          // Mystic Forge
+    if (/^you may copy the exiled card\. if you do, you may cast the copy without paying its mana cost$/i.test(t)) return (g, p, ev) => { if (!p.imprinted) return; ev.push({ type: 'note', text: `${p.card.name}: free copy of ${p.imprinted.card.name}`, source: p }); g.spellsCast = (g.spellsCast || 0) + 1; fireCastTriggers(g, p.imprinted, ev); applyEffects(g, p.imprinted.card.a.spellFx, null, ev, null); };          // Isochron Scepter
     if ((m = t.match(/^adapt (\d+)$/i))) return (g, p, ev) => { if (!((p.counters || 0) > 0)) addCounters(g, p, '+1/+1', +m[1], ev, p); };
     if (/^double the number of \+1\/\+1 counters on each creature you control$/i.test(t)) return (g, p, ev) => { for (const q of g.battlefield.slice()) if (isCreaturePerm(q) && q.counters > 0) addCounters(g, q, '+1/+1', q.counters, ev, p); };
     return null;
@@ -8130,7 +8151,9 @@ g.actSeq = (g.actSeq || 0) + 1;
         else if ((k = part.match(/^remove (a|an|two|three|\d+) \+1\/\+1 counters? from ~$/i))) ln.counters += num(k[1]);
         else if ((k = part.match(/^remove (a|an|two|three|\d+) ([a-z]+) counters? from ~$/i))) ln.other = { kind: k[2].toLowerCase(), n: num(k[1]) };
         else if (/^sacrifice ~$/i.test(part)) ln.sacSelf = true;
-        else if ((k = part.match(/^sacrifice (a|an|another|two|three|ten|\d+) (?:other )?([a-z]+(?: [a-z]+)?)$/i))) ln.sac = { n: /^(?:a|an|another)$/i.test(k[1]) ? 1 : num(k[1]), other: /another|other/i.test(part), what: singular(k[2]).toLowerCase() };
+        else if ((k = part.match(/^remove a (?:\+1\/\+1 )?counter from a creature you control$/i))) ln.anyCounter = true;
+        else if ((k = part.match(/^untap (a|an|two|three|\d+) tapped creatures? you control$/i))) ln.untapN = /^an?$/i.test(k[1]) ? 1 : num(k[1]);
+        else if ((k = part.match(/^sacrifice (a|an|another|two|three|ten|\d+) (?:other )?([a-z]+(?: or [a-z]+| [a-z]+)?)$/i))) ln.sac = { n: /^(?:a|an|another)$/i.test(k[1]) ? 1 : num(k[1]), other: /another|other/i.test(part), what: singular(k[2]).toLowerCase() };
         else if ((k = part.match(/^pay (\d+) life$/i))) ln.life += +k[1];
         else if ((k = part.match(/^discard (a|an|two) (creature |land )?cards?$/i))) ln.discard = { n: num(k[1]), what: (k[2] || '').trim().toLowerCase() };
         else if ((k = part.match(/^tap (another|two|three|four|five|\d+) untapped ([a-z]+) you control$/i))) ln.tapN = { n: /another/i.test(k[1]) ? 1 : num(k[1]), other: /another/i.test(k[1]), what: singular(k[2]).toLowerCase() };
@@ -8144,7 +8167,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     return l;
   }
   function abilityList(g, p) {
-    const out = [], a = p.card.a, onBf = g.battlefield.includes(p);
+    const out = [], a = p.card.a, onBf = g.battlefield.includes(p), inYard = !onBf && g.graveyard.includes(p);
+    let blocked = null;
     const add = (label, cost, why, run) => out.push({ label, cost: cost == null ? '' : typeof cost === 'string' ? cost : costText(cost), ok: !why, why: why || null, run });
     const payWhy = c => canPay(c, allUnits(g)) ? null : 'not enough mana';
     if (!onBf) {                                                                                         // the graveyard: Cauldron Familiar
@@ -8162,10 +8186,11 @@ g.actSeq = (g.actSeq || 0) + 1;
         ev.push({ type: 'note', text: `Sacrificed a Food: ${p.card.name} returns from the graveyard` });
         const perm = enterWithTriggers(g, p, {}, ev); ev.push({ type: 'rampLand', inst: p, perm, source: null });
       });
-      return out;
+      if (!inYard) return out;
     }
     if (g.timeStopped === g.turn) return out;
-    const blocked = (g.opp || g.needleSeen) && abilBlocked(g, p, false) ? 'its abilities cannot be activated' : (a.isArtifact && stonyOn(g)) ? 'Stony Silence' : null;
+    if (onBf) {
+    blocked = (g.opp || g.needleSeen) && abilBlocked(g, p, false) ? 'its abilities cannot be activated' : (a.isArtifact && stonyOn(g)) ? 'Stony Silence' : null;
     if (foodsOf(g).includes(p)) {                                                                        // a Food: {2}, {T}, sacrifice it: gain 3 life (Sam: {1})
       const c = foodCostOf(g);
       add('Gain 3 life (tap and sacrifice this Food)', c, blocked || (p.tapped ? 'it is tapped' : null) || payWhy(c), ev => {
@@ -8254,19 +8279,22 @@ g.actSeq = (g.actSeq || 0) + 1;
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
       ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });
     });
+    }
     // Any other "{cost}: effect" line of the card whose cost and effect the engine can read as written (the autopilot plays many of these
     // by its own special rules; a person just activates them). Costs: mana, {T}, remove +1/+1 counters from it, sacrifice it, pay life.
-    for (const ln of (foodsOf(g).includes(p) ? [] : otherAbilities(p.card))) {          // a Food's own ability is above (with Sam's discount)
+    for (const ln of (foodsOf(g).includes(p) ? [] : otherAbilities(p.card).filter(x => !!(x.run && x.run.yard) === inYard))) {          // a Food's own ability is above (with Sam's discount)
       const c = actCost(g, p, ln.cost);
-      const isWhat = (q, w) => w === 'creature' ? isCreaturePerm(q) : w === 'artifact' ? q.card.a.isArtifact && !q.asLand : w === 'land' ? !!q.asLand : w === 'permanent' || w === 'nonland permanent' ? !q.asLand : matchesFilter(q.card, w);
+      const isWhat = (q, w) => / or /.test(w) ? w.split(' or ').some(x => isWhat(q, singular(x))) : w === 'creature' ? isCreaturePerm(q) : w === 'artifact' ? q.card.a.isArtifact && !q.asLand : w === 'land' ? !!q.asLand : w === 'permanent' || w === 'nonland permanent' ? !q.asLand : matchesFilter(q.card, w);
       const sacPool = ln.sac ? g.battlefield.filter(q => !(ln.sac.other && q === p) && isWhat(q, ln.sac.what)) : [];
       const tapPool = ln.tapN ? g.battlefield.filter(q => !q.tapped && !(ln.tapN.other && q === p) && isWhat(q, ln.tapN.what)) : [];
       const disPool = ln.discard ? g.hand.filter(i => !ln.discard.what || (ln.discard.what === 'creature' ? i.card.a.isCreature : i.card.a.isLand)) : [];
       const usedKey = 'o' + ln.raw.length + ln.raw.slice(0, 12);
+      const ctrPool = ln.anyCounter ? g.battlefield.filter(q => isCreaturePerm(q) && (q.counters || 0) > 0) : [], untapPool = ln.untapN ? g.battlefield.filter(q => isCreaturePerm(q) && q.tapped) : [];
       const why = blocked || (ln.tap ? sickTap(g, p) : null) || (ln.sorcery && g.activeTurn === false ? 'only on your turn' : null) || (ln.once && p.abUsed && p.abUsed[usedKey] === g.turn ? 'already used this turn' : null)
         || (ln.counters > (p.counters || 0) ? 'it has no +1/+1 counter to remove' : null) || (ln.other && !((p.other && p.other[ln.other.kind] || 0) >= ln.other.n) ? `it has no ${ln.other.kind} counter` : null)
         || (ln.life && g.life <= ln.life ? 'not enough life' : null) || (ln.sac && sacPool.length < ln.sac.n ? `nothing to sacrifice (${ln.sac.what})` : null) || (ln.tapN && tapPool.length < ln.tapN.n ? `not enough untapped (${ln.tapN.what})` : null)
-        || (ln.discard && disPool.length < ln.discard.n ? 'no card to discard' : null)
+        || (ln.discard && disPool.length < ln.discard.n ? 'no card to discard' : null) || (ln.anyCounter && !ctrPool.length ? 'no creature of yours has a counter' : null) || (ln.untapN && untapPool.length < ln.untapN ? 'not enough tapped creatures' : null)
+        || (ln.run && ln.run.yard ? null : null)
         || (ln.tap ? (() => { const was = p.tapped; p.tapped = true; const r = payWhy(c); p.tapped = was; return r; })() : payWhy(c));
       add(ln.effect, ln.costText, why, ev => {
         let gone = [];
@@ -8274,6 +8302,8 @@ g.actSeq = (g.actSeq || 0) + 1;
           if (g.ask && ln.sac.n === 1 && sacPool.length > 1) { const v = decide(g, { kind: 'sacrifice', options: sacPool, def: gone[0], ability: p.card.name, optional: true, source: p }); if (!v) return; gone = [v]; } }
         let dis = disPool.slice().sort((x, y) => discardValue(g, x) - discardValue(g, y)).slice(0, ln.discard ? ln.discard.n : 0);
         if (ln.discard && g.ask && ln.discard.n === 1 && disPool.length > 1) dis = [decide(g, { kind: 'discard', options: disPool, def: dis[0], source: p }) || dis[0]];
+        if (ln.anyCounter) { let q = ctrPool.slice().sort((x, y) => (y.counters || 0) - (x.counters || 0))[0]; if (g.ask && ctrPool.length > 1) q = decide(g, { kind: 'target', what: 'uncounter', options: ctrPool, def: q, source: p }) || q; q.counters--; touch(g); }
+        if (ln.untapN) untapPool.slice(0, ln.untapN).forEach(q => { q.tapped = false; });
         if (ln.tap) p.tapped = true;
         if (ln.tapN) tapPool.slice().sort((x, y) => (isCreaturePerm(x) ? powerOf(g, x) : 0) - (isCreaturePerm(y) ? powerOf(g, y) : 0)).slice(0, ln.tapN.n).forEach(q => { q.tapped = true; });
         const prev = g._payFor; g._payFor = { abilityOf: p }; pay(g, c); g._payFor = prev;
@@ -10252,6 +10282,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const iw = [];
     if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
     for (const i of g.hand.slice()) if (i.borrowed) { g.hand.splice(g.hand.indexOf(i), 1); const o = i.borrowed; i.borrowed = null; i.foreign = false; o.hand.push(i); }          // Sen Triplets: the cards you did not play go back to their owner's hand
+    for (const q of g.battlefield.slice()) if (q.sneakTurn === g.turn) { iw.push({ type: "note", text: `${q.card.name} is sacrificed (Sneak Attack)`, source: q }); leavePerm(g, q, iw); flushLeaves(g, iw); }          // Sneak Attack, used by a person: sacrificed at the end step
     toxrillEnd(g, []);
     if (!g.dry) for (const o of otherPlayers(g)) for (const q of o.battlefield.slice()) for (const t of q.card.a.triggers) if (t.each && t.kinds.includes('end') && o.battlefield.includes(q)) fire(o, t, q, [], null);
     for (const p of g.battlefield.slice()) if (p.warped && !g.dry) { p.warped = false; const wi = p.inst; leavePerm(g, p, [], 'exile'); if (wi && g.exile.includes(wi)) wi.warpCast = true; }          // warp: exiled at the end step, castable from exile later

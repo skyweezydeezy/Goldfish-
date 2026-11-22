@@ -62,5 +62,29 @@ const table = (deck, nLands) => {
   const bm = put('Basalt Monolith'); bm.tapped = true; use(bm, /^Untap Basalt Monolith/);
   check('Basalt Monolith: {3}: untap it', !bm.tapped); }
 
+{ const { g, put, use, by } = table(load('death-tax'), 2);
+  const sk = { iid: g.nextIid++, card: by('Reassembling Skeleton') }; g.graveyard.push(sk);
+  const m = G.abilityMenu(g, sk);
+  check('Reassembling Skeleton in the graveyard offers its return for {1}{B}', m.length === 1 && m[0].cost === '{1}{B}', JSON.stringify(m));
+  if (m[0] && m[0].ok) G.useAbility(g, sk, 0);
+  const p = g.battlefield.find(q => q.card.name === 'Reassembling Skeleton');
+  check('...it returns to the battlefield tapped', !!p && p.tapped && !g.graveyard.includes(sk), m[0] && m[0].why);
+  check('...and on the battlefield that ability is not offered', p && !G.abilityMenu(g, p).some(x => /graveyard/.test(x.label))); }
+
+{ const { g, put, use } = table(load('zul-ashur'), 3);
+  const ka = put('Kalitas, Traitor of Ghet'), cf = put('Carrion Feeder');
+  use(ka, /two \+1\/\+1 counters on Kalitas/);
+  check('Kalitas: {2}{B}, sacrifice another Vampire or Zombie: two counters', ka.counters === 2 && !g.battlefield.includes(cf), ka.counters); }
+
+{ const { g, put, use } = table(load('mermaids'), 2);
+  const vo = put('Vorel of the Hull Clade'), kf = put("Kiora's Follower"); kf.counters = 2;
+  use(vo, /^Double the number of each kind of counter/);
+  check('Vorel: double the counters on a permanent', kf.counters === 4 && vo.tapped, kf.counters); }
+
+{ const { g, put, use, by } = table(load('combo-pieces'), 2);
+  const sc = put('Isochron Scepter'); const inst = g.deck.unique.find(c => /\bInstant\b/.test(c.type_line || '') && c.a.spellFx.some(f => f.type === 'draw'));
+  if (inst) { sc.imprinted = { iid: g.nextIid++, card: inst }; const h0 = g.hand.length; use(sc, /copy the exiled card/);
+    check('Isochron Scepter: {2}, {T}: a free copy of the imprinted instant (' + inst.name + ')', sc.tapped && g.hand.length > h0, g.hand.length - h0); } }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

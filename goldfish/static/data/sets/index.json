@@ -170,12 +170,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/atq.svg?1794805200",
    "partial": true,
-   "cards": 10,
-   "originals": 10,
+   "cards": 11,
+   "originals": 11,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 10,
+    "full": 11,
     "approx": 0,
     "partial": 0,
     "none": 0
@@ -584,12 +584,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/csp.svg?1794805200",
    "partial": true,
-   "cards": 11,
-   "originals": 11,
+   "cards": 12,
+   "originals": 12,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 9,
+    "full": 10,
     "approx": 0,
     "partial": 2,
     "none": 0
@@ -1034,12 +1034,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/dst.svg?1794805200",
    "partial": true,
-   "cards": 18,
-   "originals": 18,
+   "cards": 19,
+   "originals": 19,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 15,
+    "full": 16,
     "approx": 2,
     "partial": 1,
     "none": 0
@@ -1988,12 +1988,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/fut.svg?1794805200",
    "partial": true,
-   "cards": 22,
-   "originals": 22,
+   "cards": 23,
+   "originals": 23,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 21,
+    "full": 22,
     "approx": 1,
     "partial": 0,
     "none": 0
@@ -4220,14 +4220,14 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/som.svg?1794805200",
    "partial": true,
-   "cards": 45,
-   "originals": 45,
+   "cards": 46,
+   "originals": 46,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 39,
     "approx": 0,
-    "partial": 1,
+    "partial": 2,
     "none": 5
    }
   },
@@ -4400,14 +4400,14 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/shm.svg?1794805200",
    "partial": true,
-   "cards": 28,
-   "originals": 28,
+   "cards": 29,
+   "originals": 29,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 24,
     "approx": 1,
-    "partial": 2,
+    "partial": 3,
     "none": 1
    }
   },

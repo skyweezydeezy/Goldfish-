@@ -1,4 +1,4 @@
-// Loaded Dice (Krark and Sakashima) and Took's Adventure, added to the built-in decks. The rules the first one needed:
+// Loaded Dice (Krark and Sakashima; no longer a built-in deck, its list is kept in tests/fixtures) and Took's Adventure. The rules the first one needed:
 // Krark's coin flip, Heartstone, Karn, Silver Golem, Living Brain, March of the Machines, Ensoul Artifact, Rise and Shine (and its
 // overload), Tezzeret, Betrayer of Flesh's -2. Then both decks play whole games without an engine error.
 const fs = require('fs'), path = require('path');
@@ -10,7 +10,7 @@ const load = file => { const cards = []; for (const e of Source.parseDecklist(fs
 const O = { turns: 10, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true, policy: {} };
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
-const dice = load('loaded-dice.txt'), took = load('tooks-adventure.txt');
+const dice = load(path.join('..', '..', '..', 'tests', 'fixtures', 'loaded-dice.txt')), took = load('tooks-adventure.txt');
 const deck = G.buildDeck(dice, []);
 const by = n => { const c = deck.unique.find(c => c.name === n); if (!c) throw new Error('no card ' + n); return c; };
 const fresh = seed => { const g = G.newGame(deck, O, seed || 5); g.turn = 5; g.command = []; g.hand = []; g.battlefield = []; g.graveyard = []; g.library = g.library.filter(i => /^(Island|Mountain)$/.test(i.card.name)); return g; };

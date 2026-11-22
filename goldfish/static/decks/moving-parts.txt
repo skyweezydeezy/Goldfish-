@@ -1,0 +1,81 @@
+// Moving Parts (Urza, Lord High Artificer)
+// Bracket 4
+// Format: Commander (paper), Bracket 4
+// COMMANDER
+1 Urza, Lord High Artificer
+// MAIN
+1 Sol Ring
+1 Mana Vault
+1 Grim Monolith
+1 Basalt Monolith
+1 Arcane Signet
+1 Mind Stone
+1 Fellwar Stone
+1 Thought Vessel
+1 Everflowing Chalice
+1 Thran Dynamo
+1 Gilded Lotus
+1 Rings of Brighthearth
+1 Power Artifact
+1 Isochron Scepter
+1 Dramatic Reversal
+1 Metalworker
+1 Staff of Domination
+1 Voltaic Construct
+1 Umbral Mantle
+1 Pili-Pala
+1 Grand Architect
+1 Hullbreaker Horror
+1 Sensei's Divining Top
+1 Mystic Forge
+1 The Reality Chip
+1 Etherium Sculptor
+1 Foundry Inspector
+1 Karn, the Great Creator
+1 Walking Ballista
+1 Thassa's Oracle
+1 Aetherflux Reservoir
+1 Fabricate
+1 Whir of Invention
+1 Reshape
+1 Transmute Artifact
+1 Tezzeret the Seeker
+1 Muddle the Mixture
+1 Mystical Tutor
+1 Merchant Scroll
+1 Spellseeker
+1 Trophy Mage
+1 Trinket Mage
+1 Tribute Mage
+1 Arcum Dagsson
+1 Intuition
+1 Rhystic Study
+1 Mystic Remora
+1 The One Ring
+1 Thought Monitor
+1 Brainstorm
+1 Ponder
+1 Preordain
+1 Emry, Lurker of the Loch
+1 Force of Will
+1 Fierce Guardianship
+1 Mana Drain
+1 Counterspell
+1 Swan Song
+1 Pact of Negation
+1 An Offer You Can't Refuse
+1 Cyclonic Rift
+1 Chain of Vapor
+1 Ancient Tomb
+1 Urza's Saga
+1 Inventors' Fair
+1 Academy Ruins
+1 Buried Ruin
+1 Seat of the Synod
+1 Darksteel Citadel
+1 Tolaria West
+1 Mystic Sanctuary
+1 Otawara, Soaring City
+1 Minamo, School at Water's Edge
+25 Island
+1 Flusterstorm

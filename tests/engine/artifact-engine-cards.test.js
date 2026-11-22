@@ -80,5 +80,33 @@ for (const c of [KATSU, WELDER, SYNOD, TEZ, STAFF, MANTLE])
   pp.sick = true; check('...but not while Pili-Pala is summoning sick ({Q})', !G.infiniteMana(g));
   check('the tutors know the line (Architect + Pili-Pala + an outlet)', G.deckLines(G.newGame(G.buildDeck(island(20).concat([PILI, ARCH, card('Walking Ballista', 'Artifact Creature — Construct', 'Walking Ballista enters with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.', { mana_cost: '{X}{X}', cmc: 0, power: '0', toughness: '0' })]), []), O, 1)).some(l => l.join('+') === 'architect+pilipala+outlet')); }
 
+// ---- Voltaic Construct, Arcum Dagsson, Reshape (hidden as "does nothing solo" until 2026-11-22) ----
+{ const CONSTRUCT = card('Voltaic Construct', 'Artifact Creature — Golem Construct', '{2}: Untap target artifact creature.', { mana_cost: '{4}', cmc: 4, power: '2', toughness: '2' });
+  const WORKER = card('Metalworker', 'Artifact Creature — Construct', '{T}: Reveal any number of artifact cards in your hand. Add {C}{C} for each card revealed this way.', { mana_cost: '{3}', cmc: 3, power: '1', toughness: '2' });
+  const ARCUM = card('Arcum Dagsson', 'Legendary Creature — Human Artificer', "{T}: Target artifact creature's controller sacrifices it. That player may search their library for a noncreature artifact card, put it onto the battlefield, then shuffle.", { mana_cost: '{3}{U}', cmc: 4, power: '2', toughness: '2' });
+  const RESHAPE = card('Reshape', 'Sorcery', 'As an additional cost to cast this spell, sacrifice an artifact.\nSearch your library for an artifact card with mana value X or less, put it onto the battlefield, then shuffle.', { mana_cost: '{X}{U}{U}', cmc: 2 });
+  const MYR = card('Homebrew Myr', 'Artifact Creature — Myr', '', { mana_cost: '{1}', cmc: 1, power: '1', toughness: '1' });
+  const TRINKET = card('Homebrew Trinket', 'Artifact', '{1}, Sacrifice this artifact: Draw a card.', { mana_cost: '{0}', cmc: 0 });
+  for (const c of [CONSTRUCT, ARCUM, RESHAPE]) check(`${c.name}: every line is simulated`, lvl(c).coverage.every(r => r.status === 'ok'), lvl(c).coverage.map(r => r.status + (r.tag ? ':' + r.tag : '')).join(' '));
+  const d = G.buildDeck(island(20).concat([CONSTRUCT, WORKER, ARCUM, RESHAPE, MYR, TRINKET, LOTUS, RELIC]), []);
+  // Voltaic Construct + Metalworker
+  { const g = fresh(d, 12); put(g, 'Voltaic Construct'); put(g, 'Metalworker'); g.hand = [inst(g, 'Homebrew Relic')];
+    check('Voltaic Construct + Metalworker with one artifact card in hand: {C}{C} only pays for the untap, no loop', !G.infiniteMana(g));
+    g.hand.push(inst(g, 'Gilded Lotus')); const inf = G.infiniteMana(g);
+    check('...with two artifact cards in hand: endless mana', inf && /Metalworker \+ Voltaic Construct/.test(inf.how), inf && inf.how); }
+  // Arcum Dagsson
+  { const g = fresh(d, 13); const ar = put(g, 'Arcum Dagsson'); put(g, 'Homebrew Myr'); g.library = [inst(g, 'Island'), inst(g, 'Gilded Lotus'), inst(g, 'Island')];
+    G.useAbilities(g);
+    check('Arcum Dagsson: sacrifices the spare Myr and puts Gilded Lotus onto the battlefield', ar.tapped && !g.battlefield.some(q => q.card.name === 'Homebrew Myr') && g.battlefield.some(q => q.card.name === 'Gilded Lotus'), g.battlefield.map(q => q.card.name).join(',')); }
+  { const g = fresh(d, 14); const ar = put(g, 'Arcum Dagsson'); g.library = [inst(g, 'Gilded Lotus')]; G.useAbilities(g);
+    check('...with no artifact creature to sacrifice, nothing happens', !ar.tapped && !g.battlefield.some(q => q.card.name === 'Gilded Lotus')); }
+  // Reshape
+  { const g = fresh(d, 15); lands(g, 5); const r = inst(g, 'Reshape'); g.hand = [r];
+    check('Reshape: with no artifact to sacrifice it is not cast', G.spellScore(g, r) === -1 && G.castCard(g, r) === null);
+    const t = put(g, 'Homebrew Trinket'); g.library = [inst(g, 'Island'), inst(g, 'Gilded Lotus')]; r.extraX = 2;
+    const ev = G.castCard(g, r);
+    check('...with a spare zero-cost artifact: it is sacrificed and the search happens', !!ev && !g.battlefield.includes(t) && g.graveyard.some(i => i.card.name === 'Homebrew Trinket'), ev ? 'cast' : 'not cast'); }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

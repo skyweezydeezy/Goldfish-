@@ -13,7 +13,8 @@
     return (db._byCard = m);
   }
   const row = (db, c, missing) => ({ id: c[0], url: LINK + encodeURIComponent(c[0]), popularity: c[1], identity: c[2], cards: c[3].map(k => db.cards[k]), missing: missing == null ? null : db.cards[missing],
-    needs: c[4].map(k => db.needs[k]), does: c[5].map(k => db.features[k]) });
+    needs: c[4].map(k => db.needs[k]), does: c[5].map(k => db.features[k]),
+    zones: c[6] || [], mana: c[7] || '', kind: c[8] || '', goldfish: !!c[9], loops: c[10] || '' });          // for the goldfish: where each card starts, the mana, win or infinite mana, and whether it can be checked
   // names: the cards of the list. identity: the commander's colours ('WUB', or an array), or null for no colour check.
   function find(db, names, identity) {
     const idx = byCard(db), have = new Set();
@@ -34,7 +35,9 @@
   function played(combo, engine) {
     return (engine || []).some(e => !e.open && e.slots.filter(s => s.cards.some(n => combo.cards.includes(n))).length >= Math.max(2, e.slots.length - 1));
   }
-  const api = { find, played, LINK };
+  // the combos of a list that the goldfish counts (sim.js bookCombos): they win or make infinite mana, and everything they need can be checked
+  function goldfished(found, engine) { return found.included.filter(c => c.goldfish && (c.kind || c.loops) && !played(c, engine)); }
+  const api = { find, played, goldfished, LINK };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Combos = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -7283,9 +7283,9 @@
   // (60 by default, 150 eager, 0 = only fetch the last piece); two or more left = 0 (fetching ramp is better that early)
   const CHASE = { default: 60, eager: 150, off: 0 };
   function comboPlan(g, inst) {
-    const lines = deckLines(g); if (!lines.length) return 0;
+    const lines = deckLines(g); if (!lines.length) return bookNeed(g, inst);
     const have = g.hand.concat(g.battlefield, g.command).filter(x => x !== inst && x.card && x.card.a);
-    let best = 0;
+    let best = bookNeed(g, inst);
     for (const line of lines) {
       const mine = line.filter(sl => SLOT[sl](inst.card));
       if (!mine.length) continue;
@@ -10307,6 +10307,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     k.unsealing = T(/whenever you cast a creature spell with mana value 4, 5, or 6, create two 0\/1 colorless eldrazi spawn/i);          // Kozilek's Unsealing
     k.poisonNine = !!a.isPlaneswalker && T(/if target player has fewer than nine poison counters, they get a number of poison counters equal to the difference/i);          // Vraska, Betrayal's Sting
     k.counterTwice = T(/if you would put one or more counters on a permanent or player, put twice that many/i);          // Vorinclex, Monstrous Raider
+    k.etbPing = T(/whenever (?:~|this creature|[^.]*?) or another creature (?:you control )?enters[^.]*, [^.]*(?:deals \d+ damage to each opponent|each opponent loses \d+ life)/i) || T(/whenever (?:a|another) (?:nontoken |colorless )?creature (?:you control )?enters(?: the battlefield)?(?: under your control)?, [^.]*(?:deals? \d+ damage to (?:each opponent|any target|target player)|each opponent loses \d+ life|target (?:player|opponent) loses \d+ life)/i);          // Impact Tremors, Purphoros, Corpse Knight
     k.finisher = k.oracleWin || k.drawWin || k.ballista || k.xBurn;
   }
   function comboWin(g, ev, text) {
@@ -10525,6 +10526,90 @@ g.actSeq = (g.actSeq || 0) + 1;
       } }
     return false;
   }
+  // F. Combos from the Commander Spellbook snapshot (opts.bookCombos: the rows combos.js finds for this list). The goldfish does not play
+  //    out their steps: once every card is where the combo starts from (battlefield, hand, graveyard, command zone) and the mana it needs
+  //    can be paid, a combo that wins is a win, and one that makes infinite mana is infinite mana. Only combos the snapshot marks as
+  //    checkable (no extra requirement the engine cannot see), and only against a goldfish. Combos the engine plays itself are left to it.
+  const ANY_MANA = ['W', 'U', 'B', 'R', 'G', 'C'];
+  function bookList(g) {
+    const d = g.deck, src = g.opts && g.opts.bookCombos;
+    if (!d || !src || !src.length) return NONE;
+    if (d._book && d._bookSrc === src) return d._book;
+    const eng = deckCombos(d).filter(e => !e.open), front = n => String(n).split(' // ')[0];
+    const played = c => eng.some(e => e.slots.filter(sl => sl.cards.some(n => c.cards.includes(n))).length >= Math.max(2, e.slots.length - 1));
+    d._bookSrc = src;
+    return (d._book = src.filter(c => c.goldfish && (c.kind || c.loops) && !played(c)).map(c => ({ c, cards: c.cards.map(n => (d.unique || []).find(u => u.name === n || front(u.name) === front(n))), cost: parseCost(c.mana || '') })).filter(b => b.cards.every(Boolean)));
+  }
+  // "also needs" (a kind of card, not a named one): the ones the goldfish can check on the board. The same names as KNOWN_NEEDS in tools/build-combos.js.
+  const kwOn = (g, k, f) => g.battlefield.some(p => isCreaturePerm(p) && p.card.a.kw && p.card.a.kw.has(k) && (!f || f(p)));
+  const cheapIn = (g, f) => g.battlefield.concat(g.hand).some(x => !x.token && !x.card.a.isLand && f(x.card.a));
+  const BOOK_NEEDS = {
+    'Persist Creature': g => kwOn(g, 'persist'), 'Green Persist Creature': g => kwOn(g, 'persist', p => (p.card.colors || []).includes('G')),
+    'Creature with Undying': g => kwOn(g, 'undying'), 'Undying Creature': g => kwOn(g, 'undying'), 'Creature with Persist or Undying': g => kwOn(g, 'persist') || kwOn(g, 'undying'),
+    'Zombie Creature': g => g.battlefield.some(p => isCreaturePerm(p) && /\bZombie\b/.test(p.card.type_line || '')),
+    'Mana Dork or Mana Dork Creator': g => g.battlefield.some(p => isCreaturePerm(p) && p.produce && !(p.sick && !hasKw(g, p, 'haste'))),
+    'Haste Enabler': g => g.battlefield.some(p => /(?:creatures|goblins|other creatures) you control have haste/i.test(comboText(p.card))),
+    'Artifact Castable for {0} that survives': g => cheapIn(g, a => a.isArtifact && !a.castMv && !a.isCreature), 'Noncreature permanent castable for {0}': g => cheapIn(g, a => !a.castMv && !a.isCreature && !a.isInstantSorcery),
+    'Noncreature Artifact with MV<=1': g => cheapIn(g, a => a.isArtifact && !a.isCreature && (a.castMv || 0) <= 1),
+    'Eldrazi Creature Card with MV=4, 5 or 6': g => g.hand.some(i => i.card.a.isCreature && /\bEldrazi\b/.test(i.card.type_line || '') && i.card.a.castMv >= 4 && i.card.a.castMv <= 6),
+  };
+  // every card where the combo needs it? Returns what has to be cast first and the whole cost, or null.
+  function bookReady(g, b) {
+    if (!(b.c.needs || []).every(n => BOOK_NEEDS[n] && BOOK_NEEDS[n](g))) return null;
+    const cast = []; let cost = b.cost;
+    for (let i = 0; i < b.cards.length; i++) {
+      const card = b.cards[i], z = b.c.zones[i] || 'B', is = x => x.card === card || x.card.name === card.name;
+      if (/c/.test(z) && !card.commander) return null;
+      const perm = g.battlefield.find(p => is(p) && !p.token), inHand = g.hand.find(is);
+      if (/B/.test(z) && perm && !(/s/.test(z) && isCreaturePerm(perm) && perm.sick && !hasKw(g, perm, 'haste'))) continue;
+      if (/H/.test(z) && inHand) { cast.push(inHand); continue; }                                           // cast as part of the combo: its mana is in the combo's cost
+      if (/C/.test(z) && g.command.some(is)) continue;
+      if (/G/.test(z) && g.graveyard.some(is)) continue;
+      if (/L/.test(z) && g.library.some(is)) continue;
+      if (/E/.test(z) && g.exile.some(is)) continue;
+      if (/B/.test(z) && !perm && inHand && !card.a.isLand && !card.a.isInstantSorcery && !(card.a.isCreature && /s/.test(z))) { cast.push(inHand); cost = sumCost(cost, effectiveCost(g, inHand)); continue; }          // a permanent still in hand: cast it first
+      return null;
+    }
+    return canPay(cost, allUnits(g)) ? { cast, cost } : null;
+  }
+  function bookCombo(g, ev) {
+    if (g.match || g.opp) return false;
+    for (const b of bookList(g)) {
+      if (b.c.kind !== 'w' && !b.c.loops && g.loopMana && g.loopMana.turn === g.turn) continue;
+      const pay0 = b.c.kind === 'w' ? null : bookPayoff(g, b.c.loops || '');          // a loop needs a card that turns it into damage
+      if (!b.c.kind && !pay0) continue;
+      const r = bookReady(g, b); if (!r) continue;
+      pay(g, r.cost);
+      for (const i of r.cast) { g.hand.splice(g.hand.indexOf(i), 1); if (i.card.a.isInstantSorcery) g.graveyard.push(i); else enterWithTriggers(g, i, {}, ev); }
+      const names = b.c.cards.join(' + ') + ' (Commander Spellbook)';
+      if (g.killTurn != null) return true;                                                                  // something that entered ended the game already
+      if (b.c.kind === 'w') return comboWin(g, ev, `${names}: ${(b.c.does || []).slice(0, 2).join('; ').toLowerCase() || 'the combo wins'}`);
+      if (pay0) return comboWin(g, ev, `${names}: ${pay0.what}, and ${pay0.name} turns each one into damage`);
+      if (!b.c.kind) continue;
+      g.loopMana = { turn: g.turn, inf: { how: names, colors: new Set(b.c.kind === 'mC' ? ['C'] : ANY_MANA) } };
+    }
+    return false;
+  }
+  // the card on the battlefield that makes a loop lethal: one that drains for each death, hurts for each creature entering, each life gained,
+  // each card drawn or each spell cast (or, for a loop that draws the library, a card in it that wins)
+  function bookPayoff(g, loops) {
+    const on = f => g.battlefield.find(p => f(comboKind(p.card), p));
+    for (const [l, f, what] of [['d', k => k.deathDrain, 'a death every time round'], ['e', k => k.etbPing, 'a creature entering every time round'], ['g', (k, p) => p.card.a.comboRole === 'bond', 'life gained every time round'],
+      ['r', k => k.selfDrawPing, 'a card drawn every time round'], ['s', k => k.castPing, 'a spell cast every time round']]) { if (!loops.includes(l)) continue; const p = on(f); if (p) return { name: p.card.name, what }; }
+    if (loops.includes('r')) { const fin = g.library.concat(g.hand).find(i => comboKind(i.card).finisher); if (fin) return { name: fin.card.name, what: 'the whole library drawn' }; }
+    return null;
+  }
+  // a card that would complete one of those combos, for tutors
+  function bookNeed(g, inst) {
+    let best = 0;
+    for (const b of bookList(g)) {
+      const at = b.cards.findIndex(c => c === inst.card || c.name === inst.card.name); if (at < 0) continue;
+      const have = g.hand.concat(g.battlefield, g.command, g.graveyard);
+      const left = b.cards.filter((c, i) => i !== at && !have.some(x => x !== inst && x.card.name === c.name)).length;
+      if (left === 0) best = Math.max(best, 900);
+    }
+    return best;
+  }
   function comboLines(g, ev) {
     if (g.dry || g.killTurn != null || matchOver(g)) return;
     const hand = g.hand;
@@ -10544,6 +10629,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     if (boardCombo(g, ev)) return true;
     if (moreCombos(g, ev)) return true;
+    if (bookCombo(g, ev)) return true;
     // B. infinite mana and an outlet
     const inf = infiniteMana(g);
     if (!inf) return;
@@ -11953,7 +12039,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, deckCombos, boardCombo, moreCombos, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, castAftermath, comboPlan, deckLines, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;

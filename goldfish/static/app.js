@@ -101,6 +101,7 @@
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
       minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 10000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
+      bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
     };
   }
   $('#optFormat').addEventListener('change', () => {
@@ -261,7 +262,7 @@
     S.tokens = r.tokens || [];
     S.deck = G.buildDeck(cards, S.tokens, currentPolicy().tribe);
     S.byUid = S.deck.unique;
-    S.game = null; S.sim = null; S.oddsSel.clear();
+    S.game = null; S.sim = null; S.bookCombos = []; S.oddsSel.clear();
     const msgs = $('#deckMsgs'); msgs.innerHTML = '';
     const add = (cls, html) => msgs.appendChild(h('div', 'msg ' + cls, html));
     const cmdrs = S.deck.commanders.map(i => i.card.name);
@@ -337,10 +338,11 @@
       const el = $('#comboBook'); if (!db || !el || S.deck !== deck) return;
       const cmd = deck.commanders.map(i => i.card), id = cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null;
       const r = Combos.find(db, deck.unique.map(c => c.name), id), more = r.included.filter(c => !Combos.played(c, engine));
-      const li = c => `<li><b>${c.cards.map(n => n === c.missing ? `add ${esc(n)}` : esc(n)).join(' + ')}</b>: ${esc(c.does.join('; '))}.${c.needs.length ? ` Also needs: ${esc(c.needs.join(', '))}.` : ''} <a href="${esc(c.url)}" target="_blank" rel="noopener">Steps on Commander Spellbook</a></li>`;
+      S.bookCombos = Combos.goldfished(r, engine);
+      const li = c => `<li><b>${c.cards.map(n => n === c.missing ? `add ${esc(n)}` : esc(n)).join(' + ')}</b>: ${esc(c.does.join('; '))}.${c.needs.length ? ` Also needs: ${esc(c.needs.join(', '))}.` : ''}${!c.missing && c.goldfish && c.kind ? ' The goldfish counts it.' : !c.missing && c.goldfish && c.loops ? ' The goldfish counts it once a card that turns the loop into damage is out.' : ''} <a href="${esc(c.url)}" target="_blank" rel="noopener">Steps on Commander Spellbook</a></li>`;
       const group = (title, xs, cls, max) => xs.length ? `<div class="sg ${cls}"><b>${title}</b><ul>${xs.slice(0, max).map(li).join('')}</ul>${xs.length > max ? `<p>The ${max} most popular are shown.</p>` : ''}</div>` : '';
       el.innerHTML = group(`${more.length} more in Commander Spellbook`, more, '', 40) + group(`${r.almost.length} one card away`, r.almost, '', 15)
-        + `<p class="hint" data-fold>Commander Spellbook snapshot of ${esc(db.fetched)}: its ${db.combos.length.toLocaleString()} most popular combos. The autopilot does not play the ones listed here; open one for what it does and a link to its steps.</p>`;
+        + `<p class="hint" data-fold>Commander Spellbook snapshot of ${esc(db.fetched)}: its ${db.combos.length.toLocaleString()} most popular combos. The goldfish counts ${S.bookCombos.length} of the ones in this list: those that win, make infinite mana, or loop beside a card that turns the loop into damage, and need nothing it cannot check. It does not play out their steps; once every card is where the combo starts and the mana is there, the combo counts. The rest are listed for you to read.</p>`;
       tidy(el);
     });
   }

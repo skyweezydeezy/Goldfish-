@@ -47,6 +47,7 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     check(`${name}: the snapshot's date sits behind an ⓘ`, await p.$eval('#comboBook', e => /snapshot of \d{4}-\d\d-\d\d/.test(e.textContent) && e.querySelector('.hint').classList.contains('folded')));
     if (shot) await p.screenshot({ path: `${shot}/combos-build-${name}.png` });
 
+    check(`${name}: the Commander Spellbook combos the goldfish counts are handed to the simulation`, await p.evaluate(() => Array.isArray(window.__isf.bookCombos) && window.__isf.bookCombos.every(c => c.goldfish && c.cards.length)));
     // Simulate: how the games were won
     await p.fill('#optN', '300');
     await p.click('.tab[data-tab="sim"]'); await p.click('#runSim');

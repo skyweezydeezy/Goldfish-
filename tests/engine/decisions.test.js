@@ -85,7 +85,7 @@ const other = q => q.options.findIndex(o => !o.def);
 { const p = table(['second-breakfast', 'zul-ashur']), a = p.games[0]; const run = gs => { const ev = []; G.applyEffects(gs[0], [{ type: 'tutor', filters: ['creature'], dest: 'battlefield' }], null, ev, null); return ev; };
   const { q } = open(p, run); const want = q.options.find(o => !o.def);
   answer(p, run, [() => want.k]);
-  check('a search that puts the card onto the battlefield does so with the chosen card', /onto the battlefield/.test(q.text) && q.options.every(o => o.card.a.isCreature) && a.battlefield.some(x => x.inst && x.inst.iid === want.iid), want.name); }
+  check('a search that puts the card onto the battlefield does so with the chosen card', /onto the battlefield/.test(q.text) && q.options.every(o => o.card.a.isCreature || o.card.a.creatureOffField) && a.battlefield.some(x => x.inst && x.inst.iid === want.iid), want.name); }          // Grist is a creature card in the library
 
 // ---- 1b. land searches: ramp spells (Cultivate, Farseek) and fetch lands
 { const p = table(['frodo', 'zul-ashur']), a = p.games[0]; lands(a, 3); const cu = toHand(a, /^Cultivate$/);

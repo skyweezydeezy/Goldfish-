@@ -1,7 +1,7 @@
 # Brief for the Remote Versus agent
 
 Paste this whole file as the first message of a new session. That session works on one thing only: **two people, on two devices in
-two places, playing a game of Magic against each other in ICEYfish.**
+two places, playing a game of Magic against each other in ICEYFISH.**
 
 ## Your job
 Build and look after a human-vs-human remote mode. Start with **1v1**. A four-player pod with several people comes later, and only

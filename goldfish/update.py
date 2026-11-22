@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ICEYfish - self-updater. start.bat runs this before the server, so starting the app always gives you the newest version.
+ICEYFISH - self-updater. start.bat runs this before the server, so starting the app always gives you the newest version.
 
 What it does:
   * Asks GitHub which commit is newest. If you already have it, nothing is downloaded.

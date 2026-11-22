@@ -1,4 +1,4 @@
-/* ICEYfish - UI */
+/* ICEYFISH - UI */
 (function () {
   'use strict';
   const G = window.Goldfish, C = window.Charts;
@@ -62,9 +62,9 @@
     const el = $('#mirrorStatus');
     if (st.mode === 'local') {
       const i = st.info;
-      el.textContent = `ScryMirror: ${i.names.toLocaleString()} card names${i.images ? '' : ' (no image folder!)'}`; el.className = 'status-pill ok'; el.title = i.root;
+      el.textContent = `Local cards (Scryfall data): ${i.names.toLocaleString()} card names${i.images ? '' : ' (no image folder!)'}`; el.className = 'status-pill ok'; el.title = i.root;
     } else {
-      el.textContent = st.info && st.info.error ? 'ScryMirror not found · using Scryfall live' : 'Cards: Scryfall (live)';
+      el.textContent = 'Cards: Scryfall (live)';
       el.className = 'status-pill ok'; el.title = 'Card data and images load from Scryfall in your browser.';
     }
   });
@@ -78,7 +78,7 @@
     const running = sw ? await new Promise(res => { const ch = new MessageChannel(), t = setTimeout(() => res(null), 1500); ch.port1.onmessage = e => { clearTimeout(t); res(e.data && e.data.version); }; sw.postMessage('version', [ch.port2]); }) : null;
     let latest = null; try { const r = await fetch('version.js', { cache: 'no-store' }); if (r.ok) latest = ((await r.text()).match(/ISF_VERSION = (\d+)/) || [])[1] || null; } catch (e) { /* offline: show the running version only */ }          // version.js holds the number: one more with every merge
     const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
-    el.hidden = false; el.textContent = 'v' + v; el.title = 'ICEYfish version ' + v;
+    el.hidden = false; el.textContent = 'v' + v; el.title = 'ICEYFISH version ' + v;
     if (latest && +latest > +v) { el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.'; }          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
     else el.title += '. Tap to check for a newer one.';
     // A tap loads the newest version for certain. Asking the service worker to update and reloading straight away is not enough: the reload
@@ -223,7 +223,7 @@
   async function loadDeck() {
     const text = $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
-    { const link = readLink(text); if (link && text.trim().split(/\s+/).length === 1) return addFromLink(link, 'from the link'); }          // an ICEYfish deck link pasted in the box
+    { const link = readLink(text); if (link && text.trim().split(/\s+/).length === 1) return addFromLink(link, 'from the link'); }          // an ICEYFISH deck link pasted in the box
     { const site = deckSite(text); if (site && text.trim().split(/\s+/).length === 1) return toast(`${site[0].toUpperCase() + site.slice(1)} does not let other web pages read its decks. On the deck's page use Export (or Copy) as text, then paste the list here.`); }
     const btn = $('#loadDeck');
     btn.disabled = true; btn.textContent = 'Resolving…';
@@ -267,7 +267,7 @@
     const add = (cls, html) => msgs.appendChild(h('div', 'msg ' + cls, html));
     const cmdrs = S.deck.commanders.map(i => i.card.name);
     add('ok', `Loaded <b>${total}</b> cards${cmdrs.length ? ` · Commander: <b>${esc(cmdrs.join(' + '))}</b>` : ''}${cards.some(c => c._guessed) ? ' (guessed, mark it with *CMDR* to be sure)' : ''}`);
-    if (r.missing.length) add('err', `<b>${r.missing.length}</b> not found in ScryMirror: ${r.missing.map(m => esc(m.name)).join(', ')}`);
+    if (r.missing.length) add('err', `<b>${r.missing.length}</b> not found in the card data: ${r.missing.map(m => esc(m.name)).join(', ')}`);
     if ($('#optFormat').value === 'commander' && total !== 100) add('warn', `Commander decks are 100 cards. This list has ${total}.`);
     if (cmdrs.length) {
       const ci = new Set(); S.deck.commanders.forEach(i => (i.card.color_identity || []).forEach(c => ci.add(c)));
@@ -456,7 +456,7 @@
     if (!box.children.length) box.innerHTML = '<div class="empty-note">Every card in this deck is fully understood by the engine.</div>';
     const tw = $('#tokenWall'); tw.innerHTML = '';
     if ((S.deck.tokens || []).length) {
-      tw.appendChild(h('div', 'hint', 'Tokens this deck makes (from ScryMirror):'));
+      tw.appendChild(h('div', 'hint', 'Tokens this deck makes (Scryfall data):'));
       S.deck.tokens.forEach(t => {
         const fake = Object.assign({}, t, { uid: 'preview:' + t.name });
         previewCards.set(fake.uid, fake);           // so the card viewer can open token pictures too
@@ -553,7 +553,7 @@
   });
 
 
-  // ---- deck links: a whole decklist packed into an ICEYfish web address (#deck=…&name=…) ----
+  // ---- deck links: a whole decklist packed into an ICEYFISH web address (#deck=…&name=…) ----
   // Opening the link, or pasting it into the decklist box, adds the deck to your saved decks. Nothing goes through a server:
   // the list travels inside the link itself (squeezed with the browser's own deflate when it has it, "z." links; plain otherwise, "p.").
   const b64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
@@ -568,7 +568,7 @@
     const kind = code.slice(0, 2), bytes = unb64u(code.slice(2));
     if (kind === 'z.') { if (typeof DecompressionStream === 'undefined') throw new Error('this browser cannot open squeezed deck links; update it and try again'); return new TextDecoder().decode(await pipe(bytes, DecompressionStream, 'deflate-raw')); }
     if (kind === 'p.') return new TextDecoder().decode(bytes);
-    throw new Error('this is not an ICEYfish deck link');
+    throw new Error('this is not an ICEYFISH deck link');
   }
   async function deckLink(name, text) {
     const u = new URL(location.href); u.search = ''; u.hash = 'deck=' + (await packDeck(text)) + '&name=' + encodeURIComponent(name);
@@ -594,7 +594,7 @@
   }
   async function shareDeck(name, text) {
     const url = await deckLink(name, text);
-    if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ title: name + ' · ICEYfish deck', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ title: name + ' · ICEYFISH deck', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
     try { await navigator.clipboard.writeText(url); toast('Deck link copied. Anyone who opens it gets this deck in their saved decks.'); }
     catch (e) { prompt('Copy this deck link:', url); }
   }
@@ -687,7 +687,7 @@
     const all = getDecks();
     if (!Object.keys(all).length) return toast('Nothing to export yet');
     const extra = {}; BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v != null) extra[k] = v; });
-    download('iceyfish-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'ICEYfish', version: 2, exported: new Date().toISOString(), decks: all, meta: getMeta(), settings: extra }, null, 2), 'application/json');
+    download('iceyfish-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'ICEYFISH', version: 2, exported: new Date().toISOString(), decks: all, meta: getMeta(), settings: extra }, null, 2), 'application/json');
     localStorage.setItem('isf_last_backup', String(Date.now())); backupInfo(); toast('Backup saved to your downloads. Keep it somewhere safe (Files, iCloud Drive, Google Drive).');
   });
   $('#dmImport').addEventListener('click', () => $('#dmFile').click());

@@ -1,4 +1,4 @@
-/* ICEYfish - QR codes, made in the page (nothing is sent anywhere). Byte mode, error correction M, the smallest version that fits
+/* ICEYFISH - QR codes, made in the page (nothing is sent anywhere). Byte mode, error correction M, the smallest version that fits
    (up to 25). After Project Nayuki's QR code generator (MIT): the same tables and steps, cut down to what the app needs.
    qr.matrix(text) -> rows of true (dark) / false; qr.svg(text) -> an SVG string with the 4-module quiet zone. */
 (function (root) {

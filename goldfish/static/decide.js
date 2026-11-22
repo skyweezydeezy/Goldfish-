@@ -1,4 +1,4 @@
-/* ICEYfish - a person's choices in a played game (1v1 and Pod).
+/* ICEYFISH - a person's choices in a played game (1v1 and Pod).
 
    The engine (sim.js) is synchronous and resolves every effect at once; a person's answer is not. So a played game asks first and
    resolves afterwards. An engine call is tried on an exact copy of the game and stops at the first choice the engine would make for the

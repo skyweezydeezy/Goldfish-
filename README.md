@@ -1,6 +1,6 @@
-# ICEYfish
+# ICEYFISH
 
-Paste a decklist and watch it goldfish. It uses your own card images from **ScryMirror**, plus exact draw math and a Monte Carlo simulation.
+Paste a decklist and watch it goldfish. Card data and images come from [Scryfall](https://scryfall.com), plus exact draw math and a Monte Carlo simulation.
 
 ## Use it on your phone or iPad (hosted version)
 
@@ -9,7 +9,7 @@ The `goldfish/static` folder is a complete web app that needs no server. In this
 **Publish it with GitHub Pages (free, about 2 minutes):**
 1. In the repo on GitHub: **Settings -> Pages -> Build and deployment -> Source: GitHub Actions**.
 2. Go to the **Actions** tab, open **Deploy to GitHub Pages**, and wait for the green check (or click **Run workflow**).
-3. Your app is at `https://<your-github-name>.github.io/ICEYfish/`. Open it on your phone.
+3. Your app is at `https://<your-github-name>.github.io/ICEYFISH/`. Open it on your phone.
 
 GitHub Pages is free for public repositories. If the repo is private, use any free static host instead (for example drag the `goldfish/static` folder onto <https://app.netlify.com/drop>).
 
@@ -25,9 +25,9 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 
 **Card viewer:** every card on every tab opens in the viewer. Click (or tap) a card to open it; where a click picks the card instead (the Draw Odds picker, the 12 sample hands), use the 🔍 in its corner, right-click it, or long-press it on a phone; on the Goldfish Table a click opens the card's menu, where View card opens the viewer (Ctrl/⌘-click plays or taps a card at once, Shift-click casts it ignoring mana). On a wide screen the card sits on the left and its price, shop buttons and printings beside it. Swipe the card (or use the ‹ › buttons or arrow keys) to move to the next or previous card around it, pick another **printing** (with prices) and choose **Use this printing in my deck** to switch the art for this visit, and shop for it at **TCGplayer, Card Kingdom or ManaPool**. The shop links are plain links for now; affiliate parameters can be added in `AFFILIATE` near the top of the viewer code in `app.js`. The viewer also shows how the engine reads the card.
 
-**Same Wi-Fi only, using your PC's ScryMirror images:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
+**Same Wi-Fi only, using card images stored on your PC:** double-click `goldfish\start-lan.bat`, then open the address it prints on your phone.
 
-## Run it on your PC with your own ScryMirror (Windows)
+## Run it on your PC with a local copy of Scryfall data (Windows)
 
 1. Install Python 3 if you don't have it (python.org, tick "Add to PATH"). It needs nothing else.
 2. Get the folder once: on GitHub choose **Code -> Download ZIP** and unzip it anywhere.
@@ -41,12 +41,12 @@ GitHub Pages is free for public repositories. If the repo is private, use any fr
 - To start without checking: `start.bat --no-update`.
 - The check that this works (download the zip, run `start.bat` on Windows, the app answers) runs on GitHub after every push: see **Actions -> Launch check**.
 
-It reads `%USERPROFILE%\Documents\ScryMirror` by default:
+It reads a folder of Scryfall card data and images that you keep on your PC (set the `ICEYFISH_DATA_DIR` environment variable, or pass `--data-dir`):
 
 - `data\scryfall.sqlite` for card data (Oracle text, mana cost, types, printings)
 - `data\images\normal\<set>\<cn>_en[_<face>].jpg` for the card images
 
-Different location: `start.bat --scrymirror "D:\path\to\ScryMirror"` (or `python server.py --scrymirror ...`).
+Different location: `start.bat --data-dir "D:\path\to\folder"` (or `python server.py --data-dir ...`).
 Everything runs locally and only reads your files; nothing is uploaded.
 
 ## The five tabs
@@ -67,7 +67,7 @@ The engine reads each card's Oracle text and turns it into abilities. The **Deck
 - **Mana:** colored costs, hybrid, Phyrexian, X, taplands and check lands, fetches, MDFC land backs, rocks and dorks (with summoning sickness), Treasure, rituals and triggered mana, cost reducers ("Creature spells you cast cost {1} less"), extra land drops (Exploration, Burgeoning-style "put a land from your hand"), and commander tax.
 - **Triggers:** enters the battlefield, attacks, Landfall, "whenever you cast a (noncreature / instant or sorcery / creature…) spell", "whenever another creature / Elf / artifact enters", upkeep, beginning of combat, end step, combat damage to a player, and "whenever you draw".
 - **Effects:**
-  - creature tokens with power/toughness, colors and keywords, using the real token art from ScryMirror
+  - creature tokens with power/toughness, colors and keywords, using the real token art from Scryfall
   - **token replacement effects:** Doubling Season, Parallel Lives, Mondrak and Elspeth, Storm Slayer (they stack), Divine Visitation (creature tokens become Angels), Chatterfang and Peregrin Took (extra Squirrels or a Food), Academy Manufactor and Bilbo (Clue, Food and Treasure). Order used: conversions, then additions, then doublers. Doubling Season also doubles counters and starting/+ loyalty.
   - **token triggers:** "whenever a token enters / you create a token / a token leaves", including Belladonna Took's first-second-third-time-this-turn ability, Rosie Cotton, Mirkwood Bats, Nadier's Nightblade, Gyome, and Rapacious Guest's combat Food
   - **Food economy:** spends spare mana and Foods on "sacrifice a Food" abilities (Greta's cards and counters, Savvy Hunter and Peregrin Took's draws), with the payoffs: Nuka-Cola's Treasure, Rapacious Guest's counters, Mirkwood Bats and Nadier's Nightblade. Cabbage Merchant turns pairs of Foods into mana.
@@ -324,7 +324,7 @@ Cards are kept in a database filed by release set: one file per set in `goldfish
 
 ## Fan content, credits and donations
 
-*ICEYfish is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
+*ICEYFISH is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. (c) Wizards of the Coast LLC.*
 
 Card data and images are provided by [Scryfall](https://scryfall.com) and are not endorsed by Scryfall. Following Scryfall's and Wizards' policies, this app is **free to use with no sign-up or paywall**, card images are shown whole and unaltered, and the hosted version fetches everything from Scryfall directly instead of re-hosting it. Optional tips are welcome on Cash App at <https://cash.app/$SWDMark> and never unlock anything.
 

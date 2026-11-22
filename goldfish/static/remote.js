@@ -1,4 +1,4 @@
-/* ICEYfish - Duel against a friend on another device.
+/* ICEYFISH - Duel against a friend on another device.
 
    Both devices run the whole game from the same seed, decks and options; only moves and answers cross between them (versus.js makes
    the moves: startRemote, feed). This file owns the rest: the list of what is shared and each player's acceptance of it, the
@@ -53,7 +53,7 @@
     'The game\'s moves and both deck lists are saved in this browser so a game can be rejoined. They stay until you delete the game.',
     'Your device downloads the other player\'s card pictures from Scryfall, as it does for your own deck.',
   ].concat(relayOn ? [`When the two devices cannot reach each other directly, the game goes through ${RELAY.name}'s relay server. It sees both devices' network addresses and how much data passes, but the moves are encrypted, so it cannot read them.`] : [],
-    RELAY.service ? ['To use the relay, your device first asks the ICEYfish server for its address and login, so that server sees your network address too. It keeps no record of your games.'] : []);
+    RELAY.service ? ['To use the relay, your device first asks the ICEYFISH server for its address and login, so that server sees your network address too. It keeps no record of your games.'] : []);
   const accepted = () => +(localStorage.getItem(ACK_KEY) || 0) === DISCLOSURE_VERSION;
 
   // ---------- small helpers ----------
@@ -96,7 +96,7 @@
   }
   async function unpack(code) {
     code = String(code || '').trim().replace(/^.*#isf-(join|reply)=/, '').replace(/\s+/g, '');
-    const m = /^ISF(\d)(z?)\.([A-Za-z0-9_-]+)$/.exec(code); if (!m) throw new Error('That is not an ICEYfish code.');
+    const m = /^ISF(\d)(z?)\.([A-Za-z0-9_-]+)$/.exec(code); if (!m) throw new Error('That is not an ICEYFISH code.');
     if (+m[1] !== PROTO) throw new Error('That code is from a different version of the app. Reload both devices and try again.');
     let bytes = unb64(m[3]);
     if (m[2]) { if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot read that code. Update it and try again.'); bytes = await squeeze(bytes, new DecompressionStream('deflate-raw')); }
@@ -430,14 +430,14 @@
     if (p.kind === 'invite') return `<div class="rm-codes"><p><b>1.</b> Your friend scans this with their phone's camera.</p>${qrHtml(linkFor('invite', p.code))}${mine(p.code)}
       <div class="row wrap"><button class="rm-copy" data-what="link">Share the link instead</button></div>
       <p><b>2.</b> Then scan the code on their screen with your camera. It opens in a new tab: come back to this one and the game connects.</p>
-      ${homeScreen() ? '<p class="hint">You opened ICEYfish from the home screen: the camera opens links in Safari instead, so play in Safari, or paste their reply below.</p>' : ''}
+      ${homeScreen() ? '<p class="hint">You opened ICEYFISH from the home screen: the camera opens links in Safari instead, so play in Safari, or paste their reply below.</p>' : ''}
       <details class="rm-paste"${homeScreen() ? ' open' : ''}><summary>Or paste their reply</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their reply code"></textarea><div class="row wrap"><button class="primary rm-connect">Connect</button></div></details></div>`;
     if (p.kind === 'join') return `<div class="rm-codes">${p.code ? '<p><b>1.</b> Your friend\'s invite is here.</p>' : ''}
       <details class="rm-paste"${p.code ? '' : ' open'}><summary>${p.code ? 'The invite' : 'Paste the invite your friend sent you'}</summary><textarea class="rm-code rm-theirs" rows="2" placeholder="Their invite">${esc(p.code || '')}</textarea></details>
       <div class="row wrap"><button class="primary rm-reply">Join</button></div></div>`;
     if (p.kind === 'reply') return `<div class="rm-codes"><p><b>2.</b> Show this to your friend: they scan it with their camera, and the game starts.</p>${qrHtml(linkFor('reply', p.code))}${mine(p.code)}
       <div class="row wrap"><button class="rm-copy" data-what="link">Share the reply instead</button></div></div>`;
-    if (p.kind === 'handed') return `<div class="rm-codes"><p><b>Got your friend's reply.</b> Go back to the ICEYfish tab with your invite: the game connects there. You can close this tab.</p></div>`;
+    if (p.kind === 'handed') return `<div class="rm-codes"><p><b>Got your friend's reply.</b> Go back to the ICEYFISH tab with your invite: the game connects there. You can close this tab.</p></div>`;
     return '';
   }
   function needAccept() {
@@ -467,7 +467,7 @@
     if (hit('rm-copy')) {
       const link = hit('rm-copy').dataset.what === 'link', code = box.querySelector('.rm-mine').value, text = link ? linkFor(S.pending && S.pending.kind, code) : code;
       const copy = () => (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => status('Copied.'), () => { box.querySelector('.rm-mine').select(); status('Select the code and copy it.'); });
-      if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) return navigator.share(link ? { title: S.pending && S.pending.kind === 'reply' ? 'ICEYfish: my reply' : 'ICEYfish: join my game', url: text } : { text }).catch(e => { if (!e || e.name !== 'AbortError') copy(); });          // on a phone: the share sheet (Messages)
+      if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) return navigator.share(link ? { title: S.pending && S.pending.kind === 'reply' ? 'ICEYFISH: my reply' : 'ICEYFISH: join my game', url: text } : { text }).catch(e => { if (!e || e.name !== 'AbortError') copy(); });          // on a phone: the share sheet (Messages)
       return copy();
     }
     if (hit('rm-rejoin')) { const sv = load(); if (!sv) return show(); status(''); S.pending = null; begin(sv.id, sv.local, sv.setup, sv); return; }

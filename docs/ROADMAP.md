@@ -19,7 +19,7 @@
 | Moxfield and [Archidekt](https://archidekt.com/news/13186079) playtesters | Solo goldfish | One board, a hand, a log (Archidekt added mana and power tracking) |
 | [Commander Bench](https://commander-bench.pages.dev/about) | Language models playing Commander against each other on top of XMage | Research project, not a consumer app |
 
-**The gap ICEYfish can fill:** Forge can run AI-vs-AI games but only shows numbers; the browser tables look good but have no AI. Watching learned decks play out visually, then joining in, with win-rate statistics from many games, is not done well anywhere.
+**The gap ICEYFISH can fill:** Forge can run AI-vs-AI games but only shows numbers; the browser tables look good but have no AI. Watching learned decks play out visually, then joining in, with win-rate statistics from many games, is not done well anywhere.
 
 ## Layout for you plus up to 3 AI opponents
 

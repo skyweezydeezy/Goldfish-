@@ -298,7 +298,7 @@
     if ('mediaSession' in navigator) {
       try {
         const tr = TRACKS.find(x => x.id === set.track) || TRACKS[0];
-        navigator.mediaSession.metadata = on && window.MediaMetadata ? new MediaMetadata({ title: tr.name, artist: 'ICEYfish', artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }] }) : null;
+        navigator.mediaSession.metadata = on && window.MediaMetadata ? new MediaMetadata({ title: tr.name, artist: 'ICEYFISH', artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }] }) : null;
         navigator.mediaSession.playbackState = on ? 'playing' : 'none';
         navigator.mediaSession.setActionHandler('play', on || set.bg ? () => { set.music = true; save(); } : null);
         navigator.mediaSession.setActionHandler('pause', on ? () => { set.music = false; save(); } : null);

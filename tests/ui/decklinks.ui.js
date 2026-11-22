@@ -1,4 +1,4 @@
-// Deck links and backups. Share link on a saved deck makes an ICEYfish link with the whole list inside it; opening that link in a
+// Deck links and backups. Share link on a saved deck makes an ICEYFISH link with the whole list inside it; opening that link in a
 // fresh browser, or pasting it into the decklist box, adds the deck to the saved decks (once). A Moxfield link pasted in the box says
 // how to bring the list over instead. With "Save every deck I load" on, a pasted list is saved when it loads (built-in decks are not). Export all saves one file with the decks and the settings, Import puts them back in an empty browser,
 // and the manager says how saved data works (folded until opened) and when the last backup was made.
@@ -31,7 +31,7 @@ const URL0 = 'http://127.0.0.1:8800/';
   check('it shows "No backup yet" in the warning colour', /No backup yet/.test(await a.textContent('#dmBackup')) && await a.$eval('#dmBackup', e => e.classList.contains('warn')));
   await a.click('.dm-row button:has-text("Share link")'); await a.waitForTimeout(300);
   const link = await a.evaluate(() => navigator.clipboard.readText());
-  check('Share link copies an ICEYfish link with the deck inside it', /^http:\/\/127\.0\.0\.1:8800\/#deck=[zp]\.[A-Za-z0-9_-]+&name=Second%20Breakfast$/.test(link), link.slice(0, 60) + '… (' + link.length + ' characters)');
+  check('Share link copies an ICEYFISH link with the deck inside it', /^http:\/\/127\.0\.0\.1:8800\/#deck=[zp]\.[A-Za-z0-9_-]+&name=Second%20Breakfast$/.test(link), link.slice(0, 60) + '… (' + link.length + ' characters)');
 
   // ---- Export all: one file with decks and settings
   const [dl] = await Promise.all([a.waitForEvent('download'), a.click('#dmExportAll')]);

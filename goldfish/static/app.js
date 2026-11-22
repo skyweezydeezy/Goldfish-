@@ -941,9 +941,9 @@
     G.mulligan(g);
     return startTableGame(g, auto);
   }
-  // Loop: game after game by itself, with the settings already on screen. Each game: a new game, the autopilot plays to the turn in the
-  // "Autopilot to turn" box (or until the goldfish is dead), a short pause that follows the speed slider, then the next. Press again to stop.
-  let tableLoop = null;
+  // Loop: game after game by itself, with the settings already on screen. Each game: a new game, the autopilot plays until the goldfish is
+  // dead (or turn LOOP_CAP, for a deck that cannot win), a short pause that follows the speed slider, then the next. Press again to stop.
+  let tableLoop = null; const LOOP_CAP = 30;
   const loopBtn = on => { const b = $('#tLoop'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
   $('#tLoop').addEventListener('click', () => {
     if (tableLoop) { tableLoop.stop = true; loopBtn(false); toast('Loop stops after this game'); return; }
@@ -956,12 +956,12 @@
         while (S.busy && !L.stop) await sleep(150);
         if (L.stop) break;
         await newTableGame(true);
-        const n = Math.max(1, +$('#tAutoToN').value || 6);
+        const n = LOOP_CAP;                                              // play until the goldfish is dead (a deck that cannot win stops at this turn)
         await guard(async () => { while (!L.stop && S.game && S.game.killTurn == null && (S.game.turn < n || (S.game.turn === n && !S.game.turnDone))) await autoTurn(); });
         if (L.stop || !S.game) break;
         const g = S.game; L.games++; if (g.killTurn != null) L.kills.push(g.killTurn);
         const avg = L.kills.length ? L.kills.reduce((a, b) => a + b, 0) / L.kills.length : 0;
-        const line = `Loop · game ${L.games}: ${g.killTurn != null ? 'goldfish dead on turn ' + g.killTurn : 'goldfish alive after turn ' + g.turn} · killed in ${L.kills.length} of ${L.games}${L.kills.length ? ', average turn ' + avg.toFixed(1) : ''}`;
+        const line = `Loop · game ${L.games}: ${g.killTurn != null ? 'goldfish dead on turn ' + g.killTurn : 'no kill by turn ' + g.turn} · killed in ${L.kills.length} of ${L.games}${L.kills.length ? ', average turn ' + avg.toFixed(1) : ''}`;
         log(`<b>${esc(line)}</b>`); toast(line);
         await sleep(2500 * slow());
       }

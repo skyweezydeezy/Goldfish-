@@ -1,4 +1,4 @@
-// Loop: Practice plays game after game to the turn in the "Autopilot to turn" box and reports each one; pressing Loop again stops it.
+// Loop: Practice plays game after game until the goldfish is dead and reports each one; pressing Loop again stops it.
 // Duel with the autopilot in your seat and Loop ticked: when a game ends the next one starts by itself, with a running tally.
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -24,11 +24,12 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 
   // ---- Practice: Loop plays game after game ----
   await p.click('[data-tab=table]');
-  await p.fill('#tAutoToN', '3');
+  await p.fill('#tAutoToN', '2');          // the turn box does not stop a looped game: it plays until the goldfish is dead
   await p.click('#tLoop');
   check('Practice: the Loop button lights up when pressed', await p.$eval('#tLoop', b => b.classList.contains('on') && b.getAttribute('aria-pressed') === 'true'));
   await p.waitForFunction(() => /Loop · game 1/.test(document.body.innerText), null, { timeout: 90000 });
-  check('Practice: the first looped game plays to the chosen turn by itself, then reports', true);
+  const r1 = await p.evaluate(() => (document.body.innerText.match(/Loop · game 1: [^\n·]*/) || [''])[0]);
+  check('Practice: the first looped game plays on past the turn box until the goldfish is dead, then reports', /goldfish dead on turn ([3-9]|[12]\d)/.test(r1), r1);
   await p.waitForFunction(() => /Loop · game 2/.test(document.body.innerText), null, { timeout: 90000 });
   check('Practice: a second game starts and plays by itself, with no question asked', !(await p.$('.ch-sheet:not([hidden]) .ch-auto')));
   await p.click('#tLoop');

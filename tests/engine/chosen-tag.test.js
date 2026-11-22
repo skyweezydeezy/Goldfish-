@@ -89,8 +89,12 @@ const castMimic = (p, chooser) => { const a = p.games[0]; lands(a, 2); const mm 
   check('...and the card goes to the graveyard as the plain card (the choice ends with the spell)', a.graveyard.some(i => i.iid === ks.iid && !i.card.tribeBase) && !a._castTribe); }
 { const dk = G.buildDeck(CT.cards, CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; }); D.seat(pod.games[0]);
   const a = pod.games[0]; const dm = { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Distant Melody') }; a.hand.push(dm); for (let k = 0; k < 6; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }
-  const qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === dm.iid)), q => { qs.push(q.kind); return 'auto'; });
-  check('Distant Melody (the engine counts every permanent, not one type) does not ask: there is nothing to choose yet', !qs.includes('tribe'), qs.join(', ')); }
+  const cre = a.deck.unique.filter(c => /Creature/.test(c.type_line || '') && !c.commander), mers = cre.filter(c => /Merfolk/.test(c.type_line)).slice(0, 3), sh = cre.find(c => /Shapeshifter/.test(c.type_line) && !/Merfolk/.test(c.type_line));
+  mers.concat([sh]).forEach(c => G.enterWithTriggers(a, { iid: a.nextIid++, card: c }, {}, []));
+  const h0 = a.hand.length, qs = []; D.resolveSync(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === dm.iid), true), q => { qs.push(q.kind); return q.kind === 'tribe' ? q.options.findIndex(o => o.name === 'Shapeshifter') : 'none'; });
+  check('Distant Melody asks for the creature type (the engine plays it with the type now)', qs.includes('tribe'), qs.join(', '));
+  const drew = a.hand.length - (h0 - 1), shapes = a.battlefield.filter(q => /Shapeshifter/.test(q.card.type_line || '') || q.card.a.changeling).length;
+  check('...choosing Shapeshifter draws one card for each Shapeshifter you control, not for each Merfolk', drew === shapes && shapes >= 1 && shapes < 4, `drew ${drew}, ${shapes} Shapeshifter(s), 3 Merfolk`); }
 { const bb = find('Bloodline Bidding');
   if (bb) { const dk = G.buildDeck(CT.cards.concat([bb]), CT.tokens), pod = G.newPod([dk, G.buildDeck(MM.cards, MM.tokens)], [O, O], 5, ['you', 'them'], 0); pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; x.graveyard = []; }); D.seat(pod.games[0]);
     const a = pod.games[0]; for (let k = 0; k < 9; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: a.deck.unique.find(c => c.name === (k < 5 ? 'Swamp' : 'Island')) || a.deck.unique.find(c => c.name === 'Island') }, {}, []); q.tapped = false; }

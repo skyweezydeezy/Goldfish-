@@ -3001,6 +3001,11 @@
   }
   function chooseTribeOnEnter(g, inst, spell) {
     const base = inst.card.tribeBase || inst.card, d = g.deck;
+    if (spell && d && !d.tribe && (base.a.spellFx || []).some(f => TRIBE_FX.has(f.type)) && /(^|\n)choose a creature type\./i.test(base.oracle_text || '')) {          // no deck type: the type you control most of is the default (bestTribeOnBoard)
+      const def = bestTribeOnBoard(g), { list, counts } = deckTribes(d); if (!def) return;
+      const opts = [def].concat(list.filter(t => t !== def)), pick = decide(g, { kind: 'tribe', options: opts, def, counts, source: { card: base }, learned: def });
+      g._castTribe = pick || def; return;
+    }
     if (!d || !d.tribe) return;
     const ch = chosenFor(g, base); if (!ch || ch.what !== 'creature type') return;
     if (spell && !tribeMatters(g, base)) return;
@@ -4597,7 +4602,22 @@
     if (!g.acts) { const ev = Array.isArray(out) ? out : out && Array.isArray(out.ev) ? out.ev : []; settle(g, ev); }
     return out;
   }
+  // In a pod a person chooses the opponent a triggered ability aims at ("target opponent", or "target player" when what it does is
+  // done to an opponent: Bojuka Bog, the Desert lands' damage, a mill). The autopilot's pick is the player they are facing.
+  const HOSTILE_FX = new Set(['oppYard', 'millOpp', 'oppDiscard', 'edict']);
+  function trigOpp(g, trig) {
+    if (!g.ask || g.dry || g._oppWas || !g.match || !isPod(g) || !trig.fx || !trig.fx.length) return null;
+    const t = trig.text || '';
+    if (!(/\btarget opponent\b/i.test(t) || (/\btarget player\b/i.test(t) && trig.fx.some(f => HOSTILE_FX.has(f.type))))) return null;
+    const os = podAlive(g); if (os.length < 2 || !os.includes(g.opp)) return null;
+    return os;
+  }
   function fireNow(g, trig, source, ev, subject, amount) {
+    const os = trigOpp(g, trig);
+    if (os) { const o = decide(g, { kind: 'player', options: os, def: g.opp, source: source && source.card ? source : null }); if (o && o !== g.opp) { const o0 = g.opp; g._oppWas = o0; g.opp = o; try { return fireNow0(g, trig, source, ev, subject, amount); } finally { g._oppWas = null; g.opp = !o0.dead ? o0 : (pickTarget(g) || o0); } } }
+    return fireNow0(g, trig, source, ev, subject, amount);
+  }
+  function fireNow0(g, trig, source, ev, subject, amount) {
     fireOnce(g, trig, source, ev, subject, amount);
     if (!g.dry && source && source.iid != null && g.killTurn == null && isCreaturePerm(source) && bfInfo(g).wizardStaff && (tableHas(g, 'wizardStaff') && g.battlefield.some(q => q.card.a.wizardStaff && q.attachedTo === source.iid))) fireOnce(g, trig, source, ev, subject, amount);          // Wizard's Staff
     if (g.copierSeen && !g.dry && source && g.killTurn == null && !g.inCopy) {                                   // Strionic Resonator, Lithoform Engine: {2}, {T}: copy a triggered ability worth copying
@@ -5351,7 +5371,8 @@
           break;
         }
         case 'copyToken': {
-          const cp = f.self ? source : subject || (f.target && f.art ? g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.a.isLegendary).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0] : f.target ? g.battlefield.filter(q => isCreaturePerm(q) && !q.card.a.isLegendary && !q.token).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0] : null);          // Saheeli's Artistry: "a copy of target artifact"          // "a copy of target creature": your best one
+          let cp = f.self ? source : subject || (f.target && f.art ? g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.a.isLegendary).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0] : f.target ? g.battlefield.filter(q => isCreaturePerm(q) && !q.card.a.isLegendary && !q.token).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0] : null);          // Saheeli's Artistry: "a copy of target artifact"          // "a copy of target creature": your best one
+          if (cp && g.ask && !g.dry && f.target && !f.self && !subject) cp = decide(g, { kind: 'target', what: 'copy', options: g.battlefield.filter(q => !q.asLand && (f.art ? q.card.a.isArtifact : isCreaturePerm(q))), def: cp, source }) || cp;          // a person chooses what is copied (Twinflame, Cackling Counterpart)
           if (cp && cp.card && !cp.asLand && g.battlefield.length < 250) {          // the same limit as createTokens (Scute Swarm copies itself with every land)
             const inst = { iid: g.nextIid++, card: f.notLegendary ? unlegendary(g, cp.card) : cp.card };
             const perm = enterWithTriggers(g, inst, { token: true }, ev); perm.token = true;
@@ -6196,7 +6217,8 @@
         }
         case 'earthbend': {                                                                                  // a land becomes a 0/0 creature with haste and N +1/+1 counters
           const k2 = n || 0; if (k2 <= 0) break;
-          const l = g.battlefield.filter(q => q.asLand && !q.animated && !q.card.a.isCreature).sort((x, y) => (/\bBasic\b/.test(y.card.type_line || '') ? 1 : 0) - (/\bBasic\b/.test(x.card.type_line || '') ? 1 : 0) || (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0];
+          let l = g.battlefield.filter(q => q.asLand && !q.animated && !q.card.a.isCreature).sort((x, y) => (/\bBasic\b/.test(y.card.type_line || '') ? 1 : 0) - (/\bBasic\b/.test(x.card.type_line || '') ? 1 : 0) || (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0];
+          if (l && g.ask && !g.dry) l = decide(g, { kind: 'target', what: 'earthbend', options: g.battlefield.filter(q => q.asLand && !q.animated && !q.card.a.isCreature), def: l, n: k2, source }) || l;          // a person chooses the land
           if (!l) break; l.animated = { p: 0, t: 0, perm: true, kw: ['haste'] }; l.earthbent = true; l.sick = false; touch(g); addCounters(g, l, '+1/+1', k2, ev, source);
           ev.push({ type: 'note', text: `Earthbend ${k2}: ${l.card.name} becomes a creature`, source }); break;
         }
@@ -6301,7 +6323,7 @@
         case 'tempest': if (g.opp) { const X = Math.max(0, (g.mvCast && g.mvCast.turn === g.turn ? g.mvCast.n : 0) - (g.lastCast ? g.lastCast.card.a.mv || 0 : 0)); const dead = g.opp.battlefield.filter(q => isCreaturePerm(q) && !indestructible(g.opp, q) && toughnessOf(g.opp, q) <= X); dead.forEach(q => leavePerm(g.opp, q, ev)); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `${X} damage to each creature the opponent controls: ${dead.length} die`, source }); } break;
         case 'exileSwap': applyEffects(g, g.lastCast && g.lastCast._castExile ? f.alt : f.base, source, ev, subject); break;          // "if ~ was cast from exile, ... instead"
         case 'plunder': if (g.opp) damageOpp(g, g.opp.battlefield.filter(q => q.card.a.isArtifact).length, ev, source, true); break;
-        case 'landSwap': { const c = swapLand(g); if (c) { g.library.splice(g.library.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source }); shuffle(g.library, g.rnd); } break; }          // Crop Rotation
+        case 'landSwap': { let c = swapLand(g); if (c && g.ask && !g.dry) c = decide(g, { kind: 'search', options: g.library.filter(i => i.card.a.isLand), def: c, f: { dest: 'battlefield', land: 'land' }, source }) || c; if (c) { g.library.splice(g.library.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source }); shuffle(g.library, g.rnd); } break; }          // Crop Rotation
         case 'sacAllOwn': for (const q of g.battlefield.filter(isCreaturePerm)) leavePerm(g, q, ev); flushLeaves(g, ev); break;          // Emrakul, the World Anew leaving
         case 'surveil': surveil(g, Math.min(n, 10), ev, source); break;
         case 'selfTop': if (source && g.battlefield.includes(source) && source.inst) { removePerm(g, source); g.library.unshift(source.inst); ev.push({ type: 'note', text: `${source.card.name} goes on top of the library`, source }); } break;
@@ -6362,7 +6384,7 @@
           break;
         }
         case 'pumpEquipped': { const h = source && g.battlefield.find(q => q.iid === source.attachedTo); if (h && isCreaturePerm(h)) { h.eotP = (h.eotP || 0) + f.p; h.eotT = (h.eotT || 0) + f.t; touch(g); } break; }          // Adventuring Gear
-        case 'attachSelf': { const t = source && bestCreature(g, source); if (t && g.battlefield.includes(source)) { source.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: source, target: t }); } break; }          // Skyclave Pick-Axe
+        case 'attachSelf': { const t = ownCreature(g, source && bestCreature(g, source), 'equip', source, source); if (t && g.battlefield.includes(source)) { source.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: source, target: t }); } break; }          // Skyclave Pick-Axe
         case 'multPT': { const t = bestCreature(g); if (t) { t.eotP = (t.eotP || 0) + (f.k - 1) * Math.max(0, powerOf(g, t)); t.eotT = (t.eotT || 0) + (f.k - 1) * Math.max(0, toughnessOf(g, t)); touch(g); ev.push({ type: 'note', text: `${t.card.name}: power and toughness times ${f.k}`, source }); } break; }          // Tifa's Limit Break
         case 'kayaEmblem': g.kayaEmblem = true; ev.push({ type: 'note', text: 'Emblem: each upkeep you may cast a legendary spell for free', source }); break;
         case 'wrennEmblem': g.wrennEmblem = true; ev.push({ type: 'note', text: 'Emblem: you may play lands and cast permanents from your graveyard', source }); break;
@@ -6542,7 +6564,10 @@
             let best = null, bs = -Infinity;
             if (f.filter && f.filter !== 'creature') { const c = g.library.filter(i => matchesFilter(i.card, f.filter) && (f.filter !== 'artifact' || (i.card.a.mv || 0) <= 3 || (tableHas(g, 'engineer') && g.battlefield.some(q => q.card.a.engineer)) === false)).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c) { g.library.splice(g.library.indexOf(c), 1); g.graveyard.push(c); shuffle(g.library, g.rnd); ev.push({ type: 'note', text: `${c.card.name} goes from your library to the graveyard`, source }); } break; }
             for (const i of g.library) { const v = reanimateValue(g, i); if (v > bs) { bs = v; best = i; } }
-            if (best && bs >= (f.n > 1 ? 4 : 6)) { const sr = searchRule(g); if (sr && sr.kind === 'cant') { ev.push({ type: 'note', text: `${sr.by.card.name}: no searching`, source }); break; } g.library.splice(g.library.indexOf(best), 1); if (sr && sr.agent) { g._agent = sr.agent; agentTake(g, best, ev, source); g._agent = null; } else { g.graveyard.push(best); ev.push({ type: 'note', text: `Entomb: ${best.card.name} goes to the graveyard`, source }); } }          // Stranglehold, Opposition Agent
+            let take = best && bs >= (f.n > 1 ? 4 : 6);
+            if (g.ask && !g.dry && !(searchRule(g) || {}).kind) { const txt = (source ? source.card.oracle_text : g.lastCast ? g.lastCast.card.oracle_text : '') || '', only = /nonlegendary card/i.test(txt) ? (i => !i.card.a.isLegendary) : /creature cards?\b/i.test(txt) ? (i => i.card.a.isCreature) : (() => true);          // Entomb: a card; Buried Alive: creature cards; Unmarked Grave: a nonlegendary card
+              const pick = decide(g, { kind: 'search', options: g.library.filter(only), def: take ? best : null, optional: true, f: { dest: 'graveyard', filters: [] }, source }); best = pick || null; take = !!pick; }          // a person searches: any card (Entomb), into the graveyard
+            if (best && take) { const sr = searchRule(g); if (sr && sr.kind === 'cant') { ev.push({ type: 'note', text: `${sr.by.card.name}: no searching`, source }); break; } g.library.splice(g.library.indexOf(best), 1); if (sr && sr.agent) { g._agent = sr.agent; agentTake(g, best, ev, source); g._agent = null; } else { g.graveyard.push(best); ev.push({ type: 'note', text: `Entomb: ${best.card.name} goes to the graveyard`, source }); } }          // Stranglehold, Opposition Agent
             else break;
           }
           shuffle(g.library, g.rnd);

@@ -1152,3 +1152,17 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .dice-box.won .dice-cap span { color: #ffd76a; }
 .dice-box.lost .dice-cap span { color: #ff9a8a; }
 @media (max-width: 600px) { .dice-layer { top: 14%; } .dice-stage { width: 96px; height: 96px; } }
+
+/* Meld (dice.js): Gisela and Bruna slide together, a flash, and Brisela grows out of it */
+.meld-stage { position: relative; width: 250px; height: 216px; }
+.meld-part, .meld-into { position: absolute; top: 14px; width: 122px; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+.meld-part.l { left: 0; animation: meld-l 1.7s ease-in forwards; }
+.meld-part.r { right: 0; animation: meld-r 1.7s ease-in forwards; }
+@keyframes meld-l { 0% { transform: rotate(-8deg); } 70% { transform: translateX(64px) rotate(0); opacity: 1; } 100% { transform: translateX(64px) scale(.7); opacity: 0; } }
+@keyframes meld-r { 0% { transform: rotate(8deg); } 70% { transform: translateX(-64px) rotate(0); opacity: 1; } 100% { transform: translateX(-64px) scale(.7); opacity: 0; } }
+.meld-flash { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px; border-radius: 50%; background: radial-gradient(circle, #fff, rgba(255,240,200,.8) 40%, transparent 70%); opacity: 0; animation: meld-flash 1.7s ease-out forwards; }
+@keyframes meld-flash { 0%, 62% { opacity: 0; transform: scale(.2); } 75% { opacity: 1; transform: scale(6); } 100% { opacity: 0; transform: scale(9); } }
+.meld-into { left: 50%; width: 150px; top: 0; margin-left: -75px; opacity: 0; transform: scale(.4); }
+.meld-box.done .meld-into { opacity: 1; transform: scale(1); transition: transform .45s cubic-bezier(.2,1.4,.4,1), opacity .25s; }
+@media (prefers-reduced-motion: reduce) { .meld-part, .meld-flash { animation: none; opacity: 0; } }
+@media (max-width: 600px) { .meld-stage { transform: scale(.85); } }

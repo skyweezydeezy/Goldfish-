@@ -1,14 +1,18 @@
-// Dice and coins: when a card rolls a die or flips a coin (Ancient Copper Dragon, Delina, Lae'zel's Acrobatics, Krark...), a short 3D
+// Dice, coins and melds: when a card rolls a die or flips a coin (Ancient Copper Dragon, Delina, Lae'zel's Acrobatics, Krark...), a short 3D
 // animation shows it over the table: a d20 (or a d6) tumbles and lands on the number the game rolled, a coin spins and lands heads (won) or
 // tails (lost). It reads the game's own notes ("Rolled a d20: 14", "rolled 7", "Delina rolls 17", "flip won", "flip lost"), so the result shown
-// is the one the game used. It never pauses the game: the animations queue in a corner-free overlay that clicks pass through.
+// is the one the game used. When two cards meld (Gisela and Bruna), they slide together into the melded card (Brisela). It never pauses the game: the animations queue in a corner-free overlay that clicks pass through.
 (function () {
   'use strict';
   const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ROLL = /\broll(?:s|ed)?\s+(?:a\s+)?(?:d(\d+)\s*[:,]?\s*)?(\d+)/i, FLIP = /\bflip\s+(won|lost)\b/i;
 
   // what to show for one event, or null
+  // a card's picture: its own image if the game has the card, otherwise Scryfall's image of that name
+  const art = (name, card) => (card && ((card.images || [])[0] || (card.remote_images || [])[0])) || 'https://api.scryfall.com/cards/named?format=image&version=normal&exact=' + encodeURIComponent(name);
+  const known = name => { const S = window.__isf; return S && (S.cards || []).find(c => c.name === name) || null; };
   function read(e) {
+    if (e && e.type === 'meld' && e.parts && e.into) return { kind: 'meld', parts: e.parts.map(n => ({ name: n, img: art(n, known(n)) })), into: { name: e.into, img: art(e.into, e.perm && e.perm.card) } };
     if (!e || e.type !== 'note' || typeof e.text !== 'string') return null;
     const who = e.source && e.source.card ? e.source.card.name : '';
     let m = FLIP.exec(e.text);
@@ -56,7 +60,7 @@
   function show(list) { for (const x of list) queue.push(x); if (queue.length > 6) queue.splice(0, queue.length - 6); if (!busy) next(); }
   function next() {
     const x = queue.shift(); if (!x) { busy = false; return; }
-    busy = true; (x.kind === 'coin' ? coin(x) : die(x)).then(next, next);
+    busy = true; (x.kind === 'coin' ? coin(x) : x.kind === 'meld' ? meld(x) : die(x)).then(next, next);
   }
   const ease = t => 1 - Math.pow(1 - t, 3);
   function spin(el, final, ms, turns, after) {
@@ -122,10 +126,24 @@
     }).then(() => { box.querySelector('.dice-cap span').textContent = x.won ? 'wins the flip' : 'loses the flip'; box.classList.add('done', x.won ? 'won' : 'lost'); return hold(box, 1400); });
   }
 
+  // Meld (Gisela + Bruna into Brisela): the two cards slide together, a flash, and the melded card grows out of it
+  function meld(x) {
+    const box = document.createElement('div'); box.className = 'dice-box meld-box';
+    box.innerHTML = `<div class="meld-stage"><img class="meld-part l" alt=""><img class="meld-part r" alt=""><div class="meld-flash"></div><img class="meld-into" alt=""></div><div class="dice-cap"></div>`;
+    const [a, b] = x.parts, imgs = box.querySelectorAll('img');
+    imgs[0].src = a.img; imgs[0].alt = a.name; imgs[1].src = b.img; imgs[1].alt = b.name; imgs[2].src = x.into.img; imgs[2].alt = x.into.name;
+    box.querySelector('.dice-cap').textContent = `${a.name.split(',')[0]} and ${b.name.split(',')[0]} meld…`;
+    const loaded = Promise.race([Promise.all([...imgs].map(i => i.decode().catch(() => {}))), new Promise(r => setTimeout(r, 2500))]);          // the pictures first (at most 2.5 s), then the slide
+    return loaded.then(() => { ensure().appendChild(box); return new Promise(r => setTimeout(r, reduce() ? 0 : 1700)); }).then(() => {
+      box.classList.add('done'); box.querySelector('.dice-cap').innerHTML = `into <b>${esc(x.into.name)}</b>`;
+      return hold(box, 2200);
+    });
+  }
+
   // one call per batch of game events; returns how many animations it queued
   function fromEvents(ev) {
-    if (!ev || !ev.length || localStorage.getItem('isf_dice') === '0') return 0;
-    const list = []; for (const e of ev) { const x = read(e); if (x) list.push(x); }
+    if (!ev || !ev.length) return 0;
+    const list = []; for (const e of ev) { const x = read(e); if (x && (x.kind === 'meld' || localStorage.getItem('isf_dice') !== '0')) list.push(x); }
     if (list.length) show(list);
     return list.length;
   }

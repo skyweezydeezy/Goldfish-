@@ -153,11 +153,13 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? (d.spellAsk ? 'the autopilot\'s pick · ' : 'learned · ') : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}${d.spellAsk ? ' in your graveyard' : ''}` : 'named by your cards'); }
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
-        if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
+        if (d.what === 'graveyard') { item.note = [d.theirs && d.theirs.has(o) ? "in another player's graveyard" : '', (o.card.type_line || '').split(' — ')[0]].filter(Boolean).join(' · '); }
+        else if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
       }
       if (item.def) q.def.push(k);
       q.options.push(item);
@@ -175,7 +177,8 @@
     } else if (d.kind === 'target') {
       const f = d.f || {};
       if (d.what === 'removal') { q.title = `${sn || 'Removal'}: choose a target`; q.text = `Choose the permanent to ${f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'put into its owner\'s library' : 'destroy'}.`; q.none = 'No target (nothing happens)'; }
-      else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
+      else if (d.what === 'graveyard') { q.title = `${sn || 'Effect'}: choose a card in ${d.theirs && d.theirs.size ? 'a' : 'your'} graveyard`; q.text = `Choose the card that returns ${d.dest === 'battlefield' ? 'to the battlefield' : d.dest === 'top' ? 'to the top of your library' : 'to your hand'}. Only the cards it can take are listed.`; q.none = 'No target (nothing returns)'; q.fan = true; }
+            else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
       else if (d.what === 'burn') { q.title = `${sn || 'Damage'}: ${d.n} damage`; q.text = `Choose a creature this kills${d.face ? ', or deal the damage to the players' : ''}. Only creatures the damage would kill are listed: the engine does not keep damage on a creature that survives.`; q.none = d.face ? 'Deal it to the players' : 'No target (nothing happens)'; }
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
@@ -233,6 +236,10 @@
       q.text = d.spellAsk ? `It names a creature type: the creature cards of that type in your graveyard return to the battlefield. The types in your graveyard are listed; ★ is the autopilot's pick (${d.learned}), the type worth the most.`
         : `${spell ? 'As it resolves it names a creature type for what it does' : 'As it enters it names a creature type, and plays as that type from now on'}. The types of your deck's creatures are listed; ★ is the learned type (${d.learned}), the one the autopilot names.`;
       if (src) { q.spell = src; q.spellNote = spell ? 'resolving' : 'entering'; }
+    } else if (d.kind === 'player') {                                                                     // a pod: "target opponent"
+      q.title = `${sn || 'Spell'}: choose an opponent`;
+      q.text = 'It targets an opponent. ★ is the player you are facing this turn (the autopilot\'s pick).';
+      if (src) { q.spell = src; q.spellNote = 'resolving'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;
       q.text = d.def == null ? 'You can answer it this way; the autopilot would let it happen. Choose it, or "Not now".' : 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';

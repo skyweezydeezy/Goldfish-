@@ -597,6 +597,13 @@
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
       if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
+      // draw, then a discard the generic reading dropped (only the draw was played)
+      { let dm;
+        if ((dm = raw.match(/^(?:target player draws|draw) (\w+) cards\. then (?:that player discards|discard) two cards unless (?:they|you) discard an? (artifact|land) card\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 2, what: dm[2].toLowerCase() }); rec.status = 'ok'; continue; }          // Thirst for Knowledge, Compulsive Research
+        if ((dm = raw.match(/^draw (\w+) cards\. then discard a card unless you attacked this turn\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 1, attacked: true }); rec.status = 'ok'; continue; }          // Chart a Course
+        if (/^search your library for a card, put that card into your hand, discard a card at random, then shuffle\.?$/i.test(raw)) { a.spellFx.push({ type: 'tutor', filters: [], dest: 'hand' }, { type: 'discardUnless', n: 1, random: true }); rec.status = 'ok'; continue; }          // Gamble
+        if (/^exile target creature you control, then return (?:it|that card) to the battlefield under (?:its owner's|your) control\.?$/i.test(raw)) { a.spellFx.push({ type: 'flickerOwn' }); rec.status = 'ok'; continue; }          // Ephemerate, Cloudshift: its enter triggers again
+      }
       // "You may cast spells as though they had flash" (Leyline of Anticipation, Vedalken Orrery), "... creature spells ..." (Yeva),
       // "... artifact spells ..." (Shimmer Myr), "creature cards you own have flash" (Teferi, Mage of Zhalfir): what can be cast at instant speed
       { const fl = line.match(/^you may cast ([a-z ,]*?)\s*spells as though they had flash\.?$/i) || (/^creature cards you own (?:that aren't on the battlefield )?have flash\.?$/i.test(line) ? [line, 'creature'] : null);
@@ -5427,7 +5434,25 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
-        case 'perType': { const k = g.battlefield.filter(q => matchesFilter(q.card, f.filter)).length; if (!k) break; if (f.op === 'damage') damageOpp(g, k, ev, source); else { damageOpp(g, k, ev, source, false, true); gainLife(g, k * Math.max(1, otherPlayers(g).filter(o => !o.dead).length), ev, source); } break; }          // Malakir Bloodwitch, Omnath, Locus of the Roil
+        case 'discardUnless': {          // Thirst for Knowledge, Compulsive Research, Chart a Course, Gamble
+          if (f.random) { discardRandom(g, f.n, ev, source ? source.card.name : 'Gamble'); break; }
+          if (f.attacked && g.attackedThisTurn) break;
+          const is = i => f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'land' ? i.card.a.isLand : false;
+          if (!g.hand.length) break;
+          const byWorst = (x, y) => discardValue(g, x) - discardValue(g, y);
+          let c = (f.what ? g.hand.filter(is).sort(byWorst)[0] : null) || g.hand.slice().sort(byWorst)[0];          // the card that ends it at once (an artifact, a land), else the worst card
+          if (g.ask && g.hand.length > 1) c = decide(g, { kind: 'discard', options: g.hand.slice(), def: c, source }) || c;
+          g.hand.splice(g.hand.indexOf(c), 1); g.graveyard.push(c); ev.push({ type: 'note', text: `Discarded ${c.card.name}`, source });
+          if (c.card.a.isLand) landToYard(g, ev, false); madness(g, c, ev); yardShuffle(g, ev);
+          if (f.n > 1 && !is(c)) discardWorst(g, ev);
+          break; }
+        case 'flickerOwn': { const opts = g.battlefield.filter(isCreaturePerm); let q = opts.slice().sort((x, y) => Math.max(0, ...y.card.a.triggers.filter(z => z.kinds.includes('etb')).map(z => fxValue(g, z.fx))) - Math.max(0, ...x.card.a.triggers.filter(z => z.kinds.includes('etb')).map(z => fxValue(g, z.fx))))[0];          // Ephemerate
+          q = ownCreature(g, q, 'flicker', source); if (!q) break;
+          const inst = q.inst || { iid: q.iid, card: q.card }; leavePerm(g, q, ev, 'exile'); flushLeaves(g, ev);
+          const k = g.exile.findIndex(i => i.iid === inst.iid); if (k < 0) break; const back = g.exile.splice(k, 1)[0];
+          const perm = enterWithTriggers(g, back, {}, ev); ev.push({ type: 'rampLand', inst: back, perm, source });
+          break; }
+        case 'perType': { const k = g.battlefield.filter(q => matchesFilter(q.card, f.filter)).length; if (!k) break; if (f.op === 'damage') { const t = g.opp ? burnPick(g, k, false, source) : null; if (t) against(g, t, () => burnHit(g, t, k, source, ev)); else damageOpp(g, k, ev, source); } else { damageOpp(g, k, ev, source, false, true); gainLife(g, k * Math.max(1, otherPlayers(g).filter(o => !o.dead).length), ev, source); } break; }          // Malakir Bloodwitch, Omnath, Locus of the Roil
         case 'yardBack': { const opts = g.graveyard.filter(i => (f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'enchantment' ? i.card.a.isEnchantment : f.what === 'permanent' ? i.card.a.isPermanent && !i.card.a.isLand : f.what === 'auraEquip' ? i.card.a.isAura || i.card.a.isEquipment : i.card.a.isCreature) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.not && matchesFilter(i.card, f.not)) && !(source && source.inst === i));          // Salvation Engine, Golgari Thug, Heliod
           let c = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c && g.ask && !g.dry && opts.length > 1) c = decide(g, { kind: 'search', options: opts, def: c, optional: true, f: { dest: f.dest === 'top' ? 'library' : f.dest }, source }); if (!c) break;
           g.graveyard.splice(g.graveyard.indexOf(c), 1);

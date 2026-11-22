@@ -1493,7 +1493,7 @@
       const why = G.chainVeilState(S.game, obj);
       items.push([why ? `◆ The Chain Veil (${why})` : '◆ Activate: {4}, tap: one more loyalty ability for each planeswalker', () => { if (G.chainVeilState(S.game, obj)) { sfx('error'); return toast('The Chain Veil: ' + G.chainVeilState(S.game, obj)); } snap(); quiet(yours(x => G.useChainVeil(x, x.battlefield.find(y => y.iid === obj.iid))).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('Not enough mana for The Chain Veil'); } play(ev); })); }, why ? '' : 'primary']);
     }
-    if (zone === 'battlefield' || zone === 'graveyard') G.abilityMenu(g, obj).forEach((ab, i) => items.push([`⚡ ${ab.label}${ab.cost ? ` (${ab.cost})` : ''}${ab.ok ? '' : ` — not now: ${ab.why}`}`, () => useAbilityUI(obj, zone, i, ab), ab.ok ? 'primary' : '']));          // activated abilities: Food, sacrifice outlets, {cost}: effect
+    if (zone === 'battlefield' || zone === 'graveyard' || zone === 'hand') G.abilityMenu(g, obj).forEach((ab, i) => items.push([`⚡ ${ab.label}${ab.cost ? ` (${ab.cost})` : ''}${ab.ok ? '' : ` — not now: ${ab.why}`}`, () => useAbilityUI(obj, zone, i, ab), ab.ok ? 'primary' : '']));          // activated abilities: Food, sacrifice outlets, {cost}: effect
     if (zone === 'battlefield') items.push([obj.tapped ? '↺ Untap' : '↻ Tap', act(() => { obj.tapped = !obj.tapped; sfx('tap'); }), 'primary', true]);
     if (!forViewer) items.push(['🔍 View card', () => showLightbox(inst.card, m)]);
     if (zone === 'hand') {

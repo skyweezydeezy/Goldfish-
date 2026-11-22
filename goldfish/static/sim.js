@@ -8078,11 +8078,78 @@ g.actSeq = (g.actSeq || 0) + 1;
   const costText = c => !c ? '' : (c.generic || (!c.pips.length && !c.x) ? '{' + (c.generic || 0) + '}' : '') + (c.x ? '{X}' : '') + c.pips.map(p => '{' + p.join('/') + '}').join('');
   const sickTap = (g, p) => p.tapped ? 'it is tapped' : (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')) ? 'it has summoning sickness' : null;
   const foodCostOf = g => ({ generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [], x: 0 });
+  // the card's activated-ability lines that are not handled by a rule of their own above, read as written; once per card
+  const OTHER_AB = new WeakMap();
+  const OWN_RULE = /^sacrifice (?:a|another) creature(?: or artifact)?: (?:scry|surveil|add)|^sacrifice ~: search your library for a basic|remove a \+1\/\+1 counter from ~: (?:it|~) deals 1 damage to any target|^pay 50 life|sacrifice (?:a|an|one|two|three|\d+) foods?|burden counter|^pay 1 life: exile the top|^\{g\}, \{t\}, discard a creature card: search|card from a graveyard\. (?:add|each opponent|you gain)|indestructible counter on ~|^equip\b|^cycling\b|^[+−-]?\d+:|^[−-]x:|loyalty abilit/i;
+  const KW_GRANT = ['flying', 'first strike', 'double strike', 'deathtouch', 'haste', 'hexproof', 'indestructible', 'lifelink', 'menace', 'reach', 'trample', 'vigilance', 'shroud'];
+  const grantList = t => KW_GRANT.filter(k => new RegExp('\\b' + k + '\\b', 'i').test(t || ''));
+  // effects parseEffects does not read, for a person's activation: untap, pumps and keywords until end of turn, can't be blocked, adapt
+  function otherEffect(text) {
+    const t = text.replace(/\.$/, ''); let m;
+    const pump = (g, q, dp, dt, kws, unb) => { if (dp) q.eotP = (q.eotP || 0) + dp; if (dt) q.eotT = (q.eotT || 0) + dt; if (kws.length || unb) q.eotKw = new Set([...(q.eotKw || []), ...kws, ...(unb ? ['unblockable'] : [])]); touch(g); };
+    const pt = x => { const k = (x || '').match(/([+-]\d+)\/([+-]\d+)/); return k ? [+k[1], +k[2]] : [0, 0]; };
+    if (/^untap ~$/i.test(t)) return (g, p) => { p.tapped = false; touch(g); };
+    if ((m = t.match(/^untap (?:another )?target (creature|artifact|permanent|land)$/i))) return (g, p, ev) => {
+      const w = m[1].toLowerCase(), opts = g.battlefield.filter(q => q !== p && q.tapped && (w === 'permanent' || (w === 'creature' ? isCreaturePerm(q) : w === 'land' ? q.asLand : q.card.a.isArtifact)));
+      let q = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'untap', options: opts, def: q, source: p }); if (q) { q.tapped = false; touch(g); ev.push({ type: 'note', text: `${p.card.name} untaps ${q.card.name}`, source: p }); } };
+    if ((m = t.match(/^(?:until end of turn, )?~ (?:gets ([+-]\d+\/[+-]\d+))?(?: and )?(?:gains? ([a-z ,]+?))?(?: until end of turn)?$/i)) && (m[1] || grantList(m[2]).length) && /until end of turn/i.test(t)) return (g, p) => pump(g, p, ...pt(m[1]), grantList(m[2]), false);
+    if (/^~ can't be blocked this turn$/i.test(t)) return (g, p) => pump(g, p, 0, 0, [], true);
+    if ((m = t.match(/^(creatures|[a-z]+) you control (?:get ([+-]\d+\/[+-]\d+))?(?: and )?(?:gain ([a-z ,]+?))? until end of turn$/i)) && (m[2] || grantList(m[3]).length)) return (g, p) => { for (const q of g.battlefield) if (isCreaturePerm(q) && (/^creatures$/i.test(m[1]) || matchesFilter(q.card, singular(m[1]).toLowerCase()))) pump(g, q, ...pt(m[2]), grantList(m[3]), false); };
+    if (/^all creatures gain ([a-z ,]+) until end of turn$/i.test(t)) return (g, p) => { for (const q of g.battlefield) if (isCreaturePerm(q)) pump(g, q, 0, 0, grantList(t), false); };
+    if ((m = t.match(/^(another )?target (?:([a-z]+) )?creature(?: token)?(?: you control)? (?:gets ([+-]\d+\/[+-]\d+))?(?: and )?(?:gains ([a-z ,]+?)|can't be blocked)?(?: this turn| until end of turn)$/i))) return (g, p, ev) => {
+      const [dp, dt] = pt(m[3]), unb = /can't be blocked/i.test(t), minus = dp < 0 || dt < 0;
+      const mine = g.battlefield.filter(q => isCreaturePerm(q) && !(m[1] && q === p) && (!m[2] || /^(?:goblin|orc|pirate|merfolk)$/i.test(m[2]) && matchesFilter(q.card, m[2].toLowerCase()) || !/^(?:goblin|orc|pirate|merfolk)$/i.test(m[2])));
+      const opts = minus ? eachFoe(g, () => g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)) : []).concat(mine) : mine;
+      let q = minus ? opts[0] : mine.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'pump', options: opts, def: q, source: p });
+      if (q) { const o = g.battlefield.includes(q) ? g : otherPlayers(g).find(x => x.battlefield.includes(q)) || g; pump(o, q, dp, dt, grantList(m[4]), unb); ev.push({ type: 'note', text: `${p.card.name}: ${q.card.name} ${m[3] ? 'gets ' + m[3] : unb ? "can't be blocked" : 'gains ' + grantList(m[4]).join(', ')}`, source: p }); } };
+    if ((m = t.match(/^adapt (\d+)$/i))) return (g, p, ev) => { if (!((p.counters || 0) > 0)) addCounters(g, p, '+1/+1', +m[1], ev, p); };
+    if (/^double the number of \+1\/\+1 counters on each creature you control$/i.test(t)) return (g, p, ev) => { for (const q of g.battlefield.slice()) if (isCreaturePerm(q) && q.counters > 0) addCounters(g, q, '+1/+1', q.counters, ev, p); };
+    return null;
+  }
+  function otherAbilities(card) {
+    let l = OTHER_AB.get(card); if (l) return l;
+    l = []; OTHER_AB.set(card, l);
+    const a = card.a, done = new Set((a.activated || []).map(x => x.text));
+    for (const v of a.coverage || []) {
+      const raw = (v.text || '').replace(/\([^)]*\)/g, '').trim(), m = raw.match(/^([^:"]+): (.+)$/);
+      if (!m || done.has(v.text) || OWN_RULE.test(raw) || /^add\b/i.test(m[2]) || /\badd (?:\{|one mana|two mana|x mana|an amount)/i.test(m[2]) || !/^(?:\{|sacrifice|pay|discard|remove|tap )/i.test(m[1])) continue;
+      const eff = m[2].replace(/\s*activate only as a sorcery\.?/i, '').replace(/\s*activate only once each turn\.?/i, '');
+      const ln = { raw, effect: eff.replace(/~/g, card.name.split(',')[0]), costText: m[1], tap: false, counters: 0, other: null, life: 0, sacSelf: false, sac: null, discard: null, tapN: null, sorcery: /activate only as a sorcery/i.test(m[2]), once: /activate only once each turn/i.test(m[2]), cost: { generic: 0, pips: [], x: 0 } };
+      let ok = true;
+      for (const part of m[1].split(/,\s*/)) {
+        let k;
+        if (/^(?:\{[^}]+\})+$/.test(part) && !/\{[TQ]\}/i.test(part)) { const c = parseCost(part); if (c.x) ok = false; ln.cost = { generic: ln.cost.generic + c.generic, pips: ln.cost.pips.concat(c.pips), x: 0 }; }
+        else if (/^\{T\}$/i.test(part)) ln.tap = true;
+        else if ((k = part.match(/^remove (a|an|two|three|\d+) \+1\/\+1 counters? from ~$/i))) ln.counters += num(k[1]);
+        else if ((k = part.match(/^remove (a|an|two|three|\d+) ([a-z]+) counters? from ~$/i))) ln.other = { kind: k[2].toLowerCase(), n: num(k[1]) };
+        else if (/^sacrifice ~$/i.test(part)) ln.sacSelf = true;
+        else if ((k = part.match(/^sacrifice (a|an|another|two|three|ten|\d+) (?:other )?([a-z]+(?: [a-z]+)?)$/i))) ln.sac = { n: /^(?:a|an|another)$/i.test(k[1]) ? 1 : num(k[1]), other: /another|other/i.test(part), what: singular(k[2]).toLowerCase() };
+        else if ((k = part.match(/^pay (\d+) life$/i))) ln.life += +k[1];
+        else if ((k = part.match(/^discard (a|an|two) (creature |land )?cards?$/i))) ln.discard = { n: num(k[1]), what: (k[2] || '').trim().toLowerCase() };
+        else if ((k = part.match(/^tap (another|two|three|four|five|\d+) untapped ([a-z]+) you control$/i))) ln.tapN = { n: /another/i.test(k[1]) ? 1 : num(k[1]), other: /another/i.test(k[1]), what: singular(k[2]).toLowerCase() };
+        else ok = false;
+      }
+      if (!ok) continue;
+      const r = parseEffects(eff);
+      if (r.fx && r.fx.length) ln.fx = r.fx; else { ln.run = otherEffect(eff); if (!ln.run) continue; }
+      l.push(ln);
+    }
+    return l;
+  }
   function abilityList(g, p) {
     const out = [], a = p.card.a, onBf = g.battlefield.includes(p);
     const add = (label, cost, why, run) => out.push({ label, cost: cost == null ? '' : typeof cost === 'string' ? cost : costText(cost), ok: !why, why: why || null, run });
     const payWhy = c => canPay(c, allUnits(g)) ? null : 'not enough mana';
     if (!onBf) {                                                                                         // the graveyard: Cauldron Familiar
+      if (g.hand.includes(p)) {                                                                          // the hand: plain cycling ({cost}, discard this card: draw a card)
+        const cm = (p.card.oracle_text || '').match(/^cycling ((?:\{[^}]+\})+)/im);
+        if (cm && !a.typecycle) { const c = parseCost(cm[1]); add('Cycling: discard it and draw a card', c, canPay(c, allUnits(g)) ? null : 'not enough mana', ev => {
+          pay(g, c); g.hand.splice(g.hand.indexOf(p), 1); g.graveyard.push(p); ev.push({ type: 'note', text: `${p.card.name} is cycled` });
+          if (a.cycleFx) applyEffects(g, a.cycleFx.fx, null, ev, null);
+          draw(g, 1, ev);
+        }); }
+        return out;
+      }
       if (a.gyReturn && g.graveyard.includes(p)) add(`Sacrifice a Food: return ${p.card.name} to the battlefield`, '', foodsOf(g).length ? null : 'you control no Food', ev => {
         sacrificeFoods(g, 1, ev); g.graveyard.splice(g.graveyard.indexOf(p), 1); p.retTurn = g.turn;
         ev.push({ type: 'note', text: `Sacrificed a Food: ${p.card.name} returns from the graveyard` });
@@ -8180,6 +8247,42 @@ g.actSeq = (g.actSeq || 0) + 1;
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });
       ev.push({ type: 'note', text: `${p.card.name}: added one mana`, source: p });
     });
+    // Any other "{cost}: effect" line of the card whose cost and effect the engine can read as written (the autopilot plays many of these
+    // by its own special rules; a person just activates them). Costs: mana, {T}, remove +1/+1 counters from it, sacrifice it, pay life.
+    for (const ln of (foodsOf(g).includes(p) ? [] : otherAbilities(p.card))) {          // a Food's own ability is above (with Sam's discount)
+      const c = actCost(g, p, ln.cost);
+      const isWhat = (q, w) => w === 'creature' ? isCreaturePerm(q) : w === 'artifact' ? q.card.a.isArtifact && !q.asLand : w === 'land' ? !!q.asLand : w === 'permanent' || w === 'nonland permanent' ? !q.asLand : matchesFilter(q.card, w);
+      const sacPool = ln.sac ? g.battlefield.filter(q => !(ln.sac.other && q === p) && isWhat(q, ln.sac.what)) : [];
+      const tapPool = ln.tapN ? g.battlefield.filter(q => !q.tapped && !(ln.tapN.other && q === p) && isWhat(q, ln.tapN.what)) : [];
+      const disPool = ln.discard ? g.hand.filter(i => !ln.discard.what || (ln.discard.what === 'creature' ? i.card.a.isCreature : i.card.a.isLand)) : [];
+      const usedKey = 'o' + ln.raw.length + ln.raw.slice(0, 12);
+      const why = blocked || (ln.tap ? sickTap(g, p) : null) || (ln.sorcery && g.activeTurn === false ? 'only on your turn' : null) || (ln.once && p.abUsed && p.abUsed[usedKey] === g.turn ? 'already used this turn' : null)
+        || (ln.counters > (p.counters || 0) ? 'it has no +1/+1 counter to remove' : null) || (ln.other && !((p.other && p.other[ln.other.kind] || 0) >= ln.other.n) ? `it has no ${ln.other.kind} counter` : null)
+        || (ln.life && g.life <= ln.life ? 'not enough life' : null) || (ln.sac && sacPool.length < ln.sac.n ? `nothing to sacrifice (${ln.sac.what})` : null) || (ln.tapN && tapPool.length < ln.tapN.n ? `not enough untapped (${ln.tapN.what})` : null)
+        || (ln.discard && disPool.length < ln.discard.n ? 'no card to discard' : null)
+        || (ln.tap ? (() => { const was = p.tapped; p.tapped = true; const r = payWhy(c); p.tapped = was; return r; })() : payWhy(c));
+      add(ln.effect, ln.costText, why, ev => {
+        let gone = [];
+        if (ln.sac) { gone = sacPool.slice().sort((x, y) => (x === p ? 1 : 0) - (y === p ? 1 : 0) || (y.token ? 1 : 0) - (x.token ? 1 : 0) || (isCreaturePerm(x) ? creatureValue(g, x) : x.card.a.mv || 0) - (isCreaturePerm(y) ? creatureValue(g, y) : y.card.a.mv || 0)).slice(0, ln.sac.n);
+          if (g.ask && ln.sac.n === 1 && sacPool.length > 1) { const v = decide(g, { kind: 'sacrifice', options: sacPool, def: gone[0], ability: p.card.name, optional: true, source: p }); if (!v) return; gone = [v]; } }
+        let dis = disPool.slice().sort((x, y) => discardValue(g, x) - discardValue(g, y)).slice(0, ln.discard ? ln.discard.n : 0);
+        if (ln.discard && g.ask && ln.discard.n === 1 && disPool.length > 1) dis = [decide(g, { kind: 'discard', options: disPool, def: dis[0], source: p }) || dis[0]];
+        if (ln.tap) p.tapped = true;
+        if (ln.tapN) tapPool.slice().sort((x, y) => (isCreaturePerm(x) ? powerOf(g, x) : 0) - (isCreaturePerm(y) ? powerOf(g, y) : 0)).slice(0, ln.tapN.n).forEach(q => { q.tapped = true; });
+        const prev = g._payFor; g._payFor = { abilityOf: p }; pay(g, c); g._payFor = prev;
+        if (ln.counters) { p.counters -= ln.counters; touch(g); }
+        if (ln.other) { p.other = Object.assign({}, p.other, { [ln.other.kind]: p.other[ln.other.kind] - ln.other.n }); touch(g); }
+        if (ln.life) g.life -= ln.life;
+        if (ln.once) p.abUsed = Object.assign({}, p.abUsed, { [usedKey]: g.turn });
+        for (const d of dis) { g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d); ev.push({ type: 'note', text: `Discarded ${d.card.name}`, source: p }); }
+        ev.push({ type: 'activate', perm: p, text: ln.raw.replace(/~/g, p.card.name) });
+        for (const q of gone) leavePerm(g, q, ev);
+        if (ln.sacSelf) leavePerm(g, p, ev);
+        if (gone.length || ln.sacSelf) flushLeaves(g, ev);
+        if (ln.fx) applyEffects(g, ln.fx, p, ev, null); else ln.run(g, p, ev);
+        if (ln.life) checkDeath(g, ev);
+      });
+    }
     return out;
   }
   function abilityMenu(g, p) { return abilityList(g, p).map(({ label, cost, ok, why }) => ({ label, cost, ok, why })); }

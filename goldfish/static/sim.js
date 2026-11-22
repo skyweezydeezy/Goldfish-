@@ -596,6 +596,7 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // "You may cast spells as though they had flash" (Leyline of Anticipation, Vedalken Orrery), "... creature spells ..." (Yeva),
       // "... artifact spells ..." (Shimmer Myr), "creature cards you own have flash" (Teferi, Mage of Zhalfir): what can be cast at instant speed
       { const fl = line.match(/^you may cast ([a-z ,]*?)\s*spells as though they had flash\.?$/i) || (/^creature cards you own (?:that aren't on the battlefield )?have flash\.?$/i.test(line) ? [line, 'creature'] : null);
@@ -622,6 +623,15 @@
         if (/^\{5\}\{w\}, \{t\}: harness ~\.?$/i.test(line)) { a.harnessCost = parseCost('{5}{W}'); rec.status = 'ok'; continue; }          // The Mind Stone
         if (/^(?:∞ — )?at the beginning of your end step, exile up to one other target nonland permanent you control, then return that card to the battlefield under its owner's control\.?$/i.test(line)) { a.harnessFlicker = true; rec.status = 'ok'; continue; }
         if (/^~ deals x damage to each creature without flying and each player\.?$/i.test(line)) { a.spellFx.push({ type: 'earthquake' }); rec.status = 'ok'; continue; }          // Earthquake
+        // spells that choose a creature type as they resolve: the type is read when they resolve (the caster's choice, else the deck's type)
+        { const TS = (op, extra) => { a.spellFx.push(Object.assign({ type: 'tribeSpell', op }, extra || {})); rec.status = 'ok'; };
+          if (/^choose a creature type\. draw a card for each permanent you control of that type\.?$/i.test(raw)) { TS('melody'); continue; }          // Distant Melody, Harmonized Crescendo
+          if (/^choose a creature type\. destroy all creatures that aren't of the chosen type\.?$/i.test(raw)) { TS('dominance'); continue; }          // Kindred Dominance
+          if (/^choose a creature type\. return all creatures that aren't of the chosen type to their owners' hands\.?$/i.test(raw)) { TS('palisade'); continue; }          // Raise the Palisade
+          if (/^choose a creature type\. creatures that aren't of the chosen type get -(\d+)\/-(\d+) until end of turn\.?$/i.test(raw)) { TS('fear', { n: +raw.match(/-(\d+)\/-/)[1] }); continue; }          // Crippling Fear
+          if (/^choose a creature type\. target player draws x cards and loses x life, where x is the number of creatures they control of the chosen type\.?$/i.test(raw)) { TS('pact'); continue; }          // Pact of the Serpent
+          if (/^choose a creature type\. return up to two creature cards of that type from your graveyard to the battlefield\./i.test(raw)) { TS('voyage', { n: 2 }); continue; }          // Haunting Voyage (not foretold)
+        }
         if (/^~ deals x damage to each creature\.?$/i.test(line)) { a.spellFx.push({ type: 'sweepDamage', n: 'X', noExile: true }); rec.status = 'ok'; continue; }          // Starstorm
         if (/^whenever a creature attacks you or a planeswalker you control, that creature's controller loses 1 life and you gain 1 life\.?$/i.test(line)) { a.ravens = true; MIRJ(); continue; }          // Revenge of Ravens
         if (/^damage can't be prevented\.?$/i.test(line)) { a.noPrevent = true; rec.status = 'ok'; continue; }          // Sunspine Lynx
@@ -5263,6 +5273,20 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'tribeSpell': {          // Kindred Charge, Distant Melody, Kindred Dominance, Raise the Palisade, Crippling Fear, Pact of the Serpent, Haunting Voyage
+          let tr = g._castTribe || (g.deck && g.deck.tribe) || null;
+          if (!tr) { const cnt = {}; for (const q of g.battlefield) if (isCreaturePerm(q)) for (const w of ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean)) cnt[w] = (cnt[w] || 0) + 1; tr = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x] || x.localeCompare(y))[0] || null; }          // no deck type: the type you have most of
+          if (!tr) break;
+          const is = q => matchesFilter(q.card, tr.toLowerCase()), sides = [g].concat(otherPlayers(g));
+          ev.push({ type: 'note', text: `Chosen creature type: ${tr}`, source: null });
+          if (f.op === 'charge') { for (const q of g.battlefield.filter(x => isCreaturePerm(x) && is(x))) { if (g.battlefield.length >= 250) break; const inst = { iid: g.nextIid++, card: q.card }; const np = enterWithTriggers(g, inst, { token: true }, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.exileEnd = true; ev.push({ type: 'token', perm: np, inst, source }); } }
+          else if (f.op === 'melody') { const k = g.battlefield.filter(is).length; if (k) draw(g, Math.min(k, 30), ev); }
+          else if (f.op === 'dominance') { for (const x of sides) { for (const q of x.battlefield.filter(c => isCreaturePerm(c) && !is(c) && !indestructible(x, c))) leavePerm(x, q, ev); flushLeaves(x, ev); } }
+          else if (f.op === 'palisade') { for (const x of sides) { for (const q of x.battlefield.filter(c => isCreaturePerm(c) && !is(c))) leavePerm(x, q, ev, 'hand'); flushLeaves(x, ev); } }
+          else if (f.op === 'fear') { for (const x of sides) { for (const q of x.battlefield) if (isCreaturePerm(q) && !is(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } }
+          else if (f.op === 'pact') { const k = g.battlefield.filter(q => isCreaturePerm(q) && is(q)).length; if (k) { draw(g, Math.min(k, 30), ev); g.life -= k; ev.push({ type: 'note', text: `Pact of the Serpent: you draw ${k} and lose ${k} life`, source: null }); checkDeath(g, ev); } }
+          else if (f.op === 'voyage') { const cs = g.graveyard.filter(i => i.card.a.isCreature && matchesFilter(i.card, tr.toLowerCase())).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x)).slice(0, f.n); for (const c of cs) { g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source: null }); } }
+          break; }
         case 'countersByToughness': for (const q of g.battlefield.slice()) if (q !== source && isCreaturePerm(q)) { const k = toughnessOf(g, q); if (k > 0) addCounters(g, q, '+1/+1', k, ev, source); } break;          // Canopy Gargantuan
         case 'lifeHalfStart': { const half = Math.ceil(((g.opts && g.opts.startLife) || 40) / 2); if (g.life !== half) { g.life = half; ev.push({ type: 'note', text: `${source ? source.card.name : 'The Endstone'}: your life total becomes ${half}`, source }); } break; }          // The Endstone
         case 'transform': if (source) transformPerm(g, source, ev, f.same); break;

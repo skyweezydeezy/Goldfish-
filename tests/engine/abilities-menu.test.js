@@ -142,6 +142,14 @@ const find = (g, p, re) => G.abilityMenu(g, p).findIndex(x => re.test(x.label));
   const i = find(g, mo, /indestructible/), m = G.abilityMenu(g, mo)[i];
   check('Mondrak: its indestructible-counter ability is listed', i >= 0, JSON.stringify(m));
 })();
+(() => {                                                                                                  // Chatterfang: {B}, sacrifice X Squirrels: +X/-X
+  const g = fresh(); const sw = deck.unique.find(c => c.name === 'Swamp'); const l = G.enter(g, { iid: g.nextIid++, card: sw }, {}); l.tapped = false;
+  const ch = put(g, 'Chatterfang, Squirrel General'); const fam = put(g, 'Cauldron Familiar');
+  G.createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['G'], subtypes: ['Squirrel'], keywords: [], artifact: false, name: 'Squirrel' }, 1, [], null);
+  const i = find(g, ch, /Squirrels/), n0 = g.battlefield.filter(q => q.card.name === 'Squirrel').length;
+  const ev = G.useAbility(g, ch, i);
+  check('Chatterfang: sacrifice a Squirrel token (not itself): a creature gets +1/-1', ev && g.battlefield.includes(ch) && g.battlefield.filter(q => q.card.name === 'Squirrel').length === n0 - 1 && ev.some(e => /\+1\/-1/.test(e.text || '')), ev && ev.map(e => e.text || e.type).join(' | '));
+})();
 // the autopilot's game is unchanged: it never sees the menu
 check('the menu is exported', typeof G.abilityMenu === 'function' && typeof G.useAbility === 'function');
 

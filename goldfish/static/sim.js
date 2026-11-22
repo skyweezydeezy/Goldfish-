@@ -8130,6 +8130,29 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (/^reveal cards from the top of your library until you reveal a basic land card\. put that card into your hand and all other cards revealed this way into your graveyard$/i.test(t)) return (g, p, ev) => { let k = 0; while (g.library.length) { const c = g.library.shift(); if (c.card.a.isLand && /\bBasic\b/.test(c.card.type_line || '')) { g.hand.push(c); break; } g.graveyard.push(c); k++; } ev.push({ type: 'note', text: `${p.card.name}: a basic land to your hand, ${k} card${k === 1 ? '' : 's'} into the graveyard`, source: p }); };          // Hermit Druid
     if (/^exile the top card of your library$/i.test(t)) return (g, p, ev) => { const c = g.library.shift(); if (c) { g.exile.push(c); ev.push({ type: 'note', text: `${p.card.name} exiles ${c.card.name} from the top of your library`, source: p }); } };          // Mystic Forge
     if (/^you may copy the exiled card\. if you do, you may cast the copy without paying its mana cost$/i.test(t)) return (g, p, ev) => { if (!p.imprinted) return; ev.push({ type: 'note', text: `${p.card.name}: free copy of ${p.imprinted.card.name}`, source: p }); g.spellsCast = (g.spellsCast || 0) + 1; fireCastTriggers(g, p.imprinted, ev); applyEffects(g, p.imprinted.card.a.spellFx, null, ev, null); };          // Isochron Scepter
+    if ((m = t.match(/^(another )?target ((?:[a-z]+, )*[a-z]+,? or [a-z]+|creature you control) can't be blocked this turn(?: except by [a-z]+)?$/i))) return (g, p, ev) => {          // Corsairs of Umbar, Departed Deckhand
+      const ws = /creature you control/i.test(m[2]) ? null : m[2].toLowerCase().split(/,? or |, /).filter(Boolean);
+      const opts = g.battlefield.filter(q => isCreaturePerm(q) && !(m[1] && q === p) && (!ws || ws.some(w => matchesFilter(q.card, w))));
+      let q = opts.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'pump', options: opts, def: q, source: p }); if (q) { pump(g, q, 0, 0, [], true); ev.push({ type: 'note', text: `${p.card.name}: ${q.card.name} can't be blocked this turn`, source: p }); } };
+    if (/^put target creature card from a graveyard onto the battlefield under its owner's control$/i.test(t)) return (g, p, ev) => {          // Kenrith: from your graveyard (a card in another player's would go to them)
+      const opts = g.graveyard.filter(i => i.card.a.isCreature); let c = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c && g.ask) c = decide(g, { kind: 'search', options: opts, def: c, f: { dest: 'battlefield' }, source: p }); if (!c) return;
+      g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source: p }); };
+    if (/^target player searches their library for a basic land card, puts it onto the battlefield tapped, then shuffles$/i.test(t)) return (g, p, ev) => applyEffects(g, [{ type: 'ramp', bf: 1, hand: 0, tapped: true, basicOnly: true }], p, ev, null);          // Fertilid
+    if ((m = t.match(/^return target artifact card with mana value (\d+) or less from your graveyard to the battlefield$/i))) return (g, p, ev) => {          // Goblin Engineer
+      const opts = g.graveyard.filter(i => i.card.a.isArtifact && (i.card.a.mv || 0) <= +m[1]); let c = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c && g.ask) c = decide(g, { kind: 'search', options: opts, def: c, f: { dest: 'battlefield' }, source: p }); if (!c) return;
+      g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source: p }); };
+    if (/^shuffle your library, then exile the top card\. until end of turn, you may play that card without paying its mana cost$/i.test(t)) return (g, p, ev) => {          // Urza, Lord High Artificer
+      shuffle(g.library, g.rnd); const c = g.library.shift(); if (!c) return; c.freeCast = true; c.temp = g.turn; g.hand.push(c); ev.push({ type: 'note', text: `${p.card.name} exiles ${c.card.name}: you may play it for free this turn`, source: p }); };
+    if (/^choose a counter on target permanent or player\. give that permanent or player another counter of that kind$/i.test(t)) return (g, p, ev) => {          // Animation Module
+      const opts = g.battlefield.filter(q => (q.counters || 0) > 0 || (q.other && Object.values(q.other).some(v => v > 0)) || (q.card.a.isPlaneswalker && q.loyalty > 0));
+      let q = opts.slice().sort((x, y) => (y.counters || 0) - (x.counters || 0))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'counters', options: opts, def: q, f: { kind: '' }, n: 1, source: p }); if (!q) return;
+      if (q.counters > 0) addCounters(g, q, '+1/+1', 1, ev, p); else if (q.card.a.isPlaneswalker) { q.loyalty++; touch(g); } else { const k = Object.keys(q.other).find(x => q.other[x] > 0); addCounters(g, q, k, 1, ev, p); } };
+    if (/^~ fights another target creature$/i.test(t)) return (g, p, ev) => {          // Polukranos, Unchained
+      const opts = eachFoe(g, () => g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)) : []).concat(g.battlefield.filter(q => q !== p && isCreaturePerm(q)));
+      let q = opts[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'fight', options: opts, def: q, source: p }); if (!q) return;
+      const o = g.battlefield.includes(q) ? g : otherPlayers(g).find(x => x.battlefield.includes(q)) || g, mine = Math.max(0, powerOf(g, p)), theirs = Math.max(0, powerOf(o, q));
+      q.dmg = (q.dmg || 0) + mine; if (hasKw(g, p, 'deathtouch') && mine) q.dt = true; p.dmg = (p.dmg || 0) + theirs; if (hasKw(o, q, 'deathtouch') && theirs) p.dt = true; touch(g); touch(o);
+      ev.push({ type: 'note', text: `${p.card.name} fights ${q.card.name} (${mine} and ${theirs} damage)`, source: p }); };
     if ((m = t.match(/^adapt (\d+)$/i))) return (g, p, ev) => { if (!((p.counters || 0) > 0)) addCounters(g, p, '+1/+1', +m[1], ev, p); };
     if (/^double the number of \+1\/\+1 counters on each creature you control$/i.test(t)) return (g, p, ev) => { for (const q of g.battlefield.slice()) if (isCreaturePerm(q) && q.counters > 0) addCounters(g, q, '+1/+1', q.counters, ev, p); };
     return null;
@@ -8171,6 +8194,12 @@ g.actSeq = (g.actSeq || 0) + 1;
     let blocked = null;
     const add = (label, cost, why, run) => out.push({ label, cost: cost == null ? '' : typeof cost === 'string' ? cost : costText(cost), ok: !why, why: why || null, run });
     const payWhy = c => canPay(c, allUnits(g)) ? null : 'not enough mana';
+    if (!onBf && g.command.includes(p)) {                                                                // the command zone: Derevi, Empyrial Tactician
+      const cm = (a.coverage || []).map(v => (v.text || '').match(/^((?:\{[^}]+\})+): put ~ onto the battlefield from the command zone/i)).find(Boolean);
+      if (cm) { const c = parseCost(cm[1]); add(`Put ${p.card.name} onto the battlefield from the command zone`, c, canPay(c, allUnits(g)) ? null : 'not enough mana', ev => {
+        pay(g, c); g.command.splice(g.command.indexOf(p), 1); const perm = enterWithTriggers(g, p, {}, ev); ev.push({ type: 'rampLand', inst: p, perm, source: null }); }); }
+      return out;
+    }
     if (!onBf) {                                                                                         // the graveyard: Cauldron Familiar
       if (g.hand.includes(p)) {                                                                          // the hand: plain cycling ({cost}, discard this card: draw a card)
         const cm = (p.card.oracle_text || '').match(/^cycling ((?:\{[^}]+\})+)/im);
@@ -8274,6 +8303,15 @@ g.actSeq = (g.actSeq || 0) + 1;
       add(`Sacrifice ${fod.length === ic.sac ? fod.map(q => q.card.name).join(' and ') : 'two other artifacts and/or creatures'}: an indestructible counter on ${p.card.name}`, ic.cost, blocked || (fod.length === ic.sac ? null : 'not enough other artifacts or creatures') || payWhy(ic.cost), ev => {
         pay(g, ic.cost); fod.forEach(q => leavePerm(g, q, ev)); flushLeaves(g, ev); p.other = Object.assign({}, p.other, { indestructible: 1 }); touch(g);
         ev.push({ type: 'note', text: `${p.card.name}: an indestructible counter`, source: p });
+      }); }
+    if (a.squirrelShrink) { const sq = g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, 'squirrel'));
+      add('Sacrifice X Squirrels: target creature gets +X/-X until end of turn', a.squirrelShrink, blocked || (sq.length ? null : 'you control no Squirrel') || payWhy(a.squirrelShrink), ev => {
+        const xs = sq.map((q, i) => i + 1); let X = 1; if (g.ask && xs.length > 1) X = decide(g, { kind: 'x', options: xs, def: 1, source: p });
+        const opts = eachFoe(g, () => g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)) : []).concat(g.battlefield.filter(isCreaturePerm));
+        let t = opts[0]; if (t && g.ask) t = decide(g, { kind: 'target', what: 'pump', options: opts, def: t, source: p }); if (!t) return;
+        pay(g, a.squirrelShrink); const used = sq.slice().sort((x, y) => (x === p ? 1 : 0) - (y === p ? 1 : 0) || (y.token ? 1 : 0) - (x.token ? 1 : 0)).slice(0, X); used.forEach(q => leavePerm(g, q, ev)); flushLeaves(g, ev);
+        const o = g.battlefield.includes(t) ? g : otherPlayers(g).find(x => x.battlefield.includes(t)); if (o) { t.eotP = (t.eotP || 0) + X; t.eotT = (t.eotT || 0) - X; touch(o); }
+        ev.push({ type: 'note', text: `${p.card.name}: ${X} Squirrel${X === 1 ? '' : 's'} sacrificed, ${t.card.name} gets +${X}/-${X}`, source: p });
       }); }
     if (a.foodSacMana) add('Add one mana of any color (tap it, sacrifice a Food)', '{T}, Sacrifice a Food', blocked || sickTap(g, p) || (foodsOf(g).length ? null : 'you control no Food'), ev => {
       p.tapped = true; sacrificeFoods(g, 1, ev); g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true });

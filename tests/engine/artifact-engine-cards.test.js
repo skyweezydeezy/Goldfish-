@@ -72,11 +72,11 @@ for (const c of [KATSU, WELDER, SYNOD, TEZ, STAFF, MANTLE])
 { const PILI = card('Pili-Pala', 'Artifact Creature — Scarecrow', 'Flying\n{2}, {Q}: Add one mana of any color. ({Q} is the untap symbol.)', { mana_cost: '{2}', cmc: 2, power: '1', toughness: '1', keywords: ['Flying'] });
   const ARCH = card('Grand Architect', 'Creature — Vedalken', 'Other blue creatures you control get +1/+1.\n{U}: Target artifact creature becomes blue until end of turn.\nTap an untapped blue creature you control: Add {C}{C}. Spend this mana only to cast artifact spells or activate abilities of artifacts.', { mana_cost: '{1}{U}{U}', cmc: 3, power: '1', toughness: '3' });
   const d = G.buildDeck(island(20).concat([PILI, ARCH]), []);
-  check('Pili-Pala is fully read; Grand Architect\'s artifact-mana line is honestly partial', lvl(PILI).coverage.every(r => r.status === 'ok') && lvl(ARCH).coverage.filter(r => r.status === 'partial').length === 1);
+  check('Pili-Pala and Grand Architect are fully read (the artifact mana works outside the loop too)', lvl(PILI).coverage.every(r => r.status === 'ok') && lvl(ARCH).coverage.every(r => r.status === 'ok'));
   const g = fresh(d, 9); put(g, 'Grand Architect'); const pp = put(g, 'Pili-Pala');
   check('...with no blue mana to make Pili-Pala blue, no loop', !G.infiniteMana(g));
   put(g, 'Island'); const inf = G.infiniteMana(g);
-  check('...with an Island: endless mana of any color', inf && /Pili-Pala \+ Grand Architect/.test(inf.how) && inf.colors.has('R'), inf && inf.how);
+  check('...with an Island: endless mana of any color', inf && /Grand Architect \+ Pili-Pala/.test(inf.how) && inf.colors.has('R'), inf && inf.how);
   pp.sick = true; check('...but not while Pili-Pala is summoning sick ({Q})', !G.infiniteMana(g));
   check('the tutors know the line (Architect + Pili-Pala + an outlet)', G.deckLines(G.newGame(G.buildDeck(island(20).concat([PILI, ARCH, card('Walking Ballista', 'Artifact Creature — Construct', 'Walking Ballista enters with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.', { mana_cost: '{X}{X}', cmc: 0, power: '0', toughness: '0' })]), []), O, 1)).some(l => l.join('+') === 'architect+pilipala+outlet')); }
 

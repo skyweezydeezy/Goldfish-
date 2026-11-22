@@ -83,5 +83,16 @@ for (const L of [REFUGE, ZONE]) {
 { const MENTOR = card('Conclave Mentor', 'Creature — Centaur Cleric', 'If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.\nWhen Conclave Mentor dies, you gain life equal to its power.', { mana_cost: '{G}{W}', cmc: 2, power: '2', toughness: '2' });
   check('Conclave Mentor: its dies trigger is read (life equal to its power)', lvl(MENTOR).triggers.some(t => t.kinds.includes('dies') && t.fx.some(f => f.type === 'gainLife' && f.n === 'SELFPOWER'))); }
 
+// ---- Syr Ginger: {2}, {T}, sacrifice it for life equal to its power (when life matters) ----
+{ const GINGER = card('Syr Ginger, the Meal Ender', 'Legendary Artifact Creature — Food Knight', "Syr Ginger has trample, hexproof, and haste as long as an opponent controls a planeswalker.\nWhenever another artifact you control is put into a graveyard from the battlefield, put a +1/+1 counter on Syr Ginger and scry 1.\n{2}, {T}, Sacrifice Syr Ginger: You gain life equal to its power.", { mana_cost: '{3}', cmc: 3, power: '3', toughness: '1' });
+  const PAYOFF = card('Homebrew Pridemate', 'Creature — Cat', 'Whenever you gain life, put a +1/+1 counter on this creature.', { mana_cost: '{1}{W}', cmc: 2, power: '2', toughness: '2' });
+  const d = G.buildDeck(mountain(20).concat([GINGER, PAYOFF]), []);
+  const g = fresh(d, 10); put(g, 'Syr Ginger, the Meal Ender'); for (let k = 0; k < 2; k++) put(g, 'Mountain'); const l0 = g.life;
+  G.useAbilities(g);
+  check('Syr Ginger: against a goldfish with nothing that rewards life gain, it stays', g.battlefield.some(p => p.card.name === 'Syr Ginger, the Meal Ender') && g.life === l0);
+  const g2 = fresh(d, 11); put(g2, 'Syr Ginger, the Meal Ender'); put(g2, 'Homebrew Pridemate'); for (let k = 0; k < 2; k++) put(g2, 'Mountain'); const l2 = g2.life;
+  G.useAbilities(g2);
+  check('...with a "whenever you gain life" creature out, it is sacrificed for 3 life', !g2.battlefield.some(p => p.card.name === 'Syr Ginger, the Meal Ender') && g2.life === l2 + 3, `${l2} -> ${g2.life}`); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -758,6 +758,9 @@
         if (/^whenever another creature enters, ~ deals 1 damage to that creature's controller\.?$/i.test(line)) { a.ferocidon = true; rec.status = 'ok'; continue; }          // Rampaging Ferocidon
         if (/^when you cast your next instant or sorcery spell this turn, copy that spell\. you may choose new targets for the copy\.?$/i.test(line)) { a.spellFx.push({ type: 'nextSpellCopy' }); rec.status = 'ok'; continue; }          // Twinferno
         if (/^target creature you control gains double strike until end of turn\.?$/i.test(line)) { a.spellFx.push({ type: 'pumpOne', self: false, p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }
+        if (/^\{2\}, \{q\}: add one mana of any color\.?$/i.test(line)) { a.piliPala = true; rec.status = 'ok'; continue; }          // Pili-Pala: its untap loop with Grand Architect (infiniteMana)
+        if (/^\{u\}: target artifact creature becomes blue until end of turn\.?$/i.test(line)) { a.architectBlue = true; rec.status = 'ok'; continue; }          // Grand Architect: makes Pili-Pala blue for the loop
+        if (/^tap an untapped blue creature you control: add \{c\}\{c\}\. spend this mana only to cast artifact spells or activate abilities of artifacts\.?$/i.test(line)) { a.architectMana = true; rec.status = 'partial'; continue; }          // Grand Architect: used in the Pili-Pala loop (infiniteMana); tapping other blue creatures for artifact mana is not used yet
         if (/^if you would gain life, you gain twice that much life instead\.?$/i.test(line)) { a.statics.lifeDouble = (a.statics.lifeDouble || 0) + 1; rec.status = 'ok'; continue; }          // Rhox Faithmender, Boon Reflection (gainLife)
         { const rv = line.match(/^when ~ enters, reveal the top (\w+) cards of your library\. put all (\w+) (creature )?cards (?:with mana value (\d+) or less )?(?:revealed this way |from among them )?(onto the battlefield|into your hand)/i);          // Goblin Ringleader, Muxus
           if (rv) { const nn = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }[rv[1].toLowerCase()] || +rv[1] || 0; a.triggers.push({ kinds: ['etb'], fx: [{ type: 'revealAll', n: nn, filter: rv[2].toLowerCase(), creature: !!rv[3], maxMv: rv[4] ? +rv[4] : null, dest: /battlefield/i.test(rv[5]) ? 'battlefield' : 'hand' }], text: raw }); rec.status = 'ok'; continue; } }
@@ -7249,6 +7252,8 @@
     selfDrawPing: c => comboKind(c).selfDrawPing, poisonNine: c => comboKind(c).poisonNine, counterTwice: c => comboKind(c).counterTwice,
     blood: c => c.a.comboRole === 'blood',
     bond: c => c.a.comboRole === 'bond',
+    architect: c => !!c.a.architectMana,
+    pilipala: c => !!c.a.piliPala,
     lifeCounter: c => !!comboKind(c).lifeCounter,
     pinger: c => comboKind(c).pinger,
     copier: c => comboKind(c).copier,
@@ -7268,7 +7273,7 @@
     auraUntap: c => !!c.a.auraUntapU,
     blueDork: c => c.a.isCreature && (c.a.kioraUntap || !!(c.a.produce && (c.a.produce.per || c.a.produce.dynamic || (c.a.produce.amount || 1) >= 2) && c.a.produce.colors.has('U'))),
   };
-  const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond'],
+  const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond'], ['architect', 'pilipala', 'outlet'],
     ['lifeCounter', 'pinger'], ['copier', 'untapEnter'], ['twin', 'untapOnly'], ['copyMage', 'copySpell'], ['undyingLord', 'trisk'], ['niv', 'curiosity'],
     ['blinker', 'landUntap', 'outlet'], ['druid', 'vizier', 'outlet'], ['auraUntap', 'blueDork', 'outlet'],
     ['scepter', 'untapAll', 'castPing'], ['keyUntap', 'rings', 'bigRock', 'outlet'], ['copyAb', 'tezz', 'bigRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'castPing'],
@@ -10636,6 +10641,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
+    // B4: Grand Architect + Pili-Pala: {U} makes Pili-Pala blue; tap it for {C}{C} (Architect), pay {2} and untap it ({Q}) for one mana of any color, and again
+    if (tableHas(g, 'architectMana') && tableHas(g, 'piliPala')) {
+      const ar = bf.find(q => q.card.a.architectMana && isCreaturePerm(q)), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
+      if (ar && pp && canPay({ generic: 0, pips: [['U']], x: 0 }, allUnits(g))) return { how: `${pp.card.name} + ${ar.card.name}`, colors: new Set(['W', 'U', 'B', 'R', 'G']) };
+    }
     // B3: Umbral Mantle on a creature that taps for 4 or more mana ({3}, {Q}: untap it, again and again)
     if (tableHas(g, 'umbral')) for (const q of bf) { if (!isCreaturePerm(q) || !q.produce || !ready(q) || amount(q) < 4) continue; if (bf.some(e => e.card.a.umbral && e.attachedTo === q.iid)) return { how: `${q.card.name} + Umbral Mantle`, colors: new Set(q.produce.colors || ['C']) }; }
     // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes

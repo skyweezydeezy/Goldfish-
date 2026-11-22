@@ -11963,18 +11963,23 @@ g.actSeq = (g.actSeq || 0) + 1;
   // finds worth a counterspell.
   function fieldCounter(g, d, inst, ev) {
     if (g.dry) return false;
-    const a = inst.card.a, big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4, ok = respondGate(d, `${inst.card.name} is being cast`, null, null);
+    const a = inst.card.a, big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4, person = !!d.ask && !d.dead;
+    // a person is offered every counter they can legally use, also the ones the autopilot would hold (a small spell, or one they can pay {1} for)
+    const ok = (what, auto) => person ? decide(d, { kind: 'protect', options: [what], def: auto ? what : null, optional: true, why: `${inst.card.name} is being cast`, target: null, source: null }) != null : auto;
     for (const q of (tableHas(d, 'fieldCounter') ? d.battlefield.slice() : NONE)) {
       const fc = q.card.a.fieldCounter; if (!fc || !counterMatches(fc.filter, inst.card)) continue;
-      if (fc.unless && canPay({ generic: fc.unless, pips: [], x: 0 }, allUnits(g))) continue;          // they would just pay
+      const pays = !!(fc.unless && canPay({ generic: fc.unless, pips: [], x: 0 }, allUnits(g)));          // they would just pay
+      if (pays && !person) continue;
       if (fc.discardMv) {
-        if (!big) continue;
-        const dc = d.hand.filter(c => (c.card.a.mv || 0) === (a.mv || 0) && !c.card.a.counter).sort((x, y) => discardValue(d, x) - discardValue(d, y))[0]; if (!dc || !ok(`${q.card.name}: discard ${dc.card.name} to counter it`)) continue;
+        if (!big && !person) continue;
+        const dc = d.hand.filter(c => (c.card.a.mv || 0) === (a.mv || 0) && !c.card.a.counter).sort((x, y) => discardValue(d, x) - discardValue(d, y))[0]; if (!dc || !ok(`${q.card.name}: discard ${dc.card.name} to counter it`, big)) continue;
         d.hand.splice(d.hand.indexOf(dc), 1); d.graveyard.push(dc); madness(d, dc, ev);
       } else {
-        if (!(big || a.castMv >= 3)) continue;
-        const fod = fc.sac === 'self' ? q : d.battlefield.filter(x => isCreaturePerm(x) && matchesFilter(x.card, fc.sac)).sort((x, y) => creatureValue(d, x) - creatureValue(d, y))[0]; if (!fod || !ok(`${q.card.name}: sacrifice ${fod.card.name} to counter it${fc.unless ? ' unless they pay {' + fc.unless + '}' : ''}`)) continue;
+        const auto = !pays && (big || a.castMv >= 3);
+        if (!auto && !person) continue;
+        const fod = fc.sac === 'self' ? q : d.battlefield.filter(x => isCreaturePerm(x) && matchesFilter(x.card, fc.sac)).sort((x, y) => creatureValue(d, x) - creatureValue(d, y))[0]; if (!fod || !ok(`${q.card.name}: sacrifice ${fod.card.name} to counter it${fc.unless ? ' unless they pay {' + fc.unless + '}' : ''}`, auto)) continue;
         leavePerm(d, fod, ev); flushLeaves(d, ev);
+        if (pays) { pay(g, { generic: fc.unless, pips: [], x: 0 }); ev.push({ type: 'note', text: `${inst.card.name}'s controller pays {${fc.unless}} for ${q.card.name}`, source: null }); continue; }
       }
       ev.push({ type: 'note', text: `${q.card.name} counters ${inst.card.name}`, source: null });
       (inst.card.commander ? g.command : g.graveyard).push(inst);

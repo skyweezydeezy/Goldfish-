@@ -229,7 +229,7 @@
       if (src) { q.spell = src; q.spellNote = 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;
-      q.text = 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';
+      q.text = d.def == null ? 'You can answer it this way; the autopilot would let it happen. Choose it, or "Not now".' : 'The autopilot would answer it this way. Choose it, or "Not now" to let it happen.';
       q.none = 'Not now';
       if (d.target && d.target.card) { q.spell = d.target.card; q.spellNote = 'yours'; }
     } else if (d.kind === 'resolve') {

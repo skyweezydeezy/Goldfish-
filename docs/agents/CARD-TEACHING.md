@@ -21,6 +21,13 @@ Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the co
 - Set data: Bilbo and Hobbit Hole (hob), Rune of Flight (khm), Samut (fra) added; coverage refreshed only in the 7 sets these cards are in. `fetch-sets.js` refreshes stale coverage in ~45 other set files: those were reverted, not committed.
 - Test: `tests/engine/issue-67.test.js`.
 
+## T-025: built-in deck cards (claude/card-teaching, from Version 150)
+- Every one of the 1,408 built-in-deck cards already had coverage level 'ok' (no ignored or approximated line, with each deck's chosen type set). The rest were neutral lines: 342 "Mirror matches only", 13 "Needs opponent", 5 "No solo effect", 10 "Can't be simulated" (toys, art, random names, restarting the game).
+- Of the 13 "Needs opponent" lines, 4 do something against a goldfish and are taught: **Torbran** (`a.torbran`, `plusBonus` in both combat lines, `damageOpp`, `hurtCreature` and `burnPick`), **Gideon, Ally of Zendikar** +1 (fx `pwSwing`: a goldfish takes his 5 when he is activated, if he was here at the start of the turn; `autoLoyalty` scores it; approx), **Gisa** and **Kaervek** (trigger kind `crime`, `a.crimeTrig`; fx `kaervekCopy`; approx).
+- A crime: `parseEffects` sets `f.crime` on an effect whose text targets an opponent, a player, "any target" or what an opponent controls, for the types in `CRIME_FX` (damage, drain, removal, bounce, edict, discard...). `applyEffects` fires the crime triggers once for each set of effects that has one.
+- The other 9 "Needs opponent" lines really do nothing alone (Freed from the Real's tap, Goblin Cratermaker, Trashmaster, Hullbreaker Horror, Ajani's 0, Shinka, Sunfall, Vandalblast's overload).
+- Test: `tests/engine/builtin-cards.test.js`. Fingerprint: only the zul-ashur goldfish games change (Gisa, Kaervek and the Witches).
+
 ## Gotchas
 - `fetch-sets.js --query` rebuilds the coverage of every set; keep only the files for your cards, and patch `index.json` and `docs/SETS.md` for those rows.
 - A spell's effects pass `source = null`; a permanent's pass the permanent. `g.lastCast` is the spell being cast.

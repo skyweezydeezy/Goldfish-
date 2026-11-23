@@ -508,8 +508,11 @@
     }
     if (count && /"[^"]*for each[^"]*"/i.test(withQuotes) && !/for each/i.test(withQuotes.replace(/"[^"]*"/g, ''))) { count = null; if (/"[^"]*gets \+1\/\+1 for each artifact you control[^"]*"/i.test(withQuotes)) fx.forEach(f => { if (f.type === 'token') f.cda = 'artifacts you control'; }); }          // the "for each" belongs to the token's own ability (Urza's Construct), not to how many are made
     if (count) fx.forEach(f => { f.count = count; if (/for each/i.test(text) && f.n !== 'X') f.mult = true; });
+    if (CRIME_RE.test(text)) for (const f of fx) if (CRIME_FX.has(f.type)) f.crime = true;          // T-025: "you commit a crime" (Gisa, Kaervek): this effect targets an opponent or what they control
     return { fx, neutral, approx };
   }
+  const CRIME_RE = /\btarget (?:opponent|player)\b|\bany target\b|\btarget [^.]*?(?:an opponent controls|you don't control)|\btarget [^.]*?opponent's graveyard/i;
+  const CRIME_FX = new Set(['damage', 'drain', 'loseLife', 'removal', 'burnCreature', 'bounce', 'edict', 'oppDiscard', 'oppExileTop', 'poison', 'fight', 'millOpp', 'oppHandExile', 'poisonWin', 'jaceUlt']);
 
   // ---------- Ability parsing ----------
   const TRIGGERS = [
@@ -910,6 +913,10 @@
         if (/^\{x\}\{x\}, \{t\}: each player draws x cards\.?$/i.test(line)) { a.folio = true; rec.status = 'ok'; continue; }          // Folio of Fancies (the goldfish draws too)
         if (/^~ enters with x fire counters on it\.?$/i.test(line)) { a.firepower = true; rec.status = 'ok'; continue; }          // Fated Firepower
         if (/^if a source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus an amount of damage equal to the number of fire counters on ~ instead\.?$/i.test(line)) { a.firepowerBonus = true; rec.status = 'ok'; continue; }          // (it was "Needs opponent": a goldfish takes the damage too)
+        // ---- T-025, built-in deck cards: Torbran, Gideon (Ally of Zendikar), and the crime triggers of Gisa and Kaervek
+        { const tb = line.match(/^if a red source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus (\d+) instead\.?$/i); if (tb) { a.torbran = +tb[1]; rec.status = 'ok'; continue; } }          // Torbran, Thane of Red Fell (plusBonus)
+        { const gs = line.match(/^\+1: until end of turn, ~ becomes a (\d+)\/(\d+) [a-z ]+ creature with indestructible that's still a planeswalker\. prevent all damage that would be dealt to (?:him|her|it) this turn\.?$/i); if (gs) { a.pwAbilities.push({ cost: 1, x: false, fx: [{ type: 'pwSwing', p: +gs[1] }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; } }          // Gideon, Ally of Zendikar: a goldfish takes his 5 as he is activated; in a match he stays a planeswalker
+        { const cr = line.match(/^whenever you commit a crime, (.*?)(?: this ability triggers only once each turn\.?)?$/i); if (cr) { const fx = /^exile up to one target black card from your graveyard and copy it\. you may cast the copy\. if you do, you lose 2 life\.?$/i.test(cr[1]) ? [{ type: 'kaervekCopy', life: 2 }] : parseEffects(cr[1]).fx; if (fx.length) { a.triggers.push({ kinds: ['crime'], fx, text: raw }); a.crimeTrig = true; rec.status = 'partial'; rec.tag = 'approx'; continue; } } }          // Gisa, Kaervek: a crime is a spell or ability of yours aimed at an opponent or what they control (CRIME_FX)
         if ((bm = line.match(/^whenever (?:~|thrakkus) attacks, double the power of each (\w+) you control until end of turn\.?$/i))) { a.thrakkus = singular(bm[1]).toLowerCase(); rec.status = 'ok'; continue; }          // Thrakkus the Butcher
         if (/^when ~ enters, reveal cards from the top of your library until you reveal a land card\. put that card onto the battlefield tapped and the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'revealLandTapped' }], text: raw }); rec.status = 'ok'; continue; }          // Clifftop Lookout
         if (/^whenever a food is put into a graveyard from the battlefield, put two \+1\/\+1 counters on ~\.?$/i.test(line)) { a.ygra = 2; rec.status = 'ok'; continue; }          // Ygra, Eater of All (every other creature is a Food)
@@ -5539,6 +5546,7 @@
   }
   function damageOpp(g, n, ev, source, one, loss) {
     if (!(n > 0)) return;
+    if (!loss && !g.dry) n += plusBonus(g, source && source.card ? source : g.lastCast);          // Torbran (a spell's damage has no source permanent: the spell being cast)
     if (!loss && source && source.card && !g.dry) n *= infernoMult(g, source);          // Collective Inferno
     n = dealToOpp(g, n, !!one, loss); if (!(n > 0)) { ev.push({ type: 'note', text: 'The damage is prevented', source }); return; }
     ev.push({ type: 'damage', n, source, total: g.damage });
@@ -5615,6 +5623,7 @@
   }
 
   function applyEffects(g, fx, source, ev, subject) {
+    if (fx && fx.length && !g.dry && tableHas(g, 'crimeTrig') && fx.some(f => f.crime)) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('crime')) fire(g, t, q, ev, null);          // T-025: you commit a crime (Gisa, Kaervek)
     for (const f of fx) {
       if (f.cond && !condMet(g, f.cond, source)) { if (f.cond.kind === 'secondCast' && !g.dry) g.winSpellCasts = (g.winSpellCasts || 0) + 1; continue; }             // e.g. Frodo's draw only while he is the Ring-bearer; Approach of the Second Sun remembers its first cast
       let n = f.n;
@@ -5703,7 +5712,7 @@
         case 'deadbridge': { if (!g.graveyard.length) break; const i = g.graveyard[Math.floor(g.rnd() * g.graveyard.length)]; g.graveyard.splice(g.graveyard.indexOf(i), 1); if (i.card.a.isCreature) { const perm = enterWithTriggers(g, i, {}, ev); ev.push({ type: 'rampLand', inst: i, perm, source }); } else { g.hand.push(i); ev.push({ type: 'note', text: `${i.card.name} returns to your hand (chosen at random)`, source }); } break; }          // Deadbridge Chant
         case 'ordealSac': { const host = source && source.attachedTo != null ? g.battlefield.find(q => q.iid === source.attachedTo) : null; if (host && (host.counters || 0) >= 3 && g.battlefield.includes(source)) { ev.push({ type: 'note', text: `${source.card.name} is sacrificed (three +1/+1 counters)`, source }); leavePerm(g, source, ev); flushLeaves(g, ev); } break; }          // the Ordeals
         case 'astarionPick': { const lost = g.oppLostTurn || 0, gained = g.lifeGainedThisTurn || 0; if (lost > 0 && g.killTurn == null && !matchOver(g)) damageOpp(g, lost, ev, source, false, true); else if (gained > 0) applyEffects(g, [{ type: 'gainLife', n: gained }], source, ev, null); break; }          // Astarion: Feed (they lose what they lost this turn) while it helps, else Friends          // life loss, not damage (protection does not stop it)
-        case 'burnCreature': { const t = g.opp && burnPick(g, n, true, source); if (t) against(g, t, () => burnHit(g, t, n, source, ev)); break; }
+        case 'burnCreature': { const t = g.opp && burnPick(g, n + plusBonus(g, source && source.card ? source : g.lastCast), true, source); if (t) against(g, t, () => burnHit(g, t, n, source, ev)); break; }
         case 'removal': if (g.opp) doRemoval(g, f, source, ev); break;
         case 'bounce': if (g.opp) doBounce(g, f, source, ev); break;
         case 'edict': if (f.each || (f.n || 1) > 1) { for (const o of (f.each ? otherPlayers(g) : g.opp ? [g.opp] : [])) for (let k = 0; k < (f.n || 1); k++) { const v = edictPool(g, o, f)[0]; if (!v) break; ev.push({ type: 'note', text: `The other player sacrifices ${v.card.name}`, source }); sacEvent(o, v, ev); leavePerm(o, v, ev); flushLeaves(o, ev); } break; }          // Portal to Phyrexia: three, from each opponent
@@ -6313,6 +6322,21 @@
         case 'hasteBoost': {                                                                                   // Xenagos, Eldrazi Linebreaker: a creature gains haste and gets +X/+X until end of turn
           const t = g.battlefield.filter(q => isCreaturePerm(q) && !(f.other && q === source) && !q.tapped).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
           if (t) { const X = f.what === 'power' ? Math.max(0, powerOf(g, t)) : countWhat(g, f.what, t); t.sick = false; t.eotP = (t.eotP || 0) + X; if (f.t) t.eotT = (t.eotT || 0) + X; ev.push({ type: 'note', text: `${t.card.name} gains haste and +${X}/+${f.t ? X : 0}`, source }); }
+          break;
+        }
+        case 'pwSwing': {                                                                                      // Gideon, Ally of Zendikar's +1: against a goldfish he attacks as a 5/5 (his damage is dealt as he is activated)
+          if (g.dry || g.opp || !source || source.enteredTurn === g.turn) break;
+          damageOpp(g, (f.p + fireBonus(g)) * infernoMult(g, source), ev, source, true); break;
+        }
+        case 'kaervekCopy': {                                                                                  // Kaervek, the Punisher: a black card from your graveyard is exiled, its copy cast (2 life)
+          if (g.dry || g.life <= f.life + 5) break;
+          const t = g.graveyard.filter(i => !i.card.a.isLand && !i.card.commander && colorsOf(g, i.card).includes('B') && (i.card.a.isPermanent || i.card.a.spellFx.length)).sort((x, y) => (y.card.a.castMv || y.card.a.mv || 0) - (x.card.a.castMv || x.card.a.mv || 0))[0];
+          if (!t) break;
+          g.graveyard.splice(g.graveyard.indexOf(t), 1); g.exile.push(t); g.life -= f.life;
+          ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}a copy of ${t.card.name} is cast from exile (${f.life} life)`, source });
+          const cp = { iid: g.nextIid++, card: Object.assign({}, t.card, { isToken: true }) };
+          fireCastTriggers(g, cp, ev); g.spellsCast = (g.spellsCast || 0) + 1;
+          if (t.card.a.isPermanent) { const np = enterWithTriggers(g, cp, { token: true }, ev); np.token = true; } else applyEffects(g, t.card.a.spellFx, null, ev, null);
           break;
         }
         case 'bilboCast': {                                                                                    // Bilbo, Thief in the Night: one artifact, instant or sorcery from your graveyard (cast after combat; an instant or sorcery is exiled after)
@@ -9738,6 +9762,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
       if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
       let v = fxValue(g, ab.fx) + c * (+pol(g, 'pwLoyalty') || 0);
+      if (ab.fx.some(f => f.type === 'pwSwing')) v += (!g.opp && p.enteredTurn !== g.turn) ? ab.fx[0].p * 0.9 : -100;          // Gideon, Ally of Zendikar: only a Gideon that was here at the start of the turn attacks
       if (ab.fx.some(f => f.n === 'GYCREATURES') && g.graveyard.filter(i => i.card.a.isCreature).length >= oppLifeLeft(g)) v += 1000;         // Grist's -5 as the finisher
       if (v > bs) { bs = v; best = ab; }
     }
@@ -10904,7 +10929,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (g.opp) sba(g, ev);          // combat damage dealt: state-based actions
       else for (const p of attackers) {
         if (!g.battlefield.includes(p)) continue;
-        const steps = hasKw(g, p, 'double strike') ? 2 : 1, pw = (Math.max(0, dmgPow(g, p)) + (dmgPow(g, p) > 0 ? fireBonus(g) : 0)) * steps * infernoMult(g, p);
+        const steps = hasKw(g, p, 'double strike') ? 2 : 1, pw = (Math.max(0, dmgPow(g, p)) + (dmgPow(g, p) > 0 ? fireBonus(g) + plusBonus(g, p) : 0)) * steps * infernoMult(g, p);
         if (pw <= 0) continue;
         if (hasKw(g, p, 'infect')) psn += pw; else dmg += pw;          // infect: poison counters instead of damage to the player's life
         psn += poisonOnHit(p, pw, steps);
@@ -12064,7 +12089,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const a of attackers) {
         if (!alive(g, a)) continue;
         const bl = (blocks.get(a) || []).filter(b => alive(d, b));
-        const pw = a.noDmgBy ? 0 : (Math.max(0, dmgPow(g, a)) + (dmgPow(g, a) > 0 ? fireBonus(g) : 0)) * infernoMult(g, a);          // Maze of Ith, Kor Haven: its combat damage is prevented
+        const pw = a.noDmgBy ? 0 : (Math.max(0, dmgPow(g, a)) + (dmgPow(g, a) > 0 ? fireBonus(g) + plusBonus(g, a) : 0)) * infernoMult(g, a);          // Maze of Ith, Kor Haven: its combat damage is prevented
         if (strikes(g, a) && pw > 0) {
           if (!blockedSet.has(a) || (bfInfo(g).asUnblocked && !/\bHuman\b/.test(a.card.type_line || ''))) marks.push({ to: 'player', n: pw, from: a, game: g });          // Zilortha: non-Humans assign damage as though unblocked
           else if (bl.length) {
@@ -12397,6 +12422,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function ownMult(g) { if (!g || g.dry) return 1; const n = bfInfo(g).ownDouble || 0; return n ? Math.pow(2, Math.min(n, 4)) : 1; }          // Angrath's Marauders: your own sources
   function unlockCostOf(g, c) { const less = g.battlefield.reduce((t, q) => t + (q.card.a.statics.unlockLess || 0), 0); return less && c ? { generic: Math.max(0, c.generic - less), pips: c.pips, x: c.x } : c; }          // Inquisitive Glimmer
   function infernoMult(g, src) { if (!g || g.dry || !src || !src.card) return 1; let m = 1; for (const q of ((tableHas(g, 'inferno') || tableHas(g, 'flareStar')) ? g.battlefield : NONE)) if ((q.card.a.inferno && q.infernoType && matchesFilter(src.card, q.infernoType)) || (q.card.a.flareStar && matchesFilter(src.card, q.card.a.flareStar))) m *= 2; for (const q of ((src.iid != null && tableHas(g, 'mjolnir')) ? g.battlefield : NONE)) if (q.card.a.mjolnir && q.attachedTo === src.iid) m *= 2; return m; }          // Mjölnir: the creature it equips          // Collective Inferno
+  function plusBonus(g, src) { if (!g || g.dry || !src || !src.card || !tableHas(g, 'torbran')) return 0; let n = 0; for (const q of g.battlefield) if (q.card.a.torbran) n += q.card.a.torbran; return n && colorsOf(g, src.card).includes('R') ? n : 0; }          // Torbran, Thane of Red Fell: a red source of yours deals 2 more
   function fireBonus(g) { if (!g || g.dry) return 0; let n = 0; for (const q of (tableHas(g, 'firepowerBonus') ? g.battlefield : NONE)) if (q.card.a.firepowerBonus) n += (q.other && q.other.fire) || 0; return n; }          // Fated Firepower
   function twinMult(g) { if (g.dry) return 1; const n = (tableHas(g, 'statics.twinGods') ? bothSides(g).filter(q => q.card.a.statics.twinGods) : []).length; return n ? Math.pow(2, Math.min(n, 4)) : 1; }
   // a creature of x was dealt n damage: Stuffy Doll deals it to the other player, Wrathful Red Dragon (for a Dragon) too
@@ -12497,7 +12523,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function hurtCreature(gg, q, n, sg, src, ev) {
     if (n <= 0 || !gg.battlefield.includes(q)) return;
     if (sg && !sg.dry && sg.staggerTurn === sg.turn && gg === sg.opp) n *= 2;
-    if (sg && !sg.dry && gg === sg.opp && n > 0) n += fireBonus(sg);          // Fated Firepower
+    if (sg && !sg.dry && gg === sg.opp && n > 0) n += fireBonus(sg) + plusBonus(sg, src && src.card ? src : sg.lastCast);          // Fated Firepower, Torbran
     if (sg && src && src.card && !sg.dry) n *= infernoMult(sg, src);          // Collective Inferno
     if (!gg.dry) n *= twinMult(gg) * (sg ? ownMult(sg) : 1);          // Dictate of the Twin Gods, Angrath's Marauders          // Lightning, Army of One: stagger doubles damage to their permanents too
     if (q.protColors && colorsOf(sg, src.card).some(c => q.protColors.has(c))) return;

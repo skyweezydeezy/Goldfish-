@@ -337,6 +337,7 @@
     if ((m = text.match(/exile the top (card|two cards|three cards) of your library\. (?:until the end of your next turn, you may play (?:those cards|that card)|you may play (?:that card|those cards) (?:this turn|until the end of your next turn))/i))) fx.push({ type: 'impulseOwn', n: /two/.test(m[1]) ? 2 : /three/.test(m[1]) ? 3 : 1, next: /next turn/i.test(m[0]) });          // Light Up the Stage, Reckless Impulse
     if (/you may put a land card from your hand onto the battlefield(?! tapped)/i.test(text) && !/if you don't/i.test(text)) fx.push({ type: 'landFromHand', tapped: false });          // Uro
     if (/exile another target creature you own\. return it to the battlefield under your control at the beginning of the next end step/i.test(text)) fx.push({ type: 'flickerOne' });          // Charming Prince
+    else if (/^(?:• )?exile another target creature you control\. return that card to the battlefield under its owner's control at the beginning of the next end step\.?$/i.test(text)) fx.push({ type: 'flickerOne' });          // rules batch 60: Kykar's mode (it returns at once here)
     if (/\btarget player creates an? treasure token/i.test(text)) fx.push({ type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true });          // Prismari Command
     if (/untap all creatures and gain control of them until end of turn/i.test(text)) fx.push({ type: 'insurrection' });          // Insurrection
     if (/return up to two target creature cards with power 2 or less from your graveyard to the battlefield/i.test(text)) fx.push({ type: 'reanimate', from: 'own', n: 2, maxPower: 2 });          // Reveillark
@@ -704,6 +705,16 @@
         if (/^when ~ enters, if (?:he|she|it|they) was cast, return target creature card from your graveyard to the battlefield\.?$/i.test(line)) { TR(['etb'], [{ type: 'reanimate', from: 'own', zombie: false }], { cond: { kind: 'wasCast' } }); continue; }          // Anti-Venom
         if (/^equipment you control have equip \{1\}\.?$/i.test(line)) { a.statics.equipOne = true; rec.status = 'ok'; continue; }          // Astor
         if (/^vehicles you control have crew 1\.?$/i.test(line)) { a.statics.crewOne = true; rec.status = 'ok'; continue; }          // Astor
+      }
+      // ---- rules batch 60: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^creatures you control have base power and toughness 6\/6 and are oozes in addition to their other types\.?$/i.test(line)) { a.worldOoze = true; rec.status = 'ok'; continue; }          // March of the World Ooze (base 6/6; the Ooze type is not added)
+        if (/^creatures you control have base power and toughness x\/x until end of turn\.?$/i.test(line)) { a.spellFx.push({ type: 'baseEot' }); rec.status = 'ok'; continue; }          // Biomass Mutation
+        if (/^when ~ dies, put its counters on target creature you control, then shuffle ~ into its owner's library\.?$/i.test(line)) { a.sinDies = true; rec.status = 'ok'; continue; }          // Sin, Unending Cataclysm (fireDies)
+        if (/^whenever ~ or another creature you control dies, if it had counters on it, put those counters on up to one target creature\.?$/i.test(line)) { a.roleModel = true; rec.status = 'ok'; continue; }          // Reluctant Role Model (fireDies; +1/+1 counters)
+        if (/^(?:survival — )?at the beginning of your second main phase, if ~ is tapped, put a flying, lifelink, or \+1\/\+1 counter on it\.?$/i.test(line)) { a.roleSurvival = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Reluctant Role Model: a +1/+1 counter
+        if (/^when ~ enters, exile up to one other target creature you control until ~ leaves the battlefield\.?$/i.test(line)) { TR(['etb'], [{ type: 'flickerOne' }], null, 'partial'); continue; }          // Mardu Siegebreaker (approx: the creature returns at once)
+        if (/^whenever ~ attacks, another target attacking creature gets \+2\/\+0 until end of turn\. untap that creature\.?$/i.test(line)) { TR(['attack'], [{ type: 'attackerPump', p: 2, t: 0, other: true, untap: true }]); continue; }          // Restless Ridgeline
       }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
@@ -3759,7 +3770,7 @@
     if (st.monolith) info.monolith = true;
     if (st.allyMana) info.allyMana = true; if (a.warpedSpace && q.unlocked) info.warpedSpace = true; if (st.ownDouble) info.ownDouble = (info.ownDouble || 0) + 1;
     if (st.yardLess) info.yardLess = (info.yardLess || 0) + st.yardLess; if (st.allIslands) info.allIslands = true; if (st.virtueStrength) info.virtueStrength = true; if (a.tenLandsAnthem) info.tenLands = a.tenLandsAnthem;
-    if (st.assault) info.assault = true; if (st.defendersAttack) info.defendersAttack = true; if (a.defenderAttack) info.defenderAttack = a.defenderAttack; if (st.ingaEsika) info.ingaEsika = true; if (st.docAurlock) info.docAurlock = (info.docAurlock || 0) + st.docAurlock; if (st.offHandLess) info.offHandLess = (info.offHandLess || 0) + st.offHandLess; if (st.splitSecond) info.splitSecond = true; if (st.plotLess) info.plotLess = (info.plotLess || 0) + st.plotLess; if (st.loadingZone) info.loadingZone = (info.loadingZone || 0) + 1; if (a.porcelain && q.unlocked) info.porcelain = true; if (a.tevalScale) (info.tevalScale = info.tevalScale || []).push(q);
+    if (st.assault) info.assault = true; if (st.defendersAttack) info.defendersAttack = true; if (a.defenderAttack) info.defenderAttack = a.defenderAttack; if (st.ingaEsika) info.ingaEsika = true; if (st.docAurlock) info.docAurlock = (info.docAurlock || 0) + st.docAurlock; if (st.offHandLess) info.offHandLess = (info.offHandLess || 0) + st.offHandLess; if (st.splitSecond) info.splitSecond = true; if (st.plotLess) info.plotLess = (info.plotLess || 0) + st.plotLess; if (st.loadingZone) info.loadingZone = (info.loadingZone || 0) + 1; if (a.porcelain && q.unlocked) info.porcelain = true; if (a.worldOoze) info.worldOoze = true; if (a.tevalScale) (info.tevalScale = info.tevalScale || []).push(q);
     if (st.lute) info.lute = true; if (st.behemoth) info.behemoth = (info.behemoth || 0) + st.behemoth; if (st.manaFlare) info.manaFlare = (info.manaFlare || 0) + st.manaFlare; if (a.landAnyColor) info.landAnyAura = true; if (a.halvar) info.halvar = true;
     if (a.perEquip) info.perEquip = { p: (info.perEquip ? info.perEquip.p : 0) + a.perEquip.p, t: (info.perEquip ? info.perEquip.t : 0) + a.perEquip.t };          // Bruenor Battlehammer
     if (st.millLands) info.millLands = true;
@@ -3884,6 +3895,7 @@
     for (const l of info.lieutenants) if (g.battlefield.some(q => q.card.commander)) n += l.src === p ? (k === 'p' ? l.lt.sp : l.lt.st) : (k === 'p' ? l.lt.op : l.lt.ot);
     if (g.gauntletSeen || (g.opp && g.opp.gauntletSeen)) for (const q of bothSides(g)) if (q.card.a.gauntletAnthem && q.gauntletColor && colorsOf(g, p.card).includes(q.gauntletColor)) n += 1;          // Gauntlet of Power
     if (info.porcelain && g.battlefield.includes(p)) { const c = g.battlefield.filter(isCreaturePerm).length; n += c - (k === 'p' ? (p.card.a.power || 0) : (p.card.a.toughness || 0)); }          // Porcelain Gallery
+    { const be = g.baseEot && g.baseEot.turn === g.turn ? g.baseEot.x : info.worldOoze ? 6 : null; if (be != null && isCreaturePerm(p) && g.battlefield.includes(p)) n += be - (k === 'p' ? (p.card.a.power || 0) : (p.card.a.toughness || 0)); }          // rules batch 60: base P/T (Biomass Mutation until end of turn, March of the World Ooze)
     if (info.inspiringLeader && p.token && g.battlefield.some(q => q.card.commander && isCreaturePerm(q))) n += info.inspiringLeader * 2;          // Inspiring Leader
     if (info.tenLands && g.battlefield.filter(q => q.asLand).length >= 10) n += k === 'p' ? info.tenLands.p : info.tenLands.t;          // Fecund Greenshell
     if (info.perEquip) { const eq = (tableHas(g, 'isEquipment') ? g.battlefield.filter(q => q.attachedTo === p.iid && q.card.a.isEquipment) : []).length; if (eq) n += (k === 'p' ? info.perEquip.p : info.perEquip.t) * eq; }          // Bruenor Battlehammer
@@ -4299,6 +4311,12 @@
   // "Whenever a creature dies": the creature's own triggers, your watchers (Blood Artist, Zulaport, Skullclamp...) and, in a mirror match, "a creature" watchers on the other side
   function fireDies(g, p, equippers, ev) {
     if (g.killTurn != null) return;
+    if (!g.dry && (p.counters || 0) > 0 && !(p.owner && p.owner !== g) && (p.card.a.sinDies || p.card.a.roleModel || (tableHas(g, 'roleModel') && g.battlefield.some(q => q.card.a.roleModel && q !== p)))) {          // rules batch 60: Sin, Reluctant Role Model: its +1/+1 counters go to another creature
+      const cs = g.battlefield.filter(q => q !== p && isCreaturePerm(q)); const def = cs.slice().sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0];
+      const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, source: p }) || def : def;
+      if (t) { addCounters(g, t, '+1/+1', p.counters, ev, p); ev.push({ type: 'note', text: `${p.card.name}'s ${p.counters} counters go to ${t.card.name}`, source: p }); }
+    }
+    if (!g.dry && p.card.a.sinDies && p.inst && !p.token) { const gi = g.graveyard.indexOf(p.inst); if (gi >= 0) { g.graveyard.splice(gi, 1); g.library.splice(Math.floor(g.rnd() * (g.library.length + 1)), 0, p.inst); } }          // Sin: shuffled into the library
     for (const y of [g].concat(otherPlayers(g))) { const ts = turnSeq(y); if (y.diedT !== ts) { y.diedT = ts; y.diedN = 0; } y.diedN++; }          // creatures that died this turn (Emeritus of Woe)
     if (!g.dry && p.card.a.isLegendary && !p.token && p.card.a.isCreature) for (const q of (tableHas(g, 'ratadrabik') ? g.battlefield.filter(x => x.card.a.ratadrabik && x !== p) : [])) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: zombieCopy(g, p.card) }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `${q.card.name}: a 2/2 Zombie copy of ${p.card.name}`, source: q }); }          // Ratadrabik of Urborg
     if (!g.dry && !(p.owner && p.owner !== g)) { p._vatOil = true; for (const q of (tableHas(g, 'vatOil') ? g.battlefield.filter(x => x.card.a.vatOil && x !== p) : [])) q.other = Object.assign({}, q.other, { oil: ((q.other && q.other.oil) || 0) + 1 }); }          // Vat of Rebirth
@@ -7108,13 +7126,15 @@
         case 'recklessEndeavor': { const r1 = 1 + Math.floor(g.rnd() * 12), r2 = 1 + Math.floor(g.rnd() * 12), lo = Math.min(r1, r2), hi = Math.max(r1, r2);          // rules batch 56: the low roll for damage, the high one for Treasures
           ev.push({ type: 'note', text: `Rolled two d12: ${r1} and ${r2}`, source }); applyEffects(g, [{ type: 'damageEachCreature', n: lo }], source, ev, null); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, hi, ev, source); break; }
         case 'attackerPump': {          // rules batch 59: "target attacking creature" (Hollowmurk Siege's Abzan, Paladin Class)
-          const as = g.battlefield.filter(q => q.attacking && isCreaturePerm(q)); if (!as.length) break;
+          const as = g.battlefield.filter(q => q.attacking && isCreaturePerm(q) && !(f.other && q === source)); if (!as.length) break;
           const def = as.slice().sort((x, y) => ((f.keywords || []).includes('double strike') ? (hasKw(g, x, 'double strike') ? 1 : 0) - (hasKw(g, y, 'double strike') ? 1 : 0) : 0) || powerOf(g, y) - powerOf(g, x))[0];
           const t = g.ask && !g.dry && as.length > 1 ? decide(g, { kind: 'target', what: 'pump', options: as, def, source }) || def : def;
           if (f.counter) addCounters(g, t, '+1/+1', f.counter, ev, source);
           const k = f.perOther ? f.perOther * (as.length - 1) : 0; if (k) { t.eotP = (t.eotP || 0) + k; t.eotT = (t.eotT || 0) + k; }
+          if (f.p || f.t) { t.eotP = (t.eotP || 0) + (f.p || 0); t.eotT = (t.eotT || 0) + (f.t || 0); } if (f.untap) t.tapped = false;          // Restless Ridgeline
           if (f.keywords && f.keywords.length) { t.eotKw = new Set([...(t.eotKw || []), ...f.keywords]); }
-          touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
+          touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : f.p ? ` gets +${f.p}/+${f.t || 0}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
+        case 'baseEot': { const X = Math.max(0, g.xValue || 0); g.baseEot = { turn: g.turn, x: X }; touch(g); ev.push({ type: 'note', text: `Creatures you control have base power and toughness ${X}/${X} until end of turn`, source }); break; }          // rules batch 60: Biomass Mutation
         case 'titanic': { if (!source || !g.battlefield.includes(source)) break; const n = Math.max(0, powerOf(g, source)) * (hasKw(g, source, 'double strike') ? 2 : 1); sacEvent(g, source, ev); leavePerm(g, source, ev); flushLeaves(g, ev); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, Math.min(n, 60), ev, source); break; }          // rules batch 57: RMS Titanic
         case 'insight': {          // T-036: Hunter's Insight: the chosen creature draws its combat damage this turn
           const cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && (!q.sick || hasKw(g, q, 'haste')) && !hasKw(g, q, 'defender'));
@@ -8905,7 +8925,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (f.type === 'millTake') v += 1.5;
       if (f.type === 'lookTake') v += 1.5 * (f.take || 1);
       if (f.type === 'tutor') v += 3;
-      if (f.type === 'pumpAll') v += 3;
+      if (f.type === 'pumpAll' || f.type === 'baseEot') v += 3;
       if (f.type === 'sweep') { const val = (gg, q) => isCreaturePerm(q) ? creatureValue(gg, q) : (q.card.a.mv || 1); const hit = (gg, q) => f.what === 'creature' ? (isCreaturePerm(q) && (f.mvMax == null || (q.card.a.mv || 0) <= f.mvMax) && (f.mvMin == null || (q.card.a.mv || 0) >= f.mvMin)) : f.what === 'artifact' ? (q.card.a.isArtifact && !q.asLand) : (q.card.a.isEnchantment && !q.asLand); v += g.opp ? (otherPlayers(g).reduce((u, o) => u + o.battlefield.filter(q => hit(o, q)).reduce((t, q) => t + val(o, q), 0), 0) - g.battlefield.filter(q => hit(g, q)).reduce((t, q) => t + val(g, q), 0)) / 2 : -20; }
       if (f.type === 'pumpOne' && (f.keywords || []).includes('double strike') && g.battlefield.some(q => isCreaturePerm(q) && canAttack(g, q))) v += 4;
       if ((f.type === 'pumpOne' || f.type === 'doublePower') && !g.combatDone) { const t = bestCreature(g); if (t && canAttack(g, t)) v += 0.5 * (f.type === 'doublePower' ? Math.max(0, powerOf(g, t)) : Math.max(0, +f.p || 0)); }          // a pump before combat is worth the damage it adds
@@ -11283,6 +11303,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function postCombat0(g) {
     const ev = [];
     if (g.timeStopped === g.turn && !g.dry) return ev;
+    if (!g.dry) for (const k of (tableHas(g, 'roleSurvival') ? g.battlefield.filter(q => q.card.a.roleSurvival && q.tapped) : [])) addCounters(g, k, '+1/+1', 1, ev, k);          // rules batch 60: Reluctant Role Model's survival
     if (!g.dry) for (const k of (tableHas(g, 'konaSurvival') ? g.battlefield.filter(q => q.card.a.konaSurvival && q.tapped) : [])) { const c = g.hand.filter(i => i.card.a.isPermanent && !i.card.a.isLand && !castBlocked(g, i)).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0];          // Kona, Rescue Beastie: survival
       if (c) { g.hand.splice(g.hand.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${k.card.name}: ${c.card.name} onto the battlefield`, source: k }); } }
     eachTrigger(g, 'postcombat', ev); settle(g, ev);          // "at the beginning of your postcombat main phase" triggers resolve first

@@ -1,6 +1,6 @@
 # Hand-off: Error and issue fixes (second session)
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 - Session: "Error and issue fixes" (successor), `session_01K5kL4YYZ9n2hdfpzktHqd2`
 - Role: TASK (fixes only; MAIN is the Visuals session `session_01K5kL4YgVQ6tZxzA48G59TU`)

@@ -1,6 +1,6 @@
 # Hand-off: Code Clean-up session
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 - **Session:** Code Clean-up (`session_01K5kL4W7sYVsWQcgDzVLTfX`), role **TASK**. MAIN is the Visuals session (`session_01K5kL4YgVQ6tZxzA48G59TU`).
 - **Date:** 2026-11-23.

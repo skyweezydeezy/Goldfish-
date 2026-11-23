@@ -1,6 +1,8 @@
 # Session handoff: "PR and Marketing"
 
-**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4YpS91PFE97JzdhaDg ("PR and Marketing 2")**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
+
+Superseded by session_01K5kL4YpS91PFE97JzdhaDg ("PR and Marketing 2").
 
 ## Current facts (2026-11-23, Version 142; these override the older text below)
 - MAIN is session_01K5kL4WjxCpfdEjqWh1igWP. Promotion work branch: `claude/promo`. The handoff was accepted by MAIN (recorded in PROJECT_STATE.md).

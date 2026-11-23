@@ -679,6 +679,8 @@
         if (/^(?:• )?~ deals damage equal to twice the number of creatures you control to target creature\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Thraben Charm: their creature
         if (/^(?:• )?exile any number of target players' graveyards\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Thraben Charm
         if (/^whenever ~ is dealt damage, put that many \+1\/\+1 counters on it\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Hungering Hydra: only the other players deal it damage
+        if (/^each player draws two cards\.?$/i.test(line)) { a.spellFx.push({ type: 'draw', n: 2 }); rec.status = 'ok'; continue; }          // Vision Skeins (the other players' cards do not matter here)  (rules batch 43, a spell line)
+        if (/^put target creature on top of its owner's library\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Submerge: their creature  (rules batch 43, a spell line)
       }
       // ---- rules batch 28: the last cards of the top-3000 pool with unread lines
       { let bm; const MIRJ = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; };
@@ -2615,6 +2617,21 @@
       }
       // ---- rules batch 29: the top-5000 pool, ranks 3000 and on (kept late: every rule above, written for one card, comes first)
       { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        // ---- rules batch 43 (general patterns, so they sit here)
+        { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+          if ((bm = line.match(/^(?:each )?([a-z]+)(?: and ([a-z]+))? you control (?:have|has) "\{t\}: add \{([wubrgc])\}\."\.?$/i)) && !/^(?:creature|land|permanent|artifact)$/i.test(bm[1])) { (a.statics.typeGrant = a.statics.typeGrant || []).push({ filters: [bm[1], bm[2]].filter(Boolean).map(x => singular(x).toLowerCase()), color: bm[3].toUpperCase() }); rec.status = 'ok'; continue; }          // Tyvar Kell (Elves), Brightcap Badger (Fungus and Saprolings)
+          if ((bm = line.match(/^other ([a-z]+?)s? and ([a-z]+?)s? you control have ([a-z ,]+)\.?$/i))) { for (const f of [bm[1], bm[2]]) a.statics.anthems.push({ other: true, filter: f.toLowerCase(), p: 0, t: 0, keywords: kwList(bm[3]) }); rec.status = 'ok'; continue; }          // Orcish Siegemaster
+          if ((bm = line.match(/^each other ([a-z]+) you control gets \+(\d+)\/\+(\d+) and has ward \{\d+\}\.?$/i))) { a.statics.anthems.push({ other: true, filter: bm[1].toLowerCase(), p: +bm[2], t: +bm[3], keywords: [] }); rec.status = 'ok'; continue; }          // Coppercoat Vanguard (ward only matters against the other players)
+          if ((bm = line.match(/^equipped creature gets \+x\/\+x, where x is the number of (forests|islands|swamps|mountains|plains) you control\.?$/i))) { a.attachBonus = Object.assign({ p: 0, t: 0, keywords: [] }, a.attachBonus || {}, { p: 1, t: 1, per: 'landType', landType: { forests: 'Forest', islands: 'Island', swamps: 'Swamp', mountains: 'Mountain', plains: 'Plains' }[bm[1].toLowerCase()] }); rec.status = 'ok'; continue; }          // Staff of Titania
+          if (/^whenever you attack, each opponent loses life equal to the number of creatures attacking them\.?$/i.test(line)) { TR(['attackAny'], [{ type: 'drain', n: 'ATTACKING' }], { once: true }); continue; }          // Within Range
+          if (/^\{7\}, \{t\}: create a 2\/2 colorless assembly-worker artifact creature token\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{7}'), tap: true, fx: [{ type: 'token', n: 1, tapped: false, creature: true, p: 2, t: 2, colors: [], subtypes: ['Assembly-Worker'], keywords: [], artifact: true, name: 'Assembly-Worker' }], text: raw }); rec.status = 'ok'; continue; }          // Urza's Factory
+          if ((bm = line.match(/^whenever another (white|blue|black|red|green) creature you control dies, (.+)$/i))) { const r = parseEffects(bm[2]); if (r.fx.length) { TR(['dies'], r.fx, { who: 'another creature you control', color: { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }[bm[1].toLowerCase()], perTurn: false, nontoken: false }); continue; } }          // Teysa, Orzhov Scion
+          if (/^(?:you have shroud|all slivers have shroud)\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Solitary Confinement, Crystalline Sliver
+          if (/^when ~ enters, any number of target players each discard a card\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Tinybones Joins Up
+          if (/^when ~ enters, target player gets (?:a|one|two|three) rad counters?\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Mirelurk Queen
+          if (/^whenever ~ is dealt damage, you gain that much life\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Metropolis Reformer
+          if (/^(?:[a-z]+ — )?whenever ~ deals combat damage to an opponent, it deals that much damage to each other opponent(?: if ~.s power is \d+ or greater)?\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Hydra Omnivore, Vincent (one opponent here)
+        }
         // ---- rules batch 41
         if (/^each other nontoken creature you control enters with an additional \+1\/\+1 counter on it\.?$/i.test(line)) { a.statics.enterCounter = { filter: '', n: 1, nontoken: true }; rec.status = 'ok'; continue; }          // Tromell, Seymour's Butler
         if (/^when ~ enters, return a creature you control to its owner's hand\.?$/i.test(line)) { TR(['etb'], [{ type: 'returnOwn' }]); continue; }          // Whitemane Lion
@@ -3429,7 +3446,7 @@
     if (a.nykthos) info.dynMana.push(q);
     if (a.landAura) info.landAuras.push(q);
     if (st.swampDouble) info.swampDouble = true;
-    if (st.creatureMana) info.creatureMana = true;
+    if (st.creatureMana) info.creatureMana = true; if (st.typeGrant) info.typeGrant = (info.typeGrant || []).concat(st.typeGrant);
     if (st.legendMana) info.legendMana = true;
     if (st.blueTap) info.blueTap = true;
     if (st.allForests) info.allForests = true;
@@ -3568,7 +3585,7 @@
     if (!att) return { dp, dt, kw };
     for (const b of att) {
       const k = !b.per ? 1 : b.per === 'attached' ? ((tableHas(g, 'isAura') || tableHas(g, 'isEquipment')) ? g.battlefield.filter(q => q.attachedTo === p.iid && (q.card.a.isAura || q.card.a.isEquipment)) : []).length : b.per === 'srcCounters' ? Math.max(0, b.src.counters || 0) : b.per === 'srcCharge' ? ((b.src.other && b.src.other.charge) || 0)
-        : b.per === 'auraOnCreature' ? (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.card.a.isAura && q.attachedTo != null && g.battlefield.some(x => x.iid === q.attachedTo && isCreaturePerm(x))) : []).length : b.per === 'otherEnch' ? bothSides(g).filter(q => q !== b.src && enchOn(g, q)).length : countWhat(g, b.per, null); dp += b.p * k; dt += b.t * k; b.keywords.forEach(x => kw.add(x)); }          // a "for each" bonus counts now
+        : b.per === 'auraOnCreature' ? (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.card.a.isAura && q.attachedTo != null && g.battlefield.some(x => x.iid === q.attachedTo && isCreaturePerm(x))) : []).length : b.per === 'otherEnch' ? bothSides(g).filter(q => q !== b.src && enchOn(g, q)).length : b.per === 'landType' ? g.battlefield.filter(q => q.asLand && new RegExp('\\b' + b.landType + '\\b', 'i').test(q.card.type_line || '')).length : countWhat(g, b.per, null); dp += b.p * k; dt += b.t * k; b.keywords.forEach(x => kw.add(x)); }          // a "for each" bonus counts now
     return { dp, dt, kw };
   }
   // Bonuses that depend on the creature or the board right now: "creatures with flying get +1/+1" (Favorable Winds), "+X/+X where X is the number of
@@ -3753,6 +3770,7 @@
     if (info.colorlessDouble) for (const q of info.producers) if (!q.tapped && q.produce && q.produce.colors.size === 1 && q.produce.colors.has('C') && !(q.sick && isCreaturePerm(q))) units.push({ src: q, colors: new Set(['C']) });          // Forsaken Monument
     if (info.landColorlessPlus) for (const q of info.producers) if (!q.tapped && q.asLand && q.produce && q.produce.colors.size === 1 && q.produce.colors.has('C')) for (let k = 0; k < info.landColorlessPlus; k++) units.push({ src: q, colors: new Set(['C']) });          // Ultima: a land tapped for {C} adds one more
     if (info.legendManaT && !info.creatureMana && !info.legendMana) for (const q of g.battlefield) { if (isCreaturePerm(q) && q.card.a.isLegendary && !q.card.a.statics.legendManaT && !q.tapped && !q.produce && !(q.sick && !info.abilityHaste && !hasKw(g, q, 'haste'))) units.push({ src: q, colors: ANY_COLOR }); }          // Esika: other legendary creatures tap for any color
+    if (info.typeGrant && !info.creatureMana) { const seen = new Set(); for (const tg of info.typeGrant) for (const q of g.battlefield) if (!seen.has(q) && isCreaturePerm(q) && tg.filters.some(f => matchesFilter(q.card, f)) && !q.tapped && !q.produce && !(q.sick && !info.abilityHaste && !hasKw(g, q, 'haste'))) { seen.add(q); units.push({ src: q, colors: new Set([tg.color]) }); } }          // Tyvar Kell, Brightcap Badger: a creature of the type taps for one mana
     if (info.typeManaT && !info.creatureMana) for (const q of g.battlefield) { if (isCreaturePerm(q) && matchesFilter(q.card, info.typeManaT) && !q.tapped && !q.produce && !(q.sick && !info.abilityHaste && !hasKw(g, q, 'haste'))) units.push({ src: q, colors: ANY_COLOR }); }          // Path of Annihilation
     for (const q of info.metal) { if (q.tapped || (q.sick && isCreaturePerm(q) && !info.abilityHaste && !hasKw(g, q, 'haste')) || (stony && q.card.a.isArtifact)) continue; const n = g.hand.filter(i => i.card.a.isArtifact).length; for (let k = 0; k < 2 * n; k++) units.push({ src: q, colors: new Set(['C']) }); }          // Metalworker
     if (g.improviseTurn === g.turn) for (const q of g.battlefield) { if (q.card.a.isArtifact && !q.tapped && !q.produce && !q.sacMana && !q.asLand) units.push({ src: q, colors: new Set(['C']), improv: true }); }          // improvise: tap artifacts for generic mana
@@ -4025,6 +4043,7 @@
       if (t.who === 'equipped creature') { if (equippers.includes(q)) fireN(g, t, q, ev, p); continue; }
       if (t.nontoken && p.token) continue;                                                              // Open the Graves: nontoken creatures only
       if (t.colorless && (p.card.colors || []).length) continue;                                        // Azlask: colorless creatures
+      if (t.color && !(p.card.colors || []).includes(t.color)) continue;                                // Teysa, Orzhov Scion: black creatures
       if (t.subtype && !hasSubtype(p.card, [t.subtype])) continue;                                      // Rotlung Reanimator: Clerics
       if (t.perTurn) { if (q.perTurnUsed === g.turn) continue; q.perTurnUsed = g.turn; fire(g, t, q, ev, p); continue; }          // Morbid Opportunist: only once each turn
       fireN(g, t, q, ev, p);
@@ -5470,6 +5489,7 @@
       else if (n === 'GYCREATURES') n = g.graveyard.filter(i => i.card.a.isCreature).length;      // Grist -5
       else if (n === 'HANDPLUS1') n = g.hand.length + 1;
       else if (n === 'HAND') n = g.hand.length;
+      else if (n === 'ATTACKING') n = g.battlefield.filter(q => q.attacking).length;          // Within Range
       else if (n === 'POW2X') n = Math.max(0, Math.min(Math.pow(2, g.xValue || 1), g.library.length - 3));
       else if (n === 'HALFX') n = Math.ceil((g.xValue === 0 ? 0 : g.xValue || 1) / 2);
       else if (n === 'TWOX') n = 2 * (g.xValue || 1);

@@ -13,6 +13,11 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const norm = s => String(s || '').trim().toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ');
   const state = { mode: 'scryfall', info: null };
+  // Extra request headers for Scryfall. Empty in the browser (a page cannot set a User-Agent); the Node tools set one with
+  // setHeaders(), because Scryfall rejects Node's default User-Agent ("generic_user_agent", HTTP 400).
+  let extraHeaders = {};
+  const headers = h => Object.assign({}, extraHeaders, h);
+  function setHeaders(h) { extraHeaders = Object.assign({}, h || {}); }
 
   // ---------- decklist parsing ----------
   const LINE_RE = /^\s*(?:(?<qty>\d+)\s*[xX]?\s+)?(?<name>.+?)(?:\s+\((?<set>[A-Za-z0-9]{2,6})\)(?:\s+(?<cn>[A-Za-z0-9\-★]+))?)?(?<tags>(?:\s+\*[^*]+\*|\s+\[[^\]]*\]|\s+#\S+)*)\s*$/;
@@ -118,7 +123,7 @@
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json;q=0.9,*/*;q=0.8' },
+        headers: headers({ 'Content-Type': 'application/json', 'Accept': 'application/json;q=0.9,*/*;q=0.8' }),
         body: JSON.stringify({ identifiers }),
       });
       if (r.status === 429) { await sleep(1500 * (attempt + 1)); continue; }
@@ -140,7 +145,7 @@
 
   async function fuzzy(name) {
     if (state.mode === 'local') return null;
-    const r = await fetch(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`, { headers: { 'Accept': 'application/json;q=0.9,*/*;q=0.8' } });
+    const r = await fetch(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`, { headers: headers({ 'Accept': 'application/json;q=0.9,*/*;q=0.8' }) });
     return r.ok ? r.json() : null;
   }
 
@@ -269,14 +274,14 @@
     const key = 'search:' + q;
     const hit = cacheGet(key); if (hit) return hit.slice(0, max || 12);
     try {
-      const r = await fetch(API + '/cards/search?order=edhrec&unique=cards&q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } });
+      const r = await fetch(API + '/cards/search?order=edhrec&unique=cards&q=' + encodeURIComponent(q), { headers: headers({ Accept: 'application/json' }) });
       if (!r.ok) return [];
       const j = await r.json(), out = (j.data || []).slice(0, 24).map(c => slim(c));
       cachePut(key, out);
       return out.slice(0, max || 12);
     } catch (e) { return []; }
   }
-  const api = { init, loadDeck, parseDecklist, slim, state, searchCards };
+  const api = { init, loadDeck, parseDecklist, slim, state, searchCards, setHeaders };
   (typeof window !== 'undefined' ? window : globalThis).Source = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

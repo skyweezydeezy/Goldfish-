@@ -10,7 +10,7 @@
 // A winner must beat the default by z > 2 and then hold up (z > 1.64) on a second, fresh set of games, so that testing many choices
 // on many decks does not keep lucky ones.
 const fs = require('fs'), path = require('path');
-const _f = globalThis.fetch; globalThis.fetch = (u, o = {}) => _f(u, Object.assign({}, o, { headers: Object.assign({ 'User-Agent': 'i-see-fish-deck-learner/1.0', 'Accept': 'application/json' }, o.headers || {}) }));
+const _f = globalThis.fetch; globalThis.fetch = (u, o = {}) => _f(u, Object.assign({}, o, { headers: Object.assign({}, require('./ua.js').HEADERS, o.headers || {}) }));
 const root = path.join(__dirname, '..'), dir = path.join(root, 'goldfish', 'static', 'decks');
 const G = require(path.join(root, 'goldfish', 'static', 'sim.js')), Source = require(path.join(root, 'goldfish', 'static', 'source.js'));
 const args = process.argv.slice(2).filter(a => !a.startsWith('--')), flags = process.argv.slice(2).filter(a => a.startsWith('--'));

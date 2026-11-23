@@ -13,6 +13,7 @@ done (ee922f7, live since Version 128); item 5 is fixed in Version 132. These ar
 | Date closed | 2026-11-23 |
 | MAIN at closure | the Visuals session, `session_01K5kL4YgVQ6tZxzA48G59TU` (it is planning its own handover; see CLAUDE.md for the current id) |
 | Work branch | `claude/keen-keller-f9tnbt` (fully merged; holds only this note) |
+| Successor | "Combos 2" (T-026, branch `claude/combos`): updated items 1, 2 and 4 below on 2026-11-23 |
 
 After closure this session does no implementation. Work on combos goes to the current MAIN, which routes it (combo rules in
 `sim.js` are the engine session's area).
@@ -56,10 +57,23 @@ Outside the repository (the user's Google Drive), not code:
 
 None of this is in progress. It was handed to MAIN on 2026-11-22; MAIN said it kept items 1 and 2 and passed item 3 to the engine session.
 
-1. Took's Adventure is not in `goldfish/static/decks/drive-sync.json` (`brackets.test.js` expects a bracket and a Drive id per entry), so it does not update from Drive. Source: the Google Doc "Took's Adventure (Mono-White Tokens) — List".
-2. The Commander Spellbook snapshot is dated 2026-11-22. `node tools/build-combos.js` refreshes it (about 5 minutes, 150 requests; the API pages at 100).
+1. Took's Adventure (`tooks-adventure.txt`) is not in `goldfish/static/decks/drive-sync.json`, so it does not update from Drive, and it
+   should not get an entry there by hand. That file belongs to `tools/import-decks.js`, which imports `.txt` lists exported by ManaBox
+   from the "Magic Commanders / ManaBox" folder; `brackets.test.js` expects every entry to have a `[Bn]` title, a bracket and a real
+   Drive file id. Took's Adventure's source is a Google Doc instead ("Took's Adventure (Mono-White Tokens) — List"). Two ways to sync it
+   (not done, a decision for MAIN or the user):
+   - Simplest: export the deck from ManaBox into that folder as "Took's Adventure [Bn].txt". The next import picks it up and records
+     its real id, with no code change.
+   - Or teach the sync about Docs: download the Doc as plain text (Drive export `text/plain`), save it as `<title> [Bn].txt` with
+     `_drive.json` holding the Doc's id and `modifiedTime`, and run `node tools/import-decks.js <folder>`. `source.js` already skips a
+     Doc's title lines (`TITLE_RE`). The bracket must be chosen first, because the Doc's title has no `[Bn]`.
+2. The Commander Spellbook snapshot was refreshed by T-026 (see `fetched` in `goldfish/static/data/combos.json`). To refresh it again,
+   run `NODE_USE_ENV_PROXY=1 node tools/build-combos.js` (about 5 minutes, 150 requests; the API pages at 100). All Node tools send
+   `tools/ua.js`'s User-Agent, because Scryfall rejects Node's default one (HTTP 400 "generic_user_agent").
 3. Combos listed but not played: Ancient Copper Dragon + Aggravated Assault (a d20), Hermit Druid + Laboratory Maniac (needs a draw), Approach of the Second Sun with Scroll Rack or Necropotence, Voltaic Key loops with Everflowing Chalice or Metalworker (variable mana not modelled).
-4. Loaded Dice lines read but not played (status `partial`): Myr Welder's borrowed abilities, Synod Artificer's untap, Katsumasa's {2}{U}, Tezzeret, Betrayer of Flesh's {2} discount.
+4. Closed: Loaded Dice is no longer a built-in deck (ed431a5, Version 127, replaced by Moving Parts). Its list is kept in
+   `tests/fixtures/loaded-dice.txt` for `loaded-dice.test.js`, and its cards' rules stay in `sim.js`. MAIN had recorded the partial lines
+   as done in ee922f7. Nothing here is owed.
 5. `tests/ui/table-fit.ui.js` failed once for MAIN (empty hand at turn 6). Suspected, not confirmed: Practice games now end earlier because `opts()` passes `bookCombos`. MAIN said the error-fixes session has it.
 
 Known issues and limits:

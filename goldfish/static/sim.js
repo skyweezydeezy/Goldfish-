@@ -765,6 +765,11 @@
         if (/^whenever ~ or another creature you control with flying dies, return another target creature card with lesser mana value from your graveyard to the battlefield\.?$/i.test(line)) { a.triggers.push({ kinds: ['dies'], who: '~ or another creature you control', withKw: 'flying', fx: [{ type: 'reanimate', from: 'own', zombie: false, maxMv: 'LESS' }], text: raw }); rec.status = 'ok'; continue; }          // Jackdaw Savior
         if (/^whenever a creature you control with a \+1\/\+1 counter on it leaves the battlefield, create a mutagen token for each \+1\/\+1 counter on it\.?$/i.test(line)) { a.oozeMutagen = true; rec.status = 'ok'; continue; }          // The Ooze (leavePerm0)
       }
+      // ---- rules batch 66: the top-5000 pool (one card each)
+      { if (/^at the beginning of combat on your turn, put a number of \+1\/\+1 counters equal to ~'s power on up to one other target creature\. that creature becomes a mutant in addition to its other types\.?$/i.test(line)) { a.triggers.push({ kinds: ['combat'], fx: [{ type: 'jenova' }], text: raw }); rec.status = 'ok'; continue; }          // Jenova
+        if (/^whenever a mutant you control dies during your turn, you draw cards equal to its power\.?$/i.test(line)) { a.jenovaDraw = true; rec.status = 'ok'; continue; }          // Jenova (fireDies)
+        if (/^at the beginning of combat on your turn, you may pay \{2\}\{r\/g\}\. if you do, double target creature's power until end of turn\. that creature must be blocked this combat if able\.?$/i.test(line)) { a.triggers.push({ kinds: ['combat'], fx: [{ type: 'payDouble', cost: parseCost('{2}{R/G}') }], text: raw }); rec.status = 'ok'; continue; }          // Neyith (must be blocked: the opponent's side)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -4367,6 +4372,7 @@
   // "Whenever a creature dies": the creature's own triggers, your watchers (Blood Artist, Zulaport, Skullclamp...) and, in a mirror match, "a creature" watchers on the other side
   function fireDies(g, p, equippers, ev) {
     if (g.killTurn != null) return;
+    if (!g.dry && g.activeTurn !== false && (p.mutant || matchesFilter(p.card, 'mutant')) && !(p.owner && p.owner !== g) && tableHas(g, 'jenovaDraw')) { const k = g.battlefield.filter(q => q !== p && q.card.a.jenovaDraw).length; const pw = Math.max(0, powerOf(g, p)); if (k && pw) draw(g, Math.min(pw * k, g.library.length), ev); }          // rules batch 66: Jenova
     if (!g.dry && (p.counters || 0) > 0 && !(p.owner && p.owner !== g) && (p.card.a.sinDies || p.card.a.roleModel || (tableHas(g, 'roleModel') && g.battlefield.some(q => q.card.a.roleModel && q !== p)))) {          // rules batch 60: Sin, Reluctant Role Model: its +1/+1 counters go to another creature
       const cs = g.battlefield.filter(q => q !== p && isCreaturePerm(q)); const def = cs.slice().sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0];
       const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, source: p }) || def : def;
@@ -7200,6 +7206,12 @@
           touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : f.p ? ` gets +${f.p}/+${f.t || 0}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
         case 'toughHand': { const X = g.hand.length; if (!X) break; for (const q of g.battlefield) if (isCreaturePerm(q)) q.eotT = (q.eotT || 0) + X; touch(g); ev.push({ type: 'note', text: `Creatures you control get +0/+${X}`, source }); break; }          // rules batch 62: Baldin
         case 'dsCounters': { const cs = g.battlefield.filter(q => isCreaturePerm(q) && ((q.counters || 0) > 0 || (q.other && Object.values(q.other).some(v => v > 0)))); for (const q of cs) q.eotKw = new Set([...(q.eotKw || []), 'double strike']); if (cs.length) { touch(g); ev.push({ type: 'note', text: `${cs.length} creature${cs.length === 1 ? '' : 's'} with counters gain double strike`, source }); } break; }          // rules batch 64: Chocobo Knights
+        case 'jenova': { if (!source || !g.battlefield.includes(source)) break; const n = Math.max(0, powerOf(g, source)); const cs = g.battlefield.filter(q => q !== source && isCreaturePerm(q)); if (!n || !cs.length) break;          // rules batch 66: Jenova
+          const def = cs.slice().sort((x, y) => (canAttack(g, y) ? 1 : 0) - (canAttack(g, x) ? 1 : 0) || creatureValue(g, y) - creatureValue(g, x))[0]; const t = ownCreature(g, def, 'counters', source, source) || def;
+          addCounters(g, t, '+1/+1', n, ev, source); t.mutant = true; ev.push({ type: 'note', text: `${t.card.name} gets ${n} +1/+1 counters and becomes a Mutant`, source }); break; }
+        case 'payDouble': { const cs = g.battlefield.filter(q => isCreaturePerm(q) && canAttack(g, q)); const def = cs.sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];          // rules batch 66: Neyith: pay to double the best attacker's power
+          if (!def || powerOf(g, def) < 3 || !canPay(f.cost, allUnits(g))) break;
+          if (pay(g, f.cost) == null) break; const t = ownCreature(g, def, 'double', source) || def; t.eotP = (t.eotP || 0) + Math.max(0, powerOf(g, t)); touch(g); ev.push({ type: 'note', text: `${t.card.name}'s power is doubled`, source }); break; }
         case 'nogi': { if (!source || !g.battlefield.includes(source) || g.battlefield.filter(q => q !== source && isCreaturePerm(q) && matchesFilter(q.card, 'dragon')).length < 3) break;          // rules batch 61: Nogi becomes a 5/5 flying Dragon
           source.eotP = (source.eotP || 0) + 5 - (source.card.a.power || 0); source.eotT = (source.eotT || 0) + 5 - (source.card.a.toughness || 0); source.eotKw = new Set([...(source.eotKw || []), 'flying']); touch(g); ev.push({ type: 'note', text: `${source.card.name} becomes a 5/5 flying Dragon`, source }); break; }
         case 'baseEot': { const X = Math.max(0, f.x === 'HAND' ? g.hand.length : g.xValue || 0); g.baseEot = { turn: g.turn, x: X }; touch(g); ev.push({ type: 'note', text: `Creatures you control have base power and toughness ${X}/${X} until end of turn`, source }); break; }          // rules batch 60: Biomass Mutation

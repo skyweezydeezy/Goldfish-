@@ -102,6 +102,7 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 
 | Version | Pull request | What went live |
 |---|---|---|
+| 149 | #82 | Engine rules batches 47–51 |
 | 148 | #81 | Issue #67: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut; Champion's Helm |
 | 147 | #76 | Questions: Rishkar's up to two, fights and bites, Hunter's Talent's attacker, Titania, Eerie Interlude and more |
 | 146 | #80 | Simulated games start at 2,000 |
@@ -149,7 +150,8 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-018 | Root-cause fixes for remote.ui (parallel load) and versus.ui (seed); 10 missing engine README rows | Code Clean-up 2 (`session_01K5kL4VM41uFmohgknueiEg`) | `claude/code-cleanup` | Active (from v142) |
 | T-019 | Promo: QR codes for /ICEYfish/, blurbs with current tab names and Play a friend; no posting | PR and Marketing 2 (`session_01K5kL4YpS91PFE97JzdhaDg`) | `claude/promo` @ `4fb85e8`, #75 | [V] Verified, v144. MAIN decoded all three QR images to the ICEYfish address (OpenCV; the SVG rendered at 820 px). No posting done. |
 | T-020 | Simulated games default to 2,000 (was 10,000): Simulate, Mirror match, Policy lab, A/B test, Duel/Pod "Play many games" (the user, 2026-11-23) | MAIN | `claude/main-coordination` | [V] Integrated; remember-state, deck-menus, tutorial, tutorial-game, versus, versus-fit UI pass; browser check shows 2000 in all six fields. [V] Verified, v146 (PR #80); the live index.html has value="2000". |
-| T-021 | Engine rules batches 47–51 | Card Rules Engine 3 (`session_01K5kL4W5wx2aMmLP73o9seu`) | `claude/engine-rules` @ `a5ce29f` | [V] Integrated onto v148 (two one-line sim.js conflicts with T-017, both sides kept); engine 171/171; decisions/versus/versus-fit/abilities/tutorial-game UI pass. Pool 488 → 400 cards unread. Expected Version 149. |
+| T-021 | Engine rules batches 47–51 | Card Rules Engine 3 (`session_01K5kL4W5wx2aMmLP73o9seu`) | `claude/engine-rules` @ `a5ce29f` | [V] Integrated onto v148 (two one-line sim.js conflicts with T-017, both sides kept); engine 171/171; decisions/versus/versus-fit/abilities/tutorial-game UI pass. Pool 488 → 400 cards unread. [V] Verified, v149 (PR #82). |
+| T-022 | Deck sync from Drive (the user: "sync all decks… add cards from these decks") | MAIN | `claude/main-coordination` | [V] "Magic Commanders/ManaBox": 30 lists, all unchanged. "MTG Max Salt Commander Decks/ManaBox": 11 lists, now recorded in drive-sync.json; Scorched Sky updated (Kindred Dominance, Toxic Deluge in; Jetmir's Garden, Ziatora's Proving Ground out; other printings kept); the 11 now state B4, replacing estimated brackets. Every deck card is in the set data (offline check). Expected Version 150. |
 
 **Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
 session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they
@@ -205,6 +207,7 @@ Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
   `RELAY.servers` should go back to null; if not, it is public again. The user decides.
 - [R, Combos 2] `COMBOS.md`'s Loaded Dice items are stale: the deck was removed in Version 127.
 - [R, App/User Requests 2] "PR #47 held" was only out of date: the user merged #47 on 2026-11-22. Nothing is held.
+- [V] Scryfall rejects the Node tools' requests ("generic_user_agent", 400): `tools/fetch-sets.js` and `tools/build-combos.js` need a User-Agent. MAIN worked around it with a preload for one run.
 - [R] Several archived notes still name the old MAIN id in their body. They are history; `CLAUDE.md` is the authority.
 
 Pending user decisions: the Metered relay login; who owns promotion (`docs/promo/HANDOFF-PR-and-Marketing.md`); the Hakbal report;

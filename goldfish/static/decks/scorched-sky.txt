@@ -1,4 +1,5 @@
 // Scorched Sky (The Ur-Dragon)
+// Bracket 4
 // COMMANDER
 1 The Ur-Dragon (CMM) 1065
 // DECK
@@ -44,7 +45,7 @@
 1 Haven of the Spirit Dragon (DTK) 249
 1 Hellkite Tyrant (RVR) 428
 1 Jeska's Will (SOA) 44
-1 Jetmir's Garden (SNC) 291
+1 Kindred Dominance
 1 Ketria Triome (IKO) 310
 1 Kindred Discovery (WOT) 89
 1 Lathliss, Dragon Queen (FDC) 7
@@ -100,4 +101,4 @@
 1 Windswept Heath (EXP) 20
 1 Wooded Foothills (EXP) 19
 1 Worldly Tutor (TLE) 314
-1 Ziatora's Proving Ground (SNC) 295
+1 Toxic Deluge

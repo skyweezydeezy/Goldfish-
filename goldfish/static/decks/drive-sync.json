@@ -217,7 +217,84 @@
    "id": "100A5PA111OmayRHAAA1nxvUm1snsFA6p",
    "modifiedTime": "2026-11-22T11:28:58.955Z",
    "importedAt": "2026-11-22T11:34:30.990Z"
+  },
+  "Black Mage Blackout [B4] (Vivi Ornitier).txt": {
+   "deck": "black-mage-blackout.txt",
+   "bracket": 4,
+   "id": "1T8xX5B4O0KL_biGrobEgx6c2JOjMSW4Y",
+   "modifiedTime": "2026-11-19T22:15:38.794Z",
+   "importedAt": "2026-11-23T19:10:54.589Z"
+  },
+  "Captain's Lockdown [B4] (Sisay, Weatherlight Captain).txt": {
+   "deck": "captains-lockdown.txt",
+   "bracket": 4,
+   "id": "1Ex91Czu053Rb3jei6jR5p3cpudlpmiVn",
+   "modifiedTime": "2026-11-19T22:15:34.520Z",
+   "importedAt": "2026-11-23T19:10:54.593Z"
+  },
+  "Court of Ruin [B4] (Kefka, Court Mage).txt": {
+   "deck": "court-of-ruin.txt",
+   "bracket": 4,
+   "id": "1Sh1p4OwwKGoX7C1s8-quWjYnFp-OlDmJ",
+   "modifiedTime": "2026-11-19T22:15:16.887Z",
+   "importedAt": "2026-11-23T19:10:54.595Z"
+  },
+  "Dead Sea [B4] (Thrasios, Triton Hero).txt": {
+   "deck": "dead-sea.txt",
+   "bracket": 4,
+   "id": "16wrIUn-8lWEWVila8S8dK3gdovGf--CK",
+   "modifiedTime": "2026-11-19T22:15:23.535Z",
+   "importedAt": "2026-11-23T19:10:54.596Z"
+  },
+  "Ice Age Engine [B4] (Urza, Lord High Artificer).txt": {
+   "deck": "ice-age-engine.txt",
+   "bracket": 4,
+   "id": "1c9w4aykdVzRXaKA1v8rVsS60H1pV_ACL",
+   "modifiedTime": "2026-11-19T22:15:18.702Z",
+   "importedAt": "2026-11-23T19:10:54.597Z"
+  },
+  "Night's Curfew [B4] (Y'shtola, Night's Blessed).txt": {
+   "deck": "nights-curfew.txt",
+   "bracket": 4,
+   "id": "1BEes-JSPt8EfTC744hHtanje5zrYB6TI",
+   "modifiedTime": "2026-11-19T22:15:25.395Z",
+   "importedAt": "2026-11-23T19:10:54.598Z"
+  },
+  "Permafrost Prodigy [B4] (Kinnan, Bonder Prodigy).txt": {
+   "deck": "permafrost-prodigy.txt",
+   "bracket": 4,
+   "id": "1GbNxjQ17LRSBQ2bvDh4N-pVLvWBMxLVN",
+   "modifiedTime": "2026-11-19T22:15:21.062Z",
+   "importedAt": "2026-11-23T19:10:54.598Z"
+  },
+  "Salt Mine [B4] (Nekusar, the Mindrazer).txt": {
+   "deck": "salt-mine.txt",
+   "bracket": 4,
+   "id": "1aCRWQanVxSUg5fKJ_QY-YF_R0x7hEcRj",
+   "modifiedTime": "2026-11-19T22:15:30.072Z",
+   "importedAt": "2026-11-23T19:10:54.599Z"
+  },
+  "Scorched Sky [B4] (The Ur-Dragon).txt": {
+   "deck": "scorched-sky.txt",
+   "bracket": 4,
+   "id": "1-JaY4wI0HN-NHMDMmTfn1Ji1C56xBno-",
+   "modifiedTime": "2026-11-19T22:15:27.818Z",
+   "importedAt": "2026-11-23T19:10:54.599Z"
+  },
+  "Unified Misery [B4] (Jodah, the Unifier).txt": {
+   "deck": "unified-misery.txt",
+   "bracket": 4,
+   "id": "1zSKw-wevbFb8VgIsIsIk6IbY0YvAKQKF",
+   "modifiedTime": "2026-11-19T22:15:32.575Z",
+   "importedAt": "2026-11-23T19:10:54.600Z"
+  },
+  "Void Tax [B4] (Zhulodok, Void Gorger).txt": {
+   "deck": "void-tax.txt",
+   "bracket": 4,
+   "id": "1CRKvI4djC1gMl2Qbyv-tXp9Iwu29KmyN",
+   "modifiedTime": "2026-11-19T22:15:36.502Z",
+   "importedAt": "2026-11-23T19:10:54.600Z"
   }
  },
- "checkedAt": "2026-11-22T11:34:31.082Z"
+ "checkedAt": "2026-11-23T19:10:54.600Z"
 }

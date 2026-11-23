@@ -1,4 +1,5 @@
 // Captain's Lockdown (Sisay, Weatherlight Captain)
+// Bracket 4
 // COMMANDER
 1 Sisay, Weatherlight Captain (SLD) 1444
 // DECK

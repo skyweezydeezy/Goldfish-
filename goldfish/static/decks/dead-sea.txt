@@ -1,4 +1,5 @@
 // Dead Sea (Thrasios, Triton Hero)
+// Bracket 4
 // COMMANDER
 1 Thrasios, Triton Hero (SLD) 2742
 // DECK

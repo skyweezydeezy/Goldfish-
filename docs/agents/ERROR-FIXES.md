@@ -14,11 +14,11 @@ The scope, as passed on by the Visuals session:
 
 | # | Item | State |
 |---|---|---|
-| 1 | Play a friend leftovers: seat-aware code in `versus.js` (`gm.remote`, `startRemote`, comments about `remote.js`, `V.rollFirst`) and `decide.js` (`attemptSeats`, `resolveSeats`, `SCRATCH`), plus unused CSS | Not started |
-| 2 | Dead or duplicate code and unused CSS in `app.js`, `versus.js`, `choices.js`, `decide.js`, `dice.js`, `remember.js`, `tutorial.js`, `styles.css`, `versus.css` | Not started |
-| 3 | Console errors and warnings on every tab, on desktop, iPhone and iPad sizes | **Done at Version 137: none found** (see below) |
-| 4 | Flaky tests: `loop.ui` and `versus.ui` have timed out under parallel load | Not started |
-| 5 | Test speed, if anything easy is left | Not started (see "Test speed") |
+| 1 | Play a friend leftovers in `versus.js` and `decide.js`, plus unused CSS | **Done** (claude/code-cleanup): `startRemote`, `feed`, `halt`, the remote answer/block paths, the move queue, the forced roll, `attemptSeats`, `resolveSeats`, `SCRATCH`. The `.rm-*` / `.vs-conn` CSS was already gone. `V.rollFirst` stays (d20.ui uses it) |
+| 2 | Dead or duplicate code and unused CSS | **Done**: unused CSS (old A/B pick strip, tab label spans, `.flip-in`), `tabEl` in tutorial.js. A name-by-name scan of the listed files found nothing else unused; the small repeated lines left are not worth a refactor |
+| 3 | Console errors and warnings | **Done**: Version 137 sweep, plus tours, install sheet, deck manager, sound panel, Policy lab, a Duel and a Pod played as a person, with the service worker on, at desktop, iPad and iPhone sizes: none |
+| 4 | Flaky tests | **Done as far as reproduced**: `loop` and `versus` did not time out here, even beside three heavy tests. Fixed: versus.ui block check (a drawn removal spell), abilities.ui (fixed pauses before a right-click menu), matfit.ui (a reload reopens Practice), viewer-everywhere.ui (10,000 simulated games took over two minutes) |
+| 5 | Test speed | **Nothing easy left**: the engine runner is within about 20 s of the best a 4-way split can do. The slow files are slow from their game counts (builtin-decks 101 s, compare 79 s, spellslinger 78 s, loyalty-program 74 s, policy 69 s); those belong to the engine session |
 
 Rules for the pass: no behaviour changes; `goldfish/static/sim.js` and the set data belong to the engine session (report findings to it,
 do not edit); keep hooks the Tutorial session uses, such as `window.ISFTutorial`. One hand-over to the Visuals session at the end.

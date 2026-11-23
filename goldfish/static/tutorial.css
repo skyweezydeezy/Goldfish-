@@ -1,0 +1,44 @@
+/* ICEYfish - tutorial coach marks (tutorial.js): the dimmed page, the spotlight, the bubble, the "?" help button and its menu */
+.tut { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+.tut-block { position: fixed; pointer-events: auto; background: transparent; }
+.tut-spot { position: fixed; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(3,9,14,.66), 0 0 0 2px rgba(143,216,255,.85), 0 0 18px 2px rgba(143,216,255,.45);
+ }
+.tut.tut-moving .tut-spot { transition: left .22s ease, top .22s ease, width .22s ease, height .22s ease; }          /* slides only between steps; it follows scrolling at once */
+.tut.tut-nospot .tut-block[data-b="t"] { background: rgba(3,9,14,.66); }
+.tut.tut-tap .tut-spot { animation: tut-pulse 1.6s ease-in-out infinite; }
+@keyframes tut-pulse { 0%,100% { box-shadow: 0 0 0 9999px rgba(3,9,14,.66), 0 0 0 2px rgba(143,216,255,.85), 0 0 18px 2px rgba(143,216,255,.45); }
+  50% { box-shadow: 0 0 0 9999px rgba(3,9,14,.66), 0 0 0 3px rgba(250,178,25,.95), 0 0 26px 6px rgba(250,178,25,.45); } }
+.tut-bubble { position: fixed; pointer-events: auto; box-sizing: border-box; max-width: calc(100vw - 16px); padding: 12px 14px 10px;
+  background: linear-gradient(180deg, #1b3347, #11212e); color: var(--text-primary, #eef7fd); border: 1px solid rgba(143,216,255,.35);
+  border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.55); outline: none; }
+.tut.tut-moving .tut-bubble { transition: left .22s ease, top .22s ease; }
+.tut-bubble:focus-visible { box-shadow: 0 14px 40px rgba(0,0,0,.55), 0 0 0 2px rgba(143,216,255,.7); }
+.tut-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.tut-count { font-size: 12px; color: var(--text-secondary, #b9d0e0); font-variant-numeric: tabular-nums; }
+.tut-skip { background: none; border: 0; padding: 4px 6px; min-height: 0 !important; font-size: 13px; color: var(--text-secondary, #b9d0e0); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.tut-title { margin: 2px 0 4px; font-size: 16px; }
+.tut-text { margin: 0 0 10px; font-size: 14px; line-height: 1.4; color: var(--text-secondary, #b9d0e0); }
+.tut-foot { display: flex; justify-content: flex-end; gap: 8px; }
+.tut-foot button { min-height: 36px; padding: 6px 14px; }
+.tut-bubble.tut-nudge { animation: tut-nudge .35s ease; }
+@keyframes tut-nudge { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+body.tut-on { overscroll-behavior: contain; }
+
+/* the "?" help button: beside the sound button in the top bar; on a phone's table, in the table's toolbar (like the sound button) */
+.tut-help { padding: 5px 10px; font-size: 15px; font-weight: 700; line-height: 1; border-radius: 99px; min-width: 30px; }
+.table-help, .vs-help { display: none; }
+@media (max-width: 600px) { body[data-view=duel] .top-help, body[data-view=pod] .top-help { display: none; } .vs-bar .vs-help { display: inline-block; } }
+@media (max-width: 900px) { .top-help { order: 3; margin-left: auto; } .top-help + .top-sound { margin-left: 0; } }
+@media (max-width: 600px) { body[data-view=table] .top-help { display: none; } body[data-view=table] .table-help { display: inline-block; } }
+@media (max-width: 520px) { .top-help { flex: 0 0 auto; padding: 5px 9px; } }
+@media (max-width: 1180px) and (max-height: 500px), (any-pointer: coarse) and (max-width: 1400px) and (max-height: 500px) {
+  body[data-view=table] .top-help { display: none; } body[data-view=table] .table-help { display: inline-block; } }
+.tut-menu { position: fixed; z-index: 990; display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 210px;
+  background: linear-gradient(180deg, #172a3a, #101e2a); border: 1px solid var(--border, rgba(160,215,255,.16)); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+.tut-menu button { text-align: left; padding: 9px 12px; border-radius: 7px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tut.tut-moving .tut-spot, .tut.tut-moving .tut-bubble { transition: none; }
+  .tut.tut-tap .tut-spot, .tut-bubble.tut-nudge { animation: none; }
+}

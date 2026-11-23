@@ -3,7 +3,8 @@
 // a sideways iPhone. Each goes the whole way a person goes: open the Duel tab, accept what is shared, Invite (a QR code and a code),
 // the friend opens the invite link, Join (the reply), the reply link handed back, both devices start, both keep, and a turn passes.
 // At each step the Play a friend box, its buttons, the QR code and the table's bar fit the screen with nothing to scroll sideways.
-// Needs playwright, the :8800 server and Scryfall. Run it with --jobs 1 (the WebRTC waits, like remote.ui).
+// Needs playwright, the :8800 server and Scryfall. Run it with --jobs 1 (the WebRTC waits, like remote.ui). Every wait polls on a timer:
+// a page this headless browser is not drawing gets no animation frames, which Playwright's default waits run on.
 const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 const UA = 'goldfish-calc-test/0.1';
@@ -39,7 +40,7 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
   };
   const loadDeck = async (p, text) => {
     await p.evaluate(t => { document.querySelector('#deckText').value = t; document.querySelector('#loadDeck').click(); }, text);
-    await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 120000 });
+    await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 120000, polling: 200 });
     // the test machine has no internet STUN: local addresses only. And the roll for first without the 3D dice: a remote game rolls
     // them even with dice switched off, and their WebGL in this headless browser can stop a page drawing (then no click lands)
     await p.evaluate(() => { window.__isfRemote.ice = []; if (window.Dice) window.Dice.rollInto = null; });
@@ -62,10 +63,10 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
   // for first is on screen for a moment; a tap Playwright aims meanwhile lands beside the button (a person's finger follows the screen)
   const settle = (p, sel) => p.waitForFunction(sel => { const e = document.querySelector(sel); if (!e || document.querySelector('.vs-dice')) return false; const r = e.getBoundingClientRect(), k = window.scrollY + ':' + Math.round(r.top);
     const w = window.__settle || (window.__settle = {}); if (w.el === e && w.k === k && Date.now() - w.t > 400) return true; if (w.el !== e || w.k !== k) Object.assign(w, { el: e, k, t: Date.now() }); return false; }, sel, { timeout: 45000, polling: 100 });
-  // Keep and End turn: clicked, once the page is still. Touch taps (Playwright's tap) on the table, once both pages are drawing a game,
-  // now and then hang or are dropped in this headless browser (it draws one page at a time, and a tap waits for a frame); the steps
+  // Keep and End turn: clicked from the page once it is still (as remote.ui does since T-018). Playwright's tap and click wait for
+  // animation frames, and once the duel table is up this headless browser at times draws a page no frames for many seconds; the steps
   // before the game are tapped.
-  const press = async (p, sel) => { await p.bringToFront(); await settle(p, sel); await p.click(sel); };
+  const press = async (p, sel) => { await p.bringToFront(); await settle(p, sel); await p.evaluate(s => document.querySelector(s).click(), sel); };
   const BOX = ['#tab-duel .rm-box', '#tab-duel .rm-box button', '#tab-duel .rm-box input', '#tab-duel .rm-box textarea', '#tab-duel .rm-qr'];
 
   for (const [la, lb] of PAIRS) {
@@ -114,7 +115,7 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
     check(`${tag} ${la}: the scanned reply opens a tab that says to go back to the invite`, /Go back to the ICEYfish tab with your invite/.test(await A2.$eval('#tab-duel .rm-step', e => e.textContent)));
     await A.bringToFront();
     await A.evaluate(() => window.dispatchEvent(new Event('focus')));
-    const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000 });
+    const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000, polling: 200 });
     try { await Promise.all([started(A), started(B)]); }
     catch (e) { for (const p of [A, B]) console.log('LINK ' + p.label + ' ' + JSON.stringify(await p.evaluate(() => { const S = window.__isfRemote.state, L = S.link || {}, pc = L.pc;
       return { inviter: L.inviter, answered: L.answered, conn: pc && pc.connectionState, ice: pc && pc.iceConnectionState, sig: pc && pc.signalingState, ch: L.ch && L.ch.readyState, reply: localStorage.getItem('isf_remote_reply'), status: (document.querySelector('#tab-duel .rm-status') || {}).textContent, game: !!(window.__isfVersus.duel.game) }; }))); throw e; }

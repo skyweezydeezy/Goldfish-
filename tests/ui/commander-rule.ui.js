@@ -59,6 +59,9 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('one card not found: the list still loads (the unknown card counts toward 100) and names the card', r.loaded && !rule(r.msg) && /Notacard Xyzzy/.test(r.msg), r.msg.slice(0, 140));
   r = await load(ninetyNine.replace(/^1 Arcane Signet\b.*$/m, '1 Notacard Xyzzy'));
   check('...a list that is short anyway is refused, and the message names the card not found', !r.loaded && rule(r.msg) && /99 cards/.test(r.msg) && /Notacard Xyzzy/.test(r.msg), r.msg.slice(0, 200));
+  // ...and with no commander marked: the commander guess counts the card not found too (MAIN's review: it used to say "No commander")
+  r = await load(frodo.replace(/^\/\/ COMMANDER\s*$/m, '').replace(/^1 Sol Ring\b.*$/m, '1 Notacard Xyzzy'));
+  check('...an unmarked 100-line list with a card not found loads with its commander guessed', r.loaded && !rule(r.msg) && /Notacard Xyzzy/.test(r.msg) && await p.evaluate(() => window.__isf.deck.commanders.length >= 1), r.msg.slice(0, 160));
   // 2. Archidekt: Maybeboard / Sideboard / Considering / Companion lines are not in the deck
   const archidekt = frodo.replace(/^1 Sol Ring\b.*$/m, '1x Sol Ring [Sideboard Hate]') + '\n1x Arcane Signet (c21) 236 [Maybeboard{noDeck}{noPrice},Ramp]\n1x Lightning Greaves [Sideboard{noDeck}]\n1x Lurrus of the Dream-Den [Companion{top}]\n1x Swords to Plowshares [Considering]';
   r = await load(archidekt);

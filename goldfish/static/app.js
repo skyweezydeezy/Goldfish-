@@ -318,9 +318,10 @@
     let cards = r.cards;
     // if no commander marked and it's a 100-card list whose first card is legendary creature, ask nothing: just guess
     const total = cards.reduce((s, c) => s + c.qty, 0);
-    if (!cards.some(c => c.commander) && $('#optFormat').value === 'commander' && total >= 99) {
+    const listed = total + (r.missing || []).reduce((s, c) => s + (c.qty || 1), 0);          // cards not found still count, as in commanderProblem
+    if (!cards.some(c => c.commander) && $('#optFormat').value === 'commander' && listed >= 99) {
       const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1);
-      if (cand && (total === 100 || (r.specialty && total > 100))) { cand.commander = true; cand._guessed = true; }
+      if (cand && (listed === 100 || (r.specialty && listed > 100))) { cand.commander = true; cand._guessed = true; }
     }
     if ($('#optFormat').value === 'commander' && !force) {
       const bad = commanderProblem(cards, total, r.specialty, r.missing);

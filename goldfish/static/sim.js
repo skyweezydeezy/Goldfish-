@@ -5888,7 +5888,8 @@
           if (ps.length) ev.push({ type: 'note', text: `Airbent: ${ps.map(q => q.card.name).join(', ')}`, source }); break; }
         case 'danceManse': { const X = g.xValue || 0; const ls = g.graveyard.filter(i => (i.card.a.isArtifact || (i.card.a.isEnchantment && !i.card.a.isAura)) && !i.card.a.isLand && (i.card.a.mv || 0) <= X).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0)).slice(0, X);          // Dance of the Manse
           for (const i of ls) { g.graveyard.splice(g.graveyard.indexOf(i), 1); const np = enterWithTriggers(g, i, {}, ev); if (X >= 6 && !isCreaturePerm(np)) { np.animated = { p: 4, t: 4, perm: true, kw: [] }; np.sick = true; } } touch(g); ev.push({ type: 'note', text: `Dance of the Manse, X = ${X}: ${ls.length} back`, source }); break; }
-        case 'reanimateLifelink': { const b = bestReanimation(g, { from: 'own' }); if (b && b.y === g.graveyard) { b.y.splice(b.y.indexOf(b.i), 1); const np = enterWithTriggers(g, b.i, {}, ev); np.kwCounters = new Set([...(np.kwCounters || []), 'lifelink']); ev.push({ type: 'note', text: `${b.i.card.name} returns with a lifelink counter`, source }); } break; }          // Metamorphosis Fanatic
+        case 'reanimateLifelink': { const b = bestReanimation(g, { from: 'own' }); if (b && b.y === g.graveyard) { const c = gyAsk(g, b.i, g.graveyard.filter(i => i.card.a.isCreature), 'battlefield', source); if (!c) break; b.i = c;          // a person picks the card (or none)
+ b.y.splice(b.y.indexOf(b.i), 1); const np = enterWithTriggers(g, b.i, {}, ev); np.kwCounters = new Set([...(np.kwCounters || []), 'lifelink']); ev.push({ type: 'note', text: `${b.i.card.name} returns with a lifelink counter`, source }); } break; }          // Metamorphosis Fanatic
         case 'pactDue': (g.pacts = g.pacts || []).push({ cost: f.cost, turn: g.turn }); break;          // Summoner's Pact
         case 'priceProgress': { const nb = x => x.battlefield.filter(q => q.asLand && !/\bBasic\b/.test(q.card.type_line || '')).length;          // Price of Progress: everyone, twice their nonbasic lands
           for (const x of [g].concat(otherPlayers(g))) { const k = (f.mult || 2) * nb(x); if (!k) continue; x.life -= k * twinMult(x); checkDeath(x, ev); } ev.push({ type: 'note', text: `Price of Progress: ${2 * nb(g)} damage to you${g.opp ? ', ' + 2 * nb(g.opp) + ' to them' : ''}`, source }); break; }
@@ -5953,7 +5954,7 @@
           g.exile.push(...top); ev.push({ type: 'note', text: `Aminatou's Augury: ${used.size} free spell${used.size === 1 ? '' : 's'}${land ? ', ' + land.card.name + ' onto the battlefield' : ''}`, source }); break;
         }
         case 'astralCopies': {          // Astral Dragon: two 3/3 flying Dragon copies of your best noncreature permanent
-          const pick = g.battlefield.filter(q => !isCreaturePerm(q) && !q.asLand && !q.card.a.isLegendary && !q.token && !q.card.a.isAura).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (!pick) break;
+          const os = g.battlefield.filter(q => !isCreaturePerm(q) && !q.asLand && !q.card.a.isLegendary && !q.token && !q.card.a.isAura).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0)); let pick = os[0]; if (!pick) break; if (g.ask && !g.dry) pick = decide(g, { kind: 'target', what: 'astral', options: os, def: pick, source }) || pick;          // a person picks what is copied
           const card = dragonCopy(g, pick.card); for (let k = 0; k < (f.n || 2); k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card }, { token: true }, ev); np.token = true; }
           ev.push({ type: 'note', text: `Two 3/3 flying Dragon copies of ${pick.card.name}`, source }); break;
         }
@@ -6124,7 +6125,8 @@
           stealPerm(g, t, ev, false); if (f.kickX && t.card.a.isEquipment && source && g.battlefield.includes(source)) t.attachedTo = source.iid;
         } break;
         case 'drakeSwap': if (source && g.battlefield.includes(source)) {          // Gilded Drake: exchanged for their best creature; with none (or no opponent) it is sacrificed
-          const t = g.opp ? bestOppCreature(g, q => targetable(g.opp, q)) : null;
+          let t = g.opp ? bestOppCreature(g, q => targetable(g.opp, q)) : null;
+          if (t && g.ask && !g.dry) t = decide(g, { kind: 'target', what: 'drake', options: g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)), def: t, source }) || t;          // a person picks the creature it is exchanged for
           if (!t || answered(g, t, 'exile', source, ev)) { leavePerm(g, source, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `${source.card.name}: no exchange, so it is sacrificed`, source }); break; }
           stealPerm(g, t, ev, false); stealPermToOpp(g, source); ev.push({ type: 'note', text: `${source.card.name} is exchanged for ${t.card.name}`, source });
         } break;
@@ -6273,7 +6275,8 @@
         case 'threaten': if (g.opp && !g.combatDone) {
           for (const o of f.each ? otherPlayers(g) : [g.opp]) {          // Hideous Taskmaster: one from each opponent, with trample, haste and annihilator 1
             let best = null, bv = -Infinity; for (const q of o.battlefield) if (isCreaturePerm(q) && !q.card.commander && (!f.each || targetable(o, q))) { const v = creatureValue(o, q); if (v > bv) { bv = v; best = q; } }
-            if (!best) continue; stealPerm(g, best, ev, true, o); if (f.kw) best.eotKw = new Set([...(best.eotKw || []), ...f.kw]); if (f.annihilator) best.eotAnnihilator = f.annihilator;
+            if (!best) continue; if (!f.each && g.ask && !g.dry) best = decide(g, { kind: 'target', what: 'threaten', options: o.battlefield.filter(q => isCreaturePerm(q) && !q.card.commander), def: best, source }) || best;          // a person picks the creature
+            stealPerm(g, best, ev, true, o); if (f.kw) best.eotKw = new Set([...(best.eotKw || []), ...f.kw]); if (f.annihilator) best.eotAnnihilator = f.annihilator;
           }
         } break;
         case 'insurrection': {                                                                                 // Insurrection: untap everything, steal their creatures until end of turn, all with haste
@@ -6295,7 +6298,8 @@
         }
         case 'hostage': if (g.opp) {                                                                           // Hostage Taker: exile their best creature or artifact; you may cast it with any mana
           const cands = g.opp.battlefield.filter(q => (isCreaturePerm(q) || q.card.a.isArtifact) && !q.asLand && !q.card.commander && !q.token && q.inst).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv));
-          const t = cands[0]; if (t && source) { removePerm(g.opp, t); t.inst.heldBy = source.iid; t.inst.homeZone = 'bf'; t.inst.anyMana = true; t.inst.foreign = true; g.exile.push(t.inst); ev.push({ type: 'note', text: `${source.card.name} exiles ${t.card.name}: you may cast it`, source }); }
+          let t = cands[0]; if (t && g.ask && !g.dry) t = decide(g, { kind: 'target', what: 'hostage', options: cands, def: t, source }) || t;          // a person picks which
+          if (t && source) { removePerm(g.opp, t); t.inst.heldBy = source.iid; t.inst.homeZone = 'bf'; t.inst.anyMana = true; t.inst.foreign = true; g.exile.push(t.inst); ev.push({ type: 'note', text: `${source.card.name} exiles ${t.card.name}: you may cast it`, source }); }
         } break;
         case 'daredevil': if (g.opp) {                                                                         // Dire Fleet Daredevil: cast an instant or sorcery from their graveyard this turn
           const cs = g.opp.graveyard.filter(i => i.card.a.isInstantSorcery && !i.card.a.counter).sort((x, y) => y.card.a.mv - x.card.a.mv);
@@ -7042,7 +7046,7 @@
         case 'flicker': {                                                                                    // Oath of Teferi: exile another permanent, it returns at the end step (a creature re-triggers its enter ability)
           const cs = g.battlefield.filter(q => q !== source && !q.token && q.card.a.triggers.some(t => t.kinds.includes('etb') && fxValue(g, t.fx) >= 2));
           cs.sort((x, y) => Math.max(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => fxValue(g, t.fx))) - Math.max(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => fxValue(g, t.fx))));
-          const t = cs[0];
+          let t = cs[0]; if (t && g.ask && !g.dry) t = decide(g, { kind: 'target', what: 'oath', options: g.battlefield.filter(q => q !== source && q.inst), def: t, source }) || t;          // a person picks the permanent
           if (t) { removePerm(g, t); (g.flickering = g.flickering || []).push(t.inst); ev.push({ type: 'note', text: `Oath of Teferi exiles ${t.card.name}: it returns at the end step`, source }); }
           break;
         }
@@ -7817,7 +7821,7 @@
         else { flipLost = true; ev.push({ type: 'note', text: `${kr.card.name}: flip lost, ${inst.card.name} returns to your hand`, source: kr }); }
       }
       if (flipLost) inst.buybackPaid = true; else
-      applyEffects(g, inst.overloaded ? a.overload.fx : a.spellFx, null, ev, null);
+      applyEffects(g, inst.overloaded ? a.overload.fx : willModes(g, inst) || a.spellFx, null, ev, null);
       const seventh = !g.dry && !inst.exileInstead && !inst.foreign && g.killTurn == null && !matchOver(g) && a.spellFx.some(f => f.cond && f.cond.kind === 'secondCast');          // Approach of the Second Sun, first cast: it goes into the library seventh from the top
       if (inst.buybackPaid && !seventh) { inst.buybackPaid = false; g.hand.push(inst); } else          // buyback: back to your hand
       if (seventh) g.library.splice(Math.min(6, g.library.length), 0, inst); else (inst.exileInstead || a.selfExile ? g.exile : inst.foreign && g.opp ? g.opp.graveyard : g.graveyard).push(inst);
@@ -12966,6 +12970,15 @@ g.actSeq = (g.actSeq || 0) + 1;
   function decide(g, d) { if (!g.ask || g.dry) return d.def; const r = g.ask(g, d); return r === undefined ? d.def : r; }
   function tutorOptions(g, f) { return (f.yard ? g.library.concat(g.graveyard) : g.library).filter(i => tutorMatches(i, f.filters) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands))); }
   function pickSearch(g, t, f, source) { if (t && g.ask) t.inst = decide(g, { kind: 'search', options: tutorOptions(g, f), def: t.inst, f, source }); return t; }
+  // Jeska's Will and the other "Will" cards: with a commander of yours on the battlefield a person may choose one mode or both (both,
+  // the autopilot's play, is the default). Only the cards whose two modes are one effect each; without a commander the engine plays both
+  function willModes(g, inst) {
+    const a = inst.card.a; if (!a.jeska || !g.ask || g.dry || a.spellFx.length !== 2 || !g.battlefield.some(q => q.card.commander)) return null;
+    const bl = String(inst.card.oracle_text || '').split('\n').filter(l => /^• /.test(l)); if (bl.length !== 2) return null;
+    const opts = a.spellFx.map((f, k) => ({ mode: [f], text: bl[k].slice(2) }));
+    const pk = decide(g, { kind: 'mode', will: true, options: opts, def: opts.slice(), multi: true, pick: 2, upTo: true, min: 1, source: { card: inst.card } });
+    return Array.isArray(pk) && pk.length ? [].concat(...pk.map(o => o.mode)) : null;
+  }
   function ownCreature(g, def, what, source, exclude) { return def && g.ask ? decide(g, { kind: 'target', what, options: g.battlefield.filter(p => isCreaturePerm(p) && p !== exclude), def, source }) : def; }
   // In a pod a person may aim at any opponent, not only the one being attacked: every opponent's permanents are offered (eachFoe), and the
   // effect then runs against the chosen permanent's controller (against); the focus goes back afterwards.

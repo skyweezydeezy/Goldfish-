@@ -135,6 +135,11 @@
     proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
+    hostage: ['exile which creature or artifact?', 'Choose the creature or artifact to exile until it leaves the battlefield. You may cast that card while it stays exiled, with mana of any type.'],
+    drake: ['exchange for which creature?', 'Choose the creature of theirs you gain control of; they gain control of this creature.'],
+    threaten: ['gain control of which creature?', 'Choose the creature you gain control of until end of turn. It untaps and gains haste.'],
+    astral: ['copy which permanent?', 'Choose the noncreature permanent: you create two tokens that are copies of it, 3/3 flying Dragon creatures as well.'],
+    oath: ['exile which permanent?', 'Choose another permanent of yours to exile. It returns to the battlefield at the beginning of the next end step.'],
     fangs: ['choose a creature', 'Choose the creature that gets a +1/+1 counter; then its +1/+1 counters are doubled.'],
     flickerAll: ['flicker which creatures?', 'Choose any number of your creatures to exile. They return to the battlefield at the beginning of the next end step (a token does not come back, so tokens are left alone).'],
     animate: ['choose an artifact', 'Choose the noncreature artifact that becomes an artifact creature.'],
@@ -156,7 +161,7 @@
     const optional = !multi && (!!d.optional || d.def == null);
     let min = 1, max = 1;
     if (multi) {
-      if (typeof d.pick === 'number') { max = Math.min(d.pick, opts.length); min = d.upTo ? 0 : max; if (opts.length <= d.pick && !d.upTo) return null; }
+      if (typeof d.pick === 'number') { max = Math.min(d.pick, opts.length); min = d.upTo ? 0 : max; if (opts.length <= d.pick && !d.upTo) return null;  if (d.min != null) min = Math.min(d.min, max); }
       else { max = opts.length; min = defs.length ? 1 : 0; }
     } else if (opts.length === 1 && !optional) return null;
     const src = srcOf(d, g), sn = src ? src.name : null, owner = p => (m && m.players ? m.players.find(x => x.battlefield.includes(p)) : null) || g;
@@ -164,6 +169,7 @@
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
       if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
+      else if (d.kind === 'mode' && o.text) { item.name = o.text; }
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
@@ -213,6 +219,8 @@
       q.text = d.spree === 'first' ? 'Spree: you pay for at least one mode as you cast it. Only the modes you can pay for are listed; more can be added next.' : 'You can pay for another mode. Choose it, or cast the spell as it is.';
       if (d.spree === 'more') q.none = 'No more modes';
       if (src) { q.spell = src; q.spellNote = 'being cast'; }
+    } else if (d.kind === 'mode' && d.will) {                                                              // Jeska's Will: you control a commander
+      q.title = `${sn || 'Spell'}: choose one or both`; q.text = 'You control a commander, so you may choose both modes.';
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;
       q.text = 'Only the modes the engine can play are listed.';

@@ -817,6 +817,7 @@
         if (/^whenever ~ becomes blocked, untap each creature you control\. after this phase, there is an additional combat phase\.?$/i.test(line)) { a.anzrag = true; MIRF(); continue; }          // Anzrag, the Quake-Mole
         if (/^\{3\}\{r\}\{r\}\{g\}\{g\}: ~ must be blocked each combat this turn if able\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }
         if (/^~ deals x damage divided as you choose among any number of target creatures\.?$/i.test(line) && /pay x life/i.test(text)) { a.spellFx.push({ type: 'fireCovenant' }); MIRF(); continue; }          // Fire Covenant: life for their creatures
+        if ((bm = line.match(/^return (two|three|four|five|six) target nonland permanents to their owners' hands\.?$/i))) { for (let k = 0; k < num(bm[1]); k++) a.spellFx.push({ type: 'bounce', what: 'nonland' }); MIRF(); continue; }          // Aether Gale
         if (/^return two target creatures to their owners' hands\.?$/i.test(line)) { a.spellFx.push({ type: 'bounce', what: 'creature' }, { type: 'bounce', what: 'creature' }); MIRF(); continue; }          // Step Through
         if ((bm = line.match(/^(wizard|elf|goblin|sliver|zombie|dragon|knight|merfolk|soldier|warrior|cleric|rogue|shaman)cycling ((?:\{[^}]+\})+)$/i))) { a.creatureCycle = { cost: parseCost(bm[2]), type: bm[1].toLowerCase() }; rec.status = 'ok'; continue; }          // wizardcycling and the like
         if (/^untap all green and\/or blue creatures you control during each other player's untap step\.?$/i.test(line)) { a.statics.otherUntap = 'gucreatures'; rec.status = 'ok'; continue; }          // Murkfiend Liege
@@ -2414,6 +2415,7 @@
           : /^target player mills (\w+) cards\. draw a card\.?$/i.test(pwt) ? { fx: [{ type: 'mill', n: NUM[pwt.match(/mills (\w+) cards/i)[1].toLowerCase()] || 2 }, { type: 'draw', n: 1 }] }          // Jace, Wielder of Mysteries mills himself toward his empty-library win
           : /^target player mills (\w+) cards\.?$/i.test(pwt) ? { fx: [{ type: 'millOpp', n: NUM[pwt.match(/mills (\w+) cards/i)[1].toLowerCase()] || +pwt.match(/mills (\w+) cards/i)[1] || 20 }] }          // Jace Beleren
           : /^until your next turn, you may cast sorcery spells as though they had flash/i.test(pwt) ? { fx: [{ type: 'flashUntil', phrases: [['sorcery']] }] }
+          : /^~ deals (\d+) damage to each non-[a-z]+ creature\.?$/i.test(pwt) ? { fx: [{ type: 'sweepDamage', n: +pwt.match(/deals (\d+)/i)[1], noExile: true, noFly: false }] }          // Chandra, Awakened Inferno (every creature: rules batch 38)
           : parseEffects(pwt);     // Sorin's -6 needs an opponent's creature
         a.pwAbilities.push({ cost, x: m[2] === 'X', fx: r.fx, text: raw });         // x marks "-X": a real "-1" is not the same thing
         rec.status = r.fx.length ? 'ok' : r.neutral ? 'neutral' : 'ignored';
@@ -2573,6 +2575,18 @@
       }
       // ---- rules batch 29: the top-5000 pool, ranks 3000 and on (kept late: every rule above, written for one card, comes first)
       { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        // ---- rules batch 38
+        if ((bm = line.match(/^whenever one or more non-([a-z]+) creatures you control deal combat damage to a player, (.+)$/i))) { const r = parseEffects(bm[2]); if (r.fx.length) { TR(['combatDamage'], r.fx, { who: 'one or more creatures you control', hitNot: bm[1].toLowerCase() }); continue; } }          // Keeper of Fables
+        if ((bm = line.match(/^whenever a commander you control enters or attacks, (.+)$/i))) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['permEtb'], r.fx, { cmdr: true, filter: 'creature' }); TR(['attackAny'], r.fx, { cmdr: true, once: false }); continue; } }          // Norn's Choirmaster
+        if ((bm = line.match(/^whenever you proliferate, (.+)$/i))) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['proliferated'], r.fx); continue; } }          // Ezuri, Stalker of Spheres
+        if ((bm = line.match(/^whenever you cast a spell with mana value (\d+) or greater, untap ~\.?$/i))) { TR(['cast'], [{ type: 'untapSelfAb' }], { minMv: +bm[1] }); continue; }          // Spider Manifestation
+        if (/^whenever a creature enters, you may untap ~\.?$/i.test(line)) { TR(['permEtb'], [{ type: 'untapSelfAb' }], { filter: 'creature' }, 'partial'); continue; }          // Blasting Station (your creatures)
+        if (/^whenever a land you control enters tapped, untap that land\.?$/i.test(line)) { a.tiller = true; rec.status = 'ok'; continue; }          // Tiller Engine (see fireEnterWatchers)
+        if ((bm = line.match(/^attacking ([a-z]+?)s? you control have ([a-z ,]+)\.?$/i)) && !/^creature$/i.test(bm[1])) { a.statics.anthems.push({ other: false, filter: singular(bm[1]).toLowerCase(), p: 0, t: 0, keywords: kwList(bm[2]) }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Neyali, Crossway Troublemakers (attacking or not)
+        if (/^when ~ enters, create a tapped mutavault token\.?$/i.test(line)) { TR(['etb'], [{ type: 'token', n: 1, tapped: true, creature: false, artifact: false, land: true, name: 'Mutavault' }], null, 'partial'); continue; }          // Mutable Explorer (a land for {C}; it does not animate)
+        if (/^\{t\}: a player of your choice adds \{c\}\.?$/i.test(line)) { a.chimes = true; rec.status = 'ok'; continue; }          // Victory Chimes: you choose yourself
+        if (/^when ~ is put into a graveyard from the battlefield, its owner shuffles it into their library\.?$/i.test(line)) { a.shuffleBack = true; rec.status = 'ok'; continue; }          // Lembas
+        if ((bm = line.match(/^when ~ is put into a graveyard from the battlefield, (?:you may )?(search your library for .+)$/i))) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['dies'], r.fx, { who: '~', keepRamp: true }); continue; } }          // Flagstones of Trokair
         if (/^whenever edgar attacks, put a \+1\/\+1 counter on each vampire you control\.?$/i.test(line)) { TR(['attack'], [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'each', other: false, excl: false, types: ['vampire'] }]); continue; }          // Edgar Markov
         if ((bm = line.match(/^whenever you discard an? (creature|land) card, (.+)$/i))) { const r = parseEffects(bm[2]); if (r.fx.length) { TR(['discard'], r.fx, { filter: bm[1].toLowerCase() }); continue; } }          // Surly Badgersaur
         if ((bm = line.match(/^whenever you sacrifice an? (artifact or creature|creature|nonland permanent), (.+)$/i))) { const r = parseEffects(bm[2]); if (r.fx.length) { TR(['anySac'], r.fx, null, 'partial'); continue; } }          // Ravenous Squirrel (any sacrifice counts)
@@ -2890,7 +2904,7 @@
       else if ((mm = text.match(/you may reveal (?:a|an) ([A-Za-z]+)(?: or (?:a|an)? ?([A-Za-z]+))? card from your hand\. If you don't[^.]*tapped/i))) a.tapCond = { kind: 'reveal', types: [mm[1], mm[2]].filter(Boolean) };
       else if ((mm = text.match(/you may pay (\d+) life\. If you don't[^.]*enters tapped/i))) a.tapCond = { kind: 'shock', life: +mm[1] };
       a.coverage.forEach(c => { if (/enters( the battlefield)? tapped|you may (reveal|pay)/i.test(c.text)) { c.status = 'ok'; c.tag = null; } });
-      a.triggers = a.triggers.filter(t => !t.fx.every(f => f.type === 'ramp'));
+      a.triggers = a.triggers.filter(t => t.keepRamp || !t.fx.every(f => f.type === 'ramp'));          // Flagstones of Trokair keeps its own
       a.coverageLevel = a.coverage.some(c => c.status === 'ignored') ? 'partial' : 'ok';
     } else if (a.isPermanent) {
       const m = text.match(/(^|\n)(?:[A-Z][a-z]+ — )?(\{T\}|\{T\}, Sacrifice ~|Sacrifice ~): Add [^\n]*/i);          // "Metalcraft — {T}: Add" (Mox Opal) too
@@ -2902,6 +2916,7 @@
     if (a.urzaSaga && !a.produce) a.produce = { colors: new Set(['C']), amount: 1 };                          // Urza's Saga, chapter I
     if (a.chosenBasic) a.produce = { colors: new Set(deckColors.filter(c => c !== 'C')), amount: 1 };          // Multiversal Passage
     if (a.produceLuck && a.produce) a.produce = { colors: new Set(COLORS), amount: 1 };                     // Gemstone Caverns (with its luck counter: it always starts on the battlefield that way here)
+    if (a.chimes && !a.produce) a.produce = { colors: new Set(['C']), amount: 1 };                              // Victory Chimes
     if (a.kioraUntap && !a.produce) a.produce = { colors: new Set(COLORS), amount: 1 };                      // Kiora's Follower
     if (a.colorMana && !a.produce) a.produce = { colors: new Set(COLORS), amount: 1, dynamic: 'colors' };   // Faeburrow Elder: one mana of each color among your permanents
     if (a.imprint === 'mox') a.produce = null;                         // Chrome Mox makes mana only once a card is imprinted
@@ -3093,7 +3108,7 @@
         oracle_text: (kw.length ? kw.join(', ') + '\n' : '') + (spec.toxic ? `Toxic ${spec.toxic}\n` : '') + (spec.vanishing ? `Vanishing ${spec.vanishing}\n` : '') + (spec.cantBlock ? "This creature can't block.\n" : '') + art, power: spec.creature ? String(spec.p) : null, toughness: spec.creature ? String(spec.t) : null,
         colors: spec.colors || [], keywords: kw, images: [], remote_images: [], faces: [],
       };
-      if (spec.land) { card.oracle_text = '{T}: Add one mana of any color.'; card.produced_mana = COLORS.slice(); }          // Everywhere: every basic land type
+      if (spec.land) { if (lname === 'mutavault') { card.oracle_text = '{T}: Add {C}.'; card.produced_mana = ['C']; } else { card.oracle_text = '{T}: Add one mana of any color.'; card.produced_mana = COLORS.slice(); } }          // Mutavault: {C}          // Everywhere: every basic land type
       if (/^eldrazi (spawn|scion)$/.test(lname)) card.oracle_text += (card.oracle_text ? '\n' : '') + `Sacrifice ${spec.name}: Add {C}.`;          // Eldrazi Spawn and Scion tokens always have it
     }
     card.a = analyze(card, deck.deckColors);
@@ -3898,6 +3913,7 @@
       createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: ['W'], subtypes: ['Spirit'], keywords: ['flying'], artifact: false, name: 'Spirit' }, 1, ev, p);
     }
     if (wasCreature && dest !== 'exile' && dest !== 'hand') { fireDies(g, p, equippers, ev); dieAbilities(g, p, ev); }
+    else if (!wasCreature && dest == null && !g.dry) for (const t of p.card.a.triggers) if (t.keepRamp && t.kinds.includes('dies')) fire(g, t, p, ev, p);          // Flagstones of Trokair: a land put into the graveyard
     if (wasCreature && !hadFly && !p.token && p.inst && !g.dry && dest !== 'exile' && dest !== 'hand' && g.battlefield.length < 250 && g.graveyard.includes(p.inst) && (tableHas(g, 'broodmoth') && g.battlefield.some(q => q.card.a.broodmoth && q !== p))) {      // Luminous Broodmoth: it comes back with a flying counter
       g.graveyard.splice(g.graveyard.indexOf(p.inst), 1);
       const np = enterWithTriggers(g, p.inst, {}, ev); np.flyCounter = true; ev.push({ type: 'note', text: `${p.card.name} returns with a flying counter (Luminous Broodmoth)` });
@@ -4410,6 +4426,7 @@
     const watchers = normEtbOn(g) ? [] : bfInfo(g).watchers.slice();                   // only permanents that care about things entering (big token boards stay fast); Elesh Norn, Mother of Machines: none
     const em = etbMult(g, perm);
     if (perm.tapped && !g.dry && bfInfo(g).amulet) perm.tapped = false;                                 // Amulet of Vigor
+    if (perm.tapped && perm.asLand && !g.dry && tableHas(g, 'tiller') && g.battlefield.some(q => q.card.a.tiller)) perm.tapped = false;          // Tiller Engine
     if (perm.asLand && !g.dry && /\bMountain\b/.test(perm.card.type_line || '')) for (const q of (tableHas(g, 'valakut') ? g.battlefield : NONE)) if (q.card.a.valakut && g.battlefield.filter(l => l !== perm && l.asLand && /\bMountain\b/.test(l.card.type_line || '')).length >= 5) damageOpp(g, 3, ev, q);          // Valakut
     if (perm.asLand && !g.dry) for (const q of (tableHas(g, 'fieldDead') ? g.battlefield : NONE)) if (q.card.a.fieldDead && new Set(g.battlefield.filter(l => l.asLand).map(l => l.card.name)).size >= 7) createTokens(g, { type: 'token', n: 1, creature: true, p: 2, t: 2, colors: ['B'], subtypes: ['Zombie'], keywords: [], artifact: false, name: 'Zombie' }, 1, ev, q);          // Field of the Dead
     for (const q of watchers) {
@@ -4420,6 +4437,7 @@
           if (isCreaturePerm(perm) && (g.torporSeen || (g.opp && g.opp.torporSeen)) && (tableHas(g, 'statics.torpor') && bothSides(g).some(x => x.card.a.statics.torpor))) continue;          // Torpor Orb
           if (t.other && q === perm) continue;
           if (t.nontoken && perm.token) continue;
+          if (t.cmdr && !perm.card.commander) continue;                                              // Norn's Choirmaster: a commander you control
           if (t.minPower != null && powerOf(g, perm) < t.minPower) continue;                         // Garruk's Uprising, Elemental Bond
           if (t.maxPower != null && powerOf(g, perm) > t.maxPower) continue;                         // Welcoming Vampire
           if (t.maxMv != null && (perm.token ? 0 : perm.card.a.mv || 0) > t.maxMv) continue;
@@ -6470,6 +6488,7 @@
               if (p.card.a.isPlaneswalker) addCounters(g, p, 'loyalty', 1, ev, source);
               for (const k of Object.keys(p.other || {})) addCounters(g, p, k, 1, ev, source);
             }
+            if (!g.dry) eachTrigger(g, 'proliferated', ev);          // Ezuri, Stalker of Spheres: whenever you proliferate
           }
           break;
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + (f.n || 1); ev.push({ type: 'note', text: 'Takes an extra turn after this one', source }); break;
@@ -7132,6 +7151,7 @@
   function castFilterOk(t, inst, g) {
     const a = inst.card.a; let f = t.filter || '';
     if (t.castKw && !(a.kw && a.kw.has(t.castKw))) return false;
+    if (t.minMv != null && (a.mv || 0) < t.minMv) return false;          // Spider Manifestation: mana value 4 or greater
     if (/\b(white|blue|black|red|green|colorless|permanent)\b/.test(f)) {                                    // "a red spell", "a green permanent spell" (Runaway Steam-Kin, the Defilers)
       const CW = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }, cols = colorsOf(g, inst.card);
       for (const w of Object.keys(CW)) if (new RegExp('\\b' + w + '\\b').test(f)) { if (!cols.includes(CW[w])) return false; f = f.replace(new RegExp('\\b' + w + '\\b'), ''); }
@@ -10505,7 +10525,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
         if (!t.kinds.includes('attackAny')) continue;
         if (t.minAttackers && attackers.length < t.minAttackers) continue;
-        for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if ((!t.filter || matchesFilter(p.card, t.filter)) && !(t.maxPow != null && powerOf(g, p) > t.maxPow)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
+        for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if ((!t.filter || matchesFilter(p.card, t.filter)) && (!t.cmdr || p.card.commander) && !(t.maxPow != null && powerOf(g, p) > t.maxPow)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
       }
       settle(g, ev);          // attack triggers resolve before blockers and damage (tokens they make attacking join below)
       if (g._extraAtk && g._extraAtk.length) for (const r of g._extraAtk.splice(0)) if (g.battlefield.includes(r)) attackers.push(r);          // Kari Zev's Ragavan enters attacking
@@ -10607,7 +10627,7 @@ g.actSeq = (g.actSeq || 0) + 1;
           if (t.who === '~' || /equipped|enchanted/.test(t.who)) {
             const who = t.who === '~' ? q : g.battlefield.find(x => x.iid === q.attachedTo);
             if (who && hitters.includes(who)) fire(g, t, q, ev, who);
-          } else if (/one or more/.test(t.who)) { if ((!t.hitFilter || hitters.some(h => matchesFilter(h.card, t.hitFilter))) && (!t.hitArtifact || hitters.some(h => h.card.a.isArtifact)) && (!t.pumped || hitters.some(h => powerOf(g, h) > (h.card.a.power || 0)))) fire(g, t, q, ev, null); }
+          } else if (/one or more/.test(t.who)) { if ((!t.hitFilter || hitters.some(h => matchesFilter(h.card, t.hitFilter))) && (!t.hitNot || hitters.some(h => !matchesFilter(h.card, t.hitNot))) && (!t.hitArtifact || hitters.some(h => h.card.a.isArtifact)) && (!t.pumped || hitters.some(h => powerOf(g, h) > (h.card.a.power || 0)))) fire(g, t, q, ev, null); }
           else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.tokenOnly || h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
         }
       }

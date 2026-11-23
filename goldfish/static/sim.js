@@ -756,6 +756,15 @@
         if (/^whenever one or more \+1\/\+1 counters are put on a creature you control, ~ deals that much damage to target opponent\.?$/i.test(line)) { a.triggers.push({ kinds: ['countersPut'], fx: [{ type: 'damage', n: 'THAT' }], text: raw }); rec.status = 'ok'; continue; }          // Shalai and Hallar
         if (/^whenever you cast a faerie or wizard permanent spell, copy it\.?$/i.test(line)) { a.statics.copyTribePerm = 'faerie|wizard'; rec.status = 'ok'; continue; }          // Archmage of Echoes (castCard)
       }
+      // ---- rules batch 65: the top-5000 pool (one card each)
+      { if (/^(?:alliance — )?whenever another creature you control enters, choose one that hasn't been chosen this turn —$/i.test(line) && !/create a tapped treasure token/i.test(text)) { const mf = { type: 'unchosen', modes: [] }; a.triggers.push({ kinds: ['permEtb'], other: true, nontoken: false, filter: 'creature', fx: [mf], text: raw }); a._ncModal = mf; rec.status = 'ok'; continue; }          // Galadriel, Light of Valinor
+        if (/^whenever a pirate you control attacks, choose one that hasn't been chosen this turn —$/i.test(line)) { const mf = { type: 'unchosen', modes: [] }; a.triggers.push({ kinds: ['attackAny'], filter: 'pirate', fx: [mf], text: raw }); a._ncModal = mf; rec.status = 'ok'; continue; }          // Breeches, Eager Pillager
+        if (a._ncModal && /^• /.test(line)) { const body = line.slice(2); const pe = /^exile the top card of your library\. you may play it this turn\.?$/i.test(body) ? { fx: [{ type: 'impulseOwn', n: 1 }] } : parseEffects(body);
+          if (pe.fx.length) { const ms = a._ncModal.modes, mi = ms.findIndex(m => m[0].type === 'mana'); if (pe.fx[0].type !== 'mana' && mi >= 0) ms.splice(mi, 0, pe.fx); else ms.push(pe.fx); rec.status = 'ok'; continue; } if (/can't block/i.test(body)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; } }          // 'unchosen' takes the first mode left: mana last
+        if (/^whenever you sacrifice a creature, you may return target creature card with lesser mana value from your graveyard to the battlefield tapped\. do this only once each turn\.?$/i.test(line)) { a.riveteers = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Riveteers Ascendancy (sacEvent: the sacrifices that report it; altars do not)
+        if (/^whenever ~ or another creature you control with flying dies, return another target creature card with lesser mana value from your graveyard to the battlefield\.?$/i.test(line)) { a.triggers.push({ kinds: ['dies'], who: '~ or another creature you control', withKw: 'flying', fx: [{ type: 'reanimate', from: 'own', zombie: false, maxMv: 'LESS' }], text: raw }); rec.status = 'ok'; continue; }          // Jackdaw Savior
+        if (/^whenever a creature you control with a \+1\/\+1 counter on it leaves the battlefield, create a mutagen token for each \+1\/\+1 counter on it\.?$/i.test(line)) { a.oozeMutagen = true; rec.status = 'ok'; continue; }          // The Ooze (leavePerm0)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -4280,6 +4289,7 @@
     }
     if (!g.dry && p.earthbent && dest !== 'hand' && dest !== 'library' && dest !== 'libraryBottom' && p.inst) (g.earthQueue = g.earthQueue || []).push(p.inst);          // earthbend: it returns tapped
     if (!g.dry && dest == null && (tableHas(g, 'avacynReturn') || tableHas(g, 'orbReturn') || tableHas(g, 'marchesaReturn')) && p.inst && !p.token && !p.card.commander && isCreaturePerm(p) && !p.card.a.dieTransform && g.battlefield.some(q => (q.card.a.avacynReturn && (q === p || !q.phased)) || (q.card.a.orbReturn && q.attachedTo === p.iid) || (q.card.a.marchesaReturn && (p.counters || 0) > 0)) && !(g.endReturn || []).includes(p.inst)) (g.endReturn = g.endReturn || []).push(p.inst);          // rules batch 53: Avacyn, Angel of Horror
+    if (!g.dry && tableHas(g, 'oozeMutagen') && isCreaturePerm(p) && (p.counters || 0) > 0) for (const q of g.battlefield) if (q !== p && q.card.a.oozeMutagen && !q.phased) createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Mutagen', artifact: true }, Math.min(p.counters, 20), ev || [], q);          // rules batch 65: The Ooze
     if (!g.dry && tableHas(g, 'shredder')) for (const q of g.battlefield) if (q !== p && q.card.a.shredder && !q.phased) addCounters(g, q, '+1/+1', 1, ev || [], q);          // rules batch 57: Super Shredder
     if (!g.dry && p.fakeDeathTurn === g.turn && dest == null && p.inst && !p.token) (g.fakeQueue = g.fakeQueue || []).push(p.inst);          // T-036: Fake Your Own Death
     if (!g.dry && p.card.a.dieTransform && dest == null && p.inst && p.card.a.backCard) (g.ojerQueue = g.ojerQueue || []).push(p.inst);          // Ojer Taq: back as its Temple
@@ -4379,6 +4389,7 @@
       if (t.colorless && (p.card.colors || []).length) continue;                                        // Azlask: colorless creatures
       if (t.color && !(p.card.colors || []).includes(t.color)) continue;                                // Teysa, Orzhov Scion: black creatures
       if (t.subtype && !hasSubtype(p.card, [t.subtype])) continue;                                      // Rotlung Reanimator: Clerics
+      if (t.withKw && !hasKw(g, p, t.withKw)) continue;          // rules batch 65: Jackdaw Savior (a creature with flying)
       if (t.perTurn) { if (q.perTurnUsed === g.turn) continue; q.perTurnUsed = g.turn; fire(g, t, q, ev, p); continue; }          // Morbid Opportunist: only once each turn
       fireN(g, t, q, ev, p);
     }
@@ -4565,7 +4576,9 @@
     if (!p._vatOil) { p._vatOil = true; for (const q of (tableHas(g, 'vatOil') ? g.battlefield.filter(x => x.card.a.vatOil && x !== p) : [])) q.other = Object.assign({}, q.other, { oil: ((q.other && q.other.oil) || 0) + 1 }); }          // Vat of Rebirth
     if (/^Food$/.test(p.card.name || '')) for (const x of [g].concat(otherPlayers(g))) for (const q of (tableHas(x, 'ygra') ? x.battlefield.filter(y => y.card.a.ygra) : [])) addCounters(x, q, '+1/+1', q.card.a.ygra, ev || [], q);          // Ygra: a Food token
     for (const x of [g].concat(otherPlayers(g))) for (const q of (tableHas(x, 'discipleVault') ? x.battlefield.filter(y => y.card.a.discipleVault) : [])) damageOpp(x, 1, ev || [], q, false, true); }          // Disciple of the Vault
-  function sacEvent(g, perm, ev) { if (g.dry) return; artYard(g, perm, ev); for (const x of [g].concat(otherPlayers(g))) for (const q of (tableHas(x, 'carmen') ? x.battlefield.filter(y => y.card.a.carmen && y !== perm) : [])) { addCounters(x, q, '+1/+1', 1, ev || [], q); gainLife(x, 1, ev || [], q); } if (perm.token && /^Food$/.test(perm.card.name || '')) for (const q of (tableHas(g, 'camellia') ? g.battlefield.filter(x => x.card.a.camellia) : [])) createTokens(g, { type: 'token', n: 1, tapped: false, creature: true, p: 1, t: 1, colors: ['G'], subtypes: ['Squirrel'], keywords: [], artifact: false, name: 'Squirrel' }, 1, ev || [], q); if (g.opp && !perm.token && perm.inst) betrayQueue(g, perm.inst, false); for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) { if (t.kinds.includes('anySac')) fire(g, t, q, ev, perm); if (t.kinds.includes('artifactSac') && artOn(g, perm) && q !== perm) fire(g, t, q, ev, perm); } }
+  function sacEvent(g, perm, ev) { if (g.dry) return; artYard(g, perm, ev);
+    if (tableHas(g, 'riveteers') && isCreaturePerm(perm) && g.battlefield.includes(perm)) for (const q of g.battlefield) if (q.card.a.riveteers && q.rivTurn !== g.turn && gyTarget0(g, (perm.card.a.mv || 0) - 1)) { q.rivTurn = g.turn; applyEffects(g, [{ type: 'reanimate', from: 'own', zombie: false, maxMv: (perm.card.a.mv || 0) - 1, tapped: true }], q, ev || [], null); break; }          // rules batch 65: Riveteers Ascendancy, once a turn
+    for (const x of [g].concat(otherPlayers(g))) for (const q of (tableHas(x, 'carmen') ? x.battlefield.filter(y => y.card.a.carmen && y !== perm) : [])) { addCounters(x, q, '+1/+1', 1, ev || [], q); gainLife(x, 1, ev || [], q); } if (perm.token && /^Food$/.test(perm.card.name || '')) for (const q of (tableHas(g, 'camellia') ? g.battlefield.filter(x => x.card.a.camellia) : [])) createTokens(g, { type: 'token', n: 1, tapped: false, creature: true, p: 1, t: 1, colors: ['G'], subtypes: ['Squirrel'], keywords: [], artifact: false, name: 'Squirrel' }, 1, ev || [], q); if (g.opp && !perm.token && perm.inst) betrayQueue(g, perm.inst, false); for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) { if (t.kinds.includes('anySac')) fire(g, t, q, ev, perm); if (t.kinds.includes('artifactSac') && artOn(g, perm) && q !== perm) fire(g, t, q, ev, perm); } }
   function madness(g, inst, ev) {
     if (!g.dry && (tableHas(g, 'leng') && g.battlefield.some(q => q.card.a.leng)) && g.graveyard.includes(inst) && !inst.card.a.isLand && (inst.card.a.mv || 0) >= 3 && !inst.card.a.madness && !inst.card.a.flashback) { g.graveyard.splice(g.graveyard.indexOf(inst), 1); g.library.unshift(inst); return; }          // Library of Leng
     if (!g.dry) { const ma = (tableHas(g, 'artillerist') ? g.battlefield.filter(q => q.card.a.artillerist) : []); if (ma.length) damageOpp(g, ma.length, ev || [], ma[0]); }          // Magmakin Artillerist: a card discarded
@@ -7141,6 +7154,7 @@
           break;
         }
         case 'reanimate': {
+          if (f.maxMv === 'LESS') g._lessMv = subject && subject.card ? (subject.card.a.mv || 0) - 1 : -1;          // rules batch 65: lesser mana value than the creature that died (Jackdaw Savior)
           if (entryBlocked(g, { a: { isCreature: true } }, 'gy')) { ev.push({ type: 'note', text: 'Nothing returns: creature cards cannot enter the battlefield from a graveyard (Grafdigger\'s Cage, Containment Priest)', source }); break; }
           const k = f.n || 1;
           if (f.sacrifice) { const fl = fodderList(g, true); if (!fl.length) break; leavePerm(g, fl[0].p, ev); }
@@ -7425,10 +7439,11 @@
     if (f.from === 'any' && g.opp) for (const i of g.opp.graveyard) if (i.card.a.isCreature && !i.card.commander) out.push({ i, y: g.opp.graveyard });
     return out;
   }
+  function gyTarget0(g, maxMv) { return maxMv >= 0 && g.graveyard.some(i => i.card.a.isCreature && (i.card.a.mv || 0) <= maxMv); }
   function bestReanimation(g, f, all) {
     let best = null, bs = -Infinity;
     for (const c of reanimateCandidates(g, f)) {
-      if (f.maxMv != null && c.i.card.a.mv > (f.maxMv === 'LIFE' ? g.lifeGainedThisTurn || 0 : f.maxMv)) continue;
+      if (f.maxMv != null && c.i.card.a.mv > (f.maxMv === 'LIFE' ? g.lifeGainedThisTurn || 0 : f.maxMv === 'LESS' ? (g._lessMv != null ? g._lessMv : -1) : f.maxMv)) continue;
       if (f.maxPower != null && c.i.card.a.power > f.maxPower) continue;
       if (f.nonLegendary && c.i.card.a.isLegendary) continue;
       if (f.legendary && !c.i.card.a.isLegendary) continue;

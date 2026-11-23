@@ -1,0 +1,49 @@
+{
+  "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
+  "entries": [
+    {
+      "v": 142,
+      "lines": [
+        "Every feature: a long tour of each tab, or of every tab, under ?."
+      ]
+    },
+    {
+      "v": 141,
+      "lines": [
+        "Play a friend is back: duel someone on another device from the Duel tab.",
+        "New to ICEYfish? Tap ? for a sample game, your first goals and this list.",
+        "Shock lands ask whether to pay 2 life, and more cards ask you before they decide."
+      ]
+    },
+    {
+      "v": 137,
+      "lines": [
+        "Tours: each tab explains itself the first time you open it. Tap ? to see a tour again."
+      ]
+    },
+    {
+      "v": 136,
+      "lines": [
+        "ICEYfish remembers where you were: your tab, deck, settings and Practice game survive a reload."
+      ]
+    },
+    {
+      "v": 134,
+      "lines": [
+        "Duel and Pod: everyone rolls a d20 to see who goes first."
+      ]
+    },
+    {
+      "v": 130,
+      "lines": [
+        "Melded cards come together with an animation."
+      ]
+    },
+    {
+      "v": 121,
+      "lines": [
+        "3D dice and coins."
+      ]
+    }
+  ]
+}

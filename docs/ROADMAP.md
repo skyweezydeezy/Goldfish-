@@ -6,7 +6,7 @@
 
 - **Play against AI opponents:** you plus up to 3 virtual opponents on the same tabletop, the opponents playing decks the AI has already learned. Start with a *watch mode* (2–4 AI decks auto-run, with pause / step / speed), then let you take one seat.
 - **Phone apps:** an app on the App Store and Google Play that people sign in to. The web app is already installable to the Home Screen (it is a PWA); store apps and accounts come after the simulator.
-- **Not planned for now:** playing against other people across phones or PCs (lobbies, syncing two devices).
+- **Play a friend (since Version 141):** two people on two devices, as it was in Version 128 (Duel → Play a friend). Lobbies and accounts are not planned for now.
 
 ## Other tools and how they show games (researched November 2026)
 

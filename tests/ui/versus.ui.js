@@ -99,6 +99,7 @@ const shot = process.env.VERSUS_SHOTS;
       const small = G.enterWithTriggers(me, { iid: me.nextIid++, card: cs[cs.length - 1] }, {}, []); small.sick = false; small.tapped = false; window.__blk = small.iid; window.__big = big.iid;
       op.battlefield.forEach(q => { if (q !== big && G.isCreaturePerm(q)) q.tapped = true; });
       op.hand = [];          // no removal for the set-up blocker (a Go for the Throat in its main phase left nothing to block with)
+      op.library.sort((x, y) => (y.card.a.isLand ? 1 : 0) - (x.card.a.isLand ? 1 : 0));          // ...nor from the cards it draws this turn: lands on top
     });
     await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
     await until('duel', () => { const g = window.__isfVersus.duel.game; return g.over || g.phase === 'block' || (g.phase === 'main' && g.games[0].turn >= 4); }, null, 60000, true);

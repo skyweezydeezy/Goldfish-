@@ -22,5 +22,13 @@ for (const [sl, want] of [[20, 10], [undefined, 20]]) {
   check(`60-card, starting life ${sl || 'not given'}: "your life total becomes half your starting life" (The Endstone) makes it ${want}`, g.life === want, g.life);
 }
 
+// ---- no maximum hand size
+for (const no of [false, true]) {
+  const g = G.newGame(deck(), Object.assign({}, O, { noMaxHand: no }), 2); g.turn = 4;
+  while (g.hand.length < 10) g.hand.push(g.library.shift());
+  const ev = []; G.cleanupDiscard(g, ev);
+  check(no ? 'with "no maximum hand size" the cleanup step keeps all ten cards' : 'without it the cleanup step discards ten down to seven, as before', g.hand.length === (no ? 10 : 7) && G.maxHandSize(g) === (no ? Infinity : 7), g.hand.length);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -140,10 +140,13 @@ const js = (p, sel) => p.evaluate(s => document.querySelector(s).click(), sel);
     // with "7 (never)" the autopilot keeps every opening seven
     const kept = await p.evaluate(() => { let m = 0; const o = window.__isfApi.opts(); for (let s = 1; s <= 40; s++) { const g = Goldfish.newGame(window.__isf.deck, Object.assign({}, o, { turns: 1 }), s); Goldfish.mulligan(g); m += g.mulligans || 0; } return m; });
     check('settings: Mulligan down to reaches the autopilot (7: it never mulligans)', o7 === 7 && kept === 0, 'minHandSize ' + o7 + ', mulligans in 40 games: ' + kept);
+    await p.fill('#optMyLife', '30'); await p.check('#optNoMaxHand');
+    const o2 = await p.evaluate(() => { const o = window.__isfApi.opts(); return { s: o.startLife, n: o.noMaxHand, life: Goldfish.newGame(window.__isf.deck, o, 1).life }; });
+    check('settings: Starting life and No maximum hand size reach the engine', o2.s === 30 && o2.n === true && o2.life === 30, JSON.stringify(o2));
     await p.fill('#optTurns', '14'); await p.fill('#optLife', '33'); await p.uncheck('#optCmdrFirst');
     await p.click('#optReset');
-    const back = await p.evaluate(() => { const v = s => document.querySelector(s).value; return { t: v('#optTurns'), l: v('#optLife'), c: document.querySelector('#optCmdrFirst').checked, m: v('#optMullTo'), f: v('#optFormat') }; });
-    check('settings: Reset rules to defaults puts every rule back (the format stays)', back.t === '10' && back.l === '40' && back.c && back.m === '5' && back.f === 'commander', JSON.stringify(back));
+    const back = await p.evaluate(() => { const v = s => document.querySelector(s).value; return { t: v('#optTurns'), l: v('#optLife'), c: document.querySelector('#optCmdrFirst').checked, m: v('#optMullTo'), f: v('#optFormat'), my: v('#optMyLife'), nm: document.querySelector('#optNoMaxHand').checked }; });
+    check('settings: Reset rules to defaults puts every rule back (the format stays)', back.t === '10' && back.l === '40' && back.c && back.m === '5' && back.f === 'commander' && back.my === '40' && !back.nm, JSON.stringify(back));
     await p.click('#displaySettings > summary');
     await p.selectOption('#dispDensity', 'compact'); await p.selectOption('#dispFade', 'off');
     const a = await p.evaluate(() => ({ cls: document.body.classList.contains('dense-compact'), fade: getComputedStyle(document.documentElement).getPropertyValue('--mode-fade').trim(), pad: getComputedStyle(document.querySelector('.card-box')).paddingTop }));

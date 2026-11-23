@@ -27,12 +27,18 @@ from Version 151 (`8a43bc7`).
   - **Mulligan down to** (`#optMullTo`, 7/6/5/4, default 5) feeds `opts().minHandSize`; the engine already read it (it was fixed
     at 5). The Policy lab's `mullTo` still overrides it.
   - **Reset rules to defaults** (`#optReset`) resets every rule for the chosen format; the format itself stays.
+  - **Starting life** (`#optMyLife`, default 40/20 with the format) → `opts.startLife`. `sim.js` newGame: `life: opts.startLife ||
+    opts.oppLife || 40` (MAIN approved this one line). In Duel and Pod every player starts at it. It fixes startLife falling back to
+    40 in 60-card games (The Endstone, Angel of Destiny, life anthems, "life below start" cost reductions).
+  - **No maximum hand size** (`#optNoMaxHand`) → `opts.noMaxHand`. `sim.js` maxHandSize returns Infinity for it (one line).
+  - Not built (agreed with MAIN): starting hand size, other mulligan rules.
 - **Display** fold (`#displaySettings`): Spacing (Standard / Compact / Roomy → `body.dense-compact` / `body.dense-roomy`) and Tab
   switch (Smooth 2s / Quick .35s / Instant → `--mode-fade`). Kept in `localStorage.isf_display`, so it survives Reset, like sound
   and the playmat.
-- Proposed and waiting for MAIN's yes (each is one line in `sim.js`, the engine's file): **Your starting life** (`life:
-  opts.startLife || opts.oppLife || 40`; it also fixes startLife falling back to 40 in 60-card) and **No maximum hand size**
-  (`maxHandSize` returns Infinity when `g.opts.noMaxHand`).
+- Which autopilot games change: none with the default settings in Commander. 60-card games change where a card compares with your
+  starting life (it is now 20, not 40). If someone set Opponent life away from the format default, their own life used to follow it
+  and now stays at the starting life; in Duel and Pod, Opponent life no longer sets everyone's life (Starting life does).
+- `tests/engine/rule-options.test.js` covers both engine options.
 
 ## Tests and tools
 - `tests/ui/layout.ui.js` covers the above. Run `node tests/run.js --ui layout`, about 1 minute.

@@ -104,6 +104,7 @@
       minLands: +$('#optMinLands').value, maxLands: +$('#optMaxLands').value,
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
+      noMaxHand: $('#optNoMaxHand').checked,                 // no discarding down to seven in the cleanup step
       startLife: +$('#optMyLife').value || (fmt === 'commander' ? 40 : 20),   // your life at the start (in Duel and Pod, every player's)
       minHandSize: +$('#optMullTo').value || 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
@@ -115,7 +116,7 @@
     $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
   // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
-  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5 });
+  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5, optNoMaxHand: false });
   $('#optReset').addEventListener('click', () => {
     const d = RULE_DEFAULTS($('#optFormat').value === 'commander');
     for (const [id, v] of Object.entries(d)) {

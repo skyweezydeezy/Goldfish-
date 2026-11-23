@@ -4309,7 +4309,7 @@
   // Fancies for every player) wins over any number; "your maximum hand size is N" (Twenty-Toed Toad, Necrodominance) sets it, the newest
   // such permanent counting; an opponent's Jin-Gitaxias, Core Augur reduces it.
   function maxHandSize(g) {
-    if (g.noMaxHand) return Infinity;
+    if (g.noMaxHand || (g.opts && g.opts.noMaxHand)) return Infinity;          // also the Build tab's "No maximum hand size" rule
     const others = g.match && g.match.players ? g.match.players.filter(x => x !== g && !x.dead) : (g.opp ? [g.opp] : []);
     if (g.battlefield.some(p => p.noMaxHand || p.card.a.statics.noMaxHand) || others.some(x => (tableHas(x, 'statics.noMaxHand') && x.battlefield.some(p => p.card.a.statics.noMaxHand === 'all')))) return Infinity;
     let n = 7;

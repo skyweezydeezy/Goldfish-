@@ -1,6 +1,17 @@
 # Session handoff: "PR and Marketing"
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4YpS91PFE97JzdhaDg ("PR and Marketing 2")**
+
+## Current facts (2026-11-23, Version 142; these override the older text below)
+- MAIN is session_01K5kL4WjxCpfdEjqWh1igWP. Promotion work branch: `claude/promo`. The handoff was accepted by MAIN (recorded in PROJECT_STATE.md).
+- Live site: https://skyweezydeezy.github.io/ICEYfish/ (the old /Goldfish-/ address redirects).
+- QR codes regenerated for the ICEYfish address in T-019 (the old ones encoded /Goldfish-/). Verified by decoding, not yet by a phone scan or a print.
+- Play a friend is live again since Version 141 (a beta box on the Duel tab), so promo text may mention it. The "do not mention" rule below is obsolete.
+- Tabs: Build, Mulligan, Practice, Simulate, Odds, Duel, Pod. `primer-blurbs.md` now uses these names and its claims were checked against the app code at Version 142.
+- Still open: nothing posted; no Reddit/Discord posts or flyer; site self-promotion rules unchecked; no analytics; custom domain undecided; who owns promotion is a pending user decision. Posting anything needs the user's yes.
+
+---
+Original note (historical):
 
 - Session: "PR and Marketing" (session_01K5kL4WqRN1kBjvWc1Tsngx)
 - Role: TASK (not MAIN). Reports to the "Visuals/Main" session (session_01K5kL4YgVQ6tZxzA48G59TU), believed to be the current MAIN; not formally confirmed.
@@ -43,7 +54,7 @@ My own branch: `claude/site-promotion-qr-code-s3b13i`, head `a3c38f1` (before th
 ## Decisions and requirements that must survive
 - App name is "ICEYfish" (user's instruction to Visuals; the user first asked for ICEYFISH).
 - Never name the user's private local data setup in anything public. Card data and images are credited to Scryfall.
-- Promo text must not mention playing a friend remotely (feature removed in Version 131).
+- ~~Promo text must not mention playing a friend remotely (feature removed in Version 131).~~ Obsolete: back since Version 141.
 - Work goes to MAIN as a branch and commit made from the current live branch, never an old one.
 - Pages deploys only from the default branch (the environment rule blocks others); do not widen it.
 - Pushing is allowed without asking (repo CLAUDE.md), to the session's own branch only.

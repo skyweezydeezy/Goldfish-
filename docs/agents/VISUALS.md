@@ -12,7 +12,7 @@ The main session gathers every other session's work, tests it, merges it into th
 - Engine card-rules batches (`claude/engine-rules`) merge every **5 batches**. Engine fixes the user asks for directly merge at once.
 - Long sessions (about 600k tokens) hand over to a fresh session through a note in `docs/agents/`. Do this for yourself too.
 - "Less is more" design: tabs are one word each, explanations go behind the ⓘ toggle, report lists fold.
-- The app name is **ICEYfish** (not ICEYFISH). "Play a friend" (remote play) was removed in v131 at the user's request.
+- The app name is **ICEYfish** (not ICEYFISH). "Play a friend" (remote play) was removed in v131, then **restored as it was in v128** at the user's request (PR #69, without the v129 camera scanner). Keep the seat-aware code in versus.js and decide.js.
 
 ## How a merge goes
 1. `git fetch` the branches and build a `batch` branch from live: `git checkout -B batch origin/claude/visual-goldfish-calculator-1ztks5`, then `git merge --no-edit` each branch or commit. Take the exact commit a session names; some branch heads also carry held engine batches.
@@ -45,6 +45,10 @@ Live was Version 140 when this note was last updated.
 Replaced or archived: Card Rules Engine (session_01K5kL4WeZFox6QLJp181xit), Decision points (session_01K5kL4ZfrioL9gBHkq7n6W6), Error and issue fixes (session_01K5kL4WFecXLYHVpGfBo1Lc, archived at the user's request), Data Diver (session_01K5kL4ZV5pdT7VRQdWo44on, archived), Remember State (session_01K5kL4YWwfWjUctszegSXXM, archived), Remote versus (finished).
 
 ## Open items when this note was written
+- **First task of the new main session:** change the main session id at the top of CLAUDE.md (the "Send finished work to the Visuals session" section) to your own id, and merge that change. Every agent has already been told the new id by message.
+- **Tutorial stage 3** (the guided sample games, commit 012cd8f on claude/tutorial) was still being tested by the Tutorial session. Merge it when it hands over. Stage 4 comes after.
+- **Code Clean-up** (claude/code-cleanup, about 6 commits in progress) was told to leave the remote-play code alone. Its hand-over is the "final merge".
+- **Metered relay:** the login in remote.js may have been deleted by the user after the removal. If remote play can't relay, ask the user for a new Metered login.
 - **Engine rules batches held:** 37 (30f9ea4), 38 (6d070b0), 39 (a1747db) and 40 (fded532) are 4 of 5. When 41 arrives, merge the tip of claude/engine-rules together with Decision Points 2's **428db9a** (the sacrifice question title, which batch 39 needs). They clash in castCard0 in sim.js: keep both lines, the engine's `g._sacStats = {…}` first and then decision points' `if (inst.card.a.sacLandCost) {…}`.
 - **Tutorial:** stages 1–2 are live (v137). Next is stage 3 (the guided sample game: built-in deck, fixed seed through `G.newGame(deck, opts, seed)` / `G.newPod(…, seed)`). Then stage 4, which the user approved: the welcome card, the first-goals checklist, first-time tips with "Show me", and **What's new**. Not approved: the glossary and a separate tutorial deck.
 - **What's new:** the main session writes the changelog line for each merge into the file the Tutorial session defines (likely `goldfish/static/whatsnew.json`). Ask Tutorial for the format.

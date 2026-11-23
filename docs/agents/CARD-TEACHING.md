@@ -1,40 +1,34 @@
 # Handoff: Card-teaching session
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4YhRxNwAucFcxv2DYT** (Card teaching & Policy lab 2)
 
-- **Session:** card-teaching (session `session_01K5kL4Y1MvoJcQ6QEUCvRD4`)
-- **Role:** TASK (not MAIN)
-- **Date:** 2026-11-23
-- **Branch:** `claude/nifty-shannon-ikmmqa`, fast-forwarded to the default branch at Version 140 plus this note. It has no other unique commits.
+- **Session now:** Card teaching 2 (session `session_01K5kL4YhRxNwAucFcxv2DYT`), a TASK session. MAIN is `session_01K5kL4WjxCpfdEjqWh1igWP`.
+- **Old session:** `session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed.
+- **Branch:** `claude/card-teaching`, made from the default branch at Version 142 (`90f6117`). The old branch `claude/nifty-shannon-ikmmqa` is no longer used.
 
-## Original objective
-Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the coverage parser and deckAbilities). Handle "Teach:" GitHub issues (template `.github/ISSUE_TEMPLATE/teach-card.yml`). Look after the A/B test and Policy lab (`compare.js`, `app.js`). Each card taught gets a test in `tests/engine/` (unlearned-cards, missing-interactions or artifact-engine-cards `.test.js`), run with `node tests/run.js <name>`.
+## Area
+Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the coverage parser, deckAbilities). Handle "Teach:" GitHub issues (template `.github/ISSUE_TEMPLATE/teach-card.yml`). Look after the A/B test and Policy lab (`compare.js`, `app.js`). Each card taught gets a test in `tests/engine/`, run with `node tests/run.js <name>`.
 
-## Completed work
-- None in this session. It took over at Version 133 with 0 unlearned cards and no open Teach issues (#27, Shalai, closed as done) and only confirmed it was ready.
-- Earlier work from this branch is already on the default branch (merged through the Visuals batches up to Version 133). This session leaves no unmerged code.
+## T-017: issue #67 (done on `claude/card-teaching`, reported to MAIN)
+- **Bilbo, Thief in the Night:** `statics.offHandLess` (effectiveCost: the command zone, the graveyard, exile, `temp` casts, `yardCastTurn`), and the attack trigger fx `bilboCast` (one artifact, instant or sorcery in the graveyard is marked `yardCastTurn`, an instant or sorcery also `exileInstead`; it is cast after combat, in the second main phase). A person is asked with the `target`/`graveyard` question, dest `yardCast` (wording added in `decide.js`).
+- **Gratuitous Violence:** the Flare Star line now reads "a wizard" or "a creature": `a.flareStar = 'creature'`, through `infernoMult` (creature sources only). The old `lossMult = 2` line (it doubled your spells too) is removed.
+- **Hobbit Hole:** `halfling` added to the creature-type cycling list. A land with typecycling is kept while you have fewer than 5 lands and no other land in hand, and is not cycled when the library has no card of that type.
+- **Mjölnir:** `a.mjolnir`; `infernoMult` doubles the damage of the creature it is attached to. The `{2}{R}, Discard` sweeper is marked neutral/opp.
+- **Rune of Flight:** flying through `attachBonus`. The Equipment line is partial/approx: the Aura is never put on an Equipment.
+- **Samut:** `statics.noCounter` (as Chimil) plus `statics.splitSecond`: `protectOne` gives no response to an instant or sorcery's effect (ward still applies). Marked neutral/opp/mirror.
+- The same Bilbo line also completes **Fortune Teller's Talent** and **Savvy Trader**.
+- Set data: Bilbo and Hobbit Hole (hob), Rune of Flight (khm), Samut (fra) added; coverage refreshed only in the 7 sets these cards are in. `fetch-sets.js` refreshes stale coverage in ~45 other set files: those were reverted, not committed.
+- Test: `tests/engine/issue-67.test.js`.
 
-## Verification performed
-- `git rev-list` between the old remote `claude/nifty-shannon-ikmmqa` (46c5f2b, Version 133) and the default branch found 0 commits unique to the work branch, so nothing was left unintegrated.
-- GitHub open issues: one, **#67** (see below).
-- No tests were run, because no code changed.
+## Gotchas
+- `fetch-sets.js --query` rebuilds the coverage of every set; keep only the files for your cards, and patch `index.json` and `docs/SETS.md` for those rows.
+- A spell's effects pass `source = null`; a permanent's pass the permanent. `g.lastCast` is the spell being cast.
 
-## Unfinished work / blockers / known issues
-- **Issue #67, open and not started:** "Teach: Bilbo, Thief in the Night, Gratuitous Violence, Hobbit Hole, Mjölnir, Hammer of Thor, Rune of Flight, Samut, Tyrant of N…" (the title is cut off there). It arrived after the brief said there were none.
-- **Scheduled task "Unlearned cards report"** (`trig_01QHjLprDix64HKVERVnxXP8`, 8am and 5pm Central) still fires into this closed session. MAIN should point it at the replacement card-teaching session or disable it. This session did not change it.
+## Open items
+- Issue #67: close it once the work is live, with a comment (and the footer).
+- Scheduled task "Unlearned cards report" (`trig_01QHjLprDix64HKVERVnxXP8`) still fires into the closed session: the user's call.
 
-## Decisions and requirements that must survive
-- Follow CLAUDE.md. Push to your own work branch. Send finished work to MAIN (Visuals) with the branch, the commit it ends on and a short summary.
-- Never merge into the default branch yourself. Never edit `goldfish/static/version.js` or the `VERSION` line in `goldfish/static/sw.js`.
-- Engine rules batches on `claude/engine-rules` are merged five at a time. Card-teaching fixes the user asks for directly are merged as they come.
-- Every taught card needs a test in `tests/engine/`.
+## Rules that must survive
+- Follow CLAUDE.md. Push to your own work branch; report to MAIN with the branch, the commit and a short summary. Never merge into the default branch yourself; never edit `goldfish/static/version.js` or the `VERSION` line in `goldfish/static/sw.js`.
+- Card-teaching work merges as it comes (no five-batch hold). Every taught card needs a test in `tests/engine/`.
 - The unlearned-cards report must not commit, push or change files.
-
-## Exact next action
-A fresh card-teaching session, started by MAIN, takes issue #67: read each card's rules text, teach the missing lines in `sim.js` and the coverage parser, add tests in `tests/engine/`, run `node tests/run.js <name>`, push, and report to MAIN.
-
-## Awaiting MAIN review or integration
-- Only this handoff note (`docs/agents/CARD-TEACHING.md` on `claude/nifty-shannon-ikmmqa`). There are no code changes.
-
----
-Once MAIN confirms, change the status line to: **ARCHIVED — SUPERSEDED BY [replacement session]**

@@ -112,7 +112,7 @@ T('labels', () => { const bad = NAMES.filter(n => by(n).a.coverage.concat(by(n).
   check('every line of these 25 cards is read now', bad.length === 0, bad.join(', '));
   const mir = [['Bow of Nylea', '{1}{G}, {T}: ~ deals 2'], ['Odric, Master Tactician', 'Whenever']];
   const bm = mir.filter(([n, st]) => { const v = lineOf(n, st); return !v || !v.mirror; }).map(([n, st]) => n + ' ' + st); check('...the ones that need another player say Mirror matches only', bm.length === 0, bm.join(', '));
-  check("Will of the Abzan's first mode is read (it was \"No solo effect\")", lineOf('Will of the Abzan', '• Any number').status === 'ok'); check("Mimic Vat's imprint is read (it was \"No solo effect\")", lineOf('Mimic Vat', 'Imprint').status === 'ok'); });
+  check("Will of the Abzan's first mode is read (it was \"No solo effect\")", lineOf('Will of the Abzan', 'Any number').status === 'ok'); check("Mimic Vat's imprint is read (it was \"No solo effect\")", lineOf('Mimic Vat', 'Imprint').status === 'ok'); });
 T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });
 

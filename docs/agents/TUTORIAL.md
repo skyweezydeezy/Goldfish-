@@ -6,7 +6,7 @@
 |---|---|
 | Session | "Tutorial", `session_01K5kL4W83TGViiS66xLyhrQ` |
 | Role | TASK (created by the Visuals session, which is MAIN) |
-| MAIN | Visuals, `session_01K5kL4YgVQ6tZxzA48G59TU` |
+| MAIN | `session_01K5kL4WjxCpfdEjqWh1igWP` (was `session_01K5kL4YgVQ6tZxzA48G59TU`) |
 | Date closed | 2026-11-23 |
 | Branch | `claude/tutorial`, last commit `5c039db` (pushed; the remote matches) |
 | Open PR | #68 (draft), base `claude/visual-goldfish-calculator-1ztks5` |
@@ -100,3 +100,11 @@ Earlier checks:
 ## Changes awaiting MAIN review or integration
 
 Commits `012cd8f`, `9b97287` and `5c039db` on `claude/tutorial`, plus this handoff note: stage 3, stage 4 and the "Every feature" tours. They are in PR #68 and not yet on the default branch.
+
+## Tutorial 2: T-027, Play a friend in the tours
+
+- The short Duel tour has one step on the Play a friend box (`.rm-box`, built by `remote.js`). "Every feature" for Duel has three: the box, What is shared (`.rm-terms`), Invite or join (`.rm-start`). Pod has none: the box is on the Duel tab only.
+- A first-time tip `friend` for people who saw the Duel tour before the step existed. It is not shown after a tour shows the box, or after Invite, Join or Rejoin is tapped.
+- Engine addition: a step's `uses: 'id'` marks that feature as used when the step shows, so its tip is not needed.
+- Every tour step's target was checked on Version 150 (PC and iPhone): all found. The only gaps were steps that wait for a deck or a game.
+- `tutorial-game.ui` once failed its iPhone "sample deck stays" check while running alongside `tutorial.ui`. It passed 17/17 alone: likely load, so watch for it.

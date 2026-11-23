@@ -663,6 +663,16 @@
         if ((bm = line.match(/^whenever you discard an? ((?:\w+, )*\w+,? or \w+) card, create a tapped treasure token\.?$/i))) { a.triggers.push({ kinds: ['discard'], filter: bm[1].toLowerCase().split(/,? or |, /).map(singular).join('|'), fx: [{ type: 'token', n: 1, tapped: true, creature: false, artifact: true, name: 'Treasure', subtypes: ['Treasure'] }], text: raw }); rec.status = 'ok'; continue; }          // Mary Read and Anne Bonny: an Island, Pirate or Vehicle
         if (/^sacrifice ~: it deals 1 damage to any target\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, sacSelf: true, gate: 'finishPing', n: 1, fx: [{ type: 'damage', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Mogg Fanatic: the last point of damage
       }
+      // ---- rules batch 45: the top-5000 pool (one card each; spell lines are read here too)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^(?:metalcraft — )?~ deals 4 damage instead if you control three or more artifacts\.?$/i.test(line)) { a.metalDmg = true; rec.status = 'ok'; continue; }          // Galvanic Blast
+        if (/^whenever you cast an artifact spell, create a 1\/1 colorless drone artifact creature token with flying and "~ can block only creatures with flying\."\.?$/i.test(line)) { TR(['cast'], [{ type: 'token', n: 1, tapped: false, creature: true, p: 1, t: 1, colors: [], subtypes: ['Drone'], keywords: ['flying'], artifact: true, name: 'Drone' }], { filter: 'artifact' }); continue; }          // Pinnacle Emissary
+        if (/^reveal the top four cards of your library\. put all land cards revealed this way into your hand and the rest into your graveyard\.?$/i.test(line)) { a.spellFx.push({ type: 'wrennReveal', n: 4 }); rec.status = 'ok'; continue; }          // Mulch
+        if (/^put target artifact or creature card from a graveyard onto the battlefield under your control\. shuffle ~ into its owner's library\.?$/i.test(line)) { a.spellFx.push({ type: 'yardBack', what: 'artOrCreature', dest: 'battlefield' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Beacon of Unrest (your graveyard; it is not shuffled back)
+        if (/^(?:morbid — )?(?:~|this spell) costs \{(\d+)\} less to cast if a creature died this turn\.?$/i.test(line)) { a.condReduce = { n: +line.match(/\{(\d+)\}/)[1], cond: 'died this turn' }; rec.status = 'ok'; continue; }          // Grim Reaper's Sprint
+        if (/^if your life total is less than your starting life total, ~ costs \{x\} less to cast, where x is the difference\.?$/i.test(line)) { a.condReduce = { n: 0, cond: 'life below start' }; rec.status = 'ok'; continue; }          // Shadow of Mortality
+        if (/^~ costs \{\d+\} less to cast if it targets a legendary creature\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Price of Fame: their legend
+      }
       // ---- rules batch 44: the top-5000 pool (one card each; spell lines are read here too)
       { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
         if (/^when ~ enters, target opponent loses life equal to the number of elves you control\.?$/i.test(line)) { TR(['etb'], [{ type: 'drain', n: 'TYPECOUNT', tfilter: 'elf' }]); continue; }          // Shaman of the Pack
@@ -2632,6 +2642,10 @@
       }
       // ---- rules batch 29: the top-5000 pool, ranks 3000 and on (kept late: every rule above, written for one card, comes first)
       { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        // ---- rules batch 45 (general patterns): cards leaving your graveyard (see yardLeaveCheck)
+        { let bm;
+          if ((bm = line.match(/^whenever (?:one or more|a) (creature )?cards? leaves? your graveyard( during your turn)?, (.+?)(?:\. this ability triggers only once each turn)?\.?$/i))) { const r = parseEffects(bm[3]); if (r.fx.length) { a.yardLeave = true; TR(['yardLeave'], r.fx, { creatureOnly: !!bm[1], myTurn: !!bm[2] }); continue; } }          // Desecrated Tomb, Tormod, On Wings of Gold, Kheru Goldkeeper, Kishla Skimmer
+        }
         // ---- rules batch 44 (general patterns)
         { let bm;
           if ((bm = line.match(/^([a-z]+) creatures you control have "\{t\}: add one mana of any of ~'s colors\."\.?$/i))) { (a.statics.typeGrant = a.statics.typeGrant || []).push({ filters: [singular(bm[1]).toLowerCase()], colors: (card.colors || []).slice() }); rec.status = 'ok'; continue; }          // Katilda, Dawnhart Prime
@@ -2834,7 +2848,8 @@
     }
     if (a._wrathModes) { a.spellFx.push({ type: 'modal', modes: a._wrathModes, pick: 1 }); a._wrathModes = null; }
     if (!a.linkReturn && /\bexile [^.]*until ~ leaves the battlefield/i.test(text)) a.linkReturn = 'battlefield';
-    if (a.citadel) for (const t of a.triggers) if (t.kinds.includes('combat')) t.cond = { kind: 'siege', mode: 'khans' };          // Citadel Siege: Khans or Dragons
+    if (a.citadel) for (const t of a.triggers) if (t.kinds.includes('combat')) t.cond = { kind: 'siege', mode: 'khans' };
+    if (a.metalDmg) for (const f of a.spellFx) if (f.type === 'damage' && f.n === 2) f.n = 'METAL24';          // Galvanic Blast: 4 with metalcraft          // Citadel Siege: Khans or Dragons
     if (a.smokestack) for (const t of a.triggers) if (t.kinds.includes('upkeep') && t.fx.some(f => f.type === 'counters' && f.kind === 'soot')) t.cond = { kind: 'smokeWorth' };          // Smokestack: a soot counter only when it hurts them more          // Banishing Light: the exiled card returns when it leaves          // Crux of Fate: the better of its two modes
     if (a.sacLandCost) a.spellFx = a.spellFx.map(f => f.type === 'ramp' ? { type: 'landSwap' } : f);
     if (a.sacColor) a.spellFx.forEach(f => { if (f.type === 'tutor') f.biggest = true; });          // Natural Order: a creature is paid, so the biggest one comes
@@ -4445,7 +4460,7 @@
     if (g.tempReduce) for (const tr of g.tempReduce) if (tr.turn === g.turn && (tr.filter === 'historic' ? (a.isArtifact || a.isLegendary || /\bSaga\b/.test(inst.card.type_line || '')) : tr.filter === 'artifact' ? a.isArtifact : matchesFilter(inst.card, tr.filter))) red += tr.n;          // "spells you cast this turn cost less" (Saga chapters)
     if (a.dynReduce) red += a.dynReduce.n * countWhat(g, a.dynReduce.what, null);
     if (a.affinity) red += g.battlefield.filter(q => a.affinity === 'artifact' ? artOn(g, q) : matchesFilter(q.card, a.affinity)).length;          // affinity
-    if (a.condReduce) { const cd = a.condReduce.cond; const okc = /creature with power (\d+) or greater/.test(cd) ? g.battlefield.some(q => isCreaturePerm(q) && powerOf(g, q) >= +cd.match(/power (\d+)/)[1]) : cd === 'ten nonland permanents' ? bothSides(g).filter(q => !q.card.a.isLand && !q.asLand).length >= 10 : false; if (okc) red += a.condReduce.n; }
+    if (a.condReduce) { const cd = a.condReduce.cond; const okc = /creature with power (\d+) or greater/.test(cd) ? g.battlefield.some(q => isCreaturePerm(q) && powerOf(g, q) >= +cd.match(/power (\d+)/)[1]) : cd === 'ten nonland permanents' ? bothSides(g).filter(q => !q.card.a.isLand && !q.asLand).length >= 10 : cd === 'died this turn' ? g.diedTurn === g.turn : false; if (okc) red += a.condReduce.n; if (cd === 'life below start') red += Math.max(0, ((g.opts && g.opts.startLife) || 40) - g.life); }
     generic = Math.max(0, generic - red) + (inst.extraX || 0) * (a.cost.x || 0) + (a.multikick ? (inst.kicks || 1) * a.multikick : 0);           // X: every extra mana chosen for X
     if (a.delve) { inst._delve = Math.min(generic, delveFodder(g, inst).length); generic -= inst._delve; }          // delve: graveyard cards pay generic mana
     let pips = a.cost.pips;
@@ -4712,6 +4727,16 @@
   const sbaSafe = it => !it.trig.nth && it.trig.fx.every(f => SBA_SAFE.has(f.type) || (f.type === 'counters' && (f.kind === '+1/+1' || (f.kind && f.kind !== '-1/-1' && f.kind !== 'loyalty'))));
   const tableVer = h => { let v = h.bfVer || 0; for (const o of otherPlayers(h)) v += o.bfVer || 0; return v; };
   function activePlayer(h) { if (h.activeTurn !== false) return h; for (const o of otherPlayers(h)) if (o.activeTurn === true) return o; return h; }
+  // "Whenever one or more cards leave your graveyard": the graveyard is compared with the last look (each pass of settle), so every
+  // way a card leaves (returned, cast, exiled, shuffled away) counts once for the action that moved it.
+  function yardLeaveCheck(x, ev) {
+    if (!tableHas(x, 'yardLeave') || x.dry) return;
+    const prev = x._yardSeen, cur = new Map(); for (const i of x.graveyard) cur.set(i.iid, !!i.card.a.isCreature); x._yardSeen = cur;
+    if (!prev) return;
+    let any = false, creature = false; for (const [id, cr] of prev) if (!cur.has(id)) { any = true; if (cr) creature = true; }
+    if (!any) return;
+    for (const q of x.battlefield.slice()) if (q.card.a.yardLeave) for (const t of q.card.a.triggers) if (t.kinds.includes('yardLeave') && !(t.creatureOnly && !creature) && !(t.myTurn && x.activeTurn === false)) fire(x, t, q, ev, null);
+  }
   function settle(h, ev) {
     if (h.settling) return;
     h.settling = true; h.acts = (h.acts || 0) + 1;
@@ -4722,6 +4747,7 @@
       for (let n = 0; ; n++) {
         if (dirty) sba(h, ev); else for (const x of [h].concat(otherPlayers(h))) if (!x.dead && x.opp && x.life <= 0 && !matchOver(x)) checkDeath(x, ev);          // nothing changed that a state-based action looks at: only the players' life
         dirty = false;
+        for (const x of [h].concat(otherPlayers(h))) yardLeaveCheck(x, ev);          // cards that left a graveyard since the last look
         if (h.trigQ && h.trigQ.length) {
           const q = h.trigQ.splice(0), ap = activePlayer(h);
           const mine = q.filter(x => x.g === ap), rest = q.filter(x => x.g !== ap);
@@ -5513,6 +5539,7 @@
       else if (n === 'HAND') n = g.hand.length;
       else if (n === 'ATTACKING') n = g.battlefield.filter(q => q.attacking).length;          // Within Range
       else if (n === 'TYPECOUNT') n = g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, f.tfilter) && !(f.tother && source && q === source)).length;          // Shaman of the Pack, Goblin War Strike, Éomer
+      else if (n === 'METAL24') n = g.battlefield.filter(q => artOn(g, q)).length >= 3 ? 4 : 2;          // Galvanic Blast: metalcraft
       else if (n === 'SAMENAME') n = source ? g.battlefield.filter(q => q !== source && isCreaturePerm(q) && q.card.name === source.card.name).length : 0;          // Hare Apparent
       else if (n === 'POW2X') n = Math.max(0, Math.min(Math.pow(2, g.xValue || 1), g.library.length - 3));
       else if (n === 'HALFX') n = Math.ceil((g.xValue === 0 ? 0 : g.xValue || 1) / 2);
@@ -5652,7 +5679,7 @@
           const perm = enterWithTriggers(g, back, {}, ev); ev.push({ type: 'rampLand', inst: back, perm, source });
           break; }
         case 'perType': { const k = g.battlefield.filter(q => matchesFilter(q.card, f.filter)).length; if (!k) break; if (f.op === 'damage') { const t = g.opp ? burnPick(g, k, false, source) : null; if (t) against(g, t, () => burnHit(g, t, k, source, ev)); else damageOpp(g, k, ev, source); } else { damageOpp(g, k, ev, source, false, true); gainLife(g, k * Math.max(1, otherPlayers(g).filter(o => !o.dead).length), ev, source); } break; }          // Malakir Bloodwitch, Omnath, Locus of the Roil
-        case 'yardBack': { const opts = g.graveyard.filter(i => (f.what === 'creatureOrPw' ? i.card.a.isCreature || i.card.a.isPlaneswalker : f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'enchantment' ? i.card.a.isEnchantment : f.what === 'permanent' ? i.card.a.isPermanent && !i.card.a.isLand : f.what === 'auraEquip' ? i.card.a.isAura || i.card.a.isEquipment : f.what && f.what !== 'creature' ? i.card.a.isPermanent && matchesFilter(i.card, f.what) : i.card.a.isCreature) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.not && matchesFilter(i.card, f.not)) && !(source && source.inst === i));          // Salvation Engine, Golgari Thug, Heliod
+        case 'yardBack': { const opts = g.graveyard.filter(i => (f.what === 'creatureOrPw' ? i.card.a.isCreature || i.card.a.isPlaneswalker : f.what === 'artOrCreature' ? i.card.a.isCreature || i.card.a.isArtifact : f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'enchantment' ? i.card.a.isEnchantment : f.what === 'permanent' ? i.card.a.isPermanent && !i.card.a.isLand : f.what === 'auraEquip' ? i.card.a.isAura || i.card.a.isEquipment : f.what && f.what !== 'creature' ? i.card.a.isPermanent && matchesFilter(i.card, f.what) : i.card.a.isCreature) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.not && matchesFilter(i.card, f.not)) && !(source && source.inst === i));          // Salvation Engine, Golgari Thug, Heliod
           if (f.all) { for (const c of opts) { g.graveyard.splice(g.graveyard.indexOf(c), 1); const perm = enterWithTriggers(g, c, {}, ev); ev.push({ type: 'rampLand', inst: c, perm, source }); } break; }          // Retether: every one of them
           let c = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c && g.ask && !g.dry && opts.length > 1) c = decide(g, { kind: 'search', options: opts, def: c, optional: true, f: { dest: f.dest === 'top' ? 'library' : f.dest }, source }); if (!c) break;
           g.graveyard.splice(g.graveyard.indexOf(c), 1);

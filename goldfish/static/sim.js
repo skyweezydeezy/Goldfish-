@@ -667,6 +667,23 @@
         if ((bm = line.match(/^whenever you discard an? ((?:\w+, )*\w+,? or \w+) card, create a tapped treasure token\.?$/i))) { a.triggers.push({ kinds: ['discard'], filter: bm[1].toLowerCase().split(/,? or |, /).map(singular).join('|'), fx: [{ type: 'token', n: 1, tapped: true, creature: false, artifact: true, name: 'Treasure', subtypes: ['Treasure'] }], text: raw }); rec.status = 'ok'; continue; }          // Mary Read and Anne Bonny: an Island, Pirate or Vehicle
         if (/^sacrifice ~: it deals 1 damage to any target\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, sacSelf: true, gate: 'finishPing', n: 1, fx: [{ type: 'damage', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Mogg Fanatic: the last point of damage
       }
+      // ---- rules batch 53: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^you may cast angel spells and human spells from the top of your library\.?$/i.test(line)) { a.topCast = 'angel|human'; rec.status = 'ok'; continue; }          // Sigarda, Font of Blessings
+        if (/^you may play lands and cast spells with mana value 4 or greater from the top of your library\.?$/i.test(line)) { a.topCast = 'mv4+'; a.statics.landsFromTop = true; rec.status = 'ok'; continue; }          // Glarb, Calamity's Augur
+        if (/^as long as you've cast a spell this turn, you may play cards from the top of your library\.?$/i.test(line)) { a.topCast = 'afterSpell'; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Fortune Teller's Talent (spells; lands from the top are not played)
+        if (/^whenever ~ or another nontoken creature you control dies, return that card to the battlefield under your control at the beginning of the next end step\.?$/i.test(line)) { a.avacynReturn = true; rec.status = 'ok'; continue; }          // Avacyn, Angel of Horror (leavePerm0: g.endReturn)
+        if (/^when ~ dies, return it to the battlefield transformed under its owner's control\.?$/i.test(line)) { a.dieTransform = 'untapped'; rec.status = 'ok'; continue; }          // Edgar, Charmed Groom (the Ojer queue, untapped)
+        if (/^when ~ enters, create beau, a legendary blue ox creature token with "beau's power and toughness are each equal to the number of lands you control\."$/i.test(line)) { TR(['etb'], [{ type: 'token', n: 1, tapped: false, creature: true, p: 0, t: 0, colors: ['U'], subtypes: ['Ox'], keywords: [], artifact: false, name: 'Beau', legendary: true, cda: 'lands you control' }]); continue; }          // Bonny Pall, Clearcutter
+        if (/^whenever one or more \+1\/\+1 counters are put on another non-hydra creature you control, put a \+1\/\+1 counter on ~\.?$/i.test(line)) { TR(['countersPut'], parseEffects('Put a +1/+1 counter on ~.').fx, { otherOnly: true, notType: 'Hydra' }); continue; }          // Wildwood Scourge
+        if (/^whenever you cast a noncreature spell, incubate x, where x is that spell's mana value\.?$/i.test(line)) { TR(['cast'], [{ type: 'token', n: 1, tapped: false, creature: true, p: 'X', t: 'X', colors: [], subtypes: ['Phyrexian'], keywords: [], artifact: true, name: 'Phyrexian', count: { what: 'lastmv', zone: 'special' }, minX: 1 }], { filter: 'noncreature' }, 'partial'); continue; }          // Chrome Host Seedshark (the Incubator is a creature at once; its {2} is not paid)
+        if (/^whenever a creature you control enters, you get \{e\}\s*\.?$/i.test(line)) { TR(['permEtb'], [{ type: 'energy', n: 1 }], { other: false, nontoken: false, filter: 'creature' }); continue; }          // Decoction Module
+        if (/^whenever equipped creature dies, return that card to the battlefield under its owner's control at the beginning of the next end step\.?$/i.test(line)) { a.orbReturn = true; rec.status = 'ok'; continue; }          // Resurrection Orb (leavePerm0: g.endReturn)
+        if (/^sliver spells you cast have cascade\.?$/i.test(line)) { a.statics.grantCascade = { n: 1, kind: 'type', t: 'Sliver' }; rec.status = 'ok'; continue; }          // The First Sliver
+        if (/^(nonland permanents|creatures) you control are artifacts in addition to their other types\. the same is true for /i.test(line)) { a.statics.myco = /^nonland/i.test(line) ? 'nonland' : 'creature'; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Encroaching Mycosynth, Biotransference (artifacts where the engine counts them: artOn; spells and cards elsewhere keep their types)
+        if (/^while voting, you may vote an additional time\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }          // Tivit (a vote alone)
+        if (/^airbend target nonland permanent\.?$/i.test(line) && a.isInstantSorcery) { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; }          // Airbending Lesson (an opponent's permanent)
+      }
       // ---- rules batch 52: the top-5000 pool (one card each)
       { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
         const door = () => parseCost(((card.mana_cost || '').split('//')[1] || '').trim());
@@ -2567,7 +2584,7 @@
         const sign = m[1] === '+' ? 1 : m[1] ? -1 : 0;
         const cost = m[2] === 'X' ? -1 : sign * +m[2];
         const pwt = m[3];
-        const r = /^gain control of target (creature|permanent)|^gain control of all nonland permanents until end of turn\. untap them/i.test(pwt) ? { fx: [], neutral: true }          // rules batch 52: Dihada's -11 (the opponents' permanents)
+        const r = /^gain control of target (creature|permanent)|^gain control of all nonland permanents until end of turn\. untap them|^~ deals damage to target creature equal to the number of \w+ you control\.?$|^until your next turn, up to one target creature gains reach and vigilance\.?$/i.test(pwt) ? { fx: [], neutral: true }          // rules batch 52: Dihada's -11 (the opponents' permanents)
           : /ghostform counter/i.test(pwt) ? { fx: [{ type: 'ghostform' }] }
           : /^put three \+1\/\+1 counters on up to one target noncreature land you control\. untap it\. it becomes a 0\/0 elemental creature/i.test(pwt) ? { fx: [{ type: 'animateLand', p: 0, t: 0, counters: 3, perm: true, untap: true, kw: ['vigilance', 'haste'], forest: true }] }
           : /^up to one target land you control becomes a 3\/3 elemental creature with vigilance, hexproof, and haste until your next turn/i.test(pwt) ? { fx: [{ type: 'animateLand', p: 3, t: 3, until: true, kw: ['vigilance', 'haste'] }] }
@@ -3661,6 +3678,7 @@
     if (st.sovereign) (info.sovereigns = info.sovereigns || []).push(q);
     if (st.grantCascade) (info.cascaders = info.cascaders || []).push(q);
     if (st.stormAll) info.stormAll = true;          // rules batch 52: Prismari
+    if (st.myco) info.myco = info.myco === 'nonland' ? 'nonland' : st.myco;          // rules batch 53: Encroaching Mycosynth, Biotransference
     if (st.actReduce) for (const d of st.actReduce) (info.actReduce = info.actReduce || []).push({ src: q, d });
     if (st.xDouble) info.xDouble = (info.xDouble || 0) + 1;
     if (st.xCopy) info.xCopy = (info.xCopy || 0) + 1;
@@ -3862,6 +3880,7 @@
       if (/entered/.test(count.what)) return g.nontokenCreatureEnters || 0;
       if (/power/.test(count.what)) return self ? powerOf(g, self) : 0;
       if (/hand/.test(count.what)) return g.hand.length;
+      if (count.what === 'lastmv') return g.lastCast && g.lastCast.card ? (g.lastCast.card.a.mv || 0) : 0;          // rules batch 53: Chrome Host Seedshark
       return 1;
     }
     if (count.zone === 'attacking') return g.battlefield.filter(p => p.attacking && (!count.other || p !== self) && matchesFilter(p.card, count.what)).length;
@@ -3983,7 +4002,8 @@
   function allUnits(g) { const f = g.floating, u = manaUnits(g); return f && f.length ? f.concat(u) : u; }
   // Mycosynth Lattice: every permanent is an artifact; Enchanted Evening: every permanent is an enchantment
   const latticeOn = g => !!(bfInfo(g).lattice || (g.opp && bfInfo(g.opp).lattice));
-  const artOn = (g, q) => q.card.a.isArtifact || latticeOn(g);
+  const artOn = (g, q) => q.card.a.isArtifact || latticeOn(g) || (tableHas(g, 'statics.myco') && mycoOn(g, q));
+  function mycoOn(g, q) { const m = bfInfo(g).myco; return m === 'nonland' ? !q.asLand && !q.card.a.isLand : m === 'creature' ? isCreaturePerm(q) : false; }          // rules batch 53: Encroaching Mycosynth, Biotransference
   const colorsOf = (g, card) => latticeOn(g) ? [] : (card.colors || []);          // Mycosynth Lattice: every card is colorless
   const enchOn = (g, q) => q.card.a.isEnchantment || !!(bfInfo(g).allEnchant || (g.opp && bfInfo(g.opp).allEnchant));
   function ledColor(g) { const n = {}; for (const i of g.hand.concat(g.command, g.graveyard)) for (const pp of (i.card.a.cost.pips || [])) for (const c of pp) n[c] = (n[c] || 0) + 1 / pp.length; return Object.keys(n).sort((x, y) => n[y] - n[x])[0] || 'C'; }          // the color the cards you could cast want most
@@ -4040,7 +4060,7 @@
     }
     if (g.ghostQueue && g.ghostQueue.length && !g.dry) for (const i of g.ghostQueue.splice(0)) { for (const z of [g.graveyard, g.exile]) { const at = z.indexOf(i); if (at >= 0) { z.splice(at, 1); enterWithTriggers(g, i, {}, ev || []); (ev || []).push({ type: 'note', text: `Kaya's Ghostform: ${i.card.name} returns to the battlefield` }); break; } } }
     if (!g.dry && g.earthQueue && g.earthQueue.length) for (const i of g.earthQueue.splice(0)) for (const z of [g.graveyard, g.exile]) { const at = z.indexOf(i); if (at >= 0) { z.splice(at, 1); enterWithTriggers(g, i, { tapped: true }, ev || []); (ev || []).push({ type: 'note', text: `${i.card.name} returns to the battlefield tapped (earthbend)` }); break; } }
-    if (!g.dry && g.ojerQueue && g.ojerQueue.length) for (const i of g.ojerQueue.splice(0)) { const at = g.graveyard.indexOf(i); if (at < 0) continue; g.graveyard.splice(at, 1); const np = enterWithTriggers(g, i, { tapped: true }, ev || []); transformPerm(g, np, ev || []); np.tapped = true; (ev || []).push({ type: 'note', text: `${i.card.name} returns transformed: ${np.card.name}` }); }
+    if (!g.dry && g.ojerQueue && g.ojerQueue.length) for (const i of g.ojerQueue.splice(0)) { const at = g.graveyard.indexOf(i); if (at < 0) continue; g.graveyard.splice(at, 1); const tp = i.card.a.dieTransform !== 'untapped'; const np = enterWithTriggers(g, i, { tapped: tp }, ev || []); transformPerm(g, np, ev || []); np.tapped = tp; (ev || []).push({ type: 'note', text: `${i.card.name} returns transformed: ${np.card.name}` }); }
     if (!g.dry && g.slashQueue && g.slashQueue.length) for (const { i, stun, counter } of g.slashQueue.splice(0)) {          // back tapped: Unstoppable Slasher (two stun counters), Supernatural Stamina, Undying Malice (a +1/+1 counter)
       const at = g.graveyard.indexOf(i); if (at < 0) continue;
       g.graveyard.splice(at, 1); const np = enterWithTriggers(g, i, { tapped: true }, ev || []); np.tapped = true; if (stun) np.stun = stun; if (counter) addCounters(g, np, '+1/+1', counter, ev || [], np);
@@ -4098,6 +4118,7 @@
       if (!p.token && p.inst) { const holder = otherPlayers(g).find(o => (tableHas(o, 'darkCrystal') && o.battlefield.some(q => q.card.a.darkCrystal))); if (holder) { dest = 'exile'; gainLife(holder, 2, ev || [], null); (holder.crystalHold = holder.crystalHold || []).push({ inst: p.inst, owner: g }); } }          // The Darkness Crystal
     }
     if (!g.dry && p.earthbent && dest !== 'hand' && dest !== 'library' && dest !== 'libraryBottom' && p.inst) (g.earthQueue = g.earthQueue || []).push(p.inst);          // earthbend: it returns tapped
+    if (!g.dry && dest == null && (tableHas(g, 'avacynReturn') || tableHas(g, 'orbReturn')) && p.inst && !p.token && !p.card.commander && isCreaturePerm(p) && !p.card.a.dieTransform && g.battlefield.some(q => (q.card.a.avacynReturn && (q === p || !q.phased)) || (q.card.a.orbReturn && q.attachedTo === p.iid)) && !(g.endReturn || []).includes(p.inst)) (g.endReturn = g.endReturn || []).push(p.inst);          // rules batch 53: Avacyn, Angel of Horror
     if (!g.dry && p.card.a.dieTransform && dest == null && p.inst && p.card.a.backCard) (g.ojerQueue = g.ojerQueue || []).push(p.inst);          // Ojer Taq: back as its Temple
     if (dest == null && !g.dry && ripOn(g)) dest = 'exile';                                                // Rest in Peace: it is exiled instead of dying
     if (g.trawlerSeen && !g.dry && p.card.a.isArtifact && dest == null && (!p.token || p.card.a.trawler)) scrapTrawl(g, p, ev);
@@ -4249,7 +4270,7 @@
       const c1 = { generic: 1, pips: [], x: 0 };
       if (canPay(c1, allUnits(g)) && pay(g, c1) != null) { g.moduleN = (g.moduleTurn === g.turn ? g.moduleN : 0) + 1; g.moduleTurn = g.turn; g.inModule = true; try { createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: [], subtypes: ['Servo'], keywords: [], artifact: true, name: 'Servo' }, 1, ev, md); } finally { g.inModule = false; } }
     }
-    if (kind === '+1/+1' && isCreaturePerm(p)) for (const q of bfInfo(g).watchers.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('countersPut') && (!t.selfOnly || q === p) && !(t.onceTurn && q.cpTurn === g.turn)) { if (t.onceTurn) q.cpTurn = g.turn; fire(g, t, q, ev, p, add); }
+    if (kind === '+1/+1' && isCreaturePerm(p)) for (const q of bfInfo(g).watchers.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('countersPut') && (!t.selfOnly || q === p) && !(t.otherOnly && (q === p || (t.notType && cardHasType(p.card, t.notType)))) && !(t.onceTurn && q.cpTurn === g.turn)) { if (t.onceTurn) q.cpTurn = g.turn; fire(g, t, q, ev, p, add); }
     return add;
   }
   // "target Halfling or Treefolk", "target creature you control other than ~": the best matching creature gets them (the strongest, so the counters pay off)
@@ -5687,6 +5708,7 @@
         case 'token': {
           const spec = Object.assign({}, f);
           if (spec.p === 'X' || spec.t === 'X') { const x = countFor(g, f.count, source); if (spec.p === 'X') spec.p = x; if (spec.t === 'X') spec.t = x; }
+          if (f.minX && !(spec.p >= f.minX)) break;          // rules batch 53: Chrome Host Seedshark (incubate 0 makes nothing)
           createTokens(g, spec, Math.min(n, 60), ev, source);
           break;
         }
@@ -7538,7 +7560,7 @@
       if (a.isCreature && !g.combatDone && (a.power || 0) >= 2) { const ar = (tableHas(g, 'exertHaste') ? g.battlefield.find(q => q.card.a.exertHaste && q.exertUsed === g.turn && q.exerted !== g.turn + 1) : undefined); if (ar) { ar.exerted = g.turn + 1; inst.hasteCast = true; ev.push({ type: 'note', text: `${ar.card.name} is exerted: ${inst.card.name} has haste this turn`, source: ar }); } }          // Arena of Glory
       { const fromHand = !(inst.freeCast || inst.fbCast || inst.escaping || inst.retracing || inst.breaching), info = bfInfo(g);          // cascade: printed on the card, or given by Zhulodok / Quandrix, the Proof
         let casc = a.kw && a.kw.has('cascade') && !/have ["“]?cascade/i.test(inst.card.oracle_text || '') ? ((inst.card.oracle_text || '').replace(/\([^)]*\)/g, '').match(/\bcascade\b/gi) || []).length : 0;
-        if (fromHand && info.cascaders) for (const q of info.cascaders) { const gc = q.card.a.statics.grantCascade; if (gc.kind === 'colorless7' ? (!(inst.card.colors || []).length && (a.mv || 0) >= 7 && !a.isLand) : gc.kind === 'mv' ? (!a.isLand && (a.mv || 0) >= gc.min) : gc.kind === 'ench' ? (!a.isLand && a.isEnchantment) : a.isInstantSorcery) casc += gc.n; }
+        if (fromHand && info.cascaders) for (const q of info.cascaders) { const gc = q.card.a.statics.grantCascade; if (gc.kind === 'colorless7' ? (!(inst.card.colors || []).length && (a.mv || 0) >= 7 && !a.isLand) : gc.kind === 'mv' ? (!a.isLand && (a.mv || 0) >= gc.min) : gc.kind === 'ench' ? (!a.isLand && a.isEnchantment) : gc.kind === 'type' ? (!a.isLand && cardHasType(inst.card, gc.t)) : a.isInstantSorcery) casc += gc.n; }
         if (a.isPermanent && inst._paidBy) for (const sp of inst._paidBy) if (sp && sp.card && sp.card.a.discoverCast && g.battlefield.includes(sp)) { ev.push({ type: 'note', text: `${sp.card.name}: its mana cast a permanent spell, discover ${a.mv || 0}`, source: sp }); applyEffects(g, [{ type: 'discover', n: a.mv || 0 }], sp, ev, null); }          // Tecutlan
         inst._paidBy = null;
         if (info.rainRiches && inst._tre && g.rainTurn !== g.turn && !a.isLand) { g.rainTurn = g.turn; casc++; ev.push({ type: 'note', text: `Rain of Riches: Treasure mana was spent, ${inst.card.name} has cascade` }); }
@@ -8207,7 +8229,7 @@
   function citadelOk(g) { const t = g.library[0]; return !!t && (tableHas(g, 'citadel') && g.battlefield.some(q => q.card.a.citadel)) && !t.card.a.isLand && !t.card.a.cost.x && g.life > t.card.a.castMv + (g.opp ? 14 : 10); }
   const chipOn = (g, q) => q.card.a.chipTop && q.attachedTo != null && g.battlefield.some(h => h.iid === q.attachedTo);
   const covenOk = g => new Set(g.battlefield.filter(isCreaturePerm).map(q => powerOf(g, q))).size >= 3;
-  function topCastOk(g) { const t = g.library[0]; return !!t && !t.card.a.isLand && !t.card.a.cost.x && g.battlefield.some(q => (q.card.a.topCast && (q.card.a.topCast === 'any' || matchesFilter(t.card, q.card.a.topCast))) || chipOn(g, q) || (q.card.a.topCastCoven && t.card.a.isCreature && covenOk(g))); }
+  function topCastOk(g) { const t = g.library[0]; return !!t && !t.card.a.isLand && !t.card.a.cost.x && g.battlefield.some(q => (q.card.a.topCast && (q.card.a.topCast === 'any' || (q.card.a.topCast === 'mv4+' ? (t.card.a.mv || 0) >= 4 : q.card.a.topCast === 'afterSpell' ? (g.spellsCast || 0) > 0 : matchesFilter(t.card, q.card.a.topCast)))) || chipOn(g, q) || (q.card.a.topCastCoven && t.card.a.isCreature && covenOk(g))); }
   function topCastable(g) { return citadelOk(g) || topCastOk(g); }
   // Deeproot Historian: Merfolk and Druid cards in the graveyard have retrace (cast them by discarding a land card as an additional cost)
   function retraceOk(g, i) {

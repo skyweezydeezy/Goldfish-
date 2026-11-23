@@ -4277,7 +4277,8 @@
     inst._krrik = 0; inst._defiler = 0; inst._spree = 0;          // _spree: the chosen mode's number, from 1 (0 = none)
     if (inst.card.a.spree) {                                                                              // spree: the base cost plus the best mode you can afford (more are added when the spell is cast)
       const ms = spreeModes(g, inst.card.a), un = allUnits(g), plus = m => ({ generic: c.generic + m.cost.generic, pips: c.pips.concat(m.cost.pips), x: c.x });
-      const pick = ms.find(m => canPay(plus(m), un)) || ms.slice().sort((x, y) => (x.cost.generic + x.cost.pips.length) - (y.cost.generic + y.cost.pips.length))[0] || inst.card.a.spree.slice().sort((x, y) => (x.cost.generic + x.cost.pips.length) - (y.cost.generic + y.cost.pips.length))[0];
+      const want = inst._spreeWant ? inst.card.a.spree[inst._spreeWant - 1] : null;          // a person chose the mode (castCard0)
+      const pick = want || ms.find(m => canPay(plus(m), un)) || ms.slice().sort((x, y) => (x.cost.generic + x.cost.pips.length) - (y.cost.generic + y.cost.pips.length))[0] || inst.card.a.spree.slice().sort((x, y) => (x.cost.generic + x.cost.pips.length) - (y.cost.generic + y.cost.pips.length))[0];
       if (pick) { inst._spree = inst.card.a.spree.indexOf(pick) + 1; c = plus(pick); }
     }
     { const df = bfInfo(g).defiler; if (df && inst.card.a.isPermanent && !inst.card.a.isLand && !inst.freeCast) for (const col of df) {          // the Defilers: 2 life for one pip of their color, keeping 15 life
@@ -7887,9 +7888,21 @@
     const mv = (tableHas(g, 'uncounterAb') ? g.battlefield.find(q => q.card.a.uncounterAb && !q.tapped) : undefined); if (!mv) return null;
     mv.tapped = true; mv._hold = true; return mv;
   }          // restricted mana knows which spell it pays for
+  // Spree, for a person: the mode cast with the spell (among those they can pay for with the spell's cost), the autopilot's as the default
+  function spreeAsk(g, inst) {
+    inst._spreeWant = 0;
+    const a = inst.card.a; if (!g.ask || g.dry || !a.spree || !a.spree.length) return;
+    const base = effectiveCost0(g, inst), un = allUnits(g), plus = m => ({ generic: base.generic + m.cost.generic, pips: base.pips.concat(m.cost.pips), x: base.x });
+    const can = a.spree.filter(m => canPay(plus(m), un)); if (can.length < 2) return;
+    effectiveCost(g, inst); const def = a.spree[inst._spree - 1];
+    const opts = can.map(m => ({ mode: m.fx, text: m.text, cost: m.cost, m }));
+    const pick = decide(g, { kind: 'mode', spree: 'first', options: opts, def: opts.find(o => o.m === def) || opts[0], source: { card: inst.card } });
+    if (pick && pick.m) inst._spreeWant = a.spree.indexOf(pick.m) + 1;
+  }
   function castCard0(g, inst, force) {
     if (g.timeStopped === g.turn && !g.dry) return null;          // Time Stop ended the turn; Mindslaver's turn
     if (!g.dry && castBlocked(g, inst)) return null;          // Rule of Law, Grand Abolisher, Silence, Drannith Magistrate...
+    if (inst.card.a.spree && !force) spreeAsk(g, inst);
     if (arbiterOn(g) && (g.attackedThisTurn || g.arbiterHold === g.turn) && !g.dry) return null;          // Angelic Arbiter: you attacked (or will) this turn
     inst.noCounter = false; inst.kicked = false; inst.kickX = 0; inst.alt = null; inst.overloaded = false; g._casting = inst;          // the spell being cast is not discarded by Lion's Eye Diamond
     inst._handCast = g.hand.includes(inst);                                                               // Chainer: creatures not cast from your hand
@@ -7965,8 +7978,16 @@
     if (n != null && inst._defiler && !g.dry) { g.life -= 2 * inst._defiler; ev.push({ type: 'note', text: `Paid ${2 * inst._defiler} life: ${inst.card.name} costs less` }); inst._defiler = 0; checkDeath(g, ev); }
     if (n != null && inst.card.a.spree) {                                                                  // spree: the mode already paid for, then any others worth it that the rest of your mana covers
       const all = inst.card.a.spree, chosen = inst._spree > 0 ? [inst._spree - 1] : [];
-      if (!g.dry && chosen.length && !inst.card.a.tiered) for (const m of spreeModes(g, inst.card.a)) { const ix = all.indexOf(m); if (chosen.includes(ix) || !canPay(m.cost, allUnits(g)) || pay(g, m.cost) == null) continue; chosen.push(ix); }
-      inst.spreeModes = chosen;
+      if (!g.dry && chosen.length && !inst.card.a.tiered && g.ask) {          // a person adds modes one at a time while they can pay; the autopilot's next mode is the default
+        for (let k = 0; k < all.length; k++) {
+          const rest = all.filter((m, ix) => !chosen.includes(ix) && canPay(m.cost, allUnits(g))); if (!rest.length) break;
+          const auto = spreeModes(g, inst.card.a).find(m => rest.includes(m)) || null, opts = rest.map(m => ({ mode: m.fx, text: m.text, cost: m.cost, m }));
+          const pick = decide(g, { kind: 'mode', spree: 'more', options: opts, def: opts.find(o => o.m === auto) || null, optional: true, source: { card: inst.card } });
+          if (!pick || !pick.m || pay(g, pick.m.cost) == null) break;
+          chosen.push(all.indexOf(pick.m));
+        }
+      } else if (!g.dry && chosen.length && !inst.card.a.tiered) for (const m of spreeModes(g, inst.card.a)) { const ix = all.indexOf(m); if (chosen.includes(ix) || !canPay(m.cost, allUnits(g)) || pay(g, m.cost) == null) continue; chosen.push(ix); }
+      inst.spreeModes = chosen; inst._spreeWant = 0;
       if (!g.dry && chosen.length) ev.push({ type: 'note', text: `${inst.card.a.tiered ? 'Tiered' : 'Spree'}: ${chosen.map(ix => all[ix].text.replace(/\.$/, '')).join('; ')}` });
     }
     if (n != null && inst._krrik && !g.dry) { g.life -= 2 * inst._krrik; ev.push({ type: 'note', text: `K'rrik: paid ${2 * inst._krrik} life instead of {B}` }); inst._krrik = 0; checkDeath(g, ev); }

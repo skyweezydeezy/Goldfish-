@@ -42,3 +42,4 @@ body.tut-on { overscroll-behavior: contain; }
   .tut.tut-moving .tut-spot, .tut.tut-moving .tut-bubble { transition: none; }
   .tut.tut-tap .tut-spot, .tut-bubble.tut-nudge { animation: none; }
 }
+body.tut-on .bg-ask { display: none; }          /* the music question waits until the tour is closed */

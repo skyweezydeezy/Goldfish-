@@ -264,7 +264,7 @@
       const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1);
       if (cand && total === 100) { cand.commander = true; cand._guessed = true; }
     }
-    S.cards = cards;
+    S.cards = cards; S.loaded = r;          // r: the tutorial puts the person's deck back with setDeck(r) after its sample game
     S.tokens = r.tokens || [];
     S.deck = G.buildDeck(cards, S.tokens, currentPolicy().tribe);
     S.byUid = S.deck.unique;
@@ -730,7 +730,7 @@
 
   // ======================= opening hands =======================
   let H = null, fanLayout = null;
-  const rseed = () => (Math.random() * 2 ** 32) >>> 0;
+  const rseed = () => { const t = window.ISFTutorial && window.ISFTutorial.takeSeed && window.ISFTutorial.takeSeed(); return t != null ? t >>> 0 : (Math.random() * 2 ** 32) >>> 0; };          // the tutorial's sample game asks for a fixed seed once
   $('#drawHand').addEventListener('click', () => { if (!need()) return; H = { g: G.newGame(S.deck, opts(), rseed()), mulls: 0 }; dealHand(); });
   $('#mullHand').addEventListener('click', () => {
     if (!H) return $('#drawHand').click();
@@ -2683,5 +2683,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+    // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
+    useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

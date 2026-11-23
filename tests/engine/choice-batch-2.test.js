@@ -85,7 +85,14 @@ run('Berserk', t => { t.a.battlefield.forEach(q => { q.sick = false; }); let wan
   const qs = play(t, q => { if (q.what !== 'pump') return 'auto'; want = q.options.find(o => !o.def); return want.k; }), p = want && t.a.battlefield.find(x => x.iid === want.iid);
   check('Berserk asks which creature it targets; the chosen one gets trample and +X/+0', !!want && !!p && p.berserkTurn != null && t.a.battlefield.filter(x => x.berserkTurn != null).length === 1 && qs.some(q => q.what === 'pump'), want && want.name); });
 
-// with "Autopilot decides\" nothing changes: the same card, unseated, plays as before
+for (const pick of ['pay', 'tapped']) run('Watery Grave', t => { const life = t.a.life;
+  const qs = play(t, q => q.kind === 'shock' ? q.options.findIndex(o => o.name === (pick === 'pay' ? 'Pay 2 life' : 'Enter tapped')) : 'auto'), q = qs.find(x => x.kind === 'shock'), p = t.a.battlefield.find(x => x.iid === t.inst.iid);
+  if (pick === 'pay') check('A shock land (Watery Grave) asks: pay 2 life, or enter tapped; paying is the default', !!q && q.title === 'Watery Grave: pay 2 life?' && q.options.length === 2 && q.options[q.def[0]].name === 'Pay 2 life', q && q.title);
+  check(`...${pick === 'pay' ? 'paying: it enters untapped and you lose 2 life' : 'declining: it enters tapped and no life is paid'}`, !!p && p.tapped === (pick === 'tapped') && t.a.life === life - (pick === 'pay' ? 2 : 0), p && (p.tapped + ' / ' + (life - t.a.life))); });
+run('Watery Grave', t => { const a = t.a, life = a.life; a.ask = null; a.choices = null; a.hand.splice(a.hand.indexOf(t.inst), 1); G.enterWithTriggers(a, t.inst, {}, []); const p = a.battlefield.find(x => x.iid === t.inst.iid);
+  check('...unseated, the autopilot still pays the 2 life', !!p && !p.tapped && a.life === life - 2); });
+
+// with "Autopilot decides" nothing changes: the same card, unseated, plays as before
 run('Intuition', t => { const a = t.a; a.ask = null; a.choices = null; const ev = G.castCard(a, t.inst, true);
   check('...unseated, Intuition plays the autopilot\'s three cards unasked', !!ev && ev.some(e => /^Intuition: /.test(e.text || ''))); });
 

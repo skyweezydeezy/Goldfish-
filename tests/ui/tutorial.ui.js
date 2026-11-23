@@ -39,7 +39,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- desktop: every tab's tour once, the spotlight on its element, Skip, keyboard, replay, restart ----
   {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 820 }, serviceWorkers: 'block' });
-    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); });
+    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); });          // past the welcome card (stage 4 tests it)
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto(URL);
@@ -118,7 +118,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- iPhone portrait and landscape, iPad ----
   for (const [name, dev, tabs] of [['iPhone portrait', devices['iPhone 13'], ['deck', 'duel', 'table']], ['iPhone landscape', devices['iPhone 13 landscape'], ['table', 'pod']], ['iPad', devices['iPad (gen 7)'], ['deck', 'table', 'sim']]]) {
     const ctx = await b.newContext({ ...dev, serviceWorkers: 'block' });
-    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); });
+    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); });          // past the welcome card (stage 4 tests it)
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto(URL);
@@ -144,10 +144,90 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     await ctx.close();
   }
 
+  // ---- stage 4: the welcome card ----
+  {
+    const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); });
+    await ctx.addInitScript(quiet);
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    await p.goto(URL); await p.waitForSelector('.tut-bubble', { timeout: 6000 }).catch(() => {});
+    const w = await p.evaluate(() => { const b = document.querySelector('.tut-bubble'); return b ? [b.querySelector('.tut-title').textContent, b.querySelector('.tut-next').textContent, b.querySelector('.tut-skip').textContent] : null; });
+    check('welcome: the first visit shows the welcome card with Take the tour / Skip', w && /Welcome/.test(w[0]) && w[1] === 'Take the tour' && w[2] === 'Skip', w && w.join(' / '));
+    await p.click('.tut-next');
+    check('welcome: Take the tour starts this tab\'s tour', await p.waitForFunction(() => window.ISFTutorial.active && window.ISFTutorial.active.id === 'tab:deck', null, { timeout: 4000 }).then(() => true, () => false));
+    await p.keyboard.press('Escape');
+    await p.reload(); await p.waitForTimeout(1500);
+    check('welcome: only once', !(await p.$('.tut-bubble')));
+    // Skip: no tour by itself afterwards, all of them still under ?
+    await p.evaluate(() => { localStorage.removeItem('isf_tutorial'); }); await p.reload();
+    await p.waitForSelector('.tut-bubble', { timeout: 6000 }); await p.click('.tut-skip');
+    await p.click('[data-tab=sim]'); await p.waitForTimeout(1200);
+    check('welcome: Skip keeps the tours quiet (no tour on a first tab visit)', !(await p.$('.tut-bubble')));
+    await p.click('.top-help'); await p.click('.tut-m-tour');
+    check('welcome: … and a tour still opens from ?', await p.waitForFunction(() => window.ISFTutorial.active && window.ISFTutorial.active.id === 'tab:sim', null, { timeout: 4000 }).then(() => true, () => false));
+    await p.keyboard.press('Escape');
+
+    // ---- first goals: in the ? menu, ticked as they happen, "Show me" ----
+    await p.click('.top-help');
+    const gl = await p.$eval('.tut-m-goals', e => e.textContent);
+    check('goals: the ? menu shows the first goals with a count', /First goals · 0 of 4/.test(gl), gl);
+    await p.click('.tut-m-goals');
+    const rows = await p.$$eval('#tutMenu .tut-goal', es => es.map(e => e.textContent.replace(/Show me/, '').trim()));
+    check('goals: load a deck, run a simulation, win a Practice game, play a Duel', rows.join('|') === '○Load a deck|○Run a simulation|○Win a Practice game|○Play a Duel', rows.join('|'));
+    await p.click('#tutMenu .tut-goal[data-goal=sim] .tut-showme');
+    check('goals: Show me goes to the tab and points at the button', await p.waitForFunction(() => document.body.dataset.view === 'sim' && window.ISFTutorial.target && window.ISFTutorial.target.id === 'runSim', null, { timeout: 4000 }).then(() => true, () => false));
+    await p.keyboard.press('Escape');
+    await p.evaluate(() => { window.__isf.sim = { fake: true }; });          // as if a simulation had run
+    await p.waitForTimeout(1800);
+    const tick = await p.evaluate(() => [(window.ISFTutorial.progress().goals || {}).sim, document.querySelector('#toast').textContent]);
+    check('goals: a goal ticks itself when it happens, with a short note', tick[0] === 1 && /First goal: Run a simulation \(1 of 4\)/.test(tick[1]), tick.join(' / '));
+    await p.evaluate(() => { window.__isf.sim = null; });
+
+    // ---- first-time tips: once, not after the feature is used, "Show me" runs it ----
+    await p.evaluate(() => { const d = document.createElement('div'); d.className = 'dice-box meld-box'; d.id = 'fakeMeld'; d.style.cssText = 'position:fixed;left:40%;top:30%;width:120px;height:80px'; document.body.appendChild(d); });
+    await p.waitForSelector('.tut-tip[data-tip=meld]', { timeout: 4000 }).catch(() => {});
+    check('tips: the first meld shows a one-line tip, without dimming the page', !!(await p.$('.tut-tip[data-tip=meld]')) && !(await p.$('.tut')));
+    await p.click('.tut-tip-ok'); await p.waitForTimeout(1800);
+    check('tips: once only', !(await p.$('.tut-tip')), await p.evaluate(() => [...document.querySelectorAll('.tut-tip')].map(t => t.dataset.tip + ':' + t.textContent).join(' / ')));
+    await p.evaluate(() => { document.getElementById('fakeMeld').outerHTML = ''; const p = JSON.parse(localStorage.getItem('isf_tutorial')); p.used = { sheet: 1 }; localStorage.setItem('isf_tutorial', JSON.stringify(p));
+      const d = document.createElement('div'); d.className = 'ch-sheet'; d.id = 'fakeSheet'; d.innerHTML = '<div class="ch-head">Q</div>'; d.style.cssText = 'position:fixed;left:10%;top:20%;width:300px;height:100px'; document.body.appendChild(d); });
+    await p.waitForTimeout(1800);
+    check('tips: a tip about something already used is not shown', !(await p.$('.tut-tip')) && (await p.evaluate(() => (window.ISFTutorial.progress().tips || {}).sheet)) === 1);
+    await p.evaluate(() => { document.getElementById('fakeSheet').outerHTML = ''; });
+    await p.click('[data-tab=table]'); await p.waitForTimeout(400);
+    await p.evaluate(() => { const t = window.ISFTutorial.tips.find(x => x.id === 'loop'); t.when = () => true; });          // as if the goldfish had just died
+    await p.waitForSelector('.tut-tip[data-tip=loop] .tut-tip-show', { timeout: 4000 }).catch(() => {});
+    await p.evaluate(() => { window.__loopClicked = 0; document.querySelector('#tLoop').addEventListener('click', e => { window.__loopClicked++; e.stopImmediatePropagation(); }, true); });
+    const show = await p.$('.tut-tip[data-tip=loop] .tut-tip-show');
+    if (show) await show.click();
+    check('tips: "Show me" runs the action (Loop)', !!show && (await p.evaluate(() => window.__loopClicked)) === 1);
+
+    // ---- what's new: after an update, only what is new since the last version, once; Reset leaves it ----
+    const now = await p.evaluate(() => self.ISF_VERSION);
+    await p.route('**/whatsnew.json', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ entries: [{ v: now, lines: ['Brand new thing.'] }, { v: now - 1, lines: ['Older thing.'] }, { v: now - 5, lines: ['Long ago.'] }] }) }));
+    await p.evaluate(v => { localStorage.setItem('isf_whatsnew', String(v - 2)); localStorage.removeItem('isf_state'); }, now);
+    await p.reload();
+    await p.waitForSelector('.tut-new', { timeout: 6000 }).catch(() => {});
+    const wn = await p.evaluate(() => [...document.querySelectorAll('.tut-new li')].map(l => l.textContent));
+    check('what\'s new: after an update it lists only what is new since your last version', wn.length === 2 && /Brand new/.test(wn[0]) && /Older/.test(wn[1]), wn.join(' | '));
+    await p.click('.tut-next');
+    await p.reload(); await p.waitForTimeout(1500);
+    check('what\'s new: once', !(await p.$('.tut-new')));
+    await p.evaluate(() => localStorage.removeItem('isf_tutorial'));          // what Reset (Remember State) does
+    check('what\'s new: Reset leaves the last version seen', (await p.evaluate(() => localStorage.getItem('isf_whatsnew'))) === String(now));
+    await p.evaluate(() => { localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); }); await p.reload(); await p.waitForTimeout(900);
+    await p.keyboard.press('Escape');
+    await p.click('.top-help'); await p.click('.tut-m-new'); await p.waitForSelector('.tut-new', { timeout: 4000 }).catch(() => {});
+    check('what\'s new: also from the ? menu', (await p.$$('.tut-new li')).length === 3);
+    await p.keyboard.press('Escape');
+    check('stage 4: no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
   // ---- reduced motion: no transitions ----
   {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block', reducedMotion: 'reduce' });
-    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); });
+    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); });          // past the welcome card (stage 4 tests it)
     const p = await ctx.newPage();
     await p.goto(URL); await p.waitForSelector('.tut-bubble');
     const dur = await p.evaluate(() => { document.querySelector('.tut').classList.add('tut-moving'); return getComputedStyle(document.querySelector('.tut-spot')).transitionDuration; });

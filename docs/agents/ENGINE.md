@@ -27,7 +27,7 @@ pop-ups (`decide.js` questions) belong to the decision-points session. If a rule
 5. Run the full engine suite: `node tests/run.js` (about 5 minutes). Check its exit status before committing.
 6. If set data coverage changed: `NODE_USE_ENV_PROXY=1 node tools/fetch-sets.js --report`, then `node tests/run.js sets`.
 7. Commit, push `claude/engine-rules`, then `send_message` to the Visuals session (`session_01K5kL4YgVQ6tZxzA48G59TU`) with the
-   branch, the commit and one line on what it does. Also send the decision-points session (`session_01K5kL4ZfrioL9gBHkq7n6W6`) the
+   branch, the commit and one line on what it does. Also send the decision-points session (`session_01K5kL4Zcst9FYJBqezvRjTK`) the
    commit range (before..after) and any new effect a person could be asked about.
 8. The Visuals session merges and reports the version number. Pass that number on to the user.
 
@@ -64,15 +64,15 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
   card's coverage and two or three behaviours. Helpers that are exported: `enterWithTriggers`, `castCard(g, inst, force)`,
   `eachTrigger(g, kind, ev)`, `applyEffects`, `leavePerm`, `flushLeaves`, `sba`, `abilityMenu`, `useAbility`, `comboLines`.
 
-## State of the work (Version 135 live; batches 32–36 and a clean-up handed over at `f35ad17`)
-- Pool of 5,000 most played Commander cards: **602 cards (695 lines) still have an unread line.** Batches 29–35 taught about 110.
+## State of the work (engine session `session_01K5kL4YNG2qref25DS7t9oH` since batch 37; batches 37–39 on `claude/engine-rules`)
+- Pool of 5,000 most played Commander cards: **588 cards (680 lines) still have an unread line** (after batch 39).
 - A person's play: activated abilities from the card menu (battlefield, graveyard, hand, command zone), X on casting and for
   abilities, abilities as responses to a spell, chosen color (`p.chosenColor`, `setChosenColor`), choose-a-type spells
   (`tribeSpell`, `g._castTribe`), Stormtamer / Spellskite / Cursecatcher offered whenever legal.
 
 ## Leftover list
-- **Combos listed but not played:** Hermit Druid + Laboratory Maniac; Approach of the Second Sun with Scroll Rack; Voltaic Key
-  loops with Everflowing Chalice or Metalworker. (Done: Approach + Necropotence; Ancient Copper Dragon + Aggravated Assault.)
+- **Combos listed but not played:** none known (batch 37 played Hermit Druid + Laboratory Maniac, Approach + Scroll Rack, Voltaic Key + Rings with Metalworker).
+  (Earlier: Approach + Necropotence; Ancient Copper Dragon + Aggravated Assault.)
 - **Played short (choice audit, about 280 cards left):** counter modes of modal spells (Red Elemental Blast, Pyroblast, Archmage's
   Charm, Drown in the Loch: a counter is a card-level property in `tryCounter`, not an effect; the decision-points session suggests
   a placeholder mode `[{ type: 'counterMode' }]`); no-effect spells (Deflecting Swat, Bolt Bend, Clever Concealment); player targets
@@ -89,7 +89,7 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
 ## Working with the other sessions
 - **Visuals** (`session_01K5kL4YgVQ6tZxzA48G59TU`): merges everything, owns the UI. It reads engine events: `meld`
   (`{ type: 'meld', parts, into, perm }`), and dice and coins from note text ("Rolled a d20: 14", "flip won"): keep that wording.
-- **Decision points** (`session_01K5kL4ZfrioL9gBHkq7n6W6`): owns `decide.js` questions, `responseCards`, `respondWith`,
+- **Decision points** (`session_01K5kL4Zcst9FYJBqezvRjTK`): owns `decide.js` questions, `responseCards`, `respondWith`,
   `ownPriority`, `personAnswer`, `respondGate`. Tell it before changing those. It audits each of your batches and runs an
   every-default sweep (a person taking every default must equal the autopilot, `D.dump` compared each turn).
 - **Data Diver**: teaches "hidden interaction" cards in `sim.js` too. **Before teaching a card, check it is not already taught on

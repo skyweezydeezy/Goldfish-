@@ -129,6 +129,7 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],
     flickerwisp: ['exile another permanent', 'Choose a permanent to exile. A card of yours returns at the beginning of the next end step; a token is gone for good.'],
     proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
@@ -166,6 +167,7 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'shock') { item.name = o === 'pay' ? `Pay ${d.life} life` : 'Enter tapped'; item.note = o === 'pay' ? `it enters untapped · you go to ${g.life - d.life} life` : 'no life paid · it can\'t tap for mana this turn'; }
       else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
@@ -218,7 +220,7 @@
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
       const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
-      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : `${by} makes you sacrifice a ${w}`;
+      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : d.by ? `${by} makes you sacrifice a ${w}` : `${sn || 'Effect'}: sacrifice a ${w}`;          // no by: your own card's effect (Roiling Regrowth)
       q.text = `Choose the ${w} to sacrifice.` + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = d.ability ? 'Cancel' : 'Do not cast it';
     } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)
@@ -263,6 +265,10 @@
     } else if (d.kind === 'color') {                                                                      // "As ~ enters, choose a color": Caged Sun, Utopia Sprawl, the Thriving lands
       q.title = `${sn || 'This permanent'}: choose a color`;
       q.text = 'As it enters it names a color, and plays with that color from now on. ★ is the autopilot\'s pick: the color most of your remaining cards have.';
+      if (src) { q.spell = src; q.spellNote = 'entering'; }
+    } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
+      q.title = `${sn || 'Land'}: pay ${d.life} life?`;
+      q.text = `As it enters, you may pay ${d.life} life. If you don't, it enters tapped.`;
       if (src) { q.spell = src; q.spellNote = 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;

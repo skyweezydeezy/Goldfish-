@@ -184,7 +184,7 @@
       const ps = await players(mode, t => info(mode, t)), o = gameOpts(mode);
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));
-      const seed = (Math.random() * 0x7fffffff) >>> 0, roll = rollFirst(ps.length, seed), first = roll.first;          // a D20 each: the highest goes first
+      const tseed = window.ISFTutorial && window.ISFTutorial.takeSeed && window.ISFTutorial.takeSeed(), seed = tseed != null ? tseed >>> 0 : (Math.random() * 0x7fffffff) >>> 0, roll = rollFirst(ps.length, seed), first = roll.first;          // the tutorial's sample game asks for a fixed seed once          // a D20 each: the highest goes first
       const human = q('.vs-you').value === 'human';
       C.close();                                              // a question of the game before this one
       const pod = G.newPod(decks, optsList, seed, ps.map(p => p.name), first, human ? [0] : null);

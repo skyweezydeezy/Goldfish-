@@ -104,15 +104,46 @@
       minLands: +$('#optMinLands').value, maxLands: +$('#optMaxLands').value,
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
-      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
+      noMaxHand: $('#optNoMaxHand').checked,                 // no discarding down to seven in the cleanup step
+      startLife: +$('#optMyLife').value || (fmt === 'commander' ? 40 : 20),   // your life at the start (in Duel and Pod, every player's)
+      minHandSize: +$('#optMullTo').value || 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
       bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
     };
   }
   $('#optFormat').addEventListener('change', () => {
     const c = $('#optFormat').value === 'commander';
-    $('#optLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
+    $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
+  // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
+  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5, optNoMaxHand: false });
+  $('#optReset').addEventListener('click', () => {
+    const d = RULE_DEFAULTS($('#optFormat').value === 'commander');
+    for (const [id, v] of Object.entries(d)) {
+      const el = $('#' + id); if (!el) continue;
+      if (el.type === 'checkbox') el.checked = v; else el.value = String(v);
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    toast('Rules back to their defaults');
+  });
+
+  // Display (app-wide, kept in this browser like sound and the playmat): spacing and how a tab fades in
+  (() => {
+    const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
+    let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
+    const apply = () => {
+      const den = $('#dispDensity').value, fade = $('#dispFade').value;
+      document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
+      document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
+    };
+    if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
+    if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
+    apply();
+    for (const id of ['#dispDensity', '#dispFade']) $(id).addEventListener('change', () => {
+      apply();
+      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value })); } catch (e) { /* storage blocked */ }
+    });
+  })();
 
   // ======================= card elements & zoom =======================
   function imgFor(card, face) {
@@ -1753,7 +1784,7 @@
       if (e.data.progress != null) bar.style.width = (e.data.progress * 100).toFixed(1) + '%';
       if (e.data.result) {
         bar.style.width = '100%'; $('#runSim').disabled = false;
-        S.sim = e.data.result; S.simOpts = o;
+        S.sim = e.data.result; S.simOpts = o; fillTune();
         $('#simInfo').textContent = `${o.n.toLocaleString()} games × ${o.turns} turns in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
         renderSim();
       }
@@ -1964,6 +1995,7 @@
     const ok = labApplies.filter(c => c.applies), off = labApplies.filter(c => !c.applies);
     sel.innerHTML = ok.map(c => `<option value="${c.id}">${esc(c.label)}${c.mirrorOnly ? ' (mirror match)' : ''}</option>`).join('');
     if (ok.some(c => c.id === cur)) sel.value = cur;
+    fillTune();
     $('#plSkipped').innerHTML = off.length && S.deck ? `<details><summary>${off.length} other choice${off.length === 1 ? '' : 's'} hidden: no card in this deck uses ${off.length === 1 ? 'it' : 'them'}</summary><ul>${off.map(c => `<li>${esc(c.label)}: needs ${esc(c.missing.join(' and '))}</li>`).join('')}</ul></details>` : '';
     showLabWhy();
   }
@@ -2079,6 +2111,93 @@
     if (field && sel && !$('#plOppList').options.length) fillLabOpponents();
   }
   $('#plMode').addEventListener('change', showLabOpponents);
+
+  // ---------- Policy lab: tune toward a goal (tune.js): kill the goldfish earlier, or hit land drops more often ----------
+  const TN_N = 400;                                                                                  // games per change; the Tune button's data-n overrides it (tests)
+  function simNow() {                                                                                // the deck now, from the last simulation of it (Simulate, above)
+    const r = S.sim; if (!S.deck || !r || !r.kill || !r.onCurveLands) return null;
+    const byTurn = []; let c = 0; for (let t = 0; t < r.turns; t++) { c += r.kill[t]; byTurn.push(c); }
+    const mi = byTurn.findIndex(v => v >= 0.5);
+    return { median: mi < 0 ? null : mi + 1, byTurn, onCurve: r.onCurveLands, bracket: Tune.bracketOf(byTurn), turns: r.turns };
+  }
+  function fillTune() {
+    const sel = $('#tnTarget'); if (!sel) return;
+    const now = simNow(), cur = sel.value, k = now && now.median;
+    const list = $('#tnGoal').value === 'lands' ? Tune.LAND_GOALS.map((x, i) => [`l${i}`, `Land drop ${x.turn} on turn ${x.turn} in ${Math.round(100 * x.share)}% of games`])
+      : [1, 2, 3].map(e => [`e${e}`, `${e} turn${e > 1 ? 's' : ''} earlier${k ? ` (median turn ${Math.max(3, k - e)})` : ''}`])
+        .concat(Tune.BRACKET_SPEED.slice().reverse().map(b => [`b${b.bracket}`, `Bracket ${b.bracket} speed: ${Math.round(100 * b.share)}% of games by turn ${b.turn}`]));
+    sel.innerHTML = list.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+    if (list.some(o => o[0] === cur)) sel.value = cur;
+    const on = t => now.onCurve[t - 1] != null ? pct(now.onCurve[t - 1]) : '?';
+    $('#tnNow').textContent = !S.deck ? '' : now ? `Now: ${k ? 'median kill turn ' + k : 'no kill in half the games by turn ' + now.turns} (bracket speed B${now.bracket}) · land drop 3 on turn 3 in ${on(3)}, 4 on turn 4 in ${on(4)}.`
+      : 'Now: measured when you press Tune (or run the simulation above).';
+  }
+  $('#tnGoal').addEventListener('change', fillTune);
+  fillTune();
+  let tnWorker = null;
+  async function runTune() {
+    if (!need()) return;
+    const btn = $('#tnRun'), v = $('#tnTarget').value, kind = $('#tnGoal').value;
+    const goal = kind === 'lands' ? Object.assign({ kind: 'lands' }, Tune.LAND_GOALS[+v.slice(1)] || Tune.LAND_GOALS[1]) : v[0] === 'b' ? { kind: 'kill', bracket: +v.slice(1) } : { kind: 'kill', earlier: +v.slice(1) || 1 };
+    btn.disabled = true; $('#tnOut').innerHTML = '';
+    const ident = [...new Set((S.deck.commanders.length ? S.deck.commanders.map(i => i.card) : S.cards).flatMap(c => c.color_identity || []))];
+    // the cheap ramp and card draw to try: the A/B test's role searches (most played first), mana value 2 or less; none when Scryfall can't be reached
+    $('#tnInfo').textContent = 'Finding cheap ramp and card draw in your colors…';
+    let pool = [];
+    for (const role of ['ramp', 'draw']) { const q = Compare.roleQuery(role, ident); if (q) { try { pool = pool.concat(await Source.searchCards(q + ' cmc<=2', 12)); } catch (e) { /* no suggestions */ } } }
+    const n = Math.max(40, Math.min(4000, +btn.dataset.n || TN_N));
+    if (tnWorker) tnWorker.terminate();
+    tnWorker = new Worker('worker.js');
+    const bar = $('#tnProgress div'); bar.style.width = '0';
+    $('#tnInfo').textContent = `Tuning: ${n.toLocaleString()} games for each change${pool.length ? '' : ' (no ramp or card draw found to try: lands and choices only)'}…`;
+    const t0 = performance.now();
+    tnWorker.onmessage = e => {
+      if (e.data.progress != null) { bar.style.width = (e.data.progress * 100).toFixed(1) + '%'; return; }
+      if (!e.data.result) return;
+      bar.style.width = '100%'; btn.disabled = false;
+      $('#tnInfo').textContent = `Done in ${((performance.now() - t0) / 1000).toFixed(0)}s: ${e.data.result.steps.length} change${e.data.result.steps.length === 1 ? '' : 's'} kept; ${n.toLocaleString()} fresh games for the before → after.`;
+      renderTune(e.data.result);
+    };
+    tnWorker.onerror = err => { btn.disabled = false; $('#tnInfo').textContent = 'Tune error: ' + err.message; };
+    tnWorker.postMessage({ tune: { cards: S.cards, tokens: S.tokens, pool, identity: ident, goal, rounds: 3 }, opts: opts(), n, seed: rseed() });
+  }
+  $('#tnRun').addEventListener('click', runTune);
+  function renderTune(r) {
+    const g = r.goal, b = r.before, a = r.after, P = x => (100 * (x || 0)).toFixed(0) + '%';
+    const share = m => g.kind === 'lands' ? m.onCurve[g.turn - 1] : m.byTurn[g.turn - 1];
+    const med = m => m.median ? 'turn ' + m.median : `after turn ${r.fullTurns}`;
+    const what = g.kind === 'lands' ? `Land drop ${g.turn} on turn ${g.turn}: ${P(share(b))} → ${P(share(a))} of games`
+      : `Median kill ${med(b)} → ${med(a)} (average ${b.meanKill.toFixed(1)} → ${a.meanKill.toFixed(1)}); kills by turn ${g.turn}: ${P(share(b))} → ${P(share(a))}`;
+    const sure = r.confirm ? ` (fresh shuffles, z ${r.confirm.z.toFixed(1)})` : '';
+    const goalTxt = g.kind === 'lands' ? `land drop ${g.turn} on turn ${g.turn} in ${P(g.share)} of games` : `${P(g.share)} of games killed by turn ${g.turn}`;
+    const head = !r.steps.length ? `No change moved the goal by more than chance explains with ${r.n.toLocaleString()} games each. That is a real answer: the choices and swaps tried are not what holds this deck back; more games can reveal a small difference.`
+      : (r.verdict === 'confirmed' ? '✓ ' : r.verdict === 'likely' ? '≈ Probably: ' : '✗ It did not hold up on fresh shuffles: ') + what + sure + `. Bracket speed B${b.bracket} → B${a.bracket}.`;
+    const reached = share(a) >= g.share ? ` The goal, ${goalTxt}, is reached.` : ` The goal, ${goalTxt}, is not reached yet.`;
+    const steps = r.steps.map(s => `<li><b>${esc(s.label)}</b> ${g.kind === 'lands' ? `${P(s.before)} → ${P(s.after)} of games` : `${pts(s.after - s.before)} points`} on the search's shuffles (z ${s.z.toFixed(1)})</li>`).join('');
+    const row = (l, x, y) => `<tr><td>${l}</td><td>${x}</td><td>${y}</td></tr>`;
+    const kills = [...new Set([g.kind === 'kill' ? g.turn : null, 6, 8].filter(Boolean))].sort((x, y) => x - y);
+    const table = row('Median kill turn', b.median || '—', a.median || '—') + row('Average kill turn', b.meanKill.toFixed(1), a.meanKill.toFixed(1))
+      + kills.map(t => row(`Kills by turn ${t}`, P(b.byTurn[t - 1]), P(a.byTurn[t - 1]))).join('')
+      + [3, 4, 5].map(t => row(`Land drop ${t} on turn ${t}`, P(b.onCurve[t - 1]), P(a.onCurve[t - 1]))).join('')
+      + row('Bracket speed', 'B' + b.bracket, 'B' + a.bracket);
+    const pol = Object.keys(r.policy || {});
+    $('#tnOut').innerHTML = `<p><b>${head}</b>${r.steps.length ? esc(reached) : ''}</p><div class="suggest">`
+      + (r.steps.length ? `<div class="sg good"><b>The changes (${r.steps.length})</b><ul>${steps}</ul></div>` : '')
+      + `<div class="sg"><b>Before → after: ${r.n.toLocaleString()} fresh games each, ${r.fullTurns} turns</b><table class="labtable"><thead><tr><th></th><th>Before</th><th>After</th></tr></thead><tbody>${table}</tbody></table></div></div>`
+      + (r.steps.length ? `<div class="row wrap">${r.lines.length ? `<button id="tnSend" class="primary">Send to the A/B test</button>` : ''}${pol.length ? `<button id="tnUse">Use the choices</button>` : ''}</div>` : '');
+    tidy($('#tnOut'));
+    const send = $('#tnSend');
+    if (send) send.addEventListener('click', () => {
+      $('#abChanges').value = r.lines.join('\n') + '\n';
+      $('#abBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast(`Sent to the A/B test as version 2${pol.length ? ' (the choices are kept with "Use the choices")' : ''}: press "2. Test version 2"`);
+    });
+    const use = $('#tnUse');
+    if (use) use.addEventListener('click', () => {
+      pol.forEach(k => savePolicy(k, r.policy[k], `tuned: ${goalTxt}`));
+      fillLabChoices(); toast(`Saved ${pol.length} choice${pol.length === 1 ? '' : 's'} for this deck`);
+    });
+  }
 
   // ---------- Policy lab: swaps by role (the diagnosis grouped by what cards do: "more ramp", then 2 cards to add and 2 to remove) ----------
   let plRolesWorker = null;

@@ -3398,7 +3398,7 @@
       landPlayed: 0, manaSpent: 0, commanderCast: null, killTurn: null, cmdrCasts: {},
       castTurn: {}, drawTurn: {}, turns: [], floating: [], eot: { p: 0, t: 0, kw: new Set() }, extraCombats: 0,
       nextIid: deck.nextIid, landsPlayedThisTurn: 0, spentThisTurn: 0,
-      life: opts.oppLife || 40,                               // your own life total (starts like the goldfish's: 40 in Commander, 20 otherwise)
+      life: opts.startLife || opts.oppLife || 40,             // your own life total: the Build tab's starting life (default 40 in Commander, 20 otherwise)
       ring: { tempts: 0, bearer: null },                      // the Ring: how many times it has tempted you, and your Ring-bearer (a permanent id)
       yardShuffleSeen: deck.unique.some(c => c.a.shuffleBack || c.a.yardShuffle),
     };

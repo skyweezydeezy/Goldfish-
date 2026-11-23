@@ -39,6 +39,8 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
    no person in them do not change.
 9. [R, `docs/agents/REMOTE-VERSUS.md`] No outside service, sign-up or key in the code without the user's yes.
 10. [R, MAIN's note] The app is called **ICEYfish**.
+11. [V] MAIN completes any pending merge (live, with its version number) before tasking a session with new work (the user,
+    2026-11-23).
 
 ## 2. Architecture and accepted decisions
 

@@ -1,6 +1,6 @@
 # Session handoff: "PR and Marketing"
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 - Session: "PR and Marketing" (session_01K5kL4WqRN1kBjvWc1Tsngx)
 - Role: TASK (not MAIN). Reports to the "Visuals/Main" session (session_01K5kL4YgVQ6tZxzA48G59TU), believed to be the current MAIN; not formally confirmed.

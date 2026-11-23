@@ -1,6 +1,6 @@
 # Handoff: Card-teaching session
 
-**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4YhRxNwAucFcxv2DYT** (Card teaching & Policy lab 2)
+**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4YhRxNwAucFcxv2DYT; accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 - **Session now:** Card teaching 2 (session `session_01K5kL4YhRxNwAucFcxv2DYT`), a TASK session. MAIN is `session_01K5kL4WjxCpfdEjqWh1igWP`.
 - **Old session:** `session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed.

@@ -738,6 +738,15 @@
         if (/^whenever ~ attacks, up to one hundred target creatures each get \+0\/\+x until end of turn, where x is the number of cards in your hand\.?$/i.test(line)) { TR(['attack'], [{ type: 'toughHand' }]); continue; }          // Baldin: your creatures
         if (/^creatures you control get \+1\/\+1 for each blessing counter on ~\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'srcCounter', counter: 'blessing', p: 1, t: 1 }); rec.status = 'ok'; continue; }          // Boon of the Spirit Realm
       }
+      // ---- rules batch 63: the top-5000 pool (one card each)
+      { const ex = line.match(/^whenever you expend (\d+), (.*)$/i);
+        if (ex && /^put a \+1\/\+1 counter on ~\.?$/i.test(ex[2])) { a.expend = { n: +ex[1], fx: [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'self', other: false, excl: false, types: [] }] }; rec.status = 'ok'; continue; }          // Wandertale Mentor (pay)
+        if (ex && /^return up to one target permanent card from your graveyard to your hand\.?$/i.test(ex[2])) { a.expend = { n: +ex[1], fx: [{ type: 'gyReturn', filter: 'permanent' }] }; rec.status = 'ok'; continue; }          // Trailtracker Scout
+        if (/^if you would draw a card while you have no cards in hand, draw two cards instead\.?$/i.test(line)) { a.statics.phialDraw = true; rec.status = 'ok'; continue; }          // Phial of Galadriel (draw)
+        if (/^if you would gain life while you have 5 or less life, you gain twice that much life instead\.?$/i.test(line)) { a.statics.phialLife = true; rec.status = 'ok'; continue; }          // Phial of Galadriel (gainLife)
+        if (/^whenever you tap ~ for mana, it deals 1 damage to each opponent\.?$/i.test(line)) { a.manaPing = 1; rec.status = 'ok'; continue; }          // Zhur-Taa Druid (pay)
+        if (/^other rats you control have toxic 1\.?$/i.test(line)) { a.ratToxic = 1; rec.status = 'ok'; continue; }          // Karumonix (poisonOnHit)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -3575,6 +3584,7 @@
   }
 
   function draw(g, n, ev) {
+    if (n > 0 && !g.dry && !g.hand.length && tableHas(g, 'statics.phialDraw') && g.battlefield.some(q => q.card.a.statics.phialDraw)) n += 1;          // rules batch 63: Phial of Galadriel (the first card, drawn with no cards in hand, is two)
     if (n > 0 && !g._firstDraw && !g.dry && (tableHas(g, 'statics.drawDouble') && g.battlefield.some(q => q.card.a.statics.drawDouble))) n *= Math.pow(2, (tableHas(g, 'statics.drawDouble') ? g.battlefield.filter(q => q.card.a.statics.drawDouble) : []).length);          // Teferi's Ageless Insight
     if (n > 0 && !g.dry && (g.portalSeen || (g.opp && g.opp.portalSeen)) && (tableHas(g, 'noDraw') && bothSides(g).some(q => q.card.a.noDraw))) return [];          // Possessed Portal: nobody draws
     if (n > 0 && !g.dry) { const sv = (tableHas(g, 'spitefulVisions') ? bothSides(g).filter(q => q.card.a.spitefulVisions) : []).length; if (sv) { g.life -= Math.min(n, g.library.length) * sv * twinMult(g); checkDeath(g, ev || []); } }          // Spiteful Visions
@@ -4602,6 +4612,7 @@
     const vor = !g.dry && g.opp && othersPerms(g).some(({ q }) => q.card.a.vorinclex);
     const barbs = g.dry ? 0 : (tableHas(g, 'manabarbs') ? bothSides(g).filter(q => q.card.a.manabarbs) : []).length;          // Manabarbs
     srcs.forEach(s => {
+      if (s && s.card && s.card.a.manaPing && !s.tapped && !g.dry) damageOpp(g, s.card.a.manaPing, [], s);          // rules batch 63: Zhur-Taa Druid
       s.tapped = true;
       if (vor && s.asLand) s.vorSkip = true;          // Vorinclex, Voice of Hunger
       if (s.token && s.card && /Treasure/.test(s.card.name || '')) g._payTre = true;          // Rain of Riches
@@ -4626,7 +4637,8 @@
       if (s.sacMana) { sacEvent(g, s, []); removePerm(g, s); if (s.token && /Treasure/.test(s.card.name || '')) for (const q of (tableHas(g, 'statics.treasureSacPump') ? g.battlefield : NONE)) if (q.card.a.statics.treasureSacPump) q.eotP = (q.eotP || 0) + 1; }
     });
     g.floating = g.floating.filter(u => !usedFloat.has(u)).concat(leftovers);
-    g.spentThisTurn = (g.spentThisTurn || 0) + idx.length;
+    const sp0 = g.spentThisTurn || 0; g.spentThisTurn = sp0 + idx.length;
+    if (!g.dry && idx.length && tableHas(g, 'expend')) for (const q of g.battlefield.slice()) { const e = q.card.a.expend; if (e && sp0 < e.n && g.spentThisTurn >= e.n && !q.phased) applyEffects(g, e.fx, q, [], null); }          // rules batch 63: expend N (Wandertale Mentor, Trailtracker Scout)
     return idx.length;
   }
 
@@ -5764,6 +5776,7 @@
   function gainLife(g, n, ev, source) {
     if (!(n > 0)) return;
     if (g.noGainSeen && (tableHas(g, 'noLifeGain') && bothSides(g).some(q => q.card.a.noLifeGain))) return;          // Sulfuric Vortex: players can't gain life
+    if (g.life <= 5 && tableHas(g, 'statics.phialLife') && g.battlefield.some(q => q.card.a.statics.phialLife)) n *= 2;          // rules batch 63: Phial of Galadriel
     n += bfInfo(g).lifePlus || 0;          // Cleric Class: that much plus 1
     if (bfInfo(g).lifeDouble) n *= Math.pow(2, bfInfo(g).lifeDouble);          // Rhox Faithmender: twice that much (after the +1: the bigger order)
     g.life += n;
@@ -7670,7 +7683,7 @@
   }
   // the poison counters a creature's combat damage to a player adds on top of infect: toxic N (once for each damage step), Skrelv's toxic 1,
   // Etali ("they get that many poison counters": as many as the damage)
-  function poisonOnHit(p, dealt, steps) { const tx = p.card.a.toxic; return (tx > 0 ? tx * steps : 0) + (p.eotToxic || 0) * steps + (tx === -1 ? dealt : 0); }
+  function poisonOnHit(p, dealt, steps, g) { const tx = p.card.a.toxic; return (tx > 0 ? tx * steps : 0) + (p.eotToxic || 0) * steps + (tx === -1 ? dealt : 0) + (g && tableHas(g, 'ratToxic') && matchesFilter(p.card, 'rat') ? g.battlefield.filter(q => q !== p && q.card.a.ratToxic).length * steps : 0); }          // Karumonix: other Rats have toxic 1
   // "whenever a creature you control becomes the target of a spell" (Venerated Rotpriest): your own pump spells and Auras
   function ownTargeted(g, target, ev) {
     for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('ownTargeted') && g.battlefield.includes(q)) fire(g, t, q, ev, target);
@@ -7683,7 +7696,7 @@
     const t = berserkTarget(g); if (!t || g.combatDone) return false;
     const atk = g.battlefield.filter(q => canAttack(g, q)), mult = q => (hasKw(g, q, 'double strike') ? 2 : 1) * (q === t ? 2 : 1);
     const dmg = atk.filter(q => !hasKw(g, q, 'infect')).reduce((s2, q) => s2 + Math.max(0, powerOf(g, q)) * mult(q), 0);
-    const psn = atk.filter(q => hasKw(g, q, 'infect')).reduce((s2, q) => s2 + Math.max(0, powerOf(g, q)) * mult(q), 0) + atk.reduce((s2, q) => s2 + poisonOnHit(q, Math.max(0, powerOf(g, q)) * mult(q), hasKw(g, q, 'double strike') ? 2 : 1), 0);
+    const psn = atk.filter(q => hasKw(g, q, 'infect')).reduce((s2, q) => s2 + Math.max(0, powerOf(g, q)) * mult(q), 0) + atk.reduce((s2, q) => s2 + poisonOnHit(q, Math.max(0, powerOf(g, q)) * mult(q), hasKw(g, q, 'double strike') ? 2 : 1, g), 0);
     return dmg >= oppLifeLeft(g) || (g.poisonDealt || 0) + psn >= 10;
   }
   function scry(g, n, ev, source) {
@@ -11199,7 +11212,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const steps = hasKw(g, p, 'double strike') ? 2 : 1, pw = (Math.max(0, dmgPow(g, p)) + (dmgPow(g, p) > 0 ? fireBonus(g) + plusBonus(g, p) : 0)) * steps * infernoMult(g, p);
         if (pw <= 0) continue;
         if (hasKw(g, p, 'infect')) psn += pw; else dmg += pw;          // infect: poison counters instead of damage to the player's life
-        psn += poisonOnHit(p, pw, steps);
+        psn += poisonOnHit(p, pw, steps, g);
         hitters.push(p);
         g.combatNames = Object.assign({}, g.combatNames, { [p.card.name]: true });          // "each opponent dealt combat damage this game by a creature named Gollum"
         if (p.card.commander) { const ck = isPod(g) ? p.iid + '>' + g.opp.pid : p.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + pw; }
@@ -12375,7 +12388,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const m of marks) {
         if (m.to === 'player') {
           if (hasKw(g, m.from, 'infect')) psn += m.n; else dmg += m.n;          // infect: poison counters instead of life
-          psn += poisonOnHit(m.from, m.n, 1);
+          psn += poisonOnHit(m.from, m.n, 1, g);
           if (!hitters.includes(m.from)) hitters.push(m.from);
           g.combatNames = Object.assign({}, g.combatNames, { [m.from.card.name]: true });
           if (m.from.card.commander && !(d.protAll || d.lifeLock || bfInfo(d).preventDmg)) { const ck = isPod(g) ? m.from.iid + '>' + d.pid : m.from.iid; g.cmdrDamage[ck] = (g.cmdrDamage[ck] || 0) + m.n; }          // prevented damage is not commander damage

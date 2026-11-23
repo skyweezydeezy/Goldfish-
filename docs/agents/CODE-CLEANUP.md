@@ -1,6 +1,17 @@
 # Hand-off: Code Clean-up session
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4VM41uFmohgknueiEg**
+
+## Current facts (2026-11-23, checked against the repository by Code Clean-up 2)
+- The current owner of this area (dead code and unsteady tests) is **Code Clean-up 2** (`session_01K5kL4VM41uFmohgknueiEg`), on task T-018.
+  MAIN is the Visuals session `session_01K5kL4WjxCpfdEjqWh1igWP` (the id below is an older MAIN).
+- Everything below is in the default branch: `7335f59` and this note's first commit `b5dfec5` went live in **Version 141** (PR #69).
+  T-007 is Verified in `PROJECT_STATE.md`; draft PR #70 is closed. `claude/code-cleanup` was fast-forwarded to `90f6117` (Version 142)
+  for T-018.
+- Of the 16 engine test files listed below as having no README row, 6 got one in the meantime; T-018 adds the other 10.
+- Still open, for T-018: remote.ui under parallel load, versus.ui's block check over seeds. See T-018's report for what was found.
+
+The rest of this note is the original hand-off, kept as it was written.
 
 - **Session:** Code Clean-up (`session_01K5kL4W7sYVsWQcgDzVLTfX`), role **TASK**. MAIN is the Visuals session (`session_01K5kL4YgVQ6tZxzA48G59TU`).
 - **Date:** 2026-11-23.

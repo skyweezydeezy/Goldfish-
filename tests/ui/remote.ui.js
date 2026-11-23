@@ -12,6 +12,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 const deckA = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8');      // Swords to Plowshares
 const deckB = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'veyran.txt'), 'utf8');     // Counterspell
 const BASE = 'http://127.0.0.1:8800/';
+let pages = [];          // the two devices, for the message when a step times out
 
 (async () => {
   const b = await chromium.launch({ args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] });
@@ -40,6 +41,7 @@ const BASE = 'http://127.0.0.1:8800/';
   };
   const noStun = p => p.evaluate(() => { window.__isfRemote.ice = []; });          // the test machine has no internet STUN: local addresses only
   const A = await device('A'), B = await device('B');
+  pages = [A, B];
   await A.goto(BASE); await loadDeck(A, deckA); await noStun(A);
 
   // ---- the list of what is shared comes first
@@ -78,8 +80,14 @@ const BASE = 'http://127.0.0.1:8800/';
   check('the scanned reply opens a new tab that says to go back to the tab with the invite', /Go back to the ICEYfish tab with your invite/.test(await A2.$eval('#tab-duel .rm-step', e => e.textContent)));
   await A.bringToFront();
   await A.evaluate(() => window.dispatchEvent(new Event('focus')));
+  // what each device's link and game look like, for a message when a wait runs out
+  const linkState = p => p.evaluate(() => { const R = window.__isfRemote, L = R.state.link, g = window.__isfVersus.duel.game;
+    return { visible: document.visibilityState, focus: document.hasFocus(), pc: L && L.pc.connectionState, ice: L && L.pc.iceConnectionState, channel: L && L.ch && L.ch.readyState, answered: L && L.answered, game: !!R.state.game, phase: g && g.phase, remote: g && g.remote,
+      status: (document.querySelector('#tab-duel .rm-status') || {}).textContent || '' }; }).then(JSON.stringify, e => 'unreadable: ' + e.message);
   const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000 });
-  await Promise.all([started(A), started(B)]);
+  const t0 = Date.now();
+  await Promise.all([started(A), started(B)]).catch(async e => { throw new Error('both devices start the game: ' + e.message.split('\n')[0] + ' A: ' + await linkState(A) + ' B: ' + await linkState(B)); });
+  console.log('(both devices started the game ' + (Date.now() - t0) + ' ms after the reply)');
 
   // ---- helpers: the state of a page, the same table on both, and answering whatever a page is asked on the way
   const st = p => p.evaluate(() => {
@@ -276,4 +284,10 @@ const BASE = 'http://127.0.0.1:8800/';
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
-})().catch(e => { console.error(e); console.log(`\n${pass} passed, ${fail + 1} failed`); process.exit(1); });
+})().catch(async e => {
+  console.error(e);
+  for (const p of pages) {          // where each device was: its link, its game, and whether it still draws frames
+    const s = await Promise.race([p.evaluate(() => new Promise(r => { const t0 = performance.now(); requestAnimationFrame(() => r(Math.round(performance.now() - t0) + ' ms to the next frame')); setTimeout(() => r('no frame in 3 s'), 3000); })), new Promise(r => setTimeout(() => r('page not answering'), 5000))]).catch(x => 'unreadable: ' + x.message);
+    const g = await p.evaluate(() => { const R = window.__isfRemote, L = R.state.link, g = window.__isfVersus.duel.game; return JSON.stringify({ visible: document.visibilityState, pc: L && L.pc.connectionState, channel: L && L.ch && L.ch.readyState, phase: g && g.phase, busy: g && g.busy, acting: g && g.acting, choice: g && g.choice && g.choice.kind, dice: !!document.querySelector('.vs-dice'), bar: ((document.querySelector('#tab-duel .vs-bar') || {}).textContent || '').slice(0, 100) }); }).catch(x => 'unreadable: ' + x.message);
+    console.log('device ' + p.label + ': ' + s + ' · ' + g);
+  } console.log(`\n${pass} passed, ${fail + 1} failed`); process.exit(1); });

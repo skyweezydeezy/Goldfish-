@@ -1,5 +1,7 @@
 # Visuals / Main session: handoff note
 
+> Superseded for state by `MAIN_HANDOFF.md` and `PROJECT_STATE.md` (2026-11-23). This note keeps the working knowledge: how a merge goes, wait loops, gotchas.
+
 The main session gathers every other session's work, tests it, merges it into the default branch, and reports back. Read CLAUDE.md first; it holds the rules the user set. This note is the working knowledge behind them.
 
 ## Where things are
@@ -62,7 +64,7 @@ Replaced or archived: Card Rules Engine (session_01K5kL4WeZFox6QLJp181xit), Deci
 - **What's new:** the main session writes the changelog line for each merge into the file the Tutorial session defines (likely `goldfish/static/whatsnew.json`). Ask Tutorial for the format.
 - **Code Clean-up's hand-over** is the "final merge" of the user's plan (tutorial install, then fixing up the code, then a final merge). The session stopped once on the 5-hour usage limit and was restarted at 12:40 UTC on 2026-11-23.
 - Combos session backlog: Took's Adventure isn't in drive-sync (it comes from a Google Doc, not the ManaBox folder), and the Commander Spellbook snapshot refresh (`node tools/build-combos.js`, about 5 min) stays with main.
-- GitHub issue #27 (Shalai) needs no code; it waits for the user to close it.
+- GitHub issue #27 (Shalai) is closed (the user closed it as completed, 2026-11-23 04:39 UTC).
 - Pages deploy: `pages.yml` retries `actions/deploy-pages` up to 3 times. Marketing's proposal to deploy only from main/master was **not** taken, because the live branch is neither.
 
 ## Scheduled tasks

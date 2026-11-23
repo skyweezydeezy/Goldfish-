@@ -1177,6 +1177,7 @@
     const t0 = performance.now();
     if (st.worker) st.worker.terminate();
     st.worker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(st.worker, q('.vs-prog'), 'rival');
     st.worker.postMessage({ pod: { players: ps }, opts: o, n, seed });
     st.worker.onmessage = e => {
       if (e.data.progress != null) { q('.vs-prog > div').style.width = (e.data.progress * 100).toFixed(0) + '%'; return; }

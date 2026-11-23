@@ -28,6 +28,14 @@ Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the co
 - The other 9 "Needs opponent" lines really do nothing alone (Freed from the Real's tap, Goblin Cratermaker, Trashmaster, Hullbreaker Horror, Ajani's 0, Shinka, Sunfall, Vandalblast's overload).
 - Test: `tests/engine/builtin-cards.test.js`. Fingerprint: only the zul-ashur goldfish games change (Gisa, Kaervek and the Witches).
 
+## T-041: issue #78 (claude/card-teaching, from Version 158)
+- All 8 cards read 'ok'. Barkform Harvester and Liquimetal Coating already did (their activated lines do nothing alone, "No solo effect").
+- **Magda, Brazen Outlaw**: `magdaTap(g, q, ev)` makes the Treasure for a Dwarf tapped for mana (`pay`), for a {T} ability (the three `activate` events) and by the new Dwarf abilities; combat keeps its own code. Not seen: convoke and crew.
+- **Return the Favor**: `a.favorAbility`; `favorCopy` casts it from the hand ({R}{R} + {1}) to copy a triggered ability (`fireNow0`) or an activated ability (`abilityCopy`, loyalty abilities included) worth 4 or more (`fxValue`).
+- **Axgard Cavalry** (`a.hasteTap`, `hasteTaps` before attackers), **Dwarven Bloodboiler** (`a.tribeTapPump`, `dwarfPump` after attackers; goldfish only), **Vault Robber** (`a.vaultRobber`) and **Óin's rummage** (`a.tapRummage`) in `dwarfEnd` at the end step; **Óin's storied** (`a.storyBuff`, `enduringStory(g)` sets `g.story` for good) in `condAnthem` and `hasKw`.
+- After MAIN's review: a seated person is asked before each of these actions (`askUse`, kind 'protect', the autopilot's choice as the default), so taking every default plays the autopilot's game (`tests/engine/issue-78-seated.test.js`). `hasteTaps` runs in `combatStart`, so `previewAttack` and combat agree. Return the Favor asks a seated person too.
+- Test: `tests/engine/issue-78.test.js`. Sweep bad 0; fingerprint unchanged (no fixture deck has these cards).
+
 ## Gotchas
 - `fetch-sets.js --query` rebuilds the coverage of every set; keep only the files for your cards, and patch `index.json` and `docs/SETS.md` for those rows.
 - A spell's effects pass `source = null`; a permanent's pass the permanent. `g.lastCast` is the spell being cast.

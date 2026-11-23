@@ -29,6 +29,7 @@ const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t
 const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
 
 const lands = (g, n, name) => { for (let i = 0; i < n; i++) putOn(g, name || 'Forest'); };
+const cmdr = (g, n) => { const p = putOn(g, n); p.card = Object.assign({}, p.card, { commander: true }); return p; };          // T-036: the Will cards play both modes only with a commander out
 const cast = (g, n, k, x) => { const c = inst(g, n); if (x != null) c.extraX = x; g.hand.push(c); if (k) mana(g, k); return { c, ev: G.castCard(g, c, true) || [] }; };
 const lineOf = (n, start) => by(n).a.coverage.find(v => v.text.startsWith(start));
 const has = (g, n) => g.battlefield.some(q => q.card.name === n);
@@ -56,7 +57,7 @@ T('ojer kaslem', () => { const g = bare(); const ok = putOn(g, 'Ojer Kaslem, Dee
 T('night of the sweets', () => { const g = bare(); const ns = putOn(g, "Night of the Sweets' Revenge"); treasure(g, 0); mk(g, { creature: false, artifact: true, name: 'Food', subtypes: [] }, 2); ['Grave Titan', 'Serra Angel', 'Shivan Dragon'].forEach(n => putOn(g, n));
   const foods = g.battlefield.filter(q => q.card.name === 'Food').length; const sa = find1(g, 'Serra Angel'); mana(g, 7); g.combatDone = false; G.useAbilities(g);
   check("Night of the Sweets' Revenge: sacrificed for +X/+X, X Foods", !g.battlefield.includes(ns) && G.powerOf(g, sa) === 4 + foods, foods + ' Foods, ' + G.powerOf(g, sa)); });
-T('will of the jeskai', () => { const g = bare(); const lb = inst(g, 'Lightning Bolt'); g.graveyard.push(lb); cast(g, 'Will of the Jeskai', 4); check('Will of the Jeskai: the instants and sorceries in your graveyard have flashback this turn', lb.yardCastTurn === g.turn); });
+T('will of the jeskai', () => { const g = bare(); cmdr(g, 'Serra Angel'); const lb = inst(g, 'Lightning Bolt'); g.graveyard.push(lb); cast(g, 'Will of the Jeskai', 4); check('Will of the Jeskai: the instants and sorceries in your graveyard have flashback this turn', lb.yardCastTurn === g.turn); });
 T('sarkhan', () => { const g = bare(); const sk = putOn(g, 'Sarkhan, Soul Aflame'); putOn(g, 'Shivan Dragon');
   check('Sarkhan, Soul Aflame: a copy of Shivan Dragon until end of turn (5/5, flying), still named Sarkhan', G.powerOf(g, sk) === 5 && sk.card.a.kw.has('flying') && sk.card.name === 'Sarkhan, Soul Aflame', G.powerOf(g, sk));
   G.endTurn(g); check('...and itself again after the turn', G.powerOf(g, sk) === 2 && !sk.card.a.kw.has('flying')); });
@@ -87,8 +88,8 @@ T('bone miser', () => { const g = bare(); putOn(g, 'Bone Miser'); g.hand = [inst
   g.hand = [inst(g, 'Forest')]; const f0 = g.floating.length; G.applyEffects(g, [{ type: 'discardSelf', n: 1 }], null, [], null); check('...a land card adds {B}{B}', g.floating.length === f0 + 2);
   g.hand = [inst(g, 'Lightning Bolt')]; G.applyEffects(g, [{ type: 'discardSelf', n: 1 }], null, [], null); check('...anything else draws a card', g.hand.length === 1); });
 T('will of the mardu', () => { const g = bare(); ['Llanowar Elves', 'Serra Angel', 'Grave Titan'].forEach(n => putOn(g, n)); const n0 = g.battlefield.filter(q => q.card.name === 'Warrior').length; cast(g, 'Will of the Mardu', 3);
-  check('Will of the Mardu: a 1/1 Warrior for each creature the biggest board has (yours, against a goldfish)', g.battlefield.filter(q => q.card.name === 'Warrior').length === n0 + 5, g.battlefield.filter(q => q.card.name === 'Warrior').length);
-  const { g: a, b } = mirror(); turnOf(a, b); ['Llanowar Elves', 'Serra Angel'].forEach(n => putOn(a, n)); const t = putOn(b, 'Shivan Dragon'); putOn(b, 'Serra Angel'); cast(a, 'Will of the Mardu', 3);
+  check('Will of the Mardu: a 1/1 Warrior for each creature the biggest board has (yours, against a goldfish; without a commander this is the mode it picks)', g.battlefield.filter(q => q.card.name === 'Warrior').length === n0 + 5, g.battlefield.filter(q => q.card.name === 'Warrior').length);
+  const { g: a, b } = mirror(); turnOf(a, b); ['Llanowar Elves'].forEach(n => putOn(a, n)); cmdr(a, 'Serra Angel'); const t = putOn(b, 'Shivan Dragon'); putOn(b, 'Serra Angel'); cast(a, 'Will of the Mardu', 3);
   check('...and damage to their creature equal to the creatures you control', !b.battlefield.includes(t) || b.battlefield.length < 2); });
 T('grim backwoods', () => { const g = bare(); putOn(g, 'Grim Backwoods'); mk(g, { name: 'Zombie', subtypes: ['Zombie'], colors: ['B'], p: 2, t: 2 }); mana(g, 4); g.combatDone = true; const h0 = g.hand.length; G.useAbilities(g);
   check('Grim Backwoods: a token sacrificed for a card', g.hand.length === h0 + 1 && !has(g, 'Zombie')); });
@@ -103,7 +104,7 @@ T('general kreat', () => { const g = bare(); putOn(g, 'General Kreat, the Boltbr
 
 T('labels', () => { const bad = NAMES.filter(n => by(n).a.coverage.concat(by(n).a.backCard ? by(n).a.backCard.a.coverage : []).some(v => v.status === 'ignored')).map(n => n);
   check('every line of these 25 cards is read now', bad.length === 0, bad.join(', '));
-  const mir = [['Sudden Spoiling', 'Until'], ['Fallen Shinobi', 'Whenever'], ['Will of the Mardu', '• ~ deals']];
+  const mir = [['Sudden Spoiling', 'Until'], ['Fallen Shinobi', 'Whenever'], ['Will of the Mardu', '~ deals']];
   const bm = mir.filter(([n, st]) => { const v = lineOf(n, st); return !v || !v.mirror; }).map(([n, st]) => n + ' ' + st); check('...the ones that need another player say Mirror matches only', bm.length === 0, bm.join(', ')); });
 T('games', () => { const r = G.monteCarlo(cards, Object.assign({}, O, { turns: 8 }), 80, 5, null, base.tokens); check('eighty goldfish games with these cards run clean', r.errors === 0, r.firstError && r.firstError.slice(0, 200));
   const mm = G.matchMonteCarlo(cards, base.tokens, cards, base.tokens, Object.assign({}, O, { turns: 10 }), 16, 7); check('sixteen matches run clean', mm.errors === 0, mm.firstError && mm.firstError.slice(0, 200)); });

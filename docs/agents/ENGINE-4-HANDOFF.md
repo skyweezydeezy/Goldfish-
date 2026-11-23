@@ -7,8 +7,8 @@
 ## T-036: where it stands
 | Piece | Commit | State |
 |---|---|---|
-| (1)–(5), the items Decision Points 3 waits on | `7ba267c` | Done, test `t036-dp-blockers` 20/20, every-default sweep part 0: bad 0. Decision Points 3 told. |
-| Rules batch 57 (1 of 5): Brightglass Gearhulk, RMS Titanic, Super Shredder, Nighthowler | see `git log` | Done, test `rules-batch57` 8/8. Also fixes "creature cards in all graveyards" (Necrogoyf counted every card). |
+| (1)–(5), the items Decision Points 3 waits on | `7ba267c`, tests `102a8e2` | Done, test `t036-dp-blockers` 20/20, every-default sweep part 0: bad 0. `102a8e2` moves rules-batch17/21/41's Will checks to the modal reading. Decision Points 3 told. |
+| Rules batch 57 (1 of 5): Brightglass Gearhulk, RMS Titanic, Super Shredder, Nighthowler | `118627a` | Done, test `rules-batch57` 8/8. Also fixes "creature cards in all graveyards" (Necrogoyf counted every card). |
 | Batches 58–61 | — | Not started. |
 
 What (1)–(5) are, so the next session does not redo them:

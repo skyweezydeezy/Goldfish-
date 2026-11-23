@@ -69,5 +69,17 @@ run('Bojuka Bog', t => { const qs = play(t); check('...in a 1v1 there is nothing
 run('Cackling Counterpart', t => { t.a.ask = null; t.a.choices = null; const before = t.a.battlefield.length; const ev = G.castCard(t.a, t.inst, true);
   check('the autopilot copies its own pick unasked', !!ev && t.a.battlefield.length === before + 1); });
 
+// ---- spree: the mode cast with the spell, then more modes while the mana lasts (cast for its real cost)
+run('Final Showdown', t => { const a = t.a; a.battlefield = a.battlefield.filter(q => !q.asLand); const pl = a.deck.unique.find(x => x.name === 'Plains'); for (let k = 0; k < 4; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: pl }, {}, []); q.tapped = false; }
+  const qs = []; let first = null;
+  const ev = D.resolveSync(t.p.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(x => x.iid === t.inst.iid)), q => { if (q.kind === 'resolve' || q.kind === 'counter') return 'none'; qs.push(q); if (q.kind === 'mode' && /choose a mode to cast it with/.test(q.title)) { first = q.options.find(o => !o.def) || q.options[0]; return first.k; } return q.kind === 'mode' ? 'none' : 'auto'; });
+  const q1 = qs.find(q => /choose a mode to cast it with/.test(q.title)), q2 = qs.find(q => /add another mode\?/.test(q.title));
+  check('Final Showdown (spree) asks which mode to cast it with: the modes you can pay for, each with its extra cost', !!q1 && q1.options.length >= 2 && q1.options.every(o => /^costs \d+ more mana$/.test(o.note)) && q1.def.length === 1 && !q1.none, q1 && q1.options.map(o => o.name.slice(0, 40) + ' (' + o.note + ')').join(' | '));
+  check('...then "add another mode?" with "No more modes"', !!q2 && q2.none === 'No more modes' && !q2.options.some(o => o.name === first.name), q2 && q2.title);
+  const note = (ev || []).filter(e => e.type === 'note' && /^Spree: /.test(e.text || '')).map(e => e.text)[0] || '';
+  check('...the spell is cast with the chosen mode only', !!ev && note === 'Spree: ' + first.name.replace(/\.$/, ''), note); });
+run('Final Showdown', t => { const a = t.a; a.ask = null; a.choices = null; a.battlefield = a.battlefield.filter(q => !q.asLand); const pl = a.deck.unique.find(x => x.name === 'Plains'); for (let k = 0; k < 4; k++) { const q = G.enterWithTriggers(a, { iid: a.nextIid++, card: pl }, {}, []); q.tapped = false; }
+  const ev = G.castCard(a, t.inst); check('...the autopilot chooses its own spree modes unasked', !!ev && ev.some(e => /^Spree: /.test(e.text || ''))); });
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

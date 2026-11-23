@@ -135,6 +135,9 @@
     proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
+    fangs: ['choose a creature', 'Choose the creature that gets a +1/+1 counter; then its +1/+1 counters are doubled.'],
+    flickerAll: ['flicker which creatures?', 'Choose any number of your creatures to exile. They return to the battlefield at the beginning of the next end step (a token does not come back, so tokens are left alone).'],
+    animate: ['choose an artifact', 'Choose the noncreature artifact that becomes an artifact creature.'],
     pump: ['choose a creature', 'Choose the creature that gets the bonus until end of turn.'],
     double: ['choose a creature', 'Choose the creature whose power is doubled.'],
     fight: ['choose what it fights', 'Choose the creature it fights: each deals damage equal to its power to the other.'],
@@ -199,6 +202,9 @@
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
+      else if (d.what === 'biter' || d.what === 'fighter') { q.title = `${sn || 'Fight'}: choose your creature`; q.text = d.what === 'biter' ? 'Choose your creature: it deals damage equal to its power to a creature you choose next.' : 'Choose your creature: it fights a creature you choose next (each deals damage equal to its power to the other).'; }
+      else if (d.what === 'bitten' || d.what === 'fought') { const fn = d.fighter ? d.fighter.card.name : 'your creature'; q.title = `${sn || 'Fight'}: choose what ${fn} ${d.what === 'bitten' ? 'damages' : 'fights'}`; q.text = d.what === 'bitten' ? `${fn} deals damage equal to its power to the creature you choose.` : `${fn} and the creature you choose each deal damage equal to their power to the other.`; }
+      else if (d.what === 'pumpAttacker') { const f = d.f || {}; q.title = `${sn || 'Attack'}: choose an attacking creature`; q.text = `Choose the attacking creature that gets +${f.p || 0}/+${f.t || 0}${(f.kw || []).length ? ' and gains ' + f.kw.join(', ') : ''} until end of turn.`; }
       else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
     } else if (d.kind === 'mode' && d.spree) {                                                            // spree: a mode is paid for as the spell is cast, more may be added

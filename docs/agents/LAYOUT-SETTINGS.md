@@ -42,7 +42,7 @@ from Version 151 (`8a43bc7`).
 
 ## Tests and tools
 - `tests/ui/layout.ui.js` covers the above. Run `node tests/run.js --ui layout`, about 1 minute.
-- Before/after screenshots: a script that serves a given `goldfish/static` folder on a random port and shoots Build, Simulate,
+- Before/after screenshots: `docs/agents/layout-shots/<size>.jpg` (before on top, after below: Build, Simulate, Practice, Duel). They were shot with a script that served a given `goldfish/static` folder on a random port;
   Practice and Duel at 1920, 1366, 2560, iPad and iPhone (portrait and landscape). It was kept in the session scratchpad, not
   the repo.
 

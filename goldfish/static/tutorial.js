@@ -411,7 +411,7 @@
       { el: () => { const e = document.querySelector('#optOnPlay'); return e && e.closest('label'); }, title: 'On the play', text: 'Skip the draw on turn 1.' },
       { el: () => { const e = document.querySelector('#optCmdrFirst'); return e && e.closest('label'); }, title: 'Commander first', text: 'The autopilot casts the commander as soon as it can.' },
       { el: '#optLife', title: 'Opponent life', text: 'The goldfish\'s life: the damage needed to kill it.' },
-      { el: '#optN', title: 'Games per simulation', text: '10,000 games: each percentage within about one point.' },
+      { el: '#optN', title: 'Games per simulation', text: '2,000 games: each percentage within about two points. More games, more precise.' },
       { el: ['#deckTiles:not(:empty)'], title: 'Key numbers', text: 'Cards, lands, average mana value and more, at a glance.' },
       { el: ['#deckProfile:not([hidden])'], title: 'Strengths and weaknesses', text: 'Read from the list with common deckbuilding rules of thumb. Open a heading for the cards.' },
       { el: ['#deckCombos:not([hidden])'], title: 'Combos and wins', text: 'Combos found in the list, cards that win outright, and finishers. The autopilot plays them.' },

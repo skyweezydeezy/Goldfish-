@@ -175,8 +175,6 @@ label.small { font-size: 12px; }
   background: radial-gradient(ellipse at 50% 50%, #c0802a 0 18%, #6b3a12 19% 30%, #2a1a0a 31% 100%),
     repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 6px, transparent 6px 12px); box-shadow: 0 2px 6px rgba(0,0,0,.6); }
 .card-back.pile { box-shadow: 2px 2px 0 #1b1208, 4px 4px 0 #2a1a0a, 6px 6px 8px rgba(0,0,0,.6); }
-.flip-in { animation: flipin .5s ease both; }
-@keyframes flipin { from { transform: perspective(600px) rotateY(90deg); filter: brightness(.4); } to { transform: perspective(600px) rotateY(0); filter: none; } }
 
 .zoom { position: fixed; z-index: 200; pointer-events: none; width: 300px; opacity: 0; transition: opacity .12s; filter: drop-shadow(0 10px 30px rgba(0,0,0,.8)); }
 .zoom.show { opacity: 1; }
@@ -434,7 +432,6 @@ html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; }   /* clip,
 .site-footer .tip-qr img { width: 96px; height: auto; display: block; }
 
 /* ---------- calmer motion ---------- */
-@keyframes flipin { from { opacity: .4; } to { opacity: 1; } }
 .bf-row .mtg { transition: transform .3s ease, filter .3s ease; }
 .hand-zone { justify-content: center; }
 .hand-zone .mtg { margin: 0; }
@@ -550,7 +547,6 @@ button.danger:hover { background: rgba(208,59,59,.22); }
 @media (max-width: 600px) {
   .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; overflow: visible; }
   .tab { white-space: normal; text-align: center; line-height: 1.15; font-size: 12px; padding: 7px 3px; min-height: 42px; }
-  .tab-n { display: none; }
 }
 
 /* ---------- table: keep the hand right under the lands, not pushed below the fold by the log's height ---------- */
@@ -669,14 +665,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .lb-nav:disabled { opacity: .25; }
 .lb-name { font-weight: 700; font-size: 16px; text-align: center; max-width: 92vw; overflow-wrap: anywhere; }
 .lb-tip { text-align: center; }
-/* A/B test: the replacements offered under a card you cut */
-.ab-picks { margin: 6px 0 10px; }
-.ab-picks-head { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
-.ab-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
-.ab-pick { flex: none; width: 108px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px; border-radius: 10px; background: var(--surface-2); border: 2px solid transparent; font-size: 11px; line-height: 1.2; color: var(--text-secondary); }
-.ab-pick img { width: 96px; border-radius: 5px; }
-.ab-pick small { color: var(--ice-2); font-weight: 700; }
-.ab-pick.on { border-color: var(--ice-2); color: var(--text-primary); background: var(--surface-3); }
 .lb-acts { width: min(92vw, 560px); }
 .lb-acts-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .lb-act { flex: 1 1 140px; min-height: 44px; }
@@ -901,8 +889,6 @@ select { max-width: 100%; text-overflow: ellipsis; }
   .tabs { display: flex; flex-wrap: nowrap; gap: 2px; overflow: visible; }
   .tab { flex: 1 1 auto; min-width: 0; font-size: min(11.5px, 3vw); padding: 7px 2px; overflow-wrap: normal; word-break: normal; }
 }
-.tab-short { display: none; }
-@media (max-width: 420px) { .tab-full { display: none; } .tab-short { display: inline; } }
 
 /* ---------- Tags panel: folding groups, an even grid of same-width tiles, short lists ---------- */
 details.tag-group { display: block; margin: 0; border-top: 1px solid var(--border); }

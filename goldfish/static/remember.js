@@ -164,9 +164,9 @@
       const b = document.createElement('button'); b.id = 'dmReset'; b.className = 'ghost'; b.type = 'button'; b.textContent = 'Reset';
       b.title = 'Forget the open tab, the loaded deck, the settings on each tab and the games in progress. Saved decks, tags, lab choices, playmat and sound stay.';
       b.addEventListener('click', () => {
-        if (!confirm('Reset ICEYfish?\n\nThe open tab, the loaded deck, the decklist box, the settings on each tab and the games in progress are forgotten. Your saved decks, tags, lab choices, playmat and sound stay.')) return;
+        if (!confirm('Reset ICEYfish?\n\nThe open tab, the loaded deck, the decklist box, the settings on each tab, the games in progress and the tours you have seen are forgotten. Your saved decks, tags, lab choices, playmat and sound stay.')) return;
         restoring = true; clearTimeout(timer); forget();
-        try { localStorage.removeItem('gf_last'); } catch (e) { /* blocked */ }
+        try { localStorage.removeItem('gf_last'); localStorage.removeItem('isf_tutorial'); } catch (e) { /* blocked */ }          // isf_tutorial: the tours' progress, so they show again (isf_tutorial_off / _force are test switches and stay)
         location.reload();
       });
       foot.insertBefore(b, foot.querySelector('#dmBackup'));

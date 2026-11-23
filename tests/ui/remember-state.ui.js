@@ -21,7 +21,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const restored = () => p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 90000 });
   const reload = async () => { await p.waitForTimeout(700); await p.reload(); await restored(); await p.waitForTimeout(600); };
   await p.goto('http://127.0.0.1:8800/'); await restored();
-  await p.evaluate(() => localStorage.setItem('gf_decks', JSON.stringify({ 'Kept deck': '1 Sol Ring' })));          // a saved deck: Reset must keep it
+  await p.evaluate(() => { localStorage.setItem('gf_decks', JSON.stringify({ 'Kept deck': '1 Sol Ring' })); localStorage.setItem('isf_tutorial', '{"seen":{"deck":1}}'); localStorage.setItem('isf_tutorial_off', '1'); });          // a saved deck: Reset must keep it
   const list = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8');
   await p.fill('#deckText', list);
   await p.click('#loadDeck');
@@ -98,9 +98,10 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await Promise.all([p.waitForNavigation({ timeout: 20000 }).catch(() => {}), p.click('#dmReset')]);
   await restored(); await p.waitForTimeout(500);
   const rs = await p.evaluate(() => ({ tab: document.body.dataset.view, deck: !!window.__isf.deck, game: !!window.__isf.game, box: document.querySelector('#deckText').value, turns: document.querySelector('#optTurns').value,
-    keys: Object.keys(localStorage).filter(k => /^isf_state/.test(k)), saved: Object.keys(JSON.parse(localStorage.getItem('gf_decks') || '{}')) }));
+    keys: Object.keys(localStorage).filter(k => /^isf_state/.test(k)), tut: localStorage.getItem('isf_tutorial'), tutOff: localStorage.getItem('isf_tutorial_off'), saved: Object.keys(JSON.parse(localStorage.getItem('gf_decks') || '{}')) }));
   check('after Reset: Build, no deck, no game, an empty decklist box, default settings', rs.tab === 'deck' && !rs.deck && !rs.game && rs.box === '' && rs.turns === '10', JSON.stringify(rs));
   check('...nothing of the state is stored', rs.keys.length === 0 || (rs.keys.length === 1 && rs.keys[0] === 'isf_state'), rs.keys.join());
+  check('...the tours show again (isf_tutorial cleared), the test switch isf_tutorial_off stays', rs.tut === null && rs.tutOff === '1', rs.tut + ' / ' + rs.tutOff);
   check('...and the saved decks are still there', rs.saved.includes('Kept deck'), rs.saved.join());
   await reload();
   check('a reload after Reset still starts fresh', await p.evaluate(() => document.body.dataset.view === 'deck' && !window.__isf.deck));

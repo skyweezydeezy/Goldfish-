@@ -1054,6 +1054,7 @@
       (gm.io ? `<span class="vs-conn ${gm.io.connected() ? 'on' : 'off'}" title="${gm.io.connected() ? 'Connected to the other device' : 'Not connected: the game waits until the other device is back'}">${gm.io.connected() ? '● Connected' : '○ Not connected'}</span>` : '') +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
         `<button class="ghost open-sound" title="Music and sound effects"><span class="sound-ic">${window.__isfAudio && !(window.__isfAudio.get().sfx || window.__isfAudio.get().music) ? '🔇' : '🔊'}</span><span class="wide"> Sound</span></button>` +
+        `<button class="ghost tut-help vs-help" type="button" title="Help: tours of each tab" aria-label="Help and tours" aria-haspopup="menu">?</button>` +
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);

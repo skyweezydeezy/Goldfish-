@@ -175,7 +175,6 @@
   }
 
   // ---- the tours: one per tab, three to six steps, the key features only ----
-  const tabEl = t => `.tab[data-tab="${t}"]`;
   const TOURS = {
     deck: [
       { el: '#deckText', title: 'Paste a decklist', text: 'Moxfield, Archidekt, MTGO or plain text all work.' },

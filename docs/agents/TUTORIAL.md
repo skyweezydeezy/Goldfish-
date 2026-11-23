@@ -1,6 +1,6 @@
 # Tutorial session: handoff
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4WjxCpfdEjqWh1igWP (accepted by MAIN; live in Version 142)**
 
 | | |
 |---|---|

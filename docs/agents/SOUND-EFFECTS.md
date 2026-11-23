@@ -1,6 +1,8 @@
 # Sound and effects session: final handoff
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY the next main session** (its id is the one at the top of `CLAUDE.md`, under "Send finished work to the Visuals session"; not known to this session when it closed)
+
+MAIN (the Visuals session, `session_01K5kL4YgVQ6tZxzA48G59TU`) reported this handoff recorded and accepted on 2026-11-23, with this note in its final merge, PR #69, and the known issues below passed to the next main session. [R]
 
 | | |
 |---|---|
@@ -79,7 +81,8 @@ No work is in progress and nothing is blocked. Known issues:
    first. `tests/ui/versus.ui.js` and `versus-fit.ui.js` set it, because the 3D animation slowed headless Chromium enough to upset
    their timing checks.
 4. **`versus.js` `startRemote` still calls `rollFirst`**, though `remote.js` is gone from the default branch. Harmless; remove it
-   with the rest of the remote code if that stays removed.
+   with the rest of the remote code if that stays removed. **Update at acceptance [R]:** MAIN says Play a friend is back in its
+   final merge (PR #69), so this call is in use again. Leave it.
 5. **Mouse clicks under the sticky top bar:** Playwright clicks on the Duel/Pod toolbar sometimes time out when the page is
    scrolled. Seen on the default branch too. `d20.ui.js` clicks through the DOM to avoid it.
 6. Seen failing on the default branch during this session, not caused by it and not re-checked since: `lab.ui.js` (4 checks),

@@ -4409,7 +4409,7 @@
 
   // ---------- Entering the battlefield & triggers ----------
   // Does this land enter tapped right now? Conditional lands look at the board (and hand) as it is when they enter.
-  function landEntersTapped(g, a) {
+  function landEntersTapped(g, a, inst) {
     if (bfInfo(g).landsUntapped) return false;                                                       // Spelunking
     const tc = a.tapCond;
     if (!tc) return !!a.entersTapped;
@@ -4423,7 +4423,11 @@
       case 'basicLands': return lands.filter(p => /\bBasic\b/.test(p.card.type_line || '')).length < tc.min;
       case 'fewLands': return lands.length > tc.max;                                          // fast lands
       case 'reveal': return !g.hand.some(c => hasType(c.card.type_line, tc.types));           // reveal lands (Snarls, Bosk)
-      case 'shock': if (g.life - tc.life >= lifeFloor(g, 1)) { g.life -= tc.life; return false; } return true;   // pay the life: untapped
+      case 'shock': {          // pay the life: untapped
+        let pay = g.life - tc.life >= lifeFloor(g, 1);
+        if (g.ask && !g.dry && inst) pay = decide(g, { kind: 'shock', options: ['pay', 'tapped'], def: pay ? 'pay' : 'tapped', life: tc.life, source: inst }) === 'pay';          // a person chooses
+        if (pay) { g.life -= tc.life; return false; } return true;
+      }
     }
     return !!a.entersTapped;
   }

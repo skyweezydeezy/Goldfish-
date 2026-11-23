@@ -726,6 +726,18 @@
         if (/^whenever ~ attacks, if you control three or more dragons, until end of turn, ~ becomes a dragon with base power and toughness 5\/5 and gains flying\.?$/i.test(line)) { TR(['attack'], [{ type: 'nogi' }]); continue; }          // Nogi, Draco-Zealot
         if (/^at the beginning of combat on your turn, creatures you control with defender gain exalted until end of turn\.?$/i.test(line)) { a.rammas = true; rec.status = 'ok'; continue; }          // Rammas Echor (exalted: counted when one creature attacks)
       }
+      // ---- rules batch 62: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^if a creature you control with a \+1\/\+1 counter on it would deal damage to a permanent or player, it deals double that damage instead\.?$/i.test(line)) { a.unrestDouble = true; rec.status = 'ok'; continue; }          // Uncivil Unrest (infernoMult)
+        if (/^if a creature you control that entered this turn would deal damage, it deals twice that much damage instead\.?$/i.test(line)) { a.nerivDouble = true; rec.status = 'ok'; continue; }          // Neriv (infernoMult)
+        if (/^if enchanted creature would deal combat damage to a permanent or player, it deals double that damage instead\.?$/i.test(line)) { a.attachDouble = true; rec.status = 'ok'; continue; }          // The Sound of Drums (infernoMult; combat is where it deals damage)
+        if (/^if equipped creature would deal combat damage, it deals double that damage instead\.?$/i.test(line)) { a.attachDouble = true; rec.status = 'ok'; continue; }          // Inquisitor's Flail
+        if (/^if another creature would deal combat damage to equipped creature, it deals double that damage to equipped creature instead\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Inquisitor's Flail: the blocker's damage
+        if (/^each creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power\.?$/i.test(line)) { a.statics.toughDmg = 'greater'; rec.status = 'ok'; continue; }          // Bedrock Tortoise (dmgPow)
+        if (/^during your turn, each creature assigns combat damage equal to its toughness rather than its power\.?$/i.test(line)) { a.statics.toughDmg = 'turn'; rec.status = 'ok'; continue; }          // Baldin (dmgPow; your creatures)
+        if (/^whenever ~ attacks, up to one hundred target creatures each get \+0\/\+x until end of turn, where x is the number of cards in your hand\.?$/i.test(line)) { TR(['attack'], [{ type: 'toughHand' }]); continue; }          // Baldin: your creatures
+        if (/^creatures you control get \+1\/\+1 for each blessing counter on ~\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'srcCounter', counter: 'blessing', p: 1, t: 1 }); rec.status = 'ok'; continue; }          // Boon of the Spirit Realm
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -3890,6 +3902,7 @@
       else if (d.kind === 'selfEquipped') on = src === p && (tableHas(g, 'isEquipment') ? g.battlefield.some(q => q.attachedTo === p.iid && q.card.a.isEquipment) : false);          // rules batch 58: Merry
       else if (d.kind === 'selfLife') on = src === p && g.life >= (g.opts.startLife || 40) + d.over;          // rules batch 61: Elenda
       else if (d.kind === 'selfOil') on = src === p && ((p.other && p.other.oil) || 0) >= d.min;          // rules batch 61: Armored Scrapgorger
+      else if (d.kind === 'srcCounter') { if (stat && isCreaturePerm(p)) n += d[k] * ((src.other && src.other[d.counter]) || 0); continue; }          // rules batch 62: Boon of the Spirit Realm
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
       else if (d.kind === 'levelLord') on = src !== p && (src.level || 0) >= d.min && matchesFilter(p.card, d.filter);
       else if (d.kind === 'treasureEquip') { if (k === 'p') n += 2 * g.battlefield.filter(q => q.token && q.attachedTo === p.iid && /Treasure/.test(q.card.name || '')).length; continue; }
@@ -7147,6 +7160,7 @@
           if (f.p || f.t) { t.eotP = (t.eotP || 0) + (f.p || 0); t.eotT = (t.eotT || 0) + (f.t || 0); } if (f.untap) t.tapped = false;          // Restless Ridgeline
           if (f.keywords && f.keywords.length) { t.eotKw = new Set([...(t.eotKw || []), ...f.keywords]); }
           touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : f.p ? ` gets +${f.p}/+${f.t || 0}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
+        case 'toughHand': { const X = g.hand.length; if (!X) break; for (const q of g.battlefield) if (isCreaturePerm(q)) q.eotT = (q.eotT || 0) + X; touch(g); ev.push({ type: 'note', text: `Creatures you control get +0/+${X}`, source }); break; }          // rules batch 62: Baldin
         case 'nogi': { if (!source || !g.battlefield.includes(source) || g.battlefield.filter(q => q !== source && isCreaturePerm(q) && matchesFilter(q.card, 'dragon')).length < 3) break;          // rules batch 61: Nogi becomes a 5/5 flying Dragon
           source.eotP = (source.eotP || 0) + 5 - (source.card.a.power || 0); source.eotT = (source.eotT || 0) + 5 - (source.card.a.toughness || 0); source.eotKw = new Set([...(source.eotKw || []), 'flying']); touch(g); ev.push({ type: 'note', text: `${source.card.name} becomes a 5/5 flying Dragon`, source }); break; }
         case 'baseEot': { const X = Math.max(0, f.x === 'HAND' ? g.hand.length : g.xValue || 0); g.baseEot = { turn: g.turn, x: X }; touch(g); ev.push({ type: 'note', text: `Creatures you control have base power and toughness ${X}/${X} until end of turn`, source }); break; }          // rules batch 60: Biomass Mutation
@@ -12647,7 +12661,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     return false;
   }
   // Assault Formation: your creatures deal combat damage equal to their toughness
-  function dmgPow(g, p) { return bfInfo(g).assault ? toughnessOf(g, p) : powerOf(g, p); }
+  function dmgPow(g, p) { if (bfInfo(g).assault) return toughnessOf(g, p); if (tableHas(g, 'statics.toughDmg') && g.battlefield.includes(p)) for (const q of g.battlefield) { const td = q.card.a.statics.toughDmg; if (td && (td === 'turn' ? g.activeTurn !== false : toughnessOf(g, p) > powerOf(g, p))) return toughnessOf(g, p); } return powerOf(g, p); }          // rules batch 62: Bedrock Tortoise, Baldin
   // Mimic Vat: exile the dying card if it beats the one already there (that one goes back to its owner's graveyard)
   function vatTake(x, vat, H, i) {
     const at = H.graveyard.indexOf(i); if (at < 0) return false; const v = c => (c.card.a.power || 0) + (c.card.a.mv || 0) + (c.card.a.triggers.some(t => t.kinds.includes('etb')) ? 4 : 0);
@@ -12676,7 +12690,9 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Dictate of the Twin Gods, Furnace of Rath: damage doubled for each one on the table
   function ownMult(g) { if (!g || g.dry) return 1; const n = bfInfo(g).ownDouble || 0; return n ? Math.pow(2, Math.min(n, 4)) : 1; }          // Angrath's Marauders: your own sources
   function unlockCostOf(g, c) { const less = g.battlefield.reduce((t, q) => t + (q.card.a.statics.unlockLess || 0), 0); return less && c ? { generic: Math.max(0, c.generic - less), pips: c.pips, x: c.x } : c; }          // Inquisitive Glimmer
-  function infernoMult(g, src) { if (!g || g.dry || !src || !src.card) return 1; let m = 1; for (const q of ((tableHas(g, 'inferno') || tableHas(g, 'flareStar')) ? g.battlefield : NONE)) if ((q.card.a.inferno && q.infernoType && matchesFilter(src.card, q.infernoType)) || (q.card.a.flareStar && matchesFilter(src.card, q.card.a.flareStar))) m *= 2; for (const q of ((src.iid != null && tableHas(g, 'mjolnir')) ? g.battlefield : NONE)) if (q.card.a.mjolnir && q.attachedTo === src.iid) m *= 2; return m; }          // Mjölnir: the creature it equips          // Collective Inferno
+  function infernoMult(g, src) { if (!g || g.dry || !src || !src.card) return 1; let m = 1; for (const q of ((tableHas(g, 'inferno') || tableHas(g, 'flareStar')) ? g.battlefield : NONE)) if ((q.card.a.inferno && q.infernoType && matchesFilter(src.card, q.infernoType)) || (q.card.a.flareStar && matchesFilter(src.card, q.card.a.flareStar))) m *= 2; for (const q of ((src.iid != null && tableHas(g, 'mjolnir')) ? g.battlefield : NONE)) if (q.card.a.mjolnir && q.attachedTo === src.iid) m *= 2;
+    if ((tableHas(g, 'unrestDouble') || tableHas(g, 'nerivDouble') || tableHas(g, 'attachDouble')) && g.battlefield.includes(src) && isCreaturePerm(src)) for (const q of g.battlefield) { const a = q.card.a; if ((a.unrestDouble && (src.counters || 0) > 0) || (a.nerivDouble && src.enteredTurn === g.turn) || (a.attachDouble && q.attachedTo === src.iid)) m *= 2; }          // rules batch 62: Uncivil Unrest, Neriv, The Sound of Drums, Inquisitor's Flail
+    return m; }          // Mjölnir: the creature it equips          // Collective Inferno
   function plusBonus(g, src) { if (!g || g.dry || !src || !src.card || !tableHas(g, 'torbran')) return 0; let n = 0; for (const q of g.battlefield) if (q.card.a.torbran) n += q.card.a.torbran; return n && colorsOf(g, src.card).includes('R') ? n : 0; }          // Torbran, Thane of Red Fell: a red source of yours deals 2 more
   function fireBonus(g) { if (!g || g.dry) return 0; let n = 0; for (const q of (tableHas(g, 'firepowerBonus') ? g.battlefield : NONE)) if (q.card.a.firepowerBonus) n += (q.other && q.other.fire) || 0; return n; }          // Fated Firepower
   function twinMult(g) { if (g.dry) return 1; const n = (tableHas(g, 'statics.twinGods') ? bothSides(g).filter(q => q.card.a.statics.twinGods) : []).length; return n ? Math.pow(2, Math.min(n, 4)) : 1; }

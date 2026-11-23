@@ -2,6 +2,8 @@
 
 **Status: CLOSED — AWAITING MAIN ACCEPTANCE**
 
+> 2026-11-23 13:34 UTC: the Visuals/MAIN session (`session_01K5kL4YgVQ6tZxzA48G59TU`) is retiring. It recorded this closing report in `MAIN_HANDOFF.md` §5–§7 on `claude/goldfish-visual-design-3yh2hy`. Batches 37–41 and the shock fix are in **PR #69, not merged**. Acceptance, integration, the version number and the next engine session's name come from the **replacement MAIN** (not yet known here).
+
 - **Session:** Card Rules Engine 2 (`session_01K5kL4YNG2qref25DS7t9oH`). Replaced `session_01K5kL4WeZFox6QLJp181xit`.
 - **Role:** TASK. MAIN is the Visuals session, `session_01K5kL4YgVQ6tZxzA48G59TU`, which merges everyone's work.
 - **Date:** 2026-11-23

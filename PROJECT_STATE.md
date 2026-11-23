@@ -11,7 +11,7 @@ is the map. The rules are in `CLAUDE.md`; the protocol behind this file is `docs
 - Every line says how it is known: **[V]** verified against the repository, GitHub or a test run by the writer at the time of the
   last update; **[R]** reported by a session, a note or a pull request, and not re-checked; **[A]** assumed.
 
-**Last update:** 2026-11-23 about 14:20 UTC, by MAIN (`session_01K5kL4WjxCpfdEjqWh1igWP`, "MAIN (ICEYfish)"). First
+**Last update:** 2026-11-23 about 14:20 UTC (Version 142 recorded 14:15 UTC), by MAIN (`session_01K5kL4WjxCpfdEjqWh1igWP`, "MAIN (ICEYfish)"). First
 reconciliation by a MAIN: T-001's first version, checked against `MAIN_HANDOFF.md` (the outgoing MAIN's hand-over), git, GitHub, the
 session list and the scheduled tasks.
 
@@ -85,6 +85,9 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 142**: `claude/visual-goldfish-calculator-1ztks5` at `90f6117`, the merge `c269da6` (pull request #73, head
+  `3691451`) plus the version commit. The live `version.js` reads 142. Before the merge: tutorial.ui 101/101, tutorial-game 17/17,
+  install, remember-state, deck-menus, versus, versus-fit, table-fit, d20 pass (MAIN); GitHub engine x2 and windows x2 green.
 - [V] **Version 141**: `claude/visual-goldfish-calculator-1ztks5` at `3fac34c`, the merge `2f4f74f` (pull request #69, head
   `5c0ff42`) plus the version commit. The live `version.js` reads 141.
 - [V] Before the merge, on `5c0ff42` (MAIN, 2026-11-23): engine suite 159/159 files passed; UI tests tutorial, tutorial-game,
@@ -97,6 +100,7 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 
 | Version | Pull request | What went live |
 |---|---|---|
+| 142 | #73 | "Every feature" tours under ?, the new main session, closing notes, PROJECT_STATE reconciled |
 | 141 | #69 | Play a friend back (as in v128), tutorial sample games and welcome/goals/tips/What's new, rules batches 37–41, shock lands, code clean-up, session protocol, handoff notes |
 | 140 | #66 | More questions: land sacrifice, Intuition, Snapcaster, Flickerwisp, Berserk |
 | 139 | #63 | New ICEYfish address, engine clean-up, spree questions, handoff notes |
@@ -128,9 +132,9 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-009 | Hakbal "misses its first explore when cast in main 1" | Error and issue fixes (2) (`session_01K5kL4YYZ9n2hdfpzktHqd2`) | `claude/error-fixes-hakbal` (`445ce2f`, note and repro scripts only) | [R] Not reproduced at v140; **on hold for the user**. |
 | T-010 | Card teaching and the Policy lab | Card teaching & Policy lab (`session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed) | `e2e7578` | [V] Its note is in v141. Session closed. |
 | T-011 | Issue #67, "Teach: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, …" | Nobody yet | none | [V] Open on GitHub. Planned; needs the user's go-ahead for a fresh session. |
-| T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [V] Accepted after MAIN review; merged into MAIN's branch with `c17de6d`. tutorial.ui 101/101, tutorial-game 17/17, install, remember-state pass. Expected Version 142 (#73). |
-| T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination`, #73 | Accepted; cherry-picked onto MAIN's branch (`c17de6d` with T-012). Then close drafts #64, #65, #68, #72. |
-| T-014 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN | `claude/main-coordination`, #73 (draft) | Active |
+| T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [V] Accepted after MAIN review; merged into MAIN's branch with `c17de6d`. tutorial.ui 101/101, tutorial-game 17/17, install, remember-state pass. Verified, v142. |
+| T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination`, #73 | [V] Verified, v142. Drafts #64, #65, #68, #72 closed. |
+| T-014 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN | `claude/main-coordination`, #73 | [V] Verified, v142 |
 
 Closed sessions with accepted handoffs [V]: Features and Enhancements (`session_01K5kL4YtUiLPEtX5ytjG6Su`), PR and Marketing
 (`session_01K5kL4WqRN1kBjvWc1Tsngx`), Combo and win conditions (`session_01K5kL4WWP7xAdzXoi29ynuk`), Remote versus agent
@@ -169,8 +173,7 @@ archiving the closed sessions; disabling the two stale scheduled tasks; installi
 
 ## 7. Next priorities
 
-1. [V] T-014 and T-013: merge the session-id change, this file and the docs batch (#73).
-2. [V] T-012 is in #73 with them.
+1. [V] Done: T-012, T-013, T-014 live in Version 142.
 3. Ask the user the pending decisions (section 6).
 4. Fresh TASK sessions, when the user wants them: issue #67 (T-011); engine rules batches 42–46; decision points (Rishkar first,
    then Hunter's Talent's attacker) [R].

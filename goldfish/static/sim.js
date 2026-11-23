@@ -467,6 +467,7 @@
       const tf = Object.assign({ type: 'tutor', filters, dest }, colors.length ? { colors } : {});
       const mvm = (m[1] || '').match(/with mana value (x|\d+) or less/i) || text.match(/card with mana value (x|\d+) or less/i);
       if (mvm) tf.maxMv = /x/i.test(mvm[1]) ? 'X' : +mvm[1];                                                   // Finale of Devastation: mana value X or less
+      if (mvm && /x/i.test(mvm[1]) && /where x is 2 plus the sacrificed creature's mana value/i.test(text)) tf.maxMv = 'SAC2';          // Eldritch Evolution
       if (/search your library and\/or graveyard/i.test(text)) tf.yard = true;                                  // ...and it may come from the graveyard
       fx.push(tf);
       const big = text.match(/if x is (\d+) or more, creatures you control get \+x\/\+x(?: and gain ([a-z ,]+?))? until end of turn/i);
@@ -608,6 +609,20 @@
       if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // draw, then a discard the generic reading dropped (only the draw was played)
       { let dm;
+        // ---- rules batch 39: costs and choices the generic reading skipped (the decision-points audit)
+        if ((dm = raw.match(/^sacrifice (a|two) lands?\. (search your library for .+)$/i))) { const r = parseEffects(dm[2]); if (r.fx.length) { a.spellFx.push({ type: 'sacLand', n: dm[1] === 'two' ? 2 : 1 }, ...r.fx); rec.status = 'ok'; continue; } }          // Roiling Regrowth, Cycle of Renewal, Entish Restoration, Planar Engineering
+        if ((dm = raw.match(/^when ~ enters, you may sacrifice a land\. if you do, (search your library for .+)$/i))) { const r = parseEffects(dm[1]); if (r.fx.length) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'sacLand', n: 1 }, ...r.fx], text: raw }); rec.status = 'ok'; continue; } }          // Springbloom Druid
+        if (/^when (?:~|this creature) enters, sacrifice another creature\. you gain x life and draw x cards, where x is that creature's power\.?$/i.test(raw)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'sacPower' }], text: raw }); rec.status = 'ok'; continue; }          // Disciple of Bolas
+        if (/^sacrifice an artifact\. if you do, search your library for an artifact card\. if that card's mana value is less than or equal to the sacrificed artifact's mana value, put it onto the battlefield/i.test(raw)) { a.spellFx.push({ type: 'transmuteArt' }); rec.status = 'ok'; continue; }          // Transmute Artifact
+        if ((dm = raw.match(/^when (?:~|this creature) enters, discard a card, then draw a card\.?$/i))) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'discardFor', n: 1, then: [{ type: 'draw', n: 1 }] }], text: raw }); rec.status = 'ok'; continue; }          // Fear of Missing Out
+        if ((dm = raw.match(/^(when (?:~|this enchantment|this creature) enters, )?(?:(you gain (\w+) life)\. then )?you may discard (a|two) cards?\. if you do, (draw (?:a card|\w+ cards)|return target instant or sorcery card from your graveyard to your hand)\.?$/i))) {          // Bitter Reunion, Abandon Attachments, Thrilling Discovery, Toph
+          const r = parseEffects(dm[5]); if (r.fx.length) { const fx = (dm[2] ? [{ type: 'gainLife', n: num(dm[3]) }] : []).concat([{ type: 'discardFor', n: dm[4] === 'two' ? 2 : 1, may: true, need: /instant or sorcery/i.test(dm[5]) ? 'instsorc' : null, then: r.fx }]);
+            if (dm[1]) a.triggers.push({ kinds: ['etb'], fx, text: raw }); else a.spellFx.push(...fx); rec.status = 'ok'; continue; } }
+        if ((dm = raw.match(/^(draw a card for each island you control), then discard two cards\.?$/i))) { const r = parseEffects(dm[1] + '.'); if (r.fx.length) { a.spellFx.push(...r.fx, { type: 'discardFor', n: 2, then: [] }); rec.status = 'ok'; continue; } }          // Flow of Knowledge
+        if ((dm = raw.match(/^draw (\w+) cards\. then discard two cards unless you discard a basic land card\.?$/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardUnless', n: 2, what: 'basic' }); rec.status = 'ok'; continue; }          // Thirst for Discovery
+        if ((dm = raw.match(/^draw (\w+) cards\. then discard a card unless you waterbend \{\d+\}\.?/i))) { a.spellFx.push({ type: 'draw', n: num(dm[1]) }, { type: 'discardFor', n: 1, then: [] }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Waterbending Lesson (always discards)
+        if ((dm = raw.match(/^whenever (?:~|this creature) enters or attacks, you may draw a card for each other creature you control that shares a creature type with it\. if you do, discard a card\.?$/i))) { a.triggers.push({ kinds: ['etb', 'attack'], fx: [{ type: 'draw', n: 1, count: { other: true, what: 'creature', zone: 'you control' }, mult: true }, { type: 'discardFor', n: 1, needOther: true, then: [] }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Titan of Littjara (every other creature counts)
+        if (/^whenever an aura you control enters, if you cast it, you may search your library for an aura card with mana value less than or equal to that aura/i.test(raw)) { a.triggers.push({ kinds: ['permEtb'], other: true, nontoken: true, filter: 'aura', fx: [{ type: 'tutor', filters: ['aura'], dest: 'battlefield', maxMv: 'SUBJ' }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Light-Paws (cast or not; the name is not checked)
         if (/^target creature you control deals damage equal to its power to each other creature and each opponent\.?$/i.test(raw)) { a.spellFx.push({ type: 'ignition' }); rec.status = 'ok'; continue; }          // Chandra's Ignition
         if (/^target player mills half their library, rounded down\.?$/i.test(raw)) { a.spellFx.push({ type: 'millTarget', half: true }); rec.status = 'partial'; rec.tag = 'opp'; continue; }          // Traumatize (an opponent, in a match)
         if ((dm = raw.match(/^(?:landfall — )?whenever a land you control enters, target player mills (\w+) cards\.?/i))) { a.triggers.push({ kinds: ['landfall'], fx: [{ type: 'millTarget', n: num(dm[1]) }], text: raw }); rec.status = 'partial'; rec.tag = 'opp'; continue; }          // Hedron Crab
@@ -4416,7 +4431,7 @@
   const ETB_FILTERS = new Map();
   function etbFilterKind(filter) {          // what a "whenever a ... enters" trigger watches for, read once from its filter text
     let k = ETB_FILTERS.get(filter);
-    if (k === undefined) { const f = filter.toLowerCase(); k = { f, kind: /creature or artifact/.test(f) ? 'ca' : /creature or planeswalker/.test(f) ? 'cp' : /permanent/.test(f) ? 'any' : /artifact/.test(f) ? 'art' : /enchantment/.test(f) ? 'ench' : 'type' }; ETB_FILTERS.set(filter, k); }
+    if (k === undefined) { const f = filter.toLowerCase(); k = { f, kind: /creature or artifact/.test(f) ? 'ca' : /creature or planeswalker/.test(f) ? 'cp' : /permanent/.test(f) ? 'any' : /artifact/.test(f) ? 'art' : /enchantment/.test(f) ? 'ench' : /^aura$/.test(f) ? 'aura' : 'type' }; ETB_FILTERS.set(filter, k); }
     return k;
   }
   function fireEnterWatchers(g, perm, ev) {
@@ -4447,7 +4462,7 @@
           if (t.needFlying && !hasKw(g, perm, 'flying')) continue;                                   // Dragon Tempest
           if (t.perTurn) { if (q.etbTurnUsed === g.turn) continue; if (/creature/.test(t.filter) && !isCreaturePerm(perm)) continue; q.etbTurnUsed = g.turn; }
           const fk = etbFilterKind(t.filter);
-          const ok = fk.kind === 'ca' ? (isCreaturePerm(perm) || artOn(g, perm)) : fk.kind === 'cp' ? (isCreaturePerm(perm) || perm.card.a.isPlaneswalker) : fk.kind === 'any' ? true : fk.kind === 'art' ? artOn(g, perm) : fk.kind === 'ench' ? enchOn(g, perm) : isCreaturePerm(perm) && matchesFilter(perm.card, fk.f);
+          const ok = fk.kind === 'ca' ? (isCreaturePerm(perm) || artOn(g, perm)) : fk.kind === 'cp' ? (isCreaturePerm(perm) || perm.card.a.isPlaneswalker) : fk.kind === 'any' ? true : fk.kind === 'art' ? artOn(g, perm) : fk.kind === 'ench' ? enchOn(g, perm) : fk.kind === 'aura' ? !!perm.card.a.isAura : isCreaturePerm(perm) && matchesFilter(perm.card, fk.f);
           if (ok) for (let k = 0; k < em; k++) fire(g, t, q, ev, perm);
         }
       }
@@ -5486,10 +5501,47 @@
           ev.push({ type: 'note', text: `${c.card.name} deals ${k} damage to each other creature and each opponent`, source }); damageOpp(g, k, ev, c); break; }
         case 'millTarget': if (g.opp) { const k = f.half ? Math.floor(g.opp.library.length / 2) : n; if (k > 0) millOpp(g, Math.min(k, 200), ev, source); } break;          // Traumatize, Hedron Crab: an opponent's library (nothing against a goldfish)
         case 'attachSubject': if (subject && g.battlefield.includes(subject) && subject.card.a.isEquipment) { const t = ownCreature(g, bestCreature(g, subject), 'equip', subject, subject); if (t) { subject.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: subject, target: t }); } } break;          // Sigarda's Aid, Hammer of Nazahn
+        case 'sacLand': for (let k = 0; k < (f.n || 1); k++) {          // Roiling Regrowth, Springbloom Druid: a tapped land first, the least useful one
+          const ls = g.battlefield.filter(q => q.asLand); if (!ls.length) break;
+          let l = ls.slice().sort((x, y) => (y.tapped - x.tapped) || landNow(g, x) - landNow(g, y))[0];
+          if (g.ask && !g.dry && ls.length > 1) l = decide(g, { kind: 'sacrifice', options: ls, def: l, source }) || l;
+          sacEvent(g, l, ev); leavePerm(g, l, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${l.card.name}`, source }); }
+          break;
+        case 'sacPower': {          // Disciple of Bolas: another creature, the cheapest to lose; X = its power
+          const vs = g.battlefield.filter(q => q !== source && isCreaturePerm(q)); if (!vs.length) break;
+          const fd = fodderList(g, false).map(x => x.p).find(q => q !== source);
+          let v = fd || vs.slice().sort((x, y) => creatureValue(g, x) - creatureValue(g, y))[0];
+          if (g.ask && !g.dry && vs.length > 1) v = decide(g, { kind: 'sacrifice', options: vs, def: v, source }) || v;
+          const X = Math.max(0, powerOf(g, v)); sacEvent(g, v, ev); leavePerm(g, v, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${v.card.name} (power ${X})`, source });
+          if (X) { gainLife(g, X, ev, source); draw(g, Math.min(X, 30), ev); }
+          break; }
+        case 'transmuteArt': {          // Transmute Artifact: an artifact for one up to its mana value, more by paying the difference
+          const vs = g.battlefield.filter(q => artOn(g, q) && !q.asLand && !isCreaturePerm(q)); if (!vs.length) break;
+          let v = vs.slice().sort((x, y) => (x.token ? 0 : x.card.a.mv || 0) - (y.token ? 0 : y.card.a.mv || 0))[0];
+          if (g.ask && !g.dry && vs.length > 1) v = decide(g, { kind: 'sacrifice', options: vs, def: v, source }) || v;
+          const smv = v.token ? 0 : (v.card.a.mv || 0); sacEvent(g, v, ev); leavePerm(g, v, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${v.card.name}`, source });
+          const budget = allUnits(g).length, before = g.battlefield.slice();
+          tutor(g, { type: 'tutor', filters: ['artifact'], dest: 'battlefield', maxMv: smv + budget }, ev, source);
+          const np = g.battlefield.find(q => !before.includes(q) && q.card.a.isArtifact); const diff = np ? (np.card.a.mv || 0) - smv : 0;
+          if (diff > 0) pay(g, { generic: diff, pips: [], x: 0 });
+          break; }
+        case 'discardFor': {          // discard N, then the rest (Bitter Reunion, Toph, Fear of Missing Out, Flow of Knowledge)
+          if (f.needOther && !g.battlefield.some(q => q !== source && isCreaturePerm(q))) break;          // Titan of Littjara drew nothing
+          if (f.may && (g.hand.filter(i => i !== g._casting).length < f.n || (f.need === 'instsorc' && !g.graveyard.some(i => i.card.a.isInstantSorcery)))) break;
+          let did = 0;
+          const pool = () => g.hand.filter(i => i !== g._casting);          // never the spell being cast
+          for (let k = 0; k < f.n && pool().length; k++) {
+            let c = pool().sort((x, y) => discardValue(g, x) - discardValue(g, y))[0];
+            if (g.ask && !g.dry && (pool().length > 1 || f.may)) { const pick = decide(g, { kind: 'discard', options: pool(), def: c, optional: !!(f.may && k === 0), source }); if (!pick && f.may && k === 0) break; c = pick || c; }
+            g.hand.splice(g.hand.indexOf(c), 1); g.graveyard.push(c); ev.push({ type: 'note', text: `Discarded ${c.card.name}`, source }); did++;
+            if (c.card.a.isLand) landToYard(g, ev, false); madness(g, c, ev); yardShuffle(g, ev);
+          }
+          if (f.then && f.then.length && (!f.may || did === f.n)) applyEffects(g, f.then, source, ev, subject);
+          break; }
         case 'discardUnless': {          // Thirst for Knowledge, Compulsive Research, Chart a Course, Gamble
           if (f.random) { discardRandom(g, f.n, ev, source ? source.card.name : 'Gamble'); break; }
           if (f.attacked && g.attackedThisTurn) break;
-          const is = i => f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'land' ? i.card.a.isLand : false;
+          const is = i => f.what === 'artifact' ? i.card.a.isArtifact : f.what === 'land' ? i.card.a.isLand : f.what === 'basic' ? i.card.a.isLand && /\bBasic\b/.test(i.card.type_line || '') : false;          // Thirst for Discovery: a basic land
           if (!g.hand.length) break;
           const byWorst = (x, y) => discardValue(g, x) - discardValue(g, y);
           let c = (f.what ? g.hand.filter(is).sort(byWorst)[0] : null) || g.hand.slice().sort(byWorst)[0];          // the card that ends it at once (an artifact, a land), else the worst card
@@ -5870,7 +5922,7 @@
           break;
         }
         case 'loseLife': g.life -= n; ev.push({ type: 'note', text: `You lose ${n} life (${g.life})`, source }); checkDeath(g, ev); break;
-        case 'tutor': tutor(g, f, ev, source); break;
+        case 'tutor': tutor(g, f.maxMv === 'SUBJ' ? Object.assign({}, f, { maxMv: subject && subject.card ? (subject.card.a.mv || 0) : 0 }) : f, ev, source); break;          // Light-Paws: up to the entering Aura's mana value
         case 'flashUntil': g.flashUntil = { phrases: f.phrases, until: g.turn + 1 }; ev.push({ type: 'note', text: 'Until your next turn you may cast sorcery spells as though they had flash', source }); break;
         case 'noMaxHand': if (f.source) { if (source) source.noMaxHand = true; } else g.noMaxHand = true; break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
@@ -7771,7 +7823,7 @@
     for (const i of (f.yard ? g.library.concat(g.graveyard) : g.library)) {
       if (!tutorMatches(i, f.filters)) continue;
       if (f.colors && !f.colors.some(c => colorsOf(g, i.card).includes(c))) continue;
-      if (f.maxMv != null && (i.card.a.mv || 0) > (f.maxMv === 'X' ? (g.xValue || 0) : f.maxMv)) continue;
+      if (f.maxMv != null && (i.card.a.mv || 0) > (f.maxMv === 'X' ? (g.xValue || 0) : f.maxMv === 'SAC2' ? 2 + ((g._sacStats && g._sacStats.mv) || 0) : f.maxMv)) continue;
       if (f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands)) continue;
       if (f.dest === 'battlefield' && i.card.a.cost && i.card.a.cost.x && i.card.a.isCreature && !(i.card.a.toughness > 0)) continue;          // a 0/0 that "enters with X counters": put onto the battlefield without being cast, X is 0 and it dies
       const s = f.biggest ? (i.card.a.mv || 0) + tutorScore(chooser, i, ctx) * 0.001 : tutorScore(chooser, i, ctx);          // Natural Order: the biggest one
@@ -7807,6 +7859,7 @@
   function tutor(g, f, ev, source) { return searching(g, ev, source, () => tutor0(g, f, ev, source)); }
   function tutor0(g, f, ev, source) {
     if (f.maxMv === 'X') f = Object.assign({}, f, { maxMv: g.xValue || 0 });                                // "mana value X or less": the X it was cast with
+    if (f.maxMv === 'SAC2') f = Object.assign({}, f, { maxMv: 2 + ((g._sacStats && g._sacStats.mv) || 0) });          // Eldritch Evolution: 2 plus the sacrificed creature's mana value
     const t = pickSearch(g, bestTutorTarget(g, f), f, source);
     if (!t) { ev.push({ type: 'note', text: 'Searched the library: nothing to find', source }); return; }
     const gi = g.graveyard.indexOf(t.inst);
@@ -7998,7 +8051,7 @@
     }
     if (n == null && !force) return null;
     if (n != null) ev.push({ type: 'pay', n });
-    if (victim) { g._sacStats = { p: Math.max(0, powerOf(g, victim)), t: Math.max(0, toughnessOf(g, victim)) }; leavePerm(g, victim, ev); ev.push({ type: 'note', text: `Sacrificed ${victim.card.name} to cast ${inst.card.name}` }); }          // _sacStats: "the sacrificed creature's power" (Momentous Fall)
+    if (victim) { g._sacStats = { p: Math.max(0, powerOf(g, victim)), t: Math.max(0, toughnessOf(g, victim)), mv: victim.token ? 0 : (victim.card.a.mv || 0) }; leavePerm(g, victim, ev); ev.push({ type: 'note', text: `Sacrificed ${victim.card.name} to cast ${inst.card.name}` }); }          // _sacStats: "the sacrificed creature's power" (Momentous Fall)
     if (inst.card.a.sacLandCost) { const l = g.battlefield.filter(q => q.asLand).sort((x, y) => (y.tapped - x.tapped) || landNow(g, x) - landNow(g, y))[0]; if (l) { leavePerm(g, l, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${l.card.name} to cast ${inst.card.name}` }); } }          // a land already tapped for mana goes first
     if (g.command.includes(inst)) g.command.splice(g.command.indexOf(inst), 1);
     else if (inst.alt === 'suspend') { g.hand.splice(g.hand.indexOf(inst), 1); inst.alt = null; inst.suspendN = inst.card.a.suspend.n; g.exile.push(inst); ev.push({ type: 'note', text: `${inst.card.name} is suspended with ${inst.suspendN} time counters` }); return ev; }
@@ -8335,6 +8388,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (f.type === 'token') v += n * (f.creature ? 1 + (+f.p || 0) : 0.8);
       if (f.type === 'draw') v += 1.5 * n;
       if (f.type === 'karnPlus') v += 1.6;
+      if (f.type === 'discardFor') v += (f.may && g.hand.length < f.n + 1 ? 0 : fxValue(g, f.then || []) - 0.75 * f.n);          // rules batch 39: discard N for the rest
+      if (f.type === 'sacPower') v += 1.5 * g.battlefield.filter(q => isCreaturePerm(q)).reduce((m, q) => Math.max(m, Math.min(4, powerOf(g, q))), 0);
       if (f.type === 'kindredSummons') { const tr = g.deck.tribe || curTribe; v += tr ? 3 * g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, tr)).length : 0; }
       if (f.type === 'karnMinus' && (g.silver || []).length) v += 1.5;
       if (f.type === 'flickerOne') v += g.battlefield.some(q => isCreaturePerm(q) && !q.token && q.card.a.triggers.some(t => t.kinds.includes('etb'))) ? 2.5 : 0;

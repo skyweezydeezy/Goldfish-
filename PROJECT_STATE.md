@@ -136,10 +136,27 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination`, #73 | [V] Verified, v142. Drafts #64, #65, #68, #72 closed. |
 | T-014 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN | `claude/main-coordination`, #73 | [V] Verified, v142 |
 
-Closed sessions with accepted handoffs [V]: Features and Enhancements (`session_01K5kL4YtUiLPEtX5ytjG6Su`), PR and Marketing
-(`session_01K5kL4WqRN1kBjvWc1Tsngx`), Combo and win conditions (`session_01K5kL4WWP7xAdzXoi29ynuk`), Remote versus agent
-(`session_01K5kL4ZJZZgeVGvAYfVT4Ld`), Token usage optimization (`session_01K5kL4WAVoR7GB6AAYSg8ui`, note `1f4e402`, advice only),
-App/User Requests (`session_01K5kL4ZHa2HpBw394qGVGjq`; its summary says "PR #47 held", but #47 is the merged Moving Parts deck PR [?]).
+**Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
+session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they
+replace are archived.
+
+| Area | Session | Id | Note | Work branch | Replaces (archived) |
+|---|---|---|---|---|---|
+| Engine card rules | Card Rules Engine 3 | `session_01K5kL4W5wx2aMmLP73o9seu` | ENGINE.md, ENGINE-2-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
+| Decision points | Decision Points 3 | `session_01K5kL4XqWbWKz7y7G2bUTMc` | DECISION-POINTS.md | `claude/decision-points-2` | `session_01K5kL4Zcst9FYJBqezvRjTK` |
+| Tutorial | Tutorial 2 | `session_01K5kL4Y7HdHsCLLBiRzf9eJ` | TUTORIAL.md | `claude/tutorial` | `session_01K5kL4W83TGViiS66xLyhrQ` |
+| Bug fixes | Error and issue fixes 3 | `session_01K5kL4Zs2Rj3w9SNjfYxB6M` | ERROR-FIXES-2.md | `claude/error-fixes-hakbal` | `session_01K5kL4YYZ9n2hdfpzktHqd2` |
+| Card teaching, Policy lab | Card teaching & Policy lab 2 | `session_01K5kL4YhRxNwAucFcxv2DYT` | CARD-TEACHING.md | `claude/card-teaching` | `session_01K5kL4Y1MvoJcQ6QEUCvRD4` |
+| Dead code, unsteady tests | Code Clean-up 2 | `session_01K5kL4VM41uFmohgknueiEg` | CODE-CLEANUP.md | `claude/code-cleanup` | `session_01K5kL4W7sYVsWQcgDzVLTfX` |
+| Combos and wins | Combo and win conditions 2 | `session_01K5kL4VNZYoUKU9qgzS4LHf` | COMBOS.md | `claude/combos` | `session_01K5kL4WWP7xAdzXoi29ynuk` |
+| Sound, effects, features | Features and Enhancements 2 | `session_01K5kL4We9hARMPwjfV9kDiZ` | SOUND-EFFECTS.md | `claude/sound-effects` | `session_01K5kL4YtUiLPEtX5ytjG6Su` |
+| Play a friend | Remote versus 2 | `session_01K5kL4VGPUcfnYXVRzRPpyD` | REMOTE-VERSUS.md, REMOTE-VERSUS-HANDOFF.md | `claude/remote-versus` | `session_01K5kL4ZJZZgeVGvAYfVT4Ld` |
+| Promotion | PR and Marketing 2 | `session_01K5kL4YpS91PFE97JzdhaDg` | docs/promo/HANDOFF-PR-and-Marketing.md | `claude/promo` | `session_01K5kL4WqRN1kBjvWc1Tsngx` |
+| App, local mode, user requests | App/User Requests 2 | `session_01K5kL4XD6qbMzEGonfuFZD1` | none (brief from its summary) | `claude/app-requests` | `session_01K5kL4ZHa2HpBw394qGVGjq` |
+
+Archived without a replacement, because their one-off task is finished: Session management protocol (`session_01K5kL4WwjcWfZCuKtHVFAvU`,
+T-001), Token usage optimization (`session_01K5kL4WAVoR7GB6AAYSg8ui`, advice in TOKEN-USE.md). The retired Visuals/Main
+(`session_01K5kL4YgVQ6tZxzA48G59TU`) is archived too.
 
 Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
 

@@ -1,6 +1,6 @@
 # Handoff: Card Rules Engine 2
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 > 2026-11-23 13:34 UTC: the Visuals/MAIN session (`session_01K5kL4YgVQ6tZxzA48G59TU`) is retiring. It recorded this closing report in `MAIN_HANDOFF.md` §5–§7 on `claude/goldfish-visual-design-3yh2hy`. Batches 37–41 and the shock fix are in **PR #69, not merged**. Acceptance, integration, the version number and the next engine session's name come from the **replacement MAIN** (not yet known here).
 

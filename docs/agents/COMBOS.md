@@ -1,6 +1,10 @@
 # Handoff: Combos session
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY the next main session (its id is the one at the top of `CLAUDE.md`)**
+
+Accepted by MAIN (the Visuals session, `session_01K5kL4YgVQ6tZxzA48G59TU`) on 2026-11-23. Its account of the open items below:
+items 1 and 2 are on the next main session's list; item 3 is done in engine batches 36 and 37 (going live with PR #69); item 4 is
+done (ee922f7, live since Version 128); item 5 is fixed in Version 132. These are MAIN's statements; this session did not verify them.
 
 | | |
 |---|---|

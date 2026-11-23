@@ -33,7 +33,7 @@ Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the co
 - **Magda, Brazen Outlaw**: `magdaTap(g, q, ev)` makes the Treasure for a Dwarf tapped for mana (`pay`), for a {T} ability (the three `activate` events) and by the new Dwarf abilities; combat keeps its own code. Not seen: convoke and crew.
 - **Return the Favor**: `a.favorAbility`; `favorCopy` casts it from the hand ({R}{R} + {1}) to copy a triggered ability (`fireNow0`) or an activated ability (`abilityCopy`, loyalty abilities included) worth 4 or more (`fxValue`).
 - **Axgard Cavalry** (`a.hasteTap`, `hasteTaps` before attackers), **Dwarven Bloodboiler** (`a.tribeTapPump`, `dwarfPump` after attackers; goldfish only), **Vault Robber** (`a.vaultRobber`) and **Óin's rummage** (`a.tapRummage`) in `dwarfEnd` at the end step; **Óin's storied** (`a.storyBuff`, `enduringStory(g)` sets `g.story` for good) in `condAnthem` and `hasKw`.
-- The autopilot actions skip a seated person (`g.ask`); Cavalry, Óin and Bloodboiler stay in a person's ability menu. Vault Robber has no menu entry (as before).
+- After MAIN's review: a seated person is asked before each of these actions (`askUse`, kind 'protect', the autopilot's choice as the default), so taking every default plays the autopilot's game (`tests/engine/issue-78-seated.test.js`). `hasteTaps` runs in `combatStart`, so `previewAttack` and combat agree. Return the Favor asks a seated person too.
 - Test: `tests/engine/issue-78.test.js`. Sweep bad 0; fingerprint unchanged (no fixture deck has these cards).
 
 ## Gotchas

@@ -11039,6 +11039,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry && g.opp) for (const { q } of othersPerms(g)) if (q.card.a.citadelDragons && q.siegeMode === 'dragons') { const t = g.battlefield.filter(x => isCreaturePerm(x) && !x.tapped && targetable(g, x)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t) { t.tapped = true; ev.push({ type: 'note', text: `${q.card.name} (Dragons): ${t.card.name} is tapped`, source: q }); } }          // Citadel Siege
     for (const q of (tableHas(g, 'hasteAll') ? g.battlefield : NONE)) if (q.card.a.hasteAll && !q.tapped && g.battlefield.some(c => isCreaturePerm(c) && c.sick)) { q.tapped = true; g.battlefield.forEach(c => { if (isCreaturePerm(c)) c.sick = false; }); }          // Crashing Drawbridge
     for (const q of (tableHas(g, 'hasteGive') ? g.battlefield : NONE)) { const hg = q.card.a.hasteGive; if (hg && !q.tapped) { const t = g.battlefield.filter(c => isCreaturePerm(c) && c.sick && !c.tapped && powerOf(g, c) >= 2).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t && canPay(hg.cost, allUnits(g).filter(u => u.src !== q))) { q.tapped = true; pay(g, hg.cost); t.sick = false; t.eotP = (t.eotP || 0) + hg.p; } } }          // Slayers' Stronghold
+    if (!g.dry) hasteTaps(g, ev);          // Axgard Cavalry: here, at the beginning of combat, so the attack preview (previewAttack) sees the hasted creature too
     g._wonder = g.graveyard.some(i => i.card.a.wonderFly) && g.battlefield.some(q => q.asLand && /\bIsland\b/.test(q.card.type_line || ''));
     g._anger = g.graveyard.some(i => i.card.a.angerHaste) && g.battlefield.some(q => q.asLand && /\bMountain\b/.test(q.card.type_line || ''));
     if (!g.dry) for (const q of g.battlefield.slice()) {
@@ -11108,7 +11109,6 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (let ph = 0; ph < phases && ph < 6; ph++) {
       if (g.throttleTurn === g.turn && !g.dry) g.battlefield.forEach(q => { if (isCreaturePerm(q) && q.attackedTurn === g.turn) q.tapped = false; });          // Full Throttle: attackers untap at each combat
       crewVehicles(g, ev);
-      if (ph === 0 && !g.dry && !g.ask && !g.forceAttackers) hasteTaps(g, ev);          // Axgard Cavalry
       let attackers = g.battlefield.filter(p => canAttack(g, p));
       if (g.opp && !g.dry && !g.forceAttackers && attackers.length) preAttack(g, attackers, ev);          // Rogue's Passage, Kumena, Endbringer, Pemmin's Aura
       if (g.forceAttackers) attackers = attackers.filter(p => g.forceAttackers.includes(p.iid));          // a human chose the attackers
@@ -11184,7 +11184,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const units = allUnits(g), keep = g.hand.filter(c => !c.card.a.isLand && canPay(effectiveCost(g, c), units)).reduce((m, c) => Math.max(m, (ec => ec.generic + ec.pips.length)(effectiveCost(g, c))), 0);          // mana kept for the spell the second main phase would cast
         for (let k = 0; k < 10 && toughnessOf(g, t) > 1 && allUnits(g).length - (ap.cost.generic + ap.cost.pips.length) >= keep && canPay(ap.cost, allUnits(g)); k++) { pay(g, ap.cost); t.eotP = (t.eotP || 0) + 1; t.eotT = (t.eotT || 0) - 1; } }
       for (const p of attackers.slice()) { const pu = p.card.a.pumpAb; if (pu) for (let k = 0; k < 8 && canPay(pu.cost, allUnits(g)); k++) { pay(g, pu.cost); p.eotP = (p.eotP || 0) + pu.p; p.eotT = (p.eotT || 0) + pu.t; } }          // firebreathing: spare mana makes the attackers bigger
-      if (!g.ask) dwarfPump(g, attackers, ev);          // Dwarven Bloodboiler
+      dwarfPump(g, attackers, ev);          // Dwarven Bloodboiler
       // The Ring, level 2: "whenever your Ring-bearer attacks, draw a card, then discard a card"
       let rb = ringBearer(g);
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
@@ -11390,7 +11390,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function endTurn0(g) {
     const iw = [];
     if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
-    if (!g.dry && !g.ask && !matchOver(g)) dwarfEnd(g, iw);          // Vault Robber, Óin the Brave
+    if (!g.dry && !matchOver(g)) dwarfEnd(g, iw);          // Vault Robber, Óin the Brave
     for (const i of g.hand.slice()) if (i.borrowed) { g.hand.splice(g.hand.indexOf(i), 1); const o = i.borrowed; i.borrowed = null; i.foreign = false; o.hand.push(i); }          // Sen Triplets: the cards you did not play go back to their owner's hand
     for (const q of g.battlefield.slice()) if (q.sneakTurn === g.turn) { iw.push({ type: "note", text: `${q.card.name} is sacrificed (Sneak Attack)`, source: q }); leavePerm(g, q, iw); flushLeaves(g, iw); }          // Sneak Attack, used by a person: sacrificed at the end step
     toxrillEnd(g, []);
@@ -12692,6 +12692,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   function unlockCostOf(g, c) { const less = g.battlefield.reduce((t, q) => t + (q.card.a.statics.unlockLess || 0), 0); return less && c ? { generic: Math.max(0, c.generic - less), pips: c.pips, x: c.x } : c; }          // Inquisitive Glimmer
   function infernoMult(g, src) { if (!g || g.dry || !src || !src.card) return 1; let m = 1; for (const q of ((tableHas(g, 'inferno') || tableHas(g, 'flareStar')) ? g.battlefield : NONE)) if ((q.card.a.inferno && q.infernoType && matchesFilter(src.card, q.infernoType)) || (q.card.a.flareStar && matchesFilter(src.card, q.card.a.flareStar))) m *= 2; for (const q of ((src.iid != null && tableHas(g, 'mjolnir')) ? g.battlefield : NONE)) if (q.card.a.mjolnir && q.attachedTo === src.iid) m *= 2; return m; }          // Mjölnir: the creature it equips          // Collective Inferno
   // T-041 (issue #78): Magda, Brazen Outlaw sees every Dwarf that becomes tapped outside combat; the Dwarves' own abilities
+  // a seated person is asked before each of these (the autopilot's choice is the default, so taking every default plays the autopilot's game)
+  function askUse(g, what, why, source, target) { return !g.ask || decide(g, { kind: 'protect', options: [what], def: what, optional: true, why, target: target || null, source: source || null }) != null; }
   function magdaTap(g, q, ev) { if (g.dry || !q || !q.card || !tableHas(g, 'tapTreasure') || !isCreaturePerm(q)) return; for (const mg of g.battlefield.filter(x => x.card.a.tapTreasure)) if (matchesFilter(q.card, mg.card.a.tapTreasure)) createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev || [], mg); }
   function enduringStory(g) { if (g.story) return true; if (g.battlefield.filter(q => artOn(g, q) || q.card.a.isLegendary || /\bSaga\b/.test(q.card.type_line || '')).length >= 3) g.story = true; return !!g.story; }          // storied: three artifacts, legendaries and/or Sagas once, for the rest of the game
   function hasteTaps(g, ev) {          // Axgard Cavalry: {T} before attackers: haste for a creature that came in this turn and hits harder than the Cavalry
@@ -12699,6 +12701,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!p.card.a.hasteTap || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste'))) continue;
       const t = g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.sick && !q.tapped && !hasKw(g, q, 'haste') && !hasKw(g, q, 'defender')).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
       if (!t || powerOf(g, t) <= powerOf(g, p)) continue;
+      if (!askUse(g, `Tap ${p.card.name}: ${t.card.name} gains haste`, `${p.card.name}, before attackers`, p, t)) continue;
       p.tapped = true; t.eotKw = new Set([...(t.eotKw || []), 'haste']); ev.push({ type: 'note', text: `${p.card.name}: ${t.card.name} gains haste`, source: p }); magdaTap(g, p, ev);
     }
   }
@@ -12708,6 +12711,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const tp = b.card.a.tribeTapPump; if (!tp || !g.battlefield.includes(b)) continue;
       for (const d of g.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && !attackers.includes(q) && matchesFilter(q.card, tp.type))) {
         const t = attackers.filter(x => g.battlefield.includes(x)).sort((x, y) => ((hasKw(g, y, 'double strike') ? 1 : 0) - (hasKw(g, x, 'double strike') ? 1 : 0)) || powerOf(g, y) - powerOf(g, x))[0]; if (!t) return;
+        if (!askUse(g, `Tap ${d.card.name}: ${t.card.name} gets +${tp.p}/+0`, `${b.card.name}, attackers declared`, b, t)) continue;
         d.tapped = true; t.eotP = (t.eotP || 0) + tp.p; ev.push({ type: 'note', text: `${b.card.name}: ${d.card.name} taps, ${t.card.name} gets +${tp.p}/+0`, source: b }); magdaTap(g, d, ev);
       }
     }
@@ -12718,6 +12722,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const vr = p.card.a.vaultRobber; if (!vr || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste'))) continue;
       const fod = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander).sort((x, y) => (x.card.a.mv || 0) - (y.card.a.mv || 0))[0];
       if (!fod) continue;
+      if (!canPay(vr, allUnits(g).filter(u => u.src !== p)) || !askUse(g, `{1}, tap ${p.card.name}, exile ${fod.card.name}: a Treasure`, `${p.card.name}, your end step`, p)) continue;
       p.tapped = true; if (!canPay(vr, allUnits(g)) || pay(g, vr) == null) { p.tapped = false; continue; }
       g.graveyard.splice(g.graveyard.indexOf(fod), 1); g.exile.push(fod);
       createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev, p); ev.push({ type: 'note', text: `${p.card.name}: ${fod.card.name} exiled from the graveyard for a Treasure`, source: p }); magdaTap(g, p, ev);
@@ -12725,6 +12730,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const p of (tableHas(g, 'tapRummage') ? g.battlefield.slice() : NONE)) {
       const rc = p.card.a.tapRummage; if (!rc || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste')) || !g.library.length) continue;
       if (g.battlefield.filter(q => q.asLand).length < 5 || !g.hand.some(i => i.card.a.isLand)) continue;          // only a land you no longer need
+      if (!canPay(rc, allUnits(g).filter(u => u.src !== p)) || !askUse(g, `{1}, tap ${p.card.name}, discard a card: draw a card`, `${p.card.name}, your end step`, p)) continue;
       p.tapped = true; if (!canPay(rc, allUnits(g)) || pay(g, rc) == null) { p.tapped = false; continue; }
       ev.push({ type: 'note', text: `${p.card.name}: discard a card, draw a card`, source: p }); discardWorst(g, ev); draw(g, 1, ev); magdaTap(g, p, ev);
     }
@@ -12733,7 +12739,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.dry || g.inCopy || g.inRespond || g.killTurn != null || !tableHas(g, 'favorAbility') || !fx || !fx.length || fxValue(g, fx) < 4) return false;
     const c = g.hand.find(i => i.card.a.favorAbility); if (!c) return false;
     const base = effectiveCost(g, c), cost = { generic: base.generic + 1, pips: base.pips, x: 0 };
-    if (!canPay(cost, allUnits(g)) || pay(g, cost) == null) return false;
+    if (!canPay(cost, allUnits(g)) || !askUse(g, `Cast ${c.card.name}: copy the ability of ${source && source.card ? source.card.name : 'a permanent'}`, `${source && source.card ? source.card.name : 'An ability'}`, source || null) || pay(g, cost) == null) return false;
     g.hand.splice(g.hand.indexOf(c), 1); g.graveyard.push(c); fireCastTriggers(g, c, ev); g.spellsCast = (g.spellsCast || 0) + 1;
     ev.push({ type: 'note', text: `${c.card.name} is cast: the ability of ${source && source.card ? source.card.name : 'a permanent'} is copied`, source: source || null });
     g.inCopy = true; try { again(); } finally { g.inCopy = false; }

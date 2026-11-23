@@ -1,7 +1,7 @@
 /* ICEYfish - install the app on the Home Screen, so the browser keeps your data.
    Browsers limit what a website may keep: Safari on iPhone and iPad deletes it after 7 days without a visit, private browsing forgets it,
    clearing website data removes it, and there is a size cap. An app on the Home Screen is not under Safari's 7-day rule.
-   Any link to "#install" (the footer, Saved decks, or a shared link: https://skyweezydeezy.github.io/Goldfish-/#install) opens the
+   Any link to "#install" (the footer, Saved decks, or a shared link: https://skyweezydeezy.github.io/ICEYfish/#install) opens the
    install sheet. Android and desktop Chrome / Edge: one tap opens the browser's own Install prompt. iPhone and iPad: Apple lets no web
    page add itself to the Home Screen, so the sheet shows the two taps (Share, then Add to Home Screen). */
 (function () {

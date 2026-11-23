@@ -1,5 +1,6 @@
 // Soul Brokers (Teysa Karlov)
 // Bracket 3
+// Checked by ICEYfish (v151, 20,000 games): median kill T9, 0% by T5, 8.8% by T7; field win 42.3%; 3 Game Changers; B3 confirmed
 // COMMANDER
 1 Teysa Karlov (SLD) 1235
 // DECK

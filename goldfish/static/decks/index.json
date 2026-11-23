@@ -55,7 +55,7 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
-   "bracket": 5,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -409,7 +409,7 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "bracket": 5,
+   "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -483,7 +483,7 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "bracket": 5,
+   "bracket": 4,
    "policy": {
     "tutorFocus": "payoff"
    },

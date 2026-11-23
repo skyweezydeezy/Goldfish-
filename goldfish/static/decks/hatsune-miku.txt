@@ -1,5 +1,6 @@
 // Hatsune Miku (Trostani, Selesnya's Voice)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 2.2% by T5, 36.9% by T7; field win 47.7%; 3 Game Changers; B4 confirmed
 // COMMANDER
 1 Trostani, Selesnya's Voice (SLD) 2429
 // DECK

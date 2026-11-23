@@ -1,5 +1,6 @@
 // Scorched Sky (The Ur-Dragon)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 4.8% by T5, 54.7% by T7; field win 60.2%; 19 Game Changers; B4 confirmed
 // COMMANDER
 1 The Ur-Dragon (CMM) 1065
 // DECK

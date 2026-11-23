@@ -74,7 +74,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     check('"?" opens the help menu', !!(await p.$('#tutMenu .tut-m-tour')));
     await p.click('.tut-m-tour'); await p.waitForSelector('.tut-bubble');
     check('"Tour of Practice" replays the current tab\'s tour', (await p.evaluate(() => ISFTutorial.active.id)) === 'tab:table');
-    await p.click('.tut-skip'); await p.waitForTimeout(200);
+    await p.click('.tut-close'); await p.waitForTimeout(200);
     check('Skip closes it in one tap', !(await p.$('.tut-bubble')));
     await p.click('.top-help'); await p.click('.tut-m-tour'); await p.waitForSelector('.tut-bubble');
     await p.keyboard.press('Escape'); await p.waitForTimeout(200);
@@ -83,7 +83,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     await p.click('.top-help'); await p.click('.tut-m-tour'); await p.waitForSelector('.tut-bubble');
     await p.mouse.click(5, 790); await p.waitForTimeout(200);
     check('a tap on the dimmed page does not reach the app', (await p.evaluate(() => window.ISFTutorial.active && window.ISFTutorial.active.id)) === 'tab:table');
-    await p.click('.tut-skip');
+    await p.click('.tut-close');
     await p.click('[data-tab=deck]');
     check('the app works after a tour', (await p.evaluate(() => document.body.dataset.view)) === 'deck');
     // restart: progress gone, the current tab's tour again, and the others on their next visit
@@ -122,7 +122,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto(URL);
-    if (!tabs.includes('deck')) { await p.waitForSelector('.tut-bubble'); await p.tap('.tut-skip'); }
+    if (!tabs.includes('deck')) { await p.waitForSelector('.tut-bubble'); await p.tap('.tut-close'); }
     for (const t of tabs) {
       if (t !== 'deck') await p.tap(`[data-tab=${t}]`);
       const ok = await p.waitForFunction(id => window.ISFTutorial.active && window.ISFTutorial.active.id === id, 'tab:' + t, { timeout: 5000 }).then(() => true, () => false);
@@ -151,7 +151,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto(URL); await p.waitForSelector('.tut-bubble', { timeout: 6000 }).catch(() => {});
-    const w = await p.evaluate(() => { const b = document.querySelector('.tut-bubble'); return b ? [b.querySelector('.tut-title').textContent, b.querySelector('.tut-next').textContent, b.querySelector('.tut-skip').textContent] : null; });
+    const w = await p.evaluate(() => { const b = document.querySelector('.tut-bubble'); return b ? [b.querySelector('.tut-title').textContent, b.querySelector('.tut-next').textContent, b.querySelector('.tut-close').textContent] : null; });
     check('welcome: the first visit shows the welcome card with Take the tour / Skip', w && /Welcome/.test(w[0]) && w[1] === 'Take the tour' && w[2] === 'Skip', w && w.join(' / '));
     await p.click('.tut-next');
     check('welcome: Take the tour starts this tab\'s tour', await p.waitForFunction(() => window.ISFTutorial.active && window.ISFTutorial.active.id === 'tab:deck', null, { timeout: 4000 }).then(() => true, () => false));
@@ -160,7 +160,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     check('welcome: only once', !(await p.$('.tut-bubble')));
     // Skip: no tour by itself afterwards, all of them still under ?
     await p.evaluate(() => { localStorage.removeItem('isf_tutorial'); }); await p.reload();
-    await p.waitForSelector('.tut-bubble', { timeout: 6000 }); await p.click('.tut-skip');
+    await p.waitForSelector('.tut-bubble', { timeout: 6000 }); await p.click('.tut-close');
     await p.click('[data-tab=sim]'); await p.waitForTimeout(1200);
     check('welcome: Skip keeps the tours quiet (no tour on a first tab visit)', !(await p.$('.tut-bubble')));
     await p.click('.top-help'); await p.click('.tut-m-tour');
@@ -221,6 +221,54 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     check('what\'s new: also from the ? menu', (await p.$$('.tut-new li')).length === 3);
     await p.keyboard.press('Escape');
     check('stage 4: no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  // ---- "Every feature": the long tour of a tab, of every tab, and the style for first visits ----
+  for (const [name, o] of [['PC', { viewport: { width: 1280, height: 800 } }], ['iPhone', devices['iPhone 13']]]) {
+    const ctx = await b.newContext({ ...o, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ welcome: 1, seen: { 'tab:deck': 1, 'tab:hands': 1, 'tab:table': 1, 'tab:sim': 1, 'tab:odds': 1, 'tab:duel': 1, 'tab:pod': 1 } })); });
+    await ctx.addInitScript(quiet);
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    await p.goto(URL); await p.waitForTimeout(1500);
+    const tapc = sel => name === 'iPhone' ? p.tap(sel) : p.click(sel);
+    // every tab, one after another
+    await tapc('.top-help'); await tapc('.tut-m-fullall');
+    await p.waitForSelector('.tut-bubble');
+    const total = await p.evaluate(() => window.ISFTutorial.active.of);
+    const short = await p.evaluate(() => Object.values(window.ISFTutorial.tours).reduce((n, t) => n + t.length, 0));
+    check(`${name} every feature: the long tour has far more steps than the short tours together`, total > 2 * short, `${total} vs ${short}`);
+    const views = new Set(); let worst = 0, inView = true, k = 0, worstAt = '';
+    while (await p.evaluate(() => !!window.ISFTutorial.active) && k++ < 200) {
+      const off = await spotOff(p); if (typeof off === 'number' && off > worst) { worst = off; worstAt = await p.$eval('.tut-title', e => e.textContent); }
+      if (!(await bubbleIn(p))) { inView = false; worstAt += ' [off screen: ' + (await p.$eval('.tut-title', e => e.textContent)) + ']'; }
+      views.add(await p.evaluate(() => document.body.dataset.view));
+      await tapc('.tut-next'); await p.waitForTimeout(120);
+    }
+    await tapc('[data-tab=deck]'); await p.waitForTimeout(500);
+    check(`${name} every feature: it walks through all seven tabs to the end`, views.size === 7 && k < 200, [...views].join(','));
+    check(`${name} every feature: the spotlight sits on each element, the bubble on screen`, worst <= 3 && inView, `worst ${worst}px at ${worstAt}`);
+    // the step count names the tab; "Next tab ›" jumps ahead
+    await tapc('.top-help'); await tapc('.tut-m-fullall'); await p.waitForFunction(() => /\d/.test((document.querySelector('.tut-count') || {}).textContent || ''));
+    const c1 = await p.$eval('.tut-count', e => e.textContent);
+    await tapc('.tut-jump'); await p.waitForTimeout(700);
+    const c2 = await p.$eval('.tut-count', e => e.textContent), v2 = await p.evaluate(() => document.body.dataset.view);
+    check(`${name} every feature: the count names the tab, and Next tab › jumps to the next tab`, /^Build · 1 of \d+/.test(c1) && /^Mulligan · /.test(c2) && v2 === 'hands', `${c1} → ${c2}`);
+    await tapc('.tut-close');
+    // one tab, every feature
+    await tapc('[data-tab=hands]'); await p.waitForTimeout(400);
+    await tapc('.top-help'); await tapc('.tut-m-full'); await p.waitForSelector('.tut-bubble');
+    const one = await p.evaluate(() => [window.ISFTutorial.active.id, window.ISFTutorial.active.of, window.ISFTutorial.full.hands.length]);
+    check(`${name} every feature: "Every feature: Mulligan" is this tab's long tour`, one[0] === 'tab:hands' && one[1] === one[2], one.join(' / '));
+    await tapc('.tut-close');
+    // the style for first visits
+    await tapc('.top-help'); await tapc('.tut-m-style');
+    await p.evaluate(() => { const pr = window.ISFTutorial.progress(); pr.seen = { 'tab:deck': 1, 'tab:hands': 1 }; localStorage.setItem('isf_tutorial', JSON.stringify(pr)); });
+    await tapc('[data-tab=odds]');
+    const auto = await p.waitForFunction(() => window.ISFTutorial.active && window.ISFTutorial.active.id === 'tab:odds' && window.ISFTutorial.active.of === window.ISFTutorial.full.odds.length, null, { timeout: 5000 }).then(() => true, () => false);
+    check(`${name} every feature: chosen as the style, a first visit shows the long tour`, auto);
+    await tapc('.tut-close');
+    check(`${name} every feature: no page errors`, errs.length === 0, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
 

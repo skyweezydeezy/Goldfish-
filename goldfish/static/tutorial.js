@@ -39,16 +39,17 @@
   }
 
   function build() {
-    const root = document.createElement('div'); root.className = 'tut'; root.id = 'tutorial';
+    const root = document.createElement('div'); root.className = 'tut tut-pre'; root.id = 'tutorial';          // tut-pre: the bubble stays out of sight until its first step is filled in
     root.innerHTML = '<div class="tut-block" data-b="t"></div><div class="tut-block" data-b="b"></div><div class="tut-block" data-b="l"></div><div class="tut-block" data-b="r"></div><div class="tut-block" data-b="c"></div>' +
       '<div class="tut-spot"></div>' +
       '<div class="tut-bubble" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutText" tabindex="-1">' +
-      '<div class="tut-head"><span class="tut-count"></span><button type="button" class="tut-skip" aria-label="Skip the tour">Skip</button></div>' +
+      '<div class="tut-head"><span class="tut-count"></span><span class="tut-head-btns"><button type="button" class="tut-skip tut-jump" hidden>Next tab ›</button><button type="button" class="tut-skip tut-close" aria-label="Skip the tour">Skip</button></span></div>' +
       '<h3 id="tutTitle" class="tut-title"></h3><div id="tutText" class="tut-text"></div>' +
       '<div class="tut-foot"><button type="button" class="ghost tut-back">Back</button><button type="button" class="primary tut-next">Next</button></div></div>';
     document.body.appendChild(root);
     const blockers = {}; root.querySelectorAll('.tut-block').forEach(b => { blockers[b.dataset.b] = b; b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); nudge(); }); });
-    root.querySelector('.tut-skip').addEventListener('click', () => stop('skip'));
+    root.querySelector('.tut-close').addEventListener('click', () => stop('skip'));
+    root.querySelector('.tut-jump').addEventListener('click', () => { if (!run) return; const c = run.steps[run.i].chapter, n = run.steps.findIndex((x, k) => k > run.i && x.chapter !== c); if (n > 0) go(n - run.i); });          // the long tour of every tab: on to the next tab
     root.querySelector('.tut-back').addEventListener('click', () => go(-1));
     root.querySelector('.tut-next').addEventListener('click', () => go(1));
     return { root, blockers, spot: root.querySelector('.tut-spot'), bubble: root.querySelector('.tut-bubble') };
@@ -103,7 +104,7 @@
     const el = findEl(s);
     if (el && s.scroll !== false) { const rc = el.getBoundingClientRect(); if (rc.top < 60 || rc.bottom > innerHeight - 40 || rc.left < 0 || rc.right > innerWidth) el.scrollIntoView({ block: rc.top < 60 || rc.bottom > innerHeight - 40 ? 'center' : 'nearest', inline: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }          // also sideways: a phone's toolbar scrolls
     const total = r.steps.length;
-    r.bubble.querySelector('.tut-count').textContent = total > 1 ? `${i + 1} of ${total}` : '';
+    r.bubble.querySelector('.tut-count').textContent = (s.chapter ? s.chapter + ' · ' : '') + (total > 1 ? `${i + 1} of ${total}` : '');
     r.bubble.querySelector('.tut-title').textContent = (typeof s.title === 'function' ? s.title() : s.title) || '';
     r.bubble.querySelector('.tut-text').innerHTML = s.html || esc((typeof s.text === 'function' ? s.text() : s.text) || '');
     r.bubble.querySelector('.tut-back').hidden = i === 0 || s.back === false;
@@ -111,9 +112,10 @@
     next.hidden = (!!s.tap || !!s.until) && !!el;
     r.lostAt = 0;
     next.textContent = s.nextLabel || (i === total - 1 ? 'Done' : 'Next');
-    r.bubble.querySelector('.tut-skip').textContent = s.skipLabel || (i === total - 1 ? 'Close' : 'Skip');
+    r.bubble.querySelector('.tut-close').textContent = s.skipLabel || (i === total - 1 ? 'Close' : 'Skip');
+    r.bubble.querySelector('.tut-jump').hidden = !s.chapter || !r.steps.some((x, k) => k > i && x.chapter !== s.chapter);
     r.root.classList.toggle('tut-tap', (!!s.tap || !!s.through) && !!el);
-    r.root.dataset.step = s.id || String(i);
+    r.root.dataset.step = s.id || String(i); r.root.classList.remove('tut-pre');
     r.last = '';
     if (i > 0 || d < 0) { r.root.classList.add('tut-moving'); clearTimeout(r.moveT); r.moveT = setTimeout(() => r.root.classList.remove('tut-moving'), 260); }
     place();
@@ -384,7 +386,139 @@
   const NAMES = { deck: 'Build', hands: 'Mulligan', table: 'Practice', sim: 'Simulate', odds: 'Odds', duel: 'Duel', pod: 'Pod' };
   const view = () => document.body.dataset.view || 'deck';
   const blocked = () => !!document.querySelector('.modal.show, .lightbox.show, .ch-sheet');          // another sheet is open: wait
-  function tour(t) { return TOURS[t] ? start('tab:' + t, TOURS[t]) : Promise.resolve('none'); }
+
+  // ---- "Every feature": the long tour of each tab (chosen in the ? menu). Every control, one short step each. A part that only shows
+  // once a deck is loaded (or a game is on) is still explained: the bubble then sits in the middle, without a spotlight. ----
+  const box = sel => () => { const e = document.querySelector(sel); return e && (e.closest('.card-box') || e); };
+  const vs = (m, sel) => `#tab-${m} ${sel}`;
+  const vsBox = (m, sel) => () => { const e = document.querySelector(vs(m, sel)); return e && (e.closest('.card-box') || e); };
+  const FULL = {
+    deck: [
+      { el: '.tabs', title: 'Seven tabs', text: 'Build reads your deck. Mulligan, Practice, Simulate, Odds, Duel and Pod use it.' },
+      { el: '#mirrorStatus', title: 'Card data', text: 'Where the cards come from: Scryfall, live in your browser.' },
+      { el: '#appVersion', title: 'Version', text: 'The version you run. An outline means a newer one is out: tap to update.' },
+      { el: '.topbar .top-sound', title: 'Sound', text: 'Music and sound effects, each with its own volume.' },
+      { el: '.topbar .top-help', title: 'Help', text: 'Tours, sample games, first goals and what\'s new.' },
+      { el: '#deckText', title: 'Paste a decklist', text: 'Moxfield, Archidekt, MTGO or plain text. Mark commanders with a Commander section or *CMDR*.' },
+      { el: '#loadDeck', title: 'Load deck', text: 'Looks up every card. Then every tab works with the deck.' },
+      { el: '#clearDeck', title: 'Clear', text: 'Empties the box for a new list. The loaded deck stays until you load another.' },
+      { el: '#saveDeck', title: 'Save', text: 'Keeps the list in this browser.' },
+      { el: '#savedDecks', title: 'Choose a deck', text: 'Built-in decks, grouped by bracket and colors, and the ones you saved.' },
+      { el: '#manageDecks', title: 'Manage', text: 'Rename, copy, export, import or delete saved decks. Reset is in its footer.' },
+      { el: '#optFormat', title: 'Format', text: 'Commander (40 life, a free mulligan) or 60-card (20 life).' },
+      { el: '#optTurns', title: 'Turns to simulate', text: 'How many turns each simulated game lasts.' },
+      { el: '#optMinLands', title: 'Keepable lands', text: 'The autopilot keeps a 7 with this many lands up to the next box, else it mulligans.' },
+      { el: () => { const e = document.querySelector('#optFreeMull'); return e && e.closest('label'); }, title: 'First mulligan free', text: 'Commander\'s free first mulligan.' },
+      { el: () => { const e = document.querySelector('#optOnPlay'); return e && e.closest('label'); }, title: 'On the play', text: 'Skip the draw on turn 1.' },
+      { el: () => { const e = document.querySelector('#optCmdrFirst'); return e && e.closest('label'); }, title: 'Commander first', text: 'The autopilot casts the commander as soon as it can.' },
+      { el: '#optLife', title: 'Opponent life', text: 'The goldfish\'s life: the damage needed to kill it.' },
+      { el: '#optN', title: 'Games per simulation', text: '10,000 games: each percentage within about one point.' },
+      { el: ['#deckTiles:not(:empty)'], title: 'Key numbers', text: 'Cards, lands, average mana value and more, at a glance.' },
+      { el: ['#deckProfile:not([hidden])'], title: 'Strengths and weaknesses', text: 'Read from the list with common deckbuilding rules of thumb. Open a heading for the cards.' },
+      { el: ['#deckCombos:not([hidden])'], title: 'Combos and wins', text: 'Combos found in the list, cards that win outright, and finishers. The autopilot plays them.' },
+      { el: ['#deckTags:not([hidden])'], title: 'Tags', text: 'What each card does, in groups. Tap a tag to list those cards.' },
+      { el: ['#deckTags:not([hidden]) #tagQuery'], title: 'Search by tag', text: 'Combine tags: role:ramp -type:land. Draw odds sends the cards to the Odds tab; Tag these… adds your own tag.' },
+      { el: box('#curveWall'), title: 'Curve wall', text: 'Every spell stacked by mana value. Hover or tap a card to see it large.' },
+      { el: box('#landWall'), title: 'Lands & mana', text: 'Your lands and the colors they make.' },
+      { el: box('#coverage'), title: 'How the engine reads your cards', text: 'Each line of rules text: simulated, approximate, needs an opponent, or in development.' },
+      { el: () => { const e = document.querySelector('#covOnlyGaps'); return e && e.closest('label'); }, title: 'Only the gaps', text: 'Show just the cards with parts still in development.' },
+      { el: 'main .info-tog', optional: true, title: 'ⓘ', text: 'Every explanation is folded behind ⓘ. Tap it to read more.' },
+    ],
+    hands: [
+      { el: '#drawHand', title: 'Draw a 7', text: 'A fresh opening hand from your deck.' },
+      { el: '#mullHand', title: 'Mulligan', text: 'Shuffle it away and draw again. Cards to put on the bottom are greyed.' },
+      { el: '#keepHand', title: 'Keep', text: 'Play this hand on the Practice table.' },
+      { el: '#dealMany', title: '12 sample hands', text: 'A dozen hands at once, for a feel of the deck.' },
+      { el: '#handVerdict', optional: true, title: 'Verdict', text: 'Would the autopilot keep this hand, and why.' },
+      { el: '#tab-hands .hands-looks', title: 'Playmat & sleeves', text: 'Choose the look of your table and card backs.' },
+      { el: '#handStage', title: 'Your hand', text: 'Tap a card to see it large.' },
+      { el: box('#chartOpenLands'), title: 'Lands in your 7', text: 'The exact odds of each land count.' },
+      { el: box('#keepStats'), title: 'A keepable hand', text: 'How often the autopilot keeps, and what a good 7 holds.' },
+    ],
+    table: [
+      { el: '.speed-bar', title: 'Autopilot speed', text: 'From turtle to rabbit: how fast the autopilot plays.' },
+      { el: '#tNew', title: 'New game', text: 'Shuffle and deal a new game. The autopilot picks the mulligans.' },
+      { el: '#tAuto', title: 'Autopilot turn', text: 'The autopilot plays the rest of this turn.' },
+      { el: '#tAutoTo', title: 'Autopilot to turn', text: 'It plays on to the turn in the box.' },
+      { el: '#tLoop', title: 'Loop', text: 'Game after game until the goldfish is dead, with a tally of kill turns. Tap again to stop.' },
+      { el: '#tNext', title: 'Next turn', text: 'Attack with everything, then untap and draw.' },
+      { el: '#tToken', title: 'Token', text: 'Make any token by hand.' },
+      { el: '#tUndo', title: 'Undo', text: 'Take back the last action.' },
+      { el: '#tLog', optional: true, title: 'Log', text: 'Open the game log (on wide screens it is always beside the table).' },
+      { el: '#tab-table .table-controls .open-looks', title: 'Playmat & sleeves', text: 'The look of your table.' },
+      { el: () => { const e = document.querySelector('#tFast'); return e && e.closest('label'); }, title: 'Fast', text: 'Shorter animations.' },
+      { el: '#hTurn', title: 'Turn', text: 'The turn you are on.' },
+      { el: '.hud-mana', title: 'Mana open', text: 'The mana you can still spend, by color.' },
+      { el: '#hLife', title: 'Opponent life', text: 'The goldfish. Tap it to deal damage by hand.' },
+      { el: '#hMyLife', title: 'Your life', text: 'Your own life total.' },
+      { el: '#hRing', title: 'The Ring', text: 'How often the Ring has tempted you, for Ring decks.' },
+      { el: '#hCmdr', title: 'Commander damage', text: '21 from one commander also kills.' },
+      { el: '#hPower', title: 'Board power', text: 'The total power of your creatures.' },
+      { el: '#hSpent', title: 'Mana spent', text: 'All the mana used this game.' },
+      { el: '#zLibrary', title: 'Library', text: 'Cards left to draw.' },
+      { el: '#zCommand', title: 'Command zone', text: 'Your commander waits here.' },
+      { el: '#zGrave', title: 'Graveyard', text: 'Tap to look through it.' },
+      { el: '#zExile', title: 'Exile', text: 'Cards removed from the game.' },
+      { el: '#zCreatures', title: 'Battlefield', text: 'Creatures, then artifacts and enchantments, then lands.' },
+      { el: '#zHand', title: 'Your hand', text: 'Tap a card for its menu: play it, View card, counters, move it. Ctrl/⌘-click plays at once.' },
+      { el: () => { const e = document.querySelector('.table-log'); return e && e.getBoundingClientRect().width ? e : null; }, optional: true, title: 'Game log', text: 'Every play, step by step, and why.' },
+    ],
+    sim: [
+      { el: '#runSim', title: 'Run simulation', text: 'Thousands of games on autopilot against a goldfish.' },
+      { el: ['#simTiles:not(:empty)'], title: 'Key numbers', text: 'Kill turn, commander turn, mana and land drops.' },
+      { el: ['#simSuggest:not([hidden])'], title: 'Suggestions', text: 'Cards to add or cut, from this run.' },
+      { el: ['#simWins:not([hidden])'], title: 'How games end', text: 'Combo, a card that wins, or damage.' },
+      { el: box('#chartMana'), title: 'Mana by turn', text: 'The median, shaded from the 10th to the 90th percentile.' },
+      { el: box('#chartLands'), title: 'Land drops', text: 'The chance to have N lands on turn N.' },
+      { el: box('#chartCmdr'), title: 'Commander cast', text: 'On which turn the commander comes down.' },
+      { el: box('#chartKill'), title: 'Kill turn', text: 'When the goldfish dies: combat, burn, drain and commander damage.' },
+      { el: box('#chartDamage'), title: 'Damage by turn', text: 'Total damage dealt so far.' },
+      { el: box('#chartPower'), title: 'Board power', text: 'The power on your side each turn.' },
+      { el: '#mirrorBox', title: 'Mirror match', text: 'Your deck against another, or itself, both on autopilot: win rate and why.' },
+      { el: ['#faceBox:not([hidden])'], title: 'Two-faced cards', text: 'Which face the autopilot casts.' },
+      { el: '#labBox', title: 'Policy lab', text: 'Trial and error: the engine tries each option and keeps the better one for this deck.' },
+      { el: '#abBox', title: 'A/B test', text: 'Diagnose each card, cut one, try a replacement, and compare.' },
+      { el: box('#sampleButtons'), title: 'Sample games', text: 'Replay a fast, typical or slow game turn by turn.' },
+      { el: box('#heatmap'), title: 'When cards get played', text: 'The chance each card is played by each turn. Sort any column.' },
+    ],
+    odds: [
+      { el: '#catOdds', title: 'Odds by category', text: 'The chance you have seen a land, ramp, draw and so on.' },
+      { el: '#tab-odds .cat-ctl', title: 'Cards seen', text: 'Set how many cards you have drawn, with − and +.' },
+      { el: ['#catBody:not(:empty)'], title: 'Tap a row', text: 'It picks those cards for the turn-by-turn odds below.' },
+      { el: '#oddsTag', title: 'Select by tag', text: 'Pick cards with a tag search.' },
+      { el: '#oddsGroup', title: 'Quick groups', text: 'All lands, ramp, card draw or creatures.' },
+      { el: '#oddsK', title: 'At least', text: 'How many of the picked cards you need.' },
+      { el: '#oddsClear', title: 'Clear', text: 'Start the pick over.' },
+      { el: box('#oddsPicker'), title: 'Pick cards', text: 'Tap any cards. They count as one group.' },
+      { el: box('#chartOdds'), title: 'By turn', text: 'The exact chance to have them by each turn, as a chart and a table.' },
+    ],
+  };
+  const vsFull = m => [
+    { el: vs(m, '.vs-opp'), title: m === 'pod' ? 'Opponents' : 'Opponent', text: 'A built-in deck, a random one, a saved one, or a copy of yours.' },
+    { el: vs(m, '.vs-you'), title: 'Your seat', text: 'Play your deck yourself, or watch the autopilot play it.' },
+    { el: vs(m, '.vs-ask'), title: 'My choices', text: 'Be asked for targets, searches, modes and blocks, or let the autopilot decide.' },
+    { el: vs(m, '.vs-rounds'), title: 'Max rounds', text: 'The game stops after this many rounds.' },
+    { el: () => { const e = document.querySelector(vs(m, '.vs-loop')); return e && e.closest('label'); }, title: 'Loop', text: 'With the autopilot in every seat, game after game with a tally.' },
+    { el: vs(m, '.vs-new'), title: 'New game', text: 'Everyone rolls a d20. The highest goes first.' },
+    { el: vs(m, '.vs-what'), title: 'What you are asked', text: 'The list of choices you make, and what the autopilot still decides.' },
+    { el: [vs(m, '.vs-game:not([hidden]) .vs-bar')], title: 'Game bar', text: 'The round, the steps of the turn, and buttons to play on.' },
+    { el: [vs(m, '.vs-game:not([hidden]) .vs-arena')], title: 'The table', text: 'Every player\'s cards in play. Glowing cards can be played. Tap any card to read it.' },
+    { el: [vs(m, '.vs-game:not([hidden]) .vs-log')], title: 'Game log', text: 'Every play, newest at the bottom.' },
+    { el: vsBox(m, '.vs-run'), title: 'Play many games', text: 'Every seat on autopilot: win rates, and sample games to replay.' },
+  ];
+  FULL.duel = vsFull('duel'); FULL.pod = vsFull('pod');
+  // every tab, one after another: each tab's long tour, opening the tab first
+  function fullAll() {
+    const order = ['deck', 'hands', 'table', 'sim', 'odds', 'duel', 'pod'], steps = [];
+    for (const t of order) FULL[t].forEach((st, i) => steps.push(Object.assign({}, st, { chapter: NAMES[t] }, i ? {} : { before: () => { onTabNow(t); return sleep(350); } })));
+    return start('full:all', steps);
+  }
+  const onTabNow = t => { if (view() !== t) A().showTab(t); };
+  const fullTour = t => FULL[t] ? start('full:' + t, FULL[t]) : Promise.resolve('none');
+  // a tab's tour: short, or every feature (the style chosen in the ? menu, kept in the progress)
+  const tourStyle = () => load().style === 'full' ? 'full' : 'short';
+  function tour(t, style) { const st = (style || tourStyle()) === 'full' ? FULL[t] : TOURS[t]; return st ? start('tab:' + t, st) : Promise.resolve('none'); }
+  function toggleStyle() { const p = load(); p.style = tourStyle() === 'full' ? 'short' : 'full'; save(p); toast(p.style === 'full' ? 'First-visit tours now show every feature' : 'First-visit tours are short again'); }
 
   // the first visit to a tab: its tour, once (a short wait lets the tab draw itself first)
   let pending = 0;
@@ -400,11 +534,14 @@
   // ---- the "?" button: the help menu ----
   function menuItems() {
     return [
-      ['▶', `Tour of ${NAMES[view()] || 'this tab'}`, () => tour(view()), 'tut-m-tour'],
+      ['▶', `Tour of ${NAMES[view()] || 'this tab'}`, () => tour(view(), 'short'), 'tut-m-tour'],
+      ['☰', `Every feature: ${NAMES[view()] || 'this tab'}`, () => tour(view(), 'full'), 'tut-m-full'],
+      ['☰', 'Every feature, every tab', () => fullAll(), 'tut-m-fullall'],
       ['🐟', 'Sample game: Practice', () => sampleGame('practice'), 'tut-m-sample'],
       ['⚔', 'Sample game: Duel', () => sampleGame('duel'), 'tut-m-duel'],
       ['✓', `First goals · ${goalCount()} of ${GOALS.length}`, () => openGoals(), 'tut-m-goals'],
       ['★', 'What\'s new', () => whatsNew(true), 'tut-m-new'],
+      ['⚙', `First-visit tours: ${tourStyle() === 'full' ? 'every feature' : 'short'}`, () => toggleStyle(), 'tut-m-style'],
       ['↺', 'Restart the tutorial', () => restart(), 'tut-m-restart'],
     ];
   }
@@ -419,7 +556,7 @@
     }
     document.body.appendChild(m);
     const r = btn.getBoundingClientRect(), mw = m.offsetWidth;
-    m.style.top = Math.round(r.bottom + 6) + 'px';
+    m.style.top = Math.round(r.bottom + 6) + 'px'; m.style.maxHeight = Math.round(innerHeight - r.bottom - 14) + 'px';          // a phone held sideways: the menu scrolls
     m.style.left = Math.round(Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))) + 'px';
     btn.setAttribute('aria-expanded', 'true');
     m.querySelector('button').focus();
@@ -485,7 +622,7 @@
     document.body.appendChild(m);
     const btn = [...document.querySelectorAll('.tut-help')].find(e => e.getBoundingClientRect().width) || document.querySelector('.topbar');
     const r = btn.getBoundingClientRect(), mw = m.offsetWidth;
-    m.style.top = Math.round(r.bottom + 6) + 'px'; m.style.left = Math.round(Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))) + 'px';
+    m.style.top = Math.round(r.bottom + 6) + 'px'; m.style.maxHeight = Math.round(innerHeight - r.bottom - 14) + 'px'; m.style.left = Math.round(Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))) + 'px';
     (m.querySelector('button') || m).focus && (m.querySelector('button') || m).focus();
     setTimeout(() => { document.addEventListener('click', offMenu, true); document.addEventListener('keydown', escMenu, true); });
   }
@@ -568,7 +705,7 @@
   function reset() { try { localStorage.removeItem(KEY); } catch (e) { /* nothing saved */ } }
   function restart() { stop(); reset(); const p = load(); p.welcome = 1; save(p); maybeAuto(); if (!autoOn()) tour(view()); }
 
-  window.ISFTutorial = { start, stop, tour, restart, reset, sampleGame, takeSeed, welcome, whatsNew, checkTips, goals: GOALS, tips: TIPS, tours: TOURS, autoOn, progress: load, get active() { return run ? { id: run.id, step: run.i, of: run.steps.length } : null; }, get target() { return run ? findEl(run.steps[run.i]) : null; } };
+  window.ISFTutorial = { start, stop, tour, restart, reset, sampleGame, takeSeed, welcome, whatsNew, checkTips, fullAll, full: FULL, goals: GOALS, tips: TIPS, tours: TOURS, autoOn, progress: load, get active() { return run ? { id: run.id, step: run.i, of: run.steps.length } : null; }, get target() { const st = run && run.steps[run.i]; return st ? findEl(st) : null; } };
 
   addButtons();
   setTimeout(onLoad, 700);          // what's new or the welcome card, then the tab the app opens on (Remember State may restore one)

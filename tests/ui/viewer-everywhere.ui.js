@@ -47,6 +47,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const pickedHands = await p.$$eval('.mini-hand.selected', x => x.length);
   check('Opening Hands: sample hand card, 🔍 corner opens it without picking the hand', await opens('.mini-hand .mtg:nth-child(2)', 'cornerL') === true && pickedHands === await p.$$eval('.mini-hand.selected', x => x.length));
   check('Opening Hands: sample hand card, right-click', await opens('.mini-hand .mtg', 'right') === true);
+  await p.click('[data-tab=deck]'); await p.fill('#optN', '500');          // a sample game is all this needs: the default 10,000 games took over two minutes
   await p.click('[data-tab=sim]'); await p.click('#runSim');
   await p.waitForSelector('#sampleButtons button', { timeout: 120000 });
   await p.click('#sampleButtons button'); await p.waitForTimeout(1500);

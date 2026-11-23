@@ -54,9 +54,7 @@
     return games.map(g => copy(g));
   }
   // The whole state of a pod as text: two games are in the same state exactly when their dumps are equal (used by the tests).
-  // skip: more keys to leave out. SCRATCH: what the engine writes while it works out what a card costs (G.effectiveCost), recomputed
-  // before it is used. Looking at a card (can it be cast?) writes them, so two devices showing different cards differ only there.
-  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped']);
+  // skip: more keys to leave out.
   function dump(games, skip) {
     const ids = new Map();
     ownAll(games);
@@ -317,24 +315,6 @@
       answers.push({ sig: r.ask.sig, pick: await choose(r.ask, r.view) });
     }
   }
-  // The same with several seats played by people at once (a game between two people: your removal spell asks you for its target, and
-  // asks the other player whether to counter it). answers: seat -> list. The probe stops at the first question of any of them; q.seat
-  // says whose it is.
-  function attemptSeats(games, pids, run, answers) {
-    const copy = clonePod(games);
-    pids.forEach(p => { copy[p].choices = { on: true, probe: true, answers: answers[p] || [], i: 0 }; });
-    try { run(copy); } catch (e) { if (e !== PENDING) throw e; const p = pids.find(x => copy[x].choices.pending); return { done: false, ask: copy[p].choices.pending, view: copy }; }
-    const cs = pids.map(p => (games[p].choices = { on: true, probe: false, answers: answers[p] || [], i: 0 }));
-    try { return { done: true, result: run(games), mismatch: cs.reduce((t, c) => t + (c.mismatch || 0), 0) }; } finally { pids.forEach(p => { games[p].choices = { on: false }; }); }
-  }
-  async function resolveSeats(games, pids, run, choose) {
-    const answers = {};
-    for (;;) {
-      const r = attemptSeats(games, pids, run, answers);
-      if (r.done) return r.result;
-      (answers[r.ask.seat] = answers[r.ask.seat] || []).push({ sig: r.ask.sig, pick: await choose(r.ask, r.view) });
-    }
-  }
   function resolveSync(games, pid, run, choose) {
     const answers = [];
     for (;;) {
@@ -497,7 +477,7 @@
     try { return instantAbilities(copy[pid]).filter(e => e.type !== 'note' || e.source).length > 0; } catch (e) { return false; }
   }
 
-  const api = { loyaltyQuestion, abilityQuestion, faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, attemptSeats, resolveSeats, SCRATCH, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, otherTurnWalkers, instantAbilities, wouldUseAbilities, quietBeginCombat };
+  const api = { loyaltyQuestion, abilityQuestion, faceQuestion, filterWords, clonePod, dump, question, ask, seat, attempt, resolve, resolveSync, PENDING, STEPS, STEP_NAME, turn, beginSteps, turnPlan, playPlan, summary, fxLabel, instantSpeed, instants, otherTurnWalkers, instantAbilities, wouldUseAbilities, quietBeginCombat };
   root.Decide = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

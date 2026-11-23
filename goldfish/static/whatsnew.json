@@ -1,0 +1,10 @@
+{
+  "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. The Visuals session adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
+  "entries": [
+    { "v": 137, "lines": ["Tours: each tab explains itself the first time you open it. Tap ? to see a tour again."] },
+    { "v": 136, "lines": ["ICEYfish remembers where you were: your tab, deck, settings and Practice game survive a reload."] },
+    { "v": 134, "lines": ["Duel and Pod: everyone rolls a d20 to see who goes first."] },
+    { "v": 130, "lines": ["Melded cards come together with an animation."] },
+    { "v": 121, "lines": ["3D dice and coins."] }
+  ]
+}

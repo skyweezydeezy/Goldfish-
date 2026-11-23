@@ -747,6 +747,15 @@
         if (/^whenever you tap ~ for mana, it deals 1 damage to each opponent\.?$/i.test(line)) { a.manaPing = 1; rec.status = 'ok'; continue; }          // Zhur-Taa Druid (pay)
         if (/^other rats you control have toxic 1\.?$/i.test(line)) { a.ratToxic = 1; rec.status = 'ok'; continue; }          // Karumonix (poisonOnHit)
       }
+      // ---- rules batch 64: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^whenever you attack, creatures you control with counters on them gain double strike until end of turn\.?$/i.test(line)) { TR(['attackAny'], [{ type: 'dsCounters' }], { once: true }); continue; }          // Chocobo Knights
+        if (/^(?:dragonfire dive — )?during your turn, ~ and other knights you control have flying\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnTribe', filter: 'knight', p: 0, t: 0, keywords: ['flying'] }); rec.status = 'ok'; continue; }          // Dion
+        if (/^if one or more \+1\/\+1 counters would be put on an army, goblin, or orc you control, that many plus one \+1\/\+1 counters are put on it instead\.?$/i.test(line)) { a.statics.counterPlusTribe = 'army|goblin|orc'; rec.status = 'ok'; continue; }          // Mauhúr (addCounters)
+        if (/^commander creatures you own have "~ enters with an additional \+1\/\+1 counter on it" and "other creatures you control enter with an additional \+1\/\+1 counter on them\."$/i.test(line)) { a.statics.enterCounter = { filter: '', n: 1, cmdr: true }; rec.status = 'ok'; continue; }          // Master Chef: with your commander out
+        if (/^whenever one or more \+1\/\+1 counters are put on a creature you control, ~ deals that much damage to target opponent\.?$/i.test(line)) { a.triggers.push({ kinds: ['countersPut'], fx: [{ type: 'damage', n: 'THAT' }], text: raw }); rec.status = 'ok'; continue; }          // Shalai and Hallar
+        if (/^whenever you cast a faerie or wizard permanent spell, copy it\.?$/i.test(line)) { a.statics.copyTribePerm = 'faerie|wizard'; rec.status = 'ok'; continue; }          // Archmage of Echoes (castCard)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -3842,6 +3851,7 @@
     if (a.questAnthem && q.other && (q.other.quest || 0) >= a.questAnthem.n) { info.anthems.push({ src: q, an: { other: false, filter: '', p: a.questAnthem.p, t: a.questAnthem.t, keywords: [] } }); info.byCard.clear(); }          // Beastmaster Ascension
     if (st.stolenBuff) info.don++;
     if (st.counterPlus) info.cplus += st.counterPlus;
+    if (st.counterPlusTribe) (info.cplusTribe = info.cplusTribe || []).push(st.counterPlusTribe);          // rules batch 64: Mauhúr
     if (st.branching) info.cbr += st.branching;
     if (a.coffers) info.coffers.push(q);
     if (st.forestDouble) info.forestDouble = true;
@@ -3913,6 +3923,7 @@
       else if (d.kind === 'selfLife') on = src === p && g.life >= (g.opts.startLife || 40) + d.over;          // rules batch 61: Elenda
       else if (d.kind === 'selfOil') on = src === p && ((p.other && p.other.oil) || 0) >= d.min;          // rules batch 61: Armored Scrapgorger
       else if (d.kind === 'srcCounter') { if (stat && isCreaturePerm(p)) n += d[k] * ((src.other && src.other[d.counter]) || 0); continue; }          // rules batch 62: Boon of the Spirit Realm
+      else if (d.kind === 'myTurnTribe') on = g.activeTurn !== false && (src === p || matchesFilter(p.card, d.filter));          // rules batch 64: Dion
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
       else if (d.kind === 'levelLord') on = src !== p && (src.level || 0) >= d.min && matchesFilter(p.card, d.filter);
       else if (d.kind === 'treasureEquip') { if (k === 'p') n += 2 * g.battlefield.filter(q => q.token && q.attachedTo === p.iid && /Treasure/.test(q.card.name || '')).length; continue; }
@@ -4411,7 +4422,7 @@
     if (!(n > 0)) return 0;
     const inf = bfInfo(g);
     const lz = inf.cplusLz && (isCreaturePerm(p) || p.card.a.isPlaneswalker) ? inf.cplusLz : 0;          // Lae'zel: one more of each kind
-    let add = noDouble ? n : (kind === '+1/+1' && isCreaturePerm(p) ? (n + lz + inf.cplus + (inf.cplusOther ? inf.cplusOther.filter(h => h !== p).length : 0)) * counterMult(g) * Math.pow(2, inf.cbr) : (n + (inf.cplusAll && kind !== 'loyalty' && (isCreaturePerm(p) || p.card.a.isArtifact) ? inf.cplusAll : 0) + (kind === '+1/+1' ? 0 : lz)) * counterMult(g));          // Hardened Scales adds one first, then Doubling Season and Branching Evolution double
+    let add = noDouble ? n : (kind === '+1/+1' && isCreaturePerm(p) ? (n + lz + inf.cplus + (inf.cplusOther ? inf.cplusOther.filter(h => h !== p).length : 0) + (inf.cplusTribe ? inf.cplusTribe.filter(f => matchesFilter(p.card, f)).length : 0)) * counterMult(g) * Math.pow(2, inf.cbr) : (n + (inf.cplusAll && kind !== 'loyalty' && (isCreaturePerm(p) || p.card.a.isArtifact) ? inf.cplusAll : 0) + (kind === '+1/+1' ? 0 : lz)) * counterMult(g));          // Hardened Scales adds one first, then Doubling Season and Branching Evolution double
     if (!noDouble && inf.loadingZone && isCreaturePerm(p) && g.battlefield.includes(p)) add *= Math.pow(2, inf.loadingZone);          // Loading Zone
     if (kind === 'charge' && p.card.a.stages && p.card.a.stages.kind === 'station') { p.charge = (p.charge || 0) + add; stageSync(g, p); ev.push({ type: 'counters', n: add, kind, perms: [p], source }); return add; }
     if (kind === '+1/+1') p.counters = (p.counters || 0) + add;
@@ -4987,7 +4998,7 @@
       target = ownCreature(g, target, 'aura', perm);
       if (target) { perm.attachedTo = target.iid; touch(g); if (g.lastCast === inst && !g.dry && !o.silent) ownTargeted(g, target, ev); }          // an Aura spell targets the creature it enchants
     }
-    if (!o.silent && isCreaturePerm(perm)) for (const q of (tableHas(g, 'statics.enterCounter') ? g.battlefield : NONE)) { const ec = q.card.a.statics.enterCounter; if (ec && q !== perm && !(ec.nontoken && perm.token) && matchesFilter(perm.card, ec.filter) && !(ec.not && matchesFilter(perm.card, ec.not))) addCounters(g, perm, '+1/+1', ec.n === 'T' ? Math.max(0, toughnessOf(g, q)) : ec.n === 'C' ? Math.max(0, q.counters || 0) : ec.n, ev, q); }          // Metallic Mimic
+    if (!o.silent && isCreaturePerm(perm)) for (const q of (tableHas(g, 'statics.enterCounter') ? g.battlefield : NONE)) { const ec = q.card.a.statics.enterCounter; if (ec && q !== perm && !(ec.nontoken && perm.token) && !(ec.cmdr && !perm.card.commander && !g.battlefield.some(x => x !== perm && x.card.commander && isCreaturePerm(x))) && matchesFilter(perm.card, ec.filter) && !(ec.not && matchesFilter(perm.card, ec.not))) addCounters(g, perm, '+1/+1', ec.n === 'T' ? Math.max(0, toughnessOf(g, q)) : ec.n === 'C' ? Math.max(0, q.counters || 0) : ec.n, ev, q); }          // Metallic Mimic
     if (o.silent) return perm;
     if (a.saga && !g.dry) { perm.lore = 0; sagaAdvance(g, perm, ev); if (!g.battlefield.includes(perm)) return perm; }
     if (inst.offspringPaid && !g.dry) { inst.offspringPaid = false; const tc = Object.assign({}, inst.card, { power: '1', toughness: '1', a: Object.assign({}, inst.card.a, { power: 1, toughness: 1 }) }); const tk = enterWithTriggers(g, { iid: g.nextIid++, card: tc }, { token: true }, ev || []); tk.token = true; (ev || []).push({ type: 'note', text: `Offspring: a 1/1 token copy of ${inst.card.name}`, source: perm }); }
@@ -7174,6 +7185,7 @@
           if (f.keywords && f.keywords.length) { t.eotKw = new Set([...(t.eotKw || []), ...f.keywords]); }
           touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : f.p ? ` gets +${f.p}/+${f.t || 0}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
         case 'toughHand': { const X = g.hand.length; if (!X) break; for (const q of g.battlefield) if (isCreaturePerm(q)) q.eotT = (q.eotT || 0) + X; touch(g); ev.push({ type: 'note', text: `Creatures you control get +0/+${X}`, source }); break; }          // rules batch 62: Baldin
+        case 'dsCounters': { const cs = g.battlefield.filter(q => isCreaturePerm(q) && ((q.counters || 0) > 0 || (q.other && Object.values(q.other).some(v => v > 0)))); for (const q of cs) q.eotKw = new Set([...(q.eotKw || []), 'double strike']); if (cs.length) { touch(g); ev.push({ type: 'note', text: `${cs.length} creature${cs.length === 1 ? '' : 's'} with counters gain double strike`, source }); } break; }          // rules batch 64: Chocobo Knights
         case 'nogi': { if (!source || !g.battlefield.includes(source) || g.battlefield.filter(q => q !== source && isCreaturePerm(q) && matchesFilter(q.card, 'dragon')).length < 3) break;          // rules batch 61: Nogi becomes a 5/5 flying Dragon
           source.eotP = (source.eotP || 0) + 5 - (source.card.a.power || 0); source.eotT = (source.eotT || 0) + 5 - (source.card.a.toughness || 0); source.eotKw = new Set([...(source.eotKw || []), 'flying']); touch(g); ev.push({ type: 'note', text: `${source.card.name} becomes a 5/5 flying Dragon`, source }); break; }
         case 'baseEot': { const X = Math.max(0, f.x === 'HAND' ? g.hand.length : g.xValue || 0); g.baseEot = { turn: g.turn, x: X }; touch(g); ev.push({ type: 'note', text: `Creatures you control have base power and toughness ${X}/${X} until end of turn`, source }); break; }          // rules batch 60: Biomass Mutation
@@ -7856,6 +7868,7 @@
       const colorless = !(inst.card.colors || []).length;
       let copies = 0;
       if (g.drakeCopy && g.drakeCopy.turn === g.turn && a.isInstantSorcery) { copies += g.drakeCopy.n; ev.push({ type: 'note', text: `Thunderclap Drake: ${g.drakeCopy.n} cop${g.drakeCopy.n === 1 ? 'y' : 'ies'} of ${inst.card.name}`, source: null }); g.drakeCopy = null; }          // Thunderclap Drake
+      if (a.isPermanent && tableHas(g, 'statics.copyTribePerm')) for (const q of g.battlefield) if (q.card.a.statics.copyTribePerm && matchesFilter(inst.card, q.card.a.statics.copyTribePerm)) copies++;          // rules batch 64: Archmage of Echoes
       if (colorless) for (const q of g.battlefield) { copies += q.card.a.statics.copyColorless || 0; if (q.card.a.statics.trigDoubleColorless) extraCast++; }
       if (/\bEldrazi\b/.test(inst.card.type_line || '') && (tableHas(g, 'statics.ulalek') && g.battlefield.some(q => q.card.a.statics.ulalek))) {
         const cc = { generic: 2, pips: [], x: 0 };

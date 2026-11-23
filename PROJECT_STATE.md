@@ -128,8 +128,8 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-009 | Hakbal "misses its first explore when cast in main 1" | Error and issue fixes (2) (`session_01K5kL4YYZ9n2hdfpzktHqd2`) | `claude/error-fixes-hakbal` (`445ce2f`, note and repro scripts only) | [R] Not reproduced at v140; **on hold for the user**. |
 | T-010 | Card teaching and the Policy lab | Card teaching & Policy lab (`session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed) | `e2e7578` | [V] Its note is in v141. Session closed. |
 | T-011 | Issue #67, "Teach: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, …" | Nobody yet | none | [V] Open on GitHub. Planned; needs the user's go-ahead for a fresh session. |
-| T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [R] Reported; 101 tutorial.ui checks green by the session. MAIN review and test pending. |
-| T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination`, #73 | Accepted; cherry-picked onto MAIN's branch (`c17de6d` waits for T-012). Then close drafts #64, #65, #72; #68 after T-012. |
+| T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [V] Accepted after MAIN review; merged into MAIN's branch with `c17de6d`. tutorial.ui 101/101, tutorial-game 17/17, install, remember-state pass. Expected Version 142 (#73). |
+| T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination`, #73 | Accepted; cherry-picked onto MAIN's branch (`c17de6d` with T-012). Then close drafts #64, #65, #68, #72. |
 | T-014 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN | `claude/main-coordination`, #73 (draft) | Active |
 
 Closed sessions with accepted handoffs [V]: Features and Enhancements (`session_01K5kL4YtUiLPEtX5ytjG6Su`), PR and Marketing
@@ -170,7 +170,7 @@ archiving the closed sessions; disabling the two stale scheduled tasks; installi
 ## 7. Next priorities
 
 1. [V] T-014 and T-013: merge the session-id change, this file and the docs batch (#73).
-2. T-012: review and test the "Every feature" tours, then merge.
+2. [V] T-012 is in #73 with them.
 3. Ask the user the pending decisions (section 6).
 4. Fresh TASK sessions, when the user wants them: issue #67 (T-011); engine rules batches 42–46; decision points (Rishkar first,
    then Hunter's Talent's attacker) [R].

@@ -87,7 +87,7 @@ async function practice(p, touch, stopAt) {
     await p.click('[data-tab=deck]');
     await p.click('.top-help'); await p.click('.tut-m-sample');
     await practice(p, false, 'Cast a spell');
-    await p.click('.tut-skip'); await p.waitForTimeout(800);
+    await p.click('.tut-close'); await p.waitForTimeout(800);
     const left = await p.evaluate(() => ({ cmd: window.__isf.deck.commanders.map(c => c.card.name).join('+'), sample: !!(window.__isf.loaded && window.__isf.loaded.tutorial), game: window.__isf.game ? window.__isf.game.hand.concat(window.__isf.game.battlefield).some(c => c.card.name === 'Fyndhorn Elves') : false, active: !!window.ISFTutorial.active }));
     check('Practice sample: Skip in the middle leaves at once, throws the sample game away and gives your deck back', !left.active && !left.sample && left.cmd === before.cmd && !left.game, JSON.stringify(left));
 

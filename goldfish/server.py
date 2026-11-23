@@ -27,6 +27,18 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 STATIC = HERE / "static"
 
+# Fixed types for the app's own files. Python on Windows reads types from the registry, which can say text/plain
+# for .js; browsers then refuse to start the service worker (offline mode) and the simulation worker.
+TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+         ".css": "text/css; charset=utf-8", ".json": "application/json", ".webmanifest": "application/manifest+json",
+         ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+         ".ico": "image/x-icon", ".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".wav": "audio/wav", ".txt": "text/plain; charset=utf-8"}
+
+
+def content_type(path):
+    return TYPES.get(Path(path).suffix.lower()) or mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+
+
 BAD_SET_TYPES = {"memorabilia", "token", "funny", "minigame", "vanguard", "planechase", "archenemy"}
 
 
@@ -296,7 +308,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         data = path.read_bytes()
         self.send_response(200)
-        self.send_header("Content-Type", mimetypes.guess_type(str(path))[0] or "application/octet-stream")
+        self.send_header("Content-Type", content_type(path))
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "max-age=86400" if cache else "no-cache")
         self.end_headers()

@@ -64,6 +64,7 @@ const shot = process.env.SHOTS;
 
   // ---- your seat at the 1v1 table uses the same setting
   await p.evaluate(() => localStorage.setItem('isf_matfit', JSON.stringify({ dragon: { x: 20, y: 70, z: 1.5 } }))); await p.reload(); await p.waitForTimeout(600);
+  await p.click('[data-tab=deck]');          // a reload reopens the tab you were on (remember.js)
   await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8'));
   await p.click('#loadDeck');
   await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });

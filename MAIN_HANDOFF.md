@@ -3,7 +3,7 @@
 **Status of the outgoing MAIN:** RETIRING — OWNERSHIP TRANSFER PENDING
 **Outgoing MAIN:** "Visuals/Main", `session_01K5kL4YgVQ6tZxzA48G59TU`
 **Written:** 2026-11-23, about 13:35–13:50 UTC. Facts were checked against git, GitHub and the session list at that time. An independent four-way check (repository/PR, sessions/reports, milestones, docs/issues) found nine imprecisions and two errors; all are corrected in this version.
-**Replacement MAIN:** none yet. If one exists by the time you read this, it owns the project state. This note is submitted to it for reconciliation; it does not overwrite anything.
+**Replacement MAIN:** "MAIN (ICEYfish)", `session_01K5kL4WjxCpfdEjqWh1igWP`, created by the outgoing MAIN on 2026-11-23 at 13:38 UTC at the user's request, on branch `claude/main-coordination`. **Acknowledgment: not yet received.** From its acknowledgment on, it owns the project state, and this note is submitted to it for reconciliation; it does not overwrite anything.
 
 Labels: **[V]** verified by the outgoing MAIN against the repository, GitHub, the live site or a test run it made itself, at the time above. **[R]** reported by a session or a note, not re-checked. **[A]** assumed. **[?]** could not be verified.
 

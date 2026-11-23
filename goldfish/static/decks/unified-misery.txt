@@ -1,4 +1,5 @@
 // Unified Misery (Jodah, the Unifier)
+// Bracket 4
 // COMMANDER
 1 Jodah, the Unifier (SLD) 2839
 // DECK

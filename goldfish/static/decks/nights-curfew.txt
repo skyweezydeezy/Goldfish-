@@ -1,4 +1,5 @@
 // Night's Curfew (Y'shtola, Night's Blessed)
+// Bracket 4
 // COMMANDER
 1 Y'shtola, Night's Blessed (FIC) 215
 // DECK

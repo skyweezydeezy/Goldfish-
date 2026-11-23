@@ -108,6 +108,7 @@
     }).filter(Boolean).join(', then ') || 'no effect the engine plays';
   }
   function filterWords(f) {
+    if (f.words) return f.words;                                         // the card's own words (Intuition: "three cards")
     if (f.transmute != null) return `a nonland card with mana value ${f.transmute}`;
     if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
       const ls = [].concat(f.land), what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : ls.length > 2 ? ls.slice(0, -1).join(', ') + ', or ' + ls[ls.length - 1] : ls.join(' or ');          // "a Plains, Island, Swamp, or Mountain card"
@@ -128,6 +129,7 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
     pump: ['choose a creature', 'Choose the creature that gets the bonus until end of turn.'],
@@ -177,8 +179,8 @@
     const by = d.by && m && m.names ? m.names[d.by.pid] : 'An opponent';
     if (d.kind === 'search') {
       const f = d.f || {}, tapped = f.tapped ? ', tapped' : '';
-      const where = f.dest === 'graveyard' ? 'into your graveyard' : f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
-      q.dest = f.dest === 'graveyard' ? 'Your graveyard' : f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
+      const where = f.dest === 'intuition' ? 'to an opponent, who chooses one for your hand; the rest go into your graveyard' : f.dest === 'graveyard' ? 'into your graveyard' : f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
+      q.dest = f.dest === 'intuition' ? 'Revealed: an opponent picks one for your hand' : f.dest === 'graveyard' ? 'Your graveyard' : f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
       if (d.what === 'battlefield') { q.title = `${sn || 'Search'}: which land goes onto the battlefield?`; q.text = `Choose ${f.bf === 1 ? 'the land' : f.bf + ' lands'} to put onto the battlefield${tapped}; the rest go into your hand.`; }
       else { q.title = `${sn || 'Search'}: search your ${f.land ? 'library for ' + (f.land === 'basic' ? 'basic lands' : 'a land') : 'library'}`; q.text = `Choose ${filterWords(f)}. ${f.dest === 'split' ? 'Then ' + where.replace(/^one goes/, 'you choose which one goes') : (f.n > 1 ? 'They go ' : 'It goes ') + where}; your library is shuffled.`; }
       if (f.slot) { q.title = `${sn || 'Search'}: search for ${filterWords(f)} (${f.slot} of ${f.of})`; q.text = `Choose ${filterWords(f)}. It goes ${where}${f.slot < f.of ? '; the next search follows' : '; your library is then shuffled'}.`; }
@@ -213,8 +215,9 @@
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
-      q.title = d.ability ? `${d.ability}: sacrifice a creature` : d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
-      q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
+      const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
+      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : `${by} makes you sacrifice a ${w}`;
+      q.text = `Choose the ${w} to sacrifice.` + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = d.ability ? 'Cancel' : 'Do not cast it';
     } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)
       q.title = `Legend rule: you control ${opts.length} ${d.what}`;

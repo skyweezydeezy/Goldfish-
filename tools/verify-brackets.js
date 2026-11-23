@@ -203,7 +203,7 @@ async function simulate() {
   });
   let old = {}; try { old = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) { /* first run */ }
   const keep = (old.decks || []).filter(o => !results.some(r => r.file === o.file));
-  const version = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/(\d+)/) || [])[1];
+  const version = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
   const doc = { about: 'Bracket check of the built-in decks. Re-run: node tools/verify-brackets.js; then --apply. Method: docs/agents/DECK-BRACKETS.md',
     version: +version, date: new Date().toISOString().slice(0, 10), gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED,
     seconds: Math.round((Date.now() - t0) / 1000), jobs: JOBS, rules: RULES, decks: keep.concat(results).sort((a, b) => a.file.localeCompare(b.file)) };
@@ -220,7 +220,7 @@ function apply() {
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
     let line = `// Checked by ICEYfish (v${doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
-    if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: ${v.verified > (v.stated || 0) ? 'faster or stronger than' : 'within the limits of'} B${v.verified > (v.stated || 0) ? v.stated : v.verified}`;
+    if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
     const at = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l));

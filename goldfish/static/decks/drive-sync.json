@@ -6,294 +6,378 @@
    "bracket": 4,
    "id": "1eFJST0momjp1wKvyk-HWJlvN39pa6o_b",
    "modifiedTime": "2026-11-19T22:14:19.621Z",
-   "importedAt": "2026-11-19T22:59:38.342Z"
+   "importedAt": "2026-11-19T22:59:38.342Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Soul Brokers [B3] (Teysa Karlov).txt": {
    "deck": "soul-brokers.txt",
    "bracket": 3,
    "id": "1GLYpgneb22tIZdTPjrlJAN2VP7zmQdmr",
    "modifiedTime": "2026-11-19T22:14:28.556Z",
-   "importedAt": "2026-11-19T22:59:38.353Z"
+   "importedAt": "2026-11-19T22:59:38.353Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Tidewoven [B4] (Tymna + Thrasios).txt": {
    "deck": "tidewoven.txt",
    "bracket": 4,
    "id": "14BUr9SNYohqqdRa0NyFbTtQy5LJXCbib",
    "modifiedTime": "2026-11-19T22:14:37.041Z",
-   "importedAt": "2026-11-19T22:59:38.356Z"
+   "importedAt": "2026-11-19T22:59:38.356Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Zimone, Infinite Analyst [B4].txt": {
    "deck": "zimone-infinite-analyst.txt",
    "bracket": 4,
    "id": "1kMNRYDEFtJk9Blsgvy_y4jKIBC1ViL--",
    "modifiedTime": "2026-11-19T22:15:09.409Z",
-   "importedAt": "2026-11-19T22:59:38.358Z"
+   "importedAt": "2026-11-19T22:59:38.358Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Bridge to the Inevitable Abyss [B4] (Esika, God of the Tree).txt": {
    "deck": "bridge-to-the-inevitable-abyss.txt",
    "bracket": 4,
    "id": "1ZfCWxDQy8SnVrfmWqwKxoQQIcN7F9snu",
    "modifiedTime": "2026-11-19T22:14:45.948Z",
-   "importedAt": "2026-11-19T22:59:38.336Z"
+   "importedAt": "2026-11-19T22:59:38.336Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Compleat Contagion [B4] (Atraxa, Praetors' Voice).txt": {
    "deck": "compleat-contagion.txt",
    "bracket": 4,
    "id": "1QYdUdYnO1itp7luKrl0Rd3gMUAvlrj9u",
    "modifiedTime": "2026-11-19T22:14:56.187Z",
-   "importedAt": "2026-11-19T22:59:38.338Z"
+   "importedAt": "2026-11-19T22:59:38.338Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Compound Interest [B4] (Atraxa, Praetors' Voice).txt": {
    "deck": "compound-interest.txt",
    "bracket": 4,
    "id": "1enlz_nHWBE9Pd-IVt6bQpI_ongA5UXIc",
    "modifiedTime": "2026-11-19T22:14:54.425Z",
-   "importedAt": "2026-11-19T22:59:38.339Z"
+   "importedAt": "2026-11-19T22:59:38.339Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Counter Culture [B3] (Rishkar, Peema Renegade).txt": {
    "deck": "counter-culture.txt",
    "bracket": 3,
    "id": "19zIPMMRUN8iWPg989gbR33CAmgw8AHzs",
    "modifiedTime": "2026-11-19T22:14:39.087Z",
-   "importedAt": "2026-11-19T22:59:38.340Z"
+   "importedAt": "2026-11-19T22:59:38.340Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Death Tax [B4] (Teysa Karlov).txt": {
    "deck": "death-tax.txt",
    "bracket": 4,
    "id": "1YBOLVUADHLUcnfAK647rGMnLYb6iaOBa",
    "modifiedTime": "2026-11-19T22:14:26.508Z",
-   "importedAt": "2026-11-19T22:59:38.341Z"
+   "importedAt": "2026-11-19T22:59:38.341Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Finale of the Floodborn [B3] (Hakbal of the Surging Soul).txt": {
    "deck": "finale-of-the-floodborn.txt",
    "bracket": 3,
    "id": "1lSz4QzHuoOO-cQU7_IICL34be8lhyHKd",
    "modifiedTime": "2026-11-19T22:14:58.605Z",
-   "importedAt": "2026-11-19T22:59:38.343Z"
+   "importedAt": "2026-11-19T22:59:38.343Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Gnome Alone [B3] (Anim Pakal).txt": {
    "deck": "gnome-alone.txt",
    "bracket": 3,
    "id": "1rEU5W2kBMBMdFBHWMy2WsenbUTHtRUA5",
    "modifiedTime": "2026-11-19T22:14:43.647Z",
-   "importedAt": "2026-11-19T22:59:38.344Z"
+   "importedAt": "2026-11-19T22:59:38.344Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Hatsune Miku [B4] (Trostani, Selesnya's Voice).txt": {
    "deck": "hatsune-miku.txt",
    "bracket": 4,
    "id": "1FLUftliQRivBYGyPB015WbeP-FQ8FOF-",
    "modifiedTime": "2026-11-19T22:15:03.094Z",
-   "importedAt": "2026-11-19T22:59:38.345Z"
+   "importedAt": "2026-11-19T22:59:38.345Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Loyalty Program [B4] (Atraxa, Praetors' Voice).txt": {
    "deck": "loyalty-program.txt",
    "bracket": 4,
    "id": "16uC0XbWMHv1T4tOHP5ycFSTBn5Z54qSa",
    "modifiedTime": "2026-11-19T22:14:52.313Z",
-   "importedAt": "2026-11-19T22:59:38.345Z"
+   "importedAt": "2026-11-19T22:59:38.345Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Mermaids [B5] (Hakbal of the Surging Soul).txt": {
    "deck": "mermaids.txt",
    "bracket": 5,
    "id": "1VXa7yOLUnIKXFNXqPlc0ie498FvAgE5Y",
    "modifiedTime": "2026-11-19T22:14:30.646Z",
-   "importedAt": "2026-11-19T22:59:38.346Z"
+   "importedAt": "2026-11-19T22:59:38.346Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Nothing Personal [B4] (Ultima).txt": {
    "deck": "nothing-personal.txt",
    "bracket": 4,
    "id": "1uM_0-8UarHIgOgOEdvyJgTB9vk2_1k7q",
    "modifiedTime": "2026-11-19T22:14:14.622Z",
-   "importedAt": "2026-11-19T22:59:38.348Z"
+   "importedAt": "2026-11-19T22:59:38.348Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "OTK [B3] (Bruna, Light of Alabaster).txt": {
    "deck": "otk.txt",
    "bracket": 3,
    "id": "1nxIcsiR5amnNIheX39Y2n-ec9KjjxLVd",
    "modifiedTime": "2026-11-19T22:14:50.086Z",
-   "importedAt": "2026-11-19T22:59:38.349Z"
+   "importedAt": "2026-11-19T22:59:38.349Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Odds and Ends [B4] (Yennett, Cryptic Sovereign).txt": {
    "deck": "odds-and-ends.txt",
    "bracket": 4,
    "id": "17GxTbnstzRgviOjaN6rbpA2bCnRVBvBZ",
    "modifiedTime": "2026-11-19T22:15:01.123Z",
-   "importedAt": "2026-11-19T22:59:38.350Z"
+   "importedAt": "2026-11-19T22:59:38.350Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Red Rum Raiders [B4] (Admiral Beckett Brass).txt": {
    "deck": "red-rum-raiders.txt",
    "bracket": 4,
    "id": "12Allj8TO_rOooRWatVmQxJc8UUh2khd5",
    "modifiedTime": "2026-11-20T23:25:44.580Z",
-   "importedAt": "2026-11-20T23:28:35.402Z"
+   "importedAt": "2026-11-20T23:28:35.402Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Second Breakfast [B4] (Frodo & Sam).txt": {
    "deck": "second-breakfast.txt",
    "bracket": 4,
    "id": "10kDiTkc34l3GqhZo7_w7E6jPAZejbNCh",
    "modifiedTime": "2026-11-19T22:15:05.434Z",
-   "importedAt": "2026-11-19T22:59:38.352Z"
+   "importedAt": "2026-11-19T22:59:38.352Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Second Draw [B3] (Alandra).txt": {
    "deck": "second-draw.txt",
    "bracket": 3,
    "id": "13M-pabI8UTPqkC1yanimFnEFDG0h-Y70",
    "modifiedTime": "2026-11-19T22:15:11.417Z",
-   "importedAt": "2026-11-19T22:59:38.352Z"
+   "importedAt": "2026-11-19T22:59:38.352Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Sodium Seraphim [B4] (Gisela, the Broken Blade).txt": {
    "deck": "sodium-seraphim.txt",
    "bracket": 4,
    "id": "1FPzTsxDec-omCJhYpnPVdhTkdxYdZKlT",
    "modifiedTime": "2026-11-19T22:14:41.478Z",
-   "importedAt": "2026-11-19T22:59:38.353Z"
+   "importedAt": "2026-11-19T22:59:38.353Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "The King's Gambit [B5] (Kenrith, the Returned King).txt": {
    "deck": "the-kings-gambit.txt",
    "bracket": 5,
    "id": "1t6nxLvrBGDipfDsqIPjts6PRTjpmnxmH",
    "modifiedTime": "2026-11-19T22:14:48.051Z",
-   "importedAt": "2026-11-19T22:59:38.354Z"
+   "importedAt": "2026-11-19T22:59:38.354Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Tidecaller [B5] (Thrasios, Triton Hero).txt": {
    "deck": "tidecaller.txt",
    "bracket": 5,
    "id": "16b2k1hNWsiPDG3avb2MMOOwOMYvuMJQl",
    "modifiedTime": "2026-11-19T22:14:34.751Z",
-   "importedAt": "2026-11-19T22:59:38.355Z"
+   "importedAt": "2026-11-19T22:59:38.355Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Ulalek Titanstorm [B4] (Ulalek, Fused Atrocity).txt": {
    "deck": "ulalek-titanstorm.txt",
    "bracket": 4,
    "id": "19ePvaPFhYxM31F0jhvOW9v4odb8kfYL8",
    "modifiedTime": "2026-11-19T22:15:07.828Z",
-   "importedAt": "2026-11-19T22:59:38.357Z"
+   "importedAt": "2026-11-19T22:59:38.357Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Undead Witches [B3] (Zul Ashur).txt": {
    "deck": "undead-witches.txt",
    "bracket": 3,
    "id": "1X7ToVnl4GFII103RbgEiOqfnxxqqtHUG",
    "modifiedTime": "2026-11-19T22:14:24.878Z",
-   "importedAt": "2026-11-19T22:59:38.357Z"
+   "importedAt": "2026-11-19T22:59:38.357Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Friendship Is Magic [B4] (Princess Twilight Sparkle).txt": {
    "deck": "friendship-is-magic.txt",
    "bracket": 4,
    "id": "1GHyaGYH5Qaa0GI2vmRhwNJdoZBV8RTYr",
    "modifiedTime": "2026-11-20T02:05:59.795Z",
-   "importedAt": "2026-11-20T02:28:02.277Z"
+   "importedAt": "2026-11-20T02:28:02.277Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Final Heaven [B3] (Tifa Lockhart).txt": {
    "deck": "final-heaven.txt",
    "bracket": 3,
    "id": "1rOsRY2v9Sqn013_mpz84WBw-kteIXuLK",
    "modifiedTime": "2026-11-20T12:43:36.647Z",
-   "importedAt": "2026-11-20T13:10:48.024Z"
+   "importedAt": "2026-11-20T13:10:48.024Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Tidal Loop [B4] (Hakbal of the Surging Soul).txt": {
    "deck": "tidal-loop.txt",
    "bracket": 4,
    "id": "1XPcdl19LyDenDVBwqFLUcxlyxcvJhwTY",
    "modifiedTime": "2026-11-20T11:32:55.770Z",
-   "importedAt": "2026-11-20T13:10:48.025Z"
+   "importedAt": "2026-11-20T13:10:48.025Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Mob Storm [B3] (Krenko, Mob Boss).txt": {
    "deck": "mob-storm.txt",
    "bracket": 3,
    "id": "1dNeexsn11V6jRC45CFAZJrORYh6NIrcS",
    "modifiedTime": "2026-11-20T21:42:06.752Z",
-   "importedAt": "2026-11-20T22:27:33.465Z"
+   "importedAt": "2026-11-20T22:27:33.465Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Tookens [B3] (Belladonna Took).txt": {
    "deck": "tookens.txt",
    "bracket": 3,
    "id": "1M97kvhhzRKV1WOdrnjJ9U1nfSpjGN78r",
    "modifiedTime": "2026-11-21T00:08:44.400Z",
-   "importedAt": "2026-11-21T00:28:15.298Z"
+   "importedAt": "2026-11-21T00:28:15.298Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-23"
   },
   "Moving Parts [B4] (Urza, Lord High Artificer).txt": {
    "deck": "moving-parts.txt",
    "bracket": 4,
    "id": "100A5PA111OmayRHAAA1nxvUm1snsFA6p",
    "modifiedTime": "2026-11-22T11:28:58.955Z",
-   "importedAt": "2026-11-22T11:34:30.990Z"
+   "importedAt": "2026-11-22T11:34:30.990Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Black Mage Blackout [B4] (Vivi Ornitier).txt": {
    "deck": "black-mage-blackout.txt",
    "bracket": 4,
    "id": "1T8xX5B4O0KL_biGrobEgx6c2JOjMSW4Y",
    "modifiedTime": "2026-11-19T22:15:38.794Z",
-   "importedAt": "2026-11-23T19:10:54.589Z"
+   "importedAt": "2026-11-23T19:10:54.589Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Captain's Lockdown [B4] (Sisay, Weatherlight Captain).txt": {
    "deck": "captains-lockdown.txt",
    "bracket": 4,
    "id": "1Ex91Czu053Rb3jei6jR5p3cpudlpmiVn",
    "modifiedTime": "2026-11-19T22:15:34.520Z",
-   "importedAt": "2026-11-23T19:10:54.593Z"
+   "importedAt": "2026-11-23T19:10:54.593Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Court of Ruin [B4] (Kefka, Court Mage).txt": {
    "deck": "court-of-ruin.txt",
    "bracket": 4,
    "id": "1Sh1p4OwwKGoX7C1s8-quWjYnFp-OlDmJ",
    "modifiedTime": "2026-11-19T22:15:16.887Z",
-   "importedAt": "2026-11-23T19:10:54.595Z"
+   "importedAt": "2026-11-23T19:10:54.595Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Dead Sea [B4] (Thrasios, Triton Hero).txt": {
    "deck": "dead-sea.txt",
    "bracket": 4,
    "id": "16wrIUn-8lWEWVila8S8dK3gdovGf--CK",
    "modifiedTime": "2026-11-19T22:15:23.535Z",
-   "importedAt": "2026-11-23T19:10:54.596Z"
+   "importedAt": "2026-11-23T19:10:54.596Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Ice Age Engine [B4] (Urza, Lord High Artificer).txt": {
    "deck": "ice-age-engine.txt",
    "bracket": 4,
    "id": "1c9w4aykdVzRXaKA1v8rVsS60H1pV_ACL",
    "modifiedTime": "2026-11-19T22:15:18.702Z",
-   "importedAt": "2026-11-23T19:10:54.597Z"
+   "importedAt": "2026-11-23T19:10:54.597Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Night's Curfew [B4] (Y'shtola, Night's Blessed).txt": {
    "deck": "nights-curfew.txt",
    "bracket": 4,
    "id": "1BEes-JSPt8EfTC744hHtanje5zrYB6TI",
    "modifiedTime": "2026-11-19T22:15:25.395Z",
-   "importedAt": "2026-11-23T19:10:54.598Z"
+   "importedAt": "2026-11-23T19:10:54.598Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Permafrost Prodigy [B4] (Kinnan, Bonder Prodigy).txt": {
    "deck": "permafrost-prodigy.txt",
    "bracket": 4,
    "id": "1GbNxjQ17LRSBQ2bvDh4N-pVLvWBMxLVN",
    "modifiedTime": "2026-11-19T22:15:21.062Z",
-   "importedAt": "2026-11-23T19:10:54.598Z"
+   "importedAt": "2026-11-23T19:10:54.598Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Salt Mine [B4] (Nekusar, the Mindrazer).txt": {
    "deck": "salt-mine.txt",
    "bracket": 4,
    "id": "1aCRWQanVxSUg5fKJ_QY-YF_R0x7hEcRj",
    "modifiedTime": "2026-11-19T22:15:30.072Z",
-   "importedAt": "2026-11-23T19:10:54.599Z"
+   "importedAt": "2026-11-23T19:10:54.599Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Scorched Sky [B4] (The Ur-Dragon).txt": {
    "deck": "scorched-sky.txt",
    "bracket": 4,
    "id": "1-JaY4wI0HN-NHMDMmTfn1Ji1C56xBno-",
    "modifiedTime": "2026-11-19T22:15:27.818Z",
-   "importedAt": "2026-11-23T19:10:54.599Z"
+   "importedAt": "2026-11-23T19:10:54.599Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Unified Misery [B4] (Jodah, the Unifier).txt": {
    "deck": "unified-misery.txt",
    "bracket": 4,
    "id": "1zSKw-wevbFb8VgIsIsIk6IbY0YvAKQKF",
    "modifiedTime": "2026-11-19T22:15:32.575Z",
-   "importedAt": "2026-11-23T19:10:54.600Z"
+   "importedAt": "2026-11-23T19:10:54.600Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   },
   "Void Tax [B4] (Zhulodok, Void Gorger).txt": {
    "deck": "void-tax.txt",
    "bracket": 4,
    "id": "1CRKvI4djC1gMl2Qbyv-tXp9Iwu29KmyN",
    "modifiedTime": "2026-11-19T22:15:36.502Z",
-   "importedAt": "2026-11-23T19:10:54.600Z"
+   "importedAt": "2026-11-23T19:10:54.600Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-23"
   }
  },
  "checkedAt": "2026-11-23T19:10:54.600Z"

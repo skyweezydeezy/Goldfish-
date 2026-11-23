@@ -1,5 +1,6 @@
 // Second Breakfast (Frodo & Sam)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 2.2% by T5, 31.3% by T7; field win 41.1%; 12 Game Changers; B4 confirmed
 // COMMANDER
 1 Frodo, Adventurous Hobbit (LTC) 2
 1 Sam, Loyal Attendant (LTC) 7

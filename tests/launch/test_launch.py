@@ -231,7 +231,10 @@ class RealAppTests(unittest.TestCase):
             shell = re.findall(r"'([^']+)'", sw.split("const SHELL = [")[1].split("];")[0])
             self.assertGreater(len(shell), 10)
             for f in shell:
-                self.assertEqual(opener.open("http://127.0.0.1:%d/%s" % (port, f.lstrip("./")), timeout=5).status, 200, f)
+                res = opener.open("http://127.0.0.1:%d/%s" % (port, f.lstrip("./")), timeout=5)
+                self.assertEqual(res.status, 200, f)
+                if f.endswith(".js"):
+                    self.assertTrue(res.headers["Content-Type"].startswith("text/javascript"), f)
         finally:
             srv.terminate()
             srv.wait(timeout=10)
@@ -246,6 +249,33 @@ class RealAppTests(unittest.TestCase):
         for bad in ("goldfish/static/data/sets/con.json", "a/NUL", "a/com1.txt", "a/b?.js", "a/trailing."):
             with self.assertRaises(RuntimeError):
                 update.safe_rel(bad)
+
+    def test_shell_files_are_in_the_download(self):
+        """Every file sw.js caches for offline use is tracked in git, so the update zip brings it to the PC."""
+        import re
+        sw = (REPO_ROOT / "goldfish/static/sw.js").read_text()
+        shell = [f for f in re.findall(r"'([^']+)'", sw.split("const SHELL = [")[1].split("];")[0]) if f != "./"]
+        tracked = set(subprocess.run(["git", "ls-files", "goldfish/static"], cwd=REPO_ROOT, capture_output=True, text=True).stdout.split())
+        if not tracked:
+            self.skipTest("not a git checkout")
+        for f in ("remote.js", "qr.js"):
+            self.assertIn(f, shell)
+        self.assertEqual([f for f in shell if "goldfish/static/" + f not in tracked], [])
+
+    def test_types_do_not_depend_on_the_windows_registry(self):
+        """Windows can register .js as text/plain; the browser then refuses the service worker and worker.js."""
+        import mimetypes
+        spec = importlib.util.spec_from_file_location("gfserver", REPO_ROOT / "goldfish" / "server.py")
+        server = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(server)
+        saved = mimetypes.types_map.get(".js")
+        mimetypes.add_type("text/plain", ".js")
+        try:
+            self.assertTrue(server.content_type("static/sw.js").startswith("text/javascript"))
+        finally:
+            mimetypes.add_type(saved or "text/javascript", ".js")
+        self.assertEqual(server.content_type("manifest.webmanifest"), "application/manifest+json")
+        self.assertEqual(server.content_type("x.unknownext"), "application/octet-stream")
 
     def test_launchers_run_the_updater_first(self):
         for bat in ("goldfish/start.bat", "goldfish/start-lan.bat"):

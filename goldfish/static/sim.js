@@ -7299,6 +7299,8 @@
     if (g.dry || !(tableHas(g, 'necroDig') && g.battlefield.some(p => p.card.a.necroDig))) return;
     const floor = g.opp ? 20 : 12, ng = pol(g, 'necroGoal'), goal = ng === 'current' ? (g.life > 30 ? 9 : 7) : +ng;
     let k = 0;
+    { const ai = (g.winSpellCasts || 0) >= 1 ? g.library.findIndex(i => comboKind(i.card).approach) : -1;          // Approach of the Second Sun, cast once and now seventh from the top: pay the life to pick it up again
+      if (ai >= 0 && ai < 12 && g.life - (ai + 1) > 3) { for (let j = 0; j <= ai; j++) { g.hand.push(g.library.shift()); g.life--; k++; } } }
     while (g.hand.length < goal && g.life > floor && g.library.length && k < 12) { const c = g.library.shift(); g.hand.push(c); g.life--; k++; }
     if (k) { ev.push({ type: 'note', text: `Necropotence: paid ${k} life, exiled ${k} card${k > 1 ? 's' : ''} and put them in your hand (life ${g.life})` }); checkDeath(g, ev); }
   }
@@ -10678,15 +10680,17 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     for (const p of g.battlefield.slice()) if (p.decayed && p.attackedTurn === g.turn) { ev.push({ type: 'note', text: `${p.card.name} (decayed) is sacrificed after attacking`, source: p }); leavePerm(g, p, ev); }
     kumenaUse(g, ev);
+    for (let again = 0, did = true; did && again < 13; again++) { did = false;          // once more for each extra combat it pays for
     for (const q of (tableHas(g, 'aggravated') ? g.battlefield.slice() : NONE)) {                                                            // Aggravated Assault: untap everything and fight again, when the board is big enough to matter
       const ag = q.card.a.aggravated;
-      if (!ag || g.dry || matchOver(g) || (g.aggrTurn === g.turn && g.aggrN >= 2)) continue;
+      const fed = g.battlefield.some(c => isCreaturePerm(c) && c.attackedTurn === g.turn && c.card.a.triggers.some(t => t.kinds.includes('combatDamage') && t.fx.some(f => f.type === 'd20' && f.what === 'treasure')));          // Ancient Copper Dragon pays for the next combat with its Treasures: the loop runs on
+      if (!ag || g.dry || matchOver(g) || (g.aggrTurn === g.turn && g.aggrN >= (fed ? 12 : 2))) continue;
       const pw = g.battlefield.filter(c => isCreaturePerm(c) && c.attackedTurn === g.turn).reduce((t, c) => t + Math.max(0, powerOf(g, c)), 0);
       if (pw < 5 || !canPay(ag.cost, allUnits(g))) continue;
       pay(g, ag.cost); g.aggrN = (g.aggrTurn === g.turn ? g.aggrN : 0) + 1; g.aggrTurn = g.turn;
       g.battlefield.forEach(c => { if (isCreaturePerm(c)) c.tapped = false; }); if (ag.kw) ag.kw.forEach(k => g.eot.kw.add(k));
-      ev.push({ type: 'note', text: `${q.card.name}: untap all creatures, another combat`, source: q }); ev.push(...combat(g)); break;
-    }
+      ev.push({ type: 'note', text: `${q.card.name}: untap all creatures, another combat`, source: q }); ev.push(...combat(g)); did = true; break;
+    } }
     if (!g.dry) for (const q of g.battlefield.slice()) {
       const a = q.card.a; if (matchOver(g) || g.killTurn != null) break;
       if (a.haloWin && !q.tapped && g.battlefield.filter(c => isCreaturePerm(c) && c.tapped).length >= 15) { q.tapped = true; if (canPay(a.haloWin, allUnits(g)) && pay(g, a.haloWin) != null) { ev.push({ type: 'note', text: `${q.card.name}: untapped fifteen tapped creatures`, source: q }); applyEffects(g, [{ type: 'win' }], q, ev, null); } else q.tapped = false; }

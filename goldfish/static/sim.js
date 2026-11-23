@@ -4639,7 +4639,7 @@
   }
   // In a pod a person chooses the opponent a triggered ability aims at ("target opponent", or "target player" when what it does is
   // done to an opponent: Bojuka Bog, the Desert lands' damage, a mill). The autopilot's pick is the player they are facing.
-  const HOSTILE_FX = new Set(['oppYard', 'millOpp', 'oppDiscard', 'edict']);
+  const HOSTILE_FX = new Set(['oppYard', 'millOpp', 'millTarget', 'oppDiscard', 'edict']);
   function trigOpp(g, trig) {
     if (!g.ask || g.dry || g._oppWas || !g.match || !isPod(g) || !trig.fx || !trig.fx.length) return null;
     const t = trig.text || '';
@@ -7365,7 +7365,7 @@
     }
     if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
-    if (g.ask && !g.dry && a.isInstantSorcery && isPod(g) && !g._oppWas && /\btarget opponent\b/i.test(inst.card.oracle_text || '')) {          // in a pod a person chooses the opponent ("target opponent")
+    if (g.ask && !g.dry && a.isInstantSorcery && isPod(g) && !g._oppWas && (/\btarget opponent\b/i.test(inst.card.oracle_text || '') || (/\btarget player\b/i.test(inst.card.oracle_text || '') && (a.spellFx || []).some(f => HOSTILE_FX.has(f.type))))) {          // or "target player" when it is done to an opponent (Traumatize)          // in a pod a person chooses the opponent ("target opponent")
       const os = podAlive(g);
       if (os.length > 1 && os.includes(g.opp)) { const o = decide(g, { kind: 'player', options: os, def: g.opp, source: { card: inst.card } }); if (o && o !== g.opp) { g._oppWas = g.opp; g.opp = o; } }
     }

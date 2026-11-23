@@ -64,8 +64,15 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
   card's coverage and two or three behaviours. Helpers that are exported: `enterWithTriggers`, `castCard(g, inst, force)`,
   `eachTrigger(g, kind, ev)`, `applyEffects`, `leavePerm`, `flushLeaves`, `sba`, `abilityMenu`, `useAbility`, `comboLines`.
 
-## State of the work (engine session 3, `session_01K5kL4W5wx2aMmLP73o9seu`: batches 42–51 on `claude/engine-rules`; 42–46 live in v145)
-- Pool of 5,000 most played Commander cards: **400 cards (457 lines) still have an unread line** (after batch 51). Session 3 handoff: `docs/agents/ENGINE-3-HANDOFF.md`; session 2: `docs/agents/ENGINE-2-HANDOFF.md`.
+## State of the work (engine session 4, `session_01K5kL4YiRUadycHTLacu7Qv`: batches 52–56 on `claude/engine-rules`, T-023; 42–51 live by v149)
+- Pool of 5,000 most played Commander cards: **320 cards (368 lines) still have an unread line** (after batch 56; 400 after batch 51). Session 3 handoff: `docs/agents/ENGINE-3-HANDOFF.md`; session 2: `docs/agents/ENGINE-2-HANDOFF.md`.
+- None of the pool's unread cards are in a built-in deck (checked for T-023; Card teaching owns those).
+- Batches 52–56 added: effects `topToBf`, `exileTopCastOne`, `tokenDoubleEot`, `fabricateSubj`, `cascadeMv`, `recklessEndeavor`; statics `stormAll`, `myco`,
+  `hopeCopy`, `copyIS`, `copySecond`, `energyPlus`; reducers `secondSpell`, `targetsCreature`, `firstArtifact`; actReduce `any`, `land`; cascade kinds
+  `ench`, `type`, `first`; tokenRepl `plusCreature`; topCast `mv4+`, `afterSpell`; monstrosity `XX`, `COUNTERS`; cond `commander`; `gyTypeCast`;
+  Room doors `unlockNeed` 'none' / 'creature'; end-step returns for Avacyn, Angel of Horror, Resurrection Orb, Marchesa (`g.endReturn`).
+- Still not done, needs machinery: the mill triggers, Squad (Decision Points), Liliana Heretical Healer's -X, disturb (Lunarch Veteran, Malevolent Hermit),
+  mutate, melee's full rule, Damping Sphere, Assemble the Players' once a turn, dice-roll triggers (Wyll, Barbarian Class, Vexing Puzzlebox).
 - A person's play: activated abilities from the card menu (battlefield, graveyard, hand, command zone), X on casting and for
   abilities, abilities as responses to a spell, chosen color (`p.chosenColor`, `setChosenColor`), choose-a-type spells
   (`tribeSpell`, `g._castTribe`), Stormtamer / Spellskite / Cursecatcher offered whenever legal.

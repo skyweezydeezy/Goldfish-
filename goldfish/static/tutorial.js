@@ -25,7 +25,7 @@
   //   lost: -1       back that many steps when the element goes away (a card menu closed without a choice)
   //   dock: 'top' | 'bottom'   the bubble sits at the top or bottom of the screen (over a big sheet, clear of its buttons);  esc: false   Esc is left to the app (the card viewer)
   //   back: false    no Back (a game step cannot be undone);  optional: true   left out when its element is not on screen
-  //   before: () => (promise)   runs first; Next shows "…" meanwhile }
+  //   before: () => (promise)   runs first; Next shows "…" meanwhile;  uses: 'id'   showing the step counts as using that feature (no tip) }
   let run = null;          // the tour on screen: { id, steps, i, root, spot, bubble, blockers, raf, last, prevFocus, done }
   const visible = e => { if (!e || !e.isConnected) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   function findEl(step) {
@@ -101,6 +101,7 @@
     if (i >= r.steps.length) return stop('done');
     if (i < 0) return;
     r.i = i; const s = r.steps[i];
+    if (s.uses) markUsed(s.uses);          // the tour showed it: its first-time tip is not needed
     const el = findEl(s);
     if (el && s.scroll !== false) { const rc = el.getBoundingClientRect(); if (rc.top < 60 || rc.bottom > innerHeight - 40 || rc.left < 0 || rc.right > innerWidth) el.scrollIntoView({ block: rc.top < 60 || rc.bottom > innerHeight - 40 ? 'center' : 'nearest', inline: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }          // also sideways: a phone's toolbar scrolls
     const total = r.steps.length;
@@ -373,6 +374,7 @@
       { el: '#tab-duel .vs-you', title: 'Your seat', text: 'Play it yourself, or watch the autopilot play it.' },
       { el: '#tab-duel .vs-ask', title: 'Your choices', text: 'Be asked for targets and searches, or let the autopilot decide.' },
       { el: '#tab-duel .vs-new', title: 'New game', text: 'A d20 roll decides who goes first.' },
+      { el: '#tab-duel .rm-box', optional: true, uses: 'friend', title: 'Play a friend', text: 'Two devices, one game: one of you invites, the other joins.' },
       { el: () => { const e = $('#tab-duel .vs-run'); return e && e.closest('.card-box'); }, title: 'Play many games', text: 'Every seat on autopilot. See who wins how often.' },
     ],
     pod: [
@@ -500,6 +502,11 @@
     { el: () => { const e = document.querySelector(vs(m, '.vs-loop')); return e && e.closest('label'); }, title: 'Loop', text: 'With the autopilot in every seat, game after game with a tally.' },
     { el: vs(m, '.vs-new'), title: 'New game', text: 'Everyone rolls a d20. The highest goes first.' },
     { el: vs(m, '.vs-what'), title: 'What you are asked', text: 'The list of choices you make, and what the autopilot still decides.' },
+    ...(m === 'duel' ? [
+      { el: '#tab-duel .rm-box', optional: true, uses: 'friend', title: 'Play a friend', text: 'A Duel against a friend on another device. Each of you plays the deck on your own Build tab.' },
+      { el: '#tab-duel .rm-box .rm-terms', optional: true, title: 'What is shared', text: 'Read what the other player gets to see, and accept it once, before you connect.' },
+      { el: '#tab-duel .rm-box .rm-start', optional: true, title: 'Invite or join', text: 'One of you taps Invite, the other Join. You pass two codes (or scan two QR codes) between you. No account needed.' },
+    ] : []),
     { el: [vs(m, '.vs-game:not([hidden]) .vs-bar')], title: 'Game bar', text: 'The round, the steps of the turn, and buttons to play on.' },
     { el: [vs(m, '.vs-game:not([hidden]) .vs-arena')], title: 'The table', text: 'Every player\'s cards in play. Glowing cards can be played. Tap any card to read it.' },
     { el: [vs(m, '.vs-game:not([hidden]) .vs-log')], title: 'Game log', text: 'Every play, newest at the bottom.' },
@@ -631,8 +638,11 @@
   const used = k => !!(load().used || {})[k];
   function markUsed(k) { const p = load(); p.used = p.used || {}; if (p.used[k]) return; p.used[k] = 1; save(p); }
   document.addEventListener('input', e => { if (e.target && e.target.id === 'tSpeed') markUsed('speed'); }, true);
-  document.addEventListener('click', e => { const t = e.target.closest ? e.target : null; if (!t) return; if (t.closest('#tLoop, .vs-loop')) markUsed('loop'); if (t.closest('.ch-auto, .ch-ok, .ch-none')) markUsed('sheet'); }, true);
+  document.addEventListener('click', e => { const t = e.target.closest ? e.target : null; if (!t) return; if (t.closest('#tLoop, .vs-loop')) markUsed('loop'); if (t.closest('.ch-auto, .ch-ok, .ch-none')) markUsed('sheet'); if (t.closest('.rm-invite, .rm-join, .rm-rejoin')) markUsed('friend'); }, true);
   const TIPS = [
+    { id: 'friend', when: () => view() === 'duel' && visible(document.querySelector('#tab-duel .rm-box')), el: () => document.querySelector('#tab-duel .rm-box .box-head') || document.querySelector('#tab-duel .rm-box'),
+      skip: () => used('friend'), text: 'New: play a friend on another device. One of you invites, the other joins.',
+      show: () => start('', [{ el: '#tab-duel .rm-box', uses: 'friend', title: 'Play a friend', text: 'Tap Invite and send the code, or Join with the code you got. Each of you plays your own deck.' }]) },
     { id: 'sheet', when: () => document.querySelector('.ch-sheet'), el: () => document.querySelector('.ch-sheet .ch-head') || document.querySelector('.ch-sheet'),
       skip: () => used('sheet'), text: 'The game asks you. ★ marks the autopilot\'s pick, or tap Let the autopilot decide.' },
     { id: 'd20', when: () => document.querySelector('.vs-dice'), el: () => document.querySelector('.vs-dice'), text: 'A d20 each: the highest roll goes first.' },

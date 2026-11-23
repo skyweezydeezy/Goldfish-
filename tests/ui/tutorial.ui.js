@@ -224,6 +224,38 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     await ctx.close();
   }
 
+  // ---- Play a friend: a step in the Duel tours, and a first-time tip for people who saw the Duel tour before it existed ----
+  {
+    const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ welcome: 1, seen: { 'tab:deck': 1, 'tab:duel': 1 } })); });
+    await ctx.addInitScript(quiet);
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    await p.goto(URL); await p.waitForTimeout(1200);
+    await p.click('[data-tab=duel]');
+    await p.waitForSelector('.tut-tip[data-tip=friend]', { timeout: 5000 }).catch(() => {});
+    check('friend: someone who saw the Duel tour before gets a one-line tip about Play a friend', !!(await p.$('.tut-tip[data-tip=friend] .tut-tip-show')) && !(await p.$('.tut')));
+    const sm = await p.$('.tut-tip[data-tip=friend] .tut-tip-show'); if (sm) await sm.click();
+    const on = await p.waitForFunction(() => { const t = window.ISFTutorial.target; return t && t.classList.contains('rm-box'); }, null, { timeout: 4000 }).then(() => true, () => false);
+    check('friend: "Show me" points at the Play a friend box', on, await spotOff(p));
+    await p.keyboard.press('Escape');
+    // a new visitor: the short Duel tour has the step, and then no tip
+    await p.evaluate(() => localStorage.setItem('isf_tutorial', JSON.stringify({ welcome: 1, seen: { 'tab:deck': 1 } }))); await p.reload(); await p.waitForTimeout(1200);
+    if (await p.evaluate(() => document.body.dataset.view !== 'duel')) await p.click('[data-tab=duel]');          // Remember State may have reopened Duel already
+    await p.waitForSelector('.tut-bubble', { timeout: 5000 }).catch(() => {});
+    let hit = null, k = 0;
+    while (await p.evaluate(() => !!window.ISFTutorial.active) && k++ < 20) {
+      if ((await p.$eval('.tut-title', e => e.textContent)) === 'Play a friend') hit = [await p.evaluate(() => window.ISFTutorial.target && window.ISFTutorial.target.classList.contains('rm-box')), await spotOff(p)];
+      await p.click('.tut-next'); await p.waitForTimeout(150);
+    }
+    check('friend: the short Duel tour shows Play a friend, the spotlight on its box', !!hit && hit[0] && hit[1] <= 3, JSON.stringify(hit));
+    await p.waitForTimeout(2000);
+    check('friend: … and after that tour no tip repeats it', !(await p.$('.tut-tip[data-tip=friend]')));
+    const fl = await p.evaluate(() => window.ISFTutorial.full.duel.map(s => s.title).filter(t => /friend|Invite|shared/.test(t)).join('|') + ' / pod: ' + window.ISFTutorial.full.pod.some(s => /friend/.test(s.title)));
+    check('friend: "Every feature" for Duel has Play a friend, What is shared, Invite or join (not Pod)', fl === 'Play a friend|What is shared|Invite or join / pod: false', fl);
+    check('friend: no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
   // ---- "Every feature": the long tour of a tab, of every tab, and the style for first visits ----
   for (const [name, o] of [['PC', { viewport: { width: 1280, height: 800 } }], ['iPhone', devices['iPhone 13']]]) {
     const ctx = await b.newContext({ ...o, serviceWorkers: 'block' });

@@ -2,7 +2,7 @@
 
 **Status of the outgoing MAIN:** RETIRING — OWNERSHIP TRANSFER PENDING
 **Outgoing MAIN:** "Visuals/Main", `session_01K5kL4YgVQ6tZxzA48G59TU`
-**Written:** 2026-11-23, about 13:35–13:50 UTC. Facts were checked against git, GitHub and the session list at that time.
+**Written:** 2026-11-23, about 13:35–13:50 UTC. Facts were checked against git, GitHub and the session list at that time. An independent four-way check (repository/PR, sessions/reports, milestones, docs/issues) found nine imprecisions and two errors; all are corrected in this version.
 **Replacement MAIN:** none yet. If one exists by the time you read this, it owns the project state. This note is submitted to it for reconciliation; it does not overwrite anything.
 
 Labels: **[V]** verified by the outgoing MAIN against the repository, GitHub, the live site or a test run it made itself, at the time above. **[R]** reported by a session or a note, not re-checked. **[A]** assumed. **[?]** could not be verified.
@@ -37,7 +37,7 @@ Read together with `PROJECT_STATE.md`, the project map written by task T-001 and
 - [V] Accepted decisions the next MAIN must keep:
   - **Play a friend (remote play) is restored as it was in Version 128.** The user asked for this on 2026-11-23, and it is in PR #69. That means `remote.js`, `qr.js`, `server/`, the remote/qr/turn tests and the `.rm-*`/`.vs-conn` CSS. The Version 129 in-app camera scanner is **not** included. The seat-aware code in `versus.js` and `decide.js` must stay.
   - The Pages workflow deploys from the default branch. Marketing's "main/master only" trigger was **rejected**.
-  - What's new lines are written by MAIN at each merge. The format is in `goldfish/static/whatsnew.json` and `docs/agents/TUTORIAL.md`.
+  - What's new lines are written by MAIN at each merge. The format is in `goldfish/static/whatsnew.json` (its "about" field). `docs/agents/TUTORIAL.md` describes it too, but that note exists only on `claude/tutorial` at `c17de6d`.
   - Tutorial stage 4 as the user approved it: the welcome card, the first-goals checklist, first-time tips and What's new. **Not approved:** the glossary and a separate tutorial deck.
 
 ## 3. Authoritative repository, files, branch, latest verified commit
@@ -57,31 +57,31 @@ Read together with `PROJECT_STATE.md`, the project map written by task T-001 and
 [V] each one: merged, deploy green, and the version read from the live `version.js`.
 
 - **v121** 3D dice and coin flips. **v127** Moving Parts deck added, Loaded Dice removed. **v128** Data Diver and decision-points batch, ScryMirror removal, promo kit.
-- **v129** Engine rules, graveyard/opponent questions, Construct fix, camera scanner. **v130** Meld animation (Gisela + Bruna → Brisela). **v131** Play a friend removed (since reversed in PR #69).
+- **v129** Engine rules, graveyard/opponent questions, Construct fix, camera scanner. **v130** Meld animation (Gisela + Bruna → Brisela). **v131** Play a friend removed. **Its restoration is pending in the unmerged PR #69**; the live site still has no Play a friend.
 - **v132** table-fit flake fix. **v133** Rules batch 31, 46 more questions. **v134** d20 roll for who goes first. **v135** 9 more questions, d20 follow-up.
 - **v136** Remember State. **v137** Tutorial tours (stages 1–2) and the install sheet. **v138** Rules batches 32–36 and the pod mill question.
 - **v139** New ICEYfish addresses in the app, engine clean-up, spree questions, handoff notes. **v140** Decision Points 2: ten more questions (Harrow, Intuition, Snapcaster, Flickerwisp, Berserk…).
 
 ## 5. Active tasks, owning sessions, starting versions, current status
 
-At the time of writing **no TASK session is actively working**. Every TASK session closed itself at the user's direction on 2026-11-23 (12:55–13:30 UTC) and is waiting for MAIN acceptance or has been accepted [V, session list].
+Every TASK session reported itself **closed** at the user's direction on 2026-11-23, between 12:55 and 13:30 UTC, and is waiting for MAIN acceptance or has been accepted [V, their closing messages]. When this note was checked (about 13:34 UTC), Card Rules Engine 2 and Token usage optimization showed as RUNNING in the session list, and three others had just updated. They were most likely answering the outgoing MAIN's acknowledgment messages. **[?]** Confirm with `list_sessions` that none of them has started new work. Session **titles** below are their titles in the session list.
 
 | Task / session | Id | Started from | Status | Notes and pending items |
 |---|---|---|---|---|
 | Card Rules Engine 2 | `session_01K5kL4YNG2qref25DS7t9oH` | v138 (branch `claude/engine-rules`) | Closed, **awaiting MAIN acceptance** | Batches 37–41 and the shock-tapped fix are in PR #69. Handoff `docs/agents/ENGINE-2-HANDOFF.md` at `b895694`, **not in #69**. |
 | Decision Points 2 | `session_01K5kL4Zcst9FYJBqezvRjTK` | v138 (branch `claude/decision-points-2`) | Closed, **awaiting MAIN acceptance** | Work through `d302017` (shock-land question) is in PR #69. Final handoff `docs/agents/DECISION-POINTS.md` at `b9223b6`, **not in #69**. |
-| Tutorial | `session_01K5kL4W83TGViiS66xLyhrQ` | v136 (branch `claude/tutorial`) | Closed, **awaiting MAIN acceptance** | Stages 3–4 are in PR #69 (`7bbad24`). **Not in #69 and not reported to MAIN:** `5c039db` "Every feature" tours (selectable in the ? menu; this is **code**, not reviewed or tested by MAIN) and `c17de6d`, the handoff `docs/agents/TUTORIAL.md`. |
-| Error and issue fixes (2) | `session_01K5kL4YYZ9n2hdfpzktHqd2` | v139 (branch `claude/error-fixes-hakbal`) | Closed, **awaiting MAIN acceptance** | `445ce2f`: handoff `docs/agents/ERROR-FIXES-2.md` and repro scripts in `docs/agents/error-fixes-repro/`. The Hakbal report was **not reproduced at v140, and the user put it on hold** ("I'll review the error again"). No code. |
-| Token usage optimization | `session_01K5kL4WAVoR7GB6AAYSg8ui` | v140 (branch `claude/practical-planck-1vuwuy`) | Closed, **awaiting MAIN acceptance** | `1f4e402`: handoff `docs/agents/TOKEN-USE.md`, advice only. It notes that the main session id appears in several files, all of which must change for a new MAIN. No PR. |
-| Session protocol (T-001) | `session_01K5kL4WwjcWfZCuKtHVFAvU` | v140 | **Accepted** by the outgoing MAIN | `e2507c9` is in PR #69. Draft PR #71 closes once #69 is live. It has its own scheduled check (§9). |
+| Tutorial | `session_01K5kL4W83TGViiS66xLyhrQ` | v136 (branch `claude/tutorial`) | Closed, **awaiting MAIN acceptance** | Stages 3–4 are in PR #69 (`7bbad24`). **Not in #69:** `5c039db`, the "Every feature" tours, which the **user asked for directly**: a long tour per tab and one across every tab, selectable in the ? menu. This is **code**. The Tutorial session reports 101 tutorial.ui checks plus 10 other UI tests green [R]; MAIN has not reviewed or tested it. Also not in #69: `c17de6d`, the handoff `docs/agents/TUTORIAL.md`. Its What's new line: "Every feature: a long tour of each tab, or of every tab, under ?." |
+| "Error and issue fixes (2)" | `session_01K5kL4YYZ9n2hdfpzktHqd2` | v139 (branch `claude/error-fixes-hakbal`) | Closed, **awaiting MAIN acceptance** | `445ce2f`: handoff `docs/agents/ERROR-FIXES-2.md` and repro scripts in `docs/agents/error-fixes-repro/`. The Hakbal report ("misses its first explore when cast in main 1") was **not reproduced at v140, and the user put it on hold** ("I'll review the error again"). The session asked the user for the top-bar version number and a log screenshot. No code. |
+| "Token usage optimization strategy" | `session_01K5kL4WAVoR7GB6AAYSg8ui` | v140 (branch `claude/practical-planck-1vuwuy`) | Closed, **awaiting MAIN acceptance** | `1f4e402`: handoff `docs/agents/TOKEN-USE.md`, advice only (this file is not on MAIN's branch). It has three suggestions not yet written in the repository: hand long diffs and test output to a sub-agent; replace a long session that has sat idle for about an hour; and note that the token-saver plugin's snapshots live in the container and are lost with it. No PR. |
+| "Session management protocol" (T-001) | `session_01K5kL4WwjcWfZCuKtHVFAvU` | v140 | **Accepted** by the outgoing MAIN | `e2507c9` is in PR #69. Draft PR #71 closes once #69 is live. It has its own scheduled check (§9). |
 | Code Clean-up | `session_01K5kL4W7sYVsWQcgDzVLTfX` | v139 | **Accepted**; the session marked itself archived | `7335f59` and `b5dfec5` are in PR #69. Close draft PR #70 as superseded. |
 | PR and Marketing | `session_01K5kL4WqRN1kBjvWc1Tsngx` | — | **Accepted** | The handoff was copied into PR #69. The branch `claude/site-promotion-qr-code-s3b13i` is retired: **do not merge it**. |
 | Combo and win conditions | `session_01K5kL4WWP7xAdzXoi29ynuk` | v140 | **Accepted** | `60dfc6f` is in PR #69. `385bf11` (the note marked accepted/archived) is not; draft PR #72. |
-| Sound and effects | `session_01K5kL4YtUiLPEtX5ytjG6Su` | v140 | **Accepted** | `5a3e322` is in PR #69. `661733d` (the note marked archived) is not. |
-| Remote Versus | `session_01K5kL4ZJZZgeVGvAYfVT4Ld` | v139 | **Accepted** | `d1f3418` was copied into PR #69. `aba1b98` (the note marked archived) is not. Its restore request is done by PR #69. |
-| Card-teaching (Data Diver's successor) | `session_01K5kL4Y1MvoJcQ6QEUCvRD4` | v140 | **Accepted** | `e2e7578` is in PR #69. GitHub issue **#67** is not started. |
+| "Features and Enhancements" (sound and effects) | `session_01K5kL4YtUiLPEtX5ytjG6Su` | v140 | **Accepted** | `5a3e322` is in PR #69. `661733d` (the note marked archived) is not. |
+| "Remote versus agent" | `session_01K5kL4ZJZZgeVGvAYfVT4Ld` | v139 | **Accepted** | `d1f3418` was copied into PR #69. `aba1b98` (the note marked archived) is not. Its restore request is done by PR #69. |
+| "Goldfish: card teaching & Policy lab" (Data Diver's successor) | `session_01K5kL4Y1MvoJcQ6QEUCvRD4` | v140 | **Accepted** | `e2e7578` is in PR #69. GitHub issue **#67** is not started. Its scheduled task "Unlearned cards report" still fires into this closed session (§9). |
 | App/User Requests | `session_01K5kL4ZHa2HpBw394qGVGjq` | — | Closed (summary only) | Summary: "Closed with nothing unintegrated: start.bat self-update merged (PR #2); PR #47 held; installable app not started" [R]. **[?]** Its "PR #47 held" does not match GitHub, where #47 is the merged Moving Parts deck PR. Ask it or the user. |
-| Archived earlier | Card Rules Engine, Decision points, Error and issue fixes, Data Diver, Remember State | — | Archived [V] | — |
+| Archived earlier | "Card Rules Engine", "Goldfish calculator decision points", "Error and issue fixes", "Data Diver", "Remember State" | — | Archived [V] | — |
 
 ## 6. Reports awaiting review (not yet accepted by any MAIN)
 
@@ -97,8 +97,8 @@ At the time of writing **no TASK session is actively working**. Every TASK sessi
 **PR #69** (`claude/goldfish-visual-design-3yh2hy` → default branch), open, not merged [V]. Contents [V, by commit]:
 
 - **Play a friend restored as in v128** (`6fbf901`).
-- **Tutorial** stage 3, the sample games (`a3e6a26`), and stage 4, welcome/goals/tips/What's new (`7bbad24`).
-- **Engine** rules batches 37–41 (`45cd7c3`) and the shock land entering tapped from an effect (`d303087`, `aa12ec1`).
+- **Tutorial** stage 3, the sample games (content `012cd8f`, via merge `a3e6a26`), and stage 4, welcome/goals/tips/What's new (content `9b97287`, via merge `7bbad24`).
+- **Engine** rules batches 37–41 (content `30f9ea4`, `ac46d48`, `a1747db`, `fded532`, `54d0508`, via merge `45cd7c3`) and the shock land entering tapped from an effect (`d303087`, `aa12ec1`).
 - **Decision Points 2:** the sacrifice title (`428db9a`), the return-question title (`c9e3da4`), and the shock-land "pay 2 life?" question (`d302017`). The `enter()` conflict was resolved as the engine session specified.
 - **Code clean-up** (`7335f59`, `b5dfec5`).
 - **Session protocol** T-001 (`e2507c9`).
@@ -130,10 +130,9 @@ Draft PRs that #69 supersedes, to close after it is live: **#70** (clean-up, ful
 **Pending user decisions:**
 1. Does the **Metered relay login** in `remote.js` still exist? The user was told to delete it after v131. Without it, Play a friend works only on a direct connection.
 2. Who owns **promotion** now that PR and Marketing has closed? The open items are in `docs/promo/HANDOFF-PR-and-Marketing.md`.
-3. Close **GitHub issue #27** (Shalai): no code is needed [R].
-4. The **Hakbal report** is on hold: the user said they would review the error again.
-5. **Archiving** the closed sessions' chats. The outgoing MAIN archived only Remember State.
-6. **GitHub access under the new repository name**, and the Claude GitHub App for ICEYfish. PR events do not reach some sessions [R].
+3. The **Hakbal report** is on hold: the user said they would review the error again.
+4. **Archiving** the closed sessions' chats. The outgoing MAIN archived only Remember State.
+5. **GitHub access under the new repository name**, and the Claude GitHub App for ICEYfish. PR events do not reach some sessions [R].
 
 **Open work, unowned until the new MAIN assigns it:**
 - **Issue #67:** teach Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut… (from `CARD-TEACHING.md`).
@@ -142,8 +141,8 @@ Draft PRs that #69 supersedes, to close after it is live: **#70** (clean-up, ful
 - **Sound:** the Drive audio backup is at v86; the user hasn't confirmed the Windows crackle fix; background music is untested on a phone.
 - **Tests:** 16 engine test files have no README row; the slow engine test files belong to the engine session; the remote.ui flake.
 - **Docs:**
-  - `docs/ROADMAP.md` still says cross-device play is "Not planned for now", which is stale now that Play a friend is back [R, T-001].
-  - The main session id appears in `CLAUDE.md` (2 places) and in `docs/agents/ENGINE.md`, `DECISION-POINTS.md`, `REMOTE-VERSUS.md` and `TOKEN-USE.md`. All of them must change for the new MAIN [R, TOKEN-USE.md].
+  - `docs/ROADMAP.md` still says cross-device play is "Not planned for now", which will be stale once PR #69 restores Play a friend [V].
+  - The outgoing main session id appears, at MAIN's branch, in: `CLAUDE.md` (2 places), `PROJECT_STATE.md`, `MAIN_HANDOFF.md`, `docs/agents/ENGINE.md` (2), `DECISION-POINTS.md`, `REMOTE-VERSUS.md`, `REMOTE-VERSUS-HANDOFF.md`, `CODE-CLEANUP.md`, `COMBOS.md`, `SOUND-EFFECTS.md`, and `docs/promo/HANDOFF-PR-and-Marketing.md` [V, grep]. Unintegrated notes have it too (`TOKEN-USE.md` on `claude/practical-planck-1vuwuy`, among others). The rule-bearing places are `CLAUDE.md` and `PROJECT_STATE.md`; the notes are history and can keep the old id.
 
 ## 10. Next priorities, and the exact first action for the replacement MAIN
 
@@ -154,7 +153,7 @@ Draft PRs that #69 supersedes, to close after it is live: **#70** (clean-up, ful
 4. Send the outgoing MAIN (`session_01K5kL4YgVQ6tZxzA48G59TU`) and the user an acknowledgment stating that you have: **read the handoff; checked the current project state; accounted for the active tasks and pending changes (§5–§8); and assumed coordination responsibility**.
 
 **Then, in order:**
-1. Put your own session id in place of `session_01K5kL4YgVQ6tZxzA48G59TU` in `CLAUDE.md` and the notes listed in §9. Message every session that may still be addressed (§5) with the new id.
+1. Put your own session id in place of `session_01K5kL4YgVQ6tZxzA48G59TU` in `CLAUDE.md` and `PROJECT_STATE.md` (the notes in §9 may keep it as history). Message every session that may still be addressed (§5) with the new id.
 2. Integrate **PR #69** through the normal process. Accepting this handoff does not merge its code.
    - Re-run the engine suite and the UI tests (remote.ui with `--jobs 1`) on its head, and confirm GitHub's checks are green.
    - Send the watch notification and merge.
@@ -162,8 +161,8 @@ Draft PRs that #69 supersedes, to close after it is live: **#70** (clean-up, ful
    - Report the version to the sessions whose work went in.
    - Close #70 and #71.
 3. **Reconcile `PROJECT_STATE.md`** with §4–§9. From then on it is your file.
-4. **Review the §6 reports.** Test the Tutorial's `5c039db` like any other code change before integrating it. Integrate the remaining note-only commits (`b895694`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98`) together in one docs batch. Then close the drafts #64, #65, #68 and #72.
-5. **Ask the user** the §9 decisions, then start fresh TASK sessions for the work the user wants next: issue #67, engine rules batch 42+, decision points, and so on.
+4. **Review the §6 reports.** Test the Tutorial's `5c039db` like any other code change before integrating it. Integrate the remaining note-only commits (`b895694`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98`) together in one docs batch. `385bf11` (Combos), `661733d` (Sound) and `aba1b98` (Remote Versus) only change their notes' status to archived/accepted; the copies in #69 still say "awaiting MAIN acceptance". Then close the drafts #64, #65, #68 and #72.
+5. **Ask the user** the §9 decisions, then start fresh TASK sessions for the work the user wants next: issue #67; engine rules batch 42+ (561 pool cards still have an unread line [R]); decision points (the target gaps, Rishkar first, then Hunter's Talent's attacker [R]); and so on. Start each from its note in `docs/agents/`.
 
 ---
 

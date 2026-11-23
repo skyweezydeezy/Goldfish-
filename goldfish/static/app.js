@@ -104,7 +104,7 @@
       minLands: +$('#optMinLands').value, maxLands: +$('#optMaxLands').value,
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
-      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 10000,
+      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
       bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
     };
@@ -1799,7 +1799,7 @@
     if (!opp.cards.length) { $('#mmInfo').textContent = 'That deck has no cards.'; btn.disabled = false; return; }
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     o.policyB = opp.policy || {};                                                          // the opponent plays with its own learned choices
-    const n = Math.max(20, Math.min(20000, +$('#mmN').value || 10000));          // 10,000: any percentage within about ±1 point (95%)
+    const n = Math.max(20, Math.min(20000, +$('#mmN').value || 2000));          // 2,000: any percentage within about ±2 points (95%)
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');
     const bar = $('#mmProgress div'); bar.style.width = '0';
@@ -2007,7 +2007,7 @@
     if (dec.mirrorOnly && mode === 'goldfish') mode = 'field';                                       // a choice that needs an opponent is tested against other decks
     if (dec.dynamic) dec.options = tribeOptions();
     if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
-    const n = Math.max(50, Math.min(20000, +$('#plN').value || 10000));
+    const n = Math.max(50, Math.min(20000, +$('#plN').value || 2000));
     let opp = null;
     let field = null;
     if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }
@@ -2089,7 +2089,7 @@
     try { for (const v of labOpponents()) { const x = await loadOpponent(v, $('#plInfo')); if (x.cards.length) opps.push({ name: x.name, cards: x.cards, tokens: x.tokens, policy: x.policy || {} }); } }
     catch (err) { $('#plInfo').textContent = 'Could not load an opponent deck: ' + (err.message || err); btn.disabled = false; return; }
     if (!opps.length) { $('#plInfo').textContent = 'Pick at least one opponent (Opponents, above).'; btn.disabled = false; return; }
-    const n = Math.max(500, Math.min(20000, +$('#abN').value || 10000));
+    const n = Math.max(500, Math.min(20000, +$('#abN').value || 2000));
     $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
     if (plRolesWorker) plRolesWorker.terminate();
     plRolesWorker = new Worker('worker.js');
@@ -2147,7 +2147,7 @@
 
   // ---------- A/B test (compare.js): diagnose, change one or two cards, test version 2 against version 1 ----------
   let abWorker = null, abOpps = null, abV2 = null;
-  const abGames = () => Math.max(100, Math.min(20000, +$('#abN').value || 10000));
+  const abGames = () => Math.max(100, Math.min(20000, +$('#abN').value || 2000));
   const abKey = () => S.deck ? S.deck.commanders.map(i => i.card.name).join(' + ') || 'deck' : 'deck';
   function abShow() {
     const sel = $('#abOpp').value === 'selected', show = (id, on) => { $(id).style.display = on ? '' : 'none'; };

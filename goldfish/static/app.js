@@ -421,7 +421,7 @@
 
   // ---- Teach these cards: cards whose rules text the engine does not fully read become a pre-filled GitHub request (one click in
   // the app, then Create on GitHub). Only the card names, the unread lines and the app version are sent, never the decklist.
-  const TEACH_REPO = 'https://github.com/skyweezydeezy/Goldfish-';
+  const TEACH_REPO = 'https://github.com/skyweezydeezy/ICEYfish';
   const unreadLines = c => (c.a.coverage || []).filter(r => r.status === 'ignored' || r.status === 'partial').map(r => r.text);
   function teachUrl(cards) {
     const list = cards.slice(0, 8);

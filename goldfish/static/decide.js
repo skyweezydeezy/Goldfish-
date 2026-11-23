@@ -155,7 +155,8 @@
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
-      if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
+      if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
+      else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
@@ -194,6 +195,11 @@
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
       else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
+    } else if (d.kind === 'mode' && d.spree) {                                                            // spree: a mode is paid for as the spell is cast, more may be added
+      q.title = d.spree === 'first' ? `${sn || 'Spree'}: choose a mode to cast it with` : `${sn || 'Spree'}: add another mode?`;
+      q.text = d.spree === 'first' ? 'Spree: you pay for at least one mode as you cast it. Only the modes you can pay for are listed; more can be added next.' : 'You can pay for another mode. Choose it, or cast the spell as it is.';
+      if (d.spree === 'more') q.none = 'No more modes';
+      if (src) { q.spell = src; q.spellNote = 'being cast'; }
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;
       q.text = 'Only the modes the engine can play are listed.';

@@ -426,7 +426,8 @@
       const scope = /target (player|opponent) controls|an opponent controls|opponents control/.test(lw) ? 'opp' : /^each\b/.test(lw) ? 'each' : lw === 'it' && /create [^.]*token and put [^.]*counters? on it/i.test(text) ? 'lastToken' : (lw === '~' || lw === 'it') ? 'self' : 'target';          // "create a Fractal token and put X counters on it" (Berta)
       const STOP = new Set(['each', 'other', 'another', 'target', 'up', 'to', 'one', 'two', 'three', 'creature', 'creatures', 'you', 'control', 'than', 'of', 'that', 'and', 'a', 'an', 'permanent', 'permanents', 'nontoken', 'or']);
       const types = /\bcreature or (?:enchantment|artifact|vehicle|planeswalker)\b|\b(?:artifact|enchantment|vehicle) or creature\b/.test(lw) ? [] : lw.replace(/~/g, ' ').split(/[^a-z]+/).filter(w => w && !STOP.has(w));          // "target creature or enchantment you control" (Heliod): any creature ("or" matched "Warrior")
-      fx.push({ type: 'counters', kind: m[2], n: /^that many$/i.test(m[1]) ? 'THAT' : num(m[1]), scope, other: /\bother\b/.test(lw), excl: /other than ~|\banother\b/i.test(who), types });
+      const upTo = lw.match(/^each of up to (one|two|three|four|five|x|\d+) (?:other )?target\b/);          // Rishkar: "each of up to two target creatures" is the best two, not every creature
+      fx.push(Object.assign({ type: 'counters', kind: m[2], n: /^that many$/i.test(m[1]) ? 'THAT' : num(m[1]), scope, other: /\bother\b/.test(lw), excl: /other than ~|\banother\b/i.test(who), types }, upTo ? { scope: 'upTo', upTo: /^x$/.test(upTo[1]) ? 'X' : num(upTo[1]) } : {}));
     }
     if (/\bthe ring tempts you\b/i.test(text)) fx.push({ type: 'tempt' });                 // Frodo, Boromir...
 
@@ -6083,6 +6084,7 @@
           const kind = f.kind || '+1/+1';
           if (f.scope === 'opp') { if (g.opp) { for (const p of g.opp.battlefield.filter(isCreaturePerm)) addCounters(g.opp, p, kind, n, ev, source); } break; }
           if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && hasSubtype(p.card, f.types));
+          else if (f.scope === 'upTo') { const k = /^(?:stun|-1\/-1)$/.test(kind) ? 0 : f.upTo === 'X' ? (g.xValue || 0) : f.upTo; targets = g.battlefield.filter(p => isCreaturePerm(p) && !((f.other || f.excl) && p === source) && hasSubtype(p.card, f.types)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x)).slice(0, k); }          // the best N, as support does (stun and -1/-1 counters are for the other players' creatures)
           else if (f.scope === 'self') targets = source && (isCreaturePerm(source) || kind !== '+1/+1') ? [source] : [];
           else if (f.scope === 'lastToken') targets = g._lastTok && g.battlefield.includes(g._lastTok) ? [g._lastTok] : [];
           else { let b = counterTarget(g, f, source); if (b && g.ask) b = decide(g, { kind: 'target', what: 'counters', options: g.battlefield.filter(p => isCreaturePerm(p) && !(f.excl && p === source) && hasSubtype(p.card, f.types)), def: b, f, n, source }); if (b) targets = [b]; }

@@ -1,8 +1,36 @@
-# Visuals / Main session: handoff note
+# MAIN (Visuals) session: handoff note
 
-> Superseded for state by `MAIN_HANDOFF.md` and `PROJECT_STATE.md` (2026-11-23). This note keeps the working knowledge: how a merge goes, wait loops, gotchas.
+> State lives in `PROJECT_STATE.md` (newest on `claude/main-coordination`). This note is the working knowledge plus the hand-over.
 
-The main session gathers every other session's work, tests it, merges it into the default branch, and reports back. Read CLAUDE.md first; it holds the rules the user set. This note is the working knowledge behind them.
+## Hand-over, 2026-11-23 about 21:10 UTC
+- **Outgoing MAIN:** "MAIN (ICEYfish)", `session_01K5kL4WjxCpfdEjqWh1igWP`, at 600k tokens (the hand-over line). It stops here.
+- **Work branch:** `claude/main-coordination`, equal to live plus `PROJECT_STATE.md` commits. Pushed; nothing uncommitted.
+- **Live:** Version 156 (`6d14649`), verified. Everything reported to MAIN up to now is merged; no finished work is waiting.
+- **First actions for the new MAIN:**
+  1. Put your session id in place of `session_01K5kL4WjxCpfdEjqWh1igWP` in `CLAUDE.md` (2 places) and in `PROJECT_STATE.md`'s MAIN line; merge it through the normal process (a docs PR).
+  2. Tell the active sessions below your id (the outgoing MAIN already told them a new MAIN is coming).
+- **Active tasks (see PROJECT_STATE.md section 5):**
+  - T-036 Card Rules Engine 5 (`session_01K5kL4Xff1pQB7F6PZZaw6f`, new): batches 57–61 + Decision Points' engine blockers on `claude/engine-rules`; held, merge all five together.
+  - T-035 Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`): verify every built-in deck's bracket at ≥20,000 games; when it lands, send its thresholds to Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`) to replace Tune.BRACKET_SPEED.
+  - T-029 Remote versus 2 (`session_01K5kL4VGPUcfnYXVRzRPpyD`): Play a friend on emulated iPhone/iPad, TURN-over-TLS test.
+  - Tutorial 2 (`session_01K5kL4Y7HdHsCLLBiRzf9eJ`): the user's iPad request: in the Practice sample game, warn "the game now plays itself to the end of turn N" when Autopilot to turn is pressed, and don't hold Next on the Loop step (step 19 of 23).
+  - Decision Points 3 (`session_01K5kL4XqWbWKz7y7G2bUTMc`): idle until Engine 5 reports the blocker commit (7ba267c), then squad and Will questions.
+  - Idle, no task: Card teaching 2, Code Clean-up 2, Combos 2, Features 2, Error fixes 3, App/User Requests 2, PR and Marketing 2, Layout and Settings, Policy Lab tuning.
+- **Waiting on the user:** is the Metered relay login in remote.js still live; turn off or re-point the "Unlearned cards report" scheduled task (built-in decks have nothing unread now); fill in r/EDH's rules in docs/promo/posts.md before any posting; Took's Adventure sync method; Hakbal on hold.
+- **The user's rules added this session (in CLAUDE.md):** merge first, then task (finish any pending merge, live with its version, before giving any session new work). Also: "prefill" meant the default game count, now 2,000.
+
+## How a merge goes (as practised this session)
+1. Fetch the reported branch; `git merge --no-edit origin/<branch>` into `claude/main-coordination` (batch reports that arrive together).
+2. Test once: `node tests/run.js` (≈4 min), `node tools/every-default-sweep.js` when sim.js/decide.js changed (bad 0), `python3 -m pytest -q tests/launch` when server/update/SHELL changed, and the touched UI tests with `--jobs 2` (remote.ui is steady now).
+3. Add the whatsnew.json entry (v = live + 1) and PROJECT_STATE lines ("Expected Version N"); commit; push; open a PR to the default branch (it supersedes the sessions' drafts; close those after).
+4. Wait for GitHub's 4 checks (engine ×2, windows ×2, ≈7 min; poll in `until` loops of ≤110 s per call), PushNotification "merge started", merge with expectedHeadSha (40 chars), wait for version.js on the live site, PushNotification "live", fast-forward the branch, mark Verified, tell each session.
+
+## Gotchas
+- Scryfall needs a User-Agent from Node: the tools use tools/ua.js now (T-026).
+- build-deck-index drops bracketEst when a deck states its bracket: that's intended.
+- tools/import-decks.js rewrites a changed deck without set codes; to keep printings, swap only the changed lines.
+- Drive: the sync folders are "Magic Commanders/ManaBox" (1CwIo9I4bXXajMJ5F3Koj1zjb5VOwzn7Y) and "MTG Max Salt Commander Decks/ManaBox" (1kMuwQfee162UNJc9MW1NIZkkMCVbF2yJ); both are in drive-sync.json.
+- Worker restarts can hold reports back; read notifications after a restart before tasking anyone.
 
 ## Where things are
 - Repository: renamed **ICEYfish**. Live site: https://skyweezydeezy.github.io/ICEYfish/. In these cloud sessions GitHub access is granted under the **old** name `skyweezydeezy/Goldfish-`: keep the git remote on `.../Goldfish-` (pushing to `.../ICEYfish` returns 403), and pass `repo: "Goldfish-"` to the GitHub tools. Redirects make both work. The user may grant the new name later.

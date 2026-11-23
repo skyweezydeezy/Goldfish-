@@ -2,6 +2,19 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 159,
+      "lines": [
+        "More than 30 more cards now play by their rules, among them Sliver Legion, March of the World Ooze, Kykar and Elenda. Squad and the Will cards' modes work too.",
+        "When a card pumps an attacker of your choice, Duel and Pod ask you which one."
+      ]
+    },
+    {
+      "v": 158,
+      "lines": [
+        "The Practice sample game says when the autopilot plays on to a turn, and lets you go on while it plays."
+      ]
+    },
+    {
       "v": 156,
       "lines": [
         "On a PC the app now uses the whole screen: Practice fits one 1920×1080 screen, and Simulate shows three charts a row.",

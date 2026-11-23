@@ -179,7 +179,9 @@
   }
   function wireChannel(ch) {
     S.link.ch = ch;
-    ch.onopen = () => { S.lastSeen = Date.now(); S.pending = null; clearTimeout(S.link.timer); status(''); hello(); show(); redraw(); };          // the codes are used up
+    // the codes are used up. The inviter says hello first, and the friend answers its hello: the friend's side of the channel opens
+    // before the inviter's, and what it sent in that moment could be lost (Chrome dropped the first piece of the friend's hello)
+    ch.onopen = () => { S.lastSeen = Date.now(); S.pending = null; clearTimeout(S.link.timer); status(''); if (S.link.inviter) hello(); show(); redraw(); };
     ch.onclose = () => { redraw(); show(); };
     ch.onmessage = e => { S.lastSeen = Date.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } receive(m); };
   }
@@ -262,7 +264,7 @@
     if (g.gm && g.gm.over && !g.ended) { g.ended = 'over'; save(); show(); }          // a finished game is kept, but not offered for rejoining
     // the table again only when what the bar says about the connection changes: a redraw replaces the buttons, and a tap that lands
     // on one while it is replaced is lost (on a phone, the touch ends on a button that is no longer there)
-    const on = connected(); if (on !== S.shownOn) { S.shownOn = on; redraw(); }
+    if (connected() !== S.shownOn) redraw();
   }, 4000);
   const connected = () => open() && Date.now() - S.lastSeen < 13000;
 
@@ -271,6 +273,7 @@
     const g = S.game && !S.game.ended ? S.game : null;
     let deck = null;
     if (!g) { try { deck = myDeck(); } catch (e) { status(e.message); S.link.pc.close(); return; } }
+    S.link.said = true;
     raw({ t: 'hello', ack: accepted() ? DISCLOSURE_VERSION : 0, app: APP, proto: PROTO, name: myName(), deck, game: g ? g.id : null, got: g ? g.inbox.length : 0 });
   }
   function refuse(why) { raw({ t: 'bye', why }); status(why); setTimeout(() => { try { S.link.pc.close(); } catch (e) {} }, 300); }
@@ -290,6 +293,7 @@
     if (m.t === 'act' || m.t === 'pick' || m.t === 'fp') onGameMessage(m);
   }
   function onHello(m) {
+    if (!S.link.inviter && !S.link.said) hello();          // the friend answers the inviter's hello with its own
     if (m.proto !== PROTO) return refuse('The two devices run different versions of the app. Reload both and try again.');
     if (+m.app !== APP) return refuse(`The two devices run different versions of the app (v${APP} and v${+m.app || '?'}). Reload both pages and try again.`);
     if (m.ack !== DISCLOSURE_VERSION || !accepted()) return refuse('Both players must accept the same list of what is shared before playing.');
@@ -368,7 +372,7 @@
     if (g.mine[k] && g.mine[k] !== hh) stop('The two devices no longer show the same game.');
   }
   function stop(why) { const g = S.game; if (!g || g.ended === 'halted') return; V.halt(MODE, why + ' It stops here rather than guess.'); }
-  function redraw() { const gm = V[MODE].game; if (gm && gm.io) V.redraw(MODE); }
+  function redraw() { const gm = V[MODE].game; S.shownOn = connected(); if (gm && gm.io) V.redraw(MODE); }          // shownOn: what the bar now says about the connection
 
   // ---------- the "Play a friend" box on the Duel tab ----------
   const myName = () => cleanName((box && box.querySelector('.rm-name').value) || localStorage.getItem(NAME_KEY));

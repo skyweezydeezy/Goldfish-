@@ -118,7 +118,7 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
     const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000, polling: 200 });
     try { await Promise.all([started(A), started(B)]); }
     catch (e) { for (const p of [A, B]) console.log('LINK ' + p.label + ' ' + JSON.stringify(await p.evaluate(() => { const S = window.__isfRemote.state, L = S.link || {}, pc = L.pc;
-      return { inviter: L.inviter, answered: L.answered, conn: pc && pc.connectionState, ice: pc && pc.iceConnectionState, sig: pc && pc.signalingState, ch: L.ch && L.ch.readyState, reply: localStorage.getItem('isf_remote_reply'), status: (document.querySelector('#tab-duel .rm-status') || {}).textContent, game: !!(window.__isfVersus.duel.game) }; }))); throw e; }
+      return { inviter: L.inviter, answered: L.answered, conn: pc && pc.connectionState, ice: pc && pc.iceConnectionState, sig: pc && pc.signalingState, ch: L.ch && L.ch.readyState, reply: localStorage.getItem('isf_remote_reply'), status: (document.querySelector('#tab-duel .rm-status') || {}).textContent, game: !!(window.__isfVersus.duel.game), parts: [...S.parts].map(([, v]) => v.got + '/' + v.n), quiet: Date.now() - S.lastSeen }; }))); throw e; }
     await A2.close();
     check(`${tag} both devices start the game`, true);
 

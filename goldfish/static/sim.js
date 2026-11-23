@@ -4349,7 +4349,7 @@
 
   // ---------- Entering the battlefield & triggers ----------
   // Does this land enter tapped right now? Conditional lands look at the board (and hand) as it is when they enter.
-  function landEntersTapped(g, a) {
+  function landEntersTapped(g, a, inst) {
     if (bfInfo(g).landsUntapped) return false;                                                       // Spelunking
     const tc = a.tapCond;
     if (!tc) return !!a.entersTapped;
@@ -4363,7 +4363,11 @@
       case 'basicLands': return lands.filter(p => /\bBasic\b/.test(p.card.type_line || '')).length < tc.min;
       case 'fewLands': return lands.length > tc.max;                                          // fast lands
       case 'reveal': return !g.hand.some(c => hasType(c.card.type_line, tc.types));           // reveal lands (Snarls, Bosk)
-      case 'shock': if (g.life - tc.life >= lifeFloor(g, 1)) { g.life -= tc.life; return false; } return true;   // pay the life: untapped
+      case 'shock': {          // pay the life: untapped
+        let pay = g.life - tc.life >= lifeFloor(g, 1);
+        if (g.ask && !g.dry && inst) pay = decide(g, { kind: 'shock', options: ['pay', 'tapped'], def: pay ? 'pay' : 'tapped', life: tc.life, source: inst }) === 'pay';          // a person chooses
+        if (pay) { g.life -= tc.life; return false; } return true;
+      }
     }
     return !!a.entersTapped;
   }
@@ -4374,7 +4378,7 @@
     const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: (a.fetchSpec || a.coffers || a.nykthos) ? null : a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: Math.floor(a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1) / (a.isPlaneswalker && !g.dry && g.opp && othersHave(g, 'vorinHalf') ? 2 : 1)), token: !!inst.card.isToken || !!o.token };          // o.token: a token copy of a card
     if (a.tendo) perm.charge = 1;
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
-    else if (a.isLand) perm.tapped = landEntersTapped(g, a);
+    else if (a.isLand) perm.tapped = landEntersTapped(g, a, o.tapped ? null : inst);          // a land put in tapped anyway: nothing to ask
     else { perm.sick = a.isCreature; if (a.etbTapped) perm.tapped = true; }
     if (o.tapped) perm.tapped = true;
     if (a.isCreature && !perm.token && !perm.asLand && !o.silent) g.nontokenCreatureEnters = (g.nontokenCreatureEnters || 0) + 1;   // Gyome counts these

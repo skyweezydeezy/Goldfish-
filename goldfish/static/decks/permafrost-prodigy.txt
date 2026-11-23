@@ -1,4 +1,5 @@
 // Permafrost Prodigy (Kinnan, Bonder Prodigy)
+// Bracket 4
 // COMMANDER
 1 Kinnan, Bonder Prodigy (FCA) 55
 // DECK

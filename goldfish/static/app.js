@@ -104,7 +104,7 @@
       minLands: +$('#optMinLands').value, maxLands: +$('#optMaxLands').value,
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
-      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 10000,
+      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
       bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
     };
@@ -264,7 +264,7 @@
       const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1);
       if (cand && total === 100) { cand.commander = true; cand._guessed = true; }
     }
-    S.cards = cards;
+    S.cards = cards; S.loaded = r;          // r: the tutorial puts the person's deck back with setDeck(r) after its sample game
     S.tokens = r.tokens || [];
     S.deck = G.buildDeck(cards, S.tokens, currentPolicy().tribe);
     S.byUid = S.deck.unique;
@@ -730,7 +730,7 @@
 
   // ======================= opening hands =======================
   let H = null, fanLayout = null;
-  const rseed = () => (Math.random() * 2 ** 32) >>> 0;
+  const rseed = () => { const t = window.ISFTutorial && window.ISFTutorial.takeSeed && window.ISFTutorial.takeSeed(); return t != null ? t >>> 0 : (Math.random() * 2 ** 32) >>> 0; };          // the tutorial's sample game asks for a fixed seed once
   $('#drawHand').addEventListener('click', () => { if (!need()) return; H = { g: G.newGame(S.deck, opts(), rseed()), mulls: 0 }; dealHand(); });
   $('#mullHand').addEventListener('click', () => {
     if (!H) return $('#drawHand').click();
@@ -1799,7 +1799,7 @@
     if (!opp.cards.length) { $('#mmInfo').textContent = 'That deck has no cards.'; btn.disabled = false; return; }
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     o.policyB = opp.policy || {};                                                          // the opponent plays with its own learned choices
-    const n = Math.max(20, Math.min(20000, +$('#mmN').value || 10000));          // 10,000: any percentage within about ±1 point (95%)
+    const n = Math.max(20, Math.min(20000, +$('#mmN').value || 2000));          // 2,000: any percentage within about ±2 points (95%)
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');
     const bar = $('#mmProgress div'); bar.style.width = '0';
@@ -2007,7 +2007,7 @@
     if (dec.mirrorOnly && mode === 'goldfish') mode = 'field';                                       // a choice that needs an opponent is tested against other decks
     if (dec.dynamic) dec.options = tribeOptions();
     if (dec.options.length < 2) { $('#plInfo').textContent = 'This deck has no other creature type worth testing.'; btn.disabled = false; return; }
-    const n = Math.max(50, Math.min(20000, +$('#plN').value || 10000));
+    const n = Math.max(50, Math.min(20000, +$('#plN').value || 2000));
     let opp = null;
     let field = null;
     if (mode === 'mirror') { try { opp = await mirrorOpponent(); } catch (err) { $('#plInfo').textContent = 'Could not load the opponent deck: ' + (err.message || err); btn.disabled = false; return; } }
@@ -2089,7 +2089,7 @@
     try { for (const v of labOpponents()) { const x = await loadOpponent(v, $('#plInfo')); if (x.cards.length) opps.push({ name: x.name, cards: x.cards, tokens: x.tokens, policy: x.policy || {} }); } }
     catch (err) { $('#plInfo').textContent = 'Could not load an opponent deck: ' + (err.message || err); btn.disabled = false; return; }
     if (!opps.length) { $('#plInfo').textContent = 'Pick at least one opponent (Opponents, above).'; btn.disabled = false; return; }
-    const n = Math.max(500, Math.min(20000, +$('#abN').value || 10000));
+    const n = Math.max(500, Math.min(20000, +$('#abN').value || 2000));
     $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
     if (plRolesWorker) plRolesWorker.terminate();
     plRolesWorker = new Worker('worker.js');
@@ -2147,7 +2147,7 @@
 
   // ---------- A/B test (compare.js): diagnose, change one or two cards, test version 2 against version 1 ----------
   let abWorker = null, abOpps = null, abV2 = null;
-  const abGames = () => Math.max(100, Math.min(20000, +$('#abN').value || 10000));
+  const abGames = () => Math.max(100, Math.min(20000, +$('#abN').value || 2000));
   const abKey = () => S.deck ? S.deck.commanders.map(i => i.card.name).join(' + ') || 'deck' : 'deck';
   function abShow() {
     const sel = $('#abOpp').value === 'selected', show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
@@ -2683,5 +2683,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+    // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
+    useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

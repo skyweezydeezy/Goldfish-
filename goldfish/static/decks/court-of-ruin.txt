@@ -1,4 +1,5 @@
 // Court of Ruin (Kefka, Court Mage)
+// Bracket 4
 // COMMANDER
 1 Kefka, Court Mage (FIN) 543
 // MAINBOARD

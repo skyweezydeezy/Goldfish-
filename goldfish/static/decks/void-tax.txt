@@ -1,4 +1,5 @@
 // Void Tax (Zhulodok, Void Gorger)
+// Bracket 4
 // COMMANDER
 1 Zhulodok, Void Gorger (CMM) 752
 // DECK

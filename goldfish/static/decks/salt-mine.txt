@@ -1,4 +1,5 @@
 // Salt Mine (Nekusar, the Mindrazer)
+// Bracket 4
 // COMMANDER
 1 Nekusar, the Mindrazer (SLD) 1301
 // DECK

@@ -32,12 +32,22 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   });
   await p.click('#zLibrary .card-back'); await p.waitForTimeout(500);          // the table redraws
   const foodIid = await p.evaluate(() => window.__isf.game.battlefield.find(q => q.card.name === 'Food').iid);
-  const menu = async iid => { await p.click(`.table .mtg[data-iid="${iid}"]`, { button: 'right' }); await p.waitForTimeout(200); return p.$$eval('#ctxMenu button', bs => bs.map(x => x.textContent)); };
+  // right-click a permanent and read its menu. Under load the table may still be redrawing (the card is replaced under the click), so
+  // wait for the card, then for the menu, and try again if it did not open.
+  const menu = async iid => {
+    for (let k = 0; k < 4; k++) {
+      await p.waitForSelector(`.table .mtg[data-iid="${iid}"]`, { timeout: 15000 });
+      await p.click(`.table .mtg[data-iid="${iid}"]`, { button: 'right' }).catch(() => {});
+      if (await p.waitForSelector('#ctxMenu button', { state: 'visible', timeout: 3000 }).then(() => true, () => false)) break;
+    }
+    return p.$$eval('#ctxMenu button', bs => bs.map(x => x.textContent));
+  };
   let items = await menu(foodIid);
   const crack = items.find(t => /Gain 3 life/.test(t));
   check('the Food\'s menu offers "Gain 3 life" for {2}', !!crack && /\{2\}/.test(crack), crack);
   const life0 = await p.evaluate(() => window.__isf.game.life);
-  await p.click('#ctxMenu button:has-text("Gain 3 life")'); await p.waitForTimeout(900);
+  await p.click('#ctxMenu button:has-text("Gain 3 life")');
+  await p.waitForFunction(l => window.__isf.game.life !== l, life0, { timeout: 10000 }).catch(() => {}); await p.waitForTimeout(300);
   const after = await p.evaluate(() => { const g = window.__isf.game; return { life: g.life, food: g.battlefield.some(q => q.card.name === 'Food'), untapped: g.battlefield.filter(q => q.asLand && !q.tapped).length }; });
   check('...using it: 3 life, the Food is gone, {2} paid', after.life === life0 + 3 && !after.food && after.untapped === 0, JSON.stringify(after));
   // with Sam, a Food costs {1}

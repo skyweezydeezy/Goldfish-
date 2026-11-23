@@ -129,11 +129,15 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],
     flickerwisp: ['exile another permanent', 'Choose a permanent to exile. A card of yours returns at the beginning of the next end step; a token is gone for good.'],
     proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
+    fangs: ['choose a creature', 'Choose the creature that gets a +1/+1 counter; then its +1/+1 counters are doubled.'],
+    flickerAll: ['flicker which creatures?', 'Choose any number of your creatures to exile. They return to the battlefield at the beginning of the next end step (a token does not come back, so tokens are left alone).'],
+    animate: ['choose an artifact', 'Choose the noncreature artifact that becomes an artifact creature.'],
     pump: ['choose a creature', 'Choose the creature that gets the bonus until end of turn.'],
     double: ['choose a creature', 'Choose the creature whose power is doubled.'],
     fight: ['choose what it fights', 'Choose the creature it fights: each deals damage equal to its power to the other.'],
@@ -166,6 +170,7 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'shock') { item.name = o === 'pay' ? `Pay ${d.life} life` : 'Enter tapped'; item.note = o === 'pay' ? `it enters untapped · you go to ${g.life - d.life} life` : 'no life paid · it can\'t tap for mana this turn'; }
       else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
@@ -191,12 +196,16 @@
     } else if (d.kind === 'target') {
       const f = d.f || {};
       if (d.what === 'removal') { q.title = `${sn || 'Removal'}: choose a target`; q.text = `Choose the permanent to ${f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'put into its owner\'s library' : 'destroy'}.`; q.none = 'No target (nothing happens)'; }
-      else if (d.what === 'graveyard') { q.title = `${sn || 'Effect'}: choose a card in ${d.theirs && d.theirs.size ? 'a' : 'your'} graveyard`; q.text = `Choose the card that ${d.dest === 'flashback' ? 'gains flashback: you cast it now from your graveyard, paying its mana cost, and then it is exiled' : 'returns ' + (d.dest === 'battlefield' ? 'to the battlefield' : d.dest === 'top' ? 'to the top of your library' : 'to your hand')}. Only the cards it can take are listed.`; q.none = 'No target (nothing returns)'; q.fan = true; }
+      else if (d.what === 'graveyard') { q.title = `${sn || 'Effect'}: choose a card in ${d.theirs && d.theirs.size ? 'a' : 'your'} graveyard`; q.text = `Choose the card that ${d.dest === 'flashback' ? 'gains flashback: you cast it now from your graveyard, paying its mana cost, and then it is exiled' : d.dest === 'yardCast' ? 'you may cast from your graveyard this turn (an instant or sorcery is exiled afterwards)' : 'returns ' + (d.dest === 'battlefield' ? 'to the battlefield' : d.dest === 'top' ? 'to the top of your library' : 'to your hand')}. Only the cards it can take are listed.`; q.none = d.dest === 'yardCast' ? 'None (cast nothing)' : 'No target (nothing returns)'; q.fan = true; }
             else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
       else if (d.what === 'burn') { q.title = `${sn || 'Damage'}: ${d.n} damage`; q.text = `Choose a creature this kills${d.face ? ', or deal the damage to the players' : ''}. Only creatures the damage would kill are listed: the engine does not keep damage on a creature that survives.`; q.none = d.face ? 'Deal it to the players' : 'No target (nothing happens)'; }
+      else if (d.what === 'counters' && multi) { q.title = `${sn || 'Counters'}: choose up to ${max === 1 ? 'one creature' : max + ' creatures'}`; q.text = `Choose up to ${max} creature${max === 1 ? '' : 's'}: each gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
       else if (d.what === 'explore') { q.title = `${sn || 'Explore'}: choose a creature`; q.text = 'Choose the creature that explores: you reveal the top card of your library; a land goes to your hand, otherwise the creature gets a +1/+1 counter.'; }
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
+      else if (d.what === 'biter' || d.what === 'fighter') { q.title = `${sn || 'Fight'}: choose your creature`; q.text = d.what === 'biter' ? 'Choose your creature: it deals damage equal to its power to a creature you choose next.' : 'Choose your creature: it fights a creature you choose next (each deals damage equal to its power to the other).'; }
+      else if (d.what === 'bitten' || d.what === 'fought') { const fn = d.fighter ? d.fighter.card.name : 'your creature'; q.title = `${sn || 'Fight'}: choose what ${fn} ${d.what === 'bitten' ? 'damages' : 'fights'}`; q.text = d.what === 'bitten' ? `${fn} deals damage equal to its power to the creature you choose.` : `${fn} and the creature you choose each deal damage equal to their power to the other.`; }
+      else if (d.what === 'pumpAttacker') { const f = d.f || {}; q.title = `${sn || 'Attack'}: choose an attacking creature`; q.text = `Choose the attacking creature that gets +${f.p || 0}/+${f.t || 0}${(f.kw || []).length ? ' and gains ' + f.kw.join(', ') : ''} until end of turn.`; }
       else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
     } else if (d.kind === 'mode' && d.spree) {                                                            // spree: a mode is paid for as the spell is cast, more may be added
@@ -218,7 +227,7 @@
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
       const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
-      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : `${by} makes you sacrifice a ${w}`;
+      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : d.by ? `${by} makes you sacrifice a ${w}` : `${sn || 'Effect'}: sacrifice a ${w}`;          // no by: your own card's effect (Roiling Regrowth)
       q.text = `Choose the ${w} to sacrifice.` + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = d.ability ? 'Cancel' : 'Do not cast it';
     } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)
@@ -263,6 +272,10 @@
     } else if (d.kind === 'color') {                                                                      // "As ~ enters, choose a color": Caged Sun, Utopia Sprawl, the Thriving lands
       q.title = `${sn || 'This permanent'}: choose a color`;
       q.text = 'As it enters it names a color, and plays with that color from now on. ★ is the autopilot\'s pick: the color most of your remaining cards have.';
+      if (src) { q.spell = src; q.spellNote = 'entering'; }
+    } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
+      q.title = `${sn || 'Land'}: pay ${d.life} life?`;
+      q.text = `As it enters, you may pay ${d.life} life. If you don't, it enters tapped.`;
       if (src) { q.spell = src; q.spellNote = 'entering'; }
     } else if (d.kind === 'protect') {                                                                    // an answer the autopilot would give for you: Heroic Intervention, Spellskite, Cursecatcher, Teferi at their end step
       q.title = `${d.why}: respond?`;

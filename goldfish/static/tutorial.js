@@ -294,6 +294,7 @@
     { back: false, title: 'That is Duel', text: () => 'Play the game out, or start a new one. Pod is the same with four players.' + (sample && sample.prev ? ' Your own deck is back for the next game.' : '') },
   ];
   const DUEL = DUEL_STEPS.map((st, i) => i >= 2 ? Object.assign({ sheets: true }, st) : st);          // from the dice on, a question sheet can open at any moment
+  let autoTo = 0;          // the turn "Autopilot to turn" plays to
   const PRACTICE = [
     { title: 'A sample game', text: 'A built-in green deck, the same cards every time. Leave any time with Skip.' },
     { before: async () => { await useSampleDeck(); A().showTab('hands'); queued = SAMPLE_SEED; await sleep(300); },
@@ -317,8 +318,13 @@
     { el: '#tAuto', tap: true, back: false, title: 'Autopilot', text: 'Let it play the rest of this turn.' },
     { el: ['.table-main'], hold: () => !idle(), back: false, title: 'How it decides',
       text: 'It plays a land, casts what uses its mana best, then attacks. The game log lists each play.' },
-    { before: () => { const n = document.querySelector('#tAutoToN'); if (n && S().game) n.value = String(S().game.turn + 2); }, el: '#tAutoTo', tap: true, back: false, title: 'Autopilot to turn', text: 'It plays on to the turn in the box.' },
-    { el: '#tLoop', hold: () => !idle(), back: false, title: 'Loop', text: 'Game after game by itself, until you tap it again. Try it after the tour.' },
+    { before: () => { const n = document.querySelector('#tAutoToN'); if (n && S().game) { autoTo = S().game.turn + 2; n.value = String(autoTo); } }, el: '#tAutoTo', tap: true, back: false, title: 'Autopilot to turn',
+      text: () => `Tap it: the game then plays itself to the end of turn ${autoTo || 'in the box'}.` },
+    { el: ['.table-main'], back: false, title: () => `Playing to turn ${autoTo}`,          // the user: say that it plays on, and let them go on at once
+      text: () => `The game now plays itself to the end of turn ${autoTo}. Watch, or tap Next.` },
+    { el: '#tLoop', back: false, title: 'Loop', text: 'Game after game by itself, until you tap it again. Try it after the tour.' },
+    { el: () => idle() ? null : document.querySelector('.table-main'), optional: true, until: idle, back: false, title: 'Almost there',          // only while the autopilot is still playing
+      text: () => `The autopilot is finishing turn ${autoTo}. The tour goes on when it stops.` },
     { before: () => waitFor(idle), el: onBoard, tap: true, back: false, title: 'A closer look', text: 'Tap a creature.' },
     { el: menuBtn(/View card/), tap: true, lost: -1, back: false, title: 'View card', text: 'Tap View card.' },
     { before: () => waitFor(() => document.querySelector('#lightbox.show'), 4000), el: '#lightbox.show', through: true, esc: false, dock: 'bottom', until: () => !document.querySelector('#lightbox.show'), back: false,

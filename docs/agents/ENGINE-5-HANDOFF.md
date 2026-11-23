@@ -20,6 +20,18 @@ Galadriel, Light of Valinor and Breeches (existing 'unchosen' effect); Riveteers
 Pool: 258 cards (294 lines) unread after batch 66 (283 after 61, 320 after 56). The set data's coverage was last refreshed after 61.
 
 ## Exact next action
+0. **First, two bugs MAIN's second review found in 62–66 and the return-counter fix (both held, not merged; fix on
+   `claude/engine-rules`, and the second also on `claude/engine-fix`, with tests that fail before and pass after):**
+   - **attachDouble** (The Sound of Drums, Inquisitor's Flail) sits in `infernoMult`, which damageOpp and hurtCreature also use
+     for non-combat damage: Thermo-Alchemist's {T} ping does 2 with the Flail attached. Both cards double combat damage only:
+     apply attachDouble on the combat damage path only (combat0 / resolveCombatVs), not in infernoMult.
+   - **Return counters:** the `counters` option of enterWithTriggers sets `perm.counters` directly and skips what addCounters
+     does (Hardened Scales `cplus`, counterMult / Doubling Season, `cplusTribe` from Mauhúr, Loading Zone, Vorinclex, and the
+     'counters' event that countersPut watchers such as Shalai and Hallar need). (a) Undying Malice / Supernatural Stamina
+     (slashQueue): restore `addCounters` after the return. Its deathReturn does not carry to the new permanent, so that path
+     never looped. (b) Persist and undying: keep the counter on as it enters (that stops the loop), but apply the same
+     modifiers, and fire the counters event once the creature is on the battlefield (rule 122.6: it enters with the
+     counters "put" on it). For example, compute the amount the way addCounters would and fire the event after enter.
 1. Wait for MAIN to merge `d9e1992` (the fix) and later the 62–66 batch; merge live into `claude/engine-rules` first thing.
 2. Run `NODE_USE_ENV_PROXY=1 node tools/fetch-sets.js --report`, then `node tests/run.js sets`, and commit the coverage refresh.
 3. Batches 67+ (held for five), skipping issue #78's cards (Card teaching 2, T-041): Magda Brazen Outlaw, Return the Favor,

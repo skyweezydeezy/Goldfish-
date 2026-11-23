@@ -15,7 +15,7 @@ is the map. The rules are in `CLAUDE.md`; the protocol behind this file is `docs
 reconciliation by a MAIN: T-001's first version, checked against `MAIN_HANDOFF.md` (the outgoing MAIN's hand-over), git, GitHub, the
 session list and the scheduled tasks.
 
-**MAIN:** `session_01K5kL4WjxCpfdEjqWh1igWP`, work branch `claude/main-coordination`. [V] The previous MAIN, "Visuals/Main"
+**MAIN:** `session_01K5kL4WjxCpfdEjqWh1igWP` is handing over at 600k tokens (2026-11-23 ~21:10 UTC; see docs/agents/VISUALS.md); work branch `claude/main-coordination`. [V] The previous MAIN, "Visuals/Main"
 (`session_01K5kL4YgVQ6tZxzA48G59TU`), is **RETIRED — SUPERSEDED** (it acknowledged the hand-over at about 13:40 UTC on 2026-11-23)
 and answers only historical questions.
 

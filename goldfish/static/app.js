@@ -104,7 +104,7 @@
       minLands: +$('#optMinLands').value, maxLands: +$('#optMaxLands').value,
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
-      minHandSize: 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
+      minHandSize: +$('#optMullTo').value || 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
       bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
     };
@@ -113,6 +113,35 @@
     const c = $('#optFormat').value === 'commander';
     $('#optLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
+  // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
+  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optN: 2000, optMullTo: 5 });
+  $('#optReset').addEventListener('click', () => {
+    const d = RULE_DEFAULTS($('#optFormat').value === 'commander');
+    for (const [id, v] of Object.entries(d)) {
+      const el = $('#' + id); if (!el) continue;
+      if (el.type === 'checkbox') el.checked = v; else el.value = String(v);
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    toast('Rules back to their defaults');
+  });
+
+  // Display (app-wide, kept in this browser like sound and the playmat): spacing and how a tab fades in
+  (() => {
+    const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
+    let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
+    const apply = () => {
+      const den = $('#dispDensity').value, fade = $('#dispFade').value;
+      document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
+      document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
+    };
+    if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
+    if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
+    apply();
+    for (const id of ['#dispDensity', '#dispFade']) $(id).addEventListener('change', () => {
+      apply();
+      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value })); } catch (e) { /* storage blocked */ }
+    });
+  })();
 
   // ======================= card elements & zoom =======================
   function imgFor(card, face) {

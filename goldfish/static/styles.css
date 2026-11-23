@@ -1159,3 +1159,117 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .in-ic { display: inline-block; padding: 0 5px; border: 1px solid var(--border); border-radius: 5px; }
 .data-limit[hidden], .data-limit-app[hidden] { display: none; }
 #deckManager .data-limit, #deckManager .data-limit-app { margin: 2px 0 8px; }
+
+/* =====================================================================
+   PC layout (a mouse and a wide screen; designed for 1920 x 1080, checked at 1366 x 768 and 2560 x 1440).
+   Phones and tablets (touch, or narrower than 1181px) keep their own layouts above. The page fills the width; reports sit side by
+   side; Practice, Duel and Pod fit the screen's height with the game log beside the table, so nothing scrolls during a game.
+   ===================================================================== */
+@media (min-width: 1401px) and (min-height: 600px), (min-width: 1181px) and (min-height: 600px) and (not (any-pointer: coarse)) {
+  main { max-width: 2400px; padding: 14px 22px 48px; }
+
+  /* Build: the decklist and its rules stay in view on the left; the two reports side by side on the right */
+  .deck-layout { grid-template-columns: minmax(340px, 410px) minmax(0, 1fr); gap: 16px; }
+  .deck-input { position: sticky; top: calc(var(--topbar-h, 64px) + 12px); max-height: calc(100vh - var(--topbar-h, 64px) - 24px); overflow: auto; scrollbar-width: thin; }
+  .deck-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .deck-view > * { grid-column: 1 / -1; margin-bottom: 0; }
+  .deck-view > #deckProfile, .deck-view > #deckCombos { grid-column: auto; }
+  .deck-view > #deckProfile:has(~ #deckCombos[hidden]), .deck-view > #deckCombos:not([hidden]):is(#deckProfile[hidden] ~ *) { grid-column: 1 / -1; }
+
+  /* Simulate: suggestions beside how games end; the six charts three to a row */
+  #tab-sim.active { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; align-content: start; }
+  #tab-sim.active > * { grid-column: 1 / -1; }
+  #tab-sim.active > #simSuggest:not([hidden]), #tab-sim.active > #simWins:not([hidden]) { grid-column: auto; }
+  #tab-sim.active > #simSuggest:has(+ #simWins[hidden]), #tab-sim.active > #simSuggest[hidden] + #simWins { grid-column: 1 / -1; }
+  #tab-sim .two-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #tab-sim .two-col + .card-box { margin-top: 14px; }
+
+  /* Duel: the game's settings beside Play a friend */
+  #tab-duel.active:has(> .rm-box) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; align-items: start; }
+  #tab-duel.active > * { grid-column: 1 / -1; }
+  #tab-duel.active > .card-box:first-child, #tab-duel.active > .rm-box { grid-column: auto; }
+
+  /* Duel and Pod: the game log beside the table, as tall as the table */
+  .vs-game:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) clamp(260px, 17vw, 380px); gap: 12px; align-items: start; }
+  .vs-game > .card-box { display: flex; flex-direction: column; margin-bottom: 14px; height: calc(100vh - var(--topbar-h, 64px) - 12px); min-height: 430px; padding: 10px 12px; }
+  .vs-game > .card-box .vs-log { flex: 1 1 0; max-height: none; min-height: 0; }
+
+  /* Practice: one screen. The game buttons and the speed slider share the first row; under them the stats strip, the battlefield,
+     the piles in a column beside it and the game log on the right. Cards size themselves to the rows. */
+  :root { --pile-w: clamp(96px, 7vw, 136px); --hand-w: clamp(96px, 13.5vh, 156px); --bf-max: 168px; --bf-max-l: 136px; }
+  body[data-view=table] .site-footer { display: none; }
+  body[data-view=table] main { padding: 8px 18px 0; }
+  body[data-view=table] #tab-table.active { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 28%, 560px); grid-template-rows: auto minmax(0, 1fr); gap: 8px 12px;
+    height: calc(100vh - var(--topbar-h, 64px) - 8px); }
+  body[data-view=table] .table-controls { grid-column: 1; grid-row: 1; margin: 0; gap: 6px; min-width: 0; }
+  body[data-view=table] .table-controls button { padding: 6px 11px; }
+  body[data-view=table] .speed-bar { grid-column: 2; grid-row: 1; margin: 0; padding: 3px 12px; gap: 10px; min-width: 0; align-self: center; }
+  body[data-view=table] .speed-bar label.speed { flex: 1 1 auto; font-size: 18px; }
+  body[data-view=table] .speed-bar label.speed input[type=range] { min-width: 60px; height: 22px; }
+  body[data-view=table] .speed-txt { min-width: 0; }
+
+  body[data-view=table] .table { grid-column: 1 / -1; grid-row: 2; min-height: 0; display: grid; gap: 8px; align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) var(--pile-w) clamp(240px, 16vw, 340px); grid-template-rows: auto repeat(4, minmax(0, 1fr)); }
+  body[data-view=table] .table-side { display: contents; }
+  body[data-view=table] .hud { grid-column: 1 / 3; grid-row: 1; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 22px; padding: 5px 14px; align-items: baseline; scrollbar-width: none; }
+  body[data-view=table] .hud-item { flex: none; flex-direction: row; align-items: baseline; gap: 6px; }
+  body[data-view=table] .hud-item .lbl { font-size: 11.5px; }
+  body[data-view=table] .hud-item .big, body[data-view=table] .hud-item > span:not(.lbl) { font-size: 18px; font-weight: 700; }
+  body[data-view=table] #ringPanel { display: none !important; }
+
+  body[data-view=table] .table-main { grid-column: 1; grid-row: 2 / 6; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .9fr) auto; gap: 6px; padding: 8px; }
+  body[data-view=table] .bf-row { min-height: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 16px 8px 4px; gap: 8px; scrollbar-width: thin; }
+  body[data-view=table] .stackgroup { flex: none; }
+  body[data-view=table] .bf-row .stackgroup .mtg + .mtg { margin-left: calc(var(--card-w) * -0.8); }
+  body[data-view=table] .bf-row .stackgroup:has(> .mtg.tapped) { padding: 0; }
+  body[data-view=table] .bf-row .stackgroup > .mtg.tapped:first-child { margin-left: calc(var(--card-w) * .16); }
+  body[data-view=table] .bf-row .stackgroup > .mtg.tapped:last-child { margin-right: calc(var(--card-w) * .16); }
+  body[data-view=table] .hand-zone { margin: 0; min-width: 0; min-height: 0; height: calc(var(--hand-w) * 1.3934 + 10px); padding: 6px 8px 0; align-items: flex-end; }
+  body[data-view=table] .hand-zone .mtg { --card-w: var(--hand-w); }
+  body[data-view=table] .hand-zone .mtg:hover { transform: translateY(-14px) scale(1.04); }
+
+  body[data-view=table] .zone-pile { grid-column: 2; min-height: 0; overflow: hidden; padding: 5px 4px; display: flex; flex-direction: column; align-items: center; }
+  body[data-view=table] #zLibrary { grid-row: 2; } body[data-view=table] #zCommand { grid-row: 3; }
+  body[data-view=table] #zGrave { grid-row: 4; } body[data-view=table] #zExile { grid-row: 5; }
+  body[data-view=table] .pile-label { font-size: 11px; text-align: center; margin-bottom: 3px; line-height: 1.15; }
+  body[data-view=table] #zLibrary .card-back { width: calc(var(--pile-w) - 26px); margin: 0 auto; }
+  body[data-view=table] .pile-cards { position: relative; flex-wrap: nowrap; justify-content: center; padding: 0 !important; min-height: 0; }
+  body[data-view=table] .pile-cards .mtg, body[data-view=table] #zCommand .pile-cards .mtg { --card-w: calc(var(--pile-w) - 26px); margin: 0; }
+  body[data-view=table] #zCommand .pile-cards .mtg + .mtg { margin-left: calc(var(--card-w) * -0.72); }
+  body[data-view=table] #zGrave .pile-cards .mtg:not(:last-child), body[data-view=table] #zExile .pile-cards .mtg:not(:last-child) { display: none; }
+  body[data-view=table] #zGrave .pile-cards:has(.mtg + .mtg) .mtg, body[data-view=table] #zExile .pile-cards:has(.mtg + .mtg) .mtg { box-shadow: 2px 2px 0 #0a2030, 4px 4px 0 #12324a, 5px 5px 8px rgba(0,0,0,.6); }
+
+  body[data-view=table] .table-log { display: block; grid-column: 3; grid-row: 1 / 6; min-height: 0; max-height: none; overflow: auto; }
+}
+@supports (height: 1cqh) {
+  @media (min-width: 1401px) and (min-height: 600px), (min-width: 1181px) and (min-height: 600px) and (not (any-pointer: coarse)) {
+    body[data-view=table] .bf-row { container-type: size; }
+    body[data-view=table] .bf-row .mtg { --card-w: min(var(--bf-max), calc((100cqh - 24px) * 0.7176)); }
+    body[data-view=table] .bf-row.lands .mtg { --card-w: min(var(--bf-max-l), calc((100cqh - 24px) * 0.7176)); }
+  }
+}
+/* a PC window that is not very wide: the speed slider keeps its emoji ends and drops its words */
+@media (min-width: 1181px) and (max-width: 1599px) and (min-height: 600px) and (not (any-pointer: coarse)) {
+  body[data-view=table] .speed-name { display: none; }
+  body[data-view=table] .table-controls .bl { display: none; }
+  body[data-view=table] .table-controls button { font-size: 16px; }
+}
+
+/* Build tab settings: "More rules" folds inside Goldfish rules; Display is its own fold */
+.settings-more { margin-top: 10px; }
+.settings-more summary { cursor: pointer; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 8px; }
+.settings-more .row { margin: 10px 0 0; }
+
+/* Display → Spacing (app.js): Compact fits more on a screen; Roomy has bigger text and more air */
+body.dense-compact { font-size: 13px; }
+body.dense-compact main { padding-top: 10px; }
+body.dense-compact .card-box { padding: 10px 12px; margin-bottom: 10px; }
+body.dense-compact .tiles, body.dense-compact .two-col { gap: 10px; }
+body.dense-compact .tile .val { font-size: 22px; }
+body.dense-compact .topbar { padding-top: 6px; padding-bottom: 6px; }
+body.dense-roomy { font-size: 15.5px; }
+body.dense-roomy h2 { font-size: 17px; }
+body.dense-roomy h3, body.dense-roomy .hint, body.dense-roomy label { font-size: 14px; }
+body.dense-roomy .card-box { padding: 18px 20px; margin-bottom: 18px; }
+body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }

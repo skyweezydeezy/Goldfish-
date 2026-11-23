@@ -716,6 +716,16 @@
         if (/^when ~ enters, exile up to one other target creature you control until ~ leaves the battlefield\.?$/i.test(line)) { TR(['etb'], [{ type: 'flickerOne' }], null, 'partial'); continue; }          // Mardu Siegebreaker (approx: the creature returns at once)
         if (/^whenever ~ attacks, another target attacking creature gets \+2\/\+0 until end of turn\. untap that creature\.?$/i.test(line)) { TR(['attack'], [{ type: 'attackerPump', p: 2, t: 0, other: true, untap: true }]); continue; }          // Restless Ridgeline
       }
+      // ---- rules batch 61: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^\{4\}\{g\}\{g\}: until end of turn, creatures you control have base power and toughness x\/x, where x is the number of cards in your hand\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{4}{G}{G}'), fx: [{ type: 'baseEot', x: 'HAND' }], gate: 'baseHand', text: raw }); rec.status = 'ok'; continue; }          // Jolrael
+        if (/^when ~ enters, return an enchantment card from your graveyard to your hand or unlock a locked door of a room you control\.?$/i.test(line)) { TR(['etb'], [{ type: 'gyReturn', filter: 'enchantment' }], null, 'partial'); continue; }          // Ghostly Dancers (the door is not offered)
+        if (/^~ enters with a \+1\/\+1 counter on it for each time it was kicked\.?$/i.test(line)) { a.kickCounters = true; if (/multikicker \{\d+\}(?!\{)/i.test(card.oracle_text || '')) rec.status = 'ok'; else { rec.status = 'partial'; rec.tag = 'approx'; } continue; }          // Joraga Warcaller (multikicker pays its generic part only)
+        if (/^as long as your life total is greater than your starting life total, ~ gets \+1\/\+1 and has menace\. ~ gets an additional \+5\/\+5 as long as your life total is at least 10 greater than your starting life total\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'selfLife', over: 1, p: 1, t: 1, keywords: ['menace'] }, { kind: 'selfLife', over: 10, p: 5, t: 5 }); rec.status = 'ok'; continue; }          // Elenda, Saint of Dusk
+        if (/^~ gets \+3\/\+0 as long as it has three or more oil counters on it\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'selfOil', min: 3, p: 3, t: 0 }); rec.status = 'ok'; continue; }          // Armored Scrapgorger
+        if (/^whenever ~ attacks, if you control three or more dragons, until end of turn, ~ becomes a dragon with base power and toughness 5\/5 and gains flying\.?$/i.test(line)) { TR(['attack'], [{ type: 'nogi' }]); continue; }          // Nogi, Draco-Zealot
+        if (/^at the beginning of combat on your turn, creatures you control with defender gain exalted until end of turn\.?$/i.test(line)) { a.rammas = true; rec.status = 'ok'; continue; }          // Rammas Echor (exalted: counted when one creature attacks)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -3878,6 +3888,8 @@
       else if (d.kind === 'perAura') { if (src === p) n += (k === 'p' ? d.p : d.t) * (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.attachedTo === p.iid && q.card.a.isAura) : []).length; continue; }          // Kor Spiritdancer
       else if (d.kind === 'perOther') { if (stat && isCreaturePerm(p) && matchesFilter(p.card, d.filter)) n += d[k] * g.battlefield.filter(q => q !== p && isCreaturePerm(q) && matchesFilter(q.card, d.filter)).length; continue; }          // rules batch 58: Sliver Legion
       else if (d.kind === 'selfEquipped') on = src === p && (tableHas(g, 'isEquipment') ? g.battlefield.some(q => q.attachedTo === p.iid && q.card.a.isEquipment) : false);          // rules batch 58: Merry
+      else if (d.kind === 'selfLife') on = src === p && g.life >= (g.opts.startLife || 40) + d.over;          // rules batch 61: Elenda
+      else if (d.kind === 'selfOil') on = src === p && ((p.other && p.other.oil) || 0) >= d.min;          // rules batch 61: Armored Scrapgorger
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
       else if (d.kind === 'levelLord') on = src !== p && (src.level || 0) >= d.min && matchesFilter(p.card, d.filter);
       else if (d.kind === 'treasureEquip') { if (k === 'p') n += 2 * g.battlefield.filter(q => q.token && q.attachedTo === p.iid && /Treasure/.test(q.card.name || '')).length; continue; }
@@ -7134,7 +7146,9 @@
           if (f.p || f.t) { t.eotP = (t.eotP || 0) + (f.p || 0); t.eotT = (t.eotT || 0) + (f.t || 0); } if (f.untap) t.tapped = false;          // Restless Ridgeline
           if (f.keywords && f.keywords.length) { t.eotKw = new Set([...(t.eotKw || []), ...f.keywords]); }
           touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : f.p ? ` gets +${f.p}/+${f.t || 0}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
-        case 'baseEot': { const X = Math.max(0, g.xValue || 0); g.baseEot = { turn: g.turn, x: X }; touch(g); ev.push({ type: 'note', text: `Creatures you control have base power and toughness ${X}/${X} until end of turn`, source }); break; }          // rules batch 60: Biomass Mutation
+        case 'nogi': { if (!source || !g.battlefield.includes(source) || g.battlefield.filter(q => q !== source && isCreaturePerm(q) && matchesFilter(q.card, 'dragon')).length < 3) break;          // rules batch 61: Nogi becomes a 5/5 flying Dragon
+          source.eotP = (source.eotP || 0) + 5 - (source.card.a.power || 0); source.eotT = (source.eotT || 0) + 5 - (source.card.a.toughness || 0); source.eotKw = new Set([...(source.eotKw || []), 'flying']); touch(g); ev.push({ type: 'note', text: `${source.card.name} becomes a 5/5 flying Dragon`, source }); break; }
+        case 'baseEot': { const X = Math.max(0, f.x === 'HAND' ? g.hand.length : g.xValue || 0); g.baseEot = { turn: g.turn, x: X }; touch(g); ev.push({ type: 'note', text: `Creatures you control have base power and toughness ${X}/${X} until end of turn`, source }); break; }          // rules batch 60: Biomass Mutation
         case 'titanic': { if (!source || !g.battlefield.includes(source)) break; const n = Math.max(0, powerOf(g, source)) * (hasKw(g, source, 'double strike') ? 2 : 1); sacEvent(g, source, ev); leavePerm(g, source, ev); flushLeaves(g, ev); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, Math.min(n, 60), ev, source); break; }          // rules batch 57: RMS Titanic
         case 'insight': {          // T-036: Hunter's Insight: the chosen creature draws its combat damage this turn
           const cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && (!q.sick || hasKw(g, q, 'haste')) && !hasKw(g, q, 'defender'));
@@ -8004,6 +8018,7 @@
       if (a.sacUnlessEscaped && castEv.perm && !inst.escaping && !inst.escapedNow) { leavePerm(g, castEv.perm, ev); ev.push({ type: 'note', text: `${inst.card.name} is sacrificed (it did not escape)` }); }          // Uro, Kroxa
       if (a.cornucopia && castEv.perm) { castEv.perm.produce = { colors: new Set(COLORS), amount: Math.max(1, g.xValue || 1) }; touch(g); }          // Astral Cornucopia
       if (a.squad && castEv.perm && inst.squads > 0) { const n = inst.squads; inst.squads = 0; for (let k = 0; k < n; k++) applyEffects(g, [{ type: 'copyToken', self: true }], castEv.perm, ev, null); ev.push({ type: 'note', text: `Squad: ${n} token cop${n === 1 ? 'y' : 'ies'} of ${inst.card.name}`, source: castEv.perm }); }          // T-036
+      if (a.kickCounters && castEv.perm && inst.kicks > 0) addCounters(g, castEv.perm, '+1/+1', inst.kicks, ev, castEv.perm);          // rules batch 61: Joraga Warcaller
       if (a.chalice && castEv.perm) { castEv.perm.produce = { colors: new Set(['C']), amount: inst.kicks || 1 }; touch(g); }                         // Everflowing Chalice: one mana per charge counter
     }
     else {
@@ -9912,6 +9927,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function abilityGate(g, p, ab) {
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
     if (ab.minGy && g.graveyard.length < ab.minGy) return false;          // rules batch 58: threshold (Barbarian Ring)
+    if (ab.gate === 'baseHand') return !g.combatDone && g.battlefield.filter(q => isCreaturePerm(q) && canAttack(g, q)).reduce((t, q) => t + Math.max(0, g.hand.length - powerOf(g, q)), 0) >= 4;          // rules batch 61: Jolrael, before combat when it makes the attackers bigger
     if (ab.gate === 'flickerWorth') return g.battlefield.some(q => q !== p && isCreaturePerm(q) && !q.token && q.inst && q.card.a.triggers.some(t => t.kinds.includes('etb') && fxValue(g, t.fx) > 0));          // rules batch 58: an enters ability worth a second time
     if (ab.gate === 'finishPing') return oppLifeLeft(g) <= (ab.n || 1) && g.killTurn == null;          // Mogg Fanatic: the last point of damage
     if (ab.gate === 'life') return lifeWanted(g) && (!ab.greenPerms || g.battlefield.filter(q => colorsOf(g, q.card).includes('G')).length >= ab.greenPerms);          // Sapseep Forest: two green permanents
@@ -11105,7 +11121,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!g.dry && attackers.some(x => matchesFilter(x.card, 'pirate')) && attackers.some(x => /\bVehicle\b/.test(x.card.type_line || ''))) for (const sw of (tableHas(g, 'swashLoot') ? g.battlefield.filter(q => q.card.a.swashLoot) : [])) { draw(g, 3, ev); discardWorst(g, ev); discardWorst(g, ev); ev.push({ type: 'note', text: `${sw.card.name}: a Pirate and a Vehicle attacked, draw three and discard two`, source: sw }); }
       if (!g.dry) for (const gb of attackers.filter(x => x.card.a.attackLoot)) for (let k = 0; k < 3 && g.hand.length && g.library.length && canPay(gb.card.a.attackLoot, allUnits(g)) && pay(g, gb.card.a.attackLoot) != null; k++) { discardWorst(g, ev); draw(g, 1, ev); }          // Glint-Horn Buccaneer: loot while it attacks
       if (isPod(g) && attackers.length >= 2 && !g.dry) for (const o of otherPlayers(g)) if (o !== g.opp && (tableHas(o, 'firemane') && o.battlefield.some(q => q.card.a.firemane)) && g.library.length) { draw(g, 1, ev); ev.push({ type: 'note', text: 'Firemane Commando: a card for attacking someone else with two or more creatures' }); }
-      if (attackers.length === 1) { const ex = (tableHas(g, 'exalted') ? g.battlefield.filter(q => q.card.a.exalted) : []).length; if (ex) { attackers[0].eotP = (attackers[0].eotP || 0) + ex; attackers[0].eotT = (attackers[0].eotT || 0) + ex; ev.push({ type: 'note', text: `Exalted: ${attackers[0].card.name} gets +${ex}/+${ex}` }); } }
+      if (attackers.length === 1) { const ex = (tableHas(g, 'exalted') ? g.battlefield.filter(q => q.card.a.exalted) : []).length + (tableHas(g, 'rammas') && g.battlefield.some(q => q.card.a.rammas) ? g.battlefield.filter(q => isCreaturePerm(q) && hasKw(g, q, 'defender') && !q.card.a.exalted).length : 0);          // rules batch 61: Rammas Echor's defenders
+      if (ex) { attackers[0].eotP = (attackers[0].eotP || 0) + ex; attackers[0].eotT = (attackers[0].eotT || 0) + ex; ev.push({ type: 'note', text: `Exalted: ${attackers[0].card.name} gets +${ex}/+${ex}` }); } }
       for (const p of attackers) if (p.tapped && p.card.a.tapWatch) for (const t of p.card.a.triggers) if (t.kinds.includes('selfTapped')) fire(g, t, p, ev, p);          // "whenever ~ becomes tapped"
       const atkM = 1 + g.battlefield.filter(q => q.card.a.statics.attackDouble || q.siegeMode === 'mardu').length;          // Isshin, Windcrag Siege (Mardu); Isshin: attack triggers trigger an additional time
       for (const p of attackers) for (const t of p.card.a.triggers) if (t.kinds.includes('attack')) for (let k = 0; k < atkM; k++) fire(g, t, p, ev, p);

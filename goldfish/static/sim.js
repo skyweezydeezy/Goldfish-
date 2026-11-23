@@ -5703,9 +5703,16 @@
         case 'muck': g.muckTurn = g.turn; ev.push({ type: 'note', text: 'Bubbling Muck: Swamps make an extra {B} this turn', source }); break;
         case 'reanimateOwnAll': { const cs = g.graveyard.filter(i => i.card.a.isCreature); for (const i of cs) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } ev.push({ type: 'note', text: `${cs.length} creature card${cs.length === 1 ? '' : 's'} return from your graveyard`, source }); break; }          // Awakening Hall
         case 'flickerwisp': {          // Flickerwisp: their best token (gone for good), else your best permanent with an enter trigger (back at the end step)
-          const tk = g.opp && g.opp.battlefield.filter(q => q.token && targetable(g.opp, q)).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0];
+          let tk = g.opp && g.opp.battlefield.filter(q => q.token && targetable(g.opp, q)).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0];
+          let mine = g.battlefield.filter(q => q !== source && !q.token && q.inst && !q.card.commander && q.card.a.triggers.some(t => t.kinds.includes('etb'))).sort((x, y) => fxValue(g, [].concat(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))) - fxValue(g, [].concat(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))))[0];
+          if (g.ask && !g.dry) {          // a person picks: another player's token (gone for good) or a card of yours (back at the end step)
+            const def = tk && threat(g.opp, g, tk) >= 1 ? tk : mine || null, opts = (g.opp ? eachFoe(g, () => g.opp.battlefield.filter(q => q.token && targetable(g.opp, q))) : []).concat(g.battlefield.filter(q => q !== source && !q.token && q.inst && !q.card.commander));
+            const pick = opts.length ? decide(g, { kind: 'target', what: 'flickerwisp', options: opts, def, optional: true, source }) : def;
+            if (!pick) break;
+            if (!g.battlefield.includes(pick)) { const done = against(g, pick, () => { if (answered(g, pick, 'exile', source, ev)) return false; leavePerm(g.opp, pick, ev, 'exile'); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `${pick.card.name} (a token) is exiled for good`, source }); return true; }); if (done) break; tk = null; }          // protected: the autopilot's own card instead, as before
+            else { tk = null; mine = pick; }
+          }
           if (tk && threat(g.opp, g, tk) >= 1 && !answered(g, tk, 'exile', source, ev)) { leavePerm(g.opp, tk, ev, 'exile'); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `${tk.card.name} (a token) is exiled for good`, source }); break; }
-          const mine = g.battlefield.filter(q => q !== source && !q.token && q.inst && !q.card.commander && q.card.a.triggers.some(t => t.kinds.includes('etb'))).sort((x, y) => fxValue(g, [].concat(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))) - fxValue(g, [].concat(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))))[0];
           if (mine) { const i = mine.inst; leavePerm(g, mine, ev, 'exile'); flushLeaves(g, ev); if (g.exile.includes(i)) (g.endFlicker = g.endFlicker || []).push(i); ev.push({ type: 'note', text: `${mine.card.name} is exiled until the end step`, source }); }
           break;
         }
@@ -6076,9 +6083,9 @@
         case 'bidding': { const t = g._castTribe || g.deck.tribe; const cs = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander && (!t || matchesFilter(i.card, t))); for (const c of cs.slice(0, 30)) { g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); } ev.push({ type: 'note', text: `${cs.length} creature cards return to the battlefield`, source }); break; }
         case 'ultimatum': { const seen = new Set(g.battlefield.map(q => q.card.a.isLegendary ? q.card.name : null)); const cs = g.graveyard.filter(i => i.card.a.isPermanent && !i.card.commander); let k = 0; for (const c of cs) { if (seen.has(c.card.name)) continue; seen.add(c.card.name); g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); k++; } ev.push({ type: 'note', text: `${k} permanents return from the graveyard`, source }); break; }
         case 'halfLife': damageOpp(g, Math.ceil(oppLifeLeft(g) / 2), ev, source); break;
-        case 'stitch': { if (g.graveyard.length >= 7) { const b = bestReanimation(g, { from: 'own' }); if (b) { b.y.splice(b.y.indexOf(b.i), 1); enterWithTriggers(g, b.i, {}, ev); } } else { const t = gyTarget(g, { filter: 'creature' }); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); } } break; }
+        case 'stitch': { const cr = () => g.graveyard.filter(i => i.card.a.isCreature); if (g.graveyard.length >= 7) { const b = bestReanimation(g, { from: 'own' }); let i = b ? b.i : null; if (g.ask && !g.dry) i = gyAsk(g, i, cr(), 'battlefield', source); if (i && g.graveyard.includes(i)) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } } else { let t = gyTarget(g, { filter: 'creature' }); if (g.ask && !g.dry) t = gyAsk(g, t, cr(), 'hand', source); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); } } break; }
         case 'aleshaEnd': if (g.attackedThisTurn && source) { const b = bestReanimation(g, { from: 'own', maxMv: Math.max(0, powerOf(g, source)) }); if (b) { b.y.splice(b.y.indexOf(b.i), 1); enterWithTriggers(g, b.i, {}, ev); ev.push({ type: 'note', text: `${source.card.name} returns ${b.i.card.name}`, source }); } } break;
-        case 'skate': g.battlefield.forEach(q => { if (isCreaturePerm(q) && (q.counters || 0) > 0) addCounters(g, q, '+1/+1', q.counters, ev, source, true); if (q.card.a.isPlaneswalker && q.loyalty > 0) q.loyalty *= 2; }); break;
+        case 'skate': { const has = g.battlefield.filter(q => isCreaturePerm(q) && (q.counters || 0) > 0 || q.card.a.isPlaneswalker && q.loyalty > 0); const only = g.ask && !g.dry && has.length ? decide(g, { kind: 'target', what: 'skate', options: has, def: has.slice(), multi: true, pick: has.length, upTo: true, source }) : null; g.battlefield.forEach(q => { if (only && !only.includes(q)) return; if (isCreaturePerm(q) && (q.counters || 0) > 0) addCounters(g, q, '+1/+1', q.counters, ev, source, true); if (q.card.a.isPlaneswalker && q.loyalty > 0) q.loyalty *= 2; }); break; }          // Deepglow Skate: a person picks the permanents
         case 'd20': { const roll = 1 + Math.floor(g.rnd() * 20); ev.push({ type: 'note', text: `Rolled a d20: ${roll}`, source });
           if (f.what === 'treasure') createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, roll, ev, source);
           else if (f.what === 'draw') draw(g, Math.min(roll, g.library.length), ev);
@@ -6448,7 +6455,7 @@
           break;
         }
         case 'berserk': {                                                                                    // Berserk: trample and double power; destroyed at the end step if it attacked
-          const t = berserkTarget(g); if (!t) break;
+          let t = berserkTarget(g); if (t) t = ownCreature(g, t, 'pump', source); if (!t) break;          // a person picks the creature
           t.eotP = (t.eotP || 0) + Math.max(0, powerOf(g, t)); t.eotKw = t.eotKw || new Set(); t.eotKw.add('trample'); t.berserkTurn = g.turn; touch(g);
           if (!source && !g.dry) ownTargeted(g, t, ev);
           ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${t.card.name} gets +${Math.max(0, powerOf(g, t)) / 2}/+0 and trample`, source });
@@ -6739,7 +6746,7 @@
           break;
         }
         case 'untapLands': { let k = 0; for (const p of g.battlefield) if (p.asLand && p.tapped && k < n) { p.tapped = false; k++; } if (k) ev.push({ type: 'note', text: `Untapped ${k} land${k > 1 ? 's' : ''}`, source }); break; }
-        case 'flashbackBest': { const t = flashbackTarget(g); if (t) castFromYard(g, t, ev); break; }
+        case 'flashbackBest': { let t = flashbackTarget(g); if (g.ask && !g.dry) t = gyAsk(g, t, g.graveyard.filter(i => i.card.a.isInstantSorcery && !i.card.a.counter && !i.card.a.aftermath && canPay(i.card.a.cost, allUnits(g))), 'flashback', source); if (t) castFromYard(g, t, ev); break; }          // Snapcaster Mage: a person picks the card
         case 'sweepDamage': {
           const N = (typeof f.n === 'number' ? f.n : n) * twinMult(g) * ownMult(g);          // Spiteful Banditry: X; Dictate of the Twin Gods doubles it
           const sc = srcColors(g, source), kill = (game) => game.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(game, q) - (q.dmg || 0) <= N && !indestructible(game, q) && !(f.noFly && hasKw(game, q, 'flying')) && !(q.protColors && sc.some(c => q.protColors.has(c))));          // protection from its color: no damage

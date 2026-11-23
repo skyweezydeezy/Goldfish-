@@ -1,6 +1,7 @@
 // The next choices a seated person is asked, found by tools/choice-audit.js: the land Crop Rotation and Harrow sacrifice, the artifact
-// Goblin Engineer puts into the graveyard, Intuition's three cards, the Goblins Goblin Recruiter stacks on top, and which permanents
-// proliferate. The autopilot's pick is the default of each; nobody else is asked.
+// Goblin Engineer puts into the graveyard, Intuition's three cards, the Goblins Goblin Recruiter stacks on top, which permanents
+// proliferate, the card Snapcaster Mage gives flashback, Stitch Together's creature card, Deepglow Skate's permanents, Flickerwisp's
+// permanent and Berserk's creature. The autopilot's pick is the default of each; nobody else is asked.
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js')), D = require(path.join(ROOT, 'goldfish', 'static', 'decide.js'));
@@ -63,7 +64,28 @@ run("Tezzeret's Gambit", t => { const cs = t.a.battlefield.filter(q => G.isCreat
   check("Tezzeret's Gambit asks which permanents proliferate: those with counters, all by default", !!q && q.multi && q.min === 0 && q.options.length === 2 && q.def.length === 2 && /proliferate/.test(q.title), q && q.title);
   check('...only the chosen creature gets another counter', cs[0].counters === 1 && cs[1].counters === 3, cs[0].counters + ' / ' + cs[1].counters); });
 
-// with "Autopilot decides" nothing changes: the same card, unseated, plays as before
+const yard = (t, pick, n) => { const cs = []; for (const w of Object.values(store)) for (const c of w.cards) { if (cs.length >= n) break; if (!c.ref && !c.card_faces && pick(c) && !cs.some(x => x.name === c.name)) cs.push(c); } return cs.map(c => { const i = { iid: t.a.nextIid++, card: G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0] }; t.a.graveyard.push(i); return i; }); };
+run('Snapcaster Mage', t => { yard(t, c => /^(Instant|Sorcery)$/.test(c.type_line || '') && (c.cmc || 0) <= 2 && /draw|gain/i.test(c.oracle_text || '') && !/counter/i.test(c.oracle_text || ''), 3); let want = null;
+  const qs = play(t, q => { if (q.what !== 'graveyard') return 'auto'; want = q.options.find(o => !o.def) || q.options[0]; return want.k; }), q = qs.find(x => x.what === 'graveyard');
+  check('Snapcaster Mage asks which instant or sorcery in your graveyard gains flashback', !!q && q.options.length >= 2 && q.options.every(o => o.card.a.isInstantSorcery) && /gains flashback/.test(q.text), q && q.text);
+  check('...the chosen card is cast from the graveyard (it leaves it)', !!want && !t.a.graveyard.some(i => i.iid === want.iid), want && want.name); });
+run('Stitch Together', t => { t.a.graveyard = []; yard(t, c => /^Creature/.test(c.type_line || ''), 3); let want = null;
+  const qs = play(t, q => { if (q.what !== 'graveyard') return 'auto'; want = q.options.find(o => !o.def) || q.options[0]; return want.k; }), q = qs.find(x => x.what === 'graveyard');
+  check('Stitch Together asks which creature card returns to your hand', !!q && q.options.length === 3 && /to your hand/.test(q.text), q && q.text);
+  check('...the chosen card is in your hand', !!want && t.a.hand.some(i => i.iid === want.iid), want && want.name); });
+run('Deepglow Skate', t => { const cs = t.a.battlefield.filter(q => G.isCreaturePerm(q)); cs[0].counters = 1; cs[1].counters = 2;
+  const qs = play(t, q => { if (q.what !== 'skate') return 'auto'; return [q.options.find(o => o.iid === cs[1].iid).k]; }), q = qs.find(x => x.what === 'skate');
+  check('Deepglow Skate asks which permanents double their counters, all by default', !!q && q.multi && q.min === 0 && q.options.length === 2 && q.def.length === 2, q && q.title);
+  check('...only the chosen creature has its counters doubled', cs[0].counters === 1 && cs[1].counters === 4, cs[0].counters + ' / ' + cs[1].counters); });
+run('Flickerwisp', t => { let want = null;
+  const qs = play(t, q => { if (q.what !== 'flickerwisp') return 'auto'; want = q.options.find(o => !o.def) || q.options[0]; return want.k; }), q = qs.find(x => x.what === 'flickerwisp');
+  check('Flickerwisp asks which other permanent it exiles', !!q && q.options.length >= 3 && !q.options.some(o => o.name === 'Flickerwisp') && /end step/.test(q.text), q && q.options.length);
+  check('...the chosen card of yours is exiled until the end step', !!want && t.a.exile.some(i => i.iid === want.iid) && (t.a.endFlicker || []).some(i => i.iid === want.iid), want && want.name); });
+run('Berserk', t => { t.a.battlefield.forEach(q => { q.sick = false; }); let want = null;
+  const qs = play(t, q => { if (q.what !== 'pump') return 'auto'; want = q.options.find(o => !o.def); return want.k; }), p = want && t.a.battlefield.find(x => x.iid === want.iid);
+  check('Berserk asks which creature it targets; the chosen one gets trample and +X/+0', !!want && !!p && p.berserkTurn != null && t.a.battlefield.filter(x => x.berserkTurn != null).length === 1 && qs.some(q => q.what === 'pump'), want && want.name); });
+
+// with "Autopilot decides\" nothing changes: the same card, unseated, plays as before
 run('Intuition', t => { const a = t.a; a.ask = null; a.choices = null; const ev = G.castCard(a, t.inst, true);
   check('...unseated, Intuition plays the autopilot\'s three cards unasked', !!ev && ev.some(e => /^Intuition: /.test(e.text || ''))); });
 

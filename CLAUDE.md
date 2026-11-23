@@ -3,6 +3,30 @@
 ## Git
 - Push commits to your own work branch without asking for approval first, unless the user says otherwise in the conversation.
 
+## Sessions: MAIN and TASK (the user's session protocol; full text in `docs/SESSION-PROTOCOL.md`)
+- **Say which you are in your first reply.** MAIN is the Visuals session named in the next section: it assigns work, reviews reports, merges, and keeps the project state. Every other session is TASK: one bounded assignment, reported to MAIN.
+- **The repository is the record, and `PROJECT_STATE.md` is its map:** the goal and firm requirements, accepted decisions, the latest verified version, tasks and their owners, known issues, next priorities. Only MAIN edits it; a TASK session sends a report and MAIN records it. Each line there is marked verified, reported or assumed. No other session can see your conversation: what is not pushed or sent does not exist for it.
+- **TASK, before changing anything:** read your assignment, this file, `PROJECT_STATE.md` and your area's note in `docs/agents/`. Then state the branch and commit you start from, the objective, how you will know it is done, and the files you expect to change. Check the task table and the open pull requests for overlap. Ask only what blocks safe progress; decide the routine things yourself.
+- **TASK, while working:** one outcome that can be reviewed on its own. Leave unrelated changes alone. Tell MAIN before you step outside the assignment or change something other sessions build on (a name `sim.js` exports, a `decide.js` question kind, an engine event's wording, the `SHELL` list in `sw.js`, the workflows). Say what you tested and what happened; what was not tested is not verified.
+- **Report to MAIN** when the task is complete, blocked, needs a shared decision, has changed materially, or you must hand over. The message to the Visuals session (next section) is the form below. Sending it does not mean it was received or merged.
+- **Task states:** Planned → Active → Reported → Accepted → Integrated → Verified. A report makes a task Reported, nothing more. Integrated: merged into MAIN's work branch. Verified: the combined tests passed there and GitHub's checks are green.
+- **MAIN, for every assignment:** give a task id, the objective, the starting version, the files the task owns, how it will be judged done, and what it depends on.
+- **MAIN, for every report:** read it and the actual changes; compare the commit it started from with the live branch now; settle overlap by what the behaviour should be and the evidence, never by taking the newer file; merge in dependency order; test the combined result; record the task, the version and the test results in `PROJECT_STATE.md`. If the tests fail, record that and send the fix to the owner; the task is not Verified.
+
+```
+TASK:
+STATUS: Complete / Partial / Blocked
+BASE: starting branch and commit
+DELIVERY: branch and the commit it ends on
+SUMMARY: what changed and why
+FILES CHANGED:
+INTERFACE OR DEPENDENCY CHANGES:
+VERIFICATION: checks run and what they actually showed
+KNOWN ISSUES:
+REMAINING WORK:
+INTEGRATION NOTES:
+```
+
 ## Send finished work to the Visuals session
 One session gathers everyone's work and merges it: the **Visuals** session (session `session_01K5kL4YgVQ6tZxzA48G59TU`).
 This keeps merges in one place, so branches stop colliding on the live branch.
@@ -18,6 +42,8 @@ This keeps merges in one place, so branches stop colliding on the live branch.
 - The Visuals session starts a fresh session with that note as its brief, on the same branch, tells the other sessions the new session id, and archives the old session.
 - The Visuals session does the same for itself: it writes `docs/agents/VISUALS.md`, starts its replacement, and updates the session id at the top of this file.
 - A new task that is unrelated to a long session's current work goes to a fresh session from the start.
+- Hand over as well after a verified milestone, when the task's scope changes a lot, or when the session keeps making context mistakes. Before any hand-over: push the work, update the note (MAIN: `PROJECT_STATE.md` too), list what is unfinished, and write the exact next action. Chat memory and the automatic summary are not a hand-over.
+- A replacement MAIN reads `PROJECT_STATE.md`, this file and `docs/agents/VISUALS.md`, checks them against the repository (branches, open pull requests, the live version), finds the active tasks and the reports not yet answered, and resumes from the latest verified version. It does not redo finished work, reassign active tasks, or call something merged because an old summary says so.
 
 ## Tests: keep them quick
 - GitHub runs the whole engine suite on every pull request and every push to a work branch (the "Tests" check). Locally, run the tests for what you changed (`node tests/run.js <name>`, `node tests/run.js --ui <name>`), then wait for the green check instead of running everything yourself.

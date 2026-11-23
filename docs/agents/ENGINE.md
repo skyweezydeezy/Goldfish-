@@ -26,8 +26,8 @@ pop-ups (`decide.js` questions) belong to the decision-points session. If a rule
 4. Add or extend a test in `tests/engine/`, add its row to `tests/README.md`.
 5. Run the full engine suite: `node tests/run.js` (about 5 minutes). Check its exit status before committing.
 6. If set data coverage changed: `NODE_USE_ENV_PROXY=1 node tools/fetch-sets.js --report`, then `node tests/run.js sets`.
-7. Commit, push `claude/engine-rules`, then `send_message` to the Visuals session (`session_01K5kL4YgVQ6tZxzA48G59TU`) with the
-   branch, the commit and one line on what it does. Also send the decision-points session (`session_01K5kL4Zcst9FYJBqezvRjTK`) the
+7. Commit, push `claude/engine-rules`, then `send_message` to the Visuals session (`session_01K5kL4WjxCpfdEjqWh1igWP (MAIN; check CLAUDE.md for the current id)`) with the
+   branch, the commit and one line on what it does. Also send the decision-points session (`session_01K5kL4XqWbWKz7y7G2bUTMc (Decision Points 3; ask MAIN if it has changed)`) the
    commit range (before..after) and any new effect a person could be asked about.
 8. The Visuals session merges and reports the version number. Pass that number on to the user.
 
@@ -64,8 +64,8 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
   card's coverage and two or three behaviours. Helpers that are exported: `enterWithTriggers`, `castCard(g, inst, force)`,
   `eachTrigger(g, kind, ev)`, `applyEffects`, `leavePerm`, `flushLeaves`, `sba`, `abilityMenu`, `useAbility`, `comboLines`.
 
-## State of the work (engine session `session_01K5kL4YNG2qref25DS7t9oH` since batch 37; batches 37–41 and the shock-land fix on `claude/engine-rules`, session closed)
-- Pool of 5,000 most played Commander cards: **561 cards (650 lines) still have an unread line** (after batch 41). Session 2 handoff: `docs/agents/ENGINE-2-HANDOFF.md`.
+## State of the work (engine session 3, `session_01K5kL4W5wx2aMmLP73o9seu`: batches 42–51 on `claude/engine-rules`; 42–46 live in v145)
+- Pool of 5,000 most played Commander cards: **400 cards (457 lines) still have an unread line** (after batch 51). Session 3 handoff: `docs/agents/ENGINE-3-HANDOFF.md`; session 2: `docs/agents/ENGINE-2-HANDOFF.md`.
 - A person's play: activated abilities from the card menu (battlefield, graveyard, hand, command zone), X on casting and for
   abilities, abilities as responses to a spell, chosen color (`p.chosenColor`, `setChosenColor`), choose-a-type spells
   (`tribeSpell`, `g._castTribe`), Stormtamer / Spellskite / Cursecatcher offered whenever legal.
@@ -87,9 +87,9 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
   rank instead (the 5,000-card pool).
 
 ## Working with the other sessions
-- **Visuals** (`session_01K5kL4YgVQ6tZxzA48G59TU`): merges everything, owns the UI. It reads engine events: `meld`
+- **Visuals** (`session_01K5kL4WjxCpfdEjqWh1igWP (MAIN; check CLAUDE.md for the current id)`): merges everything, owns the UI. It reads engine events: `meld`
   (`{ type: 'meld', parts, into, perm }`), and dice and coins from note text ("Rolled a d20: 14", "flip won"): keep that wording.
-- **Decision points** (`session_01K5kL4Zcst9FYJBqezvRjTK`): owns `decide.js` questions, `responseCards`, `respondWith`,
+- **Decision points** (`session_01K5kL4XqWbWKz7y7G2bUTMc (Decision Points 3; ask MAIN if it has changed)`): owns `decide.js` questions, `responseCards`, `respondWith`,
   `ownPriority`, `personAnswer`, `respondGate`. Tell it before changing those. It audits each of your batches and runs an
   every-default sweep (a person taking every default must equal the autopilot, `D.dump` compared each turn).
 - **Data Diver**: teaches "hidden interaction" cards in `sim.js` too. **Before teaching a card, check it is not already taught on

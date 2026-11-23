@@ -37,6 +37,7 @@ check('"SECOND BREAKFAST — Commanders: … (Bracket 4)" title line is not a ca
 check('"About" and "Name …" header lines are not cards', JSON.stringify(names('About\nName Took\'s Adventure\n\nDeck\n4 Belladonna Took (HOB) 4\n20 Plains')) === JSON.stringify(['Belladonna Took', 'Plains']));
 check('"Deck: name" lines are not cards', !names('Deck: Red Rum Raiders (Admiral Beckett Brass)\n1 Sol Ring').some(n => /Red Rum/.test(n)));
 check('real cards are never skipped, with or without a quantity', JSON.stringify(names('Sol Ring\n1 Nameless Inversion\n1 Sword of Feast and Famine (2XM) 364')) === JSON.stringify(['Sol Ring', 'Nameless Inversion', 'Sword of Feast and Famine']));
+check('Archidekt: Maybeboard, Sideboard, Considering and Companion lines (and any {noDeck} line) are not deck cards', JSON.stringify(names('1x Sol Ring (c21) 263 [Ramp]\n1x Arcane Signet [Maybeboard{noDeck}{noPrice},Ramp]\n1x Lightning Greaves [Sideboard{noDeck}]\n1x Lurrus of the Dream-Den [Companion{top}]\n1x Swords to Plowshares [Considering]\n1x Cultivate [Ramp,Maybeboard]\n1x Frodo, Adventurous Hobbit [Commander{top}]')) === JSON.stringify(['Sol Ring', 'Frodo, Adventurous Hobbit']));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -113,6 +113,10 @@
   }
   $('#optFormat').addEventListener('change', () => {
     const c = $('#optFormat').value === 'commander';
+    if (c && S.loaded && S.cards) {          // the Commander deck rule, for the deck already loaded: a deck that breaks it keeps the 60-card format
+      const bad = commanderProblem(S.cards, S.cards.reduce((s, x) => s + x.qty, 0), S.loaded.specialty, S.loaded.missing);
+      if (bad) { $('#optFormat').value = '60'; $('#deckMsgs').insertAdjacentHTML('afterbegin', ruleMsg(bad, S.loaded.missing).replace('Fix the list, or choose 60-card in Format for a non-Commander deck.', 'The format stays 60-card.')); return; }
+    }
     $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
   // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
@@ -263,17 +267,19 @@
     { const link = readLink(text); if (link && text.trim().split(/\s+/).length === 1) return addFromLink(link, 'from the link'); }          // an ICEYfish deck link pasted in the box
     { const site = deckSite(text); if (site && text.trim().split(/\s+/).length === 1) return toast(`${site[0].toUpperCase() + site.slice(1)} does not let other web pages read its decks. On the deck's page use Export (or Copy) as text, then paste the list here.`); }
     const btn = $('#loadDeck');
+    let ok = false;
     btn.disabled = true; btn.textContent = 'Resolving…';
     try {
       await Source.init();
       const r = await Source.loadDeck(text, m => { btn.textContent = m; });
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
-      else { r.specialty = SPECIALTY_RE.test(text); if (setDeck(r) !== false) { S.deckText = text; if (!quiet) autoSave(text); } }
+      else { r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false; if (ok) { S.deckText = text; if (!quiet) autoSave(text); } }
     } catch (err) {
       console.error(err);
       $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
     }
     btn.disabled = false; btn.textContent = 'Load deck';
+    return ok;
   }
 
   // "Save every deck I load" (on unless you turn it off in Saved decks): a list you paste or import goes into your saved decks by itself
@@ -290,14 +296,18 @@
   // The Commander deck rule (T-040): in the Commander format a deck is 100 cards, one commander and 99 or two and 98. A bigger deck
   // loads only when its list has a "// Specialty" line. A list that breaks the rule is not loaded; the deck you had stays.
   const SPECIALTY_RE = /^\s*\/\/\s*specialty\b/im;
-  function commanderProblem(cards, total, specialty) {
-    const n = cards.filter(c => c.commander).reduce((s, c) => s + c.qty, 0);
+  // Cards the lookup could not find (r.missing) still count: a list is never refused for a count that is off only because of them.
+  function commanderProblem(cards, total, specialty, missing) {
+    const n = cards.concat(missing || []).filter(c => c.commander).reduce((s, c) => s + c.qty, 0);
+    total += (missing || []).reduce((s, c) => s + (c.qty || 1), 0);
     if (!n) return `No commander. Put it in a <code>Commander</code> section or tag it <code>*CMDR*</code>.`;
     if (n > 2) return `${n} commanders. A Commander deck has one, or two partners.`;
     if (total === 100 || (specialty && total > 100)) return null;
     return `${total} cards. A Commander deck is 100: the commander${n === 2 ? 's' : ''} and ${100 - n}.` + (total > 100 ? ' A bigger specialty deck needs a <code>// Specialty</code> line.' : '');
   }
-  function setDeck(r) {
+  const ruleMsg = (bad, missing) => `<div class="msg err cmdr-rule">Not loaded as a Commander deck: ${bad}${(missing || []).length ? ` Not found in the card data: ${missing.map(m => esc(m.name)).join(', ')}.` : ''}<span class="hint"> Fix the list, or choose 60-card in Format for a non-Commander deck.</span></div>`;
+  // setDeck(r, force): force skips the rule (a deck that was already loaded coming back: the tutorial, a deck remembered from before the rule)
+  function setDeck(r, force) {
     let cards = r.cards;
     // if no commander marked and it's a 100-card list whose first card is legendary creature, ask nothing: just guess
     const total = cards.reduce((s, c) => s + c.qty, 0);
@@ -305,11 +315,11 @@
       const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1);
       if (cand && (total === 100 || (r.specialty && total > 100))) { cand.commander = true; cand._guessed = true; }
     }
-    if ($('#optFormat').value === 'commander') {
-      const bad = commanderProblem(cards, total, r.specialty);
+    if ($('#optFormat').value === 'commander' && !force) {
+      const bad = commanderProblem(cards, total, r.specialty, r.missing);
       if (bad) {
         cards.forEach(c => { if (c._guessed) { c.commander = false; delete c._guessed; } });
-        $('#deckMsgs').innerHTML = `<div class="msg err cmdr-rule">Not loaded as a Commander deck: ${bad}<span class="hint"> Fix the list, or choose 60-card in Format for a non-Commander deck.</span></div>`;
+        $('#deckMsgs').innerHTML = ruleMsg(bad, r.missing);
         return false;
       }
     }
@@ -599,8 +609,8 @@
     if (b) {
       try { $('#deckText').value = await builtinText(b); } catch (err) { return toast('Could not open the deck: ' + err.message); }
       localStorage.setItem('gf_last', $('#deckText').value);
-      loadingBuiltin = true; try { await loadDeck(); } finally { loadingBuiltin = false; }
-      applyBuiltinPolicy(b);
+      let ok = false; loadingBuiltin = true; try { ok = await loadDeck(); } finally { loadingBuiltin = false; }
+      if (ok) applyBuiltinPolicy(b);          // a refused deck: the lab's choices stay with the deck that is still loaded
       return;
     }
     const all = getDecks();

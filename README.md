@@ -345,7 +345,9 @@ The lists live in `goldfish/static/decks/` as plain text (one deck per file; the
 
 With the format set to Commander, Build loads a deck only if it is a real Commander deck: **100 cards, one commander and 99, or two
 commanders (partners, a background) and 98**. A list with another count, no commander or more than two gets one short message saying
-what is wrong, and the deck you had stays loaded. A deck with more than 100 cards is allowed only as a **specialty deck**: put a line
+what is wrong, and the deck you had stays loaded. A card the card data cannot find still counts toward the 100 (it is named in the
+message), and Archidekt's Maybeboard, Sideboard, Considering and Companion lines are not part of the deck. Switching the format to
+Commander checks the deck already loaded the same way. A deck remembered from before the rule still comes back. A deck with more than 100 cards is allowed only as a **specialty deck**: put a line
 `// Specialty` anywhere in its list. A 60-card or other non-Commander list loads as before with the format set to 60-card. Every
 built-in deck is exactly 100 cards, so none of them carries the mark.
 

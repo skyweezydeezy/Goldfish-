@@ -46,6 +46,7 @@
       m = line.match(LINE_RE);
       if (!m) continue;
       const g = m.groups, tags = (g.tags || '').toLowerCase();
+      if (/\{nodeck\}/.test(tags) || /[\[,]\s*(maybeboard|sideboard|considering|companion)\b/.test(tags)) continue;          // Archidekt: a Maybeboard, Sideboard, Considering or Companion line is not in the deck
       entries.push({
         qty: parseInt(g.qty || '1', 10),
         name: g.name.trim().replace(/\s+\*F\*$/, ''),

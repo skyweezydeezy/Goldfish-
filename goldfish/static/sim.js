@@ -4444,7 +4444,7 @@
     const cc = perm.card.a.choosesColor; perm.chosenColor = color;
     if (cc && cc.mana) perm.produce = Object.assign({}, perm.produce || perm.card.a.produce || {}, { colors: new Set(cc.mana.base ? [cc.mana.base, color] : [color]), amount: cc.mana.amount });
     if (perm.card.a.gauntletAnthem || perm.card.a.gauntletMana) perm.gauntletColor = color;
-    touch(g); bfInfo(g).byCard && bfInfo(g).byCard.clear();
+    touch(g);
   }
   function enterWithTriggers(g, inst, o, ev) {
     o = o || {};
@@ -8728,7 +8728,6 @@ g.actSeq = (g.actSeq || 0) + 1;
         || (ln.counters > (p.counters || 0) ? 'it has no +1/+1 counter to remove' : null) || (ln.other && !((p.other && p.other[ln.other.kind] || 0) >= ln.other.n) ? `it has no ${ln.other.kind} counter` : null)
         || (ln.life && g.life <= ln.life ? 'not enough life' : null) || (ln.sac && sacPool.length < ln.sac.n ? `nothing to sacrifice (${ln.sac.what})` : null) || (ln.tapN && tapPool.length < ln.tapN.n ? `not enough untapped (${ln.tapN.what})` : null)
         || (ln.discard && disPool.length < ln.discard.n ? 'no card to discard' : null) || (ln.anyCounter && !ctrPool.length ? 'nothing of yours has a counter' : null) || (ln.untapN && untapPool.length < ln.untapN ? 'not enough tapped creatures' : null)
-        || (ln.run && ln.run.yard ? null : null)
         || (ln.tap ? (() => { const was = p.tapped; p.tapped = true; const r = payWhy(c); p.tapped = was; return r; })() : payWhy(c));
       add(ln.effect, ln.costText, why, ev => {
         let gone = [];
@@ -10917,9 +10916,6 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
-    // Umbral Mantle attached to Metalworker with two or more artifact cards in hand (four mana a tap; creatures with a fixed amount: B3 below)
-    { const um = bf.find(q => q.card.a.umbral && q.attachedTo != null), c = um && bf.find(q => q.iid === um.attachedTo && q.card.a.metalworker && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')) && 2 * g.hand.filter(i => i.card.a.isArtifact).length > 3);
-      if (c) return { how: `${c.card.name} + ${um.card.name}`, colors: new Set(['C']) }; }
     // Voltaic Construct ({2}: untap target artifact creature) with an artifact creature that taps for three or more: Metalworker with two artifact cards in hand
     if (tableHas(g, 'constructUntap') && bf.some(q => q.card.a.constructUntap)) {
       const okc = q => isCreaturePerm(q) && q.card.a.isArtifact && !(q.sick && !hasKw(g, q, 'haste'));
@@ -10929,8 +10925,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     // Grand Architect + Pili-Pala: {U} makes Pili-Pala blue, it taps for {C}{C}, {2} and its untap symbol give one mana of any color back
     { const ga = bf.find(q => q.card.a.statics.blueTap), pp = bf.find(q => q.card.a.piliPala && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')));
       if (ga && pp && allUnits(g).some(u => u.colors.has('U'))) return { how: `${ga.card.name} + ${pp.card.name}`, colors: new Set(COLORS) }; }
-    // B3: Umbral Mantle on a creature that taps for 4 or more mana ({3}, {Q}: untap it, again and again)
-    if (tableHas(g, 'umbral')) for (const q of bf) { if (!isCreaturePerm(q) || !q.produce || !ready(q) || amount(q) < 4) continue; if (bf.some(e => e.card.a.umbral && e.attachedTo === q.iid)) return { how: `${q.card.name} + Umbral Mantle`, colors: new Set(q.produce.colors || ['C']) }; }
+    // B3: Umbral Mantle on a creature that taps for 4 or more mana ({3}, {Q}: untap it, again and again); Metalworker makes {C}{C} for each artifact card in hand
+    if (tableHas(g, 'umbral')) for (const q of bf) { const mw = q.card.a.metalworker && !(q.sick && !hasKw(g, q, 'haste')) ? 2 * g.hand.filter(i => i.card.a.isArtifact).length : 0; if (!isCreaturePerm(q) || !((q.produce && ready(q) && amount(q) >= 4) || mw >= 4)) continue; if (bf.some(e => e.card.a.umbral && e.attachedTo === q.iid)) return { how: `${q.card.name} + Umbral Mantle`, colors: new Set((q.produce && q.produce.colors) || ['C']) }; }
     // B2: a rock that untaps itself, with a way to make the untap cheaper than what it makes
     for (const m of nonland) {
       const u = comboKind(m.card).untapCost; if (u == null) continue;

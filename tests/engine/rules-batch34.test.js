@@ -13,7 +13,7 @@ const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.ha
 const put = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; return p; };
 
 { const g = bare(); const a = put(g, 'Serra Angel'), e = put(g, 'Llanowar Elves'); const d0 = g.damage || 0; const i = { iid: g.nextIid++, card: by("Chandra's Ignition") }; g.hand.push(i);
-  G.acting ? null : null; G.castCard(g, i, true); G.sba(g, []);
+  G.castCard(g, i, true); G.sba(g, []);
   check("Chandra's Ignition: your biggest creature deals its power (4) to each other creature and each opponent", g.battlefield.includes(a) && !g.battlefield.includes(e) && (g.damage || 0) === d0 + 4, ((g.damage || 0) - d0) + ' / ' + g.battlefield.filter(q => !q.asLand).map(q => q.card.name).join(', ')); }
 { const g = bare(); const k = put(g, 'Kenrith, the Returned King'); const mc = put(g, 'Mithril Coat');
   check('Mithril Coat: entering, it attaches to your legendary creature', mc.attachedTo === k.iid); }

@@ -66,6 +66,25 @@
             <label>Opponent life <input id="optLife" type="number" min="1" max="200" value="40"></label>
             <label>Games per simulation <input id="optN" title="2,000 games: every percentage is within about ±2 points of the true value (95% of the time). More games are more precise but slower: 5,000 → ±1.4, 10,000 → ±1." type="number" min="200" max="50000" step="100" value="2000"></label>
           </div>
+          <details id="moreRules" class="settings-more">
+            <summary>More rules</summary>
+            <div class="grid2">
+              <label title="The autopilot mulligans a hand it would not keep until it is down to this many cards, then keeps what it has. 7: it never mulligans.">Mulligan down to
+                <select id="optMullTo"><option value="7">7 (never)</option><option value="6">6</option><option value="5" selected>5</option><option value="4">4</option></select></label>
+              <label title="Your life when the game starts. In Duel and Pod every player starts with it.">Starting life <input id="optMyLife" type="number" min="1" max="200" value="40"></label>
+              <label class="check" title="Nobody discards down to seven at the end of the turn"><input id="optNoMaxHand" type="checkbox"> No maximum hand size</label>
+            </div>
+            <div class="row"><button id="optReset" class="ghost" type="button" title="Every rule back to its default for the chosen format">Reset rules to defaults</button></div>
+          </details>
+        </details>
+        <details id="displaySettings" class="settings">
+          <summary>Display</summary>
+          <div class="grid2">
+            <label title="How much fits on the screen: Compact shows more at once, Roomy has bigger text">Spacing
+              <select id="dispDensity"><option value="standard">Standard</option><option value="compact">Compact</option><option value="roomy">Roomy</option></select></label>
+            <label title="How a tab appears when you switch to it">Tab switch
+              <select id="dispFade"><option value="smooth">Smooth fade</option><option value="quick">Quick fade</option><option value="off">Instant</option></select></label>
+          </div>
         </details>
       </div>
       <div class="deck-view">

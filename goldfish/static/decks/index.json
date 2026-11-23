@@ -606,13 +606,6 @@
    "learnedVs": "field"
   },
   {
-   "file": "tooks-adventure.txt",
-   "name": "Took's Adventure",
-   "commanders": [],
-   "colors": "W",
-   "cards": 60
-  },
-  {
    "file": "tookens.txt",
    "name": "Tookens (Belladonna Took)",
    "commanders": [

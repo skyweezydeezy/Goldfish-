@@ -1,7 +1,7 @@
 /* Service worker: lets the app open offline and keeps card images you've already seen. */
 importScripts('version.js');                              // the version number: one more with every merge (see version.js)
 const VERSION = 'isf-v' + self.ISF_VERSION;
-const SHELL = ['./', 'index.html', 'version.js', 'styles.css', 'app.js', 'versus.js', 'versus.css', 'decide.js', 'choices.js', 'choices.css', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'compare.js', 'profile.js', 'tags.js', 'combos.js', 'decks/index.json', 'looks.js', 'audio.js', 'card-sounds.js', 'card-effects.js', 'dice.js', 'tutorial.js', 'tutorial.css', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
+const SHELL = ['./', 'index.html', 'version.js', 'styles.css', 'app.js', 'versus.js', 'remember.js', 'versus.css', 'decide.js', 'choices.js', 'choices.css', 'sim.js', 'source.js', 'charts.js', 'suggest.js', 'compare.js', 'profile.js', 'tags.js', 'combos.js', 'decks/index.json', 'looks.js', 'audio.js', 'card-sounds.js', 'card-effects.js', 'dice.js', 'tutorial.js', 'tutorial.css', 'worker.js', 'manifest.webmanifest', 'logo.svg', 'donate-qr.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const IMG = 'gf-img-v1';
 const MAX_IMAGES = 600;

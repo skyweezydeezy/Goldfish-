@@ -218,7 +218,7 @@
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
       const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
-      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : `${by} makes you sacrifice a ${w}`;
+      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : d.by ? `${by} makes you sacrifice a ${w}` : `${sn || 'Effect'}: sacrifice a ${w}`;          // no by: your own card's effect (Roiling Regrowth)
       q.text = `Choose the ${w} to sacrifice.` + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = d.ability ? 'Cancel' : 'Do not cast it';
     } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)

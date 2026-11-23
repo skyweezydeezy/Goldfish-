@@ -12,6 +12,13 @@ This keeps merges in one place, so branches stop colliding on the live branch.
 - **Don't merge into the default branch yourself**, unless the user asks you to in your own conversation. The Visuals session merges your branch into its work branch, runs the tests, and asks the user before anything goes live (the rules below still hold).
 - **The Visuals session** reports each merge back to the session that sent the work, with the new version number, or says what failed and leaves the fix to that session's area (for example, the engine's `goldfish/static/sim.js`).
 
+## Long sessions: hand over to a fresh one (the user: "Once sessions get too long create new sessions for tasks so that we save tokens")
+- When a session's context passes about 600k tokens (60% of the window; `get_session` shows `context_usage.used_tokens`), it finishes or pauses at the next natural break and does not start new work.
+- It writes a short handoff note in `docs/agents/<its-name>.md`: its role, branch, what is done, what is in progress, open items, and gotchas. It pushes the note and tells the Visuals session.
+- The Visuals session starts a fresh session with that note as its brief, on the same branch, tells the other sessions the new session id, and archives the old session.
+- The Visuals session does the same for itself: it writes `docs/agents/VISUALS.md`, starts its replacement, and updates the session id at the top of this file.
+- A new task that is unrelated to a long session's current work goes to a fresh session from the start.
+
 ## Tests: keep them quick
 - GitHub runs the whole engine suite on every pull request and every push to a work branch (the "Tests" check). Locally, run the tests for what you changed (`node tests/run.js <name>`, `node tests/run.js --ui <name>`), then wait for the green check instead of running everything yourself.
 - The Visuals session merges the work that arrived together first and tests the batch once, not once per session.

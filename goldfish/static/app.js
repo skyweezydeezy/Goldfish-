@@ -268,7 +268,7 @@
       await Source.init();
       const r = await Source.loadDeck(text, m => { btn.textContent = m; });
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
-      else { S.deckText = text; setDeck(r); if (!quiet) autoSave(text); }
+      else { r.specialty = SPECIALTY_RE.test(text); if (setDeck(r) !== false) { S.deckText = text; if (!quiet) autoSave(text); } }
     } catch (err) {
       console.error(err);
       $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
@@ -287,13 +287,31 @@
     d[name] = text; m[name] = { saved: Date.now(), auto: true };
     if (putDecks(d, m)) { refreshSaved(); $('#savedDecks').value = name; toast(`Saved as "${name}" (Rename it in Manage)`); keepData(); }
   }
+  // The Commander deck rule (T-040): in the Commander format a deck is 100 cards, one commander and 99 or two and 98. A bigger deck
+  // loads only when its list has a "// Specialty" line. A list that breaks the rule is not loaded; the deck you had stays.
+  const SPECIALTY_RE = /^\s*\/\/\s*specialty\b/im;
+  function commanderProblem(cards, total, specialty) {
+    const n = cards.filter(c => c.commander).reduce((s, c) => s + c.qty, 0);
+    if (!n) return `No commander. Put it in a <code>Commander</code> section or tag it <code>*CMDR*</code>.`;
+    if (n > 2) return `${n} commanders. A Commander deck has one, or two partners.`;
+    if (total === 100 || (specialty && total > 100)) return null;
+    return `${total} cards. A Commander deck is 100: the commander${n === 2 ? 's' : ''} and ${100 - n}.` + (total > 100 ? ' A bigger specialty deck needs a <code>// Specialty</code> line.' : '');
+  }
   function setDeck(r) {
     let cards = r.cards;
     // if no commander marked and it's a 100-card list whose first card is legendary creature, ask nothing: just guess
     const total = cards.reduce((s, c) => s + c.qty, 0);
     if (!cards.some(c => c.commander) && $('#optFormat').value === 'commander' && total >= 99) {
       const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1);
-      if (cand && total === 100) { cand.commander = true; cand._guessed = true; }
+      if (cand && (total === 100 || (r.specialty && total > 100))) { cand.commander = true; cand._guessed = true; }
+    }
+    if ($('#optFormat').value === 'commander') {
+      const bad = commanderProblem(cards, total, r.specialty);
+      if (bad) {
+        cards.forEach(c => { if (c._guessed) { c.commander = false; delete c._guessed; } });
+        $('#deckMsgs').innerHTML = `<div class="msg err cmdr-rule">Not loaded as a Commander deck: ${bad}<span class="hint"> Fix the list, or choose 60-card in Format for a non-Commander deck.</span></div>`;
+        return false;
+      }
     }
     S.cards = cards; S.loaded = r;          // r: the tutorial puts the person's deck back with setDeck(r) after its sample game
     S.tokens = r.tokens || [];
@@ -305,7 +323,6 @@
     const cmdrs = S.deck.commanders.map(i => i.card.name);
     add('ok', `Loaded <b>${total}</b> cards${cmdrs.length ? ` · Commander: <b>${esc(cmdrs.join(' + '))}</b>` : ''}${cards.some(c => c._guessed) ? ' (guessed, mark it with *CMDR* to be sure)' : ''}`);
     if (r.missing.length) add('err', `<b>${r.missing.length}</b> not found in the card data: ${r.missing.map(m => esc(m.name)).join(', ')}`);
-    if ($('#optFormat').value === 'commander' && total !== 100) add('warn', `Commander decks are 100 cards. This list has ${total}.`);
     if (cmdrs.length) {
       const ci = new Set(); S.deck.commanders.forEach(i => (i.card.color_identity || []).forEach(c => ci.add(c)));
       const bad = S.deck.unique.filter(c => !c.commander && (c.color_identity || []).some(x => !ci.has(x)));
@@ -2804,5 +2821,5 @@
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
   window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
-    useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
+    useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

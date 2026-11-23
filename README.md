@@ -341,6 +341,14 @@ The deck menu on the Deck tab starts with a library of ready-made decks, grouped
 
 The lists live in `goldfish/static/decks/` as plain text (one deck per file; the first line is `// Deck name (Commander)`, and every line that is not a card, such as the deck name, notes and section markers, starts with `//` so it is never read as a card). To add or change a deck, edit or add a `.txt` file there and run `node tools/build-deck-index.js` (it looks up each commander's color identity on Scryfall and rewrites `decks/index.json`). `node tests/run.js` checks that every list parses and that the index matches the files.
 
+## The Commander deck rule
+
+With the format set to Commander, Build loads a deck only if it is a real Commander deck: **100 cards, one commander and 99, or two
+commanders (partners, a background) and 98**. A list with another count, no commander or more than two gets one short message saying
+what is wrong, and the deck you had stays loaded. A deck with more than 100 cards is allowed only as a **specialty deck**: put a line
+`// Specialty` anywhere in its list. A 60-card or other non-Commander list loads as before with the format set to 60-card. Every
+built-in deck is exactly 100 cards, so none of them carries the mark.
+
 ## Saved decks
 
 Tap **Manage** on the Deck tab to rename, duplicate, copy, export or delete saved decks, and to back them all up to one file (**Export all**) or bring them back (**Import**). Decks live in your browser only, so export a backup before clearing browser data or switching devices.

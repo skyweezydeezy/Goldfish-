@@ -1,7 +1,105 @@
-# Decision points: handoff note
+# Decision points: final handoff
 
-For the session that takes over the decision points (the questions a seated person is asked on Duel, Pod and Practice).
-Written 2026-11-23 by the session that built them. Read `CLAUDE.md` first; it wins over this note.
+**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+
+- **Session:** Decision Points 2, `session_01K5kL4Zcst9FYJBqezvRjTK`. Role: **TASK** (MAIN is the Visuals session,
+  `session_01K5kL4YgVQ6tZxzA48G59TU`). Closed 2026-11-23. It replaced `session_01K5kL4ZfrioL9gBHkq7n6W6`.
+- **Branch:** `claude/decision-points-2`, built on the live default branch only. Its last work commit is `d302017`, and this
+  note is the commit after it. Draft PR #65 targets the default branch.
+- **Original objective:** continue the decision points. Build the next batches from `tools/choice-audit.js`, where a person is
+  asked the choice and the autopilot's pick is the default. The every-default sweep must stay bad 0 and the fingerprint
+  unchanged. Audit the engine's rules batches, run the scheduled check for new cards, and send each batch to the Visuals session.
+
+Read `CLAUDE.md` first; it wins over this note.
+
+## Completed in this session
+
+| Commit | What | Live? |
+|---|---|---|
+| `5176b11` | Questions for Crop Rotation / Harrow (which land to sacrifice; `what: 'land'`), Goblin Engineer (which artifact goes to the graveyard), Intuition (three cards; the opponent hands back the one worth least), Goblin Recruiter (any number of Goblins on top), proliferate (which of your permanents). The audit tool now skips reminder text and reads those keywords separately; landfall and "another permanent enters" lines and random discards are no longer counted; the seated library gets cards tutors look for and one creature with a counter. | yes, Version 140 |
+| `73697c5` | Snapcaster Mage / Flashback (`gyAsk` dest `'flashback'`), Stitch Together, Deepglow Skate (`what: 'skate'`), Flickerwisp (`what: 'flickerwisp'`; another player's token is gone for good, a card of yours returns at the end step), Berserk (`ownCreature` `'pump'`). | yes, Version 140 |
+| `428db9a` | decide.js: a `sacrifice` question with no `by` and no cost reads "<card>: sacrifice a <what>". Needed for engine batch 39. | **no** |
+| `c9e3da4` | decide.js: a title for the engine's `what: 'return'` question (Whitemane Lion, Shrieking Drake; batch 41). | **no** |
+| `d302017` | **The user's emergency fix:** shock lands ask "<land>: pay 2 life?" (Pay 2 life / Enter tapped; the default is the autopilot's choice). It lives in `landEntersTapped(g, a, inst)` in sim.js and kind `'shock'` in decide.js. | **no** (sent to Visuals as urgent) |
+
+The tests are in `tests/engine/choice-batch-2.test.js` (26 checks), listed in `tests/README.md`.
+
+## Verification (actual results)
+
+- `tests/engine/choice-batch-2.test.js`: 26 passed, 0 failed, at `d302017`.
+- Every-default sweep (4 parts): bad 0 after every batch, including the shock land fix.
+- `tools/autopilot-fingerprint.js`: identical to the base, after every batch and after the shock land fix.
+- Engine tests (`decisions`, `choice-batch`, `stack`, `graveyard-target`, `cycling`, `chosen-tag`, `loyalty`, `fetch`, `lands`, `life`): pass.
+- `--ui decisions versus` (and versus-fit): all pass on 2 of 3 runs at `d302017`.
+  - The failing run was versus.ui's "asks for your blocks" check: the opponent drew Assassin's Trophy and destroyed the blocker
+    the test sets up. That depends on the random draw; it is not caused by the shock question. Not fixed.
+- GitHub CI on PR #65 at `428db9a`: engine and windows jobs green, mergeable clean. CI on `d302017` was not checked.
+- Choice audit: on this branch (live plus my work), 656 asked and 108 gaps. With engine batches 39–41 merged on top, 677 asked
+  and 94 gaps.
+- Engine rules batches 37, 38, 39, 40 and 41 were audited in scratch worktrees: no engine errors, sweep bad 0. Each result went
+  to the engine session.
+
+## Awaiting MAIN (Visuals) integration
+
+1. **`d302017` (urgent, the user asked for it):** shock lands. It carries `428db9a` and `c9e3da4`.
+2. It conflicts with engine commit `aa12ec1` on one line in `enter()`. The agreed resolution, tested with tests passing and
+   sweep bad 0, is
+   `else if (a.isLand) perm.tapped = o.tapped ? true : landEntersTapped(g, a, inst);`
+3. Engine batch 39 conflicts in `castCard0`. Keep both lines: the engine's `g._sacStats = {..., mv}` line, then this branch's
+   `sacLandCost` question line. The engine branch has already resolved this.
+
+## Unfinished work, blockers, known issues
+
+- **Next gaps** (see `node tools/choice-audit.js --json`):
+  - `target` (about 49): Rishkar's "up to two", Persist, Hunter's Insight, Titania, Dualcaster Mage, and others.
+  - Hunter's Talent's `pumpAttacker` (the biggest attacker, never asked).
+  - `mode`: Jeska's Will, Akroma's Will and the other "Will" cards. The engine always plays both modes.
+  - `x`: Expansion // Explosion, Stensian Sanguinist. The cast-time X question belongs to the engine session.
+- **Engine first:** `player target` spells (Sign in Blood, Time Warp...) only affect yourself, so asking needs engine work.
+- **Audit false positives:**
+  - Lively Dirge: the default spree mode skips the search.
+  - Profane Tutor: suspend only, no cast.
+  - Transmute Artifact: the test table has one noncreature artifact.
+  - Persist: one candidate only.
+  - Contentious Plan: proliferate inside a vote.
+- **The scheduled check for new cards** (`trig_01XXHNkr6rJE7pzvesrNwKoe`) is disabled at close. The last checked commit is
+  `43871b6` (Version 140): no new cards. The next session should create its own check.
+- **Cards played approximately by the engine:**
+  - Tamiyo's Safekeeping, Fists of Flame, Malakir Rebirth, Essence Flux and Seize the Day are marked "ok", but the engine
+    leaves out their target's effect. Tell the engine session.
+  - Waterbending Lesson always discards.
+  - Light-Paws ignores "if you cast it".
+- **The repository is now ICEYfish.** Git and the GitHub tools still reach it as `skyweezydeezy/Goldfish-`; the name
+  `ICEYfish` is refused by the GitHub tools.
+- **No PR events reach this session:** the Claude GitHub App is not installed on the repository.
+
+## Decisions and requirements that must survive
+
+- Every question is person-only, and its default is the autopilot's own pick: a seated person who takes every default plays
+  exactly the autopilot's game. Run the sweep and the fingerprint for every change.
+- A choice the autopilot would not make is offered with `def: null, optional: true`.
+- Build on the live default branch only. Never merge `claude/engine-rules` into a work branch; audit it in a scratch worktree.
+- Never merge into the default branch yourself. Send the branch, the commit and two sentences to the Visuals session.
+- Never edit `version.js` or the `VERSION` line in `sw.js`.
+- Shock lands: no question and no life paid when the land is put onto the battlefield tapped anyway.
+
+## The exact next action
+
+For MAIN: merge `d302017` (shock lands), using the `enter()` resolution above, and confirm the version number to the user.
+For the next Decision Points session:
+1. Merge the live default branch into `claude/decision-points-2`.
+2. Run `node tools/choice-audit.js --json out.json`.
+3. Start on the `target` gaps (Rishkar's "up to two target creatures" first, then Hunter's Talent's attacker).
+4. Create a scheduled check for new cards.
+
+## Sessions
+
+- **Visuals (MAIN):** `session_01K5kL4YgVQ6tZxzA48G59TU`.
+- **Card Rules Engine 2:** `session_01K5kL4YNG2qref25DS7t9oH`, branch `claude/engine-rules`, note `docs/agents/ENGINE.md`.
+  It sends each batch's range for audit. It replaced `session_01K5kL4WeZFox6QLJp181xit`.
+- **Remote Versus:** `session_01K5kL4ZJZZgeVGvAYfVT4Ld`.
+
+---
 
 ## Role
 
@@ -54,35 +152,13 @@ node tools/autopilot-fingerprint.js $PWD /tmp/after.txt        # hash of autopil
   no effect, modes read in part): nothing can be asked until the card rules engine plays it. An engine error fails the run.
 - Then the engine tests for what you changed (`node tests/run.js <name>`) and `node tests/run.js --ui decisions versus`.
 
-## State on 2026-11-23
-
-- Live: Version 136. Audit on live plus the held engine batches: about 620 cards asked, about 159 gaps that can be asked now,
-  about 310 for the engine first.
-- **fc5c9b9** (spree questions, built on live) was sent to the Visuals session to merge at once.
-- **3d571db** on `claude/magical-pasteur-11c3cr` ("In a pod, mill spells and triggers ask which opponent") needs the engine's
-  `millTarget` effect and waits for the engine's fifth held batch. The Visuals session knows.
-- A scheduled check ("Check new cards for choices to ask", every 6 hours) fires into the old session. A new session should
-  create its own and ask the user to delete the old one, or the Visuals session can.
-
-### Open gaps you can ask now (long tail; see `--json`)
-
-- `target` (about 75): counters on "up to two target creatures" (Rishkar), Hunter's Insight-style "choose a creature, then a
-  bonus", Snapcaster Mage / Flashback (`flashbackBest`), Persist, Stitch Together, Seize the Day, Deepglow Skate, Aura Shards'
-  trigger, Titania.
-- `player target` (about 27): "target player" spells that the engine applies to yourself (Sign in Blood, Deep Analysis, Blue
-  Sun's Zenith, Time Warp). Asking means letting the effect hit another player: engine work as well.
-- `mode` (about 30): cards worded "choose one —" inside a trigger (the Retreats, Felidar Retreat), Jeska's Will / Akroma's Will
-  ("if you control a commander, choose both"), proliferate modes.
-- `discard` (about 15): draw-then-discard where the engine only draws. The engine session added `discardUnless`; more follow.
-- `sacrifice` (about 14), `search` (about 11): Eldritch Evolution's search, Intuition, Tiamat, Goblin Recruiter, Springbloom Druid.
-- `x` (2): Expansion // Explosion, Stensian Sanguinist. The cast-time X question belongs to the engine session: tell it first.
-- `name` (1): Demonic Consultation. `color` (1): Brave the Elements (engine first: protection from the chosen color).
+## Reference (from the first handoff, still true)
 
 ## Working with the other sessions
 
 - **Visuals** (`session_01K5kL4YgVQ6tZxzA48G59TU`) merges everything. Send it the branch, the commit and two sentences. Never
   merge into the default branch yourself unless the user says so in your own conversation.
-- **Card rules engine** (`session_01K5kL4WeZFox6QLJp181xit`, branch `claude/engine-rules`). It tells you the commit range of each
+- **Card rules engine** (now `session_01K5kL4YNG2qref25DS7t9oH`, branch `claude/engine-rules`). It tells you the commit range of each
   batch; audit it and answer with: errors, new gaps, cards closed, sweep result. Its batches go live only once every five
   (the user's rule).
   - **Do not merge `claude/engine-rules` into your work branch.** Audit it in a scratch worktree:

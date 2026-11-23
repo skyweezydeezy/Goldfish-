@@ -1,6 +1,6 @@
 # Handoff: Card-teaching session
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 - **Session:** card-teaching (session `session_01K5kL4Y1MvoJcQ6QEUCvRD4`)
 - **Role:** TASK (not MAIN)

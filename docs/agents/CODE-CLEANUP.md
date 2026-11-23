@@ -1,6 +1,8 @@
 # Hand-off: Code Clean-up session
 
-**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4VM41uFmohgknueiEg**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
+
+Successor: **Code Clean-up 2** (`session_01K5kL4VM41uFmohgknueiEg`). This note is superseded by that session.
 
 ## Current facts (2026-11-23, checked against the repository by Code Clean-up 2)
 - The current owner of this area (dead code and unsteady tests) is **Code Clean-up 2** (`session_01K5kL4VM41uFmohgknueiEg`), on task T-018.

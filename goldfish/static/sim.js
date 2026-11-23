@@ -4238,7 +4238,7 @@
     if (!g.dry && g.ojerQueue && g.ojerQueue.length) for (const i of g.ojerQueue.splice(0)) { const at = g.graveyard.indexOf(i); if (at < 0) continue; g.graveyard.splice(at, 1); const tp = i.card.a.dieTransform !== 'untapped'; const np = enterWithTriggers(g, i, { tapped: tp }, ev || []); transformPerm(g, np, ev || []); np.tapped = tp; (ev || []).push({ type: 'note', text: `${i.card.name} returns transformed: ${np.card.name}` }); }
     if (!g.dry && g.slashQueue && g.slashQueue.length) for (const { i, stun, counter } of g.slashQueue.splice(0)) {          // back tapped: Unstoppable Slasher (two stun counters), Supernatural Stamina, Undying Malice (a +1/+1 counter)
       const at = g.graveyard.indexOf(i); if (at < 0) continue;
-      g.graveyard.splice(at, 1); const np = enterWithTriggers(g, i, { tapped: true }, ev || []); np.tapped = true; if (stun) np.stun = stun; if (counter) addCounters(g, np, '+1/+1', counter, ev || [], np);
+      g.graveyard.splice(at, 1); const np = enterWithTriggers(g, i, { tapped: true, counters: counter || 0 }, ev || []); np.tapped = true; if (stun) np.stun = stun;
       (ev || []).push({ type: 'note', text: `${i.card.name} returns to the battlefield tapped${stun ? ' with two stun counters' : counter ? ' with a +1/+1 counter' : ''}`, source: np });
     }
     if (!g.dry && g.nexusDead && g.nexusDead.n) { const nd = g.nexusDead; g.nexusDead = null;
@@ -4342,11 +4342,11 @@
       const np = enterWithTriggers(g, p.inst, { flyCounter: true }, ev); np.flyCounter = true; ev.push({ type: 'note', text: `${p.card.name} returns with a flying counter (Luminous Broodmoth)` });
     } else
     if (wasCreature && !p.token && p.inst && !g.dry && undyingBy && undyingBy !== p && (p.counters || 0) <= 0 && dest !== 'exile' && dest !== 'hand' && g.graveyard.includes(p.inst) && g.battlefield.includes(undyingBy) && g.battlefield.length < 250) {          // Mikaeus: undying
-      g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const np = enterWithTriggers(g, p.inst, {}, ev); np.counters = 1; ev.push({ type: 'note', text: `${p.card.name} returns with a +1/+1 counter (undying)` });
+      g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const np = enterWithTriggers(g, p.inst, { counters: 1 }, ev); np.counters = 1; ev.push({ type: 'note', text: `${p.card.name} returns with a +1/+1 counter (undying)` });
     } else
     if (wasCreature && !p.token && p.inst && p.card.a.kw && p.card.a.kw.has('persist') && (p.counters || 0) >= 0 && dest !== 'exile' && dest !== 'hand' && g.battlefield.length < 250 && !g.dry) {       // Persist (Kitchen Finks): back with a -1/-1 counter
       const gi = g.graveyard.indexOf(p.inst); if (gi >= 0) g.graveyard.splice(gi, 1);
-      const np = enterWithTriggers(g, p.inst, {}, ev); np.counters = bfInfo(g).vizier ? 0 : -1; ev.push({ type: 'note', text: `${p.card.name} persists: it returns with ${np.counters ? 'a -1/-1 counter' : 'no counter (Vizier of Remedies)'}` });
+      const np = enterWithTriggers(g, p.inst, { counters: bfInfo(g).vizier ? 0 : -1 }, ev); np.counters = bfInfo(g).vizier ? 0 : -1; ev.push({ type: 'note', text: `${p.card.name} persists: it returns with ${np.counters ? 'a -1/-1 counter' : 'no counter (Vizier of Remedies)'}` });
     }
   }
   // Relentless Dead: when it dies, pay {B} to return it to your hand, and {X} to return another Zombie with mana value X
@@ -4841,9 +4841,10 @@
     const perm = { iid: inst.iid, inst, card: inst.card, tapped: false, sick: false, produce: (a.fetchSpec || a.coffers || a.nykthos) ? null : a.produce, sacMana: a.sacMana, asLand: a.isLand, enteredTurn: g.turn, counters: 0, loyalty: Math.floor(a.loyalty * (a.isPlaneswalker ? counterMult(g) : 1) / (a.isPlaneswalker && !g.dry && g.opp && othersHave(g, 'vorinHalf') ? 2 : 1)), token: !!inst.card.isToken || !!o.token };          // o.token: a token copy of a card
     if (a.tendo) perm.charge = 1;
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
-    else if (a.isLand) perm.tapped = o.tapped ? true : landEntersTapped(g, a, inst);
+    else if (a.isLand) perm.tapped = o.tapped ? true : landEntersTapped(g, a, inst);          // put onto the battlefield tapped: a shock land pays no life
     else { perm.sick = a.isCreature; if (a.etbTapped) perm.tapped = true; }
-    if (o.flyCounter) perm.flyCounter = true;          // Luminous Broodmoth: the counter is on it as it enters, so dying at once (Elesh Norn) does not bring it back again          // put onto the battlefield tapped: a shock land pays no life
+    if (o.flyCounter) perm.flyCounter = true;          // the counters a returning creature comes back with are on it as it enters (Luminous Broodmoth, persist, undying,
+    if (o.counters) perm.counters = (perm.counters || 0) + o.counters;          // Undying Malice), so dying at once (Elesh Norn's -X/-X) does not bring it back again and again
     if (o.tapped) perm.tapped = true;
     if (a.isCreature && !perm.token && !perm.asLand && !o.silent) g.nontokenCreatureEnters = (g.nontokenCreatureEnters || 0) + 1;   // Gyome counts these
     if (a.isCreature && !inst.card.isToken && !perm.asLand && !g.dry && !inst._handCast && (a.statics.chainerHaste || (g._bf && g._bf.chainerHaste))) perm.sick = false;          // Chainer: haste when it was not cast from your hand

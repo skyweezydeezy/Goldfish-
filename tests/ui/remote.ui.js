@@ -37,24 +37,33 @@ let pages = [];          // the two devices, for the message when a step times o
   };
   const loadDeck = async (p, text) => {
     await p.evaluate(t => { document.querySelector('#deckText').value = t; document.querySelector('#loadDeck').click(); }, text);
-    await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 120000 });
+    await wait(p, () => window.__isf && window.__isf.deck, null, 120000);
   };
   const noStun = p => p.evaluate(() => { window.__isfRemote.ice = []; });          // the test machine has no internet STUN: local addresses only
   const A = await device('A'), B = await device('B');
   pages = [A, B];
+  // Under a heavy load (other browser tests side by side) these pages draw only a few frames a second, at times none for many seconds,
+  // once the duel table is up. Playwright's own waits run on animation frames by default (waitForFunction checks once per frame;
+  // click waits for two frames in the same place), so they ran out with the game already there. These wait on a timer instead.
+  const POLL = 200;
+  const wait = (p, fn, arg, ms) => p.waitForFunction(fn, arg, { timeout: ms, polling: POLL });
+  const tap = async (p, sel, ms) => {          // click a button once it is on the page, shown and enabled
+    await wait(p, s => { const e = document.querySelector(s); return !!e && !e.disabled && e.getClientRects().length > 0; }, sel, ms || 30000);
+    await p.evaluate(s => document.querySelector(s).click(), sel);
+  };
   await A.goto(BASE); await loadDeck(A, deckA); await noStun(A);
 
   // ---- the list of what is shared comes first
-  await A.click('[data-tab=duel]');
+  await tap(A, '[data-tab=duel]');
   check('the Duel tab has a "Play a friend" box with the tagline and the full list of what is shared',
     await A.$eval('#tab-duel .rm-box', e => /Play a friend/.test(e.textContent) && /Do this with good friends\. Don't be a victim\./.test(e.textContent) && e.querySelectorAll('.rm-list li').length >= 8 && !!e.querySelector('.rm-tick')));
   check('...the list says the hand, library and seed are in the other device\'s memory, and names the IP address and Google\'s STUN server',
     await A.$eval('#tab-duel .rm-list', e => /seed/.test(e.textContent) && /IP address/.test(e.textContent) && /STUN/.test(e.textContent)));
   await A.fill('#tab-duel .rm-name', 'Alex');
-  await A.click('#tab-duel .rm-invite');
+  await tap(A, '#tab-duel .rm-invite');
   check('Invite without ticking "I understand and accept" makes no code and says why', !(await A.$('#tab-duel .rm-mine')) && /accept/.test(await A.$eval('#tab-duel .rm-status', e => e.textContent)));
   await A.check('#tab-duel .rm-tick');
-  await A.click('#tab-duel .rm-invite');
+  await tap(A, '#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const invite = await A.$eval('#tab-duel .rm-mine', e => e.value);
   check('ticking it and Invite makes an invite code, short enough for a QR code', /^ISF2z?\.[A-Za-z0-9_-]{40,}$/.test(invite) && invite.length < 400, invite.length + ' characters');
@@ -68,7 +77,7 @@ let pages = [];          // the two devices, for the message when a step times o
   check('the invite link opens the Duel tab with the invite ready to join', (await B.$eval('#tab-duel .rm-theirs', e => e.value)) === invite && (await B.evaluate(() => document.body.dataset.view)) === 'duel');
   await B.fill('#tab-duel .rm-name', 'Sam');
   await B.check('#tab-duel .rm-tick');
-  await B.click('#tab-duel .rm-reply');
+  await tap(B, '#tab-duel .rm-reply');
   await B.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const reply = await B.$eval('#tab-duel .rm-mine', e => e.value);
   const rqr = await B.evaluate(() => { const q = document.querySelector('#tab-duel .rm-qr'); return q && q.dataset.link; });
@@ -84,7 +93,7 @@ let pages = [];          // the two devices, for the message when a step times o
   const linkState = p => p.evaluate(() => { const R = window.__isfRemote, L = R.state.link, g = window.__isfVersus.duel.game;
     return { visible: document.visibilityState, focus: document.hasFocus(), pc: L && L.pc.connectionState, ice: L && L.pc.iceConnectionState, channel: L && L.ch && L.ch.readyState, answered: L && L.answered, game: !!R.state.game, phase: g && g.phase, remote: g && g.remote,
       status: (document.querySelector('#tab-duel .rm-status') || {}).textContent || '' }; }).then(JSON.stringify, e => 'unreadable: ' + e.message);
-  const started = p => p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, { timeout: 30000 });
+  const started = p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull'; }, null, 30000);
   const t0 = Date.now();
   await Promise.all([started(A), started(B)]).catch(async e => { throw new Error('both devices start the game: ' + e.message.split('\n')[0] + ' A: ' + await linkState(A) + ' B: ' + await linkState(B)); });
   console.log('(both devices started the game ' + (Date.now() - t0) + ' ms after the reply)');
@@ -133,13 +142,13 @@ let pages = [];          // the two devices, for the message when a step times o
     (await B.$$('#tab-duel .vs-seat.me .vs-hand .vs-card')).length === 7);
   check('...and the other player\'s hand as seven card backs', (await A.$eval('#tab-duel .vs-seat.opp .vs-backs b', e => e.textContent)) === '7' && !(await A.$('#tab-duel .vs-seat.opp .vs-hand')));
   check('the bar says the other device is connected', /Connected/.test(await A.$eval('#tab-duel .vs-bar', e => e.textContent)) && /Connected/.test(await B.$eval('#tab-duel .vs-bar', e => e.textContent)));
-  await A.click('#tab-duel .vs-mull');
+  await tap(A, '#tab-duel .vs-mull');
   await A.waitForTimeout(300);
   check('Alex\'s mulligan reaches Sam\'s device: Alex has a new hand there', await B.evaluate(() => window.__isfVersus.duel.game.games[0].mulligans === 1));
-  await A.click('#tab-duel .vs-keep');
+  await tap(A, '#tab-duel .vs-keep');
   await A.waitForTimeout(300);
   check('Alex keeps and waits for Sam to keep', /Waiting for Sam to keep/.test(await A.$eval('#tab-duel .vs-bar', e => e.textContent)));
-  await B.click('#tab-duel .vs-keep');
+  await tap(B, '#tab-duel .vs-keep');
   await until((a, c) => myMain(a, a.active) && myMain(c, c.active) && a.active === c.active);
   const first = (await st(A)).active;
   check('both have kept: the game begins on both devices with the same player\'s turn', true, 'first: ' + ['Alex', 'Sam'][first]);
@@ -159,7 +168,7 @@ let pages = [];          // the two devices, for the message when a step times o
     }
     return played != null;
   };
-  const endTurn = async seat => { await (seat === 0 ? A : B).click('#tab-duel .vs-end'); await until((a, c) => a.active !== seat && c.active !== seat && quiet(a) && quiet(c) && a.phase === 'main' && c.phase === 'main', 60000); };
+  const endTurn = async seat => { await tap(seat === 0 ? A : B, '#tab-duel .vs-end'); await until((a, c) => a.active !== seat && c.active !== seat && quiet(a) && quiet(c) && a.phase === 'main' && c.phase === 'main', 60000); };
   const hadLand = await (first === 0 ? A : B).evaluate(s => window.__isfVersus.duel.game.games[s].hand.some(i => i.card.a.isLand), first);
   const firstLand = await landTurn(first);
   check('the first player plays a land (when the deal gave one) and it reaches the other device', firstLand === hadLand, hadLand ? 'played' : 'no land in hand');
@@ -177,25 +186,25 @@ let pages = [];          // the two devices, for the message when a step times o
   await B.waitForSelector('#tab-duel .rm-rejoin', { state: 'attached', timeout: 30000 });
   await noStun(B);
   check('after a reload the Duel tab offers to rejoin the saved game against Alex', /against Alex is saved/.test(await B.$eval('#tab-duel .rm-box', e => e.textContent)));
-  await A.waitForFunction(() => !window.__isfRemote.connected(), null, { timeout: 30000 });
+  await wait(A, () => !window.__isfRemote.connected(), null, 30000);
   check('Alex\'s device sees the connection is gone and says the game waits', /Not connected/.test(await A.$eval('#tab-duel .rm-box', e => e.textContent)) && /Not connected/.test(await A.$eval('#tab-duel .vs-bar', e => e.textContent)));
-  await B.click('[data-tab=duel]');
-  await B.click('#tab-duel .rm-rejoin');
-  await B.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.remote != null && !g.inputs[0].length && !g.inputs[1].length && !g.acting && !g.busy; }, null, { timeout: 60000 });
+  await tap(B, '[data-tab=duel]');
+  await tap(B, '#tab-duel .rm-rejoin');
+  await wait(B, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && !g.inputs[0].length && !g.inputs[1].length && !g.acting && !g.busy; }, null, 60000);
   await B.waitForTimeout(1500);
   const rejoined = await st(B);
   check('Sam\'s device replays the saved game to exactly where it was', rejoined.fp === beforeReload.fp && rejoined.active === beforeReload.active, rejoined.fp + ' / ' + beforeReload.fp);
-  await A.click('#tab-duel .rm-lost .rm-invite');
+  await tap(A, '#tab-duel .rm-lost .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const invite2 = await A.$eval('#tab-duel .rm-mine', e => e.value);
-  await B.click('#tab-duel .rm-join');
+  await tap(B, '#tab-duel .rm-join');
   await B.fill('#tab-duel .rm-theirs', invite2);
-  await B.click('#tab-duel .rm-reply');
+  await tap(B, '#tab-duel .rm-reply');
   await B.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
-  await A.click('#tab-duel .rm-paste summary');          // this time Alex pastes the reply (the fallback)
+  await tap(A, '#tab-duel .rm-paste summary');          // this time Alex pastes the reply (the fallback)
   await A.fill('#tab-duel .rm-theirs', await B.$eval('#tab-duel .rm-mine', e => e.value));
-  await A.click('#tab-duel .rm-connect');
-  await Promise.all([A, B].map(p => p.waitForFunction(() => window.__isfRemote.connected(), null, { timeout: 30000 })));
+  await tap(A, '#tab-duel .rm-connect');
+  await Promise.all([A, B].map(p => wait(p, () => window.__isfRemote.connected(), null, 30000)));
   check('a new pair of codes connects the two devices again, into the same game', true);
   await same('the same table after the rejoin');
   await endTurn(second);
@@ -223,9 +232,9 @@ let pages = [];          // the two devices, for the message when a step times o
   await same('the same table after setting it on both devices (a test step, not a move)');
 
   // a land and a spell on Alex's turn; Sam is asked whether to counter it, on Sam's device
-  await A.click(`#tab-duel .vs-hand .vs-card[data-iid="${T.land}"]`);
+  await tap(A, `#tab-duel .vs-hand .vs-card[data-iid="${T.land}"]`);
   await same('Alex plays a land: the same table');
-  await A.click(`#tab-duel .vs-hand .vs-card[data-iid="${T.swords}"]`);
+  await tap(A, `#tab-duel .vs-hand .vs-card[data-iid="${T.swords}"]`);
   await until((a, c) => c.choice === 'counter' || (quiet(a) && quiet(c) && a.phase === 'main'), 30000, { keepChoice: 'B' });          // Alex's own question (does it resolve?) is answered on the way
   const sb = await st(B);
   check('Alex casts Swords to Plowshares: Sam is asked on Sam\'s device whether to counter it', sb.choice === 'counter' && /Alex casts Swords to Plowshares/.test(await B.$eval('.ch-sheet', e => e.textContent)));
@@ -237,15 +246,15 @@ let pages = [];          // the two devices, for the message when a step times o
   await same('the same table after the counterspell');
 
   // Alex attacks; Sam chooses the block on Sam's device
-  await A.click('#tab-duel .vs-attack');
+  await tap(A, '#tab-duel .vs-attack');
   await A.waitForSelector('#tab-duel .vs-attack-go', { timeout: 15000 });
-  await A.click('#tab-duel .vs-attack-all');
-  await A.click('#tab-duel .vs-attack-go');
+  await tap(A, '#tab-duel .vs-attack-all');
+  await tap(A, '#tab-duel .vs-attack-go');
   await until((a, c) => c.block, 30000, { keepBlock: true });
   const blockUi = await B.evaluate(() => ({ n: document.querySelectorAll('#tab-duel .vs-blk').length, text: (document.querySelector('#tab-duel .vs-me') || {}).textContent || '' }));
   check('Alex attacks: Sam is asked for blocks on Sam\'s device', blockUi.n >= 1 && /Alex attacks you/.test(blockUi.text), blockUi.n + ' ' + blockUi.text.slice(0, 160));
   await B.selectOption(`#tab-duel .vs-blk[data-iid="${T.blk}"]`, String(T.atk));
-  await B.click('#tab-duel .vs-block-go');
+  await tap(B, '#tab-duel .vs-block-go');
   await until((a, c) => quiet(a) && quiet(c) && a.phase === 'main' && c.phase === 'main', 30000);
   check('...Sam\'s block reaches Alex\'s device: the log there says Sam\'s creature blocks', await A.evaluate(n => [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].some(l => /blocks/.test(l.textContent) && l.textContent.includes(n)), T.blkName));
   await same('the same table after the blocked attack');
@@ -263,7 +272,7 @@ let pages = [];          // the two devices, for the message when a step times o
   const SC = await A.evaluate(samCards); await B.evaluate(samCards);
   await same('the same table after giving Sam a land and a creature (a test step, not a move)');
   const samLand = await landTurn(1);
-  await B.click(`#tab-duel .vs-hand .vs-card.can[data-iid="${SC.spell}"]`);
+  await tap(B, `#tab-duel .vs-hand .vs-card.can[data-iid="${SC.spell}"]`);
   await until((a, c) => quiet(a) && quiet(c) && c.phase === 'main', 30000);
   check('Sam plays a land and casts a creature on Sam\'s turn: both reach Alex\'s device', samLand && await A.evaluate(id => window.__isfVersus.duel.game.games[1].battlefield.some(p => p.iid === id), SC.spell), SC.name);
   await same('the same table after Sam\'s turn');
@@ -272,10 +281,10 @@ let pages = [];          // the two devices, for the message when a step times o
     const c = a.deck.unique.find(x => x.a.isCreature && !x.commander && (x.a.power || 0) >= 1 && !x.a.castStax); const p = G.enterWithTriggers(a, { iid: a.nextIid++, card: c }, {}, []); p.sick = false; p.tapped = false; window.__isfVersus.redraw('duel'); };
   await until((a, c) => myMain(a, 0) && myMain(c, 0), 60000);
   await A.evaluate(finish); await B.evaluate(finish);
-  await A.click('#tab-duel .vs-attack');
+  await tap(A, '#tab-duel .vs-attack');
   await A.waitForSelector('#tab-duel .vs-attack-go', { timeout: 15000 });
-  await A.click('#tab-duel .vs-attack-all');
-  await A.click('#tab-duel .vs-attack-go');
+  await tap(A, '#tab-duel .vs-attack-all');
+  await tap(A, '#tab-duel .vs-attack-go');
   await until((a, c) => a.over && c.over, 30000);
   const [ea, eb] = [await st(A), await st(B)];
   check('a winner on both devices: Alex wins', /Alex wins/.test(ea.over) && /Alex wins/.test(eb.over), ea.over + ' / ' + eb.over);

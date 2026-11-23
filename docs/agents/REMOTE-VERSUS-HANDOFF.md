@@ -1,6 +1,6 @@
 # Remote Versus: final handoff
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — SUPERSEDED BY the next MAIN session** (accepted by MAIN, the Visuals session, on 2026-11-23. The open restore request was done by MAIN in PR #69: Play a friend as in v128, without the camera scanner. MAIN has raised the Metered credential question with the user.)
 
 - **Session:** Remote Versus (`session_01K5kL4ZJZZgeVGvAYfVT4Ld`)
 - **Role:** TASK (the MAIN session is Visuals, `session_01K5kL4YgVQ6tZxzA48G59TU`)

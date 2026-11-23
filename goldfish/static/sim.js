@@ -3510,7 +3510,7 @@
       landPlayed: 0, manaSpent: 0, commanderCast: null, killTurn: null, cmdrCasts: {},
       castTurn: {}, drawTurn: {}, turns: [], floating: [], eot: { p: 0, t: 0, kw: new Set() }, extraCombats: 0,
       nextIid: deck.nextIid, landsPlayedThisTurn: 0, spentThisTurn: 0,
-      life: opts.oppLife || 40,                               // your own life total (starts like the goldfish's: 40 in Commander, 20 otherwise)
+      life: opts.startLife || opts.oppLife || 40,             // your own life total: the Build tab's starting life (default 40 in Commander, 20 otherwise)
       ring: { tempts: 0, bearer: null },                      // the Ring: how many times it has tempted you, and your Ring-bearer (a permanent id)
       yardShuffleSeen: deck.unique.some(c => c.a.shuffleBack || c.a.yardShuffle),
     };
@@ -4431,7 +4431,7 @@
   // Fancies for every player) wins over any number; "your maximum hand size is N" (Twenty-Toed Toad, Necrodominance) sets it, the newest
   // such permanent counting; an opponent's Jin-Gitaxias, Core Augur reduces it.
   function maxHandSize(g) {
-    if (g.noMaxHand) return Infinity;
+    if (g.noMaxHand || (g.opts && g.opts.noMaxHand)) return Infinity;          // also the Build tab's "No maximum hand size" rule
     const others = g.match && g.match.players ? g.match.players.filter(x => x !== g && !x.dead) : (g.opp ? [g.opp] : []);
     if (g.battlefield.some(p => p.noMaxHand || p.card.a.statics.noMaxHand) || others.some(x => (tableHas(x, 'statics.noMaxHand') && x.battlefield.some(p => p.card.a.statics.noMaxHand === 'all')))) return Infinity;
     let n = 7;

@@ -1,9 +1,14 @@
-importScripts('sim.js', 'suggest.js', 'profile.js', 'tags.js', 'compare.js');
+importScripts('sim.js', 'suggest.js', 'profile.js', 'tags.js', 'compare.js', 'tune.js');
 self.onmessage = (e) => {
   if (e.data.learn) {                                   // Policy lab: compare options by playing many games with each
     const l = e.data.learn;
     const res = self.Goldfish.comparePolicies(l.cards, l.tokens, e.data.opts, l.candidates, e.data.n, e.data.seed, l.mode, l.cardsB, l.tokensB, p => self.postMessage({ progress: p }));
     self.postMessage({ result: res });
+    return;
+  }
+  if (e.data.tune) {                                    // Policy lab, "Tune toward a goal": search choices and deck changes that kill earlier or hit land drops
+    const t = e.data.tune;
+    self.postMessage({ result: self.Tune.tune(self.Goldfish, self.Profile, { cards: t.cards, tokens: t.tokens, pool: t.pool, identity: t.identity }, e.data.opts, t.goal, { n: e.data.n, rounds: t.rounds, seed: e.data.seed }, p => self.postMessage({ progress: p })) });
     return;
   }
   if (e.data.diagnose) {                                // A/B test, step 1: which cards are linked to winning and losing against other decks

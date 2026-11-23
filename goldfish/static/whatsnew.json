@@ -2,6 +2,20 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 156,
+      "lines": [
+        "On a PC the app now uses the whole screen: Practice fits one 1920×1080 screen, and Simulate shows three charts a row.",
+        "Build → More rules: mulligan down to, your starting life, no maximum hand size, and Reset. Display: spacing and tab-switch speed.",
+        "Simulate → Policy lab → Tune toward a goal: make the deck kill earlier or hit its land drops more often, and see the bracket speed it reaches."
+      ]
+    },
+    {
+      "v": 155,
+      "lines": [
+        "The Duel tours now show Play a friend, with a one-time tip if you have seen them before."
+      ]
+    },
+    {
       "v": 153,
       "lines": [
         "🎲 Turn the dice and coin animations on or off in the Sound panel (🔊).",

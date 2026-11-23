@@ -5578,7 +5578,7 @@
           for (const q of ps) { const i = q.inst; leavePerm(g, q, ev, 'exile'); if (g.exile.includes(i)) ins.push(i); } flushLeaves(g, ev);
           if (roll >= 10) for (const i of ins.slice()) { g.exile.splice(g.exile.indexOf(i), 1); const np = enterWithTriggers(g, i, {}, ev); const j = np.inst || i; leavePerm(g, np, ev, 'exile'); flushLeaves(g, ev); if (g.exile.includes(j) && j !== i) ins[ins.indexOf(i)] = j; }
           (g.endFlicker = g.endFlicker || []).push(...ins.filter(i => g.exile.includes(i))); ev.push({ type: 'note', text: `Lae'zel's Acrobatics: rolled ${roll}, ${ins.length} creature${ins.length === 1 ? '' : 's'} back at the end step${roll >= 10 ? ' (and once now)' : ''}`, source }); break; }
-        case 'stackTop': { const cs = g.library.filter(i => matchesFilter(i.card, f.filter)); if (!cs.length) break; for (const i of cs) g.library.splice(g.library.indexOf(i), 1); shuffle(g.library, g.rnd); cs.sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x)); g.library.unshift(...cs); ev.push({ type: 'note', text: `${cs.length} ${f.filter} card${cs.length === 1 ? '' : 's'} on top of your library`, source }); break; }          // Goblin Recruiter
+        case 'stackTop': { let cs = g.library.filter(i => matchesFilter(i.card, f.filter)); if (!cs.length) break; if (g.ask && !g.dry) { cs = decide(g, { kind: 'search', options: cs.slice(), def: cs.slice(), multi: true, pick: cs.length, upTo: true, f: { dest: 'top', filters: [f.filter], n: cs.length }, source }) || cs; if (!cs.length) { shuffle(g.library, g.rnd); break; } } for (const i of cs) g.library.splice(g.library.indexOf(i), 1); shuffle(g.library, g.rnd); cs.sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x)); g.library.unshift(...cs); ev.push({ type: 'note', text: `${cs.length} ${f.filter} card${cs.length === 1 ? '' : 's'} on top of your library`, source }); break; }          // Goblin Recruiter (a person picks any number)
         case 'untapSelfAb': if (source && g.battlefield.includes(source) && source.tapped) { source.tapped = false; source.actUsed = null; } break;          // Goblin Sharpshooter: untapped to use again
         case 'doubleLife': if (g.life > 0) gainLife(g, g.life, ev, source); break;          // Beacon of Immortality
         case 'reanimateEnch': { const ls = g.graveyard.filter(i => i.card.a.isEnchantment && !i.card.a.isAura && !i.card.a.isLand); for (const i of ls) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } ev.push({ type: 'note', text: `${ls.length} enchantment card${ls.length === 1 ? '' : 's'} return`, source }); break; }          // Resurgent Belief
@@ -5765,7 +5765,16 @@
         }
         case 'intuition': {          // Intuition: three cards; the other player hands you the worst, the two best go to the graveyard
           const picks = []; for (let k = 0; k < 3; k++) { const t = bestTutorTarget(g, { type: 'tutor', filters: [] }); if (!t) break; g.library.splice(g.library.indexOf(t.inst), 1); picks.push(t.inst); }
-          if (!picks.length) break; const w = picks[picks.length - 1]; g.hand.push(w); picks.slice(0, -1).forEach(i => g.graveyard.push(i)); shuffle(g.library, g.rnd);
+          let w = picks[picks.length - 1];
+          if (g.ask && !g.dry && picks.length) {          // a person chooses the three cards; the opponent hands over the one worth least to you
+            const chosen = decide(g, { kind: 'search', options: picks.concat(g.library), def: picks.slice(), multi: true, pick: picks.length, f: { dest: 'intuition', words: ['a card', 'two cards', 'three cards'][picks.length - 1], n: picks.length }, source });
+            if (chosen && (chosen.length !== picks.length || chosen.some(i => !picks.includes(i)))) {
+              g.library.push(...picks.filter(i => !chosen.includes(i))); chosen.forEach(i => { const k = g.library.indexOf(i); if (k >= 0) g.library.splice(k, 1); });
+              const ctx = tutorContext(g), sc = new Map(chosen.map(i => [i, tutorScore(g, i, ctx)]));
+              picks.splice(0, picks.length, ...chosen.slice().sort((x, y) => sc.get(y) - sc.get(x))); w = picks[picks.length - 1];
+            }
+          }
+          if (!picks.length) break; g.hand.push(w); picks.slice(0, -1).forEach(i => g.graveyard.push(i)); shuffle(g.library, g.rnd);
           ev.push({ type: 'note', text: `Intuition: ${w.card.name} to your hand${picks.length > 1 ? ', ' + picks.slice(0, -1).map(i => i.card.name).join(' and ') + ' to your graveyard' : ''}`, source }); break;
         }
         case 'oppYard': if (g.opp) {          // Bojuka Bog (exile their graveyard), Quandrix Command (three of their best back into their library)
@@ -6462,17 +6471,20 @@
         case 'wrennEmblem': g.wrennEmblem = true; ev.push({ type: 'note', text: 'Emblem: you may play lands and cast permanents from your graveyard', source }); break;
         case 'poisonWin': { const k = 9 - (g.poisonDealt || 0); if (k > 0) addPoison(g, k, ev, source, 'Vraska: up to nine'); else ev.push({ type: 'note', text: 'Vraska: the opponent already has nine or more poison counters', source }); break; }          // nine, not ten: one more (proliferate, toxic) wins
         case 'emblem': (g.emblems = g.emblems || []).push({ p: f.p, t: f.t, keywords: f.keywords || [], types: f.types }); touch(g); ev.push({ type: 'note', text: f.types ? `Emblem: your ${f.types.join(', ')}s have ${f.keywords.join(', ')}` : `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;
-        case 'proliferate':                                              // one more of each kind of counter already there, the opponent's poison counters included
+        case 'proliferate': {                                            // one more of each kind of counter already there, the opponent's poison counters included
+          let only = null;
+          if (g.ask && !g.dry) { const has = g.battlefield.filter(p => (p.counters || 0) !== 0 || p.card.a.isPlaneswalker || Object.keys(p.other || {}).length); if (has.length) only = decide(g, { kind: 'target', what: 'proliferate', options: has, def: has.slice(), multi: true, pick: has.length, upTo: true, source }); }          // a person chooses which of their permanents
           for (let pk = 0; pk < (bfInfo(g).prolifTwice ? 2 : 1); pk++) {
             if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) addPoison(g, 1, ev, source, 'Proliferate');
             for (const p of g.battlefield.slice()) {
+              if (only && !only.includes(p)) continue;
               if ((p.counters || 0) > 0) addCounters(g, p, '+1/+1', 1, ev, source);
               else if ((p.counters || 0) < 0) addCounters(g, p, '-1/-1', 1, ev, source);
               if (p.card.a.isPlaneswalker) addCounters(g, p, 'loyalty', 1, ev, source);
               for (const k of Object.keys(p.other || {})) addCounters(g, p, k, 1, ev, source);
             }
           }
-          break;
+          break; }
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + (f.n || 1); ev.push({ type: 'note', text: 'Takes an extra turn after this one', source }); break;
         case 'lookTake': {                                                                                    // look at the top N cards, keep the best K, the rest go to the bottom
           const top = g.library.splice(0, Math.min(f.look, g.library.length));
@@ -6634,7 +6646,10 @@
         case 'entomb': {                                                                                      // Entomb: the best creature to reanimate goes to the graveyard
           for (let k = 0; k < (f.n || 1); k++) {
             let best = null, bs = -Infinity;
-            if (f.filter && f.filter !== 'creature') { const c = g.library.filter(i => matchesFilter(i.card, f.filter) && (f.filter !== 'artifact' || (i.card.a.mv || 0) <= 3 || (tableHas(g, 'engineer') && g.battlefield.some(q => q.card.a.engineer)) === false)).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c) { g.library.splice(g.library.indexOf(c), 1); g.graveyard.push(c); shuffle(g.library, g.rnd); ev.push({ type: 'note', text: `${c.card.name} goes from your library to the graveyard`, source }); } break; }
+            if (f.filter && f.filter !== 'creature') { let c = g.library.filter(i => matchesFilter(i.card, f.filter) && (f.filter !== 'artifact' || (i.card.a.mv || 0) <= 3 || (tableHas(g, 'engineer') && g.battlefield.some(q => q.card.a.engineer)) === false)).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0];
+              const all = g.ask && !g.dry ? g.library.filter(i => matchesFilter(i.card, f.filter)) : [];
+              if (all.length) c = decide(g, { kind: 'search', options: all, def: c || null, optional: !c || /you may search/i.test((source && source.card.oracle_text) || ''), f: { dest: 'graveyard', filters: [f.filter] }, source });          // Goblin Engineer: a person picks the artifact
+              if (c) { g.library.splice(g.library.indexOf(c), 1); g.graveyard.push(c); shuffle(g.library, g.rnd); ev.push({ type: 'note', text: `${c.card.name} goes from your library to the graveyard`, source }); } break; }
             for (const i of g.library) { const v = reanimateValue(g, i); if (v > bs) { bs = v; best = i; } }
             let take = best && bs >= (f.n > 1 ? 4 : 6);
             if (g.ask && !g.dry && !(searchRule(g) || {}).kind) { const txt = (source ? source.card.oracle_text : g.lastCast ? g.lastCast.card.oracle_text : '') || '', only = /nonlegendary card/i.test(txt) ? (i => !i.card.a.isLegendary) : /creature cards?\b/i.test(txt) ? (i => i.card.a.isCreature) : (() => true);          // Entomb: a card; Buried Alive: creature cards; Unmarked Grave: a nonlegendary card
@@ -7977,7 +7992,7 @@
     if (n == null && !force) return null;
     if (n != null) ev.push({ type: 'pay', n });
     if (victim) { g._sacStats = { p: Math.max(0, powerOf(g, victim)), t: Math.max(0, toughnessOf(g, victim)) }; leavePerm(g, victim, ev); ev.push({ type: 'note', text: `Sacrificed ${victim.card.name} to cast ${inst.card.name}` }); }          // _sacStats: "the sacrificed creature's power" (Momentous Fall)
-    if (inst.card.a.sacLandCost) { const l = g.battlefield.filter(q => q.asLand).sort((x, y) => (y.tapped - x.tapped) || landNow(g, x) - landNow(g, y))[0]; if (l) { leavePerm(g, l, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${l.card.name} to cast ${inst.card.name}` }); } }          // a land already tapped for mana goes first
+    if (inst.card.a.sacLandCost) { let l = g.battlefield.filter(q => q.asLand).sort((x, y) => (y.tapped - x.tapped) || landNow(g, x) - landNow(g, y))[0]; if (l && g.ask && !g.dry) l = decide(g, { kind: 'sacrifice', what: 'land', options: g.battlefield.filter(q => q.asLand), def: l, cost: true, source: inst }) || l; if (l) { leavePerm(g, l, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${l.card.name} to cast ${inst.card.name}` }); } }          // a land already tapped for mana goes first; a person chooses it (a free cast pays it too)
     if (g.command.includes(inst)) g.command.splice(g.command.indexOf(inst), 1);
     else if (inst.alt === 'suspend') { g.hand.splice(g.hand.indexOf(inst), 1); inst.alt = null; inst.suspendN = inst.card.a.suspend.n; g.exile.push(inst); ev.push({ type: 'note', text: `${inst.card.name} is suspended with ${inst.suspendN} time counters` }); return ev; }
     else if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);

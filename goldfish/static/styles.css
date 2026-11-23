@@ -1275,3 +1275,35 @@ body.dense-roomy h2 { font-size: 17px; }
 body.dense-roomy h3, body.dense-roomy .hint, body.dense-roomy label { font-size: 14px; }
 body.dense-roomy .card-box { padding: 18px 20px; margin-bottom: 18px; }
 body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }
+
+/* ---- the battle scene under a progress bar while games run (battle.js): flavour only, transforms only ---- */
+.battle { position: relative; width: 100%; max-width: 360px; height: 42px; margin: 2px 0 8px; border-radius: 8px; overflow: hidden; pointer-events: none;
+  background: linear-gradient(to top, var(--surface-3) 0 3px, transparent 3px), linear-gradient(180deg, transparent, color-mix(in srgb, var(--felt, #0f2d40) 70%, transparent));
+  animation: bt-in .3s ease-out; }
+.bt-arena { position: relative; width: 190px; height: 100%; margin: 0 auto; }
+.bt-fig { position: absolute; bottom: 2px; width: 38px; height: 38px; overflow: visible; will-change: transform; }
+.bt-fig .bt-line, .bt-fig .bt-post, .bt-fig .bt-eyes { fill: none; stroke-width: 2.4; stroke-linecap: round; }
+.bt-fig .bt-blade { fill: none; stroke: var(--ice-2, #d6f1ff); stroke-width: 2.2; stroke-linecap: round; }
+.bt-hero { left: 34px; animation: bt-lunge 1.4s ease-in-out infinite; }
+.bt-hero .bt-body, .bt-hero .bt-arm { fill: var(--ice, #8fd8ff); stroke: var(--ice, #8fd8ff); }
+.bt-hero .bt-shield { fill: var(--accent, #3987e5); stroke: none; }
+.bt-arm { transform-box: view-box; transform-origin: 22px 18px; animation: bt-swing 1.4s ease-in-out infinite; }
+.bt-dummy { right: 34px; transform-box: view-box; transform-origin: 20px 40px; animation: bt-hit 1.4s ease-in-out infinite; }
+.bt-dummy .bt-post { stroke: #7a5a36; }
+.bt-dummy .bt-sack { fill: #c9a86a; }
+.bt-dummy .bt-eyes { stroke: #5b3f20; stroke-width: 1.4; }
+.bt-rival { right: 34px; transform: scaleX(-1); animation: bt-lunge-r 1.4s ease-in-out infinite; animation-delay: -.7s; }
+.bt-rival .bt-body, .bt-rival .bt-arm { fill: var(--accent-2, #d95926); stroke: var(--accent-2, #d95926); }
+.bt-rival .bt-shield { fill: #8a3414; stroke: none; }
+.bt-rival .bt-arm { animation-delay: -.7s; }
+.bt-spark { position: absolute; left: 50%; top: 9px; width: 18px; height: 18px; margin-left: -4px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, #fff 0 18%, var(--warning, #fab219) 30%, transparent 68%); animation: bt-spark 1.4s ease-out infinite; }
+.bt-spark-2 { margin-left: -14px; animation-delay: -.7s; }
+.battle.bt-paused, .battle.bt-paused * { animation-play-state: paused !important; }
+@keyframes bt-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bt-lunge { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(28px); } 40% { transform: translateX(24px); } 62% { transform: translateX(0); } }
+@keyframes bt-lunge-r { 0%, 100% { transform: scaleX(-1) translateX(0); } 30% { transform: scaleX(-1) translateX(28px); } 40% { transform: scaleX(-1) translateX(24px); } 62% { transform: scaleX(-1) translateX(0); } }
+@keyframes bt-swing { 0%, 14% { transform: rotate(-55deg); } 31% { transform: rotate(35deg); } 56%, 100% { transform: rotate(-55deg); } }
+@keyframes bt-hit { 0%, 29% { transform: rotate(0); } 35% { transform: rotate(16deg); } 47% { transform: rotate(-7deg); } 58%, 100% { transform: rotate(0); } }
+@keyframes bt-spark { 0%, 27% { opacity: 0; transform: scale(.2); } 32% { opacity: 1; transform: scale(1); } 46%, 100% { opacity: 0; transform: scale(1.5); } }
+@media (prefers-reduced-motion: reduce) { .battle { display: none; } }

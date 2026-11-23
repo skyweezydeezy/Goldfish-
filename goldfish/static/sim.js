@@ -673,6 +673,13 @@
         if ((bm = line.match(/^whenever you discard an? ((?:\w+, )*\w+,? or \w+) card, create a tapped treasure token\.?$/i))) { a.triggers.push({ kinds: ['discard'], filter: bm[1].toLowerCase().split(/,? or |, /).map(singular).join('|'), fx: [{ type: 'token', n: 1, tapped: true, creature: false, artifact: true, name: 'Treasure', subtypes: ['Treasure'] }], text: raw }); rec.status = 'ok'; continue; }          // Mary Read and Anne Bonny: an Island, Pirate or Vehicle
         if (/^sacrifice ~: it deals 1 damage to any target\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, sacSelf: true, gate: 'finishPing', n: 1, fx: [{ type: 'damage', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Mogg Fanatic: the last point of damage
       }
+      // ---- rules batch 57: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^when ~ enters, you may search your library for up to two artifact, creature, and\/or enchantment cards with mana value 1 or less, reveal them, put them into your hand, then shuffle\.?$/i.test(line)) { const tf = { type: 'tutor', filters: ['artifact', 'creature', 'enchantment'], maxMv: 1, dest: 'hand' }; TR(['etb'], [tf, Object.assign({}, tf)]); continue; }          // Brightglass Gearhulk
+        if (/^when ~ deals combat damage to a player, sacrifice it and create that many treasure tokens\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'titanic' }], { who: '~' }); continue; }          // RMS Titanic (that many: its power)
+        if (/^whenever another permanent leaves the battlefield, put a \+1\/\+1 counter on ~\.?$/i.test(line)) { a.shredder = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Super Shredder (your permanents; an opponent's are not counted: leavePerm0)
+        if (/^~ and enchanted creature each get \+x\/\+x, where x is the number of creature cards in all graveyards\.?$/i.test(line)) { a.cda = { what: 'creature cards in all graveyards', t: true }; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Nighthowler (as a creature; bestowed, the enchanted creature's bonus is not kept)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -4187,6 +4194,7 @@
     }
     if (!g.dry && p.earthbent && dest !== 'hand' && dest !== 'library' && dest !== 'libraryBottom' && p.inst) (g.earthQueue = g.earthQueue || []).push(p.inst);          // earthbend: it returns tapped
     if (!g.dry && dest == null && (tableHas(g, 'avacynReturn') || tableHas(g, 'orbReturn') || tableHas(g, 'marchesaReturn')) && p.inst && !p.token && !p.card.commander && isCreaturePerm(p) && !p.card.a.dieTransform && g.battlefield.some(q => (q.card.a.avacynReturn && (q === p || !q.phased)) || (q.card.a.orbReturn && q.attachedTo === p.iid) || (q.card.a.marchesaReturn && (p.counters || 0) > 0)) && !(g.endReturn || []).includes(p.inst)) (g.endReturn = g.endReturn || []).push(p.inst);          // rules batch 53: Avacyn, Angel of Horror
+    if (!g.dry && tableHas(g, 'shredder')) for (const q of g.battlefield) if (q !== p && q.card.a.shredder && !q.phased) addCounters(g, q, '+1/+1', 1, ev || [], q);          // rules batch 57: Super Shredder
     if (!g.dry && p.fakeDeathTurn === g.turn && dest == null && p.inst && !p.token) (g.fakeQueue = g.fakeQueue || []).push(p.inst);          // T-036: Fake Your Own Death
     if (!g.dry && p.card.a.dieTransform && dest == null && p.inst && p.card.a.backCard) (g.ojerQueue = g.ojerQueue || []).push(p.inst);          // Ojer Taq: back as its Temple
     if (dest == null && !g.dry && ripOn(g)) dest = 'exile';                                                // Rest in Peace: it is exiled instead of dying
@@ -7066,6 +7074,7 @@
         case 'cascadeMv': cascade(g, f.mv || 9, ev, source ? source.card.name : 'Cascade', false); break;          // rules batch 56: Breaching Dragonstorm
         case 'recklessEndeavor': { const r1 = 1 + Math.floor(g.rnd() * 12), r2 = 1 + Math.floor(g.rnd() * 12), lo = Math.min(r1, r2), hi = Math.max(r1, r2);          // rules batch 56: the low roll for damage, the high one for Treasures
           ev.push({ type: 'note', text: `Rolled two d12: ${r1} and ${r2}`, source }); applyEffects(g, [{ type: 'damageEachCreature', n: lo }], source, ev, null); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, hi, ev, source); break; }
+        case 'titanic': { if (!source || !g.battlefield.includes(source)) break; const n = Math.max(0, powerOf(g, source)) * (hasKw(g, source, 'double strike') ? 2 : 1); sacEvent(g, source, ev); leavePerm(g, source, ev); flushLeaves(g, ev); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, Math.min(n, 60), ev, source); break; }          // rules batch 57: RMS Titanic
         case 'insight': {          // T-036: Hunter's Insight: the chosen creature draws its combat damage this turn
           const cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && (!q.sick || hasKw(g, q, 'haste')) && !hasKw(g, q, 'defender'));
           let t = cs.sort((x, y) => powerOf(g, y) - powerOf(g, x))[0] || g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
@@ -7385,7 +7394,7 @@
     if (/total power of creatures you control/.test(w)) return { id: 'sumPower' };
     if (/total mana value of (\w+?)s you control/.test(w)) return { id: 'sumMv', t: w.match(/total mana value of (\w+?)s you control/)[1] };
     if (/instant and sorcery cards? in your graveyard/.test(w)) return { id: 'gySpells' };
-    if (/creature cards? in your graveyard/.test(w)) return { id: 'gyCreatures' };
+    if (/creature cards? in (?:your graveyard|all graveyards)/.test(w)) return { id: 'gyCreatures', all: /all graveyards/.test(w) };          // all: rules batch 57 (Nighthowler)
     if (/cards? in (?:your|the chosen player's|a|each) graveyard|cards in all graveyards/.test(w)) return { id: 'gy' };
     if (/other creatures? you control/.test(w)) return { id: 'otherCreatures' };
     if (/creatures? you control/.test(w)) return { id: 'creatures' };
@@ -7407,7 +7416,7 @@
       case 'sumPower': return bf.filter(isCreaturePerm).reduce((t, q) => t + Math.max(0, powerOf(g, q)), 0);
       case 'sumMv': return bf.filter(q => isCreaturePerm(q) && matchesFilter(q.card, k.t)).reduce((t, q) => t + (q.card.a.mv || 0), 0);
       case 'gySpells': return g.graveyard.filter(i => i.card.a.isInstantSorcery).length;
-      case 'gyCreatures': return g.graveyard.filter(i => i.card.a.isCreature).length;
+      case 'gyCreatures': return g.graveyard.filter(i => i.card.a.isCreature).length + (k.all && g.opp ? g.opp.graveyard.filter(i => i.card.a.isCreature).length : 0);
       case 'gy': return g.graveyard.length;
       case 'otherCreatures': for (let i = 0; i < bf.length; i++) if (isCreaturePerm(bf[i]) && bf[i] !== self) n++; return n;
       case 'creatures': for (let i = 0; i < bf.length; i++) if (isCreaturePerm(bf[i])) n++; return n;

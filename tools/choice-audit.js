@@ -40,12 +40,14 @@ if (arg('--since')) {
 }
 
 // ---- the choices a card's text makes on cast or as it enters
-const textOf = c => [c.oracle_text].concat((c.card_faces || []).map(f => f.oracle_text)).filter(Boolean).join('\n');
+const textOf = c => [c.oracle_text].concat((c.card_faces || []).map(f => f.oracle_text)).filter(Boolean).join('\n').replace(/ ?\([^()]*\)/g, '');          // reminder text left out ("(Choose any number of permanents...)", islandcycling's search)
 function castText(c) {
   const t = textOf(c), tl = String(c.type_line || '');
   if (/\b(Instant|Sorcery)\b/.test(tl.split(' // ')[0])) return t;
   // a permanent: what it does as it enters ("As ~ enters", "When ~ enters", "enters with"), and an additional cost
-  return t.split('\n').filter(l => /\b(as|when|whenever) [^.]*?\benters\b|additional cost|^choose (one|two|three)|enters with X/i.test(l)).join('\n');
+  // another permanent entering (landfall, alliance) fires later, not as this card is cast
+  const later = l => /^(landfall|alliance|constellation)\b/i.test(l) || (/\bwhenever (a|an|another|one or more)\b[^.]*?\benters\b/i.test(l) && !/\b(this|~)\b/i.test(l.split(/\benters\b/i)[0]) && !l.split(/\benters\b/i)[0].includes(c.name.split(',')[0]));
+  return t.split('\n').filter(l => /\b(as|when|whenever) [^.]*?\benters\b|additional cost|^choose (one|two|three)|enters with X/i.test(l) && !later(l)).join('\n');
 }
 const KINDS = [
   ['search', /(?:^|[.\n] *|, )(?:you may )?search your (?:graveyard(?:, hand,)? and )?library|search your library/i],          // yours: "its controller may search their library" (Path to Exile) is the other player's
@@ -55,12 +57,15 @@ const KINDS = [
   ['tribe', /choose a creature type/i],
   ['color', /choose a colou?r/i],
   ['name', /choose a card name|name a card|chooses? a (nonland )?card name/i],
-  ['discard', /\b(?:as an additional cost[^.]*, )?discard (a|an|one|two|three|x) (?:\w+ )?cards?\b/i],
+  ['discard', /\b(?:as an additional cost[^.]*, )?discard (a|an|one|two|three|x) (?:\w+ )?cards?\b(?! at random)/i],          // a random discard is no choice (Gamble)
   ['sacrifice', /\b(?:as an additional cost[^.]*, )?sacrifice (a|an|another|one|two) /i],
 ];
 function choicesOf(c, a) {
   const t = castText(c).replace(/\b(?:its controller|that player|target opponent|each opponent|an opponent)[^.]*?search(?:es)? their library[^.]*\./gi, ''), out = [];
   for (const [k, re] of KINDS) if (re.test(t)) out.push(k);
+  // keywords whose choice lives in their reminder text
+  const kw = [['mode', /^spree\b/im], ['sacrifice', /^bargain\b/im], ['target', /\bearthbend (\d+|x)\b/i], ['proliferate', /\bproliferate\b/i], ['mode', /^tiered\b/im], ['sacrifice', /^(exploit|casualty \d+)\b/im]];
+  for (const [k, re] of kw) if (re.test(t) && !out.includes(k)) out.push(k);
   if (/\{X\}/.test(c.mana_cost || '') || (c.card_faces || []).some(f => /\{X\}/.test(f.mana_cost || ''))) out.push('x');
   if (out.includes('target') && out.includes('player target')) out.splice(out.indexOf('player target'), 1);
   // a counterspell's target is the spell it answers: asked at the stack ("... casts X: does it resolve?"), not when cast on an empty stack
@@ -69,7 +74,7 @@ function choicesOf(c, a) {
   return out;
 }
 // which question answers which choice
-const ANSWERS = { search: ['search', 'land'], target: ['target'], 'player target': ['target', 'player'], mode: ['mode'], tribe: ['tribe'], color: ['color'], name: ['name'], x: ['x'], discard: ['discard'], sacrifice: ['sacrifice', 'target'] };
+const ANSWERS = { search: ['search', 'land'], target: ['target'], 'player target': ['target', 'player'], mode: ['mode'], tribe: ['tribe'], color: ['color'], name: ['name'], x: ['x'], discard: ['discard'], sacrifice: ['sacrifice', 'target'], proliferate: ['target'] };
 
 // ---- the table: a 3-player pod, seat 0 played by a person, turn 6, everything in play
 const load = n => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', n + '-loaded.json'), 'utf8'));
@@ -88,6 +93,13 @@ function table() {
     // one card of each kind in every graveyard, so a card that returns one has something to choose between
     for (const pick of [c => c.a.isCreature && !c.commander && (c.a.mv || 0) <= 2, c => c.a.isCreature && !c.commander && (c.a.mv || 0) >= 4, c => c.a.isInstantSorcery && /Instant/.test(c.type_line), c => c.a.isInstantSorcery && /Sorcery/.test(c.type_line), c => c.a.isArtifact && !c.a.isCreature, c => c.a.isEnchantment && !c.a.isCreature, c => c.a.isLand && /Basic/.test(c.type_line || ''), c => c.a.isLand && !/Basic/.test(c.type_line || '')]) { const c = g.deck.unique.find(pick); if (c) g.graveyard.push({ iid: g.nextIid++, card: c }); }
   });
+  // the seated library gets two cards of the kinds tutors ask for and the fixture decks lack, so a search has something to choose between
+  const me = p.games[0];
+  { const q = me.battlefield.find(x => G.isCreaturePerm(x)); if (q) q.counters = 1; }          // a counter to proliferate
+  for (const want of [c => /Instant/.test(c.type_line || '') && (c.colors || []).includes('U'), c => /Artifact/.test(c.type_line || '') && !/Creature|Land/.test(c.type_line || '') && (c.cmc || 0) <= 1, c => /Goblin/.test(c.type_line || ''), c => /Dragon/.test(c.type_line || '') && c.name !== 'Tiamat', c => /Aura/.test(c.type_line || '')]) {
+    let k = 0;
+    for (const w of pool) { if (k >= 2) break; const c = findCard(w.name, w.set); if (!c || !want(c) || c.card_faces) continue; me.library.splice(me.library.length >> 1, 0, { iid: me.nextIid++, card: G.buildDeck([Object.assign({}, c, { qty: 1 })], []).unique[0] }); k++; }
+  }
   D.seat(p.games[0]);
   return p;
 }

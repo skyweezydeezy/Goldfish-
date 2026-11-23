@@ -691,6 +691,20 @@
         if (/^target creature gains undying until end of turn\.?$/i.test(line)) { a.spellFx.push({ type: 'deathReturn', counter: 1 }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Undying Evil (as Undying Malice: it returns tapped)
         if (/^target creature gains trample and gets \+x\/\+0 until end of turn, where x is 1 plus the number of cards named ~ in your graveyard\.?$/i.test(line)) { a.spellFx.push({ type: 'pumpOne', self: false, p: 'X', t: 0, keywords: ['trample'], count: { zone: 'special', what: 'named+1', name: card.name } }); rec.status = 'ok'; continue; }          // Ancestral Anger
       }
+      // ---- rules batch 59: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^whenever a source you control deals 5 or more damage to a player, draw a card\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'draw', n: 1 }], { who: 'a creature you control', minDmg: 5 }, 'partial'); continue; }          // Dragonborn Champion (combat damage only)
+        if (/^whenever equipped creature attacks alone, you draw a card and you lose 1 life\.?$/i.test(line)) { TR(['equippedAttack'], [{ type: 'draw', n: 1 }, { type: 'loseLife', n: 1 }], { alone: true }); continue; }          // Bilbo's Ring
+        if (/^whenever an insect, leech, slug, or worm you control attacks, defending player loses 1 life and you gain 1 life\.?$/i.test(line)) { TR(['attackAny'], [{ type: 'drain', n: 1 }, { type: 'gainLife', n: 1 }], { filter: 'insect|leech|slug|worm' }); continue; }          // Fumulus
+        if (/^as ~ enters, choose sultai or abzan\.?$/i.test(line)) { a.hollowmurk = true; rec.status = 'ok'; continue; }          // Hollowmurk Siege: Abzan with two or more creatures, else Sultai
+        if (/^• sultai — whenever a counter is put on a creature you control, draw a card\. this ability triggers only once each turn\.?$/i.test(line)) { TR(['countersPut'], [{ type: 'draw', n: 1 }], { onceTurn: true, cond: { kind: 'siege', mode: 'sultai' } }, 'partial'); continue; }          // (+1/+1 counters only)
+        if (/^• abzan — whenever you attack, put a \+1\/\+1 counter on target attacking creature\. it gains menace until end of turn\.?$/i.test(line)) { TR(['attackAny'], [{ type: 'attackerPump', counter: 1, keywords: ['menace'] }], { once: true, cond: { kind: 'siege', mode: 'abzan' } }); continue; }
+        if (/^• sultai — you may play lands from your graveyard\.?$/i.test(line)) { a.statics.landsFromYard = true; rec.status = 'ok'; continue; }          // Glacierwood Siege: Sultai (Temur only mills a player)
+        if (/^whenever you attack, until end of turn, target attacking creature gets \+1\/\+1 for each other attacking creature and gains double strike\.?$/i.test(line)) { TR(['attackAny'], [{ type: 'attackerPump', perOther: 1, keywords: ['double strike'] }], { once: true }); continue; }          // Paladin Class, level 3
+        if (/^when ~ enters, if (?:he|she|it|they) was cast, return target creature card from your graveyard to the battlefield\.?$/i.test(line)) { TR(['etb'], [{ type: 'reanimate', from: 'own', zombie: false }], { cond: { kind: 'wasCast' } }); continue; }          // Anti-Venom
+        if (/^equipment you control have equip \{1\}\.?$/i.test(line)) { a.statics.equipOne = true; rec.status = 'ok'; continue; }          // Astor
+        if (/^vehicles you control have crew 1\.?$/i.test(line)) { a.statics.crewOne = true; rec.status = 'ok'; continue; }          // Astor
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -4380,6 +4394,7 @@
       case 'lifeGained': return (g.lifeGainedThisTurn || 0) >= c.min;
       case 'lifeAtLeast': return g.life >= c.min;
       case 'discardedThisTurn': return !!(g.match || g).discardSeen;
+      case 'wasCast': return !!(source && g.lastCast && g.lastCast.iid === source.iid && source.enteredTurn === g.turn);          // rules batch 59: Anti-Venom
       case 'dealtBy': return !!(g.combatNames && source && g.combatNames[source.card.name]);
       case 'ringBearerSelf': return !!(g.ring && source && g.ring.bearer === source.iid && g.ring.tempts >= c.min);
       // conditions on "you win the game" (see winFx)
@@ -4864,6 +4879,7 @@
     if (a.gauntletAnthem || a.gauntletMana) { perm.gauntletColor = perm.chosenColor || autoColor(g, null); g.gauntletSeen = true; if (g.opp) g.opp.gauntletSeen = true; touch(g); }          // Gauntlet of Power: your main color
     if (a.besieged) { const pool = g.library.concat(g.hand).filter(i => !i.card.a.isLand); perm.siegeMode = pool.length && pool.filter(i => i.card.a.isArtifact).length / pool.length >= 0.3 ? 'mirran' : 'phyrexian'; }          // Mirrodin Besieged
     if (a.outpost) perm.siegeMode = (tableHas(g, 'sacOutlet') && g.battlefield.some(q => q.card.a.sacOutlet)) || g.battlefield.filter(q => q.token && isCreaturePerm(q)).length >= 4 ? 'dragons' : 'khans';          // Outpost Siege: Dragons when the board keeps losing creatures (tokens, a sacrifice outlet)
+    if (a.hollowmurk) perm.siegeMode = g.battlefield.filter(isCreaturePerm).length >= 2 ? 'abzan' : 'sultai';          // rules batch 59: Hollowmurk Siege
     if (a.frostcliff) perm.siegeMode = g.battlefield.filter(isCreaturePerm).length >= 4 ? 'temur' : 'frostJeskai';          // Frostcliff Siege: Temur with a wide board, else a card each combat
     if (a.citadel) { const ob = g.opp ? g.opp.battlefield.filter(isCreaturePerm).reduce((m, q) => Math.max(m, powerOf(g.opp, q)), 0) : 0, mb = g.battlefield.filter(isCreaturePerm).reduce((m, q) => Math.max(m, powerOf(g, q)), 0); perm.siegeMode = g.opp && !g.dry && ob >= 5 && ob > mb ? 'dragons' : 'khans'; }          // Citadel Siege: Dragons against a bigger threat
     if (a.windcrag) perm.siegeMode = g.battlefield.filter(q => q !== perm && q.card.a.triggers.some(t => t.kinds.includes('attack') || t.kinds.includes('attackAny'))).length >= 2 ? 'mardu' : 'jeskai';          // Windcrag Siege: Mardu with two or more attack triggers, else Jeskai
@@ -5083,6 +5099,9 @@
     try { g.hand.push(hit); hit.freeCast = true; const ce = castCard(g, hit, true); hit.freeCast = false; if (ce) ev.push({ type: 'note', text: `${label}: cascade into ${hit.card.name}, cast for free` }, ...ce); } finally { g.cascadeDepth--; }
   }
   // "Activated abilities cost {2} less" (Training Grounds, Biomancer's Familiar for creatures; Power Artifact for the enchanted artifact), never below one mana
+  const EQUIP_ONE = { generic: 1, pips: [], x: 0 };
+  function eqBase(g, p) { const c = p.card.a.equip.cost; return c.generic + c.pips.length > 1 && tableHas(g, 'statics.equipOne') && g.battlefield.some(q => q.card.a.statics.equipOne) ? EQUIP_ONE : c; }          // rules batch 59: Astor (equip {1})
+  function crewOf(g, v) { return tableHas(g, 'statics.crewOne') && g.battlefield.some(q => q.card.a.statics.crewOne) ? Math.min(1, v.card.a.crew) : v.card.a.crew; }          // Astor (crew 1)
   function actCost(g, p, cost) {
     if (cost && p && p.card.a.isArtifact && g.tezTurn !== g.turn && tableHas(g, 'tezDiscount') && g.battlefield.some(q => q.card.a.tezDiscount) && cost.generic > 0) {          // Tezzeret: {2} less, marked used when paid (pay)
       const c0 = actCost0(g, p, cost); const c = { generic: Math.max(0, c0.generic - 2), pips: c0.pips, x: c0.x, _tez: true }; return c;
@@ -7088,6 +7107,14 @@
         case 'cascadeMv': cascade(g, f.mv || 9, ev, source ? source.card.name : 'Cascade', false); break;          // rules batch 56: Breaching Dragonstorm
         case 'recklessEndeavor': { const r1 = 1 + Math.floor(g.rnd() * 12), r2 = 1 + Math.floor(g.rnd() * 12), lo = Math.min(r1, r2), hi = Math.max(r1, r2);          // rules batch 56: the low roll for damage, the high one for Treasures
           ev.push({ type: 'note', text: `Rolled two d12: ${r1} and ${r2}`, source }); applyEffects(g, [{ type: 'damageEachCreature', n: lo }], source, ev, null); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, hi, ev, source); break; }
+        case 'attackerPump': {          // rules batch 59: "target attacking creature" (Hollowmurk Siege's Abzan, Paladin Class)
+          const as = g.battlefield.filter(q => q.attacking && isCreaturePerm(q)); if (!as.length) break;
+          const def = as.slice().sort((x, y) => ((f.keywords || []).includes('double strike') ? (hasKw(g, x, 'double strike') ? 1 : 0) - (hasKw(g, y, 'double strike') ? 1 : 0) : 0) || powerOf(g, y) - powerOf(g, x))[0];
+          const t = g.ask && !g.dry && as.length > 1 ? decide(g, { kind: 'target', what: 'pump', options: as, def, source }) || def : def;
+          if (f.counter) addCounters(g, t, '+1/+1', f.counter, ev, source);
+          const k = f.perOther ? f.perOther * (as.length - 1) : 0; if (k) { t.eotP = (t.eotP || 0) + k; t.eotT = (t.eotT || 0) + k; }
+          if (f.keywords && f.keywords.length) { t.eotKw = new Set([...(t.eotKw || []), ...f.keywords]); }
+          touch(g); ev.push({ type: 'note', text: `${t.card.name}${k ? ` gets +${k}/+${k}` : ''}${f.keywords && f.keywords.length ? ' and gains ' + f.keywords.join(', ') : ''}`, source }); break; }
         case 'titanic': { if (!source || !g.battlefield.includes(source)) break; const n = Math.max(0, powerOf(g, source)) * (hasKw(g, source, 'double strike') ? 2 : 1); sacEvent(g, source, ev); leavePerm(g, source, ev); flushLeaves(g, ev); createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, Math.min(n, 60), ev, source); break; }          // rules batch 57: RMS Titanic
         case 'insight': {          // T-036: Hunter's Insight: the chosen creature draws its combat damage this turn
           const cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && (!q.sick || hasKw(g, q, 'haste')) && !hasKw(g, q, 'defender'));
@@ -9214,7 +9241,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       g.life -= 50; ev.push({ type: 'note', text: `${p.card.name}: paid 50 life for 50 damage`, source: p }); damageOpp(g, 50, ev, p);
     });
     if (a.equip) {                                                                                        // equip: sorcery speed, you choose the creature (Skullclamp)
-      const c = actCost(g, p, a.equip.cost), cs = g.battlefield.filter(q => isCreaturePerm(q) && q !== p && q.iid !== p.attachedTo);
+      const c = actCost(g, p, eqBase(g, p)), cs = g.battlefield.filter(q => isCreaturePerm(q) && q !== p && q.iid !== p.attachedTo);
       add('Equip a creature', c, blocked || (g.activeTurn === false ? 'only on your turn' : null) || (cs.length ? null : 'no creature to equip') || payWhy(c), ev => {
         const t = ownCreature(g, bestCreature(g, p) || cs[0], 'equip', p, p); if (!t) return;
         pay(g, c); p.attachedTo = t.iid; touch(g); ev.push({ type: 'equip', perm: p, target: t });
@@ -10027,7 +10054,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (stonyOn(g)) continue;
       if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) continue;          // Karn: no equip
       const freeEq = bfInfo(g).freeEquip && g.freeEquipTurn !== g.turn;                                     // Forge Anew: the first equip each turn is free
-      const eqc = freeEq ? { generic: 0, pips: [], x: 0 } : actCost(g, p, p.card.a.equip.cost) !== p.card.a.equip.cost ? actCost(g, p, p.card.a.equip.cost) : (tableHas(g, 'statics.equipZero') && g.battlefield.some(q => q.card.a.statics.equipZero)) && g.battlefield.filter(q => q.card.a.isArtifact).length >= 3 ? { generic: 0, pips: [], x: 0 } : p.card.a.equip.cost;          // Puresteel Paladin
+      const eqc = freeEq ? { generic: 0, pips: [], x: 0 } : actCost(g, p, eqBase(g, p)) !== eqBase(g, p) ? actCost(g, p, eqBase(g, p)) : (tableHas(g, 'statics.equipZero') && g.battlefield.some(q => q.card.a.statics.equipZero)) && g.battlefield.filter(q => q.card.a.isArtifact).length >= 3 ? { generic: 0, pips: [], x: 0 } : p.card.a.equip.cost;          // Puresteel Paladin
       if (pay(g, eqc) != null) { if (freeEq) g.freeEquipTurn = g.turn; p.attachedTo = target.iid; if (p.card.a.reconfigure) { p.noCreature = true; p.reconf = true; } touch(g); ev.push({ type: 'equip', perm: p, target }); }
     }
     for (const p of g.battlefield.slice()) {
@@ -11005,9 +11032,9 @@ g.actSeq = (g.actSeq || 0) + 1;
   function crewVehicles(g, ev) {
     if (!g.dry) for (const v of (tableHas(g, 'crew') ? g.battlefield.filter(q => q.card.a.crew && !q.animated && !q.tapped && !isCreaturePerm(q)) : [])) {          // Crew: tap creatures with enough power (the weakest that will do) to turn the Vehicle into a creature
       const vp = +v.card.power || 0; const crew = g.battlefield.filter(c => isCreaturePerm(c) && !c.tapped).sort((x, y) => powerOf(g, x) - powerOf(g, y)); const pick = []; let sum = 0;
-      for (const c of crew) { if (sum >= v.card.a.crew) break; pick.push(c); sum += Math.max(0, powerOf(g, c)); }
+      for (const c of crew) { if (sum >= crewOf(g, v)) break; pick.push(c); sum += Math.max(0, powerOf(g, c)); }
       const lost = pick.filter(c => !(c.sick && !hasKw(g, c, 'haste'))).reduce((t, c) => t + Math.max(0, powerOf(g, c)), 0);
-      if (sum >= v.card.a.crew && vp > lost && (v.enteredTurn < g.turn || bfInfo(g).vehicleHaste)) { pick.forEach(c => { c.tapped = true; }); v.animated = { p: vp, t: +v.card.toughness || 0, kw: [...(v.card.a.kw || [])] }; v.sick = false; touch(g); ev.push({ type: 'note', text: `${v.card.name} is crewed by ${pick.map(c => c.card.name).join(', ')}`, source: v }); }
+      if (sum >= crewOf(g, v) && vp > lost && (v.enteredTurn < g.turn || bfInfo(g).vehicleHaste)) { pick.forEach(c => { c.tapped = true; }); v.animated = { p: vp, t: +v.card.toughness || 0, kw: [...(v.card.a.kw || [])] }; v.sick = false; touch(g); ev.push({ type: 'note', text: `${v.card.name} is crewed by ${pick.map(c => c.card.name).join(', ')}`, source: v }); }
     }
   }
   function previewAttack(g) {
@@ -11100,7 +11127,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       }
       { const me = (tableHas(g, 'mirrorEntity') ? g.battlefield.find(q => q.card.a.mirrorEntity) : undefined); if (me && attackers.length >= 2) { const X = allUnits(g).length; const gain = attackers.reduce((t, x) => t + Math.max(0, X - powerOf(g, x)), 0); if (X >= 3 && gain >= X && pay(g, { generic: X, pips: [], x: 0 }) != null) { g.battlefield.forEach(x => { if (isCreaturePerm(x)) { x.eotP = (x.eotP || 0) + X - powerOf(g, x); x.eotT = (x.eotT || 0) + X - toughnessOf(g, x); } }); ev.push({ type: 'note', text: `Mirror Entity: creatures are ${X}/${X}`, source: me }); } } }
       { const sh = (tableHas(g, 'dsGive') ? g.battlefield.find(q => q.card.a.dsGive && !q.tapped) : undefined); if (sh && attackers.length) { const t = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (powerOf(g, t) >= 3 && !hasKw(g, t, 'double strike') && canPay(sh.card.a.dsGive.cost, allUnits(g).filter(u => u.src !== sh))) { sh.tapped = true; pay(g, sh.card.a.dsGive.cost); t.eotKw = new Set([...(t.eotKw || []), 'double strike']); ev.push({ type: 'note', text: `${sh.card.name}: ${t.card.name} gains double strike`, source: sh }); } } }          // Sunhome
-      for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('equippedAttack')) { const eq = attackers.find(x => x.iid === q.attachedTo); if (eq) fire(g, t, q, ev, eq); }          // Sword of the Animist
+      for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('equippedAttack')) { const eq = attackers.find(x => x.iid === q.attachedTo); if (eq && !(t.alone && attackers.length !== 1)) fire(g, t, q, ev, eq); }          // Sword of the Animist
       { const wr = (tableHas(g, 'wolfRun') ? g.battlefield.find(q => q.card.a.wolfRun && !q.tapped) : undefined); if (wr && attackers.length) { const units = allUnits(g).length; const X = units - 3; if (X >= 2 && canPay({ generic: X, pips: [['R'], ['G']], x: 0 }, allUnits(g).filter(u => u.src !== wr))) { wr.tapped = true; pay(g, { generic: X, pips: [['R'], ['G']], x: 0 }); const t = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; t.eotP = (t.eotP || 0) + X; t.eotKw = new Set([...(t.eotKw || []), 'trample']); ev.push({ type: 'note', text: `Kessig Wolf Run: ${t.card.name} gets +${X}/+0 and trample`, source: wr }); } } }
       for (const q of (tableHas(g, 'teamPump') ? g.battlefield.slice() : NONE)) { const tp = q.card.a.teamPump; if (!tp) continue; const tg = attackers.filter(x => !tp.filter || matchesFilter(x.card, tp.filter)); if (tg.length >= 2 && !(tp.tap && q.tapped)) for (let k = 0; k < (tp.tap ? 1 : 6) && canPay(tp.cost, allUnits(g).filter(u => u.src !== q || !tp.tap)); k++) { if (tp.tap) q.tapped = true; pay(g, tp.cost); tg.forEach(x => { x.eotP = (x.eotP || 0) + tp.p; x.eotT = (x.eotT || 0) + tp.t; if (tp.kws && tp.kws.length) x.eotKw = new Set([...(x.eotKw || []), ...tp.kws]); }); } }          // Purphoros: pump the team with spare mana
       if (!g.opp) for (const q of g.battlefield.slice()) { const ap = q.card.a.auraPump; const t = ap && q.attachedTo != null && attackers.find(x => x.iid === q.attachedTo); if (!t) continue;          // Pemmin's Aura: +1/-1 down to toughness 1
@@ -11188,7 +11215,7 @@ g.actSeq = (g.actSeq || 0) + 1;
             const who = t.who === '~' ? q : g.battlefield.find(x => x.iid === q.attachedTo);
             if (who && hitters.includes(who)) fire(g, t, q, ev, who);
           } else if (/one or more/.test(t.who)) { if ((!t.hitFilter || hitters.some(h => matchesFilter(h.card, t.hitFilter))) && (!t.hitNot || hitters.some(h => !matchesFilter(h.card, t.hitNot))) && (!t.hitArtifact || hitters.some(h => h.card.a.isArtifact)) && (!t.pumped || hitters.some(h => powerOf(g, h) > (h.card.a.power || 0)))) fire(g, t, q, ev, null); }
-          else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.tokenOnly || h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
+          else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.minDmg || Math.max(0, powerOf(g, h)) >= t.minDmg) && (!t.tokenOnly || h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
         }
       }
       if (vsLifelink > 0 && !matchOver(g)) gainLife(g, vsLifelink, ev, null);

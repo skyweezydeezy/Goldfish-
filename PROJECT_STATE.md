@@ -170,6 +170,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-033 | Policy lab: goal-driven tuning ("kill earlier by N turns" / "hit land drops more often"), tied to bracket speed (the user) | Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`, new) | `claude/policy-lab-tuning` | Active (from v151) |
 | T-034 | Layout by device, a PC layout designed for 1920×1080; more common options in settings (the user) | Layout and Settings (`session_01K5kL4XXnVVr2AU3is1ZiCX`, new) | `claude/layout-settings` | Active (from v151) |
 | T-035 | Verify every built-in deck's bracket by simulation (≥20,000 games each) plus the official bracket rules; change and annotate where different (the user) | Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`, new) | `claude/deck-brackets` | Active (from v151) |
+| T-036 | Engine batches 57–61, starting with Decision Points' engine-first list (squad, Will modes without a commander, Abzan/Sultai grouping, Silkguard, Hunter's Insight etc.) | Card Rules Engine 4 (`session_01K5kL4YiRUadycHTLacu7Qv`) | `claude/engine-rules` | Active (from v154) |
 
 **Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
 session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they

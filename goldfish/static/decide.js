@@ -106,6 +106,7 @@
     }).filter(Boolean).join(', then ') || 'no effect the engine plays';
   }
   function filterWords(f) {
+    if (f.words) return f.words;                                         // the card's own words (Intuition: "three cards")
     if (f.transmute != null) return `a nonland card with mana value ${f.transmute}`;
     if (f.land) {                                                        // a land search: basic lands, any land, or the land types of a fetch land
       const ls = [].concat(f.land), what = f.land === 'basic' ? 'basic land' : f.land === 'land' ? 'land' : ls.length > 2 ? ls.slice(0, -1).join(', ') + ', or ' + ls[ls.length - 1] : ls.join(' or ');          // "a Plains, Island, Swamp, or Mountain card"
@@ -126,6 +127,9 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],
+    flickerwisp: ['exile another permanent', 'Choose a permanent to exile. A card of yours returns at the beginning of the next end step; a token is gone for good.'],
+    proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
     pump: ['choose a creature', 'Choose the creature that gets the bonus until end of turn.'],
@@ -153,7 +157,8 @@
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
-      if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
+      if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
+      else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
@@ -174,8 +179,8 @@
     const by = d.by && m && m.names ? m.names[d.by.pid] : 'An opponent';
     if (d.kind === 'search') {
       const f = d.f || {}, tapped = f.tapped ? ', tapped' : '';
-      const where = f.dest === 'graveyard' ? 'into your graveyard' : f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
-      q.dest = f.dest === 'graveyard' ? 'Your graveyard' : f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
+      const where = f.dest === 'intuition' ? 'to an opponent, who chooses one for your hand; the rest go into your graveyard' : f.dest === 'graveyard' ? 'into your graveyard' : f.dest === 'top' ? 'on top of your library' : f.dest === 'battlefield' ? 'onto the battlefield' + tapped : f.dest === 'split' ? `${f.bf === 1 ? 'one goes' : f.bf + ' go'} onto the battlefield${f.tapped ? ' tapped' : ''} and the other${f.hand === 1 ? '' : 's'} into your hand` : 'into your hand';
+      q.dest = f.dest === 'intuition' ? 'Revealed: an opponent picks one for your hand' : f.dest === 'graveyard' ? 'Your graveyard' : f.dest === 'top' ? 'Top of your library (after the shuffle)' : f.dest === 'battlefield' ? 'Battlefield' + (f.tapped ? ', tapped' : '') : f.dest === 'split' ? `${f.bf} to the battlefield${tapped}, ${f.hand} to your hand` : 'Your hand';
       if (d.what === 'battlefield') { q.title = `${sn || 'Search'}: which land goes onto the battlefield?`; q.text = `Choose ${f.bf === 1 ? 'the land' : f.bf + ' lands'} to put onto the battlefield${tapped}; the rest go into your hand.`; }
       else { q.title = `${sn || 'Search'}: search your ${f.land ? 'library for ' + (f.land === 'basic' ? 'basic lands' : 'a land') : 'library'}`; q.text = `Choose ${filterWords(f)}. ${f.dest === 'split' ? 'Then ' + where.replace(/^one goes/, 'you choose which one goes') : (f.n > 1 ? 'They go ' : 'It goes ') + where}; your library is shuffled.`; }
       if (f.slot) { q.title = `${sn || 'Search'}: search for ${filterWords(f)} (${f.slot} of ${f.of})`; q.text = `Choose ${filterWords(f)}. It goes ${where}${f.slot < f.of ? '; the next search follows' : '; your library is then shuffled'}.`; }
@@ -184,7 +189,7 @@
     } else if (d.kind === 'target') {
       const f = d.f || {};
       if (d.what === 'removal') { q.title = `${sn || 'Removal'}: choose a target`; q.text = `Choose the permanent to ${f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'put into its owner\'s library' : 'destroy'}.`; q.none = 'No target (nothing happens)'; }
-      else if (d.what === 'graveyard') { q.title = `${sn || 'Effect'}: choose a card in ${d.theirs && d.theirs.size ? 'a' : 'your'} graveyard`; q.text = `Choose the card that returns ${d.dest === 'battlefield' ? 'to the battlefield' : d.dest === 'top' ? 'to the top of your library' : 'to your hand'}. Only the cards it can take are listed.`; q.none = 'No target (nothing returns)'; q.fan = true; }
+      else if (d.what === 'graveyard') { q.title = `${sn || 'Effect'}: choose a card in ${d.theirs && d.theirs.size ? 'a' : 'your'} graveyard`; q.text = `Choose the card that ${d.dest === 'flashback' ? 'gains flashback: you cast it now from your graveyard, paying its mana cost, and then it is exiled' : 'returns ' + (d.dest === 'battlefield' ? 'to the battlefield' : d.dest === 'top' ? 'to the top of your library' : 'to your hand')}. Only the cards it can take are listed.`; q.none = 'No target (nothing returns)'; q.fan = true; }
             else if (d.what === 'bounce') { q.title = `${sn || 'Bounce'}: choose a target`; q.text = 'Choose the permanent to return to its owner\'s hand.'; q.none = 'No target (nothing happens)'; }
       else if (d.what === 'burn') { q.title = `${sn || 'Damage'}: ${d.n} damage`; q.text = `Choose a creature this kills${d.face ? ', or deal the damage to the players' : ''}. Only creatures the damage would kill are listed: the engine does not keep damage on a creature that survives.`; q.none = d.face ? 'Deal it to the players' : 'No target (nothing happens)'; }
       else if (d.what === 'counters') { q.title = `${sn || 'Counters'}: choose a creature`; q.text = `Choose the creature that gets ${typeof d.n === 'number' ? d.n + ' ' : ''}${f.kind || '+1/+1'} counter${d.n === 1 ? '' : 's'}.`; }
@@ -192,6 +197,11 @@
       else if (d.what === 'aura') { q.title = `${sn || 'Aura'}: choose a creature`; q.text = 'Choose the creature it enchants.'; }
       else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
+    } else if (d.kind === 'mode' && d.spree) {                                                            // spree: a mode is paid for as the spell is cast, more may be added
+      q.title = d.spree === 'first' ? `${sn || 'Spree'}: choose a mode to cast it with` : `${sn || 'Spree'}: add another mode?`;
+      q.text = d.spree === 'first' ? 'Spree: you pay for at least one mode as you cast it. Only the modes you can pay for are listed; more can be added next.' : 'You can pay for another mode. Choose it, or cast the spell as it is.';
+      if (d.spree === 'more') q.none = 'No more modes';
+      if (src) { q.spell = src; q.spellNote = 'being cast'; }
     } else if (d.kind === 'mode') {
       q.title = `${sn || 'Spell'}: choose ${typeof d.pick === 'number' ? (d.pick === 1 ? 'one' : d.pick === 2 ? 'two' : d.pick) : 'one or more'}`;
       q.text = 'Only the modes the engine can play are listed.';
@@ -205,8 +215,9 @@
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
     } else if (d.kind === 'sacrifice') {
-      q.title = d.ability ? `${d.ability}: sacrifice a creature` : d.cost ? `${sn}: sacrifice a creature to cast it` : `${by} makes you sacrifice a creature`;
-      q.text = 'Choose the creature to sacrifice.' + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
+      const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
+      q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : `${by} makes you sacrifice a ${w}`;
+      q.text = `Choose the ${w} to sacrifice.` + (d.cost && d.def == null ? ' The autopilot would not cast this: it has nothing it wants to give up.' : '');
       q.none = d.ability ? 'Cancel' : 'Do not cast it';
     } else if (d.kind === 'legend') {                                                                       // the legend rule (state-based action)
       q.title = `Legend rule: you control ${opts.length} ${d.what}`;

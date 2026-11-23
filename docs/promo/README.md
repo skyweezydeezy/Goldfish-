@@ -1,6 +1,6 @@
 # Promotion tracker
 
-Live site: <https://skyweezydeezy.github.io/Goldfish-/>
+Live site: <https://skyweezydeezy.github.io/ICEYfish/>
 
 ## Assets
 - `goldfish-qr.png` – QR code, 1000px+, for print/social

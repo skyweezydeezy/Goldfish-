@@ -36,6 +36,8 @@ const shots = process.env.D20_SHOTS;
       }
       out[n] = { wins, ties, bad, same };
     }
+    let forcedOk = true; for (let s = 1; s <= 500; s++) for (const f of [0, 1]) { const r = R(2, s, f), last = r.rounds[r.rounds.length - 1], top = Math.max(...last.map(x => x.v)); if (r.first !== f || last.find(x => x.v === top).pid !== f || last.filter(x => x.v === top).length !== 1) forcedOk = false; }
+    out.forcedOk = forcedOk;
     return out;
   });
   for (const n of [2, 4]) {
@@ -43,8 +45,9 @@ const shots = process.env.D20_SHOTS;
     check(`${n} players: every seat goes first about equally often`, even, share.map(x => (x * 100).toFixed(1) + '%').join(' / '));
     check(`${n} players: the highest roll always goes first, every die 1–20`, s.bad === 0, s.bad + ' bad');
     check(`${n} players: ties happen and roll again`, s.ties > 0, (s.ties / 200).toFixed(1) + '% of games');
-    check(`${n} players: the same seed always gives the same dice`, s.same);
+    check(`${n} players: the same seed always gives the same dice (both devices of a remote game agree)`, s.same);
   }
+  check('a saved game\'s first player is kept: the dice are made to agree with it', stats.forcedOk);
 
   // ---- on screen, in a real game ----
   await p.fill('#deckText', deckText); await p.click('#loadDeck');

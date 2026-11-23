@@ -39,7 +39,9 @@ let pages = [];          // the two devices, for the message when a step times o
     await p.evaluate(t => { document.querySelector('#deckText').value = t; document.querySelector('#loadDeck').click(); }, text);
     await wait(p, () => window.__isf && window.__isf.deck, null, 120000);
   };
-  const noStun = p => p.evaluate(() => { window.__isfRemote.ice = []; });          // the test machine has no internet STUN: local addresses only
+  // the test machine has no internet STUN: local addresses only. And the roll for first without the 3D dice: a remote game rolls them
+  // even with dice switched off, and their WebGL in this headless browser can stop a page drawing (then a click waits for ever)
+  const noStun = p => p.evaluate(() => { window.__isfRemote.ice = []; if (window.Dice) window.Dice.rollInto = null; });
   const A = await device('A'), B = await device('B');
   pages = [A, B];
   // Under a heavy load (other browser tests side by side) these pages draw only a few frames a second, at times none for many seconds,

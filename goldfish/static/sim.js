@@ -664,6 +664,17 @@
         if ((bm = line.match(/^whenever you discard an? ((?:\w+, )*\w+,? or \w+) card, create a tapped treasure token\.?$/i))) { a.triggers.push({ kinds: ['discard'], filter: bm[1].toLowerCase().split(/,? or |, /).map(singular).join('|'), fx: [{ type: 'token', n: 1, tapped: true, creature: false, artifact: true, name: 'Treasure', subtypes: ['Treasure'] }], text: raw }); rec.status = 'ok'; continue; }          // Mary Read and Anne Bonny: an Island, Pirate or Vehicle
         if (/^sacrifice ~: it deals 1 damage to any target\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, sacSelf: true, gate: 'finishPing', n: 1, fx: [{ type: 'damage', n: 1 }], text: raw }); rec.status = 'ok'; continue; }          // Mogg Fanatic: the last point of damage
       }
+      // ---- rules batch 47: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^the "legend rule" doesn't apply to creature tokens you control\.?$/i.test(line)) { a.statics.noLegendTokens = true; rec.status = 'ok'; continue; }          // The Master, Multiplied
+        if (/^when you cycle ~, put a trample counter on target creature you control\.?$/i.test(line)) { const cm = text.match(/^cycling ((?:\{[^}]+\})+)/im); if (cm) { a.cycleFx = { cost: parseCost(cm[1]), fx: [{ type: 'counters', kind: 'trample', n: 1, scope: 'best', other: false, excl: false, types: [] }] }; rec.status = 'partial'; rec.tag = 'yours'; continue; } }          // Titanoth Rex: a person cycles it from the hand
+        if (/^creature spells with flying you cast cost \{1\} less to cast\.?$/i.test(line)) { a.statics.reducers.push({ filter: 'flyingCreature', n: 1 }); rec.status = 'ok'; continue; }          // Warden of Evos Isle, Watcher of the Spheres
+        if (/^equipped creature gets \+x\/\+0, where x is the number of rev counters on ~\.?$/i.test(line)) { a.attachBonus = Object.assign({ p: 0, t: 0, keywords: [] }, a.attachBonus || {}, { p: 1, t: 0, per: 'srcOther', counter: 'rev' }); rec.status = 'ok'; continue; }          // Chainsaw
+        if (/^at the beginning of your end step, target opponent loses life equal to the amount of life they lost this turn\.?$/i.test(line)) { a.astarionFeed = true; TR(['end'], [{ type: 'astarionPick' }]); continue; }          // Astarion, the Decadent: one end-step trigger, Feed or Friends (see the pass after the loop)
+        if (/^whenever ~ attacks, if there are seven or more cards in your graveyard, you may create scion of the deep, a legendary 8\/8 blue octopus creature token\.?$/i.test(line)) { TR(['attack'], [{ type: 'token', n: 1, tapped: false, creature: true, p: 8, t: 8, colors: ['U'], subtypes: ['Octopus'], keywords: [], artifact: false, name: 'Scion of the Deep', legendary: true, cond: { kind: 'gyAtLeast', n: 7 } }]); continue; }          // Kiora, the Rising Tide (threshold)
+        if (/^(?:whenever a creature is dealt damage, ~ deals that much damage to that creature's controller|permanent cards in graveyards can't enter the battlefield|whenever ~ attacks, defending player exiles two permanents they control|put target spell or nonland permanent into its owner's library second from the top|\{1\}\{w\}: exile enchanted creature|whenever damage is dealt to one of the chosen players, the other chosen player also loses that much life|whenever a creature with power 4 or greater attacks you, its controller loses 2 life and you gain 2 life|all damage that would be dealt to you is dealt to equipped creature instead)\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Repercussion, Soulless Jailer, Bane of Bala Ged, Commit, Redemption Arc, Sower of Discord, MacCready, Pariah's Shield
+        if (/^(?:goblins and orcs you control have ward \{2\}|as long as ~ is untapped, other legendary creatures you control have ward \{1\}|whenever equipped creature becomes blocked by a creature, you may draw two cards|whenever you put one or more counters on a creature you don't control, draw a card|whenever a player casts a spell, if it's not their turn, ~ deals 4 damage to them|whenever ~ deals combat damage to a player, you may put target creature card from that player's graveyard onto the battlefield under your control|whenever you put one or more -1\/-1 counters on a creature, create (?:that many 1\/1 black insect creature tokens|a 1\/1 green snake creature token with deathtouch)|whenever a -1\/-1 counter is put on a creature, you may create a 1\/1 green elf warrior creature token|whenever a creature you control with power 2 or less attacks, it gains skulk until end of turn)\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Saruman, K-9, Infiltration Lens, Generous Patron, Scytheclaw Raptor, Ink-Eyes, Nest of Scarabs, Hapatra, Flourishing Defenses, MacCready's skulk: the other players' creatures, blocks and turns
+      }
       // ---- rules batch 46: the top-5000 pool (keyword lines and one card each)
       { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
         if (/^firebending (?:\d+|x, where x is ~'s power)\.?$/i.test(line) || /^each creature you control gains firebending \d+ until end of turn\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }          // Firebending Student, Zuko, Fire Lord Azula, The Legend of Roku, Sozin's Comet: red mana that lasts only through combat (see Fire Nation Palace)
@@ -2862,7 +2873,8 @@
     if (a._wrathModes) { a.spellFx.push({ type: 'modal', modes: a._wrathModes, pick: 1 }); a._wrathModes = null; }
     if (!a.linkReturn && /\bexile [^.]*until ~ leaves the battlefield/i.test(text)) a.linkReturn = 'battlefield';
     if (a.citadel) for (const t of a.triggers) if (t.kinds.includes('combat')) t.cond = { kind: 'siege', mode: 'khans' };
-    if (a.metalDmg) for (const f of a.spellFx) if (f.type === 'damage' && f.n === 2) f.n = 'METAL24';          // Galvanic Blast: 4 with metalcraft          // Citadel Siege: Khans or Dragons
+    if (a.metalDmg) for (const f of a.spellFx) if (f.type === 'damage' && f.n === 2) f.n = 'METAL24';          // Galvanic Blast: 4 with metalcraft
+    if (a.astarionFeed) a.triggers = a.triggers.filter(t => !(t.kinds.includes('end') && t.fx.some(f => f.type === 'gainLife' && f.n === 'LIFEGAINED')));          // Astarion: Friends is the other mode of the same trigger (astarionPick)          // Citadel Siege: Khans or Dragons
     if (a.smokestack) for (const t of a.triggers) if (t.kinds.includes('upkeep') && t.fx.some(f => f.type === 'counters' && f.kind === 'soot')) t.cond = { kind: 'smokeWorth' };          // Smokestack: a soot counter only when it hurts them more          // Banishing Light: the exiled card returns when it leaves          // Crux of Fate: the better of its two modes
     if (a.sacLandCost) a.spellFx = a.spellFx.map(f => f.type === 'ramp' ? { type: 'landSwap' } : f);
     if (a.sacColor) a.spellFx.forEach(f => { if (f.type === 'tutor') f.biggest = true; });          // Natural Order: a creature is paid, so the biggest one comes
@@ -3635,7 +3647,7 @@
     if (!att) return { dp, dt, kw };
     for (const b of att) {
       const k = !b.per ? 1 : b.per === 'attached' ? ((tableHas(g, 'isAura') || tableHas(g, 'isEquipment')) ? g.battlefield.filter(q => q.attachedTo === p.iid && (q.card.a.isAura || q.card.a.isEquipment)) : []).length : b.per === 'srcCounters' ? Math.max(0, b.src.counters || 0) : b.per === 'srcCharge' ? ((b.src.other && b.src.other.charge) || 0)
-        : b.per === 'auraOnCreature' ? (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.card.a.isAura && q.attachedTo != null && g.battlefield.some(x => x.iid === q.attachedTo && isCreaturePerm(x))) : []).length : b.per === 'otherEnch' ? bothSides(g).filter(q => q !== b.src && enchOn(g, q)).length : b.per === 'landType' ? g.battlefield.filter(q => q.asLand && new RegExp('\\b' + b.landType + '\\b', 'i').test(q.card.type_line || '')).length : countWhat(g, b.per, null); dp += b.p * k; dt += b.t * k; b.keywords.forEach(x => kw.add(x)); }          // a "for each" bonus counts now
+        : b.per === 'auraOnCreature' ? (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.card.a.isAura && q.attachedTo != null && g.battlefield.some(x => x.iid === q.attachedTo && isCreaturePerm(x))) : []).length : b.per === 'otherEnch' ? bothSides(g).filter(q => q !== b.src && enchOn(g, q)).length : b.per === 'srcOther' ? ((b.src.other && b.src.other[b.counter]) || 0) : b.per === 'landType' ? g.battlefield.filter(q => q.asLand && new RegExp('\\b' + b.landType + '\\b', 'i').test(q.card.type_line || '')).length : countWhat(g, b.per, null); dp += b.p * k; dt += b.t * k; b.keywords.forEach(x => kw.add(x)); }          // a "for each" bonus counts now
     return { dp, dt, kw };
   }
   // Bonuses that depend on the creature or the board right now: "creatures with flying get +1/+1" (Favorable Winds), "+X/+X where X is the number of
@@ -4188,6 +4200,7 @@
       case 'questAtLeast': return !!(source && source.other && (source.other.quest || 0) >= c.n);
       case 'smokeWorth': { if (!g.opp || !source) return false; const n = ((source.other && source.other.soot) || 0) + 1; return g.battlefield.filter(q => q.token).length >= n || otherPlayers(g).every(o => o.battlefield.length + n <= g.battlefield.length); }          // Smokestack
       case 'selfCounters': return !!(source && ((source.other || {})[c.counter] || 0) >= c.min);
+      case 'gyAtLeast': return g.graveyard.length >= c.n;          // threshold (Kiora, the Rising Tide)
       case 'never': return false;
     }
     return true;
@@ -4458,6 +4471,7 @@
         if (r.colors && !colorsOf(g, inst.card).some(c => r.colors.includes(c))) continue;
         if (f === 'colorless7') { if (!(inst.card.colors || []).length && a.castMv >= 7) red += r.n; continue; }
         if (f === 'anvil') { if (p.anvilTypes && p.anvilTypes.some(ty => cardHasType(inst.card, ty))) red += r.n; continue; }          // Semblance Anvil: shares a card type with the exiled card
+        if (f === 'flyingCreature') { if (a.isCreature && a.kw && a.kw.has('flying')) red += r.n; continue; }          // Warden of Evos Isle
         if (f === 'battlecrier') { if (g.activeTurn !== false) red += g.battlefield.filter(q => isCreaturePerm(q) && powerOf(g, q) >= 4).length; continue; }          // Temur Battlecrier: during your turn
         if (f === 'auraAffinity') { if (a.isEnchantment) red += (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.card.a.isAura) : []).length; continue; }          // Pearl-Ear: affinity for Auras
         if (f === 'rarity') { if (/^(rare|mythic)$/i.test(inst.card.rarity || '')) red += r.n; continue; }          // Rarity
@@ -5395,7 +5409,8 @@
           }
           if (!(tableHas(x, 'statics.noLegendRule') && x.battlefield.some(q => q.card.a.statics.noLegendRule))) {          // Mirror Box, Mirror Gallery
             const byName = new Map();
-            for (const p of x.battlefield) if (p.card.a.isLegendary && !gone.some(o => o.p === p)) { const l = byName.get(p.card.name); if (l) l.push(p); else byName.set(p.card.name, [p]); }
+            const tokOk = tableHas(x, 'statics.noLegendTokens') && x.battlefield.some(q => q.card.a.statics.noLegendTokens);          // The Master, Multiplied: creature tokens are left alone
+            for (const p of x.battlefield) if (p.card.a.isLegendary && !gone.some(o => o.p === p) && !(tokOk && p.token && isCreaturePerm(p))) { const l = byName.get(p.card.name); if (l) l.push(p); else byName.set(p.card.name, [p]); }
             for (const [name, ps] of byName) {
               if (ps.length < 2) continue;
               let keep = legendKeep(x, ps);
@@ -5618,7 +5633,8 @@
             } }
           damageOpp(g, n, ev, source); break;
         }
-        case 'drain': damageOpp(g, n, ev, source, false, true); break;          // life loss, not damage (protection does not stop it)
+        case 'drain': damageOpp(g, n, ev, source, false, true); break;
+        case 'astarionPick': { const lost = g.oppLostTurn || 0, gained = g.lifeGainedThisTurn || 0; if (lost > 0 && g.killTurn == null && !matchOver(g)) damageOpp(g, lost, ev, source, false, true); else if (gained > 0) applyEffects(g, [{ type: 'gainLife', n: gained }], source, ev, null); break; }          // Astarion: Feed (they lose what they lost this turn) while it helps, else Friends          // life loss, not damage (protection does not stop it)
         case 'burnCreature': { const t = g.opp && burnPick(g, n, true, source); if (t) against(g, t, () => burnHit(g, t, n, source, ev)); break; }
         case 'removal': if (g.opp) doRemoval(g, f, source, ev); break;
         case 'bounce': if (g.opp) doBounce(g, f, source, ev); break;

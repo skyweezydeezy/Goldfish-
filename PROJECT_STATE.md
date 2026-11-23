@@ -15,7 +15,7 @@ is the map. The rules are in `CLAUDE.md`; the protocol behind this file is `docs
 reconciliation by a MAIN: T-001's first version, checked against `MAIN_HANDOFF.md` (the outgoing MAIN's hand-over), git, GitHub, the
 session list and the scheduled tasks.
 
-**MAIN:** `session_01K5kL4WjxCpfdEjqWh1igWP`, work branch `claude/main-coordination`. [V] The previous MAIN, "Visuals/Main"
+**MAIN:** `session_01K5kL4ZUQQXFpA18Ru3kKV8` ("MAIN (ICEYfish) 2") since 2026-11-23 ~21:15 UTC; work branch `claude/main-coordination`. [V] The previous MAIN, "MAIN (ICEYfish)" (`session_01K5kL4WjxCpfdEjqWh1igWP`), handed over at 600k tokens (see docs/agents/VISUALS.md) and is **RETIRED — SUPERSEDED**. The one before, "Visuals/Main"
 (`session_01K5kL4YgVQ6tZxzA48G59TU`), is **RETIRED — SUPERSEDED** (it acknowledged the hand-over at about 13:40 UTC on 2026-11-23)
 and answers only historical questions.
 
@@ -102,6 +102,7 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 
 | Version | Pull request | What went live |
 |---|---|---|
+| 156 | #97 | PC layout for 1920×1080, More rules and Display settings, Policy lab "Tune toward a goal" |
 | 155 | #96 | Play a friend in the Duel tours |
 | 154 | #94 | Engine rules batches 52–56, set-data coverage refresh |
 | 153 | #93 | Dice/coin animation switch, built-in deck cards (Torbran, Gisa, Kaervek, Gideon), Will modes and new target questions |
@@ -164,14 +165,15 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-026 | Node tools send a User-Agent (Scryfall 400); Commander Spellbook refresh; COMBOS.md fixes | Combo and win conditions 2 (`session_01K5kL4VNZYoUKU9qgzS4LHf`) | `claude/combos` @ `5939dbc`, #88 | [V] Integrated (batch with T-031, T-032): engine 172/172 (MAIN). tools/ua.js + Source.setHeaders (browser path unchanged); combos.json refreshed 2026-11-23, 15,000 combos. [V] Verified, v152 (PR #91). |
 | T-027 | Play a friend in the Duel tours; tour targets checked after v141–v150; sample game: warn "plays itself to the end of turn N" and don't hold Next on the Loop step (the user, iPad screenshot) | Tutorial 2 (`session_01K5kL4Y7HdHsCLLBiRzf9eJ`) | `claude/tutorial` @ `1c2f79a` | [V] Integrated (Play a friend in the Duel tours and a tip; every step target checked): tutorial/tutorial-game UI (MAIN). [V] Verified, v155 (PR #96). The sample-game autopilot warning follows separately. |
 | T-028 | Untested paths: viewer "Cast (ignore mana)", Pod via viewer, service-worker update | Error and issue fixes 3 (`session_01K5kL4Zs2Rj3w9SNjfYxB6M`) | `claude/error-fixes-hakbal` @ `1685db7` | [V] Integrated: nothing broken (viewer cast, Pod viewer, offline update all work); two repro scripts in docs/agents/error-fixes-repro/. Observation: the first load after a deploy runs the old app.js with the new version.js (fixed on the next load). [V] Verified, v153 (PR #93). |
-| T-029 | Play a friend on emulated iPhone/iPad; TURN-over-TLS config test | Remote versus 2 (`session_01K5kL4VGPUcfnYXVRzRPpyD`) | `claude/remote-versus` | Active (from v150) |
+| T-029 | Play a friend on emulated iPhone/iPad; TURN-over-TLS config test | Remote versus 2 (`session_01K5kL4VGPUcfnYXVRzRPpyD`) | `claude/remote-versus` @ `cc13604`, #98 (draft) | Active (from v150); not reported yet |
 | T-030 | A visible on/off for dice and coin animations in the Sound menu | Features and Enhancements 2 (`session_01K5kL4We9hARMPwjfV9kDiZ`) | `claude/sound-effects` @ `9a3d047`, #87 | [V] Integrated (batch with T-024, T-025, T-028): dice/d20/sound UI pass (MAIN). [V] Verified, v153 (PR #93). |
 | T-031 | Windows local mode check at v150 (server, updater, launch tests) | App/User Requests 2 (`session_01K5kL4XD6qbMzEGonfuFZD1`) | `claude/app-requests` @ `76cea38`, #85 | [V] Integrated: launch tests 13/13 (MAIN). server.py uses a fixed content-type table (the Windows registry can say text/plain for .js). [V] Verified, v152 (PR #91). |
 | T-032 | Promo drafts: Reddit and Discord posts, a QR flyer; nothing posted | PR and Marketing 2 (`session_01K5kL4YpS91PFE97JzdhaDg`) | `claude/promo` @ `7cb3d35`, #84 | [V] Integrated, Partial: Reddit/Discord drafts and a QR flyer (decodes to the ICEYfish address). The site rules could not be read (reddit.com refused); posts.md marks them ASSUMED for the user to check. Nothing posted. [V] Verified, v152 (PR #91). |
-| T-033 | Policy lab: goal-driven tuning ("kill earlier by N turns" / "hit land drops more often"), tied to bracket speed (the user) | Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`, new) | `claude/policy-lab-tuning` @ `a5b5385`, #95 | [V] Integrated (batch with T-034): engine 180/180, tune/lab/ab-picks UI pass (MAIN). Measured on fresh seeds, e.g. Second Breakfast kills by T7 35% → 46% (z 6.1). BRACKET_SPEED waits for T-035. Expected Version 156. |
-| T-034 | Layout by device, a PC layout designed for 1920×1080; more common options in settings (the user) | Layout and Settings (`session_01K5kL4XXnVVr2AU3is1ZiCX`, new) | `claude/layout-settings` @ `82c86a2`, #92 | [V] Integrated: layout/table-fit/versus-fit/matfit/remember-state/deck-menus UI pass, sweep bad 0, launch 13/13 (MAIN). Practice fits 1920×1080 in one screen; More rules + Display folds; startLife fixes 60-card games starting at 40. Expected Version 156. |
+| T-033 | Policy lab: goal-driven tuning ("kill earlier by N turns" / "hit land drops more often"), tied to bracket speed (the user) | Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`, new) | `claude/policy-lab-tuning` @ `a5b5385`, #95 | [V] Integrated (batch with T-034): engine 180/180, tune/lab/ab-picks UI pass (MAIN). Measured on fresh seeds, e.g. Second Breakfast kills by T7 35% → 46% (z 6.1). BRACKET_SPEED waits for T-035. [V] Verified, v156 (PR #97). |
+| T-034 | Layout by device, a PC layout designed for 1920×1080; more common options in settings (the user) | Layout and Settings (`session_01K5kL4XXnVVr2AU3is1ZiCX`, new) | `claude/layout-settings` @ `82c86a2`, #92 | [V] Integrated: layout/table-fit/versus-fit/matfit/remember-state/deck-menus UI pass, sweep bad 0, launch 13/13 (MAIN). Practice fits 1920×1080 in one screen; More rules + Display folds; startLife fixes 60-card games starting at 40. [V] Verified, v156 (PR #97). |
 | T-035 | Verify every built-in deck's bracket by simulation (≥20,000 games each) plus the official bracket rules; change and annotate where different (the user) | Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`, new) | `claude/deck-brackets` | Active (from v151) |
-| T-036 | Engine batches 57–61, starting with Decision Points' engine-first list (squad, Will modes without a commander, Abzan/Sultai grouping, Silkguard, Hunter's Insight etc.) | Card Rules Engine 4 (`session_01K5kL4YiRUadycHTLacu7Qv`) | `claude/engine-rules` | Active (from v154) |
+| T-037 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN (`session_01K5kL4ZUQQXFpA18Ru3kKV8`) | `claude/main-coordination` | Integrated, expected Version 157 |
+| T-036 | Engine batches 57–61, starting with Decision Points' engine-first list (squad, Will modes without a commander, Abzan/Sultai grouping, Silkguard, Hunter's Insight etc.) | Card Rules Engine 5 (`session_01K5kL4Xff1pQB7F6PZZaw6f`; Engine 4 handed over at ~520k tokens, archived) | `claude/engine-rules` | Active: blockers done (7ba267c), batch 57 done (118627a), 58–61 next |
 
 **Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
 session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they
@@ -179,7 +181,7 @@ replace are archived.
 
 | Area | Session | Id | Note | Work branch | Replaces (archived) |
 |---|---|---|---|---|---|
-| Engine card rules | Card Rules Engine 4 | `session_01K5kL4YiRUadycHTLacu7Qv` (Engine 3 `session_01K5kL4W5wx2aMmLP73o9seu` archived) | ENGINE.md, ENGINE-3-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
+| Engine card rules | Card Rules Engine 5 | `session_01K5kL4Xff1pQB7F6PZZaw6f` (Engine 3 `session_01K5kL4W5wx2aMmLP73o9seu` archived) | ENGINE.md, ENGINE-3-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
 | Decision points | Decision Points 3 | `session_01K5kL4XqWbWKz7y7G2bUTMc` | DECISION-POINTS.md | `claude/decision-points-2` | `session_01K5kL4Zcst9FYJBqezvRjTK` |
 | Tutorial | Tutorial 2 | `session_01K5kL4Y7HdHsCLLBiRzf9eJ` | TUTORIAL.md | `claude/tutorial` | `session_01K5kL4W83TGViiS66xLyhrQ` |
 | Bug fixes | Error and issue fixes 3 | `session_01K5kL4Zs2Rj3w9SNjfYxB6M` | ERROR-FIXES-2.md | `claude/error-fixes-hakbal` | `session_01K5kL4YYZ9n2hdfpzktHqd2` |

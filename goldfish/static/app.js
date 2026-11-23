@@ -44,6 +44,7 @@
 
   // ======================= setup =======================
   $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  const dirty = () => window.dispatchEvent(new Event('isf-dirty'));          // something worth remembering changed (remember.js saves it shortly)
   function showTab(t) {
     document.body.dataset.view = t;
     $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
@@ -54,6 +55,7 @@
     if (t === 'sim') { fillMirror(); renderLabSaved(); }
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
+    dirty();
   }
 
   tidy(document.querySelector('main'));
@@ -71,13 +73,16 @@
 
   // The version pill next to the card-source pill: the version this copy of the app is running (the service worker's cache version,
   // "isf-v54" shows as "v54"). When a newer one has been deployed the pill gets a thin outline (the number stays), and a tap loads it.
+  let versionOk; const runningVersion = new Promise(r => { versionOk = r; });          // the version this copy runs (remember.js forgets what an older version saved)
   (async function showVersion() {
-    const el = $('#appVersion'); if (!el) return;
+    const el = $('#appVersion');
     const num = s => (String(s || '').match(/isf-v(\d+)/) || [])[1] || null;
     const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
     const running = sw ? await new Promise(res => { const ch = new MessageChannel(), t = setTimeout(() => res(null), 1500); ch.port1.onmessage = e => { clearTimeout(t); res(e.data && e.data.version); }; sw.postMessage('version', [ch.port2]); }) : null;
     let latest = null; try { const r = await fetch('version.js', { cache: 'no-store' }); if (r.ok) latest = ((await r.text()).match(/ISF_VERSION = (\d+)/) || [])[1] || null; } catch (e) { /* offline: show the running version only */ }          // version.js holds the number: one more with every merge
-    const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null); if (!v) return;
+    const v = num(running) || latest || (self.ISF_VERSION ? String(self.ISF_VERSION) : null);
+    versionOk(v);
+    if (!v || !el) return;
     el.hidden = false; el.textContent = 'v' + v; el.title = 'ICEYfish version ' + v;
     if (latest && +latest > +v) { el.classList.add('update'); el.title = 'Version ' + latest + ' is out. Tap to update.'; }          // the pill keeps showing only the version you run; a thin outline says a newer one is ready
     else el.title += '. Tap to check for a newer one.';
@@ -220,8 +225,9 @@
     box.focus();
     toast('Cleared. Paste your new deck, then tap Load deck.');
   });
-  async function loadDeck() {
-    const text = $('#deckText').value;
+  // loadDeck({ text, quiet }): remember.js loads the deck you had, without saving it again or touching the decklist box
+  async function loadDeck(o) {
+    const quiet = !!(o && o.quiet), text = quiet ? o.text : $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
     { const link = readLink(text); if (link && text.trim().split(/\s+/).length === 1) return addFromLink(link, 'from the link'); }          // an ICEYfish deck link pasted in the box
     { const site = deckSite(text); if (site && text.trim().split(/\s+/).length === 1) return toast(`${site[0].toUpperCase() + site.slice(1)} does not let other web pages read its decks. On the deck's page use Export (or Copy) as text, then paste the list here.`); }
@@ -231,7 +237,7 @@
       await Source.init();
       const r = await Source.loadDeck(text, m => { btn.textContent = m; });
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
-      else { setDeck(r); autoSave(text); }
+      else { S.deckText = text; setDeck(r); if (!quiet) autoSave(text); }
     } catch (err) {
       console.error(err);
       $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
@@ -283,7 +289,8 @@
     buildTags(); renderTags();
     fillLabChoices();
     renderCoverage();
-    $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = '';
+    $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = ''; H = null;
+    dirty();
   }
 
   // ---- strengths and weaknesses (profile.js): from the decklist, plus the kill speed once a simulation has run ----
@@ -716,7 +723,7 @@
     if (putDecks(d, m)) { refreshSaved(); renderManager(); toast(`Imported ${added} deck${added === 1 ? '' : 's'}`); }
   });
   refreshSaved();
-  loadBuiltinIndex();
+  const builtinsListed = loadBuiltinIndex();
   openLinkInAddress();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));
@@ -778,6 +785,7 @@
     const v = $('#handVerdict');
     v.className = 'verdict ' + (ok || kept.length <= o.minHandSize ? 'keep' : 'mull');
     v.textContent = `${H.mulls ? `Mulligan ${H.mulls}${k ? ` (bottom ${k})` : ' (free)'} · ` : ''}${lands} land${lands === 1 ? '' : 's'} · ${ok ? 'Keep' : (kept.length <= o.minHandSize ? 'Keep (at minimum size)' : 'Autopilot would mulligan')}`;
+    dirty();
   }
 
   function chooseBottom(hand, k, o) {
@@ -966,6 +974,14 @@
         await sleep(2500 * slow());
       }
     } finally { if (tableLoop === L) tableLoop = null; loopBtn(false); }
+  }
+  // a game remember.js read back (a reload in the middle of a game): it goes on where it was, with its log; the undo steps start again
+  function resumeTableGame(g, logHtml) {
+    if (window.__isfChoices) window.__isfChoices.close();
+    if (window.Decide) window.Decide.seat(g);
+    S.game = g; S.undo = []; elCache.clear();
+    $('#gameLog').innerHTML = logHtml || '';
+    render(true);
   }
   function startTableGame(g, auto) {
     if (window.__isfChoices) window.__isfChoices.close();                // a question of the game before this one
@@ -1600,6 +1616,7 @@
 
   function render(first) {
     const g = S.game; if (!g) return;
+    dirty();
     sayChosen();                                               // a permanent that chose a creature type as it entered, however it got there
     const before = new Map();
     $$('.table [data-iid]').forEach(e => before.set(e.dataset.iid, e.getBoundingClientRect()));
@@ -2666,5 +2683,5 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
+  window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN };
 })();

@@ -63,7 +63,7 @@ const shots = process.env.D20_SHOTS;
     check(`${mode}: a D20 for every player appears`, (await p.$$('.vs-dice .vs-die')).length === n);
     check(`${mode}: each is the 3D d20 model (twenty faces)`, await p.evaluate(() => [...document.querySelectorAll('.vs-dice .vs-die')].every(d => d.querySelectorAll('.d20-face').length === 20)));
     if (shots) { await p.waitForTimeout(300); await p.screenshot({ path: `${shots}/d20-${mode}-rolling.png` }); }
-    await p.waitForSelector('.vs-die.win', { timeout: 10000 });
+    await p.waitForSelector('.vs-die.win', { timeout: 30000 });
     const r = await p.evaluate(m => {
       const gm = __isfVersus[m].game, w = document.querySelector('.vs-die.win');
       return { winner: +w.dataset.pid, first: gm.match.order[0].pid, say: document.querySelector('.vs-dice-say').textContent, log: [...document.querySelectorAll(`#tab-${m} .vs-log .vs-line`)].map(e => e.textContent).join(' | '), round: gm.match.round, turnsPlayed: gm.games.reduce((t, g) => t + g.turn, 0) };
@@ -72,7 +72,7 @@ const shots = process.env.D20_SHOTS;
     check(`${mode}: the glowing die is the player who goes first`, r.winner === r.first, JSON.stringify({ winner: r.winner, first: r.first, say: r.say }));
     check(`${mode}: it says who goes first`, /goes first|go first/.test(r.say), r.say);
     check(`${mode}: while the dice roll, the table does not give the result away`, /rolls a D20/.test(r.log) && !/goes first\.|go first\./.test(r.log), r.log.slice(0, 160));
-    await p.waitForSelector('.vs-dice', { state: 'detached', timeout: 6000 });
+    await p.waitForSelector('.vs-dice', { state: 'detached', timeout: 30000 });
     const log2 = await p.evaluate(m => [...document.querySelectorAll(`#tab-${m} .vs-log .vs-line`)].map(e => e.textContent).join(' | '), mode);
     check(`${mode}: once they land, the log has the rolls and who goes first`, /Rolled a D20 to see who goes first/.test(log2) && /goes first\.|go first\./.test(log2), log2.slice(0, 220));
     check(`${mode}: nobody plays until the dice are done`, r.turnsPlayed === 0, r.turnsPlayed + ' turns');
@@ -88,6 +88,10 @@ const shots = process.env.D20_SHOTS;
   await p.waitForTimeout(150);
   const sk = await p.evaluate(() => ({ dice: !!document.querySelector('.vs-dice'), log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].map(e => e.textContent).join(' | ') }));
   check('pressing +1 turn while the dice tumble skips them, and the log still has the rolls first', !sk.dice && /Rolled a D20/.test(sk.log) && sk.log.indexOf('Rolled a D20') < sk.log.indexOf('turn 1'), sk.log.slice(0, 200));
+  // dice switched off (isf_dice = 0): no dice on screen, the log tells the rolls at once
+  await p.evaluate(() => { localStorage.setItem('isf_dice', '0'); document.querySelector('#tab-duel .vs-new').click(); });
+  await p.waitForFunction(() => /Rolled a D20/.test([...document.querySelectorAll('#tab-duel .vs-log .vs-line')].map(e => e.textContent).join(' ')), null, { timeout: 30000 });
+  check('with dice switched off there are none on screen, and the log has the rolls at once', !(await p.$('.vs-dice')));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

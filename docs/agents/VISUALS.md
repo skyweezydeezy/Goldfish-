@@ -1,8 +1,36 @@
-# Visuals / Main session: handoff note
+# MAIN (Visuals) session: handoff note
 
-> Superseded for state by `MAIN_HANDOFF.md` and `PROJECT_STATE.md` (2026-11-23). This note keeps the working knowledge: how a merge goes, wait loops, gotchas.
+> State lives in `PROJECT_STATE.md` (newest on `claude/main-coordination`). This note is the working knowledge plus the hand-over.
 
-The main session gathers every other session's work, tests it, merges it into the default branch, and reports back. Read CLAUDE.md first; it holds the rules the user set. This note is the working knowledge behind them.
+## Hand-over, 2026-11-23 about 21:10 UTC
+- **Outgoing MAIN:** "MAIN (ICEYfish)", `session_01K5kL4WjxCpfdEjqWh1igWP`, at 600k tokens (the hand-over line). It stops here.
+- **Work branch:** `claude/main-coordination`, equal to live plus `PROJECT_STATE.md` commits. Pushed; nothing uncommitted.
+- **Live:** Version 156 (`6d14649`), verified. Everything reported to MAIN up to now is merged; no finished work is waiting.
+- **First actions for the new MAIN:**
+  1. Put your session id in place of `session_01K5kL4WjxCpfdEjqWh1igWP` in `CLAUDE.md` (2 places) and in `PROJECT_STATE.md`'s MAIN line; merge it through the normal process (a docs PR).
+  2. Tell the active sessions below your id (the outgoing MAIN already told them a new MAIN is coming).
+- **Active tasks (see PROJECT_STATE.md section 5):**
+  - T-036 Card Rules Engine 5 (`session_01K5kL4Xff1pQB7F6PZZaw6f`, new): batches 57–61 + Decision Points' engine blockers on `claude/engine-rules`; held, merge all five together.
+  - T-035 Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`): verify every built-in deck's bracket at ≥20,000 games; when it lands, send its thresholds to Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`) to replace Tune.BRACKET_SPEED.
+  - T-029 Remote versus 2 (`session_01K5kL4VGPUcfnYXVRzRPpyD`): Play a friend on emulated iPhone/iPad, TURN-over-TLS test.
+  - Tutorial 2 (`session_01K5kL4Y7HdHsCLLBiRzf9eJ`): the user's iPad request: in the Practice sample game, warn "the game now plays itself to the end of turn N" when Autopilot to turn is pressed, and don't hold Next on the Loop step (step 19 of 23).
+  - Decision Points 3 (`session_01K5kL4XqWbWKz7y7G2bUTMc`): idle until Engine 5 reports the blocker commit (7ba267c), then squad and Will questions.
+  - Idle, no task: Card teaching 2, Code Clean-up 2, Combos 2, Features 2, Error fixes 3, App/User Requests 2, PR and Marketing 2, Layout and Settings, Policy Lab tuning.
+- **Waiting on the user:** is the Metered relay login in remote.js still live; turn off or re-point the "Unlearned cards report" scheduled task (built-in decks have nothing unread now); fill in r/EDH's rules in docs/promo/posts.md before any posting; Hakbal on hold.
+- **The user's rules added this session (in CLAUDE.md):** merge first, then task (finish any pending merge, live with its version, before giving any session new work). Also: "prefill" meant the default game count, now 2,000.
+
+## How a merge goes (as practised this session)
+1. Fetch the reported branch; `git merge --no-edit origin/<branch>` into `claude/main-coordination` (batch reports that arrive together).
+2. Test once: `node tests/run.js` (≈4 min), `node tools/every-default-sweep.js` when sim.js/decide.js changed (bad 0), `python3 -m pytest -q tests/launch` when server/update/SHELL changed, and the touched UI tests with `--jobs 2` (remote.ui is steady now).
+3. Add the whatsnew.json entry (v = live + 1) and PROJECT_STATE lines ("Expected Version N"); commit; push; open a PR to the default branch (it supersedes the sessions' drafts; close those after).
+4. Wait for GitHub's 4 checks (engine ×2, windows ×2, ≈7 min; poll in `until` loops of ≤110 s per call), PushNotification "merge started", merge with expectedHeadSha (40 chars), wait for version.js on the live site, PushNotification "live", fast-forward the branch, mark Verified, tell each session.
+
+## Gotchas
+- Scryfall needs a User-Agent from Node: the tools use tools/ua.js now (T-026).
+- build-deck-index drops bracketEst when a deck states its bracket: that's intended.
+- tools/import-decks.js rewrites a changed deck without set codes; to keep printings, swap only the changed lines.
+- Drive: the sync folders are "Magic Commanders/ManaBox" (1CwIo9I4bXXajMJ5F3Koj1zjb5VOwzn7Y) and "MTG Max Salt Commander Decks/ManaBox" (1kMuwQfee162UNJc9MW1NIZkkMCVbF2yJ); both are in drive-sync.json.
+- Worker restarts can hold reports back; read notifications after a restart before tasking anyone.
 
 ## Where things are
 - Repository: renamed **ICEYfish**. Live site: https://skyweezydeezy.github.io/ICEYfish/. In these cloud sessions GitHub access is granted under the **old** name `skyweezydeezy/Goldfish-`: keep the git remote on `.../Goldfish-` (pushing to `.../ICEYfish` returns 403), and pass `repo: "Goldfish-"` to the GitHub tools. Redirects make both work. The user may grant the new name later.
@@ -53,7 +81,7 @@ Replaced or archived: Card Rules Engine (session_01K5kL4WeZFox6QLJp181xit), Deci
 - **Sound:** the user's Drive audio backup is at v86, the Windows music crackle fix (v79) isn't confirmed by the user, and background music is untested on a real phone. Ask before refreshing the backup.
 - **remote.ui flake:** run in parallel, it sometimes times out at the "both devices start the game" step (30 s wait for the WebRTC connection). It passes alone (46/46) and passed 4 of 6 parallel runs on 2026-11-23. Run it with `--jobs 1`, or raise that wait.
 - **Sessions closed on 2026-11-23, with handoffs accepted:** Code Clean-up (docs/agents/CODE-CLEANUP.md; close its draft PR #70 as superseded by #69), PR and Marketing (docs/promo/HANDOFF-PR-and-Marketing.md; promotion has **no owner**, so ask the user; promo text may mention Play a friend again), and Combo and win conditions (docs/agents/COMBOS.md). Archive them once the user agrees.
-- **Still open from those notes:** Took's Adventure is not in drive-sync.json; the Commander Spellbook snapshot needs a refresh (`node tools/build-combos.js`); the 44 "— Combos" Google Docs in the user's Drive don't update themselves; 16 engine test files have no README row, and the slow engine test files belong to the engine session.
+- **Still open from those notes:** the Commander Spellbook snapshot needs a refresh (`node tools/build-combos.js`); the 44 "— Combos" Google Docs in the user's Drive don't update themselves; 16 engine test files have no README row, and the slow engine test files belong to the engine session.
 - **The session protocol (T-001)** is in CLAUDE.md, docs/SESSION-PROTOCOL.md and PROJECT_STATE.md. As MAIN, reconcile PROJECT_STATE.md first (it was written before PR #69) and keep it from then on; state lives there, and this note keeps the working knowledge.
 - **First task of the new main session:** change the main session id at the top of CLAUDE.md (the "Send finished work to the Visuals session" section) to your own id, and merge that change. Every agent has already been told the new id by message.
 - **Tutorial stage 3** (the guided sample games, commit 012cd8f on claude/tutorial) was still being tested by the Tutorial session. Merge it when it hands over. Stage 4 comes after.
@@ -63,7 +91,7 @@ Replaced or archived: Card Rules Engine (session_01K5kL4WeZFox6QLJp181xit), Deci
 - **Tutorial:** stages 1–2 are live (v137). Next is stage 3 (the guided sample game: built-in deck, fixed seed through `G.newGame(deck, opts, seed)` / `G.newPod(…, seed)`). Then stage 4, which the user approved: the welcome card, the first-goals checklist, first-time tips with "Show me", and **What's new**. Not approved: the glossary and a separate tutorial deck.
 - **What's new:** the main session writes the changelog line for each merge into the file the Tutorial session defines (likely `goldfish/static/whatsnew.json`). Ask Tutorial for the format.
 - **Code Clean-up's hand-over** is the "final merge" of the user's plan (tutorial install, then fixing up the code, then a final merge). The session stopped once on the 5-hour usage limit and was restarted at 12:40 UTC on 2026-11-23.
-- Combos session backlog: Took's Adventure isn't in drive-sync (it comes from a Google Doc, not the ManaBox folder), and the Commander Spellbook snapshot refresh (`node tools/build-combos.js`, about 5 min) stays with main.
+- Combos session backlog: the Commander Spellbook snapshot refresh (`node tools/build-combos.js`, about 5 min) stays with main.
 - GitHub issue #27 (Shalai) is closed (the user closed it as completed, 2026-11-23 04:39 UTC).
 - Pages deploy: `pages.yml` retries `actions/deploy-pages` up to 3 times. Marketing's proposal to deploy only from main/master was **not** taken, because the live branch is neither.
 

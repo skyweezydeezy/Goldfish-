@@ -12,7 +12,7 @@ const NAMES = ["Tromell, Seymour's Butler", 'Whitemane Lion', 'Fiend Hunter', 'A
 const deck = G.buildDeck(NAMES.map(n => find(n)).concat(['Forest', 'Plains', 'Mountain'].map(n => find(n, 10))), []);
 const by = n => deck.unique.find(c => c.name === n);
 for (const n of NAMES.slice(0, 12)) { const bad = by(n).a.coverage.filter(c => c.status === 'ignored'); check(`${n}: no line left unread`, !bad.length, bad.map(c => c.text.slice(0, 50)).join(' | ')); }
-check('Will of the Temur: draws equal to the greatest mana value', by('Will of the Temur').a.spellFx.some(f => f.type === 'drawMaxMv'));
+check('Will of the Temur: draws equal to the greatest mana value', by('Will of the Temur').a.spellFx.some(f => f.type === 'drawMaxMv' || (f.type === 'modal' && f.modes.some(m => m.some(x => x.type === 'drawMaxMv')))));
 check('Rootcast Apprenticeship: the Squirrel mode makes a token for you', JSON.stringify(by('Rootcast Apprenticeship').a.spellFx).includes('Squirrel'));
 const O = { turns: 10, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40 };
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });

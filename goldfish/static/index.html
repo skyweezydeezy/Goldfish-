@@ -66,6 +66,25 @@
             <label>Opponent life <input id="optLife" type="number" min="1" max="200" value="40"></label>
             <label>Games per simulation <input id="optN" title="2,000 games: every percentage is within about ±2 points of the true value (95% of the time). More games are more precise but slower: 5,000 → ±1.4, 10,000 → ±1." type="number" min="200" max="50000" step="100" value="2000"></label>
           </div>
+          <details id="moreRules" class="settings-more">
+            <summary>More rules</summary>
+            <div class="grid2">
+              <label title="The autopilot mulligans a hand it would not keep until it is down to this many cards, then keeps what it has. 7: it never mulligans.">Mulligan down to
+                <select id="optMullTo"><option value="7">7 (never)</option><option value="6">6</option><option value="5" selected>5</option><option value="4">4</option></select></label>
+              <label title="Your life when the game starts. In Duel and Pod every player starts with it.">Starting life <input id="optMyLife" type="number" min="1" max="200" value="40"></label>
+              <label class="check" title="Nobody discards down to seven at the end of the turn"><input id="optNoMaxHand" type="checkbox"> No maximum hand size</label>
+            </div>
+            <div class="row"><button id="optReset" class="ghost" type="button" title="Every rule back to its default for the chosen format">Reset rules to defaults</button></div>
+          </details>
+        </details>
+        <details id="displaySettings" class="settings">
+          <summary>Display</summary>
+          <div class="grid2">
+            <label title="How much fits on the screen: Compact shows more at once, Roomy has bigger text">Spacing
+              <select id="dispDensity"><option value="standard">Standard</option><option value="compact">Compact</option><option value="roomy">Roomy</option></select></label>
+            <label title="How a tab appears when you switch to it">Tab switch
+              <select id="dispFade"><option value="smooth">Smooth fade</option><option value="quick">Quick fade</option><option value="off">Instant</option></select></label>
+          </div>
         </details>
       </div>
       <div class="deck-view">
@@ -236,6 +255,19 @@
       <div id="plInfo" class="hint"></div>
       <div id="plOut"></div>
       <div id="plSaved" class="hint"></div>
+      <div class="lab-tune" id="tnBox">
+        <h3>Tune toward a goal</h3>
+        <p class="hint">Make the deck kill the goldfish earlier, or hit its land drops more often. The lab measures the deck, then tries one change at a time: the choices above (how many lands to keep, mulligans, when to cast the commander…) and deck changes that keep its size (a land more for the slowest spell, cheap ramp or card draw in your colors for the slowest spell, ramp instead of a land). Every change plays the same shuffles, the one that moves the goal most is kept when it beats chance, and the next change starts from there. The deck before and after then plays fresh shuffles the search never saw: that is the before → after shown. A goldfish has no opponent, so interaction, combo pieces and win conditions are never cut; "Send to the A/B test" checks the new version against other decks. Bracket speed: B5 kills by turn 6 in 40% of games, B4 by turn 8 in 60%, B3 by turn 8 in 30%, otherwise B2.</p>
+        <div class="row wrap">
+          <label>Goal <select id="tnGoal"><option value="kill" selected>Kill earlier</option><option value="lands">Hit land drops more often</option></select></label>
+          <label>Target <select id="tnTarget"></select></label>
+          <button id="tnRun" class="primary">Tune</button>
+          <div id="tnProgress" class="progress"><div></div></div>
+        </div>
+        <div id="tnNow" class="hint"></div>
+        <div id="tnInfo" class="hint"></div>
+        <div id="tnOut"></div>
+      </div>
       <div class="row wrap lab-roles">
         <button id="plRoles">Swaps by role</button>
         <span class="hint" data-fold>Plays your deck against the opponents above (as many matches as the A/B test's Games setting), groups the cards linked to winning and losing by what they do (ramp, card draw, removal…) and says which kind of card the deck wants more of. It offers 2 cards of that kind to add and the 2 cards most linked to losing to remove; "Send to the A/B test" proves the change.</span>
@@ -366,6 +398,7 @@
 <script src="charts.js"></script>
 <script src="suggest.js"></script>
 <script src="compare.js"></script>
+<script src="tune.js"></script>
 <script src="profile.js"></script>
 <script src="tags.js"></script>
 <script src="combos.js"></script>

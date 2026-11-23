@@ -32,7 +32,7 @@ a Combos Doc beside every play guide in Drive, and add Loaded Dice and Took's Ad
 | #33 | 79dc18c | Version 97 | Build: "Combos and win conditions". Simulate: "How games end". Engine: `g.winBy`, `winBy` / `winLines` in the Monte Carlo result, `deckCombos`, `boardCombo` (Heliod + Ballista, Kiki-Jiki / Splinter Twin, Dualcaster Mage, Mikaeus + Triskelion), Deadeye Navigator + Peregrine Drake. A trigger loop that deals no damage no longer counts as a kill. |
 | #36 | 9e72bf9, 856533e | Version 101 | Engine: `moreCombos` and `moreKinds` (sacrifice loops, Underworld Breach, Peer into the Abyss, Aetherflux Reservoir, Sensei's Top, Hermit Druid, Ad Nauseam, Aggravated Assault, Najeela + Derevi, Goblin loops, Ulalek, Vraska + Vorinclex), more infinite mana (B7 to B9 in `infiniteMana`), cast-trigger and mana-ping outlets, infinite mana with no outlet listed as open. Build: Commander Spellbook's combos for the deck and the ones one card away (`combos.js`, `data/combos.json`, `tools/build-combos.js`). |
 | #38 | b7551ef | Version 105 | Goldfish counts the snapshot's combos: `bookCombo`, `bookList`, `bookReady`, `bookPayoff`, `bookNeed`, `BOOK_NEEDS` in `sim.js`; `Combos.goldfished`; `opts().bookCombos` in `app.js`. Snapshot rebuilt with zones, mana, kind, goldfish flag, loops. |
-| #41 | 917327f | Version 112 | Built-in decks `loaded-dice.txt` and `tooks-adventure.txt`; 14 cards added to the set data; 14 rules lines (Krark's coin flip in `castCard`, Heartstone, `animateArtifacts` with `perm` / `untap` / `kw` / `counters`, March of the Machines in `starfieldSync`, `animateWorth` gate). |
+| #41 | 917327f | Version 112 | Built-in decks Loaded Dice and Took's Adventure (both since removed); 14 cards added to the set data; 14 rules lines (Krark's coin flip in `castCard`, Heartstone, `animateArtifacts` with `perm` / `untap` / `kw` / `counters`, March of the Machines in `starfieldSync`, `animateWorth` gate). |
 
 Files this session created or owns the content of:
 - `goldfish/static/combos.js`, `goldfish/static/data/combos.json`, `tools/build-combos.js`
@@ -57,16 +57,8 @@ Outside the repository (the user's Google Drive), not code:
 
 None of this is in progress. It was handed to MAIN on 2026-11-22; MAIN said it kept items 1 and 2 and passed item 3 to the engine session.
 
-1. Took's Adventure (`tooks-adventure.txt`) is not in `goldfish/static/decks/drive-sync.json`, so it does not update from Drive, and it
-   should not get an entry there by hand. That file belongs to `tools/import-decks.js`, which imports `.txt` lists exported by ManaBox
-   from the "Magic Commanders / ManaBox" folder; `brackets.test.js` expects every entry to have a `[Bn]` title, a bracket and a real
-   Drive file id. Took's Adventure's source is a Google Doc instead ("Took's Adventure (Mono-White Tokens) — List"). Two ways to sync it
-   (not done, a decision for MAIN or the user):
-   - Simplest: export the deck from ManaBox into that folder as "Took's Adventure [Bn].txt". The next import picks it up and records
-     its real id, with no code change.
-   - Or teach the sync about Docs: download the Doc as plain text (Drive export `text/plain`), save it as `<title> [Bn].txt` with
-     `_drive.json` holding the Doc's id and `modifiedTime`, and run `node tools/import-decks.js <folder>`. `source.js` already skips a
-     Doc's title lines (`TITLE_RE`). The bracket must be chosen first, because the Doc's title has no `[Bn]`.
+1. Closed: Took's Adventure was removed from the app (T-039, the user: a 60-card deck, not for the app at this time), so it
+   needs no Drive sync.
 2. The Commander Spellbook snapshot was refreshed by T-026 (see `fetched` in `goldfish/static/data/combos.json`). To refresh it again,
    run `NODE_USE_ENV_PROXY=1 node tools/build-combos.js` (about 5 minutes, 150 requests; the API pages at 100). All Node tools send
    `tools/ua.js`'s User-Agent, because Scryfall rejects Node's default one (HTTP 400 "generic_user_agent").

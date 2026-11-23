@@ -1,6 +1,6 @@
 # Decision points: final handoff
 
-**Status: CLOSED — AWAITING MAIN ACCEPTANCE**
+**Status: ARCHIVED — accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
 
 - **Session:** Decision Points 2, `session_01K5kL4Zcst9FYJBqezvRjTK`. Role: **TASK** (MAIN is the Visuals session,
   `session_01K5kL4YgVQ6tZxzA48G59TU`). Closed 2026-11-23. It replaced `session_01K5kL4ZfrioL9gBHkq7n6W6`.

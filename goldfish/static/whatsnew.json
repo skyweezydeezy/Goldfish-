@@ -2,6 +2,14 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 162,
+      "lines": [
+        "⚔️ A little battle plays under the progress bar while games run (switch it off in the Sound panel 🔊).",
+        "Magda, Return the Favor, Axgard Cavalry, Vault Robber, Óin the Brave and Dwarven Bloodboiler now play by their rules; in Duel and Pod you're asked before each one acts.",
+        "Play a friend: the connection bar no longer stays on \"Not connected\" after a quiet moment."
+      ]
+    },
+    {
       "v": 161,
       "lines": [
         "Duel and Pod ask how many times to pay squad, and which mode of a Will card to choose (one or both with your commander out).",

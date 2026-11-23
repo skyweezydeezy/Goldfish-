@@ -137,7 +137,7 @@ Draft PRs that #69 supersedes, to close after it is live: **#70** (clean-up, ful
 **Open work, unowned until the new MAIN assigns it:**
 - **Issue #67:** teach Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut… (from `CARD-TEACHING.md`).
 - **Engine leftovers** (`ENGINE-2-HANDOFF.md`): Squee, Children of Korlis, Astarion's first line, Neyali's second line. Decision questions owed: Hunter's Talent `pumpAttacker`; Transmute Artifact with two choices.
-- **Combos:** Took's Adventure is not in `drive-sync.json`; the Commander Spellbook snapshot needs a refresh (`node tools/build-combos.js`); the 44 "— Combos" Google Docs don't update themselves.
+- **Combos:** the Commander Spellbook snapshot needs a refresh (`node tools/build-combos.js`); the 44 "— Combos" Google Docs don't update themselves.
 - **Sound:** the Drive audio backup is at v86; the user hasn't confirmed the Windows crackle fix; background music is untested on a phone.
 - **Tests:** 16 engine test files have no README row; the slow engine test files belong to the engine session; the remote.ui flake.
 - **Docs:**

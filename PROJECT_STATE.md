@@ -129,7 +129,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-006 | Tutorial stage 4: welcome, goals, tips, What's new | Tutorial | `claude/tutorial` | [V] Verified, v141 |
 | T-007 | Code clean-up | Code Clean-up (`session_01K5kL4W7sYVsWQcgDzVLTfX`) | `7335f59`, `b5dfec5`; #70 closed | [V] Verified, v141 |
 | T-008 | Play a friend back, as in Version 128 | MAIN (then `session_01K5kL4YgVQ6tZxzA48G59TU`) | `6fbf901` | [V] Verified, v141 |
-| T-009 | Hakbal "misses its first explore when cast in main 1" | Error and issue fixes (2) (`session_01K5kL4YYZ9n2hdfpzktHqd2`) | `claude/error-fixes-hakbal` (`445ce2f`, note and repro scripts only) | [R] Not reproduced at v140; **on hold for the user**. |
+| T-009 | Hakbal "misses its first explore when cast in main 1" | Error and issue fixes 3 (`session_01K5kL4Zs2Rj3w9SNjfYxB6M`) | `claude/error-fixes-hakbal` (`445ce2f`, note and repro scripts only) | [R] Not reproduced at v140; **on hold for the user**. |
 | T-010 | Card teaching and the Policy lab | Card teaching & Policy lab (`session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed) | `e2e7578` | [V] Its note is in v141. Session closed. |
 | T-011 | Issue #67, "Teach: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, …" | Nobody yet | none | [V] Open on GitHub. Planned; needs the user's go-ahead for a fresh session. |
 | T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [V] Accepted after MAIN review; merged into MAIN's branch with `c17de6d`. tutorial.ui 101/101, tutorial-game 17/17, install, remember-state pass. Verified, v142. |
@@ -183,7 +183,16 @@ Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
   Astarion's first line, Neyali's second line; questions owed: Hunter's Talent `pumpAttacker`, Transmute Artifact with two choices.
 - [R] Combos: Took's Adventure is not in `drive-sync.json`; the Commander Spellbook snapshot needs `node tools/build-combos.js`.
 - [R] Sound: the Drive audio backup is at v86; the Windows crackle fix is unconfirmed; background music is untested on a phone.
-- [R] Tests: 16 engine test files have no row in `tests/README.md`.
+- [R, Code Clean-up 2] Tests: 10 engine test files have no row in `tests/README.md` (combo-lines, combo-plan, compare, impact,
+  lab-choices, lab-scenarios, locks-eldrazi, missing-interactions, profile, suggest), not 16.
+- [R, Remote versus 2; V, MAIN read the file] `remote.js` carries the Metered relay login in plain text (approved as "public by
+  design" on 2026-11-21, back with the v128 restore). If the user deleted that login after v131, the relay is dead and
+  `RELAY.servers` should go back to null; if not, it is public again. The user decides.
+- [R, PR and Marketing 2] The promo QR images encode the old address `.../Goldfish-/` (works only through the redirect);
+  `primer-blurbs.md` uses the old tab names; the promo note still says not to mention Play a friend.
+- [R, Combos 2] `COMBOS.md`'s Loaded Dice items are stale: the deck was removed in Version 127.
+- [R, App/User Requests 2] "PR #47 held" was only out of date: the user merged #47 on 2026-11-22. Nothing is held.
+- [R] Several archived notes still name the old MAIN id in their body. They are history; `CLAUDE.md` is the authority.
 
 Pending user decisions: the Metered relay login; who owns promotion (`docs/promo/HANDOFF-PR-and-Marketing.md`); the Hakbal report;
 archiving the closed sessions; disabling the two stale scheduled tasks; installing the Claude GitHub App for this repository.

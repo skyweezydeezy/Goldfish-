@@ -498,6 +498,8 @@
       else if ((mm = one.match(/^search your library for up to (two|three) (creature|artifact|land) cards with different names, reveal them, put them into your hand, then shuffle$/i))) fx.push({ type: 'tutorN', n: num(mm[1]), filter: mm[2].toLowerCase() });          // rules batch 40: Shared Summons
       else if ((mm = one.match(/^you may put an? ([a-z]+) creature card from your hand onto the battlefield$/i))) fx.push({ type: 'putFromHand', kind: 'creature', maxMv: 99, filter: mm[1].toLowerCase() });          // rules batch 40: Sorin, Imperious Bloodlord
       else if (/^tap one or two target creatures$/i.test(one)) { fx.push({ type: 'tapOpp' }); neutral = false; }          // rules batch 40: Amazing Acrobatics (in a match)
+      else if ((mm = one.match(/^(?:• )?target player creates (.+)$/i))) { const r = parseEffects('Create ' + mm[1] + '.'); fx.push(...r.fx); }          // rules batch 41: Rootcast Apprenticeship, Echocasting Symposium (you are the player)
+      else if (/^(?:• )?target player draws cards equal to the greatest mana value among permanents you control$/i.test(one)) fx.push({ type: 'drawMaxMv' });          // Will of the Temur
       else if ((mm = one.match(/^target (?:creature|permanent)(?: you control)? gains ([a-z ,]+?) until end of turn$/i)) && /indestructible|hexproof|double strike|flying|trample|lifelink|haste|vigilance|deathtouch|first strike/i.test(mm[1])) fx.push({ type: 'pumpOne', self: false, p: 0, t: 0, keywords: ['indestructible', 'hexproof', 'double strike', 'flying', 'trample', 'lifelink', 'haste', 'vigilance', 'deathtouch', 'first strike'].filter(k => new RegExp('\\b' + k + '\\b', 'i').test(mm[1])) });
       else if ((mm = one.match(/^all creatures get -(\d+)\/-(\d+) until end of turn$/i))) fx.push({ type: 'massShrink', n: +mm[2] });
       else if (/^destroy x target artifacts and\/or enchantments$/i.test(one)) { fx.push({ type: 'removal', how: 'destroy', what: 'artOrEnch' }); approx = true; }
@@ -2596,6 +2598,18 @@
       }
       // ---- rules batch 29: the top-5000 pool, ranks 3000 and on (kept late: every rule above, written for one card, comes first)
       { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        // ---- rules batch 41
+        if (/^each other nontoken creature you control enters with an additional \+1\/\+1 counter on it\.?$/i.test(line)) { a.statics.enterCounter = { filter: '', n: 1, nontoken: true }; rec.status = 'ok'; continue; }          // Tromell, Seymour's Butler
+        if (/^when ~ enters, return a creature you control to its owner's hand\.?$/i.test(line)) { TR(['etb'], [{ type: 'returnOwn' }]); continue; }          // Whitemane Lion
+        if (/^when ~ enters, you may exile another target creature\.?$/i.test(line)) { TR(['etb'], [{ type: 'removal', how: 'exile', what: 'creature' }], null, 'partial'); rec.tag = 'opp'; continue; }          // Fiend Hunter (it does not come back)
+        if ((bm = line.match(/^whenever ~ or another nontoken historic permanent you control enters, (.+)$/i))) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['permEtb'], r.fx, { other: false, nontoken: true, filter: 'historic' }); continue; } }          // Arbaaz Mir
+        if (/^as long as equipped creature is legendary, it has ([a-z ,]+)\.?$/i.test(line)) { a.attachBonus = Object.assign({ p: 0, t: 0, keywords: [] }, a.attachBonus || {}); a.attachBonus.keywords = a.attachBonus.keywords.concat(kwList(line.match(/it has ([a-z ,]+)/i)[1])); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Hero's Heirloom (legendary or not)
+        if ((bm = line.match(/^when ~ enters and at the beginning of your upkeep, you may create ([a-z]+), a legendary (\d+)\/(\d+) ([a-z]+) ([A-Za-z]+) creature token with ([a-z ,]+)\.?$/i))) { const C = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }; TR(['etb', 'upkeep'], [{ type: 'token', n: 1, tapped: false, creature: true, p: +bm[2], t: +bm[3], colors: [C[bm[4].toLowerCase()]].filter(Boolean), subtypes: [bm[5]], keywords: kwList(bm[6]), artifact: false, name: bm[1], legendary: true }]); continue; }          // Minsc & Boo (Boo)
+        if ((bm = line.match(/^during your turn, creature tokens you control get \+(\d+)\/\+(\d+)\.?$/i))) { a.statics.anthems.push({ other: false, filter: 'token', p: +bm[1], t: +bm[2], keywords: [] }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Prava of the Steel Legion (every turn)
+        if ((bm = line.match(/^during your turn, ~ and enchantment creatures you control have ([a-z ,{}0-9]+)\.?$/i))) { const k = kwList(bm[1].replace(/ward \{\d+\}/i, '')); a.statics.anthems.push({ other: false, filter: 'enchantment', p: 0, t: 0, keywords: k }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Yuna, Hope of Spira (every turn; ward is not kept)
+        if (/^at the beginning of your end step, return up to one target enchantment card from your graveyard to the battlefield with a finality counter on it\.?$/i.test(line)) { TR(['end'], [{ type: 'yardBack', what: 'enchantment', dest: 'battlefield' }], null, 'partial'); continue; }          // Yuna (the finality counter is not kept)
+        if (/^whenever another nontoken creature you control dies, you may reveal cards from the top of your library until you reveal a creature card\. put that card into your hand and the rest on the bottom of your library in a random order\.?$/i.test(line)) { TR(['dies'], [{ type: 'revealCreature' }], { who: 'another creature you control', perTurn: false, nontoken: true }); continue; }          // Spinner of Souls
+        if (/^at the beginning of your end step, you gain life equal to the amount of life you gained this turn\.?$/i.test(line)) { TR(['end'], [{ type: 'gainLife', n: 'LIFEGAINED' }]); continue; }          // Astarion, the Decadent
         // ---- rules batch 40
         if ((bm = line.match(/^whenever you attack, target attacking creature gets \+(\d+)\/\+(\d+) and gains ([a-z ]+) until end of turn\.?$/i))) { TR(['attackAny'], [{ type: 'pumpAttacker', p: +bm[1], t: +bm[2], kw: kwList(bm[3]) }], { once: true }); continue; }          // Hunter's Talent
         if ((bm = line.match(/^whenever equipped creature attacks, create ([a-z]+), a legendary (\d+)\/(\d+) ([a-z]+) ([A-Za-z]+) creature token\.?$/i))) { const C = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }; TR(['equippedAttack'], [{ type: 'token', n: 1, tapped: false, creature: true, p: +bm[2], t: +bm[3], colors: [C[bm[4].toLowerCase()]].filter(Boolean), subtypes: [bm[5]], keywords: [], artifact: false, name: bm[1], legendary: true }]); continue; }          // The Spear of Leonidas (Phobos)
@@ -3116,7 +3130,7 @@
     card.a = analyze(card, deck.deckColors); deck.tokenCache[key] = card; return card;
   }
   function tokenCard(deck, spec) {
-    const key = 't:' + spec.name + '|' + (spec.creature ? spec.p + '/' + spec.t : 'a') + '|' + (spec.colors || []).join('') + '|' + (spec.keywords || []).join(',') + (spec.toxic ? '|tx' + spec.toxic : '') + (spec.vanishing ? '|vn' + spec.vanishing : '') + (spec.cantBlock ? '|cb' : '');
+    const key = 't:' + spec.name + '|' + (spec.creature ? spec.p + '/' + spec.t : 'a') + '|' + (spec.colors || []).join('') + '|' + (spec.keywords || []).join(',') + (spec.toxic ? '|tx' + spec.toxic : '') + (spec.vanishing ? '|vn' + spec.vanishing : '') + (spec.cantBlock ? '|cb' : '') + (spec.legendary ? '|lg' : '');
     if (deck.tokenCache[key]) return deck.tokenCache[key];
     const lname = spec.name.toLowerCase();
     const sortc = c => (c || []).slice().sort().join('');
@@ -3134,7 +3148,7 @@
       const art = !spec.creature ? (ARTIFACT_TOKENS[lname] || '') : '';
       card = {
         uid: key, isToken: true, qty: 1, name: spec.name, mana_cost: '', cmc: 0,
-        type_line: spec.creature ? `Token ${spec.artifact ? 'Artifact ' : ''}Creature — ${(spec.subtypes || []).join(' ')}` : spec.land ? `Token Land — ${spec.name}` : `Token Artifact — ${spec.name}`,
+        type_line: spec.creature ? `${spec.legendary ? 'Legendary ' : ''}Token ${spec.artifact ? 'Artifact ' : ''}Creature — ${(spec.subtypes || []).join(' ')}` : spec.land ? `Token Land — ${spec.name}` : `Token Artifact — ${spec.name}`,
         oracle_text: (kw.length ? kw.join(', ') + '\n' : '') + (spec.toxic ? `Toxic ${spec.toxic}\n` : '') + (spec.vanishing ? `Vanishing ${spec.vanishing}\n` : '') + (spec.cantBlock ? "This creature can't block.\n" : '') + art, power: spec.creature ? String(spec.p) : null, toughness: spec.creature ? String(spec.t) : null,
         colors: spec.colors || [], keywords: kw, images: [], remote_images: [], faces: [],
       };
@@ -4446,7 +4460,7 @@
   const ETB_FILTERS = new Map();
   function etbFilterKind(filter) {          // what a "whenever a ... enters" trigger watches for, read once from its filter text
     let k = ETB_FILTERS.get(filter);
-    if (k === undefined) { const f = filter.toLowerCase(); k = { f, kind: /creature or artifact/.test(f) ? 'ca' : /creature or planeswalker/.test(f) ? 'cp' : /permanent/.test(f) ? 'any' : /artifact/.test(f) ? 'art' : /enchantment/.test(f) ? 'ench' : /^aura$/.test(f) ? 'aura' : 'type' }; ETB_FILTERS.set(filter, k); }
+    if (k === undefined) { const f = filter.toLowerCase(); k = { f, kind: /creature or artifact/.test(f) ? 'ca' : /creature or planeswalker/.test(f) ? 'cp' : /permanent/.test(f) ? 'any' : /artifact/.test(f) ? 'art' : /enchantment/.test(f) ? 'ench' : /^aura$/.test(f) ? 'aura' : /historic/.test(f) ? 'hist' : 'type' }; ETB_FILTERS.set(filter, k); }
     return k;
   }
   function fireEnterWatchers(g, perm, ev) {
@@ -4477,7 +4491,7 @@
           if (t.needFlying && !hasKw(g, perm, 'flying')) continue;                                   // Dragon Tempest
           if (t.perTurn) { if (q.etbTurnUsed === g.turn) continue; if (/creature/.test(t.filter) && !isCreaturePerm(perm)) continue; q.etbTurnUsed = g.turn; }
           const fk = etbFilterKind(t.filter);
-          const ok = fk.kind === 'ca' ? (isCreaturePerm(perm) || artOn(g, perm)) : fk.kind === 'cp' ? (isCreaturePerm(perm) || perm.card.a.isPlaneswalker) : fk.kind === 'any' ? true : fk.kind === 'art' ? artOn(g, perm) : fk.kind === 'ench' ? enchOn(g, perm) : fk.kind === 'aura' ? !!perm.card.a.isAura : isCreaturePerm(perm) && matchesFilter(perm.card, fk.f);
+          const ok = fk.kind === 'ca' ? (isCreaturePerm(perm) || artOn(g, perm)) : fk.kind === 'cp' ? (isCreaturePerm(perm) || perm.card.a.isPlaneswalker) : fk.kind === 'any' ? true : fk.kind === 'art' ? artOn(g, perm) : fk.kind === 'ench' ? enchOn(g, perm) : fk.kind === 'aura' ? !!perm.card.a.isAura : fk.kind === 'hist' ? !!(perm.card.a.isArtifact || perm.card.a.isLegendary || perm.card.a.saga) : isCreaturePerm(perm) && matchesFilter(perm.card, fk.f);
           if (ok) for (let k = 0; k < em; k++) fire(g, t, q, ev, perm);
         }
       }
@@ -4594,7 +4608,7 @@
       target = ownCreature(g, target, 'aura', perm);
       if (target) { perm.attachedTo = target.iid; touch(g); if (g.lastCast === inst && !g.dry && !o.silent) ownTargeted(g, target, ev); }          // an Aura spell targets the creature it enchants
     }
-    if (!o.silent && isCreaturePerm(perm)) for (const q of (tableHas(g, 'statics.enterCounter') ? g.battlefield : NONE)) { const ec = q.card.a.statics.enterCounter; if (ec && q !== perm && matchesFilter(perm.card, ec.filter)) addCounters(g, perm, '+1/+1', ec.n === 'T' ? Math.max(0, toughnessOf(g, q)) : ec.n === 'C' ? Math.max(0, q.counters || 0) : ec.n, ev, q); }          // Metallic Mimic
+    if (!o.silent && isCreaturePerm(perm)) for (const q of (tableHas(g, 'statics.enterCounter') ? g.battlefield : NONE)) { const ec = q.card.a.statics.enterCounter; if (ec && q !== perm && !(ec.nontoken && perm.token) && matchesFilter(perm.card, ec.filter)) addCounters(g, perm, '+1/+1', ec.n === 'T' ? Math.max(0, toughnessOf(g, q)) : ec.n === 'C' ? Math.max(0, q.counters || 0) : ec.n, ev, q); }          // Metallic Mimic
     if (o.silent) return perm;
     if (a.saga && !g.dry) { perm.lore = 0; sagaAdvance(g, perm, ev); if (!g.battlefield.includes(perm)) return perm; }
     if (inst.offspringPaid && !g.dry) { inst.offspringPaid = false; const tc = Object.assign({}, inst.card, { power: '1', toughness: '1', a: Object.assign({}, inst.card.a, { power: 1, toughness: 1 }) }); const tk = enterWithTriggers(g, { iid: g.nextIid++, card: tc }, { token: true }, ev || []); tk.token = true; (ev || []).push({ type: 'note', text: `Offspring: a 1/1 token copy of ${inst.card.name}`, source: perm }); }
@@ -5519,7 +5533,7 @@
         case 'sacLand': for (let k = 0; k < (f.n || 1); k++) {          // Roiling Regrowth, Springbloom Druid: a tapped land first, the least useful one
           const ls = g.battlefield.filter(q => q.asLand); if (!ls.length) break;
           let l = ls.slice().sort((x, y) => (y.tapped - x.tapped) || landNow(g, x) - landNow(g, y))[0];
-          if (g.ask && !g.dry && ls.length > 1) l = decide(g, { kind: 'sacrifice', options: ls, def: l, source }) || l;
+          if (g.ask && !g.dry && ls.length > 1) l = decide(g, { kind: 'sacrifice', what: 'land', options: ls, def: l, source }) || l;
           sacEvent(g, l, ev); leavePerm(g, l, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${l.card.name}`, source }); }
           break;
         case 'sacPower': {          // Disciple of Bolas: another creature, the cheapest to lose; X = its power
@@ -5533,7 +5547,7 @@
         case 'transmuteArt': {          // Transmute Artifact: an artifact for one up to its mana value, more by paying the difference
           const vs = g.battlefield.filter(q => artOn(g, q) && !q.asLand && !isCreaturePerm(q)); if (!vs.length) break;
           let v = vs.slice().sort((x, y) => (x.token ? 0 : x.card.a.mv || 0) - (y.token ? 0 : y.card.a.mv || 0))[0];
-          if (g.ask && !g.dry && vs.length > 1) v = decide(g, { kind: 'sacrifice', options: vs, def: v, source }) || v;
+          if (g.ask && !g.dry && vs.length > 1) v = decide(g, { kind: 'sacrifice', what: 'artifact', options: vs, def: v, source }) || v;
           const smv = v.token ? 0 : (v.card.a.mv || 0); sacEvent(g, v, ev); leavePerm(g, v, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `Sacrificed ${v.card.name}`, source });
           const budget = allUnits(g).length, before = g.battlefield.slice();
           tutor(g, { type: 'tutor', filters: ['artifact'], dest: 'battlefield', maxMv: smv + budget }, ev, source);
@@ -6485,6 +6499,14 @@
         case 'surveil': surveil(g, Math.min(n, 10), ev, source); if (!g.dry && n > 0) eachTrigger(g, 'scried', ev); break;
         case 'pumpAttacker': { const t = g.battlefield.filter(q => q.attacking && isCreaturePerm(q)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (!t) break;          // Hunter's Talent: the biggest attacker
           t.eotP = (t.eotP || 0) + (f.p || 0); t.eotT = (t.eotT || 0) + (f.t || 0); t.eotKw = t.eotKw || new Set(); (f.kw || []).forEach(k => t.eotKw.add(k)); touch(g); ev.push({ type: 'note', text: `${t.card.name} gets +${f.p}/+${f.t}${(f.kw || []).length ? ' and ' + f.kw.join(', ') : ''}`, source }); break; }
+        case 'drawMaxMv': { const k = g.battlefield.reduce((m, q) => Math.max(m, q.token ? 0 : (q.card.a.mv || 0)), 0); if (k) draw(g, Math.min(k, 30), ev); break; }          // Will of the Temur
+        case 'returnOwn': {          // Whitemane Lion: itself by default (it can be cast again), or a creature whose enter trigger is worth more
+          const os = g.battlefield.filter(q => isCreaturePerm(q) && !q.token); if (!os.length) break;
+          let c = source && os.includes(source) ? source : os[0];
+          if (g.ask && !g.dry && os.length > 1) c = decide(g, { kind: 'target', what: 'return', options: os, def: c, source }) || c;
+          leavePerm(g, c, ev, 'hand'); flushLeaves(g, ev); ev.push({ type: 'note', text: `${c.card.name} returns to your hand`, source }); break; }
+        case 'revealCreature': { const k = g.library.findIndex(i => i.card.a.isCreature); if (k < 0) break; const got = g.library.splice(k, 1)[0], rest = g.library.splice(0, k);          // Spinner of Souls
+          g.hand.push(got); shuffle(rest, g.rnd); g.library.push(...rest); ev.push({ type: 'note', text: `Revealed ${k + 1} cards: ${got.card.name} to your hand`, source }); break; }
         case 'devotionDamage': damageOpp(g, devotionTo(g, f.color), ev, source); break;          // Fanatic of Mogis
         case 'selfTop': if (source && g.battlefield.includes(source) && source.inst) { removePerm(g, source); g.library.unshift(source.inst); ev.push({ type: 'note', text: `${source.card.name} goes on top of the library`, source }); } break;
         case 'arrange': {                                                                                    // Sensei's Divining Top: the best of the top three on top

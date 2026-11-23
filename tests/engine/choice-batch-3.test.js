@@ -1,6 +1,6 @@
 // The target choices of Decision Points 3 (tools/choice-audit.js): the two creatures of a fight or a one-way bite (Hunter's Talent,
 // Ram Through), the attacking creature Hunter's Talent pumps, Titania's land card, Fangs of Kalonia's creature, Eerie Interlude's
-// creatures and Rise and Shine's artifact. The autopilot's pick is the default of each; nobody else is asked.
+// creatures, Rise and Shine's artifact and Rishkar's up to two creatures. The autopilot's pick is the default of each; nobody else is asked.
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js')), D = require(path.join(ROOT, 'goldfish', 'static', 'decide.js'));
@@ -75,6 +75,13 @@ run('Rise and Shine', t => { const arts = t.a.deck.unique.filter(x => x.a.isArti
   const qs = play(t, q => { if (q.what !== 'animate') return 'auto'; want = q.options.find(o => !o.def); return want.k; }), q = qs.find(x => x.what === 'animate');
   check('Rise and Shine asks which noncreature artifact becomes a creature', !!q && q.options.length >= 2 && q.def.length === 1, q && q.title);
   check('...the chosen artifact is animated with four counters', !!want && ps.some(p => p.iid === want.iid && p.animated && p.counters === 4), want && want.name); });
+
+run('Rishkar, Peema Renegade', t => { const cs = t.a.battlefield.filter(G.isCreaturePerm), before = cs.map(c => c.counters || 0); let q = null;
+  play(t, x => { if (x.what !== 'counters') return 'auto'; q = x; return [x.options.find(o => o.iid === cs[2].iid).k]; });
+  check('Rishkar asks for up to two creatures, the autopilot\'s best two by default', !!q && q.multi && q.min === 0 && q.max === 2 && q.def.length === 2 && q.title === 'Rishkar, Peema Renegade: choose up to 2 creatures', q && q.title);
+  check('...only the chosen creature gets the counter', (cs[2].counters || 0) === before[2] + 1 && (cs[0].counters || 0) === before[0] && (cs[1].counters || 0) === before[1], cs.map(c => c.counters || 0).join('/')); });
+run('Rishkar, Peema Renegade', t => { const a = t.a; a.ask = null; a.choices = null; a.hand.splice(a.hand.indexOf(t.inst), 1); const ev = []; G.enterWithTriggers(a, t.inst, {}, ev);
+  check('...unseated, two creatures get a counter unasked', a.battlefield.filter(q => G.isCreaturePerm(q) && (q.counters || 0) > 0).length === 2); });
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -26,6 +26,7 @@
   const TITLE_RE = /^(?:[^0-9].*\s[—–-]\s*commanders?\s*:.*|deck\s*:.+|about|name\s+.+)$/i;
   const SECTION_RE = /^\s*(\/\/\s*)?(commander|commanders|deck|mainboard|main|sideboard|maybeboard|companion|tokens?|considering)\s*:?\s*(\(\d+\))?\s*$/i;
 
+  const NOT_DECK = new Set(['maybeboard', 'sideboard', 'considering', 'companion']);
   function parseDecklist(text) {
     const entries = [];
     let section = 'main';
@@ -46,6 +47,9 @@
       m = line.match(LINE_RE);
       if (!m) continue;
       const g = m.groups, tags = (g.tags || '').toLowerCase();
+      if (/\{nodeck\}/.test(tags)) continue;          // Archidekt: {noDeck} marks a line that is not in the deck
+      { const cats = (tags.match(/\[[^\]]*\]/g) || []).flatMap(b => b.slice(1, -1).split(',').map(c => c.replace(/\{[^}]*\}/g, '').trim()));
+        if (cats.some(c => NOT_DECK.has(c))) continue; }          // ...and so does one of these categories, whole (a custom "Sideboard Hate" is a real card)
       entries.push({
         qty: parseInt(g.qty || '1', 10),
         name: g.name.trim().replace(/\s+\*F\*$/, ''),

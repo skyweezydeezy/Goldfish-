@@ -12,15 +12,16 @@ idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, 
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => (x.name === n || x.name.split(' // ')[0] === n) && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Magda, Brazen Outlaw', 'Return the Favor', 'Barkform Harvester', 'Axgard Cavalry', 'Vault Robber', 'Óin the Brave', 'Dwarven Bloodboiler', 'Liquimetal Coating'];
-const HELPERS = ['Sol Ring', 'Mountain', 'Island'];
+const HELPERS = ['Sol Ring', 'Mountain', 'Island', 'Chrome Host Seedshark'];
 const card = (name, type, text, extra) => Object.assign({ name, type_line: type, oracle_text: text, mana_cost: '{1}', cmc: 1, colors: [], color_identity: [], keywords: [], qty: 1, rarity: 'common' }, extra || {});
 const GIANT = card('Homebrew Giant', 'Creature — Giant', '', { mana_cost: '{4}{R}', cmc: 5, power: '5', toughness: '5', colors: ['R'] });
 const BEAR = card('Grizzly Bears', 'Creature — Bear', '', { mana_cost: '{1}{G}', cmc: 2, power: '2', toughness: '2', colors: ['G'] });
 const SAGE = card('Homebrew Sage', 'Creature — Human Wizard', 'When this creature enters, draw three cards.', { mana_cost: '{3}{U}', cmc: 4, power: '1', toughness: '1', colors: ['U'] });
 const WALKER = card('Homebrew Walker', 'Legendary Planeswalker — Homebrew', '+1: Draw three cards.', { mana_cost: '{3}{U}', cmc: 4, colors: ['U'], loyalty: '3' });
+const NOVA = card('Homebrew Nova', 'Sorcery', 'Draw a card.', { mana_cost: '{4}{R}', cmc: 5, colors: ['R'] });
 const STONE = card('Homebrew Stone', 'Artifact', '', { mana_cost: '{1}', cmc: 1 });
 const all = NAMES.concat(HELPERS);
-const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n))).concat([GIANT, BEAR, SAGE, WALKER, STONE]);
+const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n))).concat([GIANT, BEAR, SAGE, WALKER, STONE, NOVA]);
 const deck = G.buildDeck(cards, base.tokens);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
@@ -32,6 +33,7 @@ const fresh = (g, n) => { const p = putOn(g, n); p.sick = true; p.enteredTurn = 
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
 const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
 const treasures = g => g.battlefield.filter(q => q.token && /Treasure/.test(q.card.name || '')).length;
+const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
 const lands = (g, n, name) => { for (let i = 0; i < n; i++) putOn(g, name || 'Mountain'); };
 
 T('coverage', () => {
@@ -86,6 +88,33 @@ T('return the favor', () => {
 T('magda', () => {
   const g = bare(19); g.turn = 4; putOn(g, 'Magda, Brazen Outlaw'); putOn(g, 'Axgard Cavalry'); const t0 = treasures(g); G.combat(g);
   check('Magda: two Dwarves attack, two Treasures', treasures(g) - t0 === 2, treasures(g) - t0);
+});
+
+// ---- MAIN's second review (after Version 162)
+T('review fixes', () => {
+  // 1. the copied trigger reads the spell that made it trigger, not Return the Favor
+  const sh = by('Chrome Host Seedshark'), keep = sh.a.triggers; sh.a.triggers = keep.map(t => t.kinds.includes('cast') ? Object.assign({}, t, { fx: t.fx.concat([{ type: 'draw', n: 3 }]) }) : t);
+  try {
+    const g = bare(20); putOn(g, 'Chrome Host Seedshark'); const rf = inst(g, 'Return the Favor'); g.hand.push(rf); const nv = inst(g, 'Homebrew Nova'); g.hand.push(nv); mana(g, 8); G.castCard(g, nv, true);
+    const inc = g.battlefield.filter(q => q.token && /Phyrexian|Incubator/.test(q.card.name || '')).map(q => (q.counters || 0) + '/' + (q.card.a.power || 0) + '/' + G.powerOf(g, q));
+    const pw = g.battlefield.filter(q => q.token && /Phyrexian|Incubator/.test(q.card.name || '')).map(q => G.powerOf(g, q)).sort().join(',');
+    check('Return the Favor copies Seedshark\'s trigger for a mana value 5 spell: two 5/5s (and a 2/2: the Favor is a noncreature spell too)', g.graveyard.includes(rf) && pw === '2,5,5', inc.join(' | '));
+  } finally { sh.a.triggers = keep; }
+  // 2. reading a creature's power does not change the game
+  const o = bare(21), oin = putOn(o, 'Óin the Brave'); putOn(o, 'Homebrew Stone'); G.powerOf(o, oin); G.hasKw(o, oin, 'haste');
+  check('Óin: looking at its power with two of three changes nothing', !o.story && G.powerOf(o, oin) === 1);
+  const other = bare(22), extra = putOn(other, 'Homebrew Stone'); o.battlefield.push(extra); G.touch(o);
+  check('...a third artifact that got there without entering counts while it is there, but sets nothing', G.powerOf(o, oin) === 2 && !o.story);
+  o.battlefield.splice(o.battlefield.indexOf(extra), 1); G.touch(o); putOn(o, 'Homebrew Stone');
+  check('...a third artifact that enters gives the enduring story for good', o.story === true && G.powerOf(o, oin) === 2);
+  // 3. in a match a creature is not tapped while the other player has creatures to attack with
+  const mk = () => { const a = bare(23), b = bare(24); G.linkMatch(a, b); a.activeTurn = true; b.activeTurn = false; a.turn = 4; return { a, b }; };
+  { const { a, b } = mk(); const cav = putOn(a, 'Axgard Cavalry'); fresh(a, 'Homebrew Giant'); putOn(b, 'Grizzly Bears'); G.previewAttack(a);
+    check('Axgard Cavalry in a match, facing a 2/2: it stays untapped (a blocker)', !cav.tapped); }
+  { const { a } = mk(); const cav = putOn(a, 'Axgard Cavalry'); const gi = fresh(a, 'Homebrew Giant'); const pv = G.previewAttack(a);
+    check('...facing no creatures: it taps, and the preview already shows the hasted Giant attacking', cav.tapped && pv.attackers.includes(gi)); }
+  { const { a, b } = mk(); putOn(a, 'Vault Robber'); lands(a, 1); a.graveyard.push(inst(a, 'Grizzly Bears')); putOn(b, 'Grizzly Bears'); G.endTurn(a);
+    check('Vault Robber in a match, facing a 2/2: no Treasure (it stays untapped)', treasures(a) === 0); }
 });
 
 T('games', () => {

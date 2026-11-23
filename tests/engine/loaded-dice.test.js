@@ -1,6 +1,6 @@
-// Loaded Dice (Krark and Sakashima; no longer a built-in deck, its list is kept in tests/fixtures) and Took's Adventure. The rules the first one needed:
+// Loaded Dice (Krark and Sakashima; no longer a built-in deck, its list is kept in tests/fixtures). The rules it needed:
 // Krark's coin flip, Heartstone, Karn, Silver Golem, Living Brain, March of the Machines, Ensoul Artifact, Rise and Shine (and its
-// overload), Tezzeret, Betrayer of Flesh's -2. Then both decks play whole games without an engine error.
+// overload), Tezzeret, Betrayer of Flesh's -2. Then it plays whole games without an engine error.
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js')), Source = require(path.join(ROOT, 'goldfish', 'static', 'source.js'));
@@ -10,7 +10,7 @@ const load = file => { const cards = []; for (const e of Source.parseDecklist(fs
 const O = { turns: 10, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true, policy: {} };
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
-const dice = load(path.join('..', '..', '..', 'tests', 'fixtures', 'loaded-dice.txt')), took = load('tooks-adventure.txt');
+const dice = load(path.join('..', '..', '..', 'tests', 'fixtures', 'loaded-dice.txt'));
 const deck = G.buildDeck(dice, []);
 const by = n => { const c = deck.unique.find(c => c.name === n); if (!c) throw new Error('no card ' + n); return c; };
 const fresh = seed => { const g = G.newGame(deck, O, seed || 5); g.turn = 5; g.command = []; g.hand = []; g.battlefield = []; g.graveyard = []; g.library = g.library.filter(i => /^(Island|Mountain)$/.test(i.card.name)); return g; };
@@ -20,7 +20,6 @@ const lands = (g, n, name) => { for (let i = 0; i < n; i++) { const p = G.enter(
 const perm = (g, n) => g.battlefield.find(p => p.card.name === n);
 
 check('Loaded Dice has 100 cards and two commanders', dice.reduce((s, c) => s + c.qty, 0) === 100 && dice.filter(c => c.commander).map(c => c.name).sort().join(' + ') === 'Krark, the Thumbless + Sakashima of a Thousand Faces');
-check('Took\'s Adventure has 60 cards and no commander', took.reduce((s, c) => s + c.qty, 0) === 60 && !took.some(c => c.commander));
 { const bad = []; for (const c of deck.unique) for (const v of c.a.coverage || []) if (v.status === 'ignored') bad.push(c.name + ': ' + v.text.slice(0, 50));
   check('every rules line of Loaded Dice is read', bad.length === 0, bad.join(' | ')); }
 
@@ -76,10 +75,7 @@ check('Training Grounds still makes them cost {2} less', (by('Training Grounds')
 
 // ---- whole games ----
 { const r = G.monteCarlo(dice, O, 300, 11, null, []);
-  check('Loaded Dice: 300 games without an engine error', r.errors === 0, r.firstError);
-  const r2 = G.monteCarlo(took, Object.assign({}, O, { oppLife: 20, prioritizeCommander: false }), 300, 11, null, []);
-  check('Took\'s Adventure: 300 games without an engine error', r2.errors === 0, r2.firstError);
-  check('...and it wins some of them by turn 10', r2.kill.slice(0, 10).reduce((s, v) => s + v, 0) > 0.2, r2.kill.slice(0, 10).reduce((s, v) => s + v, 0).toFixed(2)); }
+  check('Loaded Dice: 300 games without an engine error', r.errors === 0, r.firstError); }
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

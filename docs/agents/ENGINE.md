@@ -64,8 +64,8 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
   card's coverage and two or three behaviours. Helpers that are exported: `enterWithTriggers`, `castCard(g, inst, force)`,
   `eachTrigger(g, kind, ev)`, `applyEffects`, `leavePerm`, `flushLeaves`, `sba`, `abilityMenu`, `useAbility`, `comboLines`.
 
-## State of the work (engine session `session_01K5kL4YNG2qref25DS7t9oH` since batch 37; batches 37–39 on `claude/engine-rules`)
-- Pool of 5,000 most played Commander cards: **588 cards (680 lines) still have an unread line** (after batch 39).
+## State of the work (engine session `session_01K5kL4YNG2qref25DS7t9oH` since batch 37; batches 37–41 and the shock-land fix on `claude/engine-rules`, session closed)
+- Pool of 5,000 most played Commander cards: **561 cards (650 lines) still have an unread line** (after batch 41). Session 2 handoff: `docs/agents/ENGINE-2-HANDOFF.md`.
 - A person's play: activated abilities from the card menu (battlefield, graveyard, hand, command zone), X on casting and for
   abilities, abilities as responses to a spell, chosen color (`p.chosenColor`, `setChosenColor`), choose-a-type spells
   (`tribeSpell`, `g._castTribe`), Stormtamer / Spellskite / Cursecatcher offered whenever legal.

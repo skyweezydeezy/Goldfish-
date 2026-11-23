@@ -606,6 +606,8 @@ a.look-shop { text-decoration: none; font-weight: 650; } a.look-shop:hover { tex
 .labtable th, .labtable td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
 .labtable th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .labtable tr.best td { background: rgba(143,216,255,.07); }
+.lab-tune { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 6px; }
+.lab-tune h3 { margin: 4px 0 6px; font-size: 15px; }
 @media (max-width: 700px) { .labtable { display: block; overflow-x: auto; } }
 
 /* ---------- token wall: centred tiles of equal width, name and source on their own lines ---------- */

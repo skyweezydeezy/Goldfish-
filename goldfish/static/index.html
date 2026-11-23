@@ -255,6 +255,19 @@
       <div id="plInfo" class="hint"></div>
       <div id="plOut"></div>
       <div id="plSaved" class="hint"></div>
+      <div class="lab-tune" id="tnBox">
+        <h3>Tune toward a goal</h3>
+        <p class="hint">Make the deck kill the goldfish earlier, or hit its land drops more often. The lab measures the deck, then tries one change at a time: the choices above (how many lands to keep, mulligans, when to cast the commander…) and deck changes that keep its size (a land more for the slowest spell, cheap ramp or card draw in your colors for the slowest spell, ramp instead of a land). Every change plays the same shuffles, the one that moves the goal most is kept when it beats chance, and the next change starts from there. The deck before and after then plays fresh shuffles the search never saw: that is the before → after shown. A goldfish has no opponent, so interaction, combo pieces and win conditions are never cut; "Send to the A/B test" checks the new version against other decks. Bracket speed: B5 kills by turn 6 in 40% of games, B4 by turn 8 in 60%, B3 by turn 8 in 30%, otherwise B2.</p>
+        <div class="row wrap">
+          <label>Goal <select id="tnGoal"><option value="kill" selected>Kill earlier</option><option value="lands">Hit land drops more often</option></select></label>
+          <label>Target <select id="tnTarget"></select></label>
+          <button id="tnRun" class="primary">Tune</button>
+          <div id="tnProgress" class="progress"><div></div></div>
+        </div>
+        <div id="tnNow" class="hint"></div>
+        <div id="tnInfo" class="hint"></div>
+        <div id="tnOut"></div>
+      </div>
       <div class="row wrap lab-roles">
         <button id="plRoles">Swaps by role</button>
         <span class="hint" data-fold>Plays your deck against the opponents above (as many matches as the A/B test's Games setting), groups the cards linked to winning and losing by what they do (ramp, card draw, removal…) and says which kind of card the deck wants more of. It offers 2 cards of that kind to add and the 2 cards most linked to losing to remove; "Send to the A/B test" proves the change.</span>
@@ -385,6 +398,7 @@
 <script src="charts.js"></script>
 <script src="suggest.js"></script>
 <script src="compare.js"></script>
+<script src="tune.js"></script>
 <script src="profile.js"></script>
 <script src="tags.js"></script>
 <script src="combos.js"></script>

@@ -260,7 +260,9 @@
     if (open()) raw({ t: 'ping' });
     const g = S.game; if (!g) return;
     if (g.gm && g.gm.over && !g.ended) { g.ended = 'over'; save(); show(); }          // a finished game is kept, but not offered for rejoining
-    redraw();
+    // the table again only when what the bar says about the connection changes: a redraw replaces the buttons, and a tap that lands
+    // on one while it is replaced is lost (on a phone, the touch ends on a button that is no longer there)
+    const on = connected(); if (on !== S.shownOn) { S.shownOn = on; redraw(); }
   }, 4000);
   const connected = () => open() && Date.now() - S.lastSeen < 13000;
 

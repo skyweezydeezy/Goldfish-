@@ -38,7 +38,9 @@ const BASE = 'http://127.0.0.1:8800/';
     await p.evaluate(t => { document.querySelector('#deckText').value = t; document.querySelector('#loadDeck').click(); }, text);
     await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 120000 });
   };
-  const noStun = p => p.evaluate(() => { window.__isfRemote.ice = []; });          // the test machine has no internet STUN: local addresses only
+  // the test machine has no internet STUN: local addresses only. And the roll for first without the 3D dice: a remote game rolls them
+  // even with dice switched off, and their WebGL in this headless browser can stop a page drawing (then a click waits for ever)
+  const noStun = p => p.evaluate(() => { window.__isfRemote.ice = []; if (window.Dice) window.Dice.rollInto = null; });
   const A = await device('A'), B = await device('B');
   await A.goto(BASE); await loadDeck(A, deckA); await noStun(A);
 

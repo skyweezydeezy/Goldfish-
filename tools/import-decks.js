@@ -6,6 +6,8 @@
 // recorded in goldfish/static/decks/drive-sync.json so the hourly check only downloads lists that changed.
 // For each list: a deck that already exists (same name) is rewritten only if its cards changed; a new deck is added; the bracket is
 // written on the deck's second line ("// Bracket 4"). Then run: node tools/build-deck-index.js
+// drive-sync.json keeps the Drive bracket ("bracket") and, once ICEYfish has checked the deck, the verified one ("verified", written by
+// node tools/verify-brackets.js --apply). The deck file shows the verified bracket; it stays until the cards or the Drive bracket change.
 const fs = require('fs'), path = require('path');
 const Source = require(path.join(__dirname, '..', 'goldfish', 'static', 'source.js'));
 const DECKS = path.join(__dirname, '..', 'goldfish', 'static', 'decks');
@@ -50,17 +52,20 @@ for (const title of fs.readdirSync(dir).filter(f => /\.txt$/i.test(f)).sort()) {
   if (fs.existsSync(dest)) {
     const old = fs.readFileSync(dest, 'utf8');
     const oldBracket = (old.match(/^\/\/\s*Bracket\s*(\d)/mi) || [])[1];
+    const rec = Object.values(sync.files).find(f => f.deck === file);
     if (cardKey(old).key === key) {
-      if (bracket && String(bracket) !== oldBracket) {          // same cards: keep the file (it may carry set codes) and just set the bracket
-        const lines = old.replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*bracket/i.test(l));
+      if (rec && rec.verified && rec.bracket === bracket) out.same.push(name);          // ICEYfish checked this list (tools/verify-brackets.js): its verified bracket stays until the cards or the Drive bracket change
+      else if (bracket && String(bracket) !== oldBracket) {          // same cards: keep the file (it may carry set codes) and just set the bracket
+        const lines = old.replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*(bracket|checked by iceyfish)/i.test(l));          // a new Drive bracket: the old check no longer applies
         lines.splice(1, 0, `// Bracket ${bracket}`);
         fs.writeFileSync(dest, lines.join('\n'));
         out.bracket.push(`${name}: B${oldBracket || '?'} -> B${bracket}`);
       } else out.same.push(name);
     } else { fs.writeFileSync(dest, header + '\n' + body.trim() + '\n'); out.updated.push(name); }
   } else { fs.writeFileSync(dest, header + '\n' + body.trim() + '\n'); out.added.push(name); }
+  const prev = Object.values(sync.files).find(f => f.deck === file), stillChecked = prev && prev.verified && prev.bracket === bracket && out.same.includes(name);
   for (const t of Object.keys(sync.files)) if (t !== title && sync.files[t].deck === file) delete sync.files[t];     // a renamed or re-uploaded list replaces the old record
-  sync.files[title] = Object.assign({ deck: file, bracket }, meta[title] || {}, { importedAt: new Date().toISOString() });
+  sync.files[title] = Object.assign({ deck: file, bracket }, stillChecked ? { verified: prev.verified, verifiedAt: prev.verifiedAt } : {}, meta[title] || {}, { importedAt: new Date().toISOString() });
 }
 sync.checkedAt = new Date().toISOString();
 fs.writeFileSync(SYNC, JSON.stringify(sync, null, 1) + '\n');

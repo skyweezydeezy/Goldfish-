@@ -4333,7 +4333,7 @@
     if (g.killTurn != null) return;
     if (!g.dry && (p.counters || 0) > 0 && !(p.owner && p.owner !== g) && (p.card.a.sinDies || p.card.a.roleModel || (tableHas(g, 'roleModel') && g.battlefield.some(q => q.card.a.roleModel && q !== p)))) {          // rules batch 60: Sin, Reluctant Role Model: its +1/+1 counters go to another creature
       const cs = g.battlefield.filter(q => q !== p && isCreaturePerm(q)); const def = cs.slice().sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0];
-      const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, source: p }) || def : def;
+      const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, n: p.counters, source: p }) || def : def;
       if (t) { addCounters(g, t, '+1/+1', p.counters, ev, p); ev.push({ type: 'note', text: `${p.card.name}'s ${p.counters} counters go to ${t.card.name}`, source: p }); }
     }
     if (!g.dry && p.card.a.sinDies && p.inst && !p.token) { const gi = g.graveyard.indexOf(p.inst); if (gi >= 0) { g.graveyard.splice(gi, 1); g.library.splice(Math.floor(g.rnd() * (g.library.length + 1)), 0, p.inst); } }          // Sin: shuffled into the library
@@ -6517,7 +6517,9 @@
           const scored = f.modes.map(mode => ({ mode, v: fxValue(g, mode) + (mode.some(x => x.type === 'removal' || x.type === 'counter') && !g.opp ? -50 : 0) })).sort((x, y) => y.v - x.v);
           const pick = f.pickIf && (f.pickIf.kicked ? !!(g.lastCast && g.lastCast.kicked) : f.pickIf.filter === 'commander' ? g.battlefield.some(q => q.card.commander) : g.battlefield.some(q => matchesFilter(q.card, f.pickIf.filter))) ? f.pickIf.pick : f.pick == null ? 1 : f.pick;          // 'commander': the Will cards (T-036)
           let chosen = pick === 'any' ? scored.filter(x => x.v > 0) : scored.slice(0, pick);
-          if (g.ask) chosen = decide(g, { kind: 'mode', options: scored, def: chosen, multi: true, pick, f, source });
+          if (g.ask) { const will = f.pickIf && f.pickIf.filter === 'commander', src = source ? source.card : g.lastCast && g.lastCast.card, bl = will && src ? String(src.oracle_text || '').split('\n').filter(l => /^• /.test(l)) : [];          // the "Will" cards: one mode, or one or both with your commander out
+            if (bl.length === f.modes.length) scored.forEach(x => { x.text = bl[f.modes.indexOf(x.mode)].slice(2); });
+            chosen = will && pick === 2 ? decide(g, { kind: 'mode', will: true, options: scored, def: chosen, multi: true, pick, upTo: true, min: 1, f, source }) || chosen : decide(g, { kind: 'mode', options: scored, def: chosen, multi: true, pick, f, source }); }
           if (g.lastCast && g.lastCast.entwined && g.lastCast.card.a.spellFx.includes(f)) chosen = f.modes.map(mode => ({ mode }));          // entwine paid: both modes
           for (const c of chosen) applyEffects(g, c.mode, source, ev, subject);
           break;

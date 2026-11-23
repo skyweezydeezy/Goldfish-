@@ -1777,6 +1777,7 @@
     if (worker) worker.terminate();
     const o = opts();
     worker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(worker, '#simProgress', 'dummy');
     const bar = $('#simProgress div'); bar.style.width = '0';
     $('#runSim').disabled = true; $('#simInfo').textContent = `Goldfishing ${o.n.toLocaleString()} games…`;
     const t0 = performance.now();
@@ -1833,6 +1834,7 @@
     const n = Math.max(20, Math.min(20000, +$('#mmN').value || 2000));          // 2,000: any percentage within about ±2 points (95%)
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(mmWorker, '#mmProgress', 'rival');
     const bar = $('#mmProgress div'); bar.style.width = '0';
     const t0 = performance.now();
     $('#mmInfo').textContent = `Playing ${n.toLocaleString()} matches…`;
@@ -2055,6 +2057,7 @@
     const candidates = dec.options.map(op => ({ name: op.name, policy: { [dec.key]: op.value } }));
     if (plWorker) plWorker.terminate();
     plWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(plWorker, '#plProgress', mode === 'goldfish' ? 'dummy' : 'rival');
     const bar = $('#plProgress div'); bar.style.width = '0';
     const vs = field ? ` against ${field.map(x => x.name).join(', ')}` : '';
     $('#plInfo').textContent = `Playing ${n.toLocaleString()} games with each of the ${candidates.length} options${vs}…`;
@@ -2148,6 +2151,7 @@
     const n = Math.max(40, Math.min(4000, +btn.dataset.n || TN_N));
     if (tnWorker) tnWorker.terminate();
     tnWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(tnWorker, '#tnProgress', 'dummy');
     const bar = $('#tnProgress div'); bar.style.width = '0';
     $('#tnInfo').textContent = `Tuning: ${n.toLocaleString()} games for each change${pool.length ? '' : ' (no ramp or card draw found to try: lands and choices only)'}…`;
     const t0 = performance.now();
@@ -2212,6 +2216,7 @@
     $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
     if (plRolesWorker) plRolesWorker.terminate();
     plRolesWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(plRolesWorker, '#plRolesProgress', 'rival');
     const bar = $('#plRolesProgress div'); bar.style.width = '0';
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     plRolesWorker.onerror = err => { btn.disabled = false; $('#plInfo').textContent = 'Swaps by role: ' + err.message; };
@@ -2292,6 +2297,7 @@
   function abRun(msg, onDone) {
     if (abWorker) abWorker.terminate();
     abWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(abWorker, '#abProgress', 'rival');
     const bar = $('#abProgress div'); bar.style.width = '0';
     const t0 = performance.now();
     abWorker.onmessage = e => {

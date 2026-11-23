@@ -1,0 +1,10 @@
+# The relay service: only ice.php, healthz.php and usage.php can be opened from the web (data/ gets its own .htaccess on first use).
+Options -Indexes
+<FilesMatch "^(lib|cron)\.php$">
+  Require all denied
+</FilesMatch>
+
+# The secret key and settings for the web pages (cron.php gets them from its cron command). Apache never serves this file.
+# SetEnv METERED_SECRET_KEY your-metered-secret-key
+# SetEnv ADMIN_TOKEN a-long-random-string
+# SetEnv ALLOWED_ORIGINS https://skyweezydeezy.github.io

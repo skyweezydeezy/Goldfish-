@@ -115,7 +115,14 @@
     const c = $('#optFormat').value === 'commander';
     if (c && S.loaded && S.cards) {          // the Commander deck rule, for the deck already loaded: a deck that breaks it keeps the 60-card format
       const bad = commanderProblem(S.cards, S.cards.reduce((s, x) => s + x.qty, 0), S.loaded.specialty, S.loaded.missing);
-      if (bad) { $('#optFormat').value = '60'; $('#deckMsgs').insertAdjacentHTML('afterbegin', ruleMsg(bad, S.loaded.missing).replace('Fix the list, or choose 60-card in Format for a non-Commander deck.', 'The format stays 60-card.')); return; }
+      if (bad) {          // loaded again in the Commander format: the commander guess runs as on loading, so an unmarked 100-card list is fine
+        const msgs = $('#deckMsgs').innerHTML;
+        if (setDeck(S.loaded) === false) {
+          $('#optFormat').value = '60';
+          $('#deckMsgs').innerHTML = ruleMsg(bad, S.loaded.missing).replace('Fix the list, or choose 60-card in Format for a non-Commander deck.', 'The format stays 60-card.') + msgs;
+          return;
+        }
+      }
     }
     $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
@@ -782,6 +789,8 @@
   });
   refreshSaved();
   const builtinsListed = loadBuiltinIndex();
+  // a deck link opened at startup is checked against the format you had (remember.js restores the other settings later)
+  try { const f = ((JSON.parse(localStorage.getItem('isf_state') || 'null') || {}).ctl || {}).optFormat; if ((f === '60' || f === 'commander') && f !== $('#optFormat').value) { $('#optFormat').value = f; $('#optFormat').dispatchEvent(new Event('change')); } } catch (e) { /* no saved settings */ }
   openLinkInAddress();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));

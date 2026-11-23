@@ -10,6 +10,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
   await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); localStorage.setItem('isf_autosave', '0'); localStorage.setItem('isf_tutorial_off', '1'); } catch (e) {} });
   await ctx.addInitScript(() => { try { const t = sessionStorage.getItem('fakeDeck'); if (t) { sessionStorage.removeItem('fakeDeck'); const ui = JSON.parse(localStorage.getItem('isf_state')); ui.deck = t; localStorage.setItem('isf_state', JSON.stringify(ui)); } } catch (e) {} });
+  await ctx.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => new MutationObserver(() => { if (document.querySelector('.cmdr-rule')) window.__ruleSeen = true; }).observe(document.body, { childList: true, subtree: true })); });
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const q = route.request(), c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
     if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: c });
@@ -59,9 +60,9 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   r = await load(ninetyNine.replace(/^1 Arcane Signet\b.*$/m, '1 Notacard Xyzzy'));
   check('...a list that is short anyway is refused, and the message names the card not found', !r.loaded && rule(r.msg) && /99 cards/.test(r.msg) && /Notacard Xyzzy/.test(r.msg), r.msg.slice(0, 200));
   // 2. Archidekt: Maybeboard / Sideboard / Considering / Companion lines are not in the deck
-  const archidekt = frodo + '\n1x Arcane Signet (c21) 236 [Maybeboard{noDeck}{noPrice},Ramp]\n1x Lightning Greaves [Sideboard{noDeck}]\n1x Lurrus of the Dream-Den [Companion{top}]\n1x Swords to Plowshares [Considering]';
+  const archidekt = frodo.replace(/^1 Sol Ring\b.*$/m, '1x Sol Ring [Sideboard Hate]') + '\n1x Arcane Signet (c21) 236 [Maybeboard{noDeck}{noPrice},Ramp]\n1x Lightning Greaves [Sideboard{noDeck}]\n1x Lurrus of the Dream-Den [Companion{top}]\n1x Swords to Plowshares [Considering]';
   r = await load(archidekt);
-  check('Archidekt: a 100-card deck with Maybeboard, Sideboard, Companion and Considering lines loads', r.loaded && !rule(r.msg), r.msg.slice(0, 140));
+  check('Archidekt: a 100-card deck with Maybeboard, Sideboard, Companion and Considering lines (and a custom "Sideboard Hate" card) loads', r.loaded && !rule(r.msg), r.msg.slice(0, 140));
   { const e = Source.parseDecklist(archidekt); check('...those lines are not parsed as deck cards', e.reduce((s, c) => s + c.qty, 0) === 100 && !e.some(c => /Lurrus/.test(c.name)), e.reduce((s, c) => s + c.qty, 0)); }
   // 5. a deck coming back past the rule (the tutorial's setDeck(prev, true)): refused without force, loaded with it
   await load(frodo);
@@ -86,6 +87,12 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.selectOption('#optFormat', 'commander'); await p.waitForTimeout(300);
   { const f = await p.evaluate(() => ({ fmt: document.querySelector('#optFormat').value, msg: document.querySelector('#deckMsgs').textContent }));
     check('switching to Commander with a 60-card deck loaded: the rule\'s message, and the format stays 60-card', f.fmt === '60' && rule(f.msg), JSON.stringify(f).slice(0, 160)); }
+  // switching to Commander runs the commander guess, as loading does: an unmarked 100-card list stays on Commander
+  await p.selectOption('#optFormat', '60');
+  r = await load(frodo.replace('// COMMANDER\n', ''));
+  await p.selectOption('#optFormat', 'commander'); await p.waitForTimeout(300);
+  { const f = await p.evaluate(() => ({ fmt: document.querySelector('#optFormat').value, cmdr: window.__isf.deck.commanders.map(i => i.card.name).join('+'), msg: document.querySelector('#deckMsgs').textContent }));
+    check('switching to Commander with an unmarked 100-card list: the commander is guessed and the format stays Commander', f.fmt === 'commander' && f.cmdr && !/Not loaded/.test(f.msg), JSON.stringify(f).slice(0, 160)); }
   // non-Commander: a 60-card list
   await p.selectOption('#optFormat', '60');
   r = await load(sixty);
@@ -105,6 +112,12 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.evaluate(t => sessionStorage.setItem('fakeDeck', t), ninetyNine);          // the init script swaps it in after the page's own save on unload
   await p.reload(); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 }); await p.waitForTimeout(500);
   { const back = await p.evaluate(() => ({ deck: !!window.__isf.deck, n: (window.__isf.cards || []).reduce((s, c) => s + c.qty, 0) })); check('a remembered 99-card deck from before the rule comes back after a reload', back.deck && back.n === 99, JSON.stringify(back)); }
+  // a deck link opened at startup is checked against the saved format: a 60-card link, saved format 60-card, is not refused
+  await p.selectOption('#optFormat', '60'); await load(frodo); await p.waitForTimeout(1500);
+  const sixtyLink = 'http://127.0.0.1:8800/?link=1#deck=p.' + Buffer.from(['24 Forest', '24 Mountain', '12 Llanowar Elves'].join('\n')).toString('base64url') + '&name=Sixty';
+  await p.goto(sixtyLink); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 }); await p.waitForTimeout(1500);
+  { const f = await p.evaluate(() => ({ fmt: document.querySelector('#optFormat').value, seen: !!window.__ruleSeen, saved: Object.keys(JSON.parse(localStorage.getItem('gf_decks') || '{}')) }));
+    check('a 60-card deck link opened at startup, saved format 60-card: added and never refused', f.fmt === '60' && !f.seen && f.saved.includes('Sixty'), JSON.stringify(f)); }
   check('no page errors', !errs.length, errs[0]);
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -102,6 +102,8 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 
 | Version | Pull request | What went live |
 |---|---|---|
+| 144 | #75 | Promo: QR codes for the ICEYfish address, blurbs with current tab names (docs only) |
+| 143 | #74 | MAIN docs: merge-first rule, session roster, task table (docs only) |
 | 142 | #73 | "Every feature" tours under ?, the new main session, closing notes, PROJECT_STATE reconciled |
 | 141 | #69 | Play a friend back (as in v128), tutorial sample games and welcome/goals/tips/What's new, rules batches 37–41, shock lands, code clean-up, session protocol, handoff notes |
 | 140 | #66 | More questions: land sacrifice, Intuition, Snapcaster, Flickerwisp, Berserk |
@@ -137,11 +139,11 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [V] Accepted after MAIN review; merged into MAIN's branch with `c17de6d`. tutorial.ui 101/101, tutorial-game 17/17, install, remember-state pass. Verified, v142. |
 | T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination`, #73 | [V] Verified, v142. Drafts #64, #65, #68, #72 closed. |
 | T-014 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN | `claude/main-coordination`, #73 | [V] Verified, v142 |
-| T-015 | Engine rules batches 42–46 (held, merged together after 46); not the six #67 cards. Batch 42 also fixes "each of up to N target creatures" (parsed as every creature; MAIN's decision, 14:35 UTC) | Card Rules Engine 3 (`session_01K5kL4W5wx2aMmLP73o9seu`) | `claude/engine-rules` | Active (assigned 2026-11-23, from v142) |
+| T-015 | Engine rules batches 42–46 (held, merged together after 46); not the six #67 cards. Batch 42 also fixes "each of up to N target creatures" (parsed as every creature; MAIN's decision, 14:35 UTC) | Card Rules Engine 3 (`session_01K5kL4W5wx2aMmLP73o9seu`) | `claude/engine-rules` @ `4f08811` | [V] Integrated on MAIN's branch; engine suite 164/164, decisions/versus/versus-fit/loop/abilities/tutorial-game UI pass (MAIN). Pool 561 → 488 cards unread. Expected Version 145. |
 | T-016 | Decision points: Rishkar "up to two" targets (waits for T-015's parse fix, so it goes live with batches 42–46), Hunter's Talent's attacker, more target gaps | Decision Points 3 (`session_01K5kL4XqWbWKz7y7G2bUTMc`) | `claude/decision-points-2` | Active (from v142) |
-| T-017 | Issue #67: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut (takes over T-011) | Card teaching & Policy lab 2 (`session_01K5kL4YhRxNwAucFcxv2DYT`) | `claude/card-teaching` | Active (from v142) |
+| T-017 | Issue #67: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut (takes over T-011); plus Champion's Helm hexproof (the user, 2026-11-23) | Card teaching & Policy lab 2 (`session_01K5kL4YhRxNwAucFcxv2DYT`) | `claude/card-teaching` | Active (from v142) |
 | T-018 | Root-cause fixes for remote.ui (parallel load) and versus.ui (seed); 10 missing engine README rows | Code Clean-up 2 (`session_01K5kL4VM41uFmohgknueiEg`) | `claude/code-cleanup` | Active (from v142) |
-| T-019 | Promo: QR codes for /ICEYfish/, blurbs with current tab names and Play a friend; no posting | PR and Marketing 2 (`session_01K5kL4YpS91PFE97JzdhaDg`) | `claude/promo` | Active (from v142) |
+| T-019 | Promo: QR codes for /ICEYfish/, blurbs with current tab names and Play a friend; no posting | PR and Marketing 2 (`session_01K5kL4YpS91PFE97JzdhaDg`) | `claude/promo` @ `4fb85e8`, #75 | [V] Verified, v144. MAIN decoded all three QR images to the ICEYfish address (OpenCV; the SVG rendered at 820 px). No posting done. |
 
 **Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
 session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they
@@ -195,8 +197,6 @@ Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
 - [R, Remote versus 2; V, MAIN read the file] `remote.js` carries the Metered relay login in plain text (approved as "public by
   design" on 2026-11-21, back with the v128 restore). If the user deleted that login after v131, the relay is dead and
   `RELAY.servers` should go back to null; if not, it is public again. The user decides.
-- [R, PR and Marketing 2] The promo QR images encode the old address `.../Goldfish-/` (works only through the redirect);
-  `primer-blurbs.md` uses the old tab names; the promo note still says not to mention Play a friend.
 - [R, Combos 2] `COMBOS.md`'s Loaded Dice items are stale: the deck was removed in Version 127.
 - [R, App/User Requests 2] "PR #47 held" was only out of date: the user merged #47 on 2026-11-22. Nothing is held.
 - [R] Several archived notes still name the old MAIN id in their body. They are history; `CLAUDE.md` is the authority.

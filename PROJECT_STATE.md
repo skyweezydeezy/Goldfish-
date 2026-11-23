@@ -11,8 +11,13 @@ is the map. The rules are in `CLAUDE.md`; the protocol behind this file is `docs
 - Every line says how it is known: **[V]** verified against the repository, GitHub or a test run by the writer at the time of the
   last update; **[R]** reported by a session, a note or a pull request, and not re-checked; **[A]** assumed.
 
-**Last update:** 2026-11-23 13:05 UTC, by task T-001 (a TASK session, `session_01K5kL4WwjcWfZCuKtHVFAvU`). It wrote this first
-version from the default branch at `43871b6`, the work branches, GitHub and the session list. **MAIN has not reconciled it yet.**
+**Last update:** 2026-11-23 about 14:20 UTC, by MAIN (`session_01K5kL4WjxCpfdEjqWh1igWP`, "MAIN (ICEYfish)"). First
+reconciliation by a MAIN: T-001's first version, checked against `MAIN_HANDOFF.md` (the outgoing MAIN's hand-over), git, GitHub, the
+session list and the scheduled tasks.
+
+**MAIN:** `session_01K5kL4WjxCpfdEjqWh1igWP`, work branch `claude/main-coordination`. [V] The previous MAIN, "Visuals/Main"
+(`session_01K5kL4YgVQ6tZxzA48G59TU`), is **RETIRED — SUPERSEDED** (it acknowledged the hand-over at about 13:40 UTC on 2026-11-23)
+and answers only historical questions.
 
 ## 1. Goal and firm requirements
 
@@ -67,20 +72,24 @@ Who owns what [R, from the notes in `docs/agents/`]:
 Accepted decisions:
 
 - [V] The default (live) branch is `claude/visual-goldfish-calculator-1ztks5`, not `main`.
-- [V] MAIN's work branch is `claude/goldfish-visual-design-3yh2hy`.
+- [V] MAIN's work branch is `claude/main-coordination` (it was `claude/goldfish-visual-design-3yh2hy` until 2026-11-23).
 - [R] The card pool comes from Scryfall's EDHREC rank, because EDHREC itself cannot be reached from these sessions.
 - [R] Publishing only from `main` or `master` was proposed and not taken, because the live branch is neither.
-- [V] "Play a friend" (two people on two devices) was removed in Version 131 (pull request #53). [R] The user asked for it back as
-  it was in Version 128, without the camera scanner of Version 129; that is commit `6fbf901` on MAIN's branch, not live yet.
+- [V] "Play a friend" (two people on two devices) was removed in Version 131 (pull request #53) and, at the user's request,
+  restored as it was in Version 128 (`6fbf901`, without the camera scanner of Version 129). Live in Version 141. The seat-aware code
+  in `versus.js` and `decide.js` stays.
+- [V] MAIN writes a `goldfish/static/whatsnew.json` entry at each merge (`v` = the version before the merge + 1; format in its
+  "about" field).
 - [R] Tutorial: the welcome card, first goals, first-time tips and What's new are approved. A glossary and a separate tutorial
   deck are not.
 
 ## 3. Latest verified version
 
-- [V] **Version 140**: `claude/visual-goldfish-calculator-1ztks5` at `43871b6`. It is the merge `f4e7e90` (pull request #66) plus
-  the version commit.
-- [V] On `f4e7e90`, GitHub shows: Tests run 371 passed, Deploy to GitHub Pages run 247 passed, Launch check run 516 passed.
-- Not checked for this entry: the live page itself, and the browser tests on this commit (GitHub runs only the engine tests).
+- [V] **Version 141**: `claude/visual-goldfish-calculator-1ztks5` at `3fac34c`, the merge `2f4f74f` (pull request #69, head
+  `5c0ff42`) plus the version commit. The live `version.js` reads 141.
+- [V] Before the merge, on `5c0ff42` (MAIN, 2026-11-23): engine suite 159/159 files passed; UI tests tutorial, tutorial-game,
+  decisions, versus, versus-fit, d20, table-fit, loop, dice, remember-state, install, deck-menus, abilities, matfit, remote-connect
+  passed (`--jobs 2`); remote.ui 46/46 alone (`--jobs 1`). GitHub: engine x2 and windows x2 green.
 
 ## 4. Completed milestones
 
@@ -88,6 +97,7 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 
 | Version | Pull request | What went live |
 |---|---|---|
+| 141 | #69 | Play a friend back (as in v128), tutorial sample games and welcome/goals/tips/What's new, rules batches 37–41, shock lands, code clean-up, session protocol, handoff notes |
 | 140 | #66 | More questions: land sacrifice, Intuition, Snapcaster, Flickerwisp, Berserk |
 | 139 | #63 | New ICEYfish address, engine clean-up, spree questions, handoff notes |
 | 138 | #62 | Engine rules batches 32–36, the pod mill question, the handoff rule |
@@ -99,76 +109,69 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 | 132 | #54 | A steadier table-fit test |
 | 131 | #53 | Play a friend removed, chosen-color questions, rules batch 30 |
 | 130 | #52 | Meld: Gisela and Bruna become Brisela |
-| 129 | #51 | Engine rules, decision points, Construct fix, camera scanner |
-| 128 | #49 | Data Diver, decision points, promotion pages |
 
 ## 5. Tasks and their owners
 
-States: Planned → Active → Reported → Accepted → Integrated → Verified. The ids below were given by T-001 so the work in flight
-can be named; MAIN confirms or renumbers them. "In MAIN's branch" was checked with git on 2026-11-23 at 13:05 UTC, against MAIN's branch at `2c38473`.
+States: Planned → Active → Reported → Accepted → Integrated → Verified. Every TASK session is closed (idle) as of 13:40 UTC
+[V, session list]; none has started new work.
 
 | Id | Task | Owner (session) | Branch, pull request | State |
 |---|---|---|---|---|
-| T-001 | The session protocol: `CLAUDE.md` section, `docs/SESSION-PROTOCOL.md`, this file | Session management protocol (`session_01K5kL4WwjcWfZCuKtHVFAvU`) | `claude/session-management-protocol-lf2efy` | Active; Reported once its report reaches MAIN |
-| T-002 | Engine rules batches 37–41 | Card Rules Engine 2 (`session_01K5kL4YNG2qref25DS7t9oH`) | `claude/engine-rules`, #64 (draft) | [V] Integrated: batches 37–41 (`30f9ea4` … `54d0508`) are in MAIN's branch and in #69. Not live. |
-| T-003 | Shock lands: no life paid when put onto the battlefield tapped (engine), and the question "pay 2 life, or enter tapped?" (decision points). They go together. | Card Rules Engine 2 and Decision Points 2 | `claude/engine-rules` (`d303087`, `aa12ec1`), `claude/decision-points-2` (`d302017`) | [V] Integrated in MAIN's branch (`1ff07f8`, `1171dc7`) and in #69. Not live. |
-| T-004 | Decision points: sacrifice question names the card (`428db9a`), a title for the 'return' question (`c9e3da4`) | Decision Points 2 (`session_01K5kL4Zcst9FYJBqezvRjTK`) | `claude/decision-points-2`, #65 (draft) | [V] Integrated in MAIN's branch and in #69. Not live. |
-| T-005 | Tutorial stage 3: guided sample games on Practice and Duel (`012cd8f`) | Tutorial (`session_01K5kL4W83TGViiS66xLyhrQ`) | `claude/tutorial`, #68 (draft) | [V] Integrated in MAIN's branch and in #69. Not live. |
-| T-006 | Tutorial stage 4: welcome card, first goals, first-time tips, What's new (`9b97287`); then "Every feature" tours for each tab | Tutorial | `claude/tutorial`, #68 (draft) | [V] Stage 4 is Integrated in MAIN's branch (`2c38473`) and in #69; not live. [R] The tours are Active. |
-| T-007 | Code clean-up: unused CSS, steadier browser tests, one copy of each row in `tests/README.md`. The seat-aware Play a friend code stays (`eba880c` reverts its removal). | Code Clean-up (`session_01K5kL4W7sYVsWQcgDzVLTfX`) | `claude/code-cleanup` at `7335f59`, #70 (draft) | [V] Pushed, not in MAIN's branch. [R] Its hand-over is the "final merge" of the user's plan. |
-| T-008 | Play a friend back, as it was in Version 128 (`6fbf901`) | MAIN (then `session_01K5kL4YgVQ6tZxzA48G59TU`, now `session_01K5kL4WjxCpfdEjqWh1igWP`) | `claude/goldfish-visual-design-3yh2hy`, #69 (open, not a draft) | [V] In MAIN's branch. Not live. |
-| T-009 | Bug fixes | Error and issue fixes (2) (`session_01K5kL4YYZ9n2hdfpzktHqd2`) | `claude/brave-albattani-rl9zto` (nothing unmerged but its note) | [R] Blocked: it waits for the user's answer to "Did it say 'nothing triggers', or nothing at all?" |
-| T-010 | Card teaching and the Policy lab; the twice-daily "unlearned cards" report | Goldfish: card teaching & Policy lab (`session_01K5kL4Y1MvoJcQ6QEUCvRD4`) | `claude/nifty-shannon-ikmmqa` (equal to Version 133, no work on it) | [R] Idle since it was started. |
-| T-011 | Issue #67, "Teach: Bilbo, Thief in the Night, Gratuitous Violence, Hobbit Hole, Mjölnir, …" | Nobody yet | none | [V] Open on GitHub. Planned. |
+| T-001 | Session protocol | Session management protocol (`session_01K5kL4WwjcWfZCuKtHVFAvU`) | `e2507c9`; #71 closed | [V] Verified, v141 |
+| T-002 | Engine rules batches 37–41 | Card Rules Engine 2 (`session_01K5kL4YNG2qref25DS7t9oH`) | `claude/engine-rules`, #64 (draft) | [V] Verified, v141. Notes `b895694`, `776ebf5` not merged (T-013). |
+| T-003 | Shock lands: no life when put onto the battlefield tapped; "pay 2 life?" question | Card Rules Engine 2, Decision Points 2 | `d303087`, `aa12ec1`, `d302017` | [V] Verified, v141 |
+| T-004 | Sacrifice and return question titles | Decision Points 2 (`session_01K5kL4Zcst9FYJBqezvRjTK`) | `claude/decision-points-2`, #65 (draft) | [V] Verified, v141. Note `b9223b6` not merged (T-013). |
+| T-005 | Tutorial stage 3: sample games | Tutorial (`session_01K5kL4W83TGViiS66xLyhrQ`) | `claude/tutorial`, #68 (draft) | [V] Verified, v141 |
+| T-006 | Tutorial stage 4: welcome, goals, tips, What's new | Tutorial | `claude/tutorial` | [V] Verified, v141 |
+| T-007 | Code clean-up | Code Clean-up (`session_01K5kL4W7sYVsWQcgDzVLTfX`) | `7335f59`, `b5dfec5`; #70 closed | [V] Verified, v141 |
+| T-008 | Play a friend back, as in Version 128 | MAIN (then `session_01K5kL4YgVQ6tZxzA48G59TU`) | `6fbf901` | [V] Verified, v141 |
+| T-009 | Hakbal "misses its first explore when cast in main 1" | Error and issue fixes (2) (`session_01K5kL4YYZ9n2hdfpzktHqd2`) | `claude/error-fixes-hakbal` (`445ce2f`, note and repro scripts only) | [R] Not reproduced at v140; **on hold for the user**. |
+| T-010 | Card teaching and the Policy lab | Card teaching & Policy lab (`session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed) | `e2e7578` | [V] Its note is in v141. Session closed. |
+| T-011 | Issue #67, "Teach: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, …" | Nobody yet | none | [V] Open on GitHub. Planned; needs the user's go-ahead for a fresh session. |
+| T-012 | Tutorial "Every feature" tours, selectable in the ? menu (the user asked for it) | Tutorial | `claude/tutorial` `5c039db` | [R] Reported; 101 tutorial.ui checks green by the session. MAIN review and test pending. |
+| T-013 | Docs batch: closing notes `b895694`, `776ebf5`, `b9223b6`, `c17de6d`, `445ce2f`, `1f4e402`, `385bf11`, `661733d`, `aba1b98` | MAIN | `claude/main-coordination` | Planned. Then close drafts #64, #65, #68, #72. |
+| T-014 | MAIN hand-over: new session id in `CLAUDE.md`, this file | MAIN | `claude/main-coordination`, #73 (draft) | Active |
 
-Sessions with no task now [R, session list]: Features and Enhancements (`session_01K5kL4YtUiLPEtX5ytjG6Su`), PR and Marketing
-(`session_01K5kL4WqRN1kBjvWc1Tsngx`), Combo and win conditions (`session_01K5kL4WWP7xAdzXoi29ynuk`), App/User Requests
-(`session_01K5kL4ZHa2HpBw394qGVGjq`), Remote versus agent (`session_01K5kL4ZJZZgeVGvAYfVT4Ld`; its last turn ended in an error, its
-branch has nothing unmerged).
+Closed sessions with accepted handoffs [V]: Features and Enhancements (`session_01K5kL4YtUiLPEtX5ytjG6Su`), PR and Marketing
+(`session_01K5kL4WqRN1kBjvWc1Tsngx`), Combo and win conditions (`session_01K5kL4WWP7xAdzXoi29ynuk`), Remote versus agent
+(`session_01K5kL4ZJZZgeVGvAYfVT4Ld`), Token usage optimization (`session_01K5kL4WAVoR7GB6AAYSg8ui`, note `1f4e402`, advice only),
+App/User Requests (`session_01K5kL4ZHa2HpBw394qGVGjq`; its summary says "PR #47 held", but #47 is the merged Moving Parts deck PR [?]).
 
-Branches with nothing unmerged [V]: `claude/remember-state`, `claude/keen-keller-f9tnbt`, `claude/remote-versus-agent-60u5z5`,
-`claude/nifty-shannon-ikmmqa`, `claude/magical-pasteur-11c3cr` and `claude/clever-lovelace-7ijqfe` (merge commits only). Not
-determined, because this copy's history was too short: `claude/site-promotion-qr-code-s3b13i`, `claude/upbeat-gauss-7gr4ui`.
+Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
 
-Scheduled tasks [V, listed 2026-11-23 13:00 UTC]:
-
-| Task | Fires into | When |
-|---|---|---|
-| Final merge and main handover | MAIN | once, 2026-11-23 14:37 UTC |
-| Re-check clean-up PR #70 | Code Clean-up | once, 2026-11-23 13:49 UTC |
-| Re-check PR #68 CI | Tutorial | once, 2026-11-23 13:46 UTC |
-| Check new cards for choices to ask | Decision Points 2 | every 6 hours |
-| Unlearned cards report | Card teaching & Policy lab | 8am and 5pm Central |
-| Hourly ManaBox deck sync | MAIN | switched off |
+| Task | Fires into | When | Note |
+|---|---|---|---|
+| Merge PR #69 when green (`trig_01UoKGVt3Toknh2yX5veE4Ke`) | retired MAIN | once, 13:46 UTC | Stale; the retired MAIN ignores it. The user should disable it. |
+| Final merge and main handover (`trig_01LDR69uhyEtaspgNcfwLh8h`) | retired MAIN | once, 14:37 UTC | Stale, as above. |
+| Re-check PR #71 (`trig_01VYgLWHi5r6wzgD813FLFtu`) | T-001 session | once, 13:58 UTC | Harmless; #71 is closed. |
+| Unlearned cards report (`trig_01QHjLprDix64HKVERVnxXP8`) | closed card-teaching session | 8am and 5pm Central | Re-point or disable: the user's call. |
+| Daily Deck Stats (`trig_01WhS5ReuZf1Qc5bfgfz8u9j`) | a fresh session | daily | Last run failed on the usage limit. |
+| Check new cards for choices to ask (`trig_01XXHNkr6rJE7pzvesrNwKoe`) | Decision Points 2 | every 6 hours | [R] Not in the 13:40 listing of enabled tasks. |
 
 ## 6. Known issues and blockers
 
-- [R] **A new main session is about to take over** (the scheduled task above). The replacement MAIN changes the main session id in
-  `CLAUDE.md`, and should start from this file as the protocol's section 9 says.
-- [R] **Unsteady browser tests:** `versus.ui` "the game stops and asks for your blocks" depends on the seed; `loop.ui` and
-  `abilities.ui` time out when many tests run at once. T-007 works on them.
-- [V] **GitHub's Tests check runs the engine tests only.** Browser tests run only when a session runs them, so "checks are green"
-  does not cover the screens.
-- [V] **`docs/ROADMAP.md` says playing other people across devices is "Not planned for now"**; T-008 brings Play a friend back.
-  The roadmap needs a line once that is live.
-- [R] Play a friend's relay login (Metered) may have been deleted. If remote play cannot relay, the user has to supply a new one.
-- [V] **Notes that name sessions no longer running:** on the default branch `docs/agents/ENGINE.md`, `DECISION-POINTS.md` and
-  `REMOTE-VERSUS.md` give the ids of archived sessions. MAIN's branch corrects `ENGINE.md`.
-- [V] **The switched-off "Hourly ManaBox deck sync" task** is written to push straight to the default branch. If it is switched
-  on again, it has to go through MAIN's merge instead.
-- [V] MAIN's note says cloud sessions must use the repository's old name on GitHub. The T-001 session fetched, pushed and read
-  pull requests under `skyweezydeezy/ICEYfish` without trouble, so new sessions have the new name.
-- [R] Engine: 588 of the 5,000 pool cards (680 lines) still have an unread line, counted after batch 39.
-- [R] Decision points: about 159 choices could be asked now and about 310 wait for the engine, counted at Version 136.
-- [R] T-009 waits for the user.
+- [V] **GitHub access:** in MAIN's cloud environment it works under the old name `skyweezydeezy/Goldfish-` (redirects to ICEYfish).
+  The Claude GitHub App is not installed for it, so PR events do not reach MAIN; MAIN checks PRs directly.
+- [V] **GitHub's Tests check runs the engine tests only.** Browser tests run only when a session runs them.
+- [V] **remote.ui is flaky under parallel load** (the 30 s WebRTC wait). Run it with `--jobs 1`; it passed 46/46 alone on `5c0ff42`.
+- [R] versus.ui "the game stops and asks for your blocks" depends on the seed; loop.ui and abilities.ui time out under heavy load.
+- [V] **`docs/ROADMAP.md` still says cross-device play is "Not planned for now"**, stale since Version 141.
+- [R] Play a friend's relay login (Metered) may have been deleted. Without it, it works only on a direct connection. The user decides.
+- [V] The switched-off "Hourly ManaBox deck sync" task pushes straight to the default branch; if switched on, route it through MAIN.
+- [R] Engine: about 561 pool cards still have an unread line. Leftovers in `ENGINE-2-HANDOFF.md`: Squee, Children of Korlis,
+  Astarion's first line, Neyali's second line; questions owed: Hunter's Talent `pumpAttacker`, Transmute Artifact with two choices.
+- [R] Combos: Took's Adventure is not in `drive-sync.json`; the Commander Spellbook snapshot needs `node tools/build-combos.js`.
+- [R] Sound: the Drive audio backup is at v86; the Windows crackle fix is unconfirmed; background music is untested on a phone.
+- [R] Tests: 16 engine test files have no row in `tests/README.md`.
+
+Pending user decisions: the Metered relay login; who owns promotion (`docs/promo/HANDOFF-PR-and-Marketing.md`); the Hakbal report;
+archiving the closed sessions; disabling the two stale scheduled tasks; installing the Claude GitHub App for this repository.
 
 ## 7. Next priorities
 
-1. [R] **The final merge:** #69, which now carries T-002 to T-005, stage 4 of T-006 and T-008 [V], and then the clean-up (T-007).
-   Expected Version 141.
-2. [R] **MAIN's hand-over** to a fresh main session after that merge. [A] T-001 should be merged before it, so the new MAIN starts
-   with the protocol and this file.
-3. [R] Tutorial: the "Every feature" tours (T-006).
-4. [R] Engine rules batches 42–46, the next five; the open decision-point gaps.
-5. [V] Issue #67 needs an owner (T-011).
-6. [V, `docs/ROADMAP.md`] Later: watch mode for AI opponents, then a seat for the user; store apps.
+1. [V] T-014 and T-013: merge the session-id change, this file and the docs batch (#73).
+2. T-012: review and test the "Every feature" tours, then merge.
+3. Ask the user the pending decisions (section 6).
+4. Fresh TASK sessions, when the user wants them: issue #67 (T-011); engine rules batches 42–46; decision points (Rishkar first,
+   then Hunter's Talent's attacker) [R].
+5. [V, `docs/ROADMAP.md`] Later: watch mode for AI opponents, then a seat for the user; store apps.

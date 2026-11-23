@@ -168,4 +168,4 @@ Draft PRs that #69 supersedes, to close after it is live: **#70** (clean-up, ful
 
 **Acknowledgment:** none received yet. When the replacement MAIN acknowledges, the outgoing MAIN records **RETIRED — SUPERSEDED BY [replacement MAIN]** below. From then on it only answers historical questions.
 
-Outgoing MAIN status: **RETIRING — OWNERSHIP TRANSFER PENDING**
+Outgoing MAIN status: **RETIRED — SUPERSEDED BY `session_01K5kL4WjxCpfdEjqWh1igWP`** (acknowledged 2026-11-23, about 13:40 UTC; recorded by the new MAIN)

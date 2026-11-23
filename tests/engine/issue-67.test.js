@@ -12,7 +12,7 @@ idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(D, 
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => (x.name === n || x.name.split(' // ')[0] === n) && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Bilbo, Thief in the Night', 'Gratuitous Violence', 'Hobbit Hole', 'Mjölnir, Hammer of Thor', 'Rune of Flight', 'Samut, Tyrant of Naktamun'];
-const HELPERS = ['Counterspell', 'Murder', 'Siren Stormtamer', 'Shivan Dragon', 'Lightning Bolt', 'Sol Ring', 'Island', 'Mountain', 'Forest', 'Swamp'];
+const HELPERS = ["Champion's Helm", "Hero's Heirloom", 'Counterspell', 'Murder', 'Siren Stormtamer', 'Shivan Dragon', 'Lightning Bolt', 'Sol Ring', 'Island', 'Mountain', 'Forest', 'Swamp'];
 const card = (name, type, text, extra) => Object.assign({ name, type_line: type, oracle_text: text, mana_cost: '{1}', cmc: 1, colors: [], color_identity: [], keywords: [], qty: 1, rarity: 'common' }, extra || {});
 const HALFLING = card('Homebrew Halfling', 'Creature — Halfling Peasant', '', { mana_cost: '{1}{G}', cmc: 2, power: '2', toughness: '2', colors: ['G'] });
 const BEAR = card('Grizzly Bears', 'Creature — Bear', '', { mana_cost: '{1}{G}', cmc: 2, power: '2', toughness: '2', colors: ['G'] });
@@ -70,7 +70,7 @@ T('halflingcycling', () => {
   G.postCombat(g); check('with six lands it is cycled: a Halfling is in hand, Hobbit Hole in the graveyard', g.hand.some(i => /\bHalfling\b/.test(i.card.type_line)) && g.graveyard.includes(hh), g.hand.map(i => i.card.name).join(','));
   const s = bare(11); lands(s, 4, 'Forest'); s.library.unshift(inst(s, 'Homebrew Halfling')); const sh = hand(s, 'Hobbit Hole'); s.landPlayed = true; s.combatDone = true;
   G.postCombat(s); check('with four lands and no other land in hand it is kept as a land drop', s.hand.includes(sh));
-  const n = bare(12); lands(n, 6, 'Forest'); const nh = hand(n, 'Hobbit Hole'); hand(n, 'Forest'); n.landPlayed = true; n.combatDone = true;
+  const n = bare(12); n.library = n.library.filter(i => !/\bHalfling\b/.test(i.card.type_line)); lands(n, 6, 'Forest'); const nh = hand(n, 'Hobbit Hole'); hand(n, 'Forest'); n.landPlayed = true; n.combatDone = true;
   G.postCombat(n); check('with no Halfling left in the library it is not cycled', n.hand.includes(nh));
 });
 
@@ -110,6 +110,19 @@ T('samut', () => {
   check("...Siren Stormtamer can't answer Murder under split second: the Dragon dies", !f.battlefield.includes(t) && has(f, 'Siren Stormtamer'));
   const { g: x, b: y } = mirror(); turnOf(x, y); putOn(y, 'Siren Stormtamer'); lands(y, 1); const t2 = putOn(y, 'Shivan Dragon'); cast(x, 'Murder', 3);
   check('...without Samut the Stormtamer saves it', y.battlefield.includes(t2));
+});
+
+// ---- Champion's Helm (added to T-017): hexproof only while the equipped creature is legendary; in a match the other player can't target it
+T('champions helm', () => {
+  check("Champion's Helm: every line is simulated", by("Champion's Helm").a.coverage.every(r => r.status === 'ok'), by("Champion's Helm").a.coverage.map(r => r.status).join(','));
+  const g = bare(19), leg = putOn(g, 'Samut, Tyrant of Naktamun'), bear = putOn(g, 'Grizzly Bears'), h1 = putOn(g, "Champion's Helm"), h2 = putOn(g, "Champion's Helm"); h1.attachedTo = leg.iid; h2.attachedTo = bear.iid; G.touch(g);
+  check('...a legendary creature has hexproof and +2/+2', G.hasKw(g, leg, 'hexproof') && G.powerOf(g, leg) === 4, G.powerOf(g, leg));
+  check('...a creature that is not legendary gets +2/+2 but no hexproof', !G.hasKw(g, bear, 'hexproof') && G.powerOf(g, bear) === 4);
+  const hh = bare(20), l2 = putOn(hh, 'Samut, Tyrant of Naktamun'), b2 = putOn(hh, 'Grizzly Bears'), x1 = putOn(hh, "Hero's Heirloom"), x2 = putOn(hh, "Hero's Heirloom"); x1.attachedTo = l2.iid; x2.attachedTo = b2.iid; G.touch(hh);
+  check("Hero's Heirloom: trample for the legendary creature only", G.hasKw(hh, l2, 'trample') && !G.hasKw(hh, b2, 'trample'));
+  const { g: a, b } = mirror(); turnOf(b, a); const t = putOn(a, 'Samut, Tyrant of Naktamun'), helm = putOn(a, "Champion's Helm"); helm.attachedTo = t.iid; G.touch(a); cast(b, 'Murder', 3);
+  check("in a match the other player's Murder can't target the helmed legend", a.battlefield.includes(t));
+  const { g: c, b: d } = mirror(); turnOf(d, c); const t2 = putOn(c, 'Samut, Tyrant of Naktamun'); cast(d, 'Murder', 3); check('...without the Helm, Murder kills it', !c.battlefield.includes(t2));
 });
 
 T('games', () => {

@@ -16,6 +16,7 @@ Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the co
 - **Mjölnir:** `a.mjolnir`; `infernoMult` doubles the damage of the creature it is attached to. The `{2}{R}, Discard` sweeper is marked neutral/opp.
 - **Rune of Flight:** flying through `attachBonus`. The Equipment line is partial/approx: the Aura is never put on an Equipment.
 - **Samut:** `statics.noCounter` (as Chimil) plus `statics.splitSecond`: `protectOne` gives no response to an instant or sorcery's effect (ward still applies). Marked neutral/opp/mirror.
+- **Champion's Helm** (added by MAIN): "as long as equipped creature is legendary, it has ..." now goes to `attachBonus.legendKw`, applied in `anthemsFor` only for a legendary creature (hexproof, so `targetable` stops the other player in a match). Hero's Heirloom uses the same line (trample and haste for a legend only).
 - The same Bilbo line also completes **Fortune Teller's Talent** and **Savvy Trader**.
 - Set data: Bilbo and Hobbit Hole (hob), Rune of Flight (khm), Samut (fra) added; coverage refreshed only in the 7 sets these cards are in. `fetch-sets.js` refreshes stale coverage in ~45 other set files: those were reverted, not committed.
 - Test: `tests/engine/issue-67.test.js`.

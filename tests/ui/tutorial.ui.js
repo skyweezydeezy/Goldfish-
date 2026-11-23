@@ -240,7 +240,8 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
     await p.keyboard.press('Escape');
     // a new visitor: the short Duel tour has the step, and then no tip
     await p.evaluate(() => localStorage.setItem('isf_tutorial', JSON.stringify({ welcome: 1, seen: { 'tab:deck': 1 } }))); await p.reload(); await p.waitForTimeout(1200);
-    await p.click('[data-tab=duel]'); await p.waitForSelector('.tut-bubble', { timeout: 5000 }).catch(() => {});
+    if (await p.evaluate(() => document.body.dataset.view !== 'duel')) await p.click('[data-tab=duel]');          // Remember State may have reopened Duel already
+    await p.waitForSelector('.tut-bubble', { timeout: 5000 }).catch(() => {});
     let hit = null, k = 0;
     while (await p.evaluate(() => !!window.ISFTutorial.active) && k++ < 20) {
       if ((await p.$eval('.tut-title', e => e.textContent)) === 'Play a friend') hit = [await p.evaluate(() => window.ISFTutorial.target && window.ISFTutorial.target.classList.contains('rm-box')), await spotOff(p)];

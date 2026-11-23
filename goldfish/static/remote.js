@@ -262,8 +262,8 @@
     if (open()) raw({ t: 'ping' });
     const g = S.game; if (!g) return;
     if (g.gm && g.gm.over && !g.ended) { g.ended = 'over'; save(); show(); }          // a finished game is kept, but not offered for rejoining
-    // the table again only when what the bar says about the connection changes: a redraw replaces the buttons, and a tap that lands
-    // on one while it is replaced is lost (on a phone, the touch ends on a button that is no longer there)
+    // the table again only when the connection differs from what the bar shows (S.shownOn, set by io.connected): a redraw replaces
+    // the buttons, and a tap that lands on one while it is replaced is lost (on a phone, the touch ends on a button no longer there)
     if (connected() !== S.shownOn) redraw();
   }, 4000);
   const connected = () => open() && Date.now() - S.lastSeen < 13000;
@@ -352,7 +352,9 @@
       },
       halted(why) { if (g.ended) return; g.ended = 'halted'; save(); raw({ t: 'halt', why }); show(); },
       close() { if (S.game === g) { raw({ t: 'bye', why: 'The other player started another game.' }); S.game = null; try { S.link && S.link.pc.close(); } catch (e) {} show(); } },
-      connected,
+      // versus.js draws the bar (and "Waiting for … to reconnect") from this, after any move as well as on redraw(): what it last
+      // answered is what the table shows, so the 4-second check compares with that
+      connected: () => (S.shownOn = connected()),
     };
     g.io = io;
     document.querySelector('[data-tab=duel]').click();
@@ -372,7 +374,7 @@
     if (g.mine[k] && g.mine[k] !== hh) stop('The two devices no longer show the same game.');
   }
   function stop(why) { const g = S.game; if (!g || g.ended === 'halted') return; V.halt(MODE, why + ' It stops here rather than guess.'); }
-  function redraw() { const gm = V[MODE].game; S.shownOn = connected(); if (gm && gm.io) V.redraw(MODE); }          // shownOn: what the bar now says about the connection
+  function redraw() { const gm = V[MODE].game; if (gm && gm.io) V.redraw(MODE); }
 
   // ---------- the "Play a friend" box on the Duel tab ----------
   const myName = () => cleanName((box && box.querySelector('.rm-name').value) || localStorage.getItem(NAME_KEY));

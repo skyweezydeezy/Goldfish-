@@ -37,11 +37,14 @@ const q = async (p, sel) => { const e = await p.$(sel); if (e && await e.isVisib
 
 // follow the Practice sample game to the end; returns the titles seen
 async function practice(p, touch, stopAt) {
-  const seen = []; let last = -1, same = 0, sheet = false, spotOk = true;
+  const seen = []; let last = -1, same = 0, sheet = false, spotOk = true; const auto = {};
   for (let k = 0; k < 600; k++) {
     const a = await state(p); if (!a) break;
-    if (a.step !== last) { seen.push(a.title); last = a.step; same = 0; } else if (++same > 250) { seen.push('STUCK at ' + a.title); break; }
-    if (stopAt && a.title === stopAt) return { seen, sheet, spotOk };
+    if (a.step !== last) { seen.push(a.title); last = a.step; same = 0;
+      if (/^Playing to turn|^Loop$/.test(a.title)) auto[a.title === 'Loop' ? 'loop' : 'warn'] = await p.evaluate(() => ({ title: document.querySelector('.tut-title').textContent, text: document.querySelector('.tut-text').textContent,
+        box: +document.querySelector('#tAutoToN').value, busy: !!window.__isf.busy, next: !document.querySelector('.tut-next').hidden && !document.querySelector('.tut-next').disabled }));
+    } else if (++same > 250) { seen.push('STUCK at ' + a.title); break; }
+    if (stopAt && a.title === stopAt) return { seen, sheet, spotOk, auto };
     if (a.busy || a.dis) { await p.waitForTimeout(150); continue; }
     if (a.title === 'A question') { sheet = true; await q(p, '.ch-ok'); await p.waitForTimeout(400); continue; }
     if (a.title === 'Card viewer') { if (touch) await p.tap('#lightbox .lb-x'); else await p.click('#lightbox .lb-x'); await p.waitForTimeout(400); continue; }
@@ -49,7 +52,7 @@ async function practice(p, touch, stopAt) {
     if (a.next) { if (touch) await p.tap('.tut-next'); else await p.click('.tut-next'); await p.waitForTimeout(250); continue; }
     await p.waitForTimeout(150);
   }
-  return { seen, sheet, spotOk };
+  return { seen, sheet, spotOk, auto };
 }
 
 (async () => {
@@ -72,6 +75,9 @@ async function practice(p, touch, stopAt) {
     check('Practice sample: the fixed seed deals the same opening 7', hand === 'Forest, Forest, Forest, Fyndhorn Elves, Renata, Called to the Hunt, Three Visits, Worldly Tutor', hand);
     const r = await practice(p, false);
     const all = r1.seen.concat(r.seen);
+    const w = r.auto.warn, lp = r.auto.loop;
+    check('Practice sample: after Autopilot to turn it says the game plays itself to the end of turn N (the box\'s number)', !!w && w.text.includes(`plays itself to the end of turn ${w.box}`) && w.title === `Playing to turn ${w.box}`, JSON.stringify(w));
+    check('Practice sample: Next is free at once while the autopilot plays (the Loop step does not wait)', !!w && w.next && w.busy && !!lp && lp.next, JSON.stringify([w, lp]));
     check('Practice sample: the script runs to the end', !(await p.evaluate(() => window.ISFTutorial.active)) && all.includes('That is Practice') && !all.some(t => /STUCK/.test(t)), all.join(' › '));
     check('Practice sample: keep, land, spell, question, autopilot, speed, autopilot to turn, Loop and the card viewer are all shown',
       ['Keep or mulligan?', 'Play a land', 'Cast a spell', 'A question', 'Autopilot', 'How it decides', 'Autopilot speed', 'Autopilot to turn', 'Loop', 'Card viewer'].every(t => all.includes(t)));
@@ -124,6 +130,20 @@ async function practice(p, touch, stopAt) {
     const dAfter = await p.evaluate(() => ({ cmd: window.__isf.deck.commanders.map(c => c.card.name).join('+'), game: !!window.__isfVersus.duel.game, opp: document.querySelector('#tab-duel .vs-opp').value }));
     check('Duel sample: the game stays on the table as a normal game, your deck is back', dAfter.game && dAfter.cmd === before.cmd, JSON.stringify(dAfter));
     check('PC: no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  // ---- iPad landscape: the Practice sample game with taps, the autopilot warning and Next while it plays (the user's screenshot) ----
+  {
+    const ctx = await context(b, devices['iPad Pro 11 landscape']);
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    await p.goto(URL); await p.waitForTimeout(800);
+    await p.tap('.top-help'); await p.tap('.tut-m-sample');
+    const r = await practice(p, true);
+    const w = r.auto.warn, lp = r.auto.loop;
+    check('iPad landscape: the Practice sample game runs to the end with taps', r.seen.includes('That is Practice') && !r.seen.some(t => /STUCK/.test(t)) && r.spotOk, r.seen.join(' › '));
+    check('iPad landscape: the warning names the turn, and Next works while the autopilot plays', !!w && w.text.includes(`end of turn ${w.box}`) && w.next && !!lp && lp.next, JSON.stringify([w, lp]));
+    check('iPad landscape: no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
 

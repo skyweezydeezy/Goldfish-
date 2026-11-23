@@ -44,7 +44,7 @@
       '<div class="tut-spot"></div>' +
       '<div class="tut-bubble" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutText" tabindex="-1">' +
       '<div class="tut-head"><span class="tut-count"></span><button type="button" class="tut-skip" aria-label="Skip the tour">Skip</button></div>' +
-      '<h3 id="tutTitle" class="tut-title"></h3><p id="tutText" class="tut-text"></p>' +
+      '<h3 id="tutTitle" class="tut-title"></h3><div id="tutText" class="tut-text"></div>' +
       '<div class="tut-foot"><button type="button" class="ghost tut-back">Back</button><button type="button" class="primary tut-next">Next</button></div></div>';
     document.body.appendChild(root);
     const blockers = {}; root.querySelectorAll('.tut-block').forEach(b => { blockers[b.dataset.b] = b; b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); nudge(); }); });
@@ -80,6 +80,7 @@
     if (r.id) markSeen(r.id);          // skipped or finished: either way it does not come back by itself
     try { if (r.prevFocus && r.prevFocus.focus && r.prevFocus.isConnected) r.prevFocus.focus({ preventScroll: true }); } catch (e) { /* gone */ }
     r.done(how || 'stopped');
+    setTimeout(() => { maybeAuto(); tipLater(); }, 600);          // a tab first opened during this tour gets its own tour now; a waiting tip may show
   }
   async function go(d) {
     if (!run) return;
@@ -109,8 +110,8 @@
     const next = r.bubble.querySelector('.tut-next');
     next.hidden = (!!s.tap || !!s.until) && !!el;
     r.lostAt = 0;
-    next.textContent = i === total - 1 ? 'Done' : 'Next';
-    r.bubble.querySelector('.tut-skip').textContent = i === total - 1 ? 'Close' : 'Skip';
+    next.textContent = s.nextLabel || (i === total - 1 ? 'Done' : 'Next');
+    r.bubble.querySelector('.tut-skip').textContent = s.skipLabel || (i === total - 1 ? 'Close' : 'Skip');
     r.root.classList.toggle('tut-tap', (!!s.tap || !!s.through) && !!el);
     r.root.dataset.step = s.id || String(i);
     r.last = '';
@@ -388,7 +389,7 @@
   // the first visit to a tab: its tour, once (a short wait lets the tab draw itself first)
   let pending = 0;
   function maybeAuto() {
-    if (!autoOn() || run) return;
+    if (!autoOn() || run || load().quiet) return;          // quiet: the person chose Skip on the welcome card; tours stay under ?
     const t = view(); if (!TOURS[t] || load().seen['tab:' + t]) return;
     clearTimeout(pending);
     pending = setTimeout(() => { if (run || view() !== t || load().seen['tab:' + t]) return; if (blocked()) return void (pending = setTimeout(maybeAuto, 1500)); tour(t); }, 450);
@@ -402,6 +403,8 @@
       ['▶', `Tour of ${NAMES[view()] || 'this tab'}`, () => tour(view()), 'tut-m-tour'],
       ['🐟', 'Sample game: Practice', () => sampleGame('practice'), 'tut-m-sample'],
       ['⚔', 'Sample game: Duel', () => sampleGame('duel'), 'tut-m-duel'],
+      ['✓', `First goals · ${goalCount()} of ${GOALS.length}`, () => openGoals(), 'tut-m-goals'],
+      ['★', 'What\'s new', () => whatsNew(true), 'tut-m-new'],
       ['↺', 'Restart the tutorial', () => restart(), 'tut-m-restart'],
     ];
   }
@@ -441,11 +444,132 @@
     document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.tut-help'); if (!b) return; e.stopPropagation(); if ($('#tutMenu')) closeMenu(); else openMenu(b); });
   }
 
-  function reset() { try { localStorage.removeItem(KEY); } catch (e) { /* nothing saved */ } }
-  function restart() { stop(); reset(); maybeAuto(); if (!autoOn()) tour(view()); }
 
-  window.ISFTutorial = { start, stop, tour, restart, reset, sampleGame, takeSeed, tours: TOURS, autoOn, progress: load, get active() { return run ? { id: run.id, step: run.i, of: run.steps.length } : null; }, get target() { return run ? findEl(run.steps[run.i]) : null; } };
+  // ======================= stage 4: the welcome card, first goals, first-time tips, what's new =======================
+  const toast = t => { const a = A(); if (a && a.toast) a.toast(t); };
+  const onTab = t => { if (view() !== t) A().showTab(t); };
+
+  // ---- the welcome card: the first visit ever. "Take the tour" starts this tab's tour; "Skip" keeps every tour under ? ----
+  function welcome() {
+    const p = load(); p.welcome = 1; save(p);
+    const t = view();
+    return start('', [{ title: 'Welcome to ICEYfish', nextLabel: 'Take the tour', skipLabel: 'Skip',
+      text: 'Test a Commander deck: play it, simulate thousands of games, duel the autopilot. A short tour shows the way.' }])
+      .then(how => { if (how === 'done') { if (TOURS[t]) tour(t); } else { const q = load(); q.quiet = 1; save(q); toast('Tours and sample games are under ? any time'); } });
+  }
+
+  // ---- first goals: ticked as they happen, listed in the ? menu, each with "Show me" ----
+  const vsGame = () => window.__isfVersus && window.__isfVersus.duel && window.__isfVersus.duel.game;
+  const ownDeck = () => { const st = S(); return !!(st && st.deck && !(st.loaded && st.loaded.tutorial)); };
+  const GOALS = [
+    { id: 'deck', label: 'Load a deck', done: ownDeck,
+      show: () => { onTab('deck'); setTimeout(() => start('', [{ el: '#savedDecks', through: true, title: 'Pick a deck', text: 'Choose a built-in deck here, or paste your own list and tap Load deck.' }]), 300); } },
+    { id: 'sim', label: 'Run a simulation', done: () => !!(S() && S().sim),
+      show: () => { onTab('sim'); setTimeout(() => start('', [{ el: '#runSim', tap: true, title: 'Run a simulation', text: S() && S().deck ? 'Tap Run simulation.' : 'Load a deck first, then tap Run simulation.' }]), 300); } },
+    { id: 'win', label: 'Win a Practice game', done: () => { const g = S() && S().game; return !!(g && g.killTurn != null); }, show: () => sampleGame('practice') },
+    { id: 'duel', label: 'Play a Duel', done: () => { const m = vsGame(); return !!(m && m.human != null && m.over); }, show: () => sampleGame('duel') },
+  ];
+  const goalCount = () => { const g = load().goals || {}; return GOALS.filter(x => g[x.id]).length; };
+  function checkGoals() {
+    if (sample) return;          // the sample games are a demo, not the person's own goals
+    const p = load(); p.goals = p.goals || {}; let news = null;
+    for (const g of GOALS) { let ok = false; try { ok = g.done(); } catch (e) { /* not yet */ } if (ok && !p.goals[g.id]) { p.goals[g.id] = 1; news = g; } }
+    if (news) { save(p); if (autoOn() && !run) toast(`✓ First goal: ${news.label} (${goalCount()} of ${GOALS.length})`); }
+  }
+  function openGoals() {
+    closeMenu(); checkGoals();
+    const g = load().goals || {};
+    const m = document.createElement('div'); m.className = 'tut-menu tut-goals'; m.id = 'tutMenu'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', 'First goals');
+    m.innerHTML = `<b class="tut-goals-h">First goals · ${goalCount()} of ${GOALS.length}</b>` + GOALS.map(x => `<div class="tut-goal${g[x.id] ? ' done' : ''}" data-goal="${x.id}"><span class="tut-tick" aria-hidden="true">${g[x.id] ? '✓' : '○'}</span><span>${esc(x.label)}</span>${g[x.id] ? '<span class="tut-sr">done</span>' : '<button type="button" class="ghost tut-showme">Show me</button>'}</div>`).join('');
+    m.addEventListener('click', e => { const b = e.target.closest('.tut-showme'); if (!b) return; const x = GOALS.find(y => y.id === b.closest('.tut-goal').dataset.goal); closeMenu(); x.show(); });
+    document.body.appendChild(m);
+    const btn = [...document.querySelectorAll('.tut-help')].find(e => e.getBoundingClientRect().width) || document.querySelector('.topbar');
+    const r = btn.getBoundingClientRect(), mw = m.offsetWidth;
+    m.style.top = Math.round(r.bottom + 6) + 'px'; m.style.left = Math.round(Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))) + 'px';
+    (m.querySelector('button') || m).focus && (m.querySelector('button') || m).focus();
+    setTimeout(() => { document.addEventListener('click', offMenu, true); document.addEventListener('keydown', escMenu, true); });
+  }
+
+  // ---- first-time tips: one line the first time something new shows up, once; not shown once the person has used the feature ----
+  // Never during a tour or a sample game, one at a time, no dimming: a small note beside the thing, with "Show me" where there is an action.
+  const used = k => !!(load().used || {})[k];
+  function markUsed(k) { const p = load(); p.used = p.used || {}; if (p.used[k]) return; p.used[k] = 1; save(p); }
+  document.addEventListener('input', e => { if (e.target && e.target.id === 'tSpeed') markUsed('speed'); }, true);
+  document.addEventListener('click', e => { const t = e.target.closest ? e.target : null; if (!t) return; if (t.closest('#tLoop, .vs-loop')) markUsed('loop'); if (t.closest('.ch-auto, .ch-ok, .ch-none')) markUsed('sheet'); }, true);
+  const TIPS = [
+    { id: 'sheet', when: () => document.querySelector('.ch-sheet'), el: () => document.querySelector('.ch-sheet .ch-head') || document.querySelector('.ch-sheet'),
+      skip: () => used('sheet'), text: 'The game asks you. ★ marks the autopilot\'s pick, or tap Let the autopilot decide.' },
+    { id: 'd20', when: () => document.querySelector('.vs-dice'), el: () => document.querySelector('.vs-dice'), text: 'A d20 each: the highest roll goes first.' },
+    { id: 'meld', when: () => document.querySelector('.meld-box'), el: () => document.querySelector('.meld-box'), text: 'Two cards meld into one. The game log tells what happened.' },
+    { id: 'dice', when: () => document.querySelector('.dice-box:not(.meld-box)'), el: () => document.querySelector('.dice-box:not(.meld-box)'), text: 'Dice and coins roll on screen. The result is in the game log.' },
+    { id: 'odds', when: () => view() === 'odds' && document.querySelector('#chartOdds > *'), el: () => document.querySelector('#chartOdds'),
+      text: 'Each bar is the chance to have drawn them by that turn. Hover or tap a bar for the numbers.' },
+    { id: 'speed', when: () => view() === 'table' && S() && S().busy && +(document.querySelector('#tSpeed') || {}).value >= 10, el: () => document.querySelector('.speed-bar'),
+      skip: () => used('speed'), text: 'Too fast to follow? Slide toward the turtle.', show: () => start('', [{ el: '.speed-bar', through: true, title: 'Autopilot speed', text: 'Slide toward the turtle to watch each play.' }]) },
+    { id: 'loop', when: () => view() === 'table' && S() && S().game && S().game.killTurn != null && !S().busy && !(document.querySelector('#tLoop.on')), el: () => document.querySelector('#tLoop'),
+      skip: () => used('loop'), text: 'Goldfish dead! Loop plays game after game by itself and tallies the kill turns.', show: () => { const b = document.querySelector('#tLoop'); if (b) b.click(); } },
+  ];
+  let tipEl = null, tipT = 0;
+  function closeTip() { if (tipEl) { tipEl.remove(); tipEl = null; } clearTimeout(tipT); }
+  function showTip(t) {
+    const p = load(); p.tips = p.tips || {}; p.tips[t.id] = 1; save(p);
+    closeTip();
+    const anchor = t.el && t.el();
+    const b = document.createElement('div'); b.className = 'tut-tip'; b.setAttribute('role', 'status'); b.dataset.tip = t.id;
+    b.innerHTML = `<span class="tut-tip-text">${esc(t.text)}</span><span class="tut-tip-btns">${t.show ? '<button type="button" class="ghost tut-tip-show">Show me</button>' : ''}<button type="button" class="ghost tut-tip-ok">Got it</button></span>`;
+    b.querySelector('.tut-tip-ok').addEventListener('click', closeTip);
+    if (t.show) b.querySelector('.tut-tip-show').addEventListener('click', () => { closeTip(); markUsed(t.id); t.show(); });
+    document.body.appendChild(b); tipEl = b;
+    const W = innerWidth, H = innerHeight, bw = Math.min(340, W - 16); b.style.width = bw + 'px';
+    let x = (W - bw) / 2, y = H - b.offsetHeight - 16;
+    if (anchor) { const r = anchor.getBoundingClientRect(); x = Math.max(8, Math.min(r.left + r.width / 2 - bw / 2, W - bw - 8)); y = r.bottom + 8 + b.offsetHeight < H ? r.bottom + 8 : Math.max(8, r.top - b.offsetHeight - 8); }
+    b.style.left = Math.round(x) + 'px'; b.style.top = Math.round(y) + 'px';
+    tipT = setTimeout(closeTip, 14000);          // it goes by itself: a tip never waits for an answer
+  }
+  function checkTips() {
+    if (!autoOn() || run || sample || tipEl) return;
+    const seen = load().tips || {};
+    for (const t of TIPS) {
+      if (seen[t.id]) continue;
+      let on = false; try { on = !!t.when(); } catch (e) { /* not now */ }
+      if (!on) continue;
+      if (t.skip && t.skip()) { const p = load(); p.tips = p.tips || {}; p.tips[t.id] = 1; save(p); continue; }          // already used: no tip needed
+      showTip(t); return;
+    }
+  }
+  function tipLater() { setTimeout(checkTips, 300); }
+
+  // ---- what's new: after an update, once, only what is new since the person's last version (whatsnew.json) ----
+  // The last version seen is kept in its own key, so Reset (Remember State) and an update leave it alone.
+  const WN = 'isf_whatsnew';
+  const running = () => +(self.ISF_VERSION || 0);
+  async function whatsNew(all) {
+    let list = [];
+    try { const r = await fetch('whatsnew.json', { cache: 'no-cache' }); if (r.ok) list = ((await r.json()).entries || []).filter(e => e && e.v && e.lines); } catch (e) { /* offline */ }
+    const last = +(lsGet(WN) || 0), now = running();
+    const items = all ? list.slice(0, 6) : list.filter(e => e.v > last && e.v <= now);
+    try { localStorage.setItem(WN, String(now)); } catch (e) { /* private mode */ }
+    if (!items.length) { if (all) toast('Nothing new yet'); return; }
+    const html = '<ul class="tut-new">' + items.map(e => `<li><span class="tut-new-v">v${e.v}</span> ${e.lines.map(esc).join(' ')}</li>`).join('') + '</ul>';
+    return start('', [{ title: all ? 'What\'s new' : `What's new in v${now}`, html, nextLabel: 'Got it', skipLabel: 'Close' }]);
+  }
+
+  // ---- on load: what's new after an update, or the welcome card on the first visit ever, then the first tab's tour ----
+  async function onLoad() {
+    if (!autoOn()) return maybeAuto();
+    const p = load(), last = lsGet(WN);
+    if (!p.welcome && !Object.keys(p.seen).length) { try { localStorage.setItem(WN, String(running())); } catch (e) { /* private mode */ } return welcome(); }          // a first visit: nothing is "new"
+    if (last == null) { try { localStorage.setItem(WN, String(running())); } catch (e) { /* private mode */ } }          // before What's new existed: start counting from here
+    else if (+last < running()) await whatsNew(false);
+    maybeAuto();
+  }
+  setInterval(() => { checkGoals(); checkTips(); }, 1500);
+
+  function reset() { try { localStorage.removeItem(KEY); } catch (e) { /* nothing saved */ } }
+  function restart() { stop(); reset(); const p = load(); p.welcome = 1; save(p); maybeAuto(); if (!autoOn()) tour(view()); }
+
+  window.ISFTutorial = { start, stop, tour, restart, reset, sampleGame, takeSeed, welcome, whatsNew, checkTips, goals: GOALS, tips: TIPS, tours: TOURS, autoOn, progress: load, get active() { return run ? { id: run.id, step: run.i, of: run.steps.length } : null; }, get target() { return run ? findEl(run.steps[run.i]) : null; } };
 
   addButtons();
-  maybeAuto();          // the tab the app opens on (Build)
+  setTimeout(onLoad, 700);          // what's new or the welcome card, then the tab the app opens on (Remember State may restore one)
 })();

@@ -43,3 +43,23 @@ body.tut-on { overscroll-behavior: contain; }
   .tut.tut-tap .tut-spot, .tut-bubble.tut-nudge { animation: none; }
 }
 body.tut-on .bg-ask { display: none; }          /* the music question waits until the tour is closed */
+
+/* stage 4: first goals in the ? menu, the first-time tip, the what's-new list */
+.tut-goals { min-width: 250px; padding: 10px 12px; gap: 6px; }
+.tut-goals-h { font-size: 14px; margin-bottom: 2px; }
+.tut-goal { display: flex; align-items: center; gap: 8px; font-size: 14px; min-height: 32px; }
+.tut-goal > span:nth-child(2) { flex: 1; }
+.tut-goal.done { color: var(--text-secondary, #b9d0e0); }
+.tut-goal.done > span:nth-child(2) { text-decoration: line-through; text-decoration-color: rgba(185,208,224,.5); }
+.tut-tick { width: 18px; text-align: center; color: var(--text-secondary, #b9d0e0); }
+.tut-goal.done .tut-tick { color: var(--good, #3fbf7f); font-weight: 700; }
+.tut-menu .tut-showme, .tut-tip button { padding: 4px 10px; min-height: 30px !important; font-size: 13px; }
+.tut-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.tut-tip { position: fixed; z-index: 995; box-sizing: border-box; max-width: calc(100vw - 16px); display: flex; flex-direction: column; gap: 8px; padding: 10px 12px;
+  background: linear-gradient(180deg, #1b3347, #11212e); border: 1px solid rgba(250,178,25,.55); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  font-size: 13.5px; line-height: 1.4; color: var(--text-primary, #eef7fd); animation: tut-tip-in .2s ease-out both; }
+.tut-tip-btns { display: flex; justify-content: flex-end; gap: 6px; }
+@keyframes tut-tip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.tut-new { margin: 0 0 10px; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--text-secondary, #b9d0e0); }
+.tut-new-v { display: inline-block; min-width: 38px; font-size: 12px; font-weight: 700; color: var(--ice-2, #d6f1ff); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .tut-tip { animation: none; } }

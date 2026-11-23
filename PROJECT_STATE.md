@@ -172,7 +172,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-033 | Policy lab: goal-driven tuning ("kill earlier by N turns" / "hit land drops more often"), tied to bracket speed (the user) | Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`, new) | `claude/policy-lab-tuning` @ `a5b5385`, #95 | [V] Integrated (batch with T-034): engine 180/180, tune/lab/ab-picks UI pass (MAIN). Measured on fresh seeds, e.g. Second Breakfast kills by T7 35% → 46% (z 6.1). BRACKET_SPEED waits for T-035. [V] Verified, v156 (PR #97). |
 | T-034 | Layout by device, a PC layout designed for 1920×1080; more common options in settings (the user) | Layout and Settings (`session_01K5kL4XXnVVr2AU3is1ZiCX`, new) | `claude/layout-settings` @ `82c86a2`, #92 | [V] Integrated: layout/table-fit/versus-fit/matfit/remember-state/deck-menus UI pass, sweep bad 0, launch 13/13 (MAIN). Practice fits 1920×1080 in one screen; More rules + Display folds; startLife fixes 60-card games starting at 40. [V] Verified, v156 (PR #97). |
 | T-035 | Verify every built-in deck's bracket by simulation (≥20,000 games each) plus the official bracket rules; change and annotate where different (the user) | Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`, new) | `claude/deck-brackets` | Active (from v151) |
-| T-036 | Engine batches 57–61, starting with Decision Points' engine-first list (squad, Will modes without a commander, Abzan/Sultai grouping, Silkguard, Hunter's Insight etc.) | Card Rules Engine 4 (`session_01K5kL4YiRUadycHTLacu7Qv`) | `claude/engine-rules` | Active (from v154) |
+| T-036 | Engine batches 57–61, starting with Decision Points' engine-first list (squad, Will modes without a commander, Abzan/Sultai grouping, Silkguard, Hunter's Insight etc.) | Card Rules Engine 5 (`session_01K5kL4Xff1pQB7F6PZZaw6f`; Engine 4 handed over at ~520k tokens, archived) | `claude/engine-rules` | Active: blockers done (7ba267c), batch 57 done (118627a), 58–61 next |
 
 **Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
 session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they
@@ -180,7 +180,7 @@ replace are archived.
 
 | Area | Session | Id | Note | Work branch | Replaces (archived) |
 |---|---|---|---|---|---|
-| Engine card rules | Card Rules Engine 4 | `session_01K5kL4YiRUadycHTLacu7Qv` (Engine 3 `session_01K5kL4W5wx2aMmLP73o9seu` archived) | ENGINE.md, ENGINE-3-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
+| Engine card rules | Card Rules Engine 5 | `session_01K5kL4Xff1pQB7F6PZZaw6f` (Engine 3 `session_01K5kL4W5wx2aMmLP73o9seu` archived) | ENGINE.md, ENGINE-3-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
 | Decision points | Decision Points 3 | `session_01K5kL4XqWbWKz7y7G2bUTMc` | DECISION-POINTS.md | `claude/decision-points-2` | `session_01K5kL4Zcst9FYJBqezvRjTK` |
 | Tutorial | Tutorial 2 | `session_01K5kL4Y7HdHsCLLBiRzf9eJ` | TUTORIAL.md | `claude/tutorial` | `session_01K5kL4W83TGViiS66xLyhrQ` |
 | Bug fixes | Error and issue fixes 3 | `session_01K5kL4Zs2Rj3w9SNjfYxB6M` | ERROR-FIXES-2.md | `claude/error-fixes-hakbal` | `session_01K5kL4YYZ9n2hdfpzktHqd2` |

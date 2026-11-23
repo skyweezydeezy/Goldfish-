@@ -136,6 +136,8 @@
     uncounter: ['choose a target', 'Choose the permanent that loses its counters.'],
     copy: ['copy what?', 'Choose the permanent to copy.'],
     equip: ['equip which creature?', 'Choose the creature to attach it to.'],
+    deathReturn: ['choose a creature', 'Choose the creature that returns to the battlefield when it dies this turn.'],
+    flickerTwo: ['flicker which permanents?', 'Choose up to two of your permanents to exile and return to the battlefield (their enter effects happen again).'],
     earthbend: ['choose a land', 'Choose the land that becomes a 0/0 creature with haste and gets the +1/+1 counters.'],
     flicker: ['flicker which creature?', 'Choose the creature to exile and return to the battlefield (it comes back untapped, its enter effects happen again).'],
   };

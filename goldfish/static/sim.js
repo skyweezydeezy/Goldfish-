@@ -680,6 +680,17 @@
         if (/^whenever another permanent leaves the battlefield, put a \+1\/\+1 counter on ~\.?$/i.test(line)) { a.shredder = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Super Shredder (your permanents; an opponent's are not counted: leavePerm0)
         if (/^~ and enchanted creature each get \+x\/\+x, where x is the number of creature cards in all graveyards\.?$/i.test(line)) { a.cda = { what: 'creature cards in all graveyards', t: true }; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Nighthowler (as a creature; bestowed, the enchanted creature's bonus is not kept)
       }
+      // ---- rules batch 58: the top-5000 pool (one card each)
+      { const ACT = (cost, fx, extra, st) => { a.activated.push(Object.assign({ cost: parseCost(cost), fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^\{4\}\{w\}, \{t\}: exile another target creature you control, then return it to the battlefield under its owner's control\.?$/i.test(line)) { ACT('{4}{W}', [{ type: 'flickerOne' }], { tap: true, gate: 'flickerWorth', late: true }); continue; }          // Distinguished Conjurer
+        if (/^\{1\}\{g\}\{u\}: exile another target creature you control, then return it to the battlefield under its owner's control with a \+1\/\+1 counter on it\. activate only as a sorcery\.?$/i.test(line)) { ACT('{1}{G}{U}', [{ type: 'flickerOne', counter: 1 }], { gate: 'flickerWorth', late: true, key: 'lily' }); continue; }          // Lilysplash Mentor (once a turn here: the best target)
+        if (/^\{2\}, \{t\}: exile another target creature you control\. you may return that card to the battlefield under its owner's control\. if you don't, at the beginning of the next end step, return that card/i.test(line)) { ACT('{2}', [{ type: 'flickerOne' }], { tap: true, gate: 'flickerWorth', late: true }); continue; }          // Gilraen (it returns at once; the end-step return with counters is not used)
+        if (/^(?:threshold — )?\{r\}, \{t\}, sacrifice ~: it deals 2 damage to any target\. activate only if there are seven or more cards in your graveyard\.?$/i.test(line)) { ACT('{R}', [{ type: 'damage', n: 2, any: true }], { tap: true, sacSelf: true, gate: 'finishPing', n: 2, minGy: 7 }); continue; }          // Barbarian Ring
+        if (/^all sliver creatures get \+1\/\+1 for each other sliver on the battlefield\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'perOther', filter: 'sliver', p: 1, t: 1 }); rec.status = 'ok'; continue; }          // Sliver Legion (your Slivers)
+        if (/^~ has first strike as long as it's equipped\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'selfEquipped', p: 0, t: 0, keywords: ['first strike'] }); rec.status = 'ok'; continue; }          // Merry, Esquire of Rohan
+        if (/^target creature gains undying until end of turn\.?$/i.test(line)) { a.spellFx.push({ type: 'deathReturn', counter: 1 }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Undying Evil (as Undying Malice: it returns tapped)
+        if (/^target creature gains trample and gets \+x\/\+0 until end of turn, where x is 1 plus the number of cards named ~ in your graveyard\.?$/i.test(line)) { a.spellFx.push({ type: 'pumpOne', self: false, p: 'X', t: 0, keywords: ['trample'], count: { zone: 'special', what: 'named+1', name: card.name } }); rec.status = 'ok'; continue; }          // Ancestral Anger
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -3840,6 +3851,8 @@
       else if (d.kind === 'siege') on = src.siegeMode === d.mode;
       else if (d.kind === 'sameName') { if (stat && !p.token) n += g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.card.name === p.card.name).length; continue; }          // Mirror Box
       else if (d.kind === 'perAura') { if (src === p) n += (k === 'p' ? d.p : d.t) * (tableHas(g, 'isAura') ? g.battlefield.filter(q => q.attachedTo === p.iid && q.card.a.isAura) : []).length; continue; }          // Kor Spiritdancer
+      else if (d.kind === 'perOther') { if (stat && isCreaturePerm(p) && matchesFilter(p.card, d.filter)) n += d[k] * g.battlefield.filter(q => q !== p && isCreaturePerm(q) && matchesFilter(q.card, d.filter)).length; continue; }          // rules batch 58: Sliver Legion
+      else if (d.kind === 'selfEquipped') on = src === p && (tableHas(g, 'isEquipment') ? g.battlefield.some(q => q.attachedTo === p.iid && q.card.a.isEquipment) : false);          // rules batch 58: Merry
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
       else if (d.kind === 'levelLord') on = src !== p && (src.level || 0) >= d.min && matchesFilter(p.card, d.filter);
       else if (d.kind === 'treasureEquip') { if (k === 'p') n += 2 * g.battlefield.filter(q => q.token && q.attachedTo === p.iid && /Treasure/.test(q.card.name || '')).length; continue; }
@@ -3954,6 +3967,7 @@
       if (/entered/.test(count.what)) return g.nontokenCreatureEnters || 0;
       if (/power/.test(count.what)) return self ? powerOf(g, self) : 0;
       if (/hand/.test(count.what)) return g.hand.length;
+      if (count.what === 'named+1') return 1 + g.graveyard.filter(i => i.card.name === count.name).length;          // rules batch 58: Ancestral Anger
       if (count.what === 'lastmv') return g.lastCast && g.lastCast.card ? (g.lastCast.card.a.mv || 0) : 0;          // rules batch 53: Chrome Host Seedshark
       return 1;
     }
@@ -6529,7 +6543,7 @@
         case 'peer': { const k = Math.min(25, Math.floor(g.library.length / 2)); draw(g, k, ev); g.life = Math.ceil(g.life / 2); ev.push({ type: 'note', text: `Peer into the Abyss: drew ${k} cards, life is ${g.life}`, source }); break; }
         case 'flickerOne': { if (entryBlocked(g, { a: { isCreature: true } }, 'other')) break; const c = (f.drawIf && g.battlefield.find(q => q !== source && isCreaturePerm(q) && !q.token && q.inst && f.drawIf.split('|').some(t => cardHasType(q.card, t)) && !q.card.a.triggers.some(t => t.kinds.includes('etb')))) || g.battlefield.filter(q => q !== source && isCreaturePerm(q) && !q.token && q.inst && q.card.a.triggers.some(t => t.kinds.includes('etb'))).sort((x, y) => fxValue(g, [].concat(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))) - fxValue(g, [].concat(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))))[0];
           const c1 = g.ask && !g.dry ? decide(g, { kind: 'target', what: 'flicker', options: g.battlefield.filter(q => q !== source && isCreaturePerm(q) && !q.token && q.inst), def: c || null, optional: !c, source }) : c;          // a person chooses (Felidar Guardian): any other creature of theirs
-          if (c1) { removePerm(g, c1); const np = enterWithTriggers(g, c1.inst, {}, ev); ev.push({ type: 'note', text: `${c1.card.name} is flickered`, source }); if (f.drawIf && f.drawIf.split('|').some(t => cardHasType(np.card, t))) draw(g, 1, ev); } break; }          // drawIf: Splash Portal (T-036)
+          if (c1) { removePerm(g, c1); const np = enterWithTriggers(g, c1.inst, {}, ev); ev.push({ type: 'note', text: `${c1.card.name} is flickered`, source }); if (f.counter && g.battlefield.includes(np)) addCounters(g, np, '+1/+1', f.counter, ev, source); if (f.drawIf && f.drawIf.split('|').some(t => cardHasType(np.card, t))) draw(g, 1, ev); } break; }          // drawIf: Splash Portal (T-036)
         case 'flickerAll': { let cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.token && q.inst && q.card.a.triggers.some(t => t.kinds.includes('etb')));
           if (g.ask && !g.dry) { const opts = g.battlefield.filter(q => isCreaturePerm(q) && q.inst); if (opts.length) { const pk = decide(g, { kind: 'target', what: 'flickerAll', options: opts, def: cs, multi: true, pick: opts.length, upTo: true, source }); cs = Array.isArray(pk) ? pk.filter(q => !q.token) : cs; } }          // Eerie Interlude: a person picks any number (a token is gone for good: the engine leaves it)
           for (const c of cs) { removePerm(g, c); const np = enterWithTriggers(g, c.inst, {}, ev); np.sick = true; } ev.push({ type: 'note', text: `Flickered ${cs.length} creatures`, source }); break; }
@@ -9850,6 +9864,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   const countedTokens = ab => ab.fx.some(f => f.type === 'token' && f.n === 'X' && f.count && f.creature);          // "create X tokens, where X is the number of ..." (Krenko, Mob Boss)
   function abilityGate(g, p, ab) {
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
+    if (ab.minGy && g.graveyard.length < ab.minGy) return false;          // rules batch 58: threshold (Barbarian Ring)
+    if (ab.gate === 'flickerWorth') return g.battlefield.some(q => q !== p && isCreaturePerm(q) && !q.token && q.inst && q.card.a.triggers.some(t => t.kinds.includes('etb') && fxValue(g, t.fx) > 0));          // rules batch 58: an enters ability worth a second time
     if (ab.gate === 'finishPing') return oppLifeLeft(g) <= (ab.n || 1) && g.killTurn == null;          // Mogg Fanatic: the last point of damage
     if (ab.gate === 'life') return lifeWanted(g) && (!ab.greenPerms || g.battlefield.filter(q => colorsOf(g, q.card).includes('G')).length >= ab.greenPerms);          // Sapseep Forest: two green permanents
     if (ab.gate === 'topDraw') { const c = g.library[0]; return !!c && (c.card.a.isLand ? g.landsPlayedThisTurn < landsAllowed(g) : canPay(effectiveCost(g, c), allUnits(g).filter(u => u.src !== p))); }

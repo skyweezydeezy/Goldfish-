@@ -48,6 +48,17 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.waitForSelector('.meld-box.done', { timeout: 4000 });
   check('meld: the caption ends on the melded card', /into Brisela, Voice of Nightmares/.test(await p.$eval('.meld-box .dice-cap', e => e.textContent)));
   check('meld: shown even with dice animations turned off', await p.evaluate(() => { localStorage.setItem('isf_dice', '0'); const n = window.Dice.fromEvents([{ type: 'meld', parts: ['A', 'B'], into: 'C', perm: null }, { type: 'note', text: 'Rolled a d20: 3' }]); localStorage.removeItem('isf_dice'); return n === 1; }));
+  // the Sound panel's switch (🎲 Dice and coin animations) sets the same isf_dice, and it survives a reload
+  await p.evaluate(() => window.__isfAudio.open());
+  check('Sound panel: the dice switch starts on', await p.$eval('#sdDice', i => i.checked));
+  await p.click('#sdDice');
+  check('Sound panel: off sets isf_dice to 0', await p.evaluate(() => localStorage.getItem('isf_dice')) === '0');
+  await p.reload(); await p.waitForFunction(() => window.Dice && window.__isfAudio);
+  await p.evaluate(() => window.__isfAudio.open());
+  check('Sound panel: still off after a reload', !(await p.$eval('#sdDice', i => i.checked)));
+  check('with it off, a roll shows no dice', await p.evaluate(() => window.Dice.fromEvents([{ type: 'note', text: 'Rolled a d20: 3' }])) === 0);
+  await p.click('#sdDice');
+  check('Sound panel: on again clears isf_dice', await p.evaluate(() => localStorage.getItem('isf_dice')) === null);
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

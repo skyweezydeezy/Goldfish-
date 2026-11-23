@@ -1,6 +1,8 @@
 // The target choices of Decision Points 3 (tools/choice-audit.js): the two creatures of a fight or a one-way bite (Hunter's Talent,
 // Ram Through), the attacking creature Hunter's Talent pumps, Titania's land card, Fangs of Kalonia's creature, Eerie Interlude's
-// creatures, Rise and Shine's artifact and Rishkar's up to two creatures. The autopilot's pick is the default of each; nobody else is asked.
+// creatures, Rise and Shine's artifact, Rishkar's up to two creatures
+// the modes of a "Will" card with your commander out, and Hostage Taker's, Gilded Drake's, Coercive Recruiter's,
+// Metamorphosis Fanatic's and Astral Dragon's targets. The autopilot's pick is the default of each; nobody else is asked.
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const G = require(path.join(ROOT, 'goldfish', 'static', 'sim.js')), D = require(path.join(ROOT, 'goldfish', 'static', 'decide.js'));
@@ -82,6 +84,30 @@ run('Rishkar, Peema Renegade', t => { const cs = t.a.battlefield.filter(G.isCrea
   check('...only the chosen creature gets the counter', (cs[2].counters || 0) === before[2] + 1 && (cs[0].counters || 0) === before[0] && (cs[1].counters || 0) === before[1], cs.map(c => c.counters || 0).join('/')); });
 run('Rishkar, Peema Renegade', t => { const a = t.a; a.ask = null; a.choices = null; a.hand.splice(a.hand.indexOf(t.inst), 1); const ev = []; G.enterWithTriggers(a, t.inst, {}, ev);
   check('...unseated, two creatures get a counter unasked', a.battlefield.filter(q => G.isCreaturePerm(q) && (q.counters || 0) > 0).length === 2); });
+
+// the "Will" cards: with a commander on the battlefield, one mode or both (both, the autopilot's play, by default)
+const cmdr = t => { const c = t.a.deck.unique.find(x => x.commander); if (!c) return null; return G.enterWithTriggers(t.a, { iid: t.a.nextIid++, card: c }, {}, []); };
+run("Jeska's Will", t => { if (!cmdr(t)) { console.log('SKIP  no commander'); return; } const ex = t.a.hand.filter(i => i.temp != null).length, fl = t.a.floating.length; let q = null;
+  play(t, x => { if (x.kind !== 'mode') return 'auto'; q = x; return [x.options.findIndex(o => /^Exile the top three/.test(o.name))]; });
+  check("Jeska's Will with your commander out asks: one mode or both, both by default", !!q && q.title === "Jeska's Will: choose one or both" && q.min === 1 && q.max === 2 && q.def.length === 2 && /^Add \{R\}/.test(q.options[0].name), q && q.title + ' | ' + (q.options || []).map(o => o.name).join(' / '));
+  check('...only the chosen mode happens (three cards to play this turn, no red mana)', t.a.hand.filter(i => i.temp != null).length === ex + 3 && t.a.floating.length === fl, t.a.hand.filter(i => i.temp != null).length - ex); });
+run("Jeska's Will", t => { let q = null; play(t, x => { if (x.kind === 'mode') q = x; return 'auto'; });
+  check("...without a commander out it is not asked (the engine plays it as before)", !q); });
+
+// the other players' creatures: the one a person picks, not the autopilot's
+for (const [name, what, gone] of [['Hostage Taker', 'hostage', 'exiled'], ['Gilded Drake', 'drake', 'yours'], ['Coercive Recruiter', 'threaten', 'yours']]) run(name, t => { const d = t.p.games[1]; let want = null, q = null;
+  play(t, x => { if (x.what !== what) return 'auto'; q = x; want = x.options.find(o => !o.def) || x.options[0]; return want.k; });
+  check(`${name} asks which creature of theirs`, !!q && q.def.length === 1 && q.options.length >= 2 && q.options.every(o => o.owner === d.pid), q && q.title);
+  check(`...the chosen one is ${gone === 'exiled' ? 'exiled' : 'under your control'}`, !!want && (gone === 'exiled' ? t.a.exile.some(i => i.iid === want.iid) : t.a.battlefield.some(x => x.iid === want.iid)), want && want.name); });
+run('Metamorphosis Fanatic', t => { t.a.graveyard = []; const cs = t.a.deck.unique.filter(x => x.a.isCreature && !x.commander).slice(3, 5); cs.forEach(c => t.a.graveyard.push({ iid: t.a.nextIid++, card: c })); let want = null;
+  const qs = play(t, q => { if (q.what !== 'graveyard') return 'auto'; want = q.options.find(o => !o.def) || q.options[0]; return want.k; }), q = qs.find(x => x.what === 'graveyard');
+  check('Metamorphosis Fanatic asks which creature card returns (or none)', !!q && q.options.length === 2 && q.optional, q && q.title);
+  check('...the chosen card returns with a lifelink counter', !!want && t.a.battlefield.some(x => x.iid === want.iid && x.kwCounters && x.kwCounters.has('lifelink')), want && want.name); });
+run('Astral Dragon', t => { const arts = t.a.deck.unique.filter(x => x.a.isArtifact && !x.a.isCreature && !x.a.isLand && !x.a.isLegendary).slice(0, 2); if (arts.length < 2) { console.log('SKIP  Astral Dragon: fewer than two artifacts'); return; }
+  arts.forEach(c => G.enterWithTriggers(t.a, { iid: t.a.nextIid++, card: c }, {}, [])); let want = null;
+  const qs = play(t, q => { if (q.what !== 'astral') return 'auto'; want = q.options.find(o => !o.def); return want.k; }), q = qs.find(x => x.what === 'astral');
+  check('Astral Dragon asks which noncreature permanent is copied', !!q && q.options.length >= 2, q && q.title);
+  check('...two Dragon copies of the chosen one', !!want && t.a.battlefield.filter(x => x.token && x.card.name === want.name).length === 2, want && want.name); });
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

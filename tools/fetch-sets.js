@@ -22,7 +22,8 @@ const fileOf = code => (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(code) ? code + '
 const SET_FILE = /^[a-z0-9]+_?\.json$/;
 const codeOf = f => f.replace(/_?\.json$/, '');
 const API = 'https://api.scryfall.com';
-const H = { 'User-Agent': 'goldfish-calc-sets/0.2', Accept: 'application/json;q=0.9,*/*;q=0.8' };
+const { HEADERS: H } = require('./ua.js');
+Source.setHeaders(H);                                                    // source.js's Scryfall requests (--import-builtin, --import-decks)
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PRINTING = ['id', 'set', 'cn', 'rarity', 'remote_images'];          // what differs between printings; everything else is the card's rules data
 let cache = {}; try { cache = JSON.parse(fs.readFileSync(CACHE, 'utf8')); } catch (e) { cache = {}; }
@@ -156,7 +157,13 @@ async function builtinDecks(cacheDir) {
   for (const d of index.decks) {
     const cf = cacheDir && path.join(cacheDir, d.file.replace(/\.txt$/, '.json'));
     if (cf && fs.existsSync(cf)) { out.push(JSON.parse(fs.readFileSync(cf, 'utf8'))); continue; }
-    const r = await Source.loadDeck(fs.readFileSync(path.join(dir, d.file), 'utf8'), () => {});
+    // Scryfall rate-limits a run of 40-odd decks (HTTP 429), so pause between decks and wait a minute and retry when it says so
+    let r = null;
+    for (let t = 0; !r; t++) {
+      try { r = await Source.loadDeck(fs.readFileSync(path.join(dir, d.file), 'utf8'), () => {}); }
+      catch (e) { if (t >= 4 || !/rate limit/i.test(e.message)) throw e; console.log('  rate limited on', d.file, '- waiting a minute'); await sleep(60000); }
+    }
+    await sleep(500);
     if (cf) { fs.mkdirSync(cacheDir, { recursive: true }); fs.writeFileSync(cf, JSON.stringify({ cards: r.cards, tokens: r.tokens || [] })); }
     out.push({ cards: r.cards });
   }

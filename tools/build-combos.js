@@ -11,6 +11,7 @@ const OUT = path.join(__dirname, '..', 'goldfish', 'static', 'data', 'combos.jso
 // the extra requirements the goldfish can check on the board (the same names as BOOK_NEEDS in sim.js)
 const KNOWN_NEEDS = ['Persist Creature', 'Green Persist Creature', 'Creature with Undying', 'Undying Creature', 'Creature with Persist or Undying', 'Zombie Creature', 'Mana Dork or Mana Dork Creator', 'Haste Enabler',
   'Artifact Castable for {0} that survives', 'Noncreature permanent castable for {0}', 'Noncreature Artifact with MV<=1', 'Eldrazi Creature Card with MV=4, 5 or 6'];
+const { HEADERS } = require('./ua.js');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const cards = [], features = [], needs = [], ci = new Map(), fi = new Map(), ni = new Map(), combos = [];
@@ -18,7 +19,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   for (let off = 0; combos.length < WANT; off += PAGE) {
     const url = `https://backend.commanderspellbook.com/variants/?limit=${PAGE}&offset=${off}&ordering=-popularity`;
     let r = null;
-    for (let t = 0; t < 4 && !r; t++) { try { const res = await fetch(url, { headers: { 'User-Agent': 'goldfish-calc-build/0.1', Accept: 'application/json' } }); if (res.ok) r = await res.json(); else await sleep(2000 * (t + 1)); } catch (e) { await sleep(2000 * (t + 1)); } }
+    for (let t = 0; t < 4 && !r; t++) { try { const res = await fetch(url, { headers: HEADERS }); if (res.ok) r = await res.json(); else await sleep(2000 * (t + 1)); } catch (e) { await sleep(2000 * (t + 1)); } }
     if (!r) throw new Error('no answer for ' + url);
     for (const v of r.results) {
       if (v.status !== 'OK' || !(v.legalities || {}).commander || !(v.uses || []).length) continue;

@@ -102,6 +102,8 @@ Recent merges [V, from the merge commits on the default branch]. Older ones are 
 
 | Version | Pull request | What went live |
 |---|---|---|
+| 151 | #86 | Steadier remote.ui and versus.ui tests, 10 README rows |
+| 150 | #83 | Deck sync: Max Salt folder tracked, Scorched Sky updated, stated brackets |
 | 149 | #82 | Engine rules batches 47–51 |
 | 148 | #81 | Issue #67: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut; Champion's Helm |
 | 147 | #76 | Questions: Rishkar's up to two, fights and bites, Hunter's Talent's attacker, Titania, Eerie Interlude and more |
@@ -147,11 +149,24 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-015 | Engine rules batches 42–46 (held, merged together after 46); not the six #67 cards. Batch 42 also fixes "each of up to N target creatures" (parsed as every creature; MAIN's decision, 14:35 UTC) | Card Rules Engine 3 (`session_01K5kL4W5wx2aMmLP73o9seu`) | `claude/engine-rules` @ `4f08811` | [V] Integrated on MAIN's branch; engine suite 164/164, decisions/versus/versus-fit/loop/abilities/tutorial-game UI pass (MAIN). Pool 561 → 488 cards unread. [V] Verified, v145 (PR #79). |
 | T-016 | Decision points: Rishkar "up to two" targets (waits for T-015's parse fix, so it goes live with batches 42–46), Hunter's Talent's attacker, more target gaps | Decision Points 3 (`session_01K5kL4XqWbWKz7y7G2bUTMc`) | `claude/decision-points-2` @ `e392f26`, #76 | [V] Verified, v147. Engine 165/165, decisions/versus/versus-fit/loop/tutorial-game UI pass (MAIN); the every-default sweep finds 0 bad. |
 | T-017 | Issue #67: Bilbo, Gratuitous Violence, Hobbit Hole, Mjölnir, Rune of Flight, Samut (takes over T-011); plus Champion's Helm hexproof (the user, 2026-11-23) | Card teaching & Policy lab 2 (`session_01K5kL4YhRxNwAucFcxv2DYT`) | `claude/card-teaching` @ `6bbb53d`, #77 | [V] Integrated on MAIN's branch with v147: engine 166/166; decisions/versus/versus-fit/tutorial-game/abilities UI pass (abilities.ui timed out once under parallel load, passed 3 reruns and on v147 alike: the known flake, T-018). [V] Verified, v148 (PR #81, which supersedes #77). |
-| T-018 | Root-cause fixes for remote.ui (parallel load) and versus.ui (seed); 10 missing engine README rows | Code Clean-up 2 (`session_01K5kL4VM41uFmohgknueiEg`) | `claude/code-cleanup` | Active (from v142) |
+| T-018 | Root-cause fixes for remote.ui (parallel load) and versus.ui (seed); 10 missing engine README rows | Code Clean-up 2 (`session_01K5kL4VM41uFmohgknueiEg`) | `claude/code-cleanup` @ `7b5a7f0` | [V] Integrated on v150: remote/remote-connect/versus/versus-fit UI pass with --jobs 2 (MAIN). Root cause: frame-starved pages under load (waitForFunction polled per animation frame); shock-land question in versus.ui. Tests only. [V] Verified, v151 (PR #86). |
 | T-019 | Promo: QR codes for /ICEYfish/, blurbs with current tab names and Play a friend; no posting | PR and Marketing 2 (`session_01K5kL4YpS91PFE97JzdhaDg`) | `claude/promo` @ `4fb85e8`, #75 | [V] Verified, v144. MAIN decoded all three QR images to the ICEYfish address (OpenCV; the SVG rendered at 820 px). No posting done. |
 | T-020 | Simulated games default to 2,000 (was 10,000): Simulate, Mirror match, Policy lab, A/B test, Duel/Pod "Play many games" (the user, 2026-11-23) | MAIN | `claude/main-coordination` | [V] Integrated; remember-state, deck-menus, tutorial, tutorial-game, versus, versus-fit UI pass; browser check shows 2000 in all six fields. [V] Verified, v146 (PR #80); the live index.html has value="2000". |
 | T-021 | Engine rules batches 47–51 | Card Rules Engine 3 (`session_01K5kL4W5wx2aMmLP73o9seu`) | `claude/engine-rules` @ `a5ce29f` | [V] Integrated onto v148 (two one-line sim.js conflicts with T-017, both sides kept); engine 171/171; decisions/versus/versus-fit/abilities/tutorial-game UI pass. Pool 488 → 400 cards unread. [V] Verified, v149 (PR #82). |
-| T-022 | Deck sync from Drive (the user: "sync all decks… add cards from these decks") | MAIN | `claude/main-coordination` | [V] "Magic Commanders/ManaBox": 30 lists, all unchanged. "MTG Max Salt Commander Decks/ManaBox": 11 lists, now recorded in drive-sync.json; Scorched Sky updated (Kindred Dominance, Toxic Deluge in; Jetmir's Garden, Ziatora's Proving Ground out; other printings kept); the 11 now state B4, replacing estimated brackets. Every deck card is in the set data (offline check). Expected Version 150. |
+| T-022 | Deck sync from Drive (the user: "sync all decks… add cards from these decks") | MAIN | `claude/main-coordination` | [V] "Magic Commanders/ManaBox": 30 lists, all unchanged. "MTG Max Salt Commander Decks/ManaBox": 11 lists, now recorded in drive-sync.json; Scorched Sky updated (Kindred Dominance, Toxic Deluge in; Jetmir's Garden, Ziatora's Proving Ground out; other printings kept); the 11 now state B4, replacing estimated brackets. Every deck card is in the set data (offline check). [V] Verified, v150 (PR #83). |
+| T-023 | Engine rules batches 52–56 (held; skips built-in-deck cards) | Card Rules Engine 4 (`session_01K5kL4YiRUadycHTLacu7Qv`, new; replaces Engine 3) | `claude/engine-rules` | Active (from v150) |
+| T-024 | Questions: squad payments, the Will modes, more target gaps | Decision Points 3 (`session_01K5kL4XqWbWKz7y7G2bUTMc`) | `claude/decision-points-2` | Active (from v150) |
+| T-025 | Teach the unread lines of the 43 built-in decks' cards (the user: "add cards from these decks") | Card teaching & Policy lab 2 (`session_01K5kL4YhRxNwAucFcxv2DYT`) | `claude/card-teaching` | Active (from v150) |
+| T-026 | Node tools send a User-Agent (Scryfall 400); Commander Spellbook refresh; COMBOS.md fixes | Combo and win conditions 2 (`session_01K5kL4VNZYoUKU9qgzS4LHf`) | `claude/combos` @ `5939dbc`, #88 | [V] Integrated (batch with T-031, T-032): engine 172/172 (MAIN). tools/ua.js + Source.setHeaders (browser path unchanged); combos.json refreshed 2026-11-23, 15,000 combos. Expected Version 152. |
+| T-027 | Play a friend in the Duel tours; tour targets checked after v141–v150 | Tutorial 2 (`session_01K5kL4Y7HdHsCLLBiRzf9eJ`) | `claude/tutorial` | Active (from v150) |
+| T-028 | Untested paths: viewer "Cast (ignore mana)", Pod via viewer, service-worker update | Error and issue fixes 3 (`session_01K5kL4Zs2Rj3w9SNjfYxB6M`) | `claude/error-fixes-hakbal` | Active (from v150) |
+| T-029 | Play a friend on emulated iPhone/iPad; TURN-over-TLS config test | Remote versus 2 (`session_01K5kL4VGPUcfnYXVRzRPpyD`) | `claude/remote-versus` | Active (from v150) |
+| T-030 | A visible on/off for dice and coin animations in the Sound menu | Features and Enhancements 2 (`session_01K5kL4We9hARMPwjfV9kDiZ`) | `claude/sound-effects` | Active (from v150) |
+| T-031 | Windows local mode check at v150 (server, updater, launch tests) | App/User Requests 2 (`session_01K5kL4XD6qbMzEGonfuFZD1`) | `claude/app-requests` @ `76cea38`, #85 | [V] Integrated: launch tests 13/13 (MAIN). server.py uses a fixed content-type table (the Windows registry can say text/plain for .js). Expected Version 152. |
+| T-032 | Promo drafts: Reddit and Discord posts, a QR flyer; nothing posted | PR and Marketing 2 (`session_01K5kL4YpS91PFE97JzdhaDg`) | `claude/promo` @ `7cb3d35`, #84 | [V] Integrated, Partial: Reddit/Discord drafts and a QR flyer (decodes to the ICEYfish address). The site rules could not be read (reddit.com refused); posts.md marks them ASSUMED for the user to check. Nothing posted. Expected Version 152. |
+| T-033 | Policy lab: goal-driven tuning ("kill earlier by N turns" / "hit land drops more often"), tied to bracket speed (the user) | Policy Lab tuning (`session_01K5kL4WiB3WZrTPNucWeMVQ`, new) | `claude/policy-lab-tuning` | Active (from v151) |
+| T-034 | Layout by device, a PC layout designed for 1920×1080; more common options in settings (the user) | Layout and Settings (`session_01K5kL4XXnVVr2AU3is1ZiCX`, new) | `claude/layout-settings` | Active (from v151) |
+| T-035 | Verify every built-in deck's bracket by simulation (≥20,000 games each) plus the official bracket rules; change and annotate where different (the user) | Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`, new) | `claude/deck-brackets` | Active (from v151) |
 
 **Sessions (refreshed 2026-11-23 14:15 UTC at the user's request, "Refresh all idle agents") [V].** Each area has a fresh TASK
 session briefed from its note. Each reported or will report readiness to MAIN and waits for an assignment. The sessions they
@@ -159,7 +174,7 @@ replace are archived.
 
 | Area | Session | Id | Note | Work branch | Replaces (archived) |
 |---|---|---|---|---|---|
-| Engine card rules | Card Rules Engine 3 | `session_01K5kL4W5wx2aMmLP73o9seu` | ENGINE.md, ENGINE-2-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
+| Engine card rules | Card Rules Engine 4 | `session_01K5kL4YiRUadycHTLacu7Qv` (Engine 3 `session_01K5kL4W5wx2aMmLP73o9seu` archived) | ENGINE.md, ENGINE-3-HANDOFF.md | `claude/engine-rules` | `session_01K5kL4YNG2qref25DS7t9oH` |
 | Decision points | Decision Points 3 | `session_01K5kL4XqWbWKz7y7G2bUTMc` | DECISION-POINTS.md | `claude/decision-points-2` | `session_01K5kL4Zcst9FYJBqezvRjTK` |
 | Tutorial | Tutorial 2 | `session_01K5kL4Y7HdHsCLLBiRzf9eJ` | TUTORIAL.md | `claude/tutorial` | `session_01K5kL4W83TGViiS66xLyhrQ` |
 | Bug fixes | Error and issue fixes 3 | `session_01K5kL4Zs2Rj3w9SNjfYxB6M` | ERROR-FIXES-2.md | `claude/error-fixes-hakbal` | `session_01K5kL4YYZ9n2hdfpzktHqd2` |
@@ -207,7 +222,7 @@ Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
   `RELAY.servers` should go back to null; if not, it is public again. The user decides.
 - [R, Combos 2] `COMBOS.md`'s Loaded Dice items are stale: the deck was removed in Version 127.
 - [R, App/User Requests 2] "PR #47 held" was only out of date: the user merged #47 on 2026-11-22. Nothing is held.
-- [V] Scryfall rejects the Node tools' requests ("generic_user_agent", 400): `tools/fetch-sets.js` and `tools/build-combos.js` need a User-Agent. MAIN worked around it with a preload for one run.
+- [R] Set data coverage ("cov") is stale on 234 cards: run `node tools/fetch-sets.js --report` (engine's area). The Scryfall User-Agent problem is fixed by T-026.
 - [R] Several archived notes still name the old MAIN id in their body. They are history; `CLAUDE.md` is the authority.
 
 Pending user decisions: the Metered relay login; who owns promotion (`docs/promo/HANDOFF-PR-and-Marketing.md`); the Hakbal report;

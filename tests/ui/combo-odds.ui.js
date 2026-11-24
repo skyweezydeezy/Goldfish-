@@ -118,6 +118,12 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     check(`${name}: the box fits the screen width`, await p.$eval('#comboRaise', e => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('table')].every(t => t.getBoundingClientRect().right <= e.getBoundingClientRect().right + 1)));
     await p.$eval('#comboRaise', e => { e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); }); await p.waitForTimeout(200);
     if (shot) await p.screenshot({ path: `${shot}/combo-raise-${name}.png` });
+    // a card Scryfall does not know: Simulate says so and leaves no progress bar behind; the progress log stays short
+    await p.fill('#raiseAdd', 'Zzyzx Not A Real Card'); await p.click('#raiseGo'); await p.waitForSelector('#raiseOwn .raise-sim', { timeout: 20000 });
+    await p.click('#raiseOwn .raise-sim'); await p.waitForFunction(() => /not found on Scryfall/.test(document.querySelector('#raiseSim').textContent), null, { timeout: 60000 });
+    check(`${name}: T-059 an unknown card leaves no progress bar on screen`, await p.$eval('#raiseProg', e => e.hidden), await p.$eval('#raiseSim', e => e.textContent));
+    check(`${name}: the progress log keeps at most 200 entries`, await p.evaluate(() => window.__isf.comboRaiseProg.length <= 200));
+    await p.fill('#raiseAdd', ''); await p.evaluate(() => { document.querySelector('#raiseOwn').innerHTML = ''; document.querySelector('#raiseSim').innerHTML = ''; });
     const topAdd = await p.evaluate(() => window.__isf.comboRaise.rows[0].card);
     if (name === 'PC') {
       // simulated check: 2,000 games of each deck

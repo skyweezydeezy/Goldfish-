@@ -2373,7 +2373,7 @@
     };
     nbWorker.onerror = err => { if (run !== nbRunId) return; nbDone(); nbWorker = null; say('Tune error: ' + err.message); };
     const o = Object.assign(opts(), nbBook ? { bookCombos: nbBook } : {});
-    nbWorker.postMessage({ nextBracket: { cards: S.cards, tokens: S.tokens, pool, extra, identity: ident, bracket: v === 'next' ? undefined : +v, rounds: 5 }, opts: o, n, seed: rseed() });
+    nbWorker.postMessage({ nextBracket: { cards: S.cards, tokens: S.tokens, pool, extra, identity: ident, bracket: v === 'next' ? undefined : +v, rounds: 5, minFinal: +btn.dataset.minFinal || undefined }, opts: o, n, seed: rseed() });
   }
   $('#nbRun').addEventListener('click', runNext);
   S.nbTest = { swapInText: (t, p) => swapInText(t, p, () => []), show: r => renderNext(r), apply: idxs => applyNext(idxs) };          // for the UI tests

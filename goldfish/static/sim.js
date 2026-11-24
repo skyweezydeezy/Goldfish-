@@ -2321,6 +2321,7 @@
         if (a.levelUp && a.levelUp.levels.length) {                                                                                       // lines under "LEVEL N": they count from that level on
           const L = a.levelUp.levels[a.levelUp.levels.length - 1], parts = line.toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
           if (parts.length && parts.every(x => KEYWORDS.includes(x))) { L.kw = (L.kw || []).concat(parts); parts.forEach(x => kwSet.delete(x)); rec.status = 'ok'; continue; }
+          if (/^elves you control have "\{t\}: add \{g\}\{g\}\."$/i.test(line)) { a.elfGrantMana = L.min; rec.status = 'ok'; continue; }          // rules batch 70: Joraga Treespeaker, level 5+ (manaUnits)
           if ((mx = line.match(/^other (\w+) creatures you control get \+(\d+)\/\+(\d+)/i))) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'levelLord', min: L.min, filter: singular(mx[1]).toLowerCase(), p: +mx[2], t: +mx[3] }); rec.status = 'ok'; continue; }
         }
         if ((mx = raw.match(/^Level up ((?:\{[^}]+\})+)/i))) { a.levelUp = { cost: parseCost(mx[1]), levels: [] }; rec.status = 'ok'; continue; }
@@ -4158,6 +4159,9 @@
       if (land && !land.tapped) units.push({ src: land, colors: au.card.a.landAura.colors ? new Set(au.card.a.landAura.colors) : au.chosenColor && au.card.a.choosesColor ? new Set([au.chosenColor]) : ANY_COLOR });
     }
     for (const q of (tableHas(g, 'powerMana') ? g.battlefield : NONE)) if (q.card.a.powerMana && !q.tapped && !(q.sick && !hasKw(g, q, 'haste'))) { const x = Math.max(0, powerOf(g, q)); for (let k = 0; k < x; k++) units.push({ src: q, colors: ANY_COLOR }); }          // Kami of Whispered Hopes
+    for (const q of (tableHas(g, 'elfGrantMana') ? g.battlefield : NONE)) if (q.card.a.elfGrantMana && (q.level || 0) >= q.card.a.elfGrantMana) for (const e of g.battlefield) {          // Joraga Treespeaker (level 5+): other Elves tap for {G}{G}
+      if (e === q || !isCreaturePerm(e) || e.tapped || e.produce || (e.sick && !hasKw(g, e, 'haste')) || !matchesFilter(e.card, 'elf') || units.some(u => u.src === e)) continue;
+      units.push({ src: e, colors: new Set(['G']) }, { src: e, colors: new Set(['G']) }); }
     if (info.creatureMana || (g.tempCreatureMana && g.tempCreatureMana >= g.turn)) for (const q of g.battlefield) {                                             // Cryptolith Rite: every creature taps for one mana of any color
       if (!isCreaturePerm(q) || q.tapped || q.produce || (q.sick && !hasKw(g, q, 'haste'))) continue;
       units.push({ src: q, colors: ANY_COLOR });

@@ -11051,7 +11051,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const pc = { generic: 3, pips: [['U'], ['U']], x: 0 };
       if (canPay(pc, allUnits(g))) { pay(g, pc); ev.push({ type: 'note', text: 'Paid for Pact of Negation' }); } else if (g.opp) loseGame(g, ev, 'pact');
     }
-    for (const p of g.battlefield.slice()) if (p.echoDue != null && p.echoDue < g.turn && !g.dry) { p.echoDue = null; if (canPay(p.card.a.echo, allUnits(g))) { pay(g, p.card.a.echo); ev.push({ type: 'note', text: `Paid echo for ${p.card.name}`, source: p }); } else { leavePerm(g, p, ev); ev.push({ type: 'note', text: `${p.card.name} is sacrificed (echo)`, source: p }); } }
+    for (const p of g.battlefield.slice()) if (p.echoDue != null && p.echoDue < g.turn && !g.dry) { p.echoDue = null; if (!p.card.a.echo) continue;          /* it lost its abilities (an Elk, a 'loses all abilities' Aura): no echo trigger */ if (canPay(p.card.a.echo, allUnits(g))) { pay(g, p.card.a.echo); ev.push({ type: 'note', text: `Paid echo for ${p.card.name}`, source: p }); } else { leavePerm(g, p, ev); ev.push({ type: 'note', text: `${p.card.name} is sacrificed (echo)`, source: p }); } }
     lockUpkeep(g, ev);
     staxUpkeep(g, ev);
     eachTrigger(g, 'upkeep', ev);
@@ -11718,7 +11718,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (le && tz) { const r = nonland.filter(q => q !== le && q.card.a.isArtifact).sort((x, y) => amount(y) - amount(x))[0]; if (r && amount(r) > 2) return { how: `${le.card.name} + ${tz.card.name} + ${r.card.name}`, colors: new Set(r.produce.colors || ['C']) }; } }
     // B9: "whenever you cast a spell, return target permanent to its owner's hand" with two cheap rocks that bounce and recast each other for more than they cost
     { const bo = bf.find(q => comboKind(q.card).bouncer);
-      if (bo) { const rocks = bf.filter(q => !q.token && !q.asLand && q.produce && q.card.a.isArtifact && !q.card.a.isCreature).map(q => q.card).concat(g.hand.filter(i => i.card.a.isArtifact && !i.card.a.isCreature && !i.card.a.isLand && i.card.a.produce).map(i => i.card))
+      if (bo) { const rocks = bf.filter(q => !q.token && !q.asLand && q.produce && q.card.a.isArtifact && !q.card.a.isCreature).map(q => q.card).concat(g.hand.filter(i => i.card.a.isArtifact && !i.card.a.isCreature && !i.card.a.isLand && i.card.a.produce).map(i => i.card)).filter(c => c.a.produce)          /* a rock that lost its abilities still lists its mana, but its card makes none: only the card's own mana counts when it is recast */
           .map(c => ({ c, net: ((c.a.produce.amount || 1) + (mon && c.a.produce.colors.size === 1 && c.a.produce.colors.has('C') ? 1 : 0)) * (trip ? 3 : 1) - (c.a.castMv || 0) })).filter(x => x.net >= 0).sort((x, y) => y.net - x.net);
         if (rocks.length >= 2 && rocks[0].net + rocks[1].net > 0 && rocks[0].c !== rocks[1].c) return { how: `${bo.card.name} + ${rocks[0].c.name} + ${rocks[1].c.name}`, colors: new Set([...rocks[0].c.a.produce.colors, ...rocks[1].c.a.produce.colors]), casts: true }; } }
     // B6: Deadeye Navigator blinking a creature that untaps lands as it enters (Peregrine Drake): each {1}{U} blink untaps three or more lands

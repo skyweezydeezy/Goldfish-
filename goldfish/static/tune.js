@@ -7,24 +7,25 @@
    Works in the browser worker and in Node (tests). Needs the engine (sim.js) passed in as G and the deck profile (profile.js) as P. */
 (function (root) {
   'use strict';
-  // Bracket speed from goldfish kills, the rule in docs/DATA.md (decks without a stated bracket). One table, so it can be swapped
-  // for the Deck Brackets session's thresholds (T-035) when those are settled. Checked from the top: the first one met is the bracket.
-  const BRACKET_SPEED = [
-    { bracket: 5, turn: 6, share: 0.4 },
-    { bracket: 4, turn: 8, share: 0.6 },
-    { bracket: 3, turn: 8, share: 0.3 },
-  ];
-  const BASE_BRACKET = 2;
+  // Bracket speed: THE one copy of the thresholds. tools/verify-brackets.js (T-035, the built-in decks' verified brackets) reads SPEED
+  // from here, so the Policy lab's "bracket speed" goal and the bracket check always agree. Wizards' "Setting Bracket Expectations and
+  // Turns Played" (2025-10-21): expect to play at least 9 / 8 / 6 / 4 turns before the game ends, read as: the median goldfish kill turn
+  // is before turn N. [N, bracket], checked from the top: median < 4 -> B5, < 6 -> B4, < 8 -> B3, < 9 -> B2, otherwise B1.
+  const SPEED = [[4, 5], [6, 4], [8, 3], [9, 2]];
+  const BASE_BRACKET = 1;
+  function speedBracket(median) { for (const [t, b] of SPEED) if (median < t) return b; return BASE_BRACKET; }
+  // the bracket as a goldfish goal: the median kill turn before turn N, i.e. half the games won by turn N - 1
+  const BRACKET_SPEED = SPEED.map(([t, b]) => ({ bracket: b, turn: t - 1, share: 0.5 }));
   // the lab's choices worth trying for a goldfish goal (the others need an opponent or only matter to a few cards)
   const POLICY_KEYS = ['keepLands', 'mullTo', 'commanderTiming', 'tribeFirst', 'comboChase', 'tutorFocus', 'fetchHold'];
   const KILL_GRACE = 2;          // kill goals: the games run 2 turns past the target, and a kill there counts 2/3, then 1/3, so a step toward the target shows
   const KEEP_ROLES = new Set(['ramp', 'fast-mana', 'draw', 'removal', 'wipe', 'counter', 'protection', 'tutor', 'wincon']);
   const LAND_GOALS = [{ turn: 3, share: 0.9 }, { turn: 4, share: 0.8 }, { turn: 5, share: 0.7 }];
 
-  // byTurn[t] = share of games that killed by turn t+1 (cumulative)
+  // byTurn[t] = share of games that killed by turn t+1 (cumulative); no median inside it counts as later than the last turn
   function bracketOf(byTurn) {
-    for (const b of BRACKET_SPEED) if ((byTurn[b.turn - 1] || 0) >= b.share) return b.bracket;
-    return BASE_BRACKET;
+    const mi = byTurn.findIndex(v => v >= 0.5);
+    return speedBracket(mi < 0 ? byTurn.length + 1 : mi + 1);
   }
   const bracketGoal = b => BRACKET_SPEED.find(x => x.bracket === b) || null;
 
@@ -239,7 +240,7 @@
   }
   const strip = m => ({ n: m.n, errors: m.errors, median: m.median, meanKill: m.meanKill, byTurn: m.byTurn, onCurve: m.onCurve, bracket: m.bracket });
 
-  const api = { tune, bracketOf, bracketGoal, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
+  const api = { tune, bracketOf, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Tune = api;
 })(typeof self !== 'undefined' ? self : this);

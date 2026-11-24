@@ -32,7 +32,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the explanation is folded behind the ⓘ next to "Tune toward a goal"', await p.evaluate(() => { const h = document.querySelector('#tnBox h3'); return !!(h && h.querySelector('.info-tog') && document.querySelector('#tnBox p.hint').classList.contains('folded')); }));
   check('two goals: kill earlier, hit land drops more often', JSON.stringify(await p.$$eval('#tnGoal option', os => os.map(o => o.value))) === '["kill","lands"]');
   const kill = await p.$$eval('#tnTarget option', os => os.map(o => o.textContent));
-  check('kill targets: 1 to 3 turns earlier, and the speed of brackets 3, 4 and 5', kill.length === 6 && /^2 turns earlier/.test(kill[1]) && kill.some(t => /Bracket 4 speed: 60% of games by turn 8/.test(t)), kill.join(' | '));
+  check('kill targets: 1 to 3 turns earlier, and the speed of brackets 2 to 5 (the bracket check\'s thresholds)', kill.length === 7 && /^2 turns earlier/.test(kill[1]) && kill.some(t => /Bracket 4 speed: median kill by turn 5/.test(t)), kill.join(' | '));
   check('the deck now: measured when Tune is pressed (no simulation run yet)', /measured when you press Tune/.test(await p.textContent('#tnNow')));
   // a simulation run shows the median kill turn now, and the "earlier" targets name a turn
   await p.evaluate(() => { document.querySelector('#optN').value = '300'; document.querySelector('#runSim').click(); });          // the games setting sits in the folded options

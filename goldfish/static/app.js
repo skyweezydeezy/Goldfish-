@@ -2165,7 +2165,7 @@
     const now = simNow(), cur = sel.value, k = now && now.median;
     const list = $('#tnGoal').value === 'lands' ? Tune.LAND_GOALS.map((x, i) => [`l${i}`, `Land drop ${x.turn} on turn ${x.turn} in ${Math.round(100 * x.share)}% of games`])
       : [1, 2, 3].map(e => [`e${e}`, `${e} turn${e > 1 ? 's' : ''} earlier${k ? ` (median turn ${Math.max(3, k - e)})` : ''}`])
-        .concat(Tune.BRACKET_SPEED.slice().reverse().map(b => [`b${b.bracket}`, `Bracket ${b.bracket} speed: ${Math.round(100 * b.share)}% of games by turn ${b.turn}`]));
+        .concat(Tune.BRACKET_SPEED.slice().reverse().map(b => [`b${b.bracket}`, `Bracket ${b.bracket} speed: median kill by turn ${b.turn}`]));
     sel.innerHTML = list.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
     if (list.some(o => o[0] === cur)) sel.value = cur;
     const on = t => now.onCurve[t - 1] != null ? pct(now.onCurve[t - 1]) : '?';

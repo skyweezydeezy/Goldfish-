@@ -48,7 +48,14 @@ check('importer: cards after "ADDITIONAL" are left out of the deck', !/Sol Ring/
   fs.renameSync(path.join(lists, 'Death Tax [B2].txt'), path.join(lists, 'Death Tax [B3].txt'));
   execFileSync(process.execPath, [path.join(tmp, 'import.js'), lists], { encoding: 'utf8' });
   const now = fs.readFileSync(path.join(decksCopy, 'death-tax.txt'), 'utf8'), rec2 = JSON.parse(fs.readFileSync(sf, 'utf8')).files['Death Tax [B3].txt'];
-  check('importer: a new Drive bracket replaces the verified one (to be checked again)', /^\/\/ Bracket 3$/m.test(now) && !/Checked by ICEYfish/.test(now) && rec2 && rec2.bracket === 3 && !rec2.verified, JSON.stringify(rec2)); }
+  check('importer: a new Drive bracket replaces the verified one (to be checked again)', /^\/\/ Bracket 3$/m.test(now) && !/Checked by ICEYfish/.test(now) && rec2 && rec2.bracket === 3 && !rec2.verified, JSON.stringify(rec2));
+  // the Drive bracket renamed to equal the verified one: the bracket line already matches, but the old check line ("was B2 -> B4") goes
+  const sc3 = JSON.parse(fs.readFileSync(sf, 'utf8')); sc3.files['Death Tax [B3].txt'].verified = 4; fs.writeFileSync(sf, JSON.stringify(sc3));
+  fs.writeFileSync(path.join(decksCopy, 'death-tax.txt'), now.replace(/^\/\/ Bracket 3$/m, '// Bracket 4\n// Checked by ICEYfish (test): was B3 -> B4'));
+  fs.renameSync(path.join(lists, 'Death Tax [B3].txt'), path.join(lists, 'Death Tax [B4].txt'));
+  execFileSync(process.execPath, [path.join(tmp, 'import.js'), lists], { encoding: 'utf8' });
+  const eq = fs.readFileSync(path.join(decksCopy, 'death-tax.txt'), 'utf8'), rec3 = JSON.parse(fs.readFileSync(sf, 'utf8')).files['Death Tax [B4].txt'];
+  check('importer: a Drive bracket renamed to the verified one drops the old check line', /^\/\/ Bracket 4$/m.test(eq) && !/Checked by ICEYfish/.test(eq) && rec3 && rec3.bracket === 4 && !rec3.verified, JSON.stringify(rec3)); }
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

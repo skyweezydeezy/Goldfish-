@@ -379,6 +379,7 @@
     <div class="sound-row"><label class="check"><input id="sdCards" type="checkbox"> ✨ Special sounds for famous cards</label></div>
     <details id="sdCardList" class="sound-cards"><summary>Hear them</summary><div class="sound-card-grid"></div></details>
     <div class="sound-row"><label class="check"><input id="sdDice" type="checkbox"> 🎲 Dice and coin animations</label></div>
+    <div class="sound-row"><label class="check"><input id="sdBattle" type="checkbox"> ⚔️ Battle scene while games run</label></div>
     <div class="row wrap"><button id="sdTest" class="ghost">Play a test sound</button><button id="sdMute" class="ghost"></button><button id="sdRestart" class="ghost" title="If the sound ever crackles or sounds like static, this starts it fresh">↻ Restart sound</button></div>
     <p id="sdNone" class="hint" hidden>This browser cannot play sound made by the page (no Web Audio).</p>
     <p class="hint">Saved in this browser only. The music and every effect are made by the app itself, so they are free to use, need no download and work offline. Sound effects stop while the app is in the background; the music does too, unless you keep it playing.</p>
@@ -395,6 +396,8 @@
     $('#sdCards').checked = set.cards; $('#sdCards').disabled = !set.sfx;
     let dice = true; try { dice = localStorage.getItem('isf_dice') !== '0'; } catch (e) {}
     $('#sdDice').checked = dice;
+    let battle = true; try { battle = localStorage.getItem('isf_battle') !== '0'; } catch (e) {}
+    $('#sdBattle').checked = battle;
     const grid = $('#sdCardList .sound-card-grid'), names = Object.values(CARDS).map(c => c.name).sort((a, b) => a.localeCompare(b));
     if (grid.childElementCount !== names.length) grid.innerHTML = names.map(n => `<button type="button" class="ghost" data-card="${esc(n)}">▶ ${esc(n)}</button>`).join('');
     $('#sdCardList summary').textContent = `Hear them (${names.length} cards)`;
@@ -411,6 +414,8 @@
   $('#sdCards').addEventListener('change', e => { set.cards = e.target.checked; save(); });
   // the dice and coins on screen (dice.js, the roll for first in versus.js) read isf_dice; '0' turns them off, a meld still shows
   $('#sdDice').addEventListener('change', e => { try { if (e.target.checked) localStorage.removeItem('isf_dice'); else localStorage.setItem('isf_dice', '0'); } catch (x) {} });
+  // the battle scene under a progress bar while games run (battle.js) reads isf_battle; '0' turns it off, and ends one already running
+  $('#sdBattle').addEventListener('change', e => { try { if (e.target.checked) localStorage.removeItem('isf_battle'); else localStorage.setItem('isf_battle', '0'); } catch (x) {} if (!e.target.checked && window.Battle) Battle.stopAll(); });
   $('#sdCardList').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (!b) return; if (!set.sfx) { set.sfx = true; save(); } playCard(b.dataset.card); });
   $('#sdMusicVol').addEventListener('input', e => { set.musicVol = +e.target.value; save(); });
   $('#sdSfxVol').addEventListener('input', e => { set.sfxVol = +e.target.value; save(); });

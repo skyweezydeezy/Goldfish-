@@ -1,5 +1,6 @@
 // Compleat Contagion (Atraxa, Praetors' Voice)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 13.6% by T5, 74.3% by T7; field win 72.3%; 12 Game Changers; B4 confirmed
 // COMMANDER
 1 Atraxa, Praetors' Voice (2XM) 353
 // DECK

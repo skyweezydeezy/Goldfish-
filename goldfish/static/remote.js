@@ -179,7 +179,9 @@
   }
   function wireChannel(ch) {
     S.link.ch = ch;
-    ch.onopen = () => { S.lastSeen = Date.now(); S.pending = null; clearTimeout(S.link.timer); status(''); hello(); show(); redraw(); };          // the codes are used up
+    // the codes are used up. The inviter says hello first, and the friend answers its hello: the friend's side of the channel opens
+    // before the inviter's, and what it sent in that moment could be lost (Chrome dropped the first piece of the friend's hello)
+    ch.onopen = () => { S.lastSeen = Date.now(); S.pending = null; clearTimeout(S.link.timer); status(''); if (S.link.inviter) hello(); show(); redraw(); };
     ch.onclose = () => { redraw(); show(); };
     ch.onmessage = e => { S.lastSeen = Date.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } receive(m); };
   }
@@ -260,7 +262,9 @@
     if (open()) raw({ t: 'ping' });
     const g = S.game; if (!g) return;
     if (g.gm && g.gm.over && !g.ended) { g.ended = 'over'; save(); show(); }          // a finished game is kept, but not offered for rejoining
-    redraw();
+    // the table again only when the connection differs from what the bar shows (S.shownOn, set by io.connected): a redraw replaces
+    // the buttons, and a tap that lands on one while it is replaced is lost (on a phone, the touch ends on a button no longer there)
+    if (connected() !== S.shownOn) redraw();
   }, 4000);
   const connected = () => open() && Date.now() - S.lastSeen < 13000;
 
@@ -269,6 +273,7 @@
     const g = S.game && !S.game.ended ? S.game : null;
     let deck = null;
     if (!g) { try { deck = myDeck(); } catch (e) { status(e.message); S.link.pc.close(); return; } }
+    S.link.said = true;
     raw({ t: 'hello', ack: accepted() ? DISCLOSURE_VERSION : 0, app: APP, proto: PROTO, name: myName(), deck, game: g ? g.id : null, got: g ? g.inbox.length : 0 });
   }
   function refuse(why) { raw({ t: 'bye', why }); status(why); setTimeout(() => { try { S.link.pc.close(); } catch (e) {} }, 300); }
@@ -288,6 +293,7 @@
     if (m.t === 'act' || m.t === 'pick' || m.t === 'fp') onGameMessage(m);
   }
   function onHello(m) {
+    if (!S.link.inviter && !S.link.said) hello();          // the friend answers the inviter's hello with its own
     if (m.proto !== PROTO) return refuse('The two devices run different versions of the app. Reload both and try again.');
     if (+m.app !== APP) return refuse(`The two devices run different versions of the app (v${APP} and v${+m.app || '?'}). Reload both pages and try again.`);
     if (m.ack !== DISCLOSURE_VERSION || !accepted()) return refuse('Both players must accept the same list of what is shared before playing.');
@@ -346,7 +352,9 @@
       },
       halted(why) { if (g.ended) return; g.ended = 'halted'; save(); raw({ t: 'halt', why }); show(); },
       close() { if (S.game === g) { raw({ t: 'bye', why: 'The other player started another game.' }); S.game = null; try { S.link && S.link.pc.close(); } catch (e) {} show(); } },
-      connected,
+      // versus.js draws the bar (and "Waiting for … to reconnect") from this, after any move as well as on redraw(): what it last
+      // answered is what the table shows, so the 4-second check compares with that
+      connected: () => (S.shownOn = connected()),
     };
     g.io = io;
     document.querySelector('[data-tab=duel]').click();

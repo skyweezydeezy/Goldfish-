@@ -1,5 +1,6 @@
 // Odds and Ends (Yennett, Cryptic Sovereign)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T10, 5.7% by T5, 13.1% by T7; field win 50.1%; 15 Game Changers; B4 confirmed
 // COMMANDER
 1 Yennett, Cryptic Sovereign (SLD) 1019
 // MAINBOARD

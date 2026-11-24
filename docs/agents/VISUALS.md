@@ -16,7 +16,7 @@
   - Tutorial 2 (`session_01K5kL4Y7HdHsCLLBiRzf9eJ`): the user's iPad request: in the Practice sample game, warn "the game now plays itself to the end of turn N" when Autopilot to turn is pressed, and don't hold Next on the Loop step (step 19 of 23).
   - Decision Points 3 (`session_01K5kL4XqWbWKz7y7G2bUTMc`): idle until Engine 5 reports the blocker commit (7ba267c), then squad and Will questions.
   - Idle, no task: Card teaching 2, Code Clean-up 2, Combos 2, Features 2, Error fixes 3, App/User Requests 2, PR and Marketing 2, Layout and Settings, Policy Lab tuning.
-- **Waiting on the user:** is the Metered relay login in remote.js still live; turn off or re-point the "Unlearned cards report" scheduled task (built-in decks have nothing unread now); fill in r/EDH's rules in docs/promo/posts.md before any posting; Took's Adventure sync method; Hakbal on hold.
+- **Waiting on the user:** is the Metered relay login in remote.js still live; turn off or re-point the "Unlearned cards report" scheduled task (built-in decks have nothing unread now); fill in r/EDH's rules in docs/promo/posts.md before any posting; Hakbal on hold.
 - **The user's rules added this session (in CLAUDE.md):** merge first, then task (finish any pending merge, live with its version, before giving any session new work). Also: "prefill" meant the default game count, now 2,000.
 
 ## How a merge goes (as practised this session)
@@ -81,7 +81,7 @@ Replaced or archived: Card Rules Engine (session_01K5kL4WeZFox6QLJp181xit), Deci
 - **Sound:** the user's Drive audio backup is at v86, the Windows music crackle fix (v79) isn't confirmed by the user, and background music is untested on a real phone. Ask before refreshing the backup.
 - **remote.ui flake:** run in parallel, it sometimes times out at the "both devices start the game" step (30 s wait for the WebRTC connection). It passes alone (46/46) and passed 4 of 6 parallel runs on 2026-11-23. Run it with `--jobs 1`, or raise that wait.
 - **Sessions closed on 2026-11-23, with handoffs accepted:** Code Clean-up (docs/agents/CODE-CLEANUP.md; close its draft PR #70 as superseded by #69), PR and Marketing (docs/promo/HANDOFF-PR-and-Marketing.md; promotion has **no owner**, so ask the user; promo text may mention Play a friend again), and Combo and win conditions (docs/agents/COMBOS.md). Archive them once the user agrees.
-- **Still open from those notes:** Took's Adventure is not in drive-sync.json; the Commander Spellbook snapshot needs a refresh (`node tools/build-combos.js`); the 44 "— Combos" Google Docs in the user's Drive don't update themselves; 16 engine test files have no README row, and the slow engine test files belong to the engine session.
+- **Still open from those notes:** the Commander Spellbook snapshot needs a refresh (`node tools/build-combos.js`); the 44 "— Combos" Google Docs in the user's Drive don't update themselves; 16 engine test files have no README row, and the slow engine test files belong to the engine session.
 - **The session protocol (T-001)** is in CLAUDE.md, docs/SESSION-PROTOCOL.md and PROJECT_STATE.md. As MAIN, reconcile PROJECT_STATE.md first (it was written before PR #69) and keep it from then on; state lives there, and this note keeps the working knowledge.
 - **First task of the new main session:** change the main session id at the top of CLAUDE.md (the "Send finished work to the Visuals session" section) to your own id, and merge that change. Every agent has already been told the new id by message.
 - **Tutorial stage 3** (the guided sample games, commit 012cd8f on claude/tutorial) was still being tested by the Tutorial session. Merge it when it hands over. Stage 4 comes after.
@@ -91,7 +91,7 @@ Replaced or archived: Card Rules Engine (session_01K5kL4WeZFox6QLJp181xit), Deci
 - **Tutorial:** stages 1–2 are live (v137). Next is stage 3 (the guided sample game: built-in deck, fixed seed through `G.newGame(deck, opts, seed)` / `G.newPod(…, seed)`). Then stage 4, which the user approved: the welcome card, the first-goals checklist, first-time tips with "Show me", and **What's new**. Not approved: the glossary and a separate tutorial deck.
 - **What's new:** the main session writes the changelog line for each merge into the file the Tutorial session defines (likely `goldfish/static/whatsnew.json`). Ask Tutorial for the format.
 - **Code Clean-up's hand-over** is the "final merge" of the user's plan (tutorial install, then fixing up the code, then a final merge). The session stopped once on the 5-hour usage limit and was restarted at 12:40 UTC on 2026-11-23.
-- Combos session backlog: Took's Adventure isn't in drive-sync (it comes from a Google Doc, not the ManaBox folder), and the Commander Spellbook snapshot refresh (`node tools/build-combos.js`, about 5 min) stays with main.
+- Combos session backlog: the Commander Spellbook snapshot refresh (`node tools/build-combos.js`, about 5 min) stays with main.
 - GitHub issue #27 (Shalai) is closed (the user closed it as completed, 2026-11-23 04:39 UTC).
 - Pages deploy: `pages.yml` retries `actions/deploy-pages` up to 3 times. Marketing's proposal to deploy only from main/master was **not** taken, because the live branch is neither.
 

@@ -2,6 +2,34 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 163,
+      "lines": [
+        "A Commander deck must be 100 cards: a commander and 99, or two commanders and 98. Build says what is off; a bigger deck loads when its list has a // Specialty line.",
+        "Every built-in deck's bracket was checked over 20,000 games and the official bracket rules. Mermaids, The King's Gambit and Tidecaller are bracket 4."
+      ]
+    },
+    {
+      "v": 162,
+      "lines": [
+        "⚔️ A little battle plays under the progress bar while games run (switch it off in the Sound panel 🔊).",
+        "Magda, Return the Favor, Axgard Cavalry, Vault Robber, Óin the Brave and Dwarven Bloodboiler now play by their rules; in Duel and Pod you're asked before each one acts.",
+        "Play a friend: the connection bar no longer stays on \"Not connected\" after a quiet moment."
+      ]
+    },
+    {
+      "v": 161,
+      "lines": [
+        "Duel and Pod ask how many times to pay squad, and which mode of a Will card to choose (one or both with your commander out).",
+        "Play a friend on phones and tablets: a game no longer sometimes fails to start, and taps on the table are no longer lost."
+      ]
+    },
+    {
+      "v": 160,
+      "lines": [
+        "Took's Adventure is no longer a built-in deck. A game with Luminous Broodmoth and Elesh Norn no longer stops with an error."
+      ]
+    },
+    {
       "v": 159,
       "lines": [
         "More than 30 more cards now play by their rules, among them Sliver Legion, March of the World Ooze, Kykar and Elenda. Squad and the Will cards' modes work too.",

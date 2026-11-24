@@ -21,11 +21,12 @@
 
   // ---------- decklist parsing ----------
   const LINE_RE = /^\s*(?:(?<qty>\d+)\s*[xX]?\s+)?(?<name>.+?)(?:\s+\((?<set>[A-Za-z0-9]{2,6})\)(?:\s+(?<cn>[A-Za-z0-9\-★]+))?)?(?<tags>(?:\s+\*[^*]+\*|\s+\[[^\]]*\]|\s+#\S+)*)\s*$/;
-  // Title lines from saved deck documents that are not cards: "MERMAIDS — Commander: Hakbal…", "Deck: Name (Commander)", "About", "Name Took's Adventure".
+  // Title lines from saved deck documents that are not cards: "MERMAIDS — Commander: Hakbal…", "Deck: Name (Commander)", "About", "Name <deck name>".
   // Only lines with no quantity in front count, so a real card line is never skipped.
   const TITLE_RE = /^(?:[^0-9].*\s[—–-]\s*commanders?\s*:.*|deck\s*:.+|about|name\s+.+)$/i;
   const SECTION_RE = /^\s*(\/\/\s*)?(commander|commanders|deck|mainboard|main|sideboard|maybeboard|companion|tokens?|considering)\s*:?\s*(\(\d+\))?\s*$/i;
 
+  const NOT_DECK = new Set(['maybeboard', 'sideboard', 'considering', 'companion']);
   function parseDecklist(text) {
     const entries = [];
     let section = 'main';
@@ -46,6 +47,9 @@
       m = line.match(LINE_RE);
       if (!m) continue;
       const g = m.groups, tags = (g.tags || '').toLowerCase();
+      if (/\{nodeck\}/.test(tags)) continue;          // Archidekt: {noDeck} marks a line that is not in the deck
+      { const cats = (tags.match(/\[[^\]]*\]/g) || []).flatMap(b => b.slice(1, -1).split(',').map(c => c.replace(/\{[^}]*\}/g, '').trim()));
+        if (cats.some(c => NOT_DECK.has(c))) continue; }          // ...and so does one of these categories, whole (a custom "Sideboard Hate" is a real card)
       entries.push({
         qty: parseInt(g.qty || '1', 10),
         name: g.name.trim().replace(/\s+\*F\*$/, ''),

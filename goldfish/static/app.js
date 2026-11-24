@@ -2998,6 +2998,7 @@
   // ---- Simulate: "Raise your combo odds" (combos.js additions / swapOdds): one card in, one out, and the any-combo odds by turn 6, 8, 10 ----
   const RAISE_TURNS = [6, 8, 10];
   let raiseRun = 0, raiseFor = null, raiseUserCut = false, raiseKey = '';
+  const RAISE_POOL = 30; let raiseRemoved = new Set();            // the candidates ranked, and the suggestions the user removed for this deck
   const gainTxt = g => (g >= 0 ? '+' : '−') + Math.abs(g * 100).toFixed(1);
   function raiseCells(r, base) { return r.any.p.map((p, i) => `<td class="num">${comboPct(p, r.any.err[i])}${base ? ` <span class="${r.any.p[i] - base.any.p[i] > 0.0005 ? 'gain' : 'hint'}">${gainTxt(r.any.p[i] - base.any.p[i])}</span>` : ''}</td>`).join(''); }
   // the default cut: drawn but often not cast in the last run (Suggest.deadCards), else the costliest card in no combo
@@ -3018,7 +3019,7 @@
       const fresh = raiseFor !== deck;
       if (fresh) {                                   // another deck: its own cut list, and the last deck's results go
         sel.innerHTML = deck.unique.filter(c => !c.commander).map(c => c.name).filter((n, i, a) => a.indexOf(n) === i).sort((a, b) => a.localeCompare(b)).map(n => `<option>${esc(n)}</option>`).join('');
-        raiseFor = deck; raiseUserCut = false; raiseKey = ''; $('#raiseOwn').innerHTML = ''; $('#raiseSim').innerHTML = '';
+        raiseFor = deck; raiseUserCut = false; raiseKey = ''; raiseRemoved = new Set(); $('#raiseOwn').innerHTML = ''; $('#raiseSim').innerHTML = '';
       }
       if (fresh || (ro.simDone && !raiseUserCut)) {
         const def = raiseDefaultCut(db, id);
@@ -3033,33 +3034,75 @@
       const base = Combos.comboOdds(deck, found.included, RAISE_TURNS, o.onPlay, { anyOnly: true });
       S.comboRaise = { base, rows: [], cut, done: false };
       const head = '<tr><th></th>' + RAISE_TURNS.map(t => `<th>T${t}</th>`).join('') + '</tr>';
-      const cands = Combos.additions(db, deck, id, cut, 20);
-      $('#raiseAddList').innerHTML = cands.map(a => `<option value="${esc(a.card)}">`).join('');
       const body = $('#raiseBody');
-      body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head}</thead><tbody><tr class="any"><td>Now <span class="hint">${found.included.length} combo${found.included.length === 1 ? '' : 's'}</span></td>${raiseCells(base)}</tr></tbody></table>` +
-        (cands.length ? `<p class="hint">Trying ${cands.length} addition${cands.length === 1 ? '' : 's'}…</p>` : '<p>Commander Spellbook knows no card that completes a combo with this deck in its colours.</p>');
+      body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head}</thead><tbody><tr class="any"><td>Now <span class="hint">${found.included.length} combo${found.included.length === 1 ? '' : 's'}</span></td>${raiseCells(base)}</tr></tbody></table>`;
       box.hidden = false; tidy(box);
-      const rows = [];
+      // 1. the candidates, then their colours and legality from Scryfall (a card outside the commander's colours or not legal is never offered)
+      raiseProgress(0, 'Looking up the cards…');
+      const wanted = Combos.additions(db, deck, id, cut, 60).map(a => a.card);
+      const verified = await raiseLookup(wanted);
+      if (run !== raiseRun || S.deck !== deck) return;
+      const cands = Combos.additions(db, deck, id, cut, RAISE_POOL, { info: raiseInfoOf(deck), requireInfo: verified });
+      $('#raiseAddList').innerHTML = cands.map(a => `<option value="${esc(a.card)}">`).join('');
+      // 2. the odds with each one in, one step at a time
+      const rows = [], total = cands.length + 1;
+      raiseProgress(1 / total, cands.length ? `Checking 0 of ${cands.length}…` : '');
       for (const a of cands) {
         await new Promise(r => setTimeout(r, 0)); if (run !== raiseRun || S.deck !== deck) return;
         const r = Combos.swapOdds(db, deck, id, a.card, cut, RAISE_TURNS, o.onPlay);
         rows.push(Object.assign({}, a, { r, gain: r.any.p.map((p, i) => p - base.any.p[i]) }));
+        raiseProgress((rows.length + 1) / total, `Checking ${rows.length} of ${cands.length}…`);
       }
       const score = x => x.gain.reduce((s, g) => s + g, 0);
       rows.sort((a, b) => score(b) - score(a) || b.combos[0].popularity - a.combos[0].popularity);
-      S.comboRaise = { base, rows, cut, done: true };
-      if (!rows.length) return;
-      const top = rows.slice(0, 5), more = rows.slice(0, 10);
-      body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head.replace('<th></th>', `<th>Add (cut ${esc(cut)})</th>`).replace('</tr>', '<th></th></tr>')}</thead><tbody><tr class="any"><td>Now</td>${raiseCells(base)}<td></td></tr>` +
-        top.map((x, i) => `<tr data-add="${esc(x.card)}"><td><a href="${esc(x.combos[0].url)}" target="_blank" rel="noopener">+ ${esc(x.card)}</a></td>${raiseCells(x.r, base)}<td><button class="ghost raise-sim" data-add="${esc(x.card)}">Simulate</button> <button class="ghost raise-apply" data-add="${esc(x.card)}">Apply</button></td></tr>`).join('') + '</tbody></table>' +
-        `<div class="sg"><b>What each addition completes</b><ul>${more.map(x => `<li><b>+ ${esc(x.card)}</b> ${x.gain.map((g, i) => `T${RAISE_TURNS[i]} ${gainTxt(g)}`).join(' · ')}: ${x.combos.slice(0, 4).map(c => `<a href="${esc(c.url)}" target="_blank" rel="noopener">${comboCards(c)}</a> (${esc((c.does || []).slice(0, 2).join('; '))})`).join('; ')}${x.combos.length > 4 ? ` and ${x.combos.length - 4} more` : ''}</li>`).join('')}</ul>${rows.length > 10 ? `<p>The 10 best of ${rows.length} are listed; try any other with "Try your own".</p>` : ''}</div>`;
-      tidy(body);
-      raiseButtons(body);
+      S.comboRaise = { base, rows, cut, done: true, verified, head };
+      raiseProgress(null);
+      raiseShow();
     });
   }
+  // the list: the best 5 that are not removed (the next best takes the place of a removed one), and the best 10 folded
+  function raiseShow() {
+    const cr = S.comboRaise, body = $('#raiseBody'); if (!cr || !cr.done) return;
+    const left = cr.rows.filter(x => !raiseRemoved.has(x.card)), removed = cr.rows.length - left.length, head = cr.head;
+    cr.shown = left.slice(0, 5).map(x => x.card);
+    const note = (cr.verified ? '' : '<p class="hint">Could not check the cards on Scryfall (offline?): the colours come from the Commander Spellbook snapshot and legality was not checked.</p>') +
+      (removed ? `<p class="hint">${removed} removed. <button class="ghost raise-reset">Show removed</button></p>` : '');
+    if (!cr.rows.length) { body.innerHTML = body.querySelector('table').outerHTML + '<p>Commander Spellbook knows no card that completes a combo with this deck in its colours.</p>' + note; raiseButtons(body); return; }
+    const top = left.slice(0, 5), more = left.slice(0, 10);
+    body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head.replace('<th></th>', `<th>Add (cut ${esc(cr.cut)})</th>`).replace('</tr>', '<th></th></tr>')}</thead><tbody><tr class="any"><td>Now</td>${raiseCells(cr.base)}<td></td></tr>` +
+      top.map(x => `<tr data-add="${esc(x.card)}"><td><a href="${esc(x.combos[0].url)}" target="_blank" rel="noopener">+ ${esc(x.card)}</a></td>${raiseCells(x.r, cr.base)}<td><button class="ghost raise-sim" data-add="${esc(x.card)}">Simulate</button> <button class="ghost raise-apply" data-add="${esc(x.card)}">Apply</button> <button class="ghost raise-rm" data-add="${esc(x.card)}" title="Remove this suggestion; the next best fills in" aria-label="Remove ${esc(x.card)} from the suggestions">✕</button></td></tr>`).join('') + '</tbody></table>' +
+      (more.length ? `<div class="sg"><b>What each addition completes</b><ul>${more.map(x => `<li><b>+ ${esc(x.card)}</b> ${x.gain.map((g, i) => `T${RAISE_TURNS[i]} ${gainTxt(g)}`).join(' · ')}: ${x.combos.slice(0, 4).map(c => `<a href="${esc(c.url)}" target="_blank" rel="noopener">${comboCards(c)}</a> (${esc((c.does || []).slice(0, 2).join('; '))})`).join('; ')}${x.combos.length > 4 ? ` and ${x.combos.length - 4} more` : ''}</li>`).join('')}</ul>${left.length > 10 ? `<p>The 10 best of ${left.length} are listed; try any other with "Try your own".</p>` : ''}</div>` : '') +
+      (top.length ? '' : '<p>Every suggestion was removed.</p>') + note;
+    tidy(body);
+    raiseButtons(body);
+  }
+  // the progress bar: frac 0..1 and a label; null hides it. Every step is logged in S.comboRaiseProg (the test reads it).
+  function raiseProgress(frac, label) {
+    const el = $('#raiseProg'); if (!el) return;
+    if (frac == null) { el.hidden = true; return; }
+    const pc = Math.round(Math.min(1, frac) * 100);
+    el.hidden = false; el.querySelector('.progress div').style.width = pc + '%'; el.querySelector('.progress').setAttribute('aria-valuenow', pc);
+    $('#raiseProgTxt').textContent = label || '';
+    (S.comboRaiseProg = S.comboRaiseProg || []).push({ pc, label });
+  }
+  // colours and legality of the candidate cards: asked of Scryfall once, kept for the session. false when Scryfall could not be reached.
+  const raiseInfo = new Map();
+  async function raiseLookup(names) {
+    const need = names.filter(n => !raiseInfo.has(n));
+    if (!need.length) return true;
+    try {
+      const got = await Source.loadDeck(need.map(n => '1 ' + n).join('\n'), () => {});
+      for (const c of got.cards) { raiseInfo.set(c.name, c); raiseInfo.set(c.name.split(' // ')[0], c); }
+      for (const n of need) if (!raiseInfo.has(n)) raiseInfo.set(n, null);          // Scryfall does not know it: not offered
+      return true;
+    } catch (e) { return false; }
+  }
+  const raiseInfoOf = deck => n => raiseInfo.get(n) || raiseInfo.get(String(n).split(' // ')[0]) || deck.unique.find(c => c.name === n || c.name.split(' // ')[0] === String(n).split(' // ')[0]);
   function raiseButtons(el) {
     el.querySelectorAll('.raise-sim').forEach(b => b.addEventListener('click', () => raiseSimulate(b.dataset.add, $('#raiseCut').value)));
     el.querySelectorAll('.raise-apply').forEach(b => b.addEventListener('click', () => raiseApply(b.dataset.add, $('#raiseCut').value)));
+    el.querySelectorAll('.raise-rm').forEach(b => b.addEventListener('click', () => { raiseRemoved.add(b.dataset.add); raiseShow(); }));
+    el.querySelectorAll('.raise-reset').forEach(b => b.addEventListener('click', () => { raiseRemoved = new Set(); raiseShow(); }));
   }
   // your own swap: the same numbers for any card name
   async function raiseOwn() {
@@ -3105,7 +3148,7 @@
   }
   async function raiseSimulate(add, cut) {
     const out = $('#raiseSim'), deck = S.deck; if (!deck) return;
-    out.innerHTML = `<p class="hint">Simulating + ${esc(add)} − ${esc(cut)}: finding the card…</p>`;
+    out.innerHTML = ''; raiseProgress(0, `Simulating + ${add} − ${cut}: finding the card…`);
     try {
       const got = await Source.loadDeck('1 ' + add, () => {}), card = got.cards[0];
       if (!card) { out.innerHTML = `<p class="hint">${esc(add)} was not found on Scryfall.</p>`; return; }
@@ -3117,9 +3160,10 @@
       const tokens = (S.tokens || []).concat((got.tokens || []).filter(t => !(S.tokens || []).some(x => x.id === t.id)));
       const o = opts(), n = 2000, seed = 20261124;
       const o2 = Object.assign({}, o, { bookCombos: db ? Combos.goldfished(Combos.find(db, cards.map(c => c.name), id), G.deckCombos(G.buildDeck(cards, tokens, currentPolicy().tribe))) : o.bookCombos });
-      const say = (t, p) => { out.innerHTML = `<p class="hint">${t} ${Math.round(p * 100)}%</p>`; };
-      const a = await simOnce(S.cards, S.tokens, o, n, seed, p => say('Your deck:', p));
-      const b = await simOnce(cards, tokens, o2, n, seed, p => say(`+ ${esc(add)} − ${esc(cut)}:`, p));
+      out.innerHTML = '';
+      const a = await simOnce(S.cards, S.tokens, o, n, seed, p => raiseProgress(p / 2, `Simulating your deck: ${Math.round(p * 100)}%`));
+      const b = await simOnce(cards, tokens, o2, n, seed, p => raiseProgress(0.5 + p / 2, `Simulating + ${add} − ${cut}: ${Math.round(p * 100)}%`));
+      raiseProgress(null);
       if (S.deck !== deck) return;
       const wonBy = (r, t) => r.kill.slice(0, Math.min(t, r.turns)).reduce((s, v) => s + v, 0);
       const median = r => { let s = 0; for (let t = 0; t < r.turns; t++) { s += r.kill[t]; if (s >= 0.5) return 'turn ' + (t + 1); } return `after turn ${r.turns}`; };
@@ -3129,7 +3173,7 @@
       out.innerHTML = `<h3>Simulated <span class="pill approx">2,000 games</span></h3><table class="cat-table combo-odds raise"><thead><tr><th>Goldfish won by</th>${turns.map(t => `<th>T${t}</th>`).join('')}<th>By combo</th><th>Median kill</th></tr></thead><tbody>${row('Now', a)}${row(`+ ${esc(add)} − ${esc(cut)}`, b)}</tbody></table>` +
         `<p class="hint" data-fold>Simulated, not exact: ${n.toLocaleString()} autopiloted games of each deck against a goldfish, the same shuffles for both, with tutors and card draw. "By combo" counts the games a combo won. The odds above are exact math on natural draws.</p>`;
       tidy(out);
-    } catch (e) { out.innerHTML = `<p class="hint">Could not simulate: ${esc(e.message || e)}</p>`; }
+    } catch (e) { raiseProgress(null); out.innerHTML = `<p class="hint">Could not simulate: ${esc(e.message || e)}</p>`; }
   }
 
   function renderOdds(skipPicker) {

@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 173,
+      "lines": [
+        "Raise your combo odds suggests only cards in your commander's colours (and legal in Commander), shows a progress bar, and has a ✕ on each suggestion that brings in the next best piece."
+      ]
+    },
+    {
       "v": 172,
       "lines": [
         "Simulate: Tune to the next bracket finds card swaps and play changes that make your deck kill faster, checks them over 2,000 games, and tells you what to change. Apply one or all; nothing changes until you do."

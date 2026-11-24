@@ -14,6 +14,8 @@ give B4 for Dualcaster Mage + Twinflame (a 5-mana two-card infinite combo), and 
 time: Mobile Garrison's attack untap and Fire-Belly Changeling's twice-a-turn pump (Teach task T-057). Partial runs like this one are
 listed under "runs" in `deck-brackets.json`, and the deck's row carries its own version and date.
 
+**Added later (T-062, 2026-11-24, v176 engine):** Short Circuit (Vivi Ornitier, Drive B5) and Dead Ringers (Ratadrabik of Urborg, Drive B4). 20,000 goldfish games each, 455 matches per pair. **Short Circuit B5 → B4:** median kill T9 (2% by T5), card rules B4 (14 Game Changers, a cheap two-card infinite); the autopilot cannot show cEDH speed (see below). **Dead Ringers B4 → B3:** median kill T8, 3 Game Changers and only two-card infinites costing over 6 mana, so the card floor is B3 and speed B2. Dead Ringers has 6 rules lines the engine does not fully read yet (Teach task).
+
 ## How to re-run
 
 ```

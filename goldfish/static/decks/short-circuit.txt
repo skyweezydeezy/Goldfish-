@@ -1,5 +1,6 @@
 // Short Circuit (Vivi Ornitier)
-// Bracket 5
+// Bracket 4
+// Checked by ICEYfish (v176, 20,000 games): median kill T9, 2% by T5, 13.3% by T7; field win 30.7%; 14 Game Changers; was B5 -> B4: card rules B4, speed B1; B5 needs a median kill before T4
 // COMMANDER
 1 Vivi Ornitier
 // DECK

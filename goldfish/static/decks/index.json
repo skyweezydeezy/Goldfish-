@@ -267,7 +267,7 @@
    ],
    "colors": "WB",
    "cards": 100,
-   "bracket": 4
+   "bracket": 3
   },
   {
    "file": "dead-sea.txt",
@@ -455,7 +455,7 @@
    ],
    "colors": "UR",
    "cards": 100,
-   "bracket": 5
+   "bracket": 4
   },
   {
    "file": "soul-brokers.txt",

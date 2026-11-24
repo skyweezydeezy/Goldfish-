@@ -113,6 +113,17 @@
   }
   $('#optFormat').addEventListener('change', () => {
     const c = $('#optFormat').value === 'commander';
+    if (c && S.loaded && S.cards) {          // the Commander deck rule, for the deck already loaded: a deck that breaks it keeps the 60-card format
+      const bad = commanderProblem(S.cards, S.cards.reduce((s, x) => s + x.qty, 0), S.loaded.specialty, S.loaded.missing);
+      if (bad) {          // loaded again in the Commander format: the commander guess runs as on loading, so an unmarked 100-card list is fine
+        const msgs = $('#deckMsgs').innerHTML;
+        if (setDeck(S.loaded) === false) {
+          $('#optFormat').value = '60';
+          $('#deckMsgs').innerHTML = ruleMsg(bad, S.loaded.missing).replace('Fix the list, or choose 60-card in Format for a non-Commander deck.', 'The format stays 60-card.') + msgs;
+          return;
+        }
+      }
+    }
     $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
   // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
@@ -263,17 +274,19 @@
     { const link = readLink(text); if (link && text.trim().split(/\s+/).length === 1) return addFromLink(link, 'from the link'); }          // an ICEYfish deck link pasted in the box
     { const site = deckSite(text); if (site && text.trim().split(/\s+/).length === 1) return toast(`${site[0].toUpperCase() + site.slice(1)} does not let other web pages read its decks. On the deck's page use Export (or Copy) as text, then paste the list here.`); }
     const btn = $('#loadDeck');
+    let ok = false;
     btn.disabled = true; btn.textContent = 'Resolving…';
     try {
       await Source.init();
       const r = await Source.loadDeck(text, m => { btn.textContent = m; });
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
-      else { S.deckText = text; setDeck(r); if (!quiet) autoSave(text); }
+      else { r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false; if (ok) { S.deckText = text; if (!quiet) autoSave(text); } }
     } catch (err) {
       console.error(err);
       $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
     }
     btn.disabled = false; btn.textContent = 'Load deck';
+    return ok;
   }
 
   // "Save every deck I load" (on unless you turn it off in Saved decks): a list you paste or import goes into your saved decks by itself
@@ -287,13 +300,36 @@
     d[name] = text; m[name] = { saved: Date.now(), auto: true };
     if (putDecks(d, m)) { refreshSaved(); $('#savedDecks').value = name; toast(`Saved as "${name}" (Rename it in Manage)`); keepData(); }
   }
-  function setDeck(r) {
+  // The Commander deck rule (T-040): in the Commander format a deck is 100 cards, one commander and 99 or two and 98. A bigger deck
+  // loads only when its list has a "// Specialty" line. A list that breaks the rule is not loaded; the deck you had stays.
+  const SPECIALTY_RE = /^\s*\/\/\s*specialty\b/im;
+  // Cards the lookup could not find (r.missing) still count: a list is never refused for a count that is off only because of them.
+  function commanderProblem(cards, total, specialty, missing) {
+    const n = cards.concat(missing || []).filter(c => c.commander).reduce((s, c) => s + c.qty, 0);
+    total += (missing || []).reduce((s, c) => s + (c.qty || 1), 0);
+    if (!n) return `No commander. Put it in a <code>Commander</code> section or tag it <code>*CMDR*</code>.`;
+    if (n > 2) return `${n} commanders. A Commander deck has one, or two partners.`;
+    if (total === 100 || (specialty && total > 100)) return null;
+    return `${total} cards. A Commander deck is 100: the commander${n === 2 ? 's' : ''} and ${100 - n}.` + (total > 100 ? ' A bigger specialty deck needs a <code>// Specialty</code> line.' : '');
+  }
+  const ruleMsg = (bad, missing) => `<div class="msg err cmdr-rule">Not loaded as a Commander deck: ${bad}${(missing || []).length ? ` Not found in the card data: ${missing.map(m => esc(m.name)).join(', ')}.` : ''}<span class="hint"> Fix the list, or choose 60-card in Format for a non-Commander deck.</span></div>`;
+  // setDeck(r, force): force skips the rule (a deck that was already loaded coming back: the tutorial, a deck remembered from before the rule)
+  function setDeck(r, force) {
     let cards = r.cards;
     // if no commander marked and it's a 100-card list whose first card is legendary creature, ask nothing: just guess
     const total = cards.reduce((s, c) => s + c.qty, 0);
-    if (!cards.some(c => c.commander) && $('#optFormat').value === 'commander' && total >= 99) {
+    const listed = total + (r.missing || []).reduce((s, c) => s + (c.qty || 1), 0);          // cards not found still count, as in commanderProblem
+    if (!cards.some(c => c.commander) && $('#optFormat').value === 'commander' && listed >= 99) {
       const cand = cards.find(c => /Legendary/.test(c.type_line) && /Creature/.test(c.type_line) && c.qty === 1);
-      if (cand && total === 100) { cand.commander = true; cand._guessed = true; }
+      if (cand && (listed === 100 || (r.specialty && listed > 100))) { cand.commander = true; cand._guessed = true; }
+    }
+    if ($('#optFormat').value === 'commander' && !force) {
+      const bad = commanderProblem(cards, total, r.specialty, r.missing);
+      if (bad) {
+        cards.forEach(c => { if (c._guessed) { c.commander = false; delete c._guessed; } });
+        $('#deckMsgs').innerHTML = ruleMsg(bad, r.missing);
+        return false;
+      }
     }
     S.cards = cards; S.loaded = r;          // r: the tutorial puts the person's deck back with setDeck(r) after its sample game
     S.tokens = r.tokens || [];
@@ -305,7 +341,6 @@
     const cmdrs = S.deck.commanders.map(i => i.card.name);
     add('ok', `Loaded <b>${total}</b> cards${cmdrs.length ? ` · Commander: <b>${esc(cmdrs.join(' + '))}</b>` : ''}${cards.some(c => c._guessed) ? ' (guessed, mark it with *CMDR* to be sure)' : ''}`);
     if (r.missing.length) add('err', `<b>${r.missing.length}</b> not found in the card data: ${r.missing.map(m => esc(m.name)).join(', ')}`);
-    if ($('#optFormat').value === 'commander' && total !== 100) add('warn', `Commander decks are 100 cards. This list has ${total}.`);
     if (cmdrs.length) {
       const ci = new Set(); S.deck.commanders.forEach(i => (i.card.color_identity || []).forEach(c => ci.add(c)));
       const bad = S.deck.unique.filter(c => !c.commander && (c.color_identity || []).some(x => !ci.has(x)));
@@ -582,8 +617,8 @@
     if (b) {
       try { $('#deckText').value = await builtinText(b); } catch (err) { return toast('Could not open the deck: ' + err.message); }
       localStorage.setItem('gf_last', $('#deckText').value);
-      loadingBuiltin = true; try { await loadDeck(); } finally { loadingBuiltin = false; }
-      applyBuiltinPolicy(b);
+      let ok = false; loadingBuiltin = true; try { ok = await loadDeck(); } finally { loadingBuiltin = false; }
+      if (ok) applyBuiltinPolicy(b);          // a refused deck: the lab's choices stay with the deck that is still loaded
       return;
     }
     const all = getDecks();
@@ -755,6 +790,8 @@
   });
   refreshSaved();
   const builtinsListed = loadBuiltinIndex();
+  // a deck link opened at startup is checked against the format you had (remember.js restores the other settings later)
+  try { const f = ((JSON.parse(localStorage.getItem('isf_state') || 'null') || {}).ctl || {}).optFormat; if ((f === '60' || f === 'commander') && f !== $('#optFormat').value) { $('#optFormat').value = f; $('#optFormat').dispatchEvent(new Event('change')); } } catch (e) { /* no saved settings */ }
   openLinkInAddress();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));
@@ -1777,6 +1814,7 @@
     if (worker) worker.terminate();
     const o = opts();
     worker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(worker, '#simProgress', 'dummy');
     const bar = $('#simProgress div'); bar.style.width = '0';
     $('#runSim').disabled = true; $('#simInfo').textContent = `Goldfishing ${o.n.toLocaleString()} games…`;
     const t0 = performance.now();
@@ -1833,6 +1871,7 @@
     const n = Math.max(20, Math.min(20000, +$('#mmN').value || 2000));          // 2,000: any percentage within about ±2 points (95%)
     if (mmWorker) mmWorker.terminate();
     mmWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(mmWorker, '#mmProgress', 'rival');
     const bar = $('#mmProgress div'); bar.style.width = '0';
     const t0 = performance.now();
     $('#mmInfo').textContent = `Playing ${n.toLocaleString()} matches…`;
@@ -2055,6 +2094,7 @@
     const candidates = dec.options.map(op => ({ name: op.name, policy: { [dec.key]: op.value } }));
     if (plWorker) plWorker.terminate();
     plWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(plWorker, '#plProgress', mode === 'goldfish' ? 'dummy' : 'rival');
     const bar = $('#plProgress div'); bar.style.width = '0';
     const vs = field ? ` against ${field.map(x => x.name).join(', ')}` : '';
     $('#plInfo').textContent = `Playing ${n.toLocaleString()} games with each of the ${candidates.length} options${vs}…`;
@@ -2148,6 +2188,7 @@
     const n = Math.max(40, Math.min(4000, +btn.dataset.n || TN_N));
     if (tnWorker) tnWorker.terminate();
     tnWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(tnWorker, '#tnProgress', 'dummy');
     const bar = $('#tnProgress div'); bar.style.width = '0';
     $('#tnInfo').textContent = `Tuning: ${n.toLocaleString()} games for each change${pool.length ? '' : ' (no ramp or card draw found to try: lands and choices only)'}…`;
     const t0 = performance.now();
@@ -2212,6 +2253,7 @@
     $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
     if (plRolesWorker) plRolesWorker.terminate();
     plRolesWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(plRolesWorker, '#plRolesProgress', 'rival');
     const bar = $('#plRolesProgress div'); bar.style.width = '0';
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
     plRolesWorker.onerror = err => { btn.disabled = false; $('#plInfo').textContent = 'Swaps by role: ' + err.message; };
@@ -2292,6 +2334,7 @@
   function abRun(msg, onDone) {
     if (abWorker) abWorker.terminate();
     abWorker = new Worker('worker.js');
+    if (window.Battle) Battle.watch(abWorker, '#abProgress', 'rival');
     const bar = $('#abProgress div'); bar.style.width = '0';
     const t0 = performance.now();
     abWorker.onmessage = e => {
@@ -2804,5 +2847,5 @@
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
   window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
-    useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
+    useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

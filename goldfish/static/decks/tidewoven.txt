@@ -1,5 +1,6 @@
 // Tidewoven (Tymna + Thrasios)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 18% by T5, 47.5% by T7; field win 63.8%; 19 Game Changers; B4 confirmed
 // COMMANDER
 1 Thrasios, Triton Hero (SLD) 2742
 1 Tymna the Weaver (FCA) 18

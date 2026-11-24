@@ -1,5 +1,6 @@
 // Bridge to the Inevitable Abyss (Esika, God of the Tree)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T>10, 0% by T5, 1.5% by T7; field win 21.3%; 11 Game Changers; B4 confirmed
 // COMMANDER
 1 Esika, God of the Tree (SLD) 1155
 // DECK

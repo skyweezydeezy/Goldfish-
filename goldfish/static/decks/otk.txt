@@ -1,5 +1,6 @@
 // OTK (Bruna, Light of Alabaster)
 // Bracket 3
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 2.6% by T5, 37.1% by T7; field win 52.3%; 3 Game Changers; B3 confirmed
 // COMMANDER
 1 Bruna, Light of Alabaster (SLD) 1221
 // DECK

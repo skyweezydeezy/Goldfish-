@@ -109,5 +109,20 @@ run('Astral Dragon', t => { const arts = t.a.deck.unique.filter(x => x.a.isArtif
   check('Astral Dragon asks which noncreature permanent is copied', !!q && q.options.length >= 2, q && q.title);
   check('...two Dragon copies of the chosen one', !!want && t.a.battlefield.filter(x => x.token && x.card.name === want.name).length === 2, want && want.name); });
 
+// squad (asked as the spell is cast, with mana): how many times, the autopilot's number by default
+run('Galadhrim Brigade', t => { const g = t.a; g.battlefield.filter(q => q.asLand).forEach(q => { q.tapped = false; }); for (let k = 0; k < 4; k++) { const c = g.deck.unique.find(x => /Basic Land/.test(x.type_line || '') && /Forest/.test(x.type_line || '')) || g.deck.unique.find(x => /Basic Land/.test(x.type_line || '')); G.enterWithTriggers(g, { iid: g.nextIid++, card: c }, {}, []); }
+  let q = null; D.resolveSync(t.p.games, 0, gs => { const gg = gs[0], i = gg.hand.find(x => x.iid === t.inst.iid); return G.castCard(gg, i); }, x => { if (x.kind === 'resolve' || x.kind === 'counter') return 'none'; if (x.what === 'squad') { q = x; return x.options.findIndex(o => o.name === 'Pay squad once'); } return 'auto'; });
+  check('Galadhrim Brigade asks how many times to pay squad (0 included)', !!q && q.title === 'Galadhrim Brigade: pay squad how many times?' && q.options[0].name === "Don't pay squad" && q.def.length === 1 && /Squad \{1\}\{G\}/.test(q.text), q && q.title + ' | ' + q.text);
+  check('...paying once: the card and one token copy', g.battlefield.filter(x => x.card.name === 'Galadhrim Brigade').length === 2, g.battlefield.filter(x => x.card.name === 'Galadhrim Brigade').length); });
+
+// a "Will" card: one mode without a commander out; one or both with it (the engine's pick by default)
+run("Akroma's Will", t => { let q = null; play(t, x => { if (x.kind === 'mode') q = x; return 'auto'; });
+  check("Akroma's Will without a commander asks for one mode, in the card's words", !!q && q.max === 1 && q.def.length === 1 && q.options.some(o => /^Creatures you control gain flying/.test(o.name)), q && q.title + ' | ' + (q.options || []).map(o => o.name).join(' / ')); });
+run("Akroma's Will", t => { if (!cmdr(t)) { console.log('SKIP  no commander'); return; } let q = null;
+  play(t, x => { if (x.kind !== 'mode') return 'auto'; q = x; return [x.options.findIndex(o => /lifelink/.test(o.name))]; });
+  const cs = t.a.battlefield.filter(G.isCreaturePerm), kw = k => t.a.eot.kw.has(k);
+  check("...with your commander out: one or both, both by default", !!q && q.title === "Akroma's Will: choose one or both" && q.min === 1 && q.max === 2 && q.def.length === 2, q && q.title);
+  check('...choosing one: only its keywords', kw('lifelink') && !kw('flying'), [...t.a.eot.kw].join('+')); });
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -42,7 +42,7 @@
     <div class="deck-layout">
       <div class="deck-input card-box">
         <h2>Paste a decklist</h2>
-        <p class="hint">Moxfield, Archidekt, MTGO or plain text. <code>1 Sol Ring</code>, <code>1x Sol Ring (C21) 263</code>, a <code>Commander</code> section, or <code>*CMDR*</code> tags.</p>
+        <p class="hint">Moxfield, Archidekt, MTGO or plain text. <code>1 Sol Ring</code>, <code>1x Sol Ring (C21) 263</code>, a <code>Commander</code> section, or <code>*CMDR*</code> tags. Commander decks are 100 cards (a commander and 99, or two and 98); a bigger one needs a <code>// Specialty</code> line.</p>
         <textarea id="deckText" spellcheck="false" placeholder="Commander&#10;1 Omnath, Locus of Rage&#10;&#10;Deck&#10;1 Sol Ring&#10;1 Cultivate&#10;20 Forest&#10;..."></textarea>
         <div class="row wrap deck-actions">
           <button id="loadDeck" class="primary">Load deck</button>
@@ -406,6 +406,7 @@
 <script src="card-sounds.js"></script>
 <script src="card-effects.js"></script>
 <script src="dice.js"></script>
+<script src="battle.js"></script>
 <script src="app.js"></script>
 <script src="decide.js"></script>
 <script src="choices.js"></script>

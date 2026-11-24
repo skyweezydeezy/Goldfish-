@@ -28,7 +28,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.goto('http://127.0.0.1:8800/');
   const loadDeck = async (name, has, extra) => {
     await p.click('[data-tab=deck]');
-    await p.fill('#deckText', deck(name) + (extra ? '\n' + extra : ''));
+    await p.fill('#deckText', deck(name) + (extra ? '\n// Specialty\n' + extra : ''));          // the extra test cards make it more than 100: a specialty deck
     await p.click('#loadDeck');
     await p.waitForFunction(n => window.__isf && window.__isf.deck && (window.__isf.cards || []).some(c => c.name === n), has, { timeout: 120000 });
     await p.waitForTimeout(800);

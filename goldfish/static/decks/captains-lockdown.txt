@@ -1,5 +1,6 @@
 // Captain's Lockdown (Sisay, Weatherlight Captain)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 5.5% by T5, 45.9% by T7; field win 59.6%; 27 Game Changers; B4 confirmed
 // COMMANDER
 1 Sisay, Weatherlight Captain (SLD) 1444
 // DECK

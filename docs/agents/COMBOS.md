@@ -1,4 +1,60 @@
-# Handoff: Combos session
+# Handoff: Combos sessions
+
+**Status: "Combos 2" closed on 2026-11-24. All of its work is live (last: Version 169). The next combos work is the four follow-ups under
+"Open follow-ups" below, for a fresh Sonnet session (the user: every non-MAIN session runs on Sonnet, effort at most medium).**
+
+## Combos 2 (2026-11-23 to 2026-11-24)
+
+| | |
+|---|---|
+| Session | "Combo and win conditions 2", `session_01K5kL4VNZYoUKU9qgzS4LHf` (TASK, Opus) |
+| Work branch | `claude/combos` (fully merged; at Version 169, 5ae6d35, plus this note) |
+| MAIN at closure | MAIN 3, `session_01K5kL4WCRt94PhekjADso9A` (check the id at the top of `CLAUDE.md`) |
+
+### What it built (all live)
+
+| Task | Live in | What |
+|---|---|---|
+| T-026 | Version 152 (PR #91) | `tools/ua.js`: one User-Agent (`ICEYfish-tools/1.0`) and Accept header for every Node tool that calls Scryfall or Commander Spellbook (Scryfall rejects Node's default User-Agent with HTTP 400 `generic_user_agent`). `Source.setHeaders()` in `source.js` passes them to its Scryfall requests; the browser never calls it. `fetch-sets --import-builtin` waits a minute and retries on HTTP 429. Snapshot refreshed. Test: `tests/engine/tool-headers.test.js`. |
+| T-051 | Version 169 (PR #119) | Odds tab, **"Combo odds"** (`#comboOdds` in `index.html`, `renderComboOdds()` in `app.js`, called from `renderOdds`). The chance of having drawn every piece of at least one combo in the deck (the snapshot's `included` combos), by Hand/T2/T4/T6/T8/T10 (capped at the turns option), on the play or draw. One row for any combo, one per group (`Combos.groupOf`: win, damage/drain, mana, turns/combats, lock, other); each group's combos are listed and folded. The commander is always available; tutors, extra draws and mulligans are not counted (said behind the ⓘ). |
+| T-052 | Version 169 (PR #119) | Simulate tab, **"Raise your combo odds"** (`#comboRaise`, `renderComboRaise()`, `raiseDefaultCut`, `raiseOwn`, `raiseApply`, `raiseSimulate`/`simOnce` in `app.js`, the block before `renderOdds`). For each card Spellbook says completes a combo with the deck (`almost`, colour-checked, the 20 from the most popular combos), the any-combo odds at T6/8/10 with it in place of the chosen cut, ranked by the total gain: top 5 in the table (with Simulate and Apply buttons), top 10 in a folded list. Default cut: `Suggest.deadCards` from the last run, else the costliest non-land card in no combo (`Combos.comboPieces`). "Try your own" swap. Simulate: 2,000 goldfish games of each deck with the same seed (its own worker; the swapped deck gets its own `bookCombos`), labelled as simulated. Apply edits `S.deckText` (the loaded list), writes it into `#deckText`, and calls `loadDeck()`. Nothing changes the deck except Apply. |
+
+The math is in `goldfish/static/combos.js` (it works in Node):
+- `seenBy(t, onPlay)`: cards seen by turn t (7, then one a turn, none on turn 1 on the play).
+- `libraryOf(deck)`, `piecesOf(combo, lib)`: library copies by name (and front face), with the commanders taken out.
+- `allSeen(N, qs, n)`: one combo, exact (inclusion-exclusion over its pieces).
+- `anySeen(N, sets, qtyOf, ns, o)`: any of several combos. Exact when the combos use at most `MAX_EXACT` = 20 different cards (`o.maxExact`, up to 24): every subset of them is enumerated, with bad subsets grouped by copy counts. Otherwise `o.samples` (100,000) seeded shuffles, with `err` = the 95% margin. The sampled path uses lists of piece indices, so any number of pieces works. The exact path's bit masks are safe only because it is capped at 24.
+- `comboOdds(deck, combos, turns, onPlay, o)`: per combo, per group, and any combo (`o.anyOnly` skips the groups).
+- `swapDeck`, `swapOdds`, `additions`, `comboPieces`: for the Raise box.
+
+Tests: `tests/engine/combo-odds.test.js` (32 checks: hand-computed hypergeometric values for 2- and 3-card combos and 2 copies, overlapping, disjoint and superset combos, the sample against an exact formula at 40 and 70 pieces, the swap helpers on Death Tax) and `tests/ui/combo-odds.ui.js` (51 checks on PC and iPhone, both boxes, using the built-in Death Tax list).
+
+`S.comboOdds`, `S.comboRaise`, `S.comboRaiseOwn` and `S.comboRaiseSim` hold the last results; the UI test reads them.
+
+### Open follow-ups (from MAIN 3's review of 7f6e90c; none is in progress)
+
+1. **Apply edits the wrong section.** In `raiseApply` (`app.js`, about line 2950), `e.section !== 'commander'` is always true: `parseDecklist` sets a `commander` flag, not `section`. Each line is also parsed on its own, so Sideboard and Maybeboard headers are lost. If the cut card is in a Maybeboard, that line is edited and the added card goes into the Maybeboard; the loaded deck doesn't change, yet the toast says "Swapped". Fix: parse the whole list once, track each entry's line and section, and only touch a main-deck line. Check the deck really changed before saying "Swapped".
+2. **Apply isn't remembered.** It sets `#deckText` from code, so the box's input event never fires and `gf_last` isn't updated: a reload brings back the list from before the swap. `loadDeck` also saves another copy of the deck on every Apply. Fix: update what the input handler updates (or dispatch an input event), and decide whether an Apply should save a copy.
+3. **Stale text in the Raise box.**
+   - "Default: X, …" stays after you pick your own cut.
+   - The "Try your own" row and the simulated check keep showing the old cut until the deck changes.
+   - Toggling "On the play" leaves the Raise numbers stale until something else re-renders. `renderComboRaise` keys on cut and onPlay, but nothing calls it when the option changes.
+4. **Exact vs sampled, and speed.** The gains are noisy where a swap crosses the 20/21-piece boundary (exact before, sampled after, or the other way round). The exact path is slow at 18–20 pieces: about a million subsets per call, run synchronously on the Odds tab, and up to 20 times in the Raise box. Ideas: use the same method for the base and every swap (common random numbers when sampling), lower `MAX_EXACT` or move the work to a worker, and cache by the set of pieces.
+
+### Other open items
+- Took's Adventure (`tooks-adventure.txt`) still doesn't sync from Drive. See item 1 under "Unfinished work" below; the user hasn't chosen a way yet.
+- The 44 "— Combos" Google Docs are still the 2026-11-22 snapshot.
+- Refresh the Spellbook snapshot with `NODE_USE_ENV_PROXY=1 node tools/build-combos.js` (about 5 minutes). Last refresh: 2026-11-23.
+
+### Gotchas
+- **Built-in deck lists:** Death Tax and other built-in lists put each printing of a basic land on its own line, so `deck.unique` has several entries with the same name. Count copies by summing, not with `find`.
+- **Commander deck size:** a test deck must have exactly 100 cards (commander included), or the Commander check refuses to load it and the test just times out.
+- **UI tests and hidden tabs:** the decklist box is on the Build tab. On another tab, set its value with `$eval`, not `fill`.
+- **Shared file:** `app.js` is MAIN's file. Keep combo changes in their own functions near `renderOdds`.
+
+---
+
+# Earlier: the first Combos session (closed 2026-11-23)
 
 **Status: ARCHIVED — SUPERSEDED BY the next main session (its id is the one at the top of `CLAUDE.md`)**
 
@@ -89,8 +145,9 @@ Known issues and limits:
 
 ## Exact next action
 
-MAIN: merge this note (`docs/agents/COMBOS.md`, the only commit on `claude/keen-keller-f9tnbt`), confirm the five open items above are on someone's list, and reply so this note can be marked ARCHIVED. No other action is owed by this session.
+The next Combos session: read "Combos 2" at the top of this note, then fix the four open follow-ups as one task on `claude/combos`
+(start from the live version). Add a UI check for each one to `tests/ui/combo-odds.ui.js`.
 
 ## Changes still awaiting MAIN review or integration
 
-Only this note. Every code change from this session is merged and live (last: 917327f in Version 112).
+Only this note (on `claude/combos`). Every code change is live (last: 7f6e90c in Version 169).

@@ -263,6 +263,19 @@
       <div id="plInfo" class="hint"></div>
       <div id="plOut"></div>
       <div id="plSaved" class="hint"></div>
+      <div class="lab-tune" id="nbBox">
+        <h3>Tune to the next bracket</h3>
+        <p class="hint">Finds small changes that move the deck up a bracket by speed: the median goldfish kill turn before turn 4 is B5, before 6 B4, before 8 B3, before 9 B2. It cuts the cards that sit in your hand longest without being played for cards that speed the kill (ramp, card draw, finishers and combo pieces from your colors, one card for one so the deck stays 100 cards and legal), and tries the lab's choices (lands to keep, mulligans, when to cast the commander...). Every change plays the same shuffles as the deck now; a change is kept only when it beats chance, and the search goes on until the target is reached or nothing more helps. The answer is checked on 2,000 fresh shuffles the search never saw. Nothing changes in your deck until you press Apply.</p>
+        <div class="row wrap">
+          <label>Target <select id="nbTarget"></select></label>
+          <button id="nbRun" class="primary">Tune to the next bracket</button>
+          <button id="nbStop" class="ghost" hidden>Stop</button>
+          <div id="nbProgress" class="progress"><div></div></div>
+        </div>
+        <div id="nbNow" class="hint"></div>
+        <div id="nbInfo" class="hint"></div>
+        <div id="nbOut"></div>
+      </div>
       <div class="lab-tune" id="tnBox">
         <h3>Tune toward a goal</h3>
         <p class="hint">Make the deck kill the goldfish earlier, or hit its land drops more often. The lab measures the deck, then tries one change at a time: the choices above (how many lands to keep, mulligans, when to cast the commander…) and deck changes that keep its size (a land more for the slowest spell, cheap ramp or card draw in your colors for the slowest spell, ramp instead of a land). Every change plays the same shuffles, the one that moves the goal most is kept when it beats chance, and the next change starts from there. The deck before and after then plays fresh shuffles the search never saw: that is the before → after shown. A goldfish has no opponent, so interaction, combo pieces and win conditions are never cut; "Send to the A/B test" checks the new version against other decks. Bracket speed is the median goldfish kill turn, by Wizards' "turns played" guide and the same thresholds as the built-in decks' bracket check: before turn 4 is B5, before 6 B4, before 8 B3, before 9 B2, otherwise B1.</p>

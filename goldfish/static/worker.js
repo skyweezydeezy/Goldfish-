@@ -11,6 +11,11 @@ self.onmessage = (e) => {
     self.postMessage({ result: self.Tune.tune(self.Goldfish, self.Profile, { cards: t.cards, tokens: t.tokens, pool: t.pool, identity: t.identity }, e.data.opts, t.goal, { n: e.data.n, rounds: t.rounds, seed: e.data.seed }, p => self.postMessage({ progress: p })) });
     return;
   }
+  if (e.data.nextBracket) {                             // Simulate tab, "Tune to the next bracket" (T-055)
+    const t = e.data.nextBracket;
+    self.postMessage({ result: self.Tune.nextBracket(self.Goldfish, self.Profile, { cards: t.cards, tokens: t.tokens, pool: t.pool, extra: t.extra, identity: t.identity }, e.data.opts, { n: e.data.n, rounds: t.rounds, seed: e.data.seed, bracket: t.bracket }, (p, note) => self.postMessage({ progress: p, note })) });
+    return;
+  }
   if (e.data.diagnose) {                                // A/B test, step 1: which cards are linked to winning and losing against other decks
     const d = e.data.diagnose;
     self.postMessage({ result: self.Compare.diagnose(self.Goldfish, d.cards, d.tokens, d.opps, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p })) });

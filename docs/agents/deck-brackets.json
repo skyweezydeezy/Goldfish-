@@ -8,21 +8,6 @@
  "seed": 20261123,
  "seconds": 10805,
  "jobs": 4,
- "runs": [
-  {
-   "only": [
-    "overtime-at-the-treasure-mine.txt"
-   ],
-   "version": 167,
-   "date": "2026-11-24",
-   "gamesPerDeck": 20000,
-   "matchesPerPair": 477,
-   "matchTurns": 25,
-   "seed": 20261123,
-   "seconds": 232,
-   "jobs": 4
-  }
- ],
  "rules": {
   "gameChangersMax": {
    "1": 0,
@@ -644,6 +629,67 @@
    },
    "speedBracket": 1,
    "reason": "speed says B1 (median kill T9); card rules say at least B4 (24 Game Changers (B3 allows 3); mass land denial: Smallpox; 2 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "dead-ringers.txt",
+   "name": "Dead Ringers (Ratadrabik of Urborg)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 3,
+    "medianKill": 8,
+    "by4": 1.4,
+    "by5": 7.2,
+    "by6": 16.3,
+    "by7": 36.4,
+    "by8": 68.3,
+    "byT": 94,
+    "cmdrMedian": 4,
+    "mana4": 3.68,
+    "winBy": {
+     "damage": 53.4,
+     "combo": 39.9,
+     "commander": 0.2,
+     "effect": 0.4
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Enduring Tenacity + Bloodthirsty Conqueror: each drain gains life, each life gained drains",
+     "share": 0.0236,
+     "avgTurn": 7.5423728813559325
+    }
+   },
+   "field": {
+    "games": 20020,
+    "wins": 7420,
+    "losses": 12572,
+    "none": 27,
+    "errors": 1,
+    "winRate": 37.1,
+    "opponents": "44 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Necropotence"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 23,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)",
+     "23 two-card infinite combos (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none); 23 two-card infinite combos (all over 6 mana))",
+   "version": 176,
+   "date": "2026-11-24"
   },
   {
    "file": "dead-sea.txt",
@@ -2463,6 +2509,91 @@
    "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none); 1 two-card infinite combo (all over 6 mana))"
   },
   {
+   "file": "short-circuit.txt",
+   "name": "Short Circuit (Vivi Ornitier)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0.7,
+    "by5": 2,
+    "by6": 4.8,
+    "by7": 13.3,
+    "by8": 30.5,
+    "byT": 69.8,
+    "cmdrMedian": 3,
+    "mana4": 4.28,
+    "winBy": {
+     "damage": 59.7,
+     "combo": 12.9,
+     "effect": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Isochron Scepter + Dramatic Reversal: a spell cast every time round, and Vivi Ornitier hits for each one",
+     "share": 0.0144,
+     "avgTurn": 7.583333333333333
+    }
+   },
+   "field": {
+    "games": 20020,
+    "wins": 6140,
+    "losses": 13859,
+    "none": 21,
+    "errors": 0,
+    "winRate": 30.7,
+    "opponents": "44 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Grim Monolith",
+     "Chrome Mox",
+     "Mox Diamond",
+     "Jeska's Will",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Cyclonic Rift",
+     "Rhystic Study",
+     "Gamble",
+     "Mystical Tutor",
+     "Thassa's Oracle",
+     "Underworld Breach",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [
+     "Time Warp"
+    ],
+    "twoCardInfinite": 3,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "14 Game Changers (B3 allows 3)",
+     "1 extra-turn card",
+     "1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (14 Game Changers (B3 allows 3); 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))",
+   "version": 176,
+   "date": "2026-11-24"
+  },
+  {
    "file": "sodium-seraphim.txt",
    "name": "Sodium Seraphim (Gisela, the Broken Blade)",
    "stated": 4,
@@ -3460,6 +3591,60 @@
    },
    "speedBracket": 2,
    "reason": "speed says B2 (median kill T8); card rules say at least B4 (3 Game Changers (B1-B2 allow none); mass land denial: Vorinclex, Voice of Hunger)"
+  }
+ ],
+ "runs": [
+  {
+   "only": [
+    "overtime-at-the-treasure-mine.txt"
+   ],
+   "version": 167,
+   "date": "2026-11-24",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 477,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 232,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "short-circuit.txt"
+   ],
+   "version": 176,
+   "date": "2026-11-24",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 455,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 359,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "dead-ringers.txt"
+   ],
+   "version": 176,
+   "date": "2026-11-24",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 455,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 336,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "dead-ringers.txt"
+   ],
+   "version": 176,
+   "date": "2026-11-24",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 455,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 545,
+   "jobs": 4
   }
  ]
 }

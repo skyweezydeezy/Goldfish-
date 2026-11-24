@@ -135,6 +135,7 @@
     proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
+    fiendhunter: ['exile which creature?', 'Choose the creature to exile until Fiend Hunter leaves the battlefield.'],
     hostage: ['exile which creature or artifact?', 'Choose the creature or artifact to exile until it leaves the battlefield. You may cast that card while it stays exiled, with mana of any type.'],
     drake: ['exchange for which creature?', 'Choose the creature of theirs you gain control of; they gain control of this creature.'],
     threaten: ['gain control of which creature?', 'Choose the creature you gain control of until end of turn. It untaps and gains haste.'],

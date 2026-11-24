@@ -1,0 +1,85 @@
+// Dead Ringers (Ratadrabik of Urborg)
+// Bracket 3
+// Checked by ICEYfish (v176, 20,000 games): median kill T8, 7.2% by T5, 36.4% by T7; field win 37.1%; 3 Game Changers; B3 confirmed
+// COMMANDER
+1 Ratadrabik of Urborg
+// MAIN
+1 Samwise the Stouthearted
+1 Nazgûl
+1 Uruk-hai Berserker
+1 Gollum, Patient Plotter
+1 Boromir, Warden of the Tower
+1 Viscera Seer
+1 Carrion Feeder
+1 Ashnod's Altar
+1 Phyrexian Altar
+1 Altar of Dementia
+1 Blasting Station
+1 Yahenni, Undying Partisan
+1 Woe Strider
+1 Bartolomé del Presidio
+1 Warren Soultrader
+1 Umbral Collar Zealot
+1 Luminous Broodmoth
+1 Gravecrawler
+1 Reassembling Skeleton
+1 Pitiless Plunderer
+1 Mikaeus, the Unhallowed
+1 Karmic Guide
+1 Reveillark
+1 Sun Titan
+1 Leonin Relic-Warder
+1 Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight
+1 Abdel Adrian, Gorion's Ward
+1 Animate Dead
+1 Necromancy
+1 Dance of the Dead
+1 Nim Deathmantle
+1 Teysa Karlov
+1 Teysa, Orzhov Scion
+1 Blood Artist
+1 Zulaport Cutthroat
+1 Cruel Celebrant
+1 Elas il-Kor, Sadistic Pilgrim
+1 Wayward Servant
+1 Vito, Thorn of the Dusk Rose
+1 Sanguine Bond
+1 Exquisite Blood
+1 Cliffhaven Vampire
+1 Bloodthirsty Conqueror
+1 Vizkopa Guildmage
+1 Revival // Revenge
+1 Enduring Tenacity
+1 Beacon of Immortality
+1 Solemnity
+1 Vizier of Remedies
+1 Wall of Blood
+1 Children of Korlis
+1 Toxic Deluge
+1 Swords to Plowshares
+1 Approach of the Second Sun
+1 Demonic Tutor
+1 Vampiric Tutor
+1 Kaya's Ghostform
+1 Necropotence
+1 Relic of Legends
+1 Sister Hospitaller
+1 Fiend Hunter
+1 Marionette Apprentice
+1 Aetherflux Reservoir
+1 Scrubland
+1 Godless Shrine
+1 Marsh Flats
+1 Caves of Koilos
+1 Isolated Chapel
+1 Concealed Courtyard
+1 Shattered Sanctum
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Fetid Heath
+1 Vault of the Archangel
+1 Phyrexian Tower
+1 Urborg, Tomb of Yawgmoth
+1 Castle Locthwain
+1 Command Tower
+12 Plains
+10 Swamp

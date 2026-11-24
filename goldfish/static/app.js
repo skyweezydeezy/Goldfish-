@@ -269,6 +269,11 @@
   });
   // loadDeck({ text, quiet }): remember.js loads the deck you had, without saving it again or touching the decklist box
   let selLoaded = '';          // the deck menu's choice for the deck that is loaded
+  // after a deck loads (and autoSave has picked its entry): the menu's entry for it, a built-in being loaded, or the saved deck with this text
+  function noteLoadedSel(trust) {          // trust: the menu already names the loaded deck (remember.js has just put it back)
+    const v = $('#savedDecks').value, d = getDecks();
+    selLoaded = trust || (loadingBuiltin && v) || (v && d[v] === S.deckText) ? v : (Object.keys(d).find(n => d[n] === S.deckText) || '');
+  }
   async function loadDeck(o) {
     const quiet = !!(o && o.quiet), text = quiet ? o.text : $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
@@ -283,7 +288,7 @@
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
       else {
         r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false;
-        if (ok) { S.deckText = text; selLoaded = $('#savedDecks').value; if (!quiet) autoSave(text); }
+        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); }
         else { $('#savedDecks').value = selLoaded; dirty(); }          // refused: the deck menu names the deck that is still loaded again (and so does the remembered state)
       }
     } catch (err) {
@@ -2855,7 +2860,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { noteLoadedSel, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

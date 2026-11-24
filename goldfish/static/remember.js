@@ -191,7 +191,7 @@
         if (ui.deck && !/[#&]deck=/.test(location.hash)) {                 // (a deck link being opened wins)
           await A.loadDeck({ text: ui.deck, quiet: true, lenient: true });          // lenient: a deck remembered from before the Commander deck rule still comes back
           if (!S.deck) { held = ui.deck; throw new Error('the deck could not be loaded'); }
-          if (ui.saved != null && $('#savedDecks') && [...$('#savedDecks').options].some(o => o.value === ui.saved)) $('#savedDecks').value = ui.saved;
+          if (ui.saved != null && $('#savedDecks') && [...$('#savedDecks').options].some(o => o.value === ui.saved)) { $('#savedDecks').value = ui.saved; if (A.noteLoadedSel) A.noteLoadedSel(true); }          // app.js: the menu entry of the loaded deck, for a refused pick later
           for (const [k, el] of controls()) set(k, el);                    // the controls a deck brings (the lab's choices, tag menus)
           if (S.deck && Array.isArray(ui.odds)) ui.odds.forEach(u => { if (S.deck.unique[u]) S.oddsSel.add(u); });
           const sig = S.deckText ? hash(S.deckText) : null;

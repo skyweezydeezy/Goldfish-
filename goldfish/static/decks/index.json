@@ -260,6 +260,16 @@
    "learnedVs": "field"
   },
   {
+   "file": "dead-ringers.txt",
+   "name": "Dead Ringers (Ratadrabik of Urborg)",
+   "commanders": [
+    "Ratadrabik of Urborg"
+   ],
+   "colors": "WB",
+   "cards": 100,
+   "bracket": 4
+  },
+  {
    "file": "dead-sea.txt",
    "name": "Dead Sea (Thrasios, Triton Hero)",
    "commanders": [
@@ -436,6 +446,16 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
+  },
+  {
+   "file": "short-circuit.txt",
+   "name": "Short Circuit (Vivi Ornitier)",
+   "commanders": [
+    "Vivi Ornitier"
+   ],
+   "colors": "UR",
+   "cards": 100,
+   "bracket": 5
   },
   {
    "file": "soul-brokers.txt",

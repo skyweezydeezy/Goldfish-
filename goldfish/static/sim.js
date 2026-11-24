@@ -3752,6 +3752,7 @@
   const NO_KW = new Set();
   function touch(g) {
     g.bfVer = (g.bfVer || 0) + 1;
+    if (!g.story && tableHas(g, 'storyBuff') && g.battlefield.some(q => q.card.a.storyBuff) && storyCount(g) >= 3) g.story = true;          // Óin the Brave: storied, latched whenever the board changes (enters, stolen, returned, phased in)
     if (g._devo) for (const p of (tableHas(g, 'devotionCreature') ? g.battlefield : NONE)) { const dc = p.card.a.devotionCreature; if (dc) p.noCreature = devotionTo(g, dc.color) + (dc.color2 ? devotionTo(g, dc.color2) : 0) < dc.n; }          // Heliod, Sun-Crowned is a creature only with enough devotion
   }
   function devotionTo(g, color) { let n = 0; const re = new RegExp('\\{[^}]*' + color + '[^}]*\\}', 'g'); for (const p of g.battlefield) n += ((p.card.mana_cost || '').match(re) || []).length; return n; }
@@ -12788,10 +12789,12 @@ g.actSeq = (g.actSeq || 0) + 1;
   // a seated person is asked before each of these (the autopilot's choice is the default, so taking every default plays the autopilot's game)
   function askUse(g, what, why, source, target) { return !g.ask || decide(g, { kind: 'protect', options: [what], def: what, optional: true, why, target: target || null, source: source || null }) != null; }
   function magdaTap(g, q, ev) { if (g.dry || !q || !q.card || !tableHas(g, 'tapTreasure') || !isCreaturePerm(q)) return; for (const mg of g.battlefield.filter(x => x.card.a.tapTreasure)) if (matchesFilter(q.card, mg.card.a.tapTreasure)) createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev || [], mg); }
-  function enduringStory(g) { if (g.story) return true; if (g.battlefield.filter(q => artOn(g, q) || q.card.a.isLegendary || /\bSaga\b/.test(q.card.type_line || '')).length >= 3) g.story = true; return !!g.story; }          // storied: three artifacts, legendaries and/or Sagas once, for the rest of the game
+  const storyCount = g => g.battlefield.filter(q => artOn(g, q) || q.card.a.isLegendary || /\bSaga\b/.test(q.card.type_line || '')).length;
+  function enduringStory(g) { return !!g.story || (g.battlefield.some(q => q.card.a.storyBuff) && storyCount(g) >= 3); }          // storied: read only (g.story is set as a permanent enters, in enter)
+  const blockersWanted = g => !!g.opp && otherPlayers(g).some(o => !o.dead && o.battlefield.some(q => isCreaturePerm(q) && powerOf(o, q) > 0));          // in a match: a creature tapped now stays tapped through their turn
   function hasteTaps(g, ev) {          // Axgard Cavalry: {T} before attackers: haste for a creature that came in this turn and hits harder than the Cavalry
     for (const p of (tableHas(g, 'hasteTap') ? g.battlefield.slice() : NONE)) {
-      if (!p.card.a.hasteTap || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste'))) continue;
+      if (!p.card.a.hasteTap || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste')) || (blockersWanted(g) && !hasKw(g, p, 'vigilance'))) continue;
       const t = g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.sick && !q.tapped && !hasKw(g, q, 'haste') && !hasKw(g, q, 'defender')).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
       if (!t || powerOf(g, t) <= powerOf(g, p)) continue;
       if (!askUse(g, `Tap ${p.card.name}: ${t.card.name} gains haste`, `${p.card.name}, before attackers`, p, t)) continue;
@@ -12812,7 +12815,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function dwarfEnd(g, ev) {          // at your end step, with the mana left: Vault Robber (a creature card from the graveyard for a Treasure), Óin the Brave (a spare land for a new card)
     if (g.dry) return;
     for (const p of (tableHas(g, 'vaultRobber') ? g.battlefield.slice() : NONE)) {
-      const vr = p.card.a.vaultRobber; if (!vr || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste'))) continue;
+      const vr = p.card.a.vaultRobber; if (!vr || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste')) || blockersWanted(g)) continue;
       const fod = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander).sort((x, y) => (x.card.a.mv || 0) - (y.card.a.mv || 0))[0];
       if (!fod) continue;
       if (!canPay(vr, allUnits(g).filter(u => u.src !== p)) || !askUse(g, `{1}, tap ${p.card.name}, exile ${fod.card.name}: a Treasure`, `${p.card.name}, your end step`, p)) continue;
@@ -12821,7 +12824,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev, p); ev.push({ type: 'note', text: `${p.card.name}: ${fod.card.name} exiled from the graveyard for a Treasure`, source: p }); magdaTap(g, p, ev);
     }
     for (const p of (tableHas(g, 'tapRummage') ? g.battlefield.slice() : NONE)) {
-      const rc = p.card.a.tapRummage; if (!rc || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste')) || !g.library.length) continue;
+      const rc = p.card.a.tapRummage; if (!rc || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste')) || !g.library.length || blockersWanted(g)) continue;
       if (g.battlefield.filter(q => q.asLand).length < 5 || !g.hand.some(i => i.card.a.isLand)) continue;          // only a land you no longer need
       if (!canPay(rc, allUnits(g).filter(u => u.src !== p)) || !askUse(g, `{1}, tap ${p.card.name}, discard a card: draw a card`, `${p.card.name}, your end step`, p)) continue;
       p.tapped = true; if (!canPay(rc, allUnits(g)) || pay(g, rc) == null) { p.tapped = false; continue; }
@@ -12833,9 +12836,16 @@ g.actSeq = (g.actSeq || 0) + 1;
     const c = g.hand.find(i => i.card.a.favorAbility); if (!c) return false;
     const base = effectiveCost(g, c), cost = { generic: base.generic + 1, pips: base.pips, x: 0 };
     if (!canPay(cost, allUnits(g)) || !askUse(g, `Cast ${c.card.name}: copy the ability of ${source && source.card ? source.card.name : 'a permanent'}`, `${source && source.card ? source.card.name : 'An ability'}`, source || null) || pay(g, cost) == null) return false;
+    const was = { last: g.lastCast, sc: g.spellsCast, x: g.xValue, much: g.thatMuch };          // the copy reads the game as the ability saw it, not Return the Favor (Chrome Host Seedshark: the spell's mana value)
     g.hand.splice(g.hand.indexOf(c), 1); g.graveyard.push(c); fireCastTriggers(g, c, ev); g.spellsCast = (g.spellsCast || 0) + 1;
     ev.push({ type: 'note', text: `${c.card.name} is cast: the ability of ${source && source.card ? source.card.name : 'a permanent'} is copied`, source: source || null });
-    g.inCopy = true; try { again(); } finally { g.inCopy = false; }
+    const now = { last: g.lastCast, sc: g.spellsCast, x: g.xValue, much: g.thatMuch };
+    g.lastCast = was.last; g.spellsCast = was.sc; g.xValue = was.x; g.thatMuch = was.much;
+    g.inCopy = true; try { again(); } finally {          // what the copy itself did is kept: spells it cast (discover, cascade) count on top of Return the Favor
+      g.inCopy = false; const cast = (g.spellsCast || 0) - (was.sc || 0);
+      if (g.lastCast === was.last) g.lastCast = now.last; g.spellsCast = (now.sc || 0) + Math.max(0, cast);
+      if (g.xValue === was.x) g.xValue = now.x; if (g.thatMuch === was.much) g.thatMuch = now.much;
+    }
     return true;
   }
   function plusBonus(g, src) { if (!g || g.dry || !src || !src.card || !tableHas(g, 'torbran')) return 0; let n = 0; for (const q of g.battlefield) if (q.card.a.torbran) n += q.card.a.torbran; return n && colorsOf(g, src.card).includes('R') ? n : 0; }          // Torbran, Thane of Red Fell: a red source of yours deals 2 more

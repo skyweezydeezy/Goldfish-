@@ -11731,12 +11731,25 @@ g.actSeq = (g.actSeq || 0) + 1;
     return cs.size ? [...cs] : ['C'];
   }
   // "Don't go off now" after the combo paid for and cast its pieces: put the game back as it was (zones, the permanents' own fields, the mana and the counts)
-  const COMBO_HOLD = { hold: true }, SNAP_Z = ['hand', 'battlefield', 'graveyard', 'exile', 'library', 'command', 'floating'], SNAP_N = ['life', 'damage', 'manaSpent', 'spentThisTurn', 'spellsCast', 'nextIid', 'landThisTurn', 'landsPlayedThisTurn', 'killTurn', 'loopMana'];
-  function comboSnap(g) { return { z: SNAP_Z.map(k => (g[k] || []).slice()), p: g.battlefield.map(q => [q, Object.assign({}, q)]), n: SNAP_N.map(k => g[k]) }; }
-  function comboRestore(g, sn) {
-    SNAP_Z.forEach((k, i) => { g[k] = sn.z[i]; });
-    for (const [q, c] of sn.p) { for (const k of Object.keys(q)) delete q[k]; Object.assign(q, c); }
-    SNAP_N.forEach((k, i) => { if (sn.n[i] === undefined) delete g[k]; else g[k] = sn.n[i]; });
+  const COMBO_HOLD = { hold: true, note: null, banner: null }, SNAP_Z = ['hand', 'battlefield', 'graveyard', 'exile', 'library', 'command', 'floating'],
+    SNAP_N = ['life', 'damage', 'manaSpent', 'spentThisTurn', 'spellsCast', 'nextIid', 'landThisTurn', 'landsPlayedThisTurn', 'killTurn', 'loopMana', 'lastCast', 'xValue', 'comboOk', 'comboInfo', '_infNoted', 'dead', 'winBy', 'comboWin'];
+  const snapPerm = q => { const c = {}; for (const k of Object.keys(q)) { const v = q[k]; c[k] = v instanceof Set ? new Set(v) : Array.isArray(v) ? v.slice() : v; } return c; };
+  const snapPlayers = g => { const l = g.match && g.match.players ? g.match.players.slice() : g.opp ? [g, g.opp] : [g]; if (!l.includes(g)) l.unshift(g); return l; };
+  function comboSnap(g, ev) {
+    return { ev: ev.length, ps: snapPlayers(g).map(x => ({ x, z: SNAP_Z.map(k => (x[k] || []).slice()), p: x.battlefield.map(q => [q, snapPerm(q)]), n: SNAP_N.map(k => x[k]) })) };
+  }
+  // the zone arrays go back in place, so every alias of g.hand and the others (comboLines holds one) stays valid
+  function comboRestore(g, sn, ev) {
+    for (const s of sn.ps) {
+      const x = s.x;
+      SNAP_Z.forEach((k, i) => { if (x[k]) { x[k].length = 0; x[k].push(...s.z[i]); } });
+      for (const [q, c] of s.p) { for (const k of Object.keys(q)) delete q[k]; Object.assign(q, c); }
+      SNAP_N.forEach((k, i) => { if (s.n[i] === undefined) delete x[k]; else x[k] = s.n[i]; });
+    }
+    ev.length = sn.ev;
+    if (COMBO_HOLD.banner) ev.push(COMBO_HOLD.banner);
+    if (COMBO_HOLD.note) ev.push({ type: 'note', text: COMBO_HOLD.note, source: null });
+    COMBO_HOLD.banner = COMBO_HOLD.note = null;
   }
   const COMBO_BIG = 99;          // the engine's stand-in for "as much as you like"; only the display says ∞
   // a seated person is asked what the assembled combo should do (decide kind 'combo'; the autopilot's pick, and every unseated game, is 'win').
@@ -11759,7 +11772,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const id = pick && pick.id ? pick.id : 'win';
     if (id === 'win') return 'win';
     (g.comboAsked = g.comboAsked || {})[text] = g.turn;
-    if (id === 'hold') { ev.push({ type: 'note', text: `Combo assembled: ${info.name}: not going off now`, source: null }); if (g._rb) throw COMBO_HOLD; return 'hold'; }
+    if (id === 'hold') { const note = `Combo assembled: ${info.name}: not going off now`; if (g._rb) { COMBO_HOLD.note = note; COMBO_HOLD.banner = { type: 'combo', name: info.name, cards: info.cards, outcome: o, text }; throw COMBO_HOLD; } ev.push({ type: 'note', text: note, source: null }); return 'hold'; }
     if (id.startsWith('mana:')) {
       const cols = info.colors ? [...info.colors] : comboColors(g), n = id === 'mana:inf' ? COMBO_BIG : Math.min(+id.slice(5), COMBO_BIG);
       for (let k = 0; k < n; k++) g.floating.push({ src: null, colors: new Set(cols), floating: true });
@@ -12122,7 +12135,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       return comboWin(g, ev, text);
     }
     // a person's "Don't go off now" puts the game back as it was before the combo paid for anything (comboSnap)
-    const held = f => { if (!g.ask) return f(g, ev); const sn = comboSnap(g); g._rb = true; try { return f(g, ev); } catch (e) { if (e !== COMBO_HOLD) throw e; comboRestore(g, sn); return false; } finally { delete g._rb; } };
+    const held = f => { if (!g.ask) return f(g, ev); const sn = comboSnap(g, ev); g._rb = true; try { return f(g, ev); } catch (e) { if (e !== COMBO_HOLD) throw e; comboRestore(g, sn, ev); return false; } finally { delete g._rb; } };
     if (held(boardCombo)) return true;
     if (held(moreCombos)) return true;
     if (held(bookCombo)) return true;

@@ -101,4 +101,18 @@ check('a typed 7 mana is 7 floating units', !g.infMana && g.floating.length === 
 g = fresh(); lands(g, 2, 'Island'); put(g, 'Sol Ring'); put(g, 'Sol Ring'); const scd = put(g, 'Isochron Scepter'); scd.imprinted = { iid: 989, card: by('Dramatic Reversal') }; hand(g, 'Walking Ballista');
 g.ask = chooser('mana:inf'); g.floating = []; run(g);
 check('with an outlet too, a colourless loop still gives only colourless mana', g.infMana && g.infMana.colors.join('') === 'C', g.infMana && g.infMana.colors.join(','));
+// ---- review round 2: in place, the log, a duel ----
+g = fresh(); lands(g, 5, 'Mountain'); put(g, 'Grizzly Bears'); hand(g, 'Dualcaster Mage'); hand(g, 'Twinflame'); g.ask = chooser('hold');
+const hand0 = g.hand, bf0 = g.battlefield, gy0 = g.graveyard; ev = run(g);
+check('hold restores the zones in place: the same arrays, so aliases stay valid', g.hand === hand0 && g.battlefield === bf0 && g.graveyard === gy0 && hand0.length === 2);
+check('the log after a hold has the banner and the hold note, and nothing for the pieces', ev.every(e => e.type === 'combo' || e.type === 'note') && ev.some(e => e.type === 'combo') && ev.some(e => /not going off now/.test(e.text || '')), ev.map(e => e.type).join(','));
+// the other combo on the same turn still sees the cards a hold gave back: hold the copy loop, the Scepter loop into Ballista still goes off
+g = scep(); lands(g, 5, 'Mountain'); put(g, 'Grizzly Bears'); hand(g, 'Dualcaster Mage'); hand(g, 'Twinflame'); hand(g, 'Walking Ballista');
+g.ask = (gg, d) => { if (d.kind !== 'combo') return d.def; return d.combo.outcome === 'tokens' ? d.options.find(o => o.id === 'hold') : d.def; }; run(g);
+check('after holding one combo, the next one (Scepter loop into Ballista) still wins, and the held cards are back', g.killTurn != null && g.winBy.name === 'Scepter loop' && g.hand.some(i => i.card.name === 'Dualcaster Mage') && g.hand.some(i => i.card.name === 'Twinflame'), JSON.stringify(g.winBy));
+// a duel: the opponent's life and zones are untouched by a hold
+{ const gm = G.newPod([deck, deck], [O, O], 3, ['A', 'B'], 0), a = gm.games[0], b = gm.games[1];
+  a.turn = 5; a.command = []; a.hand = []; a.battlefield = []; lands(a, 5, 'Mountain'); put(a, 'Grizzly Bears'); hand(a, 'Dualcaster Mage'); hand(a, 'Twinflame'); b.life = 31; const bl = b.graveyard.length, bh = b.hand.length;
+  a.ask = chooser('hold'); G.comboLines(a, []);
+  check('a hold in a duel leaves the opponent\'s life and zones alone and the pieces in hand', b.life === 31 && b.graveyard.length === bl && b.hand.length === bh && a.hand.length === 2 && !a.match.winner, a.hand.length + ' ' + b.life); }
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

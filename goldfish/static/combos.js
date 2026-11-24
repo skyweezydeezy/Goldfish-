@@ -157,10 +157,24 @@
   }
   // the cards Commander Spellbook says complete a combo with this deck (one card away, in its colours), most popular combo first,
   // each with the combos it completes. The card to cut is left out, and so is any combo that needs it.
-  function additions(db, deck, identity, cut, max) {
+  // o.info(name) -> { color_identity, legal_commander } (a Scryfall card) or undefined, for the card and the other pieces: a card outside the
+  // commander's colours or not legal in Commander is never offered, nor is a combo with such a piece. o.requireInfo drops a card o.info doesn't know.
+  // o.skip: names to leave out (the ones the user removed).
+  function additions(db, deck, identity, cut, max, o) {
+    o = o || {};
     const f = find(db, deck.unique.map(c => c.name), identity), by = new Map();
+    const id = identity == null ? null : new Set(Array.isArray(identity) ? identity : String(identity).split(''));
+    const sk = o.skip ? new Set([...o.skip].map(front)) : null, inDeck = new Set(deck.unique.map(c => front(c.name)));
+    const piece = (n, must) => {                          // is this card inside the identity and legal? (unknown: only when it is not required)
+      const i = o.info && o.info(n);
+      if (!i) return !(must && o.requireInfo);
+      if (id && (i.color_identity || []).some(l => !id.has(l))) return false;
+      return !i.legal_commander || i.legal_commander === 'legal';
+    };
     for (const c of f.almost) {
       if (cut && c.cards.some(n => front(n) === front(cut)) || c.missing === cut) continue;
+      if (inDeck.has(front(c.missing)) || (sk && sk.has(front(c.missing)))) continue;
+      if (!piece(c.missing, true) || !c.cards.every(n => n === c.missing || piece(n, false))) continue;
       let a = by.get(c.missing); if (!a) by.set(c.missing, a = { card: c.missing, combos: [] });
       a.combos.push(c);
     }

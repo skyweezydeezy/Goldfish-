@@ -110,5 +110,24 @@ if (best) {
   const pcs = Combos.comboPieces(db, best.dk, id);
   check('comboPieces: every card of an included combo is a piece', best.f.included.every(c => c.cards.every(n => pcs.has(n))));
 }
+
+// T-059: only cards inside the commander's colours (and legal in Commander) are suggested, and so are only combos whose other pieces are
+const names = ['Red Commander', 'Goblin Piece', 'Fire Add', 'Blue Add', 'Stale Add', 'Banned Add', 'Colourless Add', 'Blue Deck Piece', 'Red Add 2'];
+const crow = (id, ident, cs) => [id, 1000 - cs.length, ident, cs, [], ['Infinite damage'], [], '', 'w', 1, ''];
+const fdb = { cards: names, needs: [], features: [], combos: [crow('a', 'R', [1, 2]), crow('b', 'U', [1, 3]), crow('c', 'R', [1, 4]), crow('d', 'R', [1, 5]), crow('e', 'C', [1, 6]), crow('g', 'R', [7, 8])] };
+const facts = { 'Red Commander': { color_identity: ['R'] }, 'Goblin Piece': { color_identity: ['R'] }, 'Fire Add': { color_identity: ['R'], legal_commander: 'legal' }, 'Blue Add': { color_identity: ['U'], legal_commander: 'legal' },
+  'Stale Add': { color_identity: ['U'], legal_commander: 'legal' }, 'Banned Add': { color_identity: ['R'], legal_commander: 'banned' }, 'Colourless Add': { color_identity: [], legal_commander: 'legal' },
+  'Blue Deck Piece': { color_identity: ['U'], legal_commander: 'legal' }, 'Red Add 2': { color_identity: ['R'], legal_commander: 'legal' } };
+const fdeck = { unique: [{ name: 'Red Commander', qty: 1, commander: true }, { name: 'Goblin Piece', qty: 1 }, { name: 'Blue Deck Piece', qty: 1 }, { name: 'Mountain', qty: 96 }] };
+const info = n => facts[n];
+const sug = (id, o) => Combos.additions(fdb, fdeck, id, '', 20, Object.assign({ info, requireInfo: true }, o)).map(a => a.card).sort().join(',');
+check('mono-red commander: a snapshot-red combo with a blue card, a banned card and a combo with a blue deck piece are never suggested',
+  sug(['R']) === 'Colourless Add,Fire Add', sug(['R']));
+check('mono-red commander: no suggestion needs a blue piece (the card or the rest of its combo)', Combos.additions(fdb, fdeck, ['R'], '', 20, { info, requireInfo: true }).every(a => a.combos.every(c => c.cards.every(n => !(facts[n].color_identity || []).includes('U')))));
+check('two commanders (partners): the union of both identities is allowed', sug(['R', 'U']) === 'Blue Add,Colourless Add,Fire Add,Red Add 2,Stale Add', sug(['R', 'U']));
+check('a colourless commander gets nothing here: every combo uses a coloured card', sug([]) === '', sug([]));
+check('a card the lookup does not know is not offered', Combos.additions(fdb, fdeck, ['R'], '', 20, { info: n => n === 'Fire Add' ? facts[n] : undefined, requireInfo: true }).map(a => a.card).join() === 'Fire Add');
+check('removed cards (skip) are left out and the next one fills in', sug(['R'], { skip: new Set(['Fire Add']) }) === 'Colourless Add' && Combos.additions(fdb, fdeck, ['R'], '', 1, { info, requireInfo: true, skip: ['Colourless Add'] })[0].card === 'Fire Add');
+check('a card already in the deck is never suggested', !Combos.additions(fdb, { unique: fdeck.unique.concat([{ name: 'Fire Add', qty: 1 }]) }, ['R'], '', 20, { info, requireInfo: true }).some(a => a.card === 'Fire Add'));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

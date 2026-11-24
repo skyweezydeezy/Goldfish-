@@ -1322,3 +1322,11 @@ body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }
 .raise-ctl select { max-width: 60vw; }
 #comboRaise .raise-ctl .hint { font-size: 12px; }
 @media (max-width: 600px) { .combo-odds.raise td:last-child { white-space: normal; } .combo-odds.raise button { margin: 2px 0; } }
+
+/* ---- Raise your combo odds: the progress bar while it checks (the fill animates; reduced motion turns every transition off above) ---- */
+.raise-prog { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.raise-prog .progress { flex: 0 1 260px; width: auto; min-width: 120px; flex-grow: 1; max-width: 260px; }
+.raise-prog .progress div { transition: width .45s ease-out; background-size: 200% 100%; animation: raise-shine 1.4s linear infinite; }
+@keyframes raise-shine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.raise-rm { padding: 2px 8px; }
+@media (prefers-reduced-motion: reduce) { .raise-prog .progress div { animation: none; transition: none; } }

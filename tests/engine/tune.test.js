@@ -87,8 +87,9 @@ const interaction = new Set(rr.cards.filter(c => ['removal', 'counter', 'wipe', 
   check('next bracket: a target at or below the deck\'s bracket needs no tuning', same.status === 'already' && /needs no tuning/.test(same.text), same.text);
   // a Spellbook piece that is banned or not legal in Commander is never offered (poolSize counts what the search may add)
   { const ring = pool2.find(c => c.name === 'Sol Ring'), mk = lg => Object.assign({}, ring, { name: 'Test Ring ' + lg, legal_commander: lg });
-    const run = extra => T.tune(G, P, { cards: fr.cards, tokens: fr.tokens, pool: [], extra }, O, { kind: 'kill', bracket: 3 }, { n: 40, rounds: 1, seed: 3, wide: true, finalN: 40 }).poolSize;
-    check('next bracket: a banned combo piece is not offered, a legal one is', !!ring && run([mk('legal')]) === run([]) + 1 && run([mk('banned')]) === run([]) && run([mk('not_legal')]) === run([]), `legal +${run([mk('legal')]) - run([])}, banned +${run([mk('banned')]) - run([])}`); }
+    const run = extra => T.tune(G, P, { cards: fr.cards, tokens: fr.tokens, pool: [], extra }, O, { kind: 'kill', bracket: 3 }, { n: 40, rounds: 1, seed: 3, wide: true, finalN: 40, fullTurns: 10 }).poolSize;
+    const base = run([]), lg = run([mk('legal')]), bn = run([mk('banned')]), nl = run([mk('not_legal')]);
+    check('next bracket: a banned combo piece is not offered, a legal one is', !!ring && lg === base + 1 && bn === base && nl === base, `legal +${lg - base}, banned +${bn - base}, not_legal +${nl - base}`); }
   console.log(`      (${((Date.now() - t1) / 1000).toFixed(0)}s)`); }
 
 console.log(`\n${pass} passed, ${fail} failed`);

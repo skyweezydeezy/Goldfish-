@@ -3029,7 +3029,8 @@
       const cut = sel.value, key = cut + '|' + o.onPlay;
       if (key === raiseKey && S.comboRaise && (S.comboRaise.done || raiseRun)) return;          // same deck, cut and play/draw: keep what is shown
       raiseKey = key;
-      const run = ++raiseRun;
+      const run = ++raiseRun, tok = raiseClaim();
+      try {
       const found = Combos.find(db, deck.unique.map(c => c.name), id);
       const base = Combos.comboOdds(deck, found.included, RAISE_TURNS, o.onPlay, { anyOnly: true });
       S.comboRaise = { base, rows: [], cut, done: false };
@@ -3038,7 +3039,7 @@
       body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head}</thead><tbody><tr class="any"><td>Now <span class="hint">${found.included.length} combo${found.included.length === 1 ? '' : 's'}</span></td>${raiseCells(base)}</tr></tbody></table>`;
       box.hidden = false; tidy(box);
       // 1. the candidates, then their colours and legality from Scryfall (a card outside the commander's colours or not legal is never offered)
-      raiseProgress(0, 'Looking up the cards…');
+      raiseProgress(0, tok, 'Looking up the cards…');
       const wanted = Combos.additions(db, deck, id, cut, 60).map(a => a.card);
       const verified = await raiseLookup(wanted);
       if (run !== raiseRun || S.deck !== deck) return;
@@ -3046,18 +3047,18 @@
       $('#raiseAddList').innerHTML = cands.map(a => `<option value="${esc(a.card)}">`).join('');
       // 2. the odds with each one in, one step at a time
       const rows = [], total = cands.length + 1;
-      raiseProgress(1 / total, cands.length ? `Checking 0 of ${cands.length}…` : '');
+      raiseProgress(1 / total, tok, cands.length ? `Checking 0 of ${cands.length}…` : '');
       for (const a of cands) {
         await new Promise(r => setTimeout(r, 0)); if (run !== raiseRun || S.deck !== deck) return;
         const r = Combos.swapOdds(db, deck, id, a.card, cut, RAISE_TURNS, o.onPlay);
         rows.push(Object.assign({}, a, { r, gain: r.any.p.map((p, i) => p - base.any.p[i]) }));
-        raiseProgress((rows.length + 1) / total, `Checking ${rows.length} of ${cands.length}…`);
+        raiseProgress((rows.length + 1) / total, tok, `Checking ${rows.length} of ${cands.length}…`);
       }
       const score = x => x.gain.reduce((s, g) => s + g, 0);
       rows.sort((a, b) => score(b) - score(a) || b.combos[0].popularity - a.combos[0].popularity);
       S.comboRaise = { base, rows, cut, done: true, verified, head };
-      raiseProgress(null);
       raiseShow();
+      } catch (e) { console.error(e); } finally { raiseProgress(null, tok); }
     });
   }
   // the list: the best 5 that are not removed (the next best takes the place of a removed one), and the best 10 folded
@@ -3077,13 +3078,15 @@
     raiseButtons(body);
   }
   // the progress bar: frac 0..1 and a label; null hides it. Every step is logged in S.comboRaiseProg (the test reads it).
-  function raiseProgress(frac, label) {
-    const el = $('#raiseProg'); if (!el) return;
+  let raiseBar = 0;                                        // the newest run owns the bar: only its token moves or hides it
+  const raiseClaim = () => ++raiseBar;
+  function raiseProgress(frac, tok, label) {
+    const el = $('#raiseProg'); if (!el || tok !== raiseBar) return;
     if (frac == null) { el.hidden = true; return; }
     const pc = Math.round(Math.min(1, frac) * 100);
     el.hidden = false; el.querySelector('.progress div').style.width = pc + '%'; el.querySelector('.progress').setAttribute('aria-valuenow', pc);
     $('#raiseProgTxt').textContent = label || '';
-    (S.comboRaiseProg = S.comboRaiseProg || []).push({ pc, label });
+    const lg = (S.comboRaiseProg = S.comboRaiseProg || []); lg.push({ pc, label }); if (lg.length > 200) lg.splice(0, lg.length - 200);
   }
   // colours and legality of the candidate cards: asked of Scryfall once, kept for the session. false when Scryfall could not be reached.
   const raiseInfo = new Map();
@@ -3148,7 +3151,7 @@
   }
   async function raiseSimulate(add, cut) {
     const out = $('#raiseSim'), deck = S.deck; if (!deck) return;
-    out.innerHTML = ''; raiseProgress(0, `Simulating + ${add} − ${cut}: finding the card…`);
+    const tok = raiseClaim(); out.innerHTML = ''; raiseProgress(0, tok, `Simulating + ${add} − ${cut}: finding the card…`);
     try {
       const got = await Source.loadDeck('1 ' + add, () => {}), card = got.cards[0];
       if (!card) { out.innerHTML = `<p class="hint">${esc(add)} was not found on Scryfall.</p>`; return; }
@@ -3161,9 +3164,8 @@
       const o = opts(), n = 2000, seed = 20261124;
       const o2 = Object.assign({}, o, { bookCombos: db ? Combos.goldfished(Combos.find(db, cards.map(c => c.name), id), G.deckCombos(G.buildDeck(cards, tokens, currentPolicy().tribe))) : o.bookCombos });
       out.innerHTML = '';
-      const a = await simOnce(S.cards, S.tokens, o, n, seed, p => raiseProgress(p / 2, `Simulating your deck: ${Math.round(p * 100)}%`));
-      const b = await simOnce(cards, tokens, o2, n, seed, p => raiseProgress(0.5 + p / 2, `Simulating + ${add} − ${cut}: ${Math.round(p * 100)}%`));
-      raiseProgress(null);
+      const a = await simOnce(S.cards, S.tokens, o, n, seed, p => raiseProgress(p / 2, tok, `Simulating your deck: ${Math.round(p * 100)}%`));
+      const b = await simOnce(cards, tokens, o2, n, seed, p => raiseProgress(0.5 + p / 2, tok, `Simulating + ${add} − ${cut}: ${Math.round(p * 100)}%`));
       if (S.deck !== deck) return;
       const wonBy = (r, t) => r.kill.slice(0, Math.min(t, r.turns)).reduce((s, v) => s + v, 0);
       const median = r => { let s = 0; for (let t = 0; t < r.turns; t++) { s += r.kill[t]; if (s >= 0.5) return 'turn ' + (t + 1); } return `after turn ${r.turns}`; };
@@ -3173,7 +3175,7 @@
       out.innerHTML = `<h3>Simulated <span class="pill approx">2,000 games</span></h3><table class="cat-table combo-odds raise"><thead><tr><th>Goldfish won by</th>${turns.map(t => `<th>T${t}</th>`).join('')}<th>By combo</th><th>Median kill</th></tr></thead><tbody>${row('Now', a)}${row(`+ ${esc(add)} − ${esc(cut)}`, b)}</tbody></table>` +
         `<p class="hint" data-fold>Simulated, not exact: ${n.toLocaleString()} autopiloted games of each deck against a goldfish, the same shuffles for both, with tutors and card draw. "By combo" counts the games a combo won. The odds above are exact math on natural draws.</p>`;
       tidy(out);
-    } catch (e) { raiseProgress(null); out.innerHTML = `<p class="hint">Could not simulate: ${esc(e.message || e)}</p>`; }
+    } catch (e) { out.innerHTML = `<p class="hint">Could not simulate: ${esc(e.message || e)}</p>`; } finally { raiseProgress(null, tok); }
   }
 
   function renderOdds(skipPicker) {

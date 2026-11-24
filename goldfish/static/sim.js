@@ -778,6 +778,7 @@
       // ---- rules batch 68: the top-5000 pool (one card each)
       { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
         if (/^whenever you cast a noncreature spell, amass (?:orcs|zombies) x, where x is that spell's mana value\.?$/i.test(line)) { TR(['cast'], [{ type: 'amass', n: 'LASTMV' }], { filter: 'noncreature' }); continue; }          // Saruman, the White Hand
+        if (/^whenever ~ deals combat damage to a player, you may cast your commander from the command zone without paying its mana cost\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'freeCommander' }], { who: '~' }); continue; }          // Geode Golem (rules batch 69)
         if (/^whenever you cast a colorless spell, until end of turn, ~ gains trample and gets \+x\/\+x, where x is that spell's mana value\.?$/i.test(line)) { TR(['cast'], [{ type: 'pumpOne', self: true, p: 'X', t: 'X', count: { what: 'lastmv', zone: 'special' }, keywords: ['trample'] }], { filter: 'colorless' }); continue; }          // Skittering Cicada
       }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
@@ -4783,7 +4784,7 @@
   }
   function effectiveCost0(g, inst) {
     const a = inst.card.a, info0 = bfInfo(g);
-    if (inst.freeCast && !a.isLand && g.hand.includes(inst)) return { generic: 0, pips: [], x: 0 };          // a free cast waiting in your hand
+    if (inst.freeCast && !a.isLand && (g.hand.includes(inst) || (inst.freeCmdr && g.command.includes(inst)))) return { generic: 0, pips: [], x: 0 };          // (Geode Golem: your commander from the command zone)          // a free cast waiting in your hand
     inst.altTap = false; inst._delve = 0; inst._convoke = null; inst._pitch = null;
     if (inst.airbent && g.exile.includes(inst)) return { generic: 2, pips: [], x: 0 };          // airbend: cast from exile for {2}
     if (a.mayhem && inst.mayhemTurn === g.turn && g.graveyard.includes(inst)) return a.mayhem;
@@ -6721,6 +6722,9 @@
         case 'returnTypes': { const cs = g.graveyard.filter(i => (i.card.a.isArtifact || (f.ench && i.card.a.isEnchantment)) && !i.card.a.isLand && !i.card.commander); for (const c of cs.slice(0, 40)) { g.graveyard.splice(g.graveyard.indexOf(c), 1); const np = enterWithTriggers(g, c, {}, ev); np.sick = false; } ev.push({ type: 'note', text: `${cs.length} cards return from the graveyard`, source }); break; }
         case 'pumpType': g.battlefield.forEach(q => { if (isCreaturePerm(q) && (!f.filter || matchesFilter(q.card, f.filter))) { q.eotP = (q.eotP || 0) + f.p; q.eotT = (q.eotT || 0) + f.t; if (f.keywords.length) q.eotKw = new Set([...(q.eotKw || []), ...f.keywords]); } }); break;
         case 'rummageUpTo': { let k = 0; while (k < f.n && g.hand.length && (g.hand.some(c => c.card.a.isLand) && g.battlefield.filter(q => q.asLand).length >= 5 || g.hand.length > 5)) { discardWorst(g, ev); k++; } if (k) draw(g, k, ev); break; }
+        case 'freeCommander': { const c = g.command.find(i => i.card.commander && !i.card.a.isLand); if (!c || g.dry) break;          // rules batch 69: Geode Golem
+          c.freeCast = true; c.freeCmdr = true; let ce; try { ce = castCard(g, c, true); } finally { c.freeCast = false; c.freeCmdr = false; }
+          if (ce) ev.push({ type: 'note', text: `${c.card.name} is cast from the command zone for free`, source }, ...ce); break; }
         case 'devotionWheel': { const k = devotionTo(g, f.color); if (k <= g.hand.length + 1) { ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: keeps the hand (devotion ${k})`, source }); break; }          // rules batch 67: Clive: only when it draws more than it discards
           applyEffects(g, [{ type: 'discardHand' }], source, ev); draw(g, devotionTo(g, f.color), ev); ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: discards the hand and draws ${k} (devotion to ${f.color})`, source }); break; }
         case 'discardHand': { g.discardBatch = (g.discardBatchN = (g.discardBatchN || 0) + 1); try { for (const c of g.hand.splice(0)) { g.graveyard.push(c); if (c.card.a.isLand) landToYard(g, ev, false); madness(g, c, ev); } } finally { g.discardBatch = null; } break; }

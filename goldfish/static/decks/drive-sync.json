@@ -387,7 +387,25 @@
    "importedAt": "2026-11-24T01:35:14.232Z",
    "verified": 4,
    "verifiedAt": "2026-11-24"
+  },
+  "Dead Ringers [B4] (Ratadrabik of Urborg).txt": {
+   "deck": "dead-ringers.txt",
+   "bracket": 4,
+   "id": "1DcMfQJpNDUns5pigHMfLHANZPx1XMWPZ",
+   "modifiedTime": "2026-11-24T11:47:47.488Z",
+   "importedAt": "2026-11-24T14:42:11.458Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-24"
+  },
+  "Short Circuit [B5] (Vivi Ornitier).txt": {
+   "deck": "short-circuit.txt",
+   "bracket": 5,
+   "id": "1ee_hekzpsN2dnSD1WerCskpJi6B_ruEw",
+   "modifiedTime": "2026-11-24T14:28:57.383Z",
+   "importedAt": "2026-11-24T14:42:11.464Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-24"
   }
  },
- "checkedAt": "2026-11-24T01:35:14.238Z"
+ "checkedAt": "2026-11-24T14:42:11.464Z"
 }

@@ -1017,7 +1017,7 @@
         if (/^double all damage equipped creature would deal\.?$/i.test(line)) { a.mjolnir = true; rec.status = 'ok'; continue; }          // Mjölnir, Hammer of Thor (infernoMult)
         if (/^\{2\}\{r\}, discard ~: it deals 2 damage to each creature\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Mjölnir: a sweeper from the hand only matters against an opponent's creatures
         { const rf = line.match(/^as long as enchanted permanent is a creature, it has ([a-z ,]+)\.?$/i); if (rf && kwList(rf[1]).length) { a.attachBonus = Object.assign({ p: 0, t: 0, keywords: [] }, a.attachBonus || {}); a.attachBonus.keywords = a.attachBonus.keywords.concat(kwList(rf[1])); rec.status = 'ok'; continue; } }          // Rune of Flight
-        if (/^as long as enchanted permanent is an equipment, it has "equipped creature has [a-z ,]+\."\.?$/i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Rune of Flight: the Aura is put on a creature, never on an Equipment
+        { const re = line.match(/^as long as enchanted permanent is an equipment, it has "equipped creature has ([a-z ,]+)\."\.?$/i); if (re && kwList(re[1]).length) { a.equipAuraKw = kwList(re[1]); rec.status = 'ok'; continue; } }          // Rune of Flight on an Equipment: the creature it equips has flying (hasKw)
         if (/^instant and sorcery spells you control have split second\.?$/i.test(line)) { a.statics.noCounter = 'instant and sorcery spells'; a.statics.splitSecond = true; rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; }          // Samut, Tyrant of Naktamun: in a match nothing answers them (tryCounter, protectOne)
         if (/^if an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard\.?$/i.test(line)) { a.leng = true; rec.status = 'ok'; continue; }          // Library of Leng
         { const bb = line.match(/^whenever ~ blocks(?: a creature)?, create an? (\d+)\/(\d+) ([a-z ]+?) creature tokens? with ([a-z, ]+?) that'?s blocking (?:that creature|it)\.?$/i);
@@ -4045,6 +4045,7 @@
     if (k === 'flying' && p.flyCounter) return true;
     if (p.other && p.other[k] > 0) return true;          // a keyword counter (Gift of the Viper's reach and deathtouch)          // Wonder; Luminous Broodmoth: a flying counter
     if (p.card.a.lifeBuff && g.life >= p.card.a.lifeBuff.min && p.card.a.lifeBuff.kw.includes(k)) return true;          // Serra Ascendant
+    if (tableHas(g, 'equipAuraKw') && p.iid != null) for (const r of g.battlefield) if (r.card.a.equipAuraKw && r.attachedTo != null && r.card.a.equipAuraKw.includes(k)) { const eq = g.battlefield.find(q => q.iid === r.attachedTo); if (eq && eq.card.a.isEquipment && eq.attachedTo === p.iid) return true; }          // Rune of Flight on an Equipment: the equipped creature
     if (p.card.a.storyBuff && p.card.a.storyBuff.kw.includes(k) && enduringStory(g)) return true;          // Óin the Brave: an enduring story
     if (k === 'haste' && g._anger && isCreaturePerm(p)) return true;          // Anger (checked at the start of combat)
     if (k === 'flying' && g._wonder && isCreaturePerm(p)) return true;

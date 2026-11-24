@@ -2,6 +2,23 @@
 
 > State lives in `PROJECT_STATE.md` (newest on `claude/main-coordination`). This note is the working knowledge plus the hand-over.
 
+## Hand-over, 2026-11-24 about 01:45 UTC (MAIN 2 → MAIN 3)
+- **Outgoing MAIN:** "MAIN (ICEYfish) 2", `session_01K5kL4ZUQQXFpA18Ru3kKV8`, at ~530k tokens (near the line). It stops assigning and merging once MAIN 3 acknowledges.
+- **Work branch:** `claude/main-coordination` = live (Version 167) + PROJECT_STATE/this note. Pushed. Nothing finished is waiting to merge.
+- **First actions for MAIN 3:** (1) acknowledge to MAIN 2; (2) put your id in place of `session_01K5kL4ZUQQXFpA18Ru3kKV8` in CLAUDE.md (2 places) and PROJECT_STATE's MAIN line, merge it as a docs PR; (3) tell the active sessions below your id; (4) the hourly "Watch GitHub for Teach requests" task (`trig_01Mw6jr3B2ojgqZ1DyQQA5Pv`) fires into MAIN 2's session: create the same task for your session (copy its prompt with get_trigger) and delete the old one.
+- **Active tasks (PROJECT_STATE section 5):**
+  - T-053 Deck Brackets (`session_01K5kL4YuykVAb2gKRw17rnU`): add the Magda deck "Overtime at the Treasure Mine" (Drive file 179A6f5kuQcUjVxu2936NaIGTi53VDR2w, 100 cards, Drive B4) as a built-in deck, rated by tools/verify-brackets.js (the user's new rule). Any unread card lines it finds become a Teach task (top priority).
+  - T-051/T-052 Combo and win conditions 2 (`session_01K5kL4VNZYoUKU9qgzS4LHf`): Combo odds (Odds) and Raise your combo odds (Simulate), PR #114, held for 3 review findings (sampling masks >32 pieces, Simulate tab resets, Apply edits the box); fix pending. Merge on its own when it returns.
+  - T-048 App/User Requests 2 (`session_01K5kL4XD6qbMzEGonfuFZD1`): Commander rule follow-up held (selLoaded read before autoSave/restore); fix pending.
+  - Card Rules Engine 6 (`session_01K5kL4X85xdn3E5mi3N7Fuy`): coverage refresh, then rules batches 67+ (held for five).
+  - Card teaching 3 (`session_01K5kL4VSb9D1wu3ZDKxGdDB`, new, from CARD-TEACHING.md): ready for Teach issues (none open).
+  - T-042 Remote versus 2 (`session_01K5kL4VGPUcfnYXVRzRPpyD`): WebRTC-only Play a friend; waits on the user's answer about the relay.
+  - Idle: Decision Points 3, Tutorial 2, Features 2, Policy Lab tuning, Layout and Settings, Error fixes 3, PR and Marketing 2, Code Clean-up 2.
+- **The user's rules added by MAIN 2 (all in CLAUDE.md):** Teach requests go to the top of the queue (merged on their own, done only when every line reads 'ok'/'neutral'); every new or changed built-in deck is bracket-checked before it merges.
+- **Waiting on the user:** WebRTC-only means drop the relay, keep it as a fallback, or a new login? ICEYfish.com: MAIN 2 gave the user the GitHub Pages custom-domain steps (DNS A records 185.199.108–111.153, a www CNAME to skyweezydeezy.github.io, verify the domain in profile Settings → Pages, set it in the repo's Settings → Pages, Enforce HTTPS, back up saved decks first since storage is per address). When the user says the domain is live, update the github.io links (install.js, README, docs/promo QR codes and flyer via PR and Marketing 2, tests/engine/qr.test.js). Also still open: the Metered login, the "Unlearned cards report" task, r/EDH rules, archiving closed sessions.
+- **How MAIN 2 merged (keep doing it):** batch what arrived together; run the engine suite, the every-default sweep and the touched UI tests; run an independent review (a small Workflow: one reviewer per area, then an adversarial verifier per finding). It caught real bugs in most batches. Hold only the work with confirmed important findings, merge the rest, send findings to the owner. A one-line bug in MAIN's own files (app.js) MAIN may fix itself with a test.
+- **Gotchas found this session:** (1) `git checkout <ref> --` with no path detaches HEAD; commits then don't reach the branch and `git push origin <branch>` says "up-to-date". Check `git status -sb` before committing, and push with output visible (`grep -E "\->|rejected"`). (2) `a && b &` backgrounds the whole chain. (3) A stash pop over a reset can conflict in PROJECT_STATE.md; keep copies in the scratchpad instead. (4) Engine sessions sometimes report a tip that has since moved on: merge the commit they name.
+
 ## Hand-over, 2026-11-23 about 21:10 UTC
 - **Outgoing MAIN:** "MAIN (ICEYfish)", `session_01K5kL4WjxCpfdEjqWh1igWP`, at 600k tokens (the hand-over line). It stops here.
 - **Work branch:** `claude/main-coordination`, equal to live plus `PROJECT_STATE.md` commits. Pushed; nothing uncommitted.

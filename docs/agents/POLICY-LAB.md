@@ -50,3 +50,15 @@ saves the lab choices for the deck.
 
 ## Tests
 `node tests/run.js tune` (about 90 s), `node tests/run.js --ui tune` (about 3 minutes).
+
+## Tune to the next bracket (T-055, Policy Lab 2)
+Simulate tab, box "Tune to the next bracket" (`#nbBox`; `Tune.nextBracket` in tune.js; worker message `nextBracket`).
+- Target: the next faster bracket by `Tune.SPEED` (or a chosen one). Goal = median kill by the turn before the threshold.
+- It is `tune()` with `cfg.wide` (the 3 slowest cards x ramp / card draw / combo pieces / finishers, plus extra lands; pool up to mana value 3, finishers to 5; `input.extra` = Spellbook combo pieces the app loads), `cfg.untilGoal` (stops when the search's own games meet the share + 3 points) and up to 5 steps. The lab's choices (`POLICY_KEYS`) are tried as before.
+- Final check: `finalN` >= `Tune.FINAL_MIN` (2,000) fresh games, 10 turns, z > 1.96 on the paired kill turn. Only a confirmed result offers Apply. `cfg.minFinal` lowers the 2,000 for tests only.
+- Answer text (`r.text`): "To reach B<n> (median kill by turn x): cut ...; add ...; play: ...; result median turn y (was turn z), kills by turn x p% -> q%." or "Couldn't reach B<n>; the best found gets to median ...". Never changes the deck by itself.
+- Apply (app.js `applyNext`, `swapInText`): edits `S.deckText` (main-deck lines only, one copy per swap), `loadDeck({quiet:true,text})`, then sets `gf_last`. Apply one marks that change "Applied"; Apply all does the rest. Choice changes go through `savePolicy`.
+- Book combos: the app passes `opts.bookCombos` for the deck plus every candidate, so a combo only counts once all its cards are in the tried deck.
+- Cost: a kill-less 10-turn game is ~20 ms in Node; expect 2-4 minutes in the browser (progress line + Stop; Stop ends the worker, nothing changed).
+- Tests: `node tests/run.js tune` (engine, ~190 s, 31 checks) and `node tests/run.js --ui tune-next` (~4 min, 14 checks; the run goes through real Scryfall).
+- Measured (n 200-300 per change): combo-pieces B2 -> B3 reached (median 8 -> 7, kills by T7 46% -> 59%, z 6.4); Second Breakfast, Frodo, Death Tax, Red Rum Raiders, Zul Ashur, Veyran: confirmed gains but "couldn't reach" the next bracket.

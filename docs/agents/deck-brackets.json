@@ -633,41 +633,41 @@
   {
    "file": "dead-ringers.txt",
    "name": "Dead Ringers (Ratadrabik of Urborg)",
-   "stated": 4,
+   "stated": 3,
    "verified": 3,
    "commander": true,
    "goldfish": {
     "games": 20000,
-    "errors": 0,
+    "errors": 3,
     "medianKill": 8,
     "by4": 1.4,
     "by5": 7.2,
-    "by6": 16.2,
-    "by7": 35.7,
-    "by8": 67.6,
-    "byT": 94.1,
+    "by6": 16.3,
+    "by7": 36.4,
+    "by8": 68.3,
+    "byT": 94,
     "cmdrMedian": 4,
-    "mana4": 3.69,
+    "mana4": 3.68,
     "winBy": {
-     "combo": 40.8,
-     "damage": 52.5,
-     "effect": 0.5,
-     "commander": 0.3
+     "damage": 53.4,
+     "combo": 39.9,
+     "commander": 0.2,
+     "effect": 0.4
     },
     "topLine": {
      "kind": "combo",
-     "text": "Enduring Tenacity + Exquisite Blood: each drain gains life, each life gained drains",
-     "share": 0.0252,
-     "avgTurn": 7.317460317460317
+     "text": "Enduring Tenacity + Bloodthirsty Conqueror: each drain gains life, each life gained drains",
+     "share": 0.0236,
+     "avgTurn": 7.5423728813559325
     }
    },
    "field": {
     "games": 20020,
-    "wins": 7103,
-    "losses": 12891,
-    "none": 25,
+    "wins": 7420,
+    "losses": 12572,
+    "none": 27,
     "errors": 1,
-    "winRate": 35.5,
+    "winRate": 37.1,
     "opponents": "44 other Commander decks"
    },
    "rules": {
@@ -3631,6 +3631,19 @@
    "matchTurns": 25,
    "seed": 20261123,
    "seconds": 336,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "dead-ringers.txt"
+   ],
+   "version": 176,
+   "date": "2026-11-24",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 455,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 545,
    "jobs": 4
   }
  ]

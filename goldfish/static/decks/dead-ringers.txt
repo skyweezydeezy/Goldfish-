@@ -1,7 +1,6 @@
 // Dead Ringers (Ratadrabik of Urborg)
 // Bracket 3
-// Checked by ICEYfish (v176, 20,000 games): median kill T8, 7.2% by T5, 35.7% by T7; field win 35.5%; 3 Game Changers; was B4 -> B3: card rules B3, speed B2
-// Format: Commander (paper), Bracket 4
+// Checked by ICEYfish (v176, 20,000 games): median kill T8, 7.2% by T5, 36.4% by T7; field win 37.1%; 3 Game Changers; B3 confirmed
 // COMMANDER
 1 Ratadrabik of Urborg
 // MAIN

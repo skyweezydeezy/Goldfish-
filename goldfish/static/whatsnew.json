@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 171,
+      "lines": [
+        "New built-in deck: Overtime at the Treasure Mine (Magda, Brazen Outlaw), checked at Bracket 4.",
+        "More cards understood, including Master Biomancer, Saruman, the White Hand, Geode Golem (it still pays the commander tax) and Joraga Treespeaker."
+      ]
+    },
+    {
       "v": 170,
       "lines": [
         "Mobile Garrison untaps another artifact or creature when it attacks, and Fire-Belly Changeling's pump stops after two a turn."

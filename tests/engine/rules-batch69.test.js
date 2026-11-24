@@ -19,6 +19,11 @@ const hit = g => { g.combatDone = false; const d0 = g.damage || 0; G.combat(g); 
   check('Geode Golem connects', d > 0, d);
   check('...and Shivan Dragon, the commander, is cast from the command zone with no lands (free)', g.battlefield.some(q => q.card.name === 'Shivan Dragon') && !g.command.includes(sd));
   check('...a commander cast is counted (tax next time)', (g.cmdrCasts[sd.iid] || 0) === 1, g.cmdrCasts[sd.iid]); }
+{ const g = fresh(); const sd = inst(g, 'Shivan Dragon'); g.command = [sd]; g.cmdrCasts[sd.iid] = 1; put(g, 'Geode Golem', true); hit(g);
+  check('second time, no lands: the {2} commander tax cannot be paid, so it is not cast (CR 903.8)', g.command.includes(sd) && !g.battlefield.some(q => q.card.name === 'Shivan Dragon')); }
+{ const g = fresh(); const sd = inst(g, 'Shivan Dragon'); g.command = [sd]; g.cmdrCasts[sd.iid] = 1; const ls = [put(g, 'Plains', true), put(g, 'Plains', true)]; put(g, 'Geode Golem', true); hit(g);
+  check('second time, two lands: it is cast and the {2} tax is paid', g.battlefield.some(q => q.card.name === 'Shivan Dragon') && ls.every(l => l.tapped), ls.map(l => l.tapped).join());
+  check('...counted again', g.cmdrCasts[sd.iid] === 2, g.cmdrCasts[sd.iid]); }
 { const g = fresh(); g.command = []; put(g, 'Geode Golem', true); let err = null; try { hit(g); } catch (e) { err = e; } check('Geode Golem with no commander in the command zone: nothing happens', !err, err && err.message); }
 const games = G.monteCarlo(deck.unique.map(c => Object.assign({}, c, { qty: c.a.isLand ? 8 : 1 })), Object.assign({}, O, { n: 300 }), 300, 7, null, []);
 check("300 games with the batch's cards: no errors", !games.errors, games.firstError);

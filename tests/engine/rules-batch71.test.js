@@ -21,6 +21,7 @@ const own = (g, j) => G.allUnits(g).filter(u => u.src === j).length;
   j.level = 1; G.touch(g); check('...at level 1: {T}: Add {G}{G}', own(g, j) === 2, own(g, j));
   j.level = 5; G.touch(g); check('...at level 5: still {G}{G}', own(g, j) === 2, own(g, j)); }
 { const g = fresh(); const v = put(g, 'Elvish Visionary', true); G.touch(g); check('a card without level up is unaffected (Elvish Visionary has no mana: none)', !v.card.a.produceLevel); }
+{ const pl = by('Joraga Treespeaker').a.produceLevel; check('the band is LEVEL 1-4: produceLevel { min 1, max 4 }', pl && pl.min === 1 && pl.max === 4, JSON.stringify(pl)); }
 const games = G.monteCarlo(deck.unique.map(c => Object.assign({}, c, { qty: c.a.isLand ? 8 : 1 })), Object.assign({}, O, { n: 300 }), 300, 7, null, []);
 check("300 games with the batch's cards: no errors", !games.errors, games.firstError);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

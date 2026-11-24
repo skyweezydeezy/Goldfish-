@@ -6,7 +6,7 @@ const find = (n, q) => { if (!all[n]) throw new Error('not in the database: ' + 
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
 const FULL = ['Joraga Treespeaker'];
-const NAMES = FULL.concat(['Elvish Visionary', 'Shivan Dragon']);
+const NAMES = FULL.concat(['Elvish Visionary', 'Shivan Dragon', 'Llanowar Elves']);
 const deck = G.buildDeck(NAMES.map(n => find(n)).concat(['Plains', 'Mountain', 'Forest', 'Island'].map(n => find(n, 8))), []);
 const by = n => deck.unique.find(c => c.name === n);
 for (const n of FULL) { const bad = by(n).a.coverage.filter(c => c.status === 'ignored'); check(`${n}: no line left unread`, !bad.length, bad.map(c => c.text.slice(0, 50)).join(' | ')); }
@@ -21,6 +21,10 @@ const fromVis = g => G.allUnits(g).filter(u => u.src && u.src.card && u.src.card
   check('...Shivan Dragon (not an Elf) makes none', !G.allUnits(g).some(u => u.src && u.src.card && u.src.card.name === 'Shivan Dragon'));
   check('...and {G}{G} can be paid with it', G.canPay({ generic: 0, pips: [['G'], ['G']], x: 0 }, G.allUnits(g).filter(u => u.src && u.src.card && u.src.card.name === 'Elvish Visionary'))); }
 { const g = fresh(); const j = put(g, 'Joraga Treespeaker', true); j.level = 5; const v = put(g, 'Elvish Visionary'); v.sick = true; G.touch(g); check('...a summoning-sick Elf makes none', fromVis(g) === 0, fromVis(g)); }
+{ const g = fresh(); const j = put(g, 'Joraga Treespeaker', true); const le = put(g, 'Llanowar Elves', true); G.touch(g); const n = lv => { j.level = lv; G.touch(g); return G.allUnits(g).filter(u => u.src === le).length; };
+  check('Llanowar Elves (its own {T}: Add {G}): one mana below level 5', n(4) === 1, n(4));
+  check('...and the better one, {G}{G}, with Joraga at level 5', n(5) === 2, n(5));
+  check('Joraga itself at level 5 taps for {G}{G} (the granted ability; its LEVEL 1-4 one is gone)', G.allUnits(g).filter(u => u.src === j).length === 2, G.allUnits(g).filter(u => u.src === j).length); }
 const games = G.monteCarlo(deck.unique.map(c => Object.assign({}, c, { qty: c.a.isLand ? 8 : 1 })), Object.assign({}, O, { n: 300 }), 300, 7, null, []);
 check("300 games with the batch's cards: no errors", !games.errors, games.firstError);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

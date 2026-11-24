@@ -2321,7 +2321,7 @@
         if (a.levelUp && a.levelUp.levels.length) {                                                                                       // lines under "LEVEL N": they count from that level on
           const L = a.levelUp.levels[a.levelUp.levels.length - 1], parts = line.toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
           if (parts.length && parts.every(x => KEYWORDS.includes(x))) { L.kw = (L.kw || []).concat(parts); parts.forEach(x => kwSet.delete(x)); rec.status = 'ok'; continue; }
-          if (/^\{t\}: add /i.test(line) && a.produceLevel == null) a.produceLevel = L.min;          // rules batch 71: a mana ability under LEVEL N counts from that level (Joraga Treespeaker); read on below as usual
+          if (/^\{t\}: add /i.test(line) && a.produceLevel == null && !a.produce) a.produceLevel = { min: L.min, max: L.max };          // rules batch 71: a mana ability under "LEVEL N-M" is there only at those levels (Joraga Treespeaker); only when it is the card's one mana ability; read on below as usual
           if (/^elves you control have "\{t\}: add \{g\}\{g\}\."$/i.test(line)) { a.elfGrantMana = L.min; rec.status = 'ok'; continue; }          // rules batch 70: Joraga Treespeaker, level 5+ (manaUnits)
           if ((mx = line.match(/^other (\w+) creatures you control get \+(\d+)\/\+(\d+)/i))) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'levelLord', min: L.min, filter: singular(mx[1]).toLowerCase(), p: +mx[2], t: +mx[3] }); rec.status = 'ok'; continue; }
         }
@@ -2439,7 +2439,7 @@
       { const sf = line.match(/^you may pay ((?:\{[^}]+\})+) and tap (\w+) untapped creatures you control with flying rather than pay ~'s mana cost/i); if (sf) { a.altTapFliers = { cost: parseCost(sf[1]), n: NUM[sf[2].toLowerCase()] || 4 }; rec.status = 'ok'; continue; } }          // Sephara, Sky's Blade
       { const tm = line.match(/^(?:all )?(\w+?)(?: creatures)?(?: you control)? have "\{t\}: add one mana of any color\."/i); if (tm && !/^creatures?$/i.test(tm[1])) { a.statics.typeManaT = singular(tm[1]).toLowerCase(); rec.status = 'ok'; continue; } }          // Path of Annihilation
       if (/^\{t\}: reveal any number of artifact cards in your hand\. add \{c\}\{c\} for each card revealed this way/i.test(line)) { a.metalworker = true; rec.status = 'ok'; continue; }
-      { const lv = raw.match(/^LEVEL (\d+)(?:-\d+|\+)$/); if (lv && a.levelUp) { a.levelUp.levels.push({ min: +lv[1], p: null, t: null }); rec.status = 'ok'; continue; } }
+      { const lv = raw.match(/^LEVEL (\d+)(?:-(\d+)|\+)$/); if (lv && a.levelUp) { a.levelUp.levels.push({ min: +lv[1], max: lv[2] ? +lv[2] : null, p: null, t: null }); rec.status = 'ok'; continue; } }
       { const lp = raw.match(/^(\d+)\/(\d+)$/); if (lp && a.levelUp && a.levelUp.levels.length) { const L = a.levelUp.levels[a.levelUp.levels.length - 1]; L.p = +lp[1]; L.t = +lp[2]; rec.status = 'ok'; continue; } }
       // ---- Notion Thief, Overwhelming Splendor, Toxrill
       if (/^if an opponent would draw a card except the first one they draw in each of their draw steps, instead that player skips that draw and you draw a card/i.test(line)) { a.notionThief = true; rec.status = 'ok'; continue; }
@@ -4096,7 +4096,7 @@
     const moon = info.moonSeen || otherPlayers(g).some(o => bfInfo(o).moonSeen) ? moonOf(g) : null;          // Blood Moon
     for (const p of info.producers) {
       if (p.tapped || p.held || !p.produce) continue;          // held: kept untapped for a counterspell
-      if (p.card.a.produceLevel && (p.level || 0) < p.card.a.produceLevel) continue;          // level up: its mana ability is not there yet (Joraga Treespeaker below level 1)
+      { const pl = p.card.a.produceLevel; if (pl && ((p.level || 0) < pl.min || (pl.max != null && (p.level || 0) > pl.max))) continue; }          // level up: its mana ability is not there yet (Joraga Treespeaker below level 1)
       if (g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g)) continue;
       if (stony && (p.card.a.isArtifact || p.sacMana && p.token)) continue;                              // Stony Silence (Treasures too)
       if (abilAny && abilBlocked(g, p, true)) continue;          // Karn, Linvala: no mana from their artifacts and creatures
@@ -4161,9 +4161,11 @@
       if (land && !land.tapped) units.push({ src: land, colors: au.card.a.landAura.colors ? new Set(au.card.a.landAura.colors) : au.chosenColor && au.card.a.choosesColor ? new Set([au.chosenColor]) : ANY_COLOR });
     }
     for (const q of (tableHas(g, 'powerMana') ? g.battlefield : NONE)) if (q.card.a.powerMana && !q.tapped && !(q.sick && !hasKw(g, q, 'haste'))) { const x = Math.max(0, powerOf(g, q)); for (let k = 0; k < x; k++) units.push({ src: q, colors: ANY_COLOR }); }          // Kami of Whispered Hopes
-    for (const q of (tableHas(g, 'elfGrantMana') ? g.battlefield : NONE)) if (q.card.a.elfGrantMana && (q.level || 0) >= q.card.a.elfGrantMana) for (const e of g.battlefield) {          // Joraga Treespeaker (level 5+): other Elves tap for {G}{G}
-      if (e === q || !isCreaturePerm(e) || e.tapped || e.produce || (e.sick && !hasKw(g, e, 'haste')) || !matchesFilter(e.card, 'elf') || units.some(u => u.src === e)) continue;
-      units.push({ src: e, colors: new Set(['G']) }, { src: e, colors: new Set(['G']) }); }
+    { const jDone = new Set(); for (const q of (tableHas(g, 'elfGrantMana') ? g.battlefield : NONE)) if (q.card.a.elfGrantMana && (q.level || 0) >= q.card.a.elfGrantMana) for (const e of g.battlefield) {          // Joraga Treespeaker (level 5+): other Elves tap for {G}{G}
+      if (!isCreaturePerm(e) || e.tapped || (e.sick && !hasKw(g, e, 'haste')) || !matchesFilter(e.card, 'elf') || jDone.has(e)) continue;          // every Elf, Joraga too (its own LEVEL 1-4 ability is gone at 5+)
+      const own = units.filter(u => u.src === e); if (own.length >= 2 || own.some(u => !(u.colors.size === 1 && u.colors.has('G')))) continue;          // its own ability is as good or makes other colors: keep that one
+      for (const u of own) units.splice(units.indexOf(u), 1); jDone.add(e);          // the better of the two: {G}{G} instead of {G} (Llanowar Elves)
+      units.push({ src: e, colors: new Set(['G']) }, { src: e, colors: new Set(['G']) }); } }
     if (info.creatureMana || (g.tempCreatureMana && g.tempCreatureMana >= g.turn)) for (const q of g.battlefield) {                                             // Cryptolith Rite: every creature taps for one mana of any color
       if (!isCreaturePerm(q) || q.tapped || q.produce || (q.sick && !hasKw(g, q, 'haste'))) continue;
       units.push({ src: q, colors: ANY_COLOR });
@@ -4790,7 +4792,8 @@
   }
   function effectiveCost0(g, inst) {
     const a = inst.card.a, info0 = bfInfo(g);
-    if (inst.freeCast && !a.isLand && (g.hand.includes(inst) || (inst.freeCmdr && g.command.includes(inst)))) return { generic: 0, pips: [], x: 0 };          // (Geode Golem: your commander from the command zone)          // a free cast waiting in your hand
+    if (inst.freeCast && !a.isLand && inst.freeCmdr && g.command.includes(inst)) return { generic: cmdTax(g, inst), pips: [], x: 0 };          // Geode Golem: "without paying its mana cost" still pays the commander tax (CR 903.8)
+    if (inst.freeCast && !a.isLand && g.hand.includes(inst)) return { generic: 0, pips: [], x: 0 };          // (Geode Golem: your commander from the command zone)          // a free cast waiting in your hand
     inst.altTap = false; inst._delve = 0; inst._convoke = null; inst._pitch = null;
     if (inst.airbent && g.exile.includes(inst)) return { generic: 2, pips: [], x: 0 };          // airbend: cast from exile for {2}
     if (a.mayhem && inst.mayhemTurn === g.turn && g.graveyard.includes(inst)) return a.mayhem;
@@ -4832,7 +4835,7 @@
       }
     }
     let generic = a.cost.generic;
-    if (inst.card.commander && !g.hand.includes(inst)) generic += a.cmdPut ? Math.min(2 * (g.cmdrCasts[inst.iid] || 0), a.cmdPut.extra) : 2 * (g.cmdrCasts[inst.iid] || 0);          // Command Beacon: no tax when it is cast from your hand
+    if (inst.card.commander && !g.hand.includes(inst)) generic += cmdTax(g, inst);          // Command Beacon: no tax when it is cast from your hand
     if (g.tempReduce) for (const tr of g.tempReduce) if (tr.turn === g.turn && (tr.filter === 'historic' ? (a.isArtifact || a.isLegendary || /\bSaga\b/.test(inst.card.type_line || '')) : tr.filter === 'artifact' ? a.isArtifact : matchesFilter(inst.card, tr.filter))) red += tr.n;          // "spells you cast this turn cost less" (Saga chapters)
     if (a.dynReduce) red += a.dynReduce.n * countWhat(g, a.dynReduce.what, null);
     if (a.affinity) red += g.battlefield.filter(q => a.affinity === 'artifact' ? artOn(g, q) : matchesFilter(q.card, a.affinity)).length;          // affinity
@@ -6729,6 +6732,7 @@
         case 'pumpType': g.battlefield.forEach(q => { if (isCreaturePerm(q) && (!f.filter || matchesFilter(q.card, f.filter))) { q.eotP = (q.eotP || 0) + f.p; q.eotT = (q.eotT || 0) + f.t; if (f.keywords.length) q.eotKw = new Set([...(q.eotKw || []), ...f.keywords]); } }); break;
         case 'rummageUpTo': { let k = 0; while (k < f.n && g.hand.length && (g.hand.some(c => c.card.a.isLand) && g.battlefield.filter(q => q.asLand).length >= 5 || g.hand.length > 5)) { discardWorst(g, ev); k++; } if (k) draw(g, k, ev); break; }
         case 'freeCommander': { const c = g.command.find(i => i.card.commander && !i.card.a.isLand); if (!c || g.dry) break;          // rules batch 69: Geode Golem
+          if (!canPay({ generic: cmdTax(g, c), pips: [], x: 0 }, allUnits(g))) { ev.push({ type: 'note', text: `${c.card.name}: the commander tax ({${cmdTax(g, c)}}) cannot be paid`, source }); break; }          // the tax is still owed (CR 903.8)
           c.freeCast = true; c.freeCmdr = true; let ce; try { ce = castCard(g, c, true); } finally { c.freeCast = false; c.freeCmdr = false; }
           if (ce) ev.push({ type: 'note', text: `${c.card.name} is cast from the command zone for free`, source }, ...ce); break; }
         case 'devotionWheel': { const k = devotionTo(g, f.color); if (k <= g.hand.length + 1) { ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: keeps the hand (devotion ${k})`, source }); break; }          // rules batch 67: Clive: only when it draws more than it discards
@@ -8576,6 +8580,8 @@
     const a = inst.card.a;
     return !!(a.lifeAlt && g.opp && g.life >= a.lifeAlt + 14 && g.battlefield.some(q => q.asLand && /\bSwamp\b/.test(q.card.type_line || '')));
   }
+  // the commander tax: {2} for each time it was cast from the command zone before (Command Beacon's put caps it at that ability's extra)
+  function cmdTax(g, inst) { const a = inst.card.a, t = 2 * ((g.cmdrCasts || {})[inst.iid] || 0); return a.cmdPut ? Math.min(t, a.cmdPut.extra) : t; }
   function castCard(g, inst, force) {
     const prev = g._payFor; g._payFor = inst;
     silenceFirst(g, inst);          // Silence, Ranger-Captain of Eos before a big spell
@@ -8666,7 +8672,7 @@
       if (n != null && ls[0]) { g.hand.splice(g.hand.indexOf(ls[0]), 1); g.graveyard.push(ls[0]); ev.push({ type: 'note', text: `Retrace: discarded ${ls[0].card.name} to cast ${inst.card.name} from the graveyard` }); inst.retracing = false; }
     } else if (inst.quilledCost && g.graveyard.includes(inst)) { n = pay(g, effectiveCost(g, inst)); if (n != null) { let left = inst.card.a.quilledYard; for (const q of g.battlefield.filter(isCreaturePerm).sort((x, y) => (y.counters || 0) - (x.counters || 0))) { const k = Math.min(left, q.counters || 0); q.counters -= k; left -= k; if (!left) break; } inst.quilledCost = false; ev.push({ type: 'note', text: `${inst.card.name} cast from the graveyard, six counters removed` }); } }          // Quilled Greatwurm
     else if (inst.lifeCast && g.hand.includes(inst)) { n = 0; g.life -= (inst.card.a.mv || 0); inst.lifeCast = false; ev.push({ type: 'note', text: `${inst.card.name}: paid ${inst.card.a.mv || 0} life instead of its mana cost` }); }          // Nashi
-    else if (inst.freeCast) { n = 0; }
+    else if (inst.freeCast) { n = inst.freeCmdr && g.command.includes(inst) ? pay(g, effectiveCost(g, inst)) : 0; }          // Geode Golem: the commander tax is still paid
     else if (inst.miracleNow) { n = pay(g, inst.card.a.miracle); }
     else if (inst.card.a.dash && !g.combatDone && !g.dry && !inst.foreign && canPay(inst.card.a.dash.cost, allUnits(g))) { inst.dashing = true; n = pay(g, inst.card.a.dash.cost); }
     else if (!force && altCost(g, inst, allUnits(g))) { const alt = altCost(g, inst, allUnits(g)); n = pay(g, alt.cost); if (n != null) { inst.alt = alt.kind; if (alt.pitch) { g.hand.splice(g.hand.indexOf(alt.pitch), 1); g.exile.push(alt.pitch); } ev.push({ type: 'note', text: `${inst.card.name}: ${alt.kind}${alt.pitch ? ', exiling ' + alt.pitch.card.name + ' from your hand' : ''}` }); } }          // warp, evoke, suspend

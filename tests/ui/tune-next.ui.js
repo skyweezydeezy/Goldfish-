@@ -54,6 +54,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 
   // Apply one: the loaded deck changes (not only the box), stays 100 cards, and a reload keeps it
   const firstLabel = await p.$eval('#nbOut .sg.good li b', b => b.textContent);
+  await p.click('#nbOut .sg.good summary');          // the list of changes is folded under its heading: open it
   await p.click('#nbOut .nb-apply[data-i="0"]');
   await p.waitForFunction(t => window.__isf.deckText !== t, deckBefore.text, { timeout: 90000 });
   const one = await p.evaluate(() => ({ text: window.__isf.deckText, box: document.querySelector('#deckText').value, last: localStorage.getItem('gf_last'), cards: window.__isf.cards.reduce((s, c) => s + (c.qty || 1), 0), names: window.__isf.cards.map(c => c.name) }));

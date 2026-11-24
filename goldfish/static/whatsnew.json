@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 165,
+      "lines": [
+        "27 more cards play by their rules, among them Shalai and Hallar, Neriv, The Ooze and Galadriel. The Sound of Drums and Inquisitor's Flail double combat damage only."
+      ]
+    },
+    {
       "v": 163,
       "lines": [
         "A Commander deck must be 100 cards: a commander and 99, or two commanders and 98. Build says what is off; a bigger deck loads when its list has a // Specialty line.",

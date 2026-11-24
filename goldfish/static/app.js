@@ -52,7 +52,7 @@
     if (t === 'hands' && S.deck) renderOpenLandsChart();
     requestAnimationFrame(refit);
     if (t === 'table' && S.deck && !S.game) newTableGame();
-    if (t === 'sim') { fillMirror(); renderLabSaved(); }
+    if (t === 'sim') { fillMirror(); renderLabSaved(); renderComboRaise(); }          // recomputes only when the deck or play/draw changed
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
     dirty();
@@ -413,11 +413,11 @@
   }
   // the combos Commander Spellbook knows in this list (a snapshot kept with the app: data/combos.json), beyond the ones the autopilot plays
   let comboDb = null;
+  const loadComboDb = () => (comboDb = comboDb || fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null));
   function renderComboBook(engine) {
     if (typeof Combos === 'undefined') return;
     const deck = S.deck;
-    comboDb = comboDb || fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null);
-    comboDb.then(db => {
+    loadComboDb().then(db => {
       const el = $('#comboBook'); if (!db || !el || S.deck !== deck) return;
       const cmd = deck.commanders.map(i => i.card), id = cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null;
       const r = Combos.find(db, deck.unique.map(c => c.name), id), more = r.included.filter(c => !Combos.played(c, engine));
@@ -1840,6 +1840,7 @@
         S.sim = e.data.result; S.simOpts = o; fillTune();
         $('#simInfo').textContent = `${o.n.toLocaleString()} games × ${o.turns} turns in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
         renderSim();
+        renderComboRaise({ simDone: true });          // a cut you did not choose yourself now comes from this run
       }
     };
     worker.onerror = err => { $('#runSim').disabled = false; $('#simInfo').textContent = 'Simulation error: ' + err.message; };
@@ -2828,9 +2829,176 @@
   $('#catMinus').addEventListener('click', () => { $('#catN').value = Math.max(1, (+$('#catN').value || 7) - 1); renderCatOdds(); });
   $('#catPlus').addEventListener('click', () => { $('#catN').value = (+$('#catN').value || 7) + 1; renderCatOdds(); });
 
+  // ---- combo odds (combos.js comboOdds): every piece of at least one Commander Spellbook combo drawn, by turn ----
+  const deckIdentity = deck => { const cmd = deck.commanders.map(i => i.card); return cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null; };
+  const comboTurns = max => [...new Set([0, 2, 4, 6, 8, 10].filter(t => t <= max).concat(max > 0 ? [max] : []))];
+  const comboPct = (p, e) => (p >= 0.9995 ? '100%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%') + (e ? ` <span class="hint">±${(e * 100).toFixed(1)}</span>` : '');
+  const comboCards = c => c.cards.map(esc).join(' + ');
+  function renderComboOdds() {
+    const box = $('#comboOdds'); if (!box || typeof Combos === 'undefined' || !Combos.comboOdds) return;
+    const deck = S.deck; if (!deck) { box.hidden = true; return; }
+    loadComboDb().then(db => {
+      if (!db || S.deck !== deck) return;
+      const o = opts(), found = Combos.find(db, deck.unique.map(c => c.name), deckIdentity(deck)), turns = comboTurns(o.turns || 10);
+      const r = Combos.comboOdds(deck, found.included, turns, o.onPlay);
+      const head = '<tr><th></th>' + turns.map(t => `<th>${t ? 'T' + t : 'Hand'}</th>`).join('') + '</tr>';
+      const line = (name, x, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td>` + x.p.map((p, i) => `<td class="num">${comboPct(p, x.err && x.err[i])}</td>`).join('') + '</tr>';
+      let html;
+      if (!r.rows.length) html = `<p>No Commander Spellbook combo has every piece in this deck.${found.almost.length ? ` ${found.almost.length} are one card away: the Simulate tab's "Raise your combo odds" shows what adding one would do.` : ''}</p>`;
+      else {
+        const last = turns.length - 1;
+        html = `<table class="cat-table combo-odds"><thead>${head}</thead><tbody>` + line(`<b>Any combo</b> <span class="hint">${r.rows.length}</span>`, r.any, 'any') +
+          r.groups.map(g => line(`${esc(g.name)} <span class="hint">${g.rows.length}</span>`, g)).join('') + '</tbody></table>' +
+          `<p class="hint">${o.onPlay ? 'On the play' : 'On the draw'}. ${r.any.exact ? 'Exact.' : `Estimated from ${r.any.samples.toLocaleString()} shuffles.`}</p>` +
+          r.groups.map(g => `<div class="sg"><b>${esc(g.name)}</b><ul>${g.rows.slice().sort((a, b) => b.p[last] - a.p[last]).slice(0, 25).map(x =>
+            `<li><a href="${esc(x.combo.url)}" target="_blank" rel="noopener">${comboCards(x.combo)}</a>: ${turns.map((t, i) => `${t ? 'T' + t : 'hand'} ${comboPct(x.p[i])}`).join(' · ')}${x.combo.does && x.combo.does.length ? `<br><span class="hint">${esc(x.combo.does.slice(0, 3).join('; '))}</span>` : ''}</li>`).join('')}</ul>${g.rows.length > 25 ? '<p>The 25 likeliest are shown.</p>' : ''}</div>`).join('');
+      }
+      $('#comboOddsBody').innerHTML = html; S.comboOdds = r;
+      box.hidden = false; tidy(box);
+    });
+  }
+
+  // ---- Simulate: "Raise your combo odds" (combos.js additions / swapOdds): one card in, one out, and the any-combo odds by turn 6, 8, 10 ----
+  const RAISE_TURNS = [6, 8, 10];
+  let raiseRun = 0, raiseFor = null, raiseUserCut = false, raiseKey = '';
+  const gainTxt = g => (g >= 0 ? '+' : '−') + Math.abs(g * 100).toFixed(1);
+  function raiseCells(r, base) { return r.any.p.map((p, i) => `<td class="num">${comboPct(p, r.any.err[i])}${base ? ` <span class="${r.any.p[i] - base.any.p[i] > 0.0005 ? 'gain' : 'hint'}">${gainTxt(r.any.p[i] - base.any.p[i])}</span>` : ''}</td>`).join(''); }
+  // the default cut: drawn but often not cast in the last run (Suggest.deadCards), else the costliest card in no combo
+  function raiseDefaultCut(db, id) {
+    const pieces = Combos.comboPieces(db, S.deck, id), free = c => !c.commander && !pieces.has(c.name);
+    if (S.sim && typeof Suggest !== 'undefined') { const d = Suggest.deadCards(S.sim, S.deck).find(x => free(S.deck.unique.find(c => c.name === x.name) || {})); if (d) return { name: d.name, why: `drawn but not cast in ${Math.round(d.rate * 100)}% of the games it was drawn, in your last simulation` }; }
+    const c = S.deck.unique.filter(c => free(c) && !c.a.isLand).sort((a, b) => b.a.mv - a.a.mv || a.name.localeCompare(b.name))[0];
+    return c ? { name: c.name, why: 'the costliest card in no combo (run a simulation to rate your cards)' } : { name: '', why: '' };
+  }
+  // o.simDone: a run just finished (a cut you did not pick yourself follows it). Nothing is recomputed while the deck, play/draw and cut are the same.
+  function renderComboRaise(ro) {
+    ro = ro || {};
+    const box = $('#comboRaise'); if (!box || typeof Combos === 'undefined' || !Combos.additions) return;
+    const deck = S.deck; if (!deck) { box.hidden = true; return; }
+    loadComboDb().then(async db => {
+      if (!db || S.deck !== deck) return;
+      const o = opts(), id = deckIdentity(deck), sel = $('#raiseCut');
+      const fresh = raiseFor !== deck;
+      if (fresh) {                                   // another deck: its own cut list, and the last deck's results go
+        sel.innerHTML = deck.unique.filter(c => !c.commander).map(c => c.name).filter((n, i, a) => a.indexOf(n) === i).sort((a, b) => a.localeCompare(b)).map(n => `<option>${esc(n)}</option>`).join('');
+        raiseFor = deck; raiseUserCut = false; raiseKey = ''; $('#raiseOwn').innerHTML = ''; $('#raiseSim').innerHTML = '';
+      }
+      if (fresh || (ro.simDone && !raiseUserCut)) {
+        const def = raiseDefaultCut(db, id);
+        if (def.name) sel.value = def.name;
+        $('#raiseWhy').textContent = def.why ? `Default: ${def.name}, ${def.why}.` : '';
+      }
+      const cut = sel.value, key = cut + '|' + o.onPlay;
+      if (key === raiseKey && S.comboRaise && (S.comboRaise.done || raiseRun)) return;          // same deck, cut and play/draw: keep what is shown
+      raiseKey = key;
+      const run = ++raiseRun;
+      const found = Combos.find(db, deck.unique.map(c => c.name), id);
+      const base = Combos.comboOdds(deck, found.included, RAISE_TURNS, o.onPlay, { anyOnly: true });
+      S.comboRaise = { base, rows: [], cut, done: false };
+      const head = '<tr><th></th>' + RAISE_TURNS.map(t => `<th>T${t}</th>`).join('') + '</tr>';
+      const cands = Combos.additions(db, deck, id, cut, 20);
+      $('#raiseAddList').innerHTML = cands.map(a => `<option value="${esc(a.card)}">`).join('');
+      const body = $('#raiseBody');
+      body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head}</thead><tbody><tr class="any"><td>Now <span class="hint">${found.included.length} combo${found.included.length === 1 ? '' : 's'}</span></td>${raiseCells(base)}</tr></tbody></table>` +
+        (cands.length ? `<p class="hint">Trying ${cands.length} addition${cands.length === 1 ? '' : 's'}…</p>` : '<p>Commander Spellbook knows no card that completes a combo with this deck in its colours.</p>');
+      box.hidden = false; tidy(box);
+      const rows = [];
+      for (const a of cands) {
+        await new Promise(r => setTimeout(r, 0)); if (run !== raiseRun || S.deck !== deck) return;
+        const r = Combos.swapOdds(db, deck, id, a.card, cut, RAISE_TURNS, o.onPlay);
+        rows.push(Object.assign({}, a, { r, gain: r.any.p.map((p, i) => p - base.any.p[i]) }));
+      }
+      const score = x => x.gain.reduce((s, g) => s + g, 0);
+      rows.sort((a, b) => score(b) - score(a) || b.combos[0].popularity - a.combos[0].popularity);
+      S.comboRaise = { base, rows, cut, done: true };
+      if (!rows.length) return;
+      const top = rows.slice(0, 5), more = rows.slice(0, 10);
+      body.innerHTML = `<table class="cat-table combo-odds raise"><thead>${head.replace('<th></th>', `<th>Add (cut ${esc(cut)})</th>`).replace('</tr>', '<th></th></tr>')}</thead><tbody><tr class="any"><td>Now</td>${raiseCells(base)}<td></td></tr>` +
+        top.map((x, i) => `<tr data-add="${esc(x.card)}"><td><a href="${esc(x.combos[0].url)}" target="_blank" rel="noopener">+ ${esc(x.card)}</a></td>${raiseCells(x.r, base)}<td><button class="ghost raise-sim" data-add="${esc(x.card)}">Simulate</button> <button class="ghost raise-apply" data-add="${esc(x.card)}">Apply</button></td></tr>`).join('') + '</tbody></table>' +
+        `<div class="sg"><b>What each addition completes</b><ul>${more.map(x => `<li><b>+ ${esc(x.card)}</b> ${x.gain.map((g, i) => `T${RAISE_TURNS[i]} ${gainTxt(g)}`).join(' · ')}: ${x.combos.slice(0, 4).map(c => `<a href="${esc(c.url)}" target="_blank" rel="noopener">${comboCards(c)}</a> (${esc((c.does || []).slice(0, 2).join('; '))})`).join('; ')}${x.combos.length > 4 ? ` and ${x.combos.length - 4} more` : ''}</li>`).join('')}</ul>${rows.length > 10 ? `<p>The 10 best of ${rows.length} are listed; try any other with "Try your own".</p>` : ''}</div>`;
+      tidy(body);
+      raiseButtons(body);
+    });
+  }
+  function raiseButtons(el) {
+    el.querySelectorAll('.raise-sim').forEach(b => b.addEventListener('click', () => raiseSimulate(b.dataset.add, $('#raiseCut').value)));
+    el.querySelectorAll('.raise-apply').forEach(b => b.addEventListener('click', () => raiseApply(b.dataset.add, $('#raiseCut').value)));
+  }
+  // your own swap: the same numbers for any card name
+  async function raiseOwn() {
+    const add = $('#raiseAdd').value.trim(), cut = $('#raiseCut').value, out = $('#raiseOwn'); if (!add || !S.deck) return;
+    const db = await loadComboDb(); if (!db) return;
+    const o = opts(), id = deckIdentity(S.deck);
+    const found = Combos.find(db, S.deck.unique.map(c => c.name), id), base = Combos.comboOdds(S.deck, found.included, RAISE_TURNS, o.onPlay, { anyOnly: true });
+    const r = Combos.swapOdds(db, S.deck, id, add, cut, RAISE_TURNS, o.onPlay);
+    const known = Combos.find(db, [add], null).included.length || db._where.has(add) || db._where.has(add.split(' // ')[0]);
+    const extra = r.included.length - found.included.length;
+    out.innerHTML = `<table class="cat-table combo-odds raise"><tbody><tr class="any"><td>Now</td>${raiseCells(base)}<td></td></tr><tr data-add="${esc(add)}"><td>+ ${esc(add)} <span class="hint">− ${esc(cut)}</span></td>${raiseCells(r, base)}<td><button class="ghost raise-sim" data-add="${esc(add)}">Simulate</button> <button class="ghost raise-apply" data-add="${esc(add)}">Apply</button></td></tr></tbody></table>` +
+      `<p class="hint">${!known ? 'This card is in no combo of the Commander Spellbook snapshot, so the odds only change through the cut.' : `${r.included.length} combo${r.included.length === 1 ? '' : 's'} after the swap (${extra >= 0 ? '+' : ''}${extra}).`}</p>`;
+    S.comboRaiseOwn = { add, cut, base, r };
+    raiseButtons(out);
+  }
+  $('#raiseGo').addEventListener('click', raiseOwn);
+  $('#raiseAdd').addEventListener('keydown', e => { if (e.key === 'Enter') raiseOwn(); });
+  $('#raiseCut').addEventListener('change', () => { raiseUserCut = true; renderComboRaise(); });
+  // the swap in the deck: the cut card's line loses a copy and the added card goes right after it, then the list is loaded again
+  const nameKey = n => String(n || '').split(' // ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[‘’]/g, "'").trim().toLowerCase().replace(/\s+/g, ' ');
+  async function raiseApply(add, cut) {
+    const text = S.deckText; if (!text) return toast('Load the deck from a list first');
+    const lines = text.split(/\r?\n/);
+    const want = new Set([cut].concat(S.cards.filter(c => !c.commander && c.name === cut).map(c => c.input_name)).filter(Boolean).map(nameKey));
+    const i = lines.findIndex(l => { const e = Source.parseDecklist(l)[0]; return e && e.section !== 'commander' && want.has(nameKey(e.name)); });
+    if (i < 0) return toast(`${cut} was not found in the loaded list`);
+    const e = Source.parseDecklist(lines[i])[0], q = e.qty || 1;
+    lines.splice(i, 1, ...(q > 1 ? [lines[i].replace(/^\s*\d+/, String(q - 1))] : []), '1 ' + add);
+    $('#deckText').value = lines.join('\n');          // the box shows the list that is now loaded
+    const ok = await loadDeck();
+    if (ok) { toast(`Swapped ${cut} for ${add}`); showTab('sim'); }
+  }
+  // the swap checked by simulation: 2,000 goldfish games of each deck, the same shuffles
+  let raiseWorker = null;
+  function simOnce(cards, tokens, o, n, seed, bar) {
+    return new Promise((res, rej) => {
+      if (raiseWorker) raiseWorker.terminate();
+      raiseWorker = new Worker('worker.js');
+      raiseWorker.onmessage = e => { if (e.data.progress != null && bar) bar(e.data.progress); if (e.data.result) res(e.data.result); };
+      raiseWorker.onerror = err => rej(err);
+      raiseWorker.postMessage({ cards, tokens, opts: o, n, seed });
+    });
+  }
+  async function raiseSimulate(add, cut) {
+    const out = $('#raiseSim'), deck = S.deck; if (!deck) return;
+    out.innerHTML = `<p class="hint">Simulating + ${esc(add)} − ${esc(cut)}: finding the card…</p>`;
+    try {
+      const got = await Source.loadDeck('1 ' + add, () => {}), card = got.cards[0];
+      if (!card) { out.innerHTML = `<p class="hint">${esc(add)} was not found on Scryfall.</p>`; return; }
+      const db = await loadComboDb(), id = deckIdentity(deck);
+      const cards = S.cards.map(c => Object.assign({}, c)), ci = cards.findIndex(c => !c.commander && c.name === cut);
+      if (ci >= 0) { if (cards[ci].qty > 1) cards[ci].qty--; else cards.splice(ci, 1); }
+      const ai = cards.findIndex(c => !c.commander && c.name === card.name);
+      if (ai >= 0) cards[ai].qty++; else cards.push(Object.assign({}, card, { qty: 1, commander: false }));
+      const tokens = (S.tokens || []).concat((got.tokens || []).filter(t => !(S.tokens || []).some(x => x.id === t.id)));
+      const o = opts(), n = 2000, seed = 20261124;
+      const o2 = Object.assign({}, o, { bookCombos: db ? Combos.goldfished(Combos.find(db, cards.map(c => c.name), id), G.deckCombos(G.buildDeck(cards, tokens, currentPolicy().tribe))) : o.bookCombos });
+      const say = (t, p) => { out.innerHTML = `<p class="hint">${t} ${Math.round(p * 100)}%</p>`; };
+      const a = await simOnce(S.cards, S.tokens, o, n, seed, p => say('Your deck:', p));
+      const b = await simOnce(cards, tokens, o2, n, seed, p => say(`+ ${esc(add)} − ${esc(cut)}:`, p));
+      if (S.deck !== deck) return;
+      const wonBy = (r, t) => r.kill.slice(0, Math.min(t, r.turns)).reduce((s, v) => s + v, 0);
+      const median = r => { let s = 0; for (let t = 0; t < r.turns; t++) { s += r.kill[t]; if (s >= 0.5) return 'turn ' + (t + 1); } return `after turn ${r.turns}`; };
+      const turns = RAISE_TURNS.filter(t => t <= o.turns);
+      const row = (name, r) => `<tr><td>${name}</td>${turns.map(t => `<td class="num">${pct(wonBy(r, t))}</td>`).join('')}<td class="num">${pct(r.winBy && r.winBy.combo || 0)}</td><td class="num">${median(r)}</td></tr>`;
+      S.comboRaiseSim = { add, cut, a, b };
+      out.innerHTML = `<h3>Simulated <span class="pill approx">2,000 games</span></h3><table class="cat-table combo-odds raise"><thead><tr><th>Goldfish won by</th>${turns.map(t => `<th>T${t}</th>`).join('')}<th>By combo</th><th>Median kill</th></tr></thead><tbody>${row('Now', a)}${row(`+ ${esc(add)} − ${esc(cut)}`, b)}</tbody></table>` +
+        `<p class="hint" data-fold>Simulated, not exact: ${n.toLocaleString()} autopiloted games of each deck against a goldfish, the same shuffles for both, with tutors and card draw. "By combo" counts the games a combo won. The odds above are exact math on natural draws.</p>`;
+      tidy(out);
+    } catch (e) { out.innerHTML = `<p class="hint">Could not simulate: ${esc(e.message || e)}</p>`; }
+  }
+
   function renderOdds(skipPicker) {
     if (!S.deck) return;
     renderCatOdds();
+    if (!skipPicker) renderComboOdds();
     if (!skipPicker) {
       const pk = $('#oddsPicker'); pk.innerHTML = '';
       S.deck.unique.filter(c => !c.commander).sort((a, b) => (a.a.isLand - b.a.isLand) || a.a.mv - b.a.mv || a.name.localeCompare(b.name)).forEach(c => {

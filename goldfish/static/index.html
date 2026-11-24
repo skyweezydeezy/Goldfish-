@@ -207,6 +207,14 @@
     <div id="simTiles" class="tiles"></div>
     <div id="simSuggest" class="card-box suggest" hidden><div class="box-head"><h2>Suggestions</h2><span class="hint">From this run only, against a goldfish that never interacts. Nothing is saved or sent.</span></div><div id="suggestList"></div></div>
     <div id="simWins" class="card-box suggest" hidden><div class="box-head"><h2>How games end</h2><span class="hint">What won each simulated game: a combo the engine knows, a card that says you win, commander damage, poison, an empty library, or plain damage and life loss (combat, burn, drain). Against a goldfish that never interacts.</span></div><div id="winList"></div></div>
+    <div id="comboRaise" class="card-box suggest" hidden>
+      <div class="box-head"><h2>Raise your combo odds</h2><span class="hint">What one swap does to the chance of drawing every piece of at least one combo by turn 6, 8 and 10 (the Odds tab's "Combo odds"). The additions are the cards Commander Spellbook says complete a combo with this deck, in your colours; each is tried in place of the card to cut. The default cut is the card your last simulation drew most often without casting, or, before any run, the costliest card that is in no combo. Exact math, natural draws only (no tutors). "Simulate" plays 2,000 goldfish games with and without the swap. Nothing changes in your deck until you press Apply.</span></div>
+      <div class="row wrap raise-ctl"><label>Cut <select id="raiseCut"></select></label><span id="raiseWhy" class="hint"></span></div>
+      <div id="raiseBody"></div>
+      <div class="row wrap raise-try"><label>Try your own: add <input id="raiseAdd" type="text" list="raiseAddList" autocomplete="off" spellcheck="false" placeholder="Card name" size="22"></label><datalist id="raiseAddList"></datalist><button id="raiseGo" class="ghost">Try</button></div>
+      <div id="raiseOwn"></div>
+      <div id="raiseSim"></div>
+    </div>
     <div class="two-col">
       <div class="card-box"><div class="box-head"><h2>Mana available by turn</h2><span class="hint">Median line, shaded 10th–90th percentile</span></div><div id="chartMana" class="chart"></div></div>
       <div class="card-box"><div class="box-head"><h2>Hitting every land drop</h2><span class="hint">P(at least N lands on turn N)</span></div><div id="chartLands" class="chart"></div></div>
@@ -317,6 +325,10 @@
         <span id="catWhen" class="hint"></span>
       </div>
       <table class="cat-table"><thead><tr><th>Category</th><th>Qty</th><th>Odds</th></tr></thead><tbody id="catBody"></tbody></table>
+    </div>
+    <div class="card-box suggest" id="comboOdds" hidden>
+      <div class="box-head"><h2>Combo odds</h2><span class="hint">The chance you have drawn every piece of at least one combo in this deck: the Commander Spellbook combos that have all their cards in the list. The commander counts as always available. Natural draws only: tutors, extra card draw and mulligans are not counted, so the real odds are higher in a deck with tutors. Exact math (hypergeometric); when the combos use more than 20 different cards, 100,000 seeded shuffles, with the 95% margin shown.</span></div>
+      <div id="comboOddsBody"></div>
     </div>
     <div class="two-col">
       <div class="card-box">

@@ -268,6 +268,7 @@
     toast('Cleared. Paste your new deck, then tap Load deck.');
   });
   // loadDeck({ text, quiet }): remember.js loads the deck you had, without saving it again or touching the decklist box
+  let selLoaded = '';          // the deck menu's choice for the deck that is loaded
   async function loadDeck(o) {
     const quiet = !!(o && o.quiet), text = quiet ? o.text : $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
@@ -280,7 +281,11 @@
       await Source.init();
       const r = await Source.loadDeck(text, m => { btn.textContent = m; });
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
-      else { r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false; if (ok) { S.deckText = text; if (!quiet) autoSave(text); } }
+      else {
+        r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false;
+        if (ok) { S.deckText = text; selLoaded = $('#savedDecks').value; if (!quiet) autoSave(text); }
+        else { $('#savedDecks').value = selLoaded; dirty(); }          // refused: the deck menu names the deck that is still loaded again (and so does the remembered state)
+      }
     } catch (err) {
       console.error(err);
       $('#deckMsgs').innerHTML = `<div class="msg err">Could not load cards: ${esc(err.message || err)}. ${Source.state.mode === 'scryfall' ? 'Check your internet connection and try again.' : 'Is the local server still running?'}</div>`;
@@ -791,8 +796,13 @@
   refreshSaved();
   const builtinsListed = loadBuiltinIndex();
   // a deck link opened at startup is checked against the format you had (remember.js restores the other settings later)
-  try { const f = ((JSON.parse(localStorage.getItem('isf_state') || 'null') || {}).ctl || {}).optFormat; if ((f === '60' || f === 'commander') && f !== $('#optFormat').value) { $('#optFormat').value = f; $('#optFormat').dispatchEvent(new Event('change')); } } catch (e) { /* no saved settings */ }
-  openLinkInAddress();
+  (async () => {
+    try {
+      const ui = JSON.parse(localStorage.getItem('isf_state') || 'null') || {}, f = (ui.ctl || {}).optFormat, running = await runningVersion;
+      if (!(ui.v && running && ui.v !== running) && (f === '60' || f === 'commander') && f !== $('#optFormat').value) { $('#optFormat').value = f; $('#optFormat').dispatchEvent(new Event('change')); }          // saved by an older version: remember.js resets it all, so the format is not kept either
+    } catch (e) { /* no saved settings */ }
+    openLinkInAddress();
+  })();
   const last = localStorage.getItem('gf_last'); if (last) $('#deckText').value = last;
   $('#deckText').addEventListener('input', () => localStorage.setItem('gf_last', $('#deckText').value));
 

@@ -11,6 +11,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); localStorage.setItem('isf_autosave', '0'); localStorage.setItem('isf_tutorial_off', '1'); } catch (e) {} });
   await ctx.addInitScript(() => { try { const t = sessionStorage.getItem('fakeDeck'); if (t) { sessionStorage.removeItem('fakeDeck'); const ui = JSON.parse(localStorage.getItem('isf_state')); ui.deck = t; localStorage.setItem('isf_state', JSON.stringify(ui)); } } catch (e) {} });
   await ctx.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => new MutationObserver(() => { if (document.querySelector('.cmdr-rule')) window.__ruleSeen = true; }).observe(document.body, { childList: true, subtree: true })); });
+  await ctx.addInitScript(() => { try { if (sessionStorage.getItem('fakeOld')) { sessionStorage.removeItem('fakeOld'); const ui = JSON.parse(localStorage.getItem('isf_state')); ui.v = '1'; ui.ctl.optFormat = '60'; localStorage.setItem('isf_state', JSON.stringify(ui)); } } catch (e) {} });
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const q = route.request(), c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
     if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: c });
@@ -72,18 +73,29 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   { const res = await p.evaluate(() => { const A = window.__isfApi, L = window.__isf.loaded, r = Object.assign({}, L, { cards: L.cards.slice(1), missing: [] });
       const a = A.setDeck(r); const kept = window.__isf.cards.length; const b = A.setDeck(r, true); return { a, kept, full: L.cards.length, b, now: window.__isf.cards.length }; });
     check('setDeck refuses a 99-card deck, and with force (the tutorial giving your deck back) it loads it', res.a === false && res.kept === res.full && res.b !== false && res.now === res.full - 1, JSON.stringify(res)); }
-  // 3. a refused built-in leaves the loaded deck and the lab's saved choices alone
-  await load(frodo);
-  { const pol = idx.decks ? idx.decks : idx, withPol = pol.find(d => d.policy && Object.keys(d.policy).length);
+  // 3. a refused built-in leaves the loaded deck, the lab's saved choices and the deck menu alone (T-048: the menu names the loaded deck again)
+  { const pol = idx.decks ? idx.decks : idx, withPol = pol.find(d => d.policy && Object.keys(d.policy).length), plain = pol.find(d => !d.policy && d.file !== withPol.file);
+    await p.evaluate(() => { window.__isf.deck = null; });
+    await p.selectOption('#savedDecks', 'builtin:' + plain.file);
+    await p.waitForFunction(() => window.__isf.deck, null, { timeout: 120000 }); await p.waitForTimeout(500);
+    const had = await p.evaluate(() => window.__isf.deck.commanders.map(i => i.card.name).join('+'));
     await p.route('**/decks/' + encodeURIComponent(withPol.file), async route => { const res = await route.fetch(); const t = await res.text(); const ls = t.split('\n'); const i = ls.findIndex((l, k) => k > 5 && /^1 /.test(l.trim()) && !/\*CMDR\*/i.test(l)); ls.splice(i, 1); route.fulfill({ response: res, body: ls.join('\n') }); });
     const before = await p.evaluate(() => localStorage.getItem('gf_policy'));
     await p.evaluate(() => { document.querySelector('#deckMsgs').innerHTML = ''; });
     await p.selectOption('#savedDecks', 'builtin:' + withPol.file);
-    await p.waitForFunction(() => /Not loaded/.test(document.querySelector('#deckMsgs').textContent), null, { timeout: 120000 }); await p.waitForTimeout(500);
-    const after = await p.evaluate(() => ({ pol: localStorage.getItem('gf_policy'), cmdrs: window.__isf.deck.commanders.map(i => i.card.name).join('+') }));
+    await p.waitForFunction(() => /Not loaded/.test(document.querySelector('#deckMsgs').textContent), null, { timeout: 120000 }); await p.waitForTimeout(1500);
+    const after = await p.evaluate(() => ({ pol: localStorage.getItem('gf_policy'), cmdrs: window.__isf.deck.commanders.map(i => i.card.name).join('+'), sel: document.querySelector('#savedDecks').value, saved: (JSON.parse(localStorage.getItem('isf_state') || '{}') || {}).saved }));
     check('a built-in deck that is refused (one card short) saves none of its lab choices', after.pol === before, withPol.file);
-    check('...and the deck you had stays loaded', /Frodo/.test(after.cmdrs), after.cmdrs);
-    await p.unroute('**/decks/' + encodeURIComponent(withPol.file)); }
+    check('...and the deck you had stays loaded', after.cmdrs === had, after.cmdrs + ' / ' + had);
+    check('...and the deck menu (and the remembered choice) names the deck that is loaded again', after.sel === 'builtin:' + plain.file && after.saved === after.sel, JSON.stringify({ sel: after.sel, saved: after.saved }));
+    await p.unroute('**/decks/' + encodeURIComponent(withPol.file));
+    // a refused deck link: added to the saved decks, but the menu goes back to the loaded deck
+    await p.evaluate(() => { document.querySelector('#deckMsgs').innerHTML = ''; });
+    await p.evaluate(t => { location.hash = 'deck=p.' + btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') + '&name=Short'; }, ninetyNine.replace(/[^\x00-\x7f]/g, ''));
+    await p.waitForFunction(() => /Not loaded/.test(document.querySelector('#deckMsgs').textContent), null, { timeout: 120000 }); await p.waitForTimeout(300);
+    const l = await p.evaluate(() => ({ sel: document.querySelector('#savedDecks').value, saved: Object.keys(JSON.parse(localStorage.getItem('gf_decks') || '{}')) }));
+    check('a refused deck link: it is in the saved decks, and the menu names the loaded deck again', l.saved.includes('Short') && l.sel === 'builtin:' + plain.file, JSON.stringify(l)); }
+  await load(frodo);
   // 6. switching Format to Commander re-checks the deck that is loaded
   await p.selectOption('#optFormat', '60');
   r = await load(['24 Forest', '24 Mountain', '12 Llanowar Elves'].join('\n'));
@@ -121,6 +133,11 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.goto(sixtyLink); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 }); await p.waitForTimeout(1500);
   { const f = await p.evaluate(() => ({ fmt: document.querySelector('#optFormat').value, seen: !!window.__ruleSeen, saved: Object.keys(JSON.parse(localStorage.getItem('gf_decks') || '{}')) }));
     check('a 60-card deck link opened at startup, saved format 60-card: added and never refused', f.fmt === '60' && !f.seen && f.saved.includes('Sixty'), JSON.stringify(f)); }
+  // T-048: a format saved by an older version is not restored at startup (remember.js resets everything else then too)
+  await p.evaluate(() => sessionStorage.setItem('fakeOld', '1'));
+  await p.goto(sixtyLink.replace('?link=1', '?link=2').replace('name=Sixty', 'name=SixtyOld')); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 }); await p.waitForTimeout(1500);
+  { const f = await p.evaluate(() => ({ fmt: document.querySelector('#optFormat').value, seen: !!window.__ruleSeen }));
+    check('settings saved by an older version: the saved 60-card format is not restored, so the 60-card link meets the Commander rule', f.fmt === 'commander' && f.seen, JSON.stringify(f)); }
   check('no page errors', !errs.length, errs[0]);
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -1,9 +1,8 @@
-// Browser test: how "Play a friend" connects (remote.js). The relay: the site asks the ICEYfish relay service (server/turn-service.js;
-// a fake one here) for the relay's servers and connects through them, and with the service down it says so and tries a direct
-// connection; a fixed relay credential written into the site is used as it is. No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever both devices say they could
-// not connect and why. Needs playwright, the :8800 server and Scryfall.
+// Browser test: how "Play a friend" connects (remote.js). WebRTC peer to peer only: the connection is configured with public STUN
+// servers and no relay (no TURN, no login). No way through: both codes stripped of their addresses, so instead of "Connecting…" for ever
+// both devices say "Couldn't connect directly. Try both on the same Wi-Fi, or a different network." after the time-out. Needs playwright,
+// the :8800 server and Scryfall.
 const { chromium } = require('playwright');
-const http = require('http');
 const fs = require('fs'), path = require('path');
 const UA = 'goldfish-calc-test/0.1';
 let pass = 0, fail = 0;
@@ -35,47 +34,15 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   };
   const [A, B] = [await device('A'), await device('B')];
 
-  // ---- the relay: a fake relay service that answers the site
-  const asked = [];
-  const relay = http.createServer((req, res) => {
-    asked.push({ path: req.url, origin: req.headers.origin });
-    const cors = { 'Access-Control-Allow-Origin': req.headers.origin || '*', 'Content-Type': 'application/json' };
-    res.writeHead(200, cors);
-    res.end(JSON.stringify({ iceServers: [{ urls: 'turn:relay.test.invalid:3478', username: 'u-test', credential: 'p-test' }], expires: new Date(Date.now() + 12 * 3600e3).toISOString() }));
-  });
-  await new Promise(r => relay.listen(0, '127.0.0.1', r));
-  // the relay built into the site: Metered's servers with the user's credential
+  // ---- WebRTC only: STUN for discovery, no relay
   await A.evaluate(() => { const R = window.__isfRemote; R.ice = null; R.state.failAfter = 60000; });
   await A.click('#tab-duel .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
-  const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers);
-  check('as shipped, the site connects through Metered\'s relay (TURN on 80 and 443, TURNS) with a login, as well as STUN', built.some(s => [].concat(s.urls).includes('turns:global.relay.metered.ca:443?transport=tcp') && s.username) && built.some(s => [].concat(s.urls).includes('turn:global.relay.metered.ca:80') && s.credential) && built.some(s => /^stun:/.test([].concat(s.urls)[0])), built.map(s => [].concat(s.urls).join(' ')).join(', '));
-  check('...and the list of what is shared says so (the relay line, version 3)', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 3 && R.DISCLOSURE.some(t => /Metered's relay server/.test(t)) && !R.DISCLOSURE.some(t => /ICEYfish server/.test(t)); }));
-  await A.evaluate(u => { const R = window.__isfRemote; R.relayServers = null; R.relayService = u; }, `http://127.0.0.1:${relay.address().port}/ice`);
-  await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
-  const conf = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));
-  check('with the relay service set, the site asks it for the relay (GET /ice, from the site\'s own address)', asked.length === 1 && asked[0].path === '/ice' && asked[0].origin === 'http://127.0.0.1:8800', JSON.stringify(asked));
-  check('...and connects through the relay it gives, as well as Google\'s STUN server', conf.some(u => /turn:relay\.test\.invalid:3478/.test(u)) && conf.some(u => /stun:stun\.l\.google\.com/.test(u)), conf.join(', '));
-  await A.click('#tab-duel .rm-invite');
-  await A.waitForTimeout(500);
-  check('a second invite uses the relay servers it already has (not asked again)', asked.length === 1, asked.length);
-  relay.close();
-  await A.evaluate(u => { window.__isfRemote.relayService = u; }, 'http://127.0.0.1:9');          // nothing listens there
-  await A.click('#tab-duel .rm-invite');
-  await A.waitForFunction(() => /relay could not be reached/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 30000 }).catch(() => {});
-  const said = /relay could not be reached/.test(await A.$eval('#tab-duel .rm-status', e => e.textContent));
-  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
-  const down = await A.evaluate(() => ({ conf: window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')), code: !!document.querySelector('#tab-duel .rm-mine') }));
-  check('with the relay service down, the site says so and still makes an invite, for a direct connection only', said && down.code && down.conf.length === 1 && /stun:/.test(down.conf[0]), down.conf.join(', '));
-  // a fixed credential written into the site: used as it is, no service asked
-  const before = asked.length;
-  await A.evaluate(() => { const R = window.__isfRemote; R.relayService = null; R.relayServers = [{ urls: 'turn:fixed.test.invalid:80', username: 'u-fixed', credential: 'p-fixed' }]; });
-  await A.click('#tab-duel .rm-invite');
-  await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 30000 });
-  const fixed = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => [].concat(s.urls).join(' ')));
-  check('with a fixed relay credential in the site, it connects through it (and STUN), asking no service', fixed.some(u => /turn:fixed\.test\.invalid:80/.test(u)) && fixed.some(u => /^stun:/.test(u)) && asked.length === before, fixed.join(', '));
-  await A.evaluate(() => { const R = window.__isfRemote; R.relayServers = null; R.ice = []; R.state.failAfter = 3000; });
+  const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => ({ urls: [].concat(s.urls), login: !!(s.username || s.credential) })));
+  const all = built.flatMap(s => s.urls);
+  check('as shipped, the site connects with public STUN servers only: no TURN, no login', all.length > 0 && all.every(u => /^stun:/.test(u)) && built.every(s => !s.login), all.join(', '));
+  check('...and the list of what is shared (version 4) has no relay line', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 4 && !R.DISCLOSURE.some(t => /relay/i.test(t)); }));
+  await A.evaluate(() => { const R = window.__isfRemote; R.ice = []; R.state.failAfter = 3000; });
 
   // ---- no way through
   await A.click('#tab-duel .rm-invite');
@@ -93,12 +60,12 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   await A.click('#tab-duel .rm-paste summary');
   await A.fill('#tab-duel .rm-theirs', blind);
   await A.click('#tab-duel .rm-connect');
-  await A.waitForFunction(() => /Could not connect/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 15000 }).catch(() => {});
+  await A.waitForFunction(() => /connect directly/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 15000 }).catch(() => {});
   const msg = await A.$eval('#tab-duel .rm-status', e => e.textContent);
-  check('no way through: the inviter is told it could not connect, not "Connecting…" for ever', /Could not connect/.test(msg), msg.slice(0, 120));
-  check('...and why: what each side offered, and that a relay server fixes it', /This device offered .*local address/.test(msg) && /the other offered no address at all/.test(msg) && /relay/i.test(msg), msg);
-  await B.waitForFunction(() => /Could not connect/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 15000 }).catch(() => {});
-  check('the friend\'s device says so too', /Could not connect/.test(await B.$eval('#tab-duel .rm-status', e => e.textContent)));
+  check('no way through: the inviter is told it could not connect directly, not "Connecting…" for ever', /Couldn't connect directly/.test(msg), msg.slice(0, 120));
+  check('...in plain words, with the way out, and with no mention of a relay', msg.trim() === "Couldn't connect directly. Try both on the same Wi-Fi, or a different network." && !/relay/i.test(msg), msg);
+  await B.waitForFunction(() => /connect directly/.test(document.querySelector('#tab-duel .rm-status').textContent), null, { timeout: 15000 }).catch(() => {});
+  check('the friend\'s device says so too', /connect directly/.test(await B.$eval('#tab-duel .rm-status', e => e.textContent)));
   check('no page errors', !errs.length, errs.slice(0, 3).join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -68,6 +68,17 @@ Ask before you build on any of these. Give a recommendation and the trade-off in
 - Run what you changed (`node tests/run.js --ui <name>`), push, and wait for the green "Tests" check. List new test files in
   `tests/README.md`.
 
+## Connection: WebRTC only (T-042, the user: "Change relay to 100% WebRTC")
+- Play a friend connects peer to peer. `iceServers()` in `remote.js` gives public STUN servers only (`STUN`); there is no TURN, no relay
+  login, no relay service and no `server/` folder. Nothing may be added back without the user's yes.
+- The codes (copy, QR, link) are the signalling, as before; nothing else was changed there.
+- When no direct path exists (strict NAT, a firewall, or both devices behind routers that won't loop back), after `S.failAfter`
+  (20 seconds) the app says: "Couldn't connect directly. Try both on the same Wi-Fi, or a different network." (`NO_DIRECT`).
+- The list of what is shared is version 4: the version 2 text without the relay line; every player accepts it again.
+- The old relay login was public in git history (Versions 95-130): the user should delete that Metered credential in the Metered dashboard.
+- Tests: `remote-ice` (STUN list valid; no relay text anywhere in `remote.js`), `ui/remote-connect` (STUN-only configuration; the
+  no-connection message after the time-out on both devices).
+
 ## Who owns what
 | Area | Session |
 | --- | --- |

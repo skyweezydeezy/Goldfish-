@@ -1,5 +1,6 @@
 // Nothing Personal (Ultima, Origin of Oblivion)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1.5% by T5, 45.1% by T7; field win 61%; 5 Game Changers; B4 confirmed
 // COMMANDER
 1 Ultima, Origin of Oblivion
 // DECK

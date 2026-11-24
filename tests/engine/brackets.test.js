@@ -9,14 +9,16 @@ const sync = JSON.parse(fs.readFileSync(path.join(DECKS, 'drive-sync.json'), 'ut
 // every list in the ManaBox folder has its bracket, in the deck file and in the index
 const titles = Object.keys(sync.files);
 check('the ManaBox folder\'s 25 lists are recorded', titles.length >= 25, titles.length);
+// the deck file and the index show the bracket ICEYfish verified (tools/verify-brackets.js) where there is one, else the Drive one
 const wrong = titles.filter(t => {
-  const want = +(t.match(/\[B(\d)\]/) || [])[1], f = sync.files[t], d = index.find(x => x.file === f.deck);
+  const f = sync.files[t], want = f.verified || +(t.match(/\[B(\d)\]/) || [])[1], d = index.find(x => x.file === f.deck);
   const line = (fs.readFileSync(path.join(DECKS, f.deck), 'utf8').match(/^\/\/\s*Bracket\s*(\d)/m) || [])[1];
   return !d || d.bracket !== want || +line !== want;
 });
-check('each one is filed under the bracket in its file name (deck file and index)', wrong.length === 0, wrong.join(', ') || titles.length + ' decks');
-check('known brackets: Mermaids and The King\'s Gambit B5, Death Tax B4, Soul Brokers B3', ['mermaids.txt:5', 'the-kings-gambit.txt:5', 'death-tax.txt:4', 'soul-brokers.txt:3'].every(s => { const [f, b] = s.split(':'); return (index.find(d => d.file === f) || {}).bracket === +b; }));
+check('each one is filed under its verified bracket, else the one in its file name (deck file and index)', wrong.length === 0, wrong.join(', ') || titles.length + ' decks');
+check('known Drive brackets: Mermaids and The King\'s Gambit B5, Death Tax B4, Soul Brokers B3', ['mermaids.txt:5', 'the-kings-gambit.txt:5', 'death-tax.txt:4', 'soul-brokers.txt:3'].every(s => { const [f, b] = s.split(':'); return (Object.values(sync.files).find(r => r.deck === f) || {}).bracket === +b; }));
 check('every bracket is 1 to 5', index.every(d => d.bracket == null || (d.bracket >= 1 && d.bracket <= 5)));
+check('drive-sync keeps the Drive bracket of each list (the [Bn] in its file name)', titles.every(t => sync.files[t].bracket === +(t.match(/\[B(\d)\]/) || [])[1]));
 check('each recorded list keeps its Drive file id', titles.every(t => /^[\w-]{20,}$/.test(sync.files[t].id || '')));
 
 // the importer: a new deck, an unchanged deck, a changed bracket, flavor cards left out
@@ -36,6 +38,24 @@ const dt = fs.readFileSync(path.join(decksCopy, 'death-tax.txt'), 'utf8'), bn = 
 check('importer: same cards with a new bracket only changes the bracket line (set codes kept)', /^\/\/ Bracket 2$/m.test(dt) && /\(SLD\) 1235/.test(dt) && /bracket +1: Death Tax: B4 -> B2/.test(out), out.split('\n').find(l => /^bracket/.test(l)));
 check('importer: a new deck is added with its name, commander and bracket', /^\/\/ Brand New \(Kenrith, the Returned King\)\n\/\/ Bracket 1$/m.test(bn) && /added +1/.test(out));
 check('importer: cards after "ADDITIONAL" are left out of the deck', !/Sol Ring/.test(bn));
+// a bracket ICEYfish verified stays while the cards and the Drive bracket stay; a new Drive bracket replaces it
+{ const sf = path.join(decksCopy, 'drive-sync.json'), sc = JSON.parse(fs.readFileSync(sf, 'utf8'));
+  sc.files['Death Tax [B2].txt'].verified = 4; sc.files['Death Tax [B2].txt'].verifiedAt = '2026-11-23'; fs.writeFileSync(sf, JSON.stringify(sc));
+  fs.writeFileSync(path.join(decksCopy, 'death-tax.txt'), dt.replace(/^\/\/ Bracket 2$/m, '// Bracket 4\n// Checked by ICEYfish (test)'));
+  execFileSync(process.execPath, [path.join(tmp, 'import.js'), lists], { encoding: 'utf8' });
+  const kept = fs.readFileSync(path.join(decksCopy, 'death-tax.txt'), 'utf8'), rec = JSON.parse(fs.readFileSync(sf, 'utf8')).files['Death Tax [B2].txt'];
+  check('importer: a verified bracket stays (Drive bracket kept beside it, the check line kept)', /^\/\/ Bracket 4$/m.test(kept) && /^\/\/ Checked by ICEYfish/m.test(kept) && rec.bracket === 2 && rec.verified === 4, JSON.stringify(rec));
+  fs.renameSync(path.join(lists, 'Death Tax [B2].txt'), path.join(lists, 'Death Tax [B3].txt'));
+  execFileSync(process.execPath, [path.join(tmp, 'import.js'), lists], { encoding: 'utf8' });
+  const now = fs.readFileSync(path.join(decksCopy, 'death-tax.txt'), 'utf8'), rec2 = JSON.parse(fs.readFileSync(sf, 'utf8')).files['Death Tax [B3].txt'];
+  check('importer: a new Drive bracket replaces the verified one (to be checked again)', /^\/\/ Bracket 3$/m.test(now) && !/Checked by ICEYfish/.test(now) && rec2 && rec2.bracket === 3 && !rec2.verified, JSON.stringify(rec2));
+  // the Drive bracket renamed to equal the verified one: the bracket line already matches, but the old check line ("was B2 -> B4") goes
+  const sc3 = JSON.parse(fs.readFileSync(sf, 'utf8')); sc3.files['Death Tax [B3].txt'].verified = 4; fs.writeFileSync(sf, JSON.stringify(sc3));
+  fs.writeFileSync(path.join(decksCopy, 'death-tax.txt'), now.replace(/^\/\/ Bracket 3$/m, '// Bracket 4\n// Checked by ICEYfish (test): was B3 -> B4'));
+  fs.renameSync(path.join(lists, 'Death Tax [B3].txt'), path.join(lists, 'Death Tax [B4].txt'));
+  execFileSync(process.execPath, [path.join(tmp, 'import.js'), lists], { encoding: 'utf8' });
+  const eq = fs.readFileSync(path.join(decksCopy, 'death-tax.txt'), 'utf8'), rec3 = JSON.parse(fs.readFileSync(sf, 'utf8')).files['Death Tax [B4].txt'];
+  check('importer: a Drive bracket renamed to the verified one drops the old check line', /^\/\/ Bracket 4$/m.test(eq) && !/Checked by ICEYfish/.test(eq) && rec3 && rec3.bracket === 4 && !rec3.verified, JSON.stringify(rec3)); }
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,3384 @@
+{
+ "about": "Bracket check of the built-in decks. Re-run: node tools/verify-brackets.js; then --apply. Method: docs/agents/DECK-BRACKETS.md",
+ "version": 151,
+ "date": "2026-11-23",
+ "gamesPerDeck": 20000,
+ "matchesPerPair": 488,
+ "matchTurns": 25,
+ "seed": 20261123,
+ "seconds": 10805,
+ "jobs": 4,
+ "rules": {
+  "gameChangersMax": {
+   "1": 0,
+   "2": 0,
+   "3": 3
+  },
+  "massLandDenial": 4,
+  "extraTurnsChain": 3,
+  "twoCardCombo": 3,
+  "earlyTwoCardCombo": 4,
+  "cheapComboMv": 6,
+  "speed": [
+   [
+    4,
+    5
+   ],
+   [
+    6,
+    4
+   ],
+   [
+    8,
+    3
+   ],
+   [
+    9,
+    2
+   ]
+  ]
+ },
+ "decks": [
+  {
+   "file": "black-mage-blackout.txt",
+   "name": "Black Mage Blackout (Vivi Ornitier)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": ">10",
+    "by4": 0.6,
+    "by5": 1.4,
+    "by6": 2.9,
+    "by7": 6.9,
+    "by8": 16.9,
+    "byT": 49.2,
+    "cmdrMedian": 3,
+    "mana4": 4.52,
+    "winBy": {
+     "damage": 41,
+     "combo": 7.9,
+     "effect": 0.2
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Isochron Scepter + Dramatic Reversal: a spell cast every time round, and Vivi Ornitier hits for each one",
+     "share": 0.0816,
+     "avgTurn": 7.813725490196078
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 4352,
+    "losses": 15276,
+    "none": 380,
+    "errors": 0,
+    "winRate": 21.8,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Consecrated Sphinx",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gamble",
+     "Glacial Chasm",
+     "Grim Monolith",
+     "Jeska's Will",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Narset, Parter of Veils",
+     "Rhystic Study",
+     "Thassa's Oracle",
+     "The One Ring",
+     "The Tabernacle at Pendrell Vale"
+    ],
+    "massLandDenial": [
+     "Back to Basics",
+     "Blood Moon",
+     "Decree of Annihilation",
+     "Magus of the Moon",
+     "Mana Breach",
+     "Mana Vortex",
+     "Rising Waters",
+     "Stasis",
+     "Static Orb",
+     "Sunder",
+     "Tectonic Break",
+     "Winter Moon",
+     "Winter Orb"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "18 Game Changers (B3 allows 3)",
+     "mass land denial: Back to Basics, Blood Moon, Decree of Annihilation, Magus of the Moon, Mana Breach, Mana Vortex, Rising Waters, Stasis, Static Orb, Sunder, Tectonic Break, Winter Moon, Winter Orb",
+     "1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T>10); card rules say at least B4 (18 Game Changers (B3 allows 3); mass land denial: Back to Basics, Blood Moon, Decree of Annihilation, Magus of the Moon, Mana Breach, Mana Vortex, Rising Waters, Stasis, Static Orb, Sunder, Tectonic Break, Winter Moon, Winter Orb; 1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "bridge-to-the-inevitable-abyss.txt",
+   "name": "Bridge to the Inevitable Abyss (Esika, God of the Tree)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": ">10",
+    "by4": 0,
+    "by5": 0,
+    "by6": 0.2,
+    "by7": 1.5,
+    "by8": 7.8,
+    "byT": 37,
+    "cmdrMedian": 4,
+    "mana4": 5.06,
+    "winBy": {
+     "damage": 33.4,
+     "effect": 3.6,
+     "mill": 0
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "Nicol Bolas, Dragon-God",
+     "share": 0.0348,
+     "avgTurn": 9.10344827586207
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 4263,
+    "losses": 15691,
+    "none": 54,
+    "errors": 0,
+    "winRate": 21.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Crop Rotation",
+     "Cyclonic Rift",
+     "Enlightened Tutor",
+     "Mana Vault",
+     "Rhystic Study",
+     "Seedborn Muse",
+     "Teferi's Protection",
+     "The One Ring",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "11 Game Changers (B3 allows 3)",
+     "1 cheap two-card infinite combo (e.g. Rings of Brighthearth + Basalt Monolith, 6 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T>10); card rules say at least B4 (11 Game Changers (B3 allows 3); 1 cheap two-card infinite combo (e.g. Rings of Brighthearth + Basalt Monolith, 6 mana))"
+  },
+  {
+   "file": "captains-lockdown.txt",
+   "name": "Captain's Lockdown (Sisay, Weatherlight Captain)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 2.3,
+    "by5": 5.5,
+    "by6": 17.4,
+    "by7": 45.9,
+    "by8": 73.9,
+    "byT": 93.3,
+    "cmdrMedian": 3,
+    "mana4": 5.06,
+    "winBy": {
+     "commander": 18.8,
+     "damage": 48.2,
+     "combo": 26.1,
+     "effect": 0.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Najeela, the Blade-Blossom + Derevi, Empyrial Tactician: every hit untaps a land, and the lands pay for another combat",
+     "share": 0.1644,
+     "avgTurn": 7.642335766423358
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 11932,
+    "losses": 7968,
+    "none": 105,
+    "errors": 3,
+    "winRate": 59.6,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Braids, Cabal Minion",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Drannith Magistrate",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gaea's Cradle",
+     "Grand Arbiter Augustin IV",
+     "Imperial Seal",
+     "Mana Vault",
+     "Mox Diamond",
+     "Narset, Parter of Veils",
+     "Necropotence",
+     "Notion Thief",
+     "Opposition Agent",
+     "Orcish Bowmasters",
+     "Rhystic Study",
+     "Smothering Tithe",
+     "Teferi's Protection",
+     "Tergrid, God of Fright // Tergrid's Lantern",
+     "Thassa's Oracle",
+     "The One Ring",
+     "The Tabernacle at Pendrell Vale",
+     "Vampiric Tutor"
+    ],
+    "massLandDenial": [
+     "Armageddon",
+     "Cataclysm",
+     "Hokori, Dust Drinker",
+     "Ravages of War",
+     "Stasis",
+     "Static Orb",
+     "Winter Orb"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 3,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Najeela, the Blade-Blossom",
+       "Derevi, Empyrial Tactician"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colored mana",
+       "Infinite combat phases"
+      ]
+     },
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Jace, Wielder of Mysteries"
+      ],
+      "mv": 5,
+      "does": [
+       "Win the game"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "27 Game Changers (B3 allows 3)",
+     "mass land denial: Armageddon, Cataclysm, Hokori, Dust Drinker, Ravages of War, Stasis, Static Orb, Winter Orb",
+     "3 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (27 Game Changers (B3 allows 3); mass land denial: Armageddon, Cataclysm, Hokori, Dust Drinker, Ravages of War, Stasis, Static Orb, Winter Orb; 3 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "compleat-contagion.txt",
+   "name": "Compleat Contagion (Atraxa, Praetors' Voice)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 1.7,
+    "by5": 13.6,
+    "by6": 44,
+    "by7": 74.3,
+    "by8": 91.2,
+    "byT": 99.1,
+    "cmdrMedian": 4,
+    "mana4": 4.66,
+    "winBy": {
+     "poison": 84.8,
+     "commander": 9,
+     "damage": 5.3
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 14472,
+    "losses": 5531,
+    "none": 5,
+    "errors": 0,
+    "winRate": 72.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Mana Vault",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Teferi's Protection",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "12 Game Changers (B3 allows 3)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (12 Game Changers (B3 allows 3))"
+  },
+  {
+   "file": "compound-interest.txt",
+   "name": "Compound Interest (Atraxa, Praetors' Voice)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 1.3,
+    "by6": 11.5,
+    "by7": 39.7,
+    "by8": 71.6,
+    "byT": 95.8,
+    "cmdrMedian": 4,
+    "mana4": 4.52,
+    "winBy": {
+     "damage": 73.4,
+     "commander": 9.9,
+     "poison": 8.4,
+     "combo": 4.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Vraska, Betrayal's Sting enters with twice its loyalty beside Vorinclex, Monstrous Raider: nine poison counters at once, doubled",
+     "share": 0.0392,
+     "avgTurn": 7.183673469387755
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12871,
+    "losses": 7118,
+    "none": 17,
+    "errors": 2,
+    "winRate": 64.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Mana Vault",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Smothering Tithe",
+     "Teferi's Protection",
+     "The One Ring",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "14 Game Changers (B3 allows 3)",
+     "1 two-card infinite combo (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (14 Game Changers (B3 allows 3); 1 two-card infinite combo (all over 6 mana))"
+  },
+  {
+   "file": "counter-culture.txt",
+   "name": "Counter Culture (Rishkar, Peema Renegade)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0.7,
+    "by6": 7,
+    "by7": 24.5,
+    "by8": 47.4,
+    "byT": 78.5,
+    "cmdrMedian": 3,
+    "mana4": 5.82,
+    "winBy": {
+     "damage": 76.9,
+     "commander": 0.8,
+     "effect": 0.8
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "Helix Pinnacle",
+     "share": 0.0064,
+     "avgTurn": 9.875
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 6778,
+    "losses": 13168,
+    "none": 61,
+    "errors": 1,
+    "winRate": 33.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Seedborn Muse",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "2 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B3 (2 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "court-of-ruin.txt",
+   "name": "Court of Ruin (Kefka, Court Mage)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 6.7,
+    "by5": 10,
+    "by6": 14,
+    "by7": 23.7,
+    "by8": 43.6,
+    "byT": 84,
+    "cmdrMedian": 5,
+    "mana4": 4.35,
+    "winBy": {
+     "damage": 56.7,
+     "combo": 24.9,
+     "commander": 2.5,
+     "effect": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Tainted Pact exiles the library, then Thassa's Oracle wins",
+     "share": 0.1132,
+     "avgTurn": 6.586572438162544
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9703,
+    "losses": 10288,
+    "none": 16,
+    "errors": 1,
+    "winRate": 48.5,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Mana Vault",
+     "Chrome Mox",
+     "Mox Diamond",
+     "Lion's Eye Diamond",
+     "Grim Monolith",
+     "Tergrid, God of Fright // Tergrid's Lantern",
+     "Notion Thief",
+     "Orcish Bowmasters",
+     "Opposition Agent",
+     "Narset, Parter of Veils",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Imperial Seal",
+     "Mystical Tutor",
+     "Gamble",
+     "Rhystic Study",
+     "Necropotence",
+     "Bolas's Citadel",
+     "Thassa's Oracle",
+     "Underworld Breach"
+    ],
+    "massLandDenial": [
+     "Smallpox"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Tainted Pact",
+       "Thassa's Oracle"
+      ],
+      "mv": 4,
+      "does": [
+       "Win the game"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "24 Game Changers (B3 allows 3)",
+     "mass land denial: Smallpox",
+     "2 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (24 Game Changers (B3 allows 3); mass land denial: Smallpox; 2 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "dead-sea.txt",
+   "name": "Dead Sea (Thrasios, Triton Hero)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 3.1,
+    "by5": 5.9,
+    "by6": 10.1,
+    "by7": 18.7,
+    "by8": 34.2,
+    "byT": 69.7,
+    "cmdrMedian": 2,
+    "mana4": 4.51,
+    "winBy": {
+     "combo": 29.6,
+     "damage": 42.2,
+     "commander": 0.3
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Basalt Monolith + Kinnan) into Thrasios, Triton Hero: draws the library and finds Walking Ballista",
+     "share": 0.038,
+     "avgTurn": 7.157894736842105
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 6491,
+    "losses": 13400,
+    "none": 117,
+    "errors": 0,
+    "winRate": 32.4,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gaea's Cradle",
+     "Grim Monolith",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Narset, Parter of Veils",
+     "Rhystic Study",
+     "Survival of the Fittest",
+     "Thassa's Oracle",
+     "The One Ring"
+    ],
+    "massLandDenial": [
+     "Back to Basics",
+     "Mana Breach",
+     "Mana Vortex",
+     "Rising Waters",
+     "Stasis",
+     "Static Orb",
+     "Sunder",
+     "Tsunami",
+     "Vorinclex, Voice of Hunger",
+     "Winter Moon",
+     "Winter Orb"
+    ],
+    "extraTurns": [
+     "Expropriate"
+    ],
+    "twoCardInfinite": 7,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     },
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Kinnan, Bonder Prodigy",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Power Artifact",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Power Artifact",
+       "Grim Monolith"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "15 Game Changers (B3 allows 3)",
+     "mass land denial: Back to Basics, Mana Breach, Mana Vortex, Rising Waters, Stasis, Static Orb, Sunder, Tsunami, Vorinclex, Voice of Hunger, Winter Moon, Winter Orb",
+     "1 extra-turn card",
+     "7 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (15 Game Changers (B3 allows 3); mass land denial: Back to Basics, Mana Breach, Mana Vortex, Rising Waters, Stasis, Static Orb, Sunder, Tsunami, Vorinclex, Voice of Hunger, Winter Moon, Winter Orb; 1 extra-turn card; 7 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "death-tax.txt",
+   "name": "Death Tax (Teysa Karlov)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0.1,
+    "by5": 0.4,
+    "by6": 2.1,
+    "by7": 11.9,
+    "by8": 38.3,
+    "byT": 85.7,
+    "cmdrMedian": 4,
+    "mana4": 4.3,
+    "winBy": {
+     "damage": 79.9,
+     "combo": 5.8
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Gravecrawler is sacrificed to Warren Soultrader and comes back, over and over: Elas il-Kor, Sadistic Pilgrim drains for every death",
+     "share": 0.0116,
+     "avgTurn": 7.655172413793103
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 7171,
+    "losses": 12790,
+    "none": 39,
+    "errors": 8,
+    "winRate": 35.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Bolas's Citadel",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Mana Vault",
+     "Necropotence",
+     "Opposition Agent",
+     "Orcish Bowmasters",
+     "Smothering Tithe",
+     "Teferi's Protection",
+     "Vampiric Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "11 Game Changers (B3 allows 3)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (11 Game Changers (B3 allows 3))"
+  },
+  {
+   "file": "double-down.txt",
+   "name": "Double Down (Veyran)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 1,
+    "by6": 8.4,
+    "by7": 32.6,
+    "by8": 66.7,
+    "byT": 94.4,
+    "cmdrMedian": 3,
+    "mana4": 4.1,
+    "winBy": {
+     "damage": 64.7,
+     "commander": 29.4,
+     "combo": 0.7
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Niv-Mizzet, Parun + Curiosity: each card drawn deals 1 damage, each damage draws a card",
+     "share": 0.006,
+     "avgTurn": 8.066666666666666
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 7580,
+    "losses": 12394,
+    "none": 31,
+    "errors": 3,
+    "winRate": 37.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gamble",
+     "Jeska's Will",
+     "Mana Vault",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Thassa's Oracle"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [
+     "Time Warp"
+    ],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "11 Game Changers (B3 allows 3)",
+     "1 extra-turn card",
+     "1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (11 Game Changers (B3 allows 3); 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "final-heaven.txt",
+   "name": "Final Heaven (Tifa Lockhart)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 4.3,
+    "by5": 18.9,
+    "by6": 45.3,
+    "by7": 74.4,
+    "by8": 91.3,
+    "byT": 99.4,
+    "cmdrMedian": 2,
+    "mana4": 5.13,
+    "winBy": {
+     "damage": 79.1,
+     "commander": 20.3
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9657,
+    "losses": 10318,
+    "none": 33,
+    "errors": 0,
+    "winRate": 48.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Natural Order",
+     "Crop Rotation"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "2 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B3 (2 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "finale-of-the-floodborn.txt",
+   "name": "Finale of the Floodborn (Hakbal of the Surging Soul)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0,
+    "by5": 3.9,
+    "by6": 41.4,
+    "by7": 76.1,
+    "by8": 86.8,
+    "byT": 93.5,
+    "cmdrMedian": 4,
+    "mana4": 4.17,
+    "winBy": {
+     "damage": 90.2,
+     "effect": 1.8,
+     "commander": 1.5
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "Simic Ascendancy",
+     "share": 0.018,
+     "avgTurn": 8.444444444444445
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12458,
+    "losses": 7535,
+    "none": 15,
+    "errors": 0,
+    "winRate": 62.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Cyclonic Rift",
+     "Gaea's Cradle",
+     "Rhystic Study"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "friendship-is-magic.txt",
+   "name": "Friendship Is Magic (Princess Twilight Sparkle)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0,
+    "by6": 0.4,
+    "by7": 7.1,
+    "by8": 30.6,
+    "byT": 78.2,
+    "cmdrMedian": 3,
+    "mana4": 5.15,
+    "winBy": {
+     "damage": 74.9,
+     "commander": 3.4,
+     "effect": 0
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "Princess Twilight Sparkle",
+     "share": 0.0004,
+     "avgTurn": 8
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 6178,
+    "losses": 13770,
+    "none": 60,
+    "errors": 0,
+    "winRate": 30.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Chrome Mox",
+     "Mox Diamond",
+     "Grim Monolith",
+     "Survival of the Fittest",
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Imperial Seal",
+     "Worldly Tutor",
+     "Rhystic Study",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Teferi's Protection",
+     "Cyclonic Rift",
+     "Smothering Tithe",
+     "Orcish Bowmasters",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "17 Game Changers (B3 allows 3)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (17 Game Changers (B3 allows 3))"
+  },
+  {
+   "file": "gnome-alone.txt",
+   "name": "Gnome Alone (Anim Pakal)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 1,
+    "by5": 6.8,
+    "by6": 34.9,
+    "by7": 76.5,
+    "by8": 94.8,
+    "byT": 99.6,
+    "cmdrMedian": 3,
+    "mana4": 4.5,
+    "winBy": {
+     "damage": 96.1,
+     "commander": 3.4
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12192,
+    "losses": 7801,
+    "none": 15,
+    "errors": 0,
+    "winRate": 60.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Smothering Tithe",
+     "Teferi's Protection"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "hatsune-miku.txt",
+   "name": "Hatsune Miku (Trostani, Selesnya's Voice)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 2.2,
+    "by6": 14.2,
+    "by7": 36.9,
+    "by8": 64.7,
+    "byT": 91.3,
+    "cmdrMedian": 4,
+    "mana4": 4.86,
+    "winBy": {
+     "damage": 86.1,
+     "combo": 4.6,
+     "commander": 0.6
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Walking Ballista with lifelink and Heliod, Sun-Crowned: every point of damage puts the counter back",
+     "share": 0.0436,
+     "avgTurn": 7.440366972477064
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9537,
+    "losses": 10401,
+    "none": 70,
+    "errors": 0,
+    "winRate": 47.7,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Farewell",
+     "Smothering Tithe",
+     "Teferi's Protection"
+    ],
+    "massLandDenial": [
+     "Vorinclex, Voice of Hunger"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Heliod, Sun-Crowned",
+       "Walking Ballista"
+      ],
+      "mv": 3,
+      "does": [
+       "Infinite damage"
+      ]
+     },
+     {
+      "cards": [
+       "Archangel of Thune",
+       "Walking Ballista"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite damage"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)",
+     "mass land denial: Vorinclex, Voice of Hunger",
+     "2 cheap two-card infinite combos (e.g. Heliod, Sun-Crowned + Walking Ballista, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (3 Game Changers (B1-B2 allow none); mass land denial: Vorinclex, Voice of Hunger; 2 cheap two-card infinite combos (e.g. Heliod, Sun-Crowned + Walking Ballista, 3 mana))"
+  },
+  {
+   "file": "ice-age-engine.txt",
+   "name": "Ice Age Engine (Urza, Lord High Artificer)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": ">10",
+    "by4": 0,
+    "by5": 0.1,
+    "by6": 0.4,
+    "by7": 1.9,
+    "by8": 7,
+    "byT": 33.9,
+    "cmdrMedian": 4,
+    "mana4": 5.21,
+    "winBy": {
+     "damage": 29.9,
+     "combo": 3.9,
+     "effect": 0.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Isochron Scepter + Dramatic Reversal) into Walking Ballista",
+     "share": 0.0376,
+     "avgTurn": 8.627659574468085
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 8787,
+    "losses": 11031,
+    "none": 185,
+    "errors": 5,
+    "winRate": 43.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Consecrated Sphinx",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Grim Monolith",
+     "Mana Vault",
+     "Mishra's Workshop",
+     "Mox Diamond",
+     "Narset, Parter of Veils",
+     "Rhystic Study",
+     "Thassa's Oracle",
+     "The One Ring",
+     "The Tabernacle at Pendrell Vale"
+    ],
+    "massLandDenial": [
+     "Back to Basics",
+     "Rising Waters",
+     "Stasis",
+     "Static Orb",
+     "Sunder",
+     "Winter Moon",
+     "Winter Orb"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "15 Game Changers (B3 allows 3)",
+     "mass land denial: Back to Basics, Rising Waters, Stasis, Static Orb, Sunder, Winter Moon, Winter Orb",
+     "1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T>10); card rules say at least B4 (15 Game Changers (B3 allows 3); mass land denial: Back to Basics, Rising Waters, Stasis, Static Orb, Sunder, Winter Moon, Winter Orb; 1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "loyalty-program.txt",
+   "name": "Loyalty Program (Atraxa, Praetors' Voice)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0.1,
+    "by5": 0.8,
+    "by6": 3.7,
+    "by7": 14,
+    "by8": 40.2,
+    "byT": 87.8,
+    "cmdrMedian": 4,
+    "mana4": 4.36,
+    "winBy": {
+     "damage": 52.3,
+     "poison": 16.6,
+     "commander": 18.8,
+     "mill": 0.1,
+     "combo": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Wrenn and Realmbreaker + Doubling Season + Lotus Petal (Commander Spellbook)) into Walking Ballista",
+     "share": 0.0004,
+     "avgTurn": 8
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 11970,
+    "losses": 8016,
+    "none": 21,
+    "errors": 1,
+    "winRate": 59.8,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Mana Vault",
+     "Mystical Tutor",
+     "Narset, Parter of Veils",
+     "Rhystic Study",
+     "Smothering Tithe",
+     "Teferi's Protection",
+     "The One Ring",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [
+     "Teferi, Master of Time"
+    ],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "15 Game Changers (B3 allows 3)",
+     "1 extra-turn card"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (15 Game Changers (B3 allows 3); 1 extra-turn card)"
+  },
+  {
+   "file": "mermaids.txt",
+   "name": "Mermaids (Hakbal of the Surging Soul)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0.3,
+    "by5": 10.3,
+    "by6": 47.9,
+    "by7": 80,
+    "by8": 90.9,
+    "byT": 96.7,
+    "cmdrMedian": 4,
+    "mana4": 4.43,
+    "winBy": {
+     "damage": 88.5,
+     "commander": 7.9,
+     "effect": 0.3
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "Simic Ascendancy",
+     "share": 0.004,
+     "avgTurn": 7.2
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 13192,
+    "losses": 6799,
+    "none": 15,
+    "errors": 2,
+    "winRate": 65.9,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Survival of the Fittest",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "11 Game Changers (B3 allows 3)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (11 Game Changers (B3 allows 3))"
+  },
+  {
+   "file": "mob-storm.txt",
+   "name": "Mob Storm (Krenko, Mob Boss)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0.9,
+    "by5": 11.4,
+    "by6": 46.1,
+    "by7": 85,
+    "by8": 96.2,
+    "byT": 99.2,
+    "cmdrMedian": 4,
+    "mana4": 4.37,
+    "winBy": {
+     "damage": 96.7,
+     "combo": 2.6
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Krenko, Mob Boss + Skirk Prospector + Goblin Warchief: the Goblins are sacrificed for mana, Krenko, Mob Boss is cast again with haste and makes more than before",
+     "share": 0.0156,
+     "avgTurn": 6.076923076923077
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12762,
+    "losses": 7225,
+    "none": 18,
+    "errors": 3,
+    "winRate": 63.8,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Jeska's Will",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "2 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B3 (2 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "moving-parts.txt",
+   "name": "Moving Parts (Urza, Lord High Artificer)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 1.1,
+    "by5": 5,
+    "by6": 13.6,
+    "by7": 27,
+    "by8": 44.5,
+    "byT": 79.8,
+    "cmdrMedian": 4,
+    "mana4": 5.43,
+    "winBy": {
+     "combo": 45.2,
+     "damage": 34.6,
+     "effect": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Basalt Monolith + Rings of Brighthearth) into Walking Ballista",
+     "share": 0.0844,
+     "avgTurn": 7.341232227488152
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9341,
+    "losses": 10605,
+    "none": 44,
+    "errors": 18,
+    "winRate": 46.7,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Grim Monolith",
+     "Thassa's Oracle",
+     "Mystical Tutor",
+     "Intuition",
+     "Rhystic Study",
+     "The One Ring",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Cyclonic Rift",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 9,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     },
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Staff of Domination",
+       "Metalworker"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Power Artifact",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Power Artifact",
+       "Grim Monolith"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "11 Game Changers (B3 allows 3)",
+     "7 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (11 Game Changers (B3 allows 3); 7 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "nights-curfew.txt",
+   "name": "Night's Curfew (Y'shtola, Night's Blessed)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 3.6,
+    "by5": 7.2,
+    "by6": 17.1,
+    "by7": 36.8,
+    "by8": 64.1,
+    "byT": 91.8,
+    "cmdrMedian": 4,
+    "mana4": 4.52,
+    "winBy": {
+     "damage": 53.8,
+     "combo": 38.7
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Sanguine Bond + Exquisite Blood: each drain gains life, each life gained drains",
+     "share": 0.2512,
+     "avgTurn": 7.498407643312102
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12429,
+    "losses": 7554,
+    "none": 25,
+    "errors": 0,
+    "winRate": 62.1,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Grim Monolith",
+     "Chrome Mox",
+     "Mox Diamond",
+     "Smothering Tithe",
+     "Rhystic Study",
+     "The One Ring",
+     "Necropotence",
+     "Consecrated Sphinx",
+     "Bolas's Citadel",
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Imperial Seal",
+     "Enlightened Tutor",
+     "Mystical Tutor",
+     "Drannith Magistrate",
+     "Opposition Agent",
+     "Grand Arbiter Augustin IV",
+     "Tergrid, God of Fright // Tergrid's Lantern",
+     "Narset, Parter of Veils",
+     "Notion Thief",
+     "Cyclonic Rift",
+     "Farewell",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Teferi's Protection",
+     "Orcish Bowmasters",
+     "Thassa's Oracle",
+     "The Tabernacle at Pendrell Vale",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [
+     "Stasis",
+     "Winter Orb",
+     "Rising Waters",
+     "Hokori, Dust Drinker",
+     "Armageddon",
+     "Ravages of War",
+     "Sunder",
+     "Cataclysm"
+    ],
+    "extraTurns": [
+     "Expropriate"
+    ],
+    "twoCardInfinite": 3,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "30 Game Changers (B3 allows 3)",
+     "mass land denial: Stasis, Winter Orb, Rising Waters, Hokori, Dust Drinker, Armageddon, Ravages of War, Sunder, Cataclysm",
+     "1 extra-turn card",
+     "1 cheap two-card infinite combo (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (30 Game Changers (B3 allows 3); mass land denial: Stasis, Winter Orb, Rising Waters, Hokori, Dust Drinker, Armageddon, Ravages of War, Sunder, Cataclysm; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "nothing-personal.txt",
+   "name": "Nothing Personal (Ultima, Origin of Oblivion)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 1.5,
+    "by6": 12.9,
+    "by7": 45.1,
+    "by8": 76.8,
+    "byT": 95.2,
+    "cmdrMedian": 4,
+    "mana4": 6.25,
+    "winBy": {
+     "poison": 6.9,
+     "damage": 84.3,
+     "combo": 2.6,
+     "commander": 1.8
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Sensei's Divining Top + Mystic Forge + Cloud Key: the library is drawn for free and Walking Ballista is found",
+     "share": 0.008,
+     "avgTurn": 7.15
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12204,
+    "losses": 7782,
+    "none": 22,
+    "errors": 0,
+    "winRate": 61,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Mana Vault",
+     "Grim Monolith",
+     "Mox Diamond",
+     "The One Ring"
+    ],
+    "massLandDenial": [
+     "Winter Orb"
+    ],
+    "extraTurns": [
+     "Emrakul, the Promised End"
+    ],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "5 Game Changers (B3 allows 3)",
+     "mass land denial: Winter Orb",
+     "1 extra-turn card",
+     "1 two-card infinite combo (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (5 Game Changers (B3 allows 3); mass land denial: Winter Orb; 1 extra-turn card; 1 two-card infinite combo (all over 6 mana))"
+  },
+  {
+   "file": "odds-and-ends.txt",
+   "name": "Odds and Ends (Yennett, Cryptic Sovereign)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 10,
+    "by4": 3.6,
+    "by5": 5.7,
+    "by6": 8.2,
+    "by7": 13.1,
+    "by8": 22.6,
+    "byT": 57,
+    "cmdrMedian": 5,
+    "mana4": 4.36,
+    "winBy": {
+     "effect": 9.4,
+     "commander": 6.5,
+     "damage": 31.7,
+     "combo": 22.3
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
+     "share": 0.22,
+     "avgTurn": 7.327272727272727
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 10017,
+    "losses": 9946,
+    "none": 27,
+    "errors": 18,
+    "winRate": 50.1,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Chrome Mox",
+     "Vampiric Tutor",
+     "Imperial Seal",
+     "Mystical Tutor",
+     "Enlightened Tutor",
+     "Demonic Tutor",
+     "Rhystic Study",
+     "Necropotence",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Teferi's Protection",
+     "Cyclonic Rift",
+     "Farewell",
+     "Thassa's Oracle"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [
+     "Time Warp",
+     "Temporal Mastery",
+     "Expropriate"
+    ],
+    "twoCardInfinite": 7,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "15 Game Changers (B3 allows 3)",
+     "3 extra-turn cards (a chain)",
+     "1 cheap two-card infinite combo (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T10); card rules say at least B4 (15 Game Changers (B3 allows 3); 3 extra-turn cards (a chain); 1 cheap two-card infinite combo (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "otk.txt",
+   "name": "OTK (Bruna, Light of Alabaster)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.2,
+    "by5": 2.6,
+    "by6": 14.3,
+    "by7": 37.1,
+    "by8": 63.7,
+    "byT": 91.9,
+    "cmdrMedian": 5,
+    "mana4": 4.75,
+    "winBy": {
+     "commander": 54.2,
+     "damage": 25.4,
+     "poison": 12.4
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 10468,
+    "losses": 9493,
+    "none": 47,
+    "errors": 0,
+    "winRate": 52.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Enlightened Tutor",
+     "Smothering Tithe",
+     "Teferi's Protection"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "permafrost-prodigy.txt",
+   "name": "Permafrost Prodigy (Kinnan, Bonder Prodigy)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 3.6,
+    "by5": 6.8,
+    "by6": 13.4,
+    "by7": 26.4,
+    "by8": 46.6,
+    "byT": 82.7,
+    "cmdrMedian": 2,
+    "mana4": 6.11,
+    "winBy": {
+     "damage": 51.1,
+     "combo": 34,
+     "commander": 0,
+     "effect": 0.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
+     "share": 0.1304,
+     "avgTurn": 6.978527607361963
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 10692,
+    "losses": 9275,
+    "none": 39,
+    "errors": 2,
+    "winRate": 53.4,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Consecrated Sphinx",
+     "Crop Rotation",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gaea's Cradle",
+     "Grim Monolith",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Seedborn Muse",
+     "Thassa's Oracle",
+     "The One Ring",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [
+     "Mana Breach",
+     "Stasis",
+     "Static Orb",
+     "Sunder",
+     "Vorinclex, Voice of Hunger",
+     "Winter Orb"
+    ],
+    "extraTurns": [
+     "Expropriate"
+    ],
+    "twoCardInfinite": 3,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Kinnan, Bonder Prodigy",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "17 Game Changers (B3 allows 3)",
+     "mass land denial: Mana Breach, Stasis, Static Orb, Sunder, Vorinclex, Voice of Hunger, Winter Orb",
+     "1 extra-turn card",
+     "1 cheap two-card infinite combo (e.g. Kinnan, Bonder Prodigy + Basalt Monolith, 5 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (17 Game Changers (B3 allows 3); mass land denial: Mana Breach, Stasis, Static Orb, Sunder, Vorinclex, Voice of Hunger, Winter Orb; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Kinnan, Bonder Prodigy + Basalt Monolith, 5 mana))"
+  },
+  {
+   "file": "red-rum-raiders.txt",
+   "name": "Red Rum Raiders (Admiral Beckett Brass)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0,
+    "by5": 1.5,
+    "by6": 25.5,
+    "by7": 74.3,
+    "by8": 94.7,
+    "byT": 99.6,
+    "cmdrMedian": 4,
+    "mana4": 4.43,
+    "winBy": {
+     "damage": 99.5,
+     "commander": 0.1
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12760,
+    "losses": 7238,
+    "none": 10,
+    "errors": 0,
+    "winRate": 63.8,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Mana Vault",
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Rhystic Study"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "7 Game Changers (B3 allows 3)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (7 Game Changers (B3 allows 3))"
+  },
+  {
+   "file": "salt-mine.txt",
+   "name": "Salt Mine (Nekusar, the Mindrazer)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.5,
+    "by5": 4.8,
+    "by6": 21.5,
+    "by7": 49.9,
+    "by8": 73.8,
+    "byT": 94.5,
+    "cmdrMedian": 5,
+    "mana4": 4.6,
+    "winBy": {
+     "damage": 62.6,
+     "combo": 31.9,
+     "mill": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Peer into the Abyss with Nekusar, the Mindrazer: the opponent draws half its library and loses half its life",
+     "share": 0.2516,
+     "avgTurn": 6.990461049284579
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9208,
+    "losses": 10767,
+    "none": 33,
+    "errors": 0,
+    "winRate": 46,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Chrome Mox",
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Gamble",
+     "Rhystic Study",
+     "Opposition Agent",
+     "Force of Will",
+     "Cyclonic Rift"
+    ],
+    "massLandDenial": [
+     "Blood Moon",
+     "Ruination",
+     "Jokulhaups",
+     "Back to Basics",
+     "Winter Orb",
+     "Static Orb"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 5,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "9 Game Changers (B3 allows 3)",
+     "mass land denial: Blood Moon, Ruination, Jokulhaups, Back to Basics, Winter Orb, Static Orb",
+     "5 two-card infinite combos (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (9 Game Changers (B3 allows 3); mass land denial: Blood Moon, Ruination, Jokulhaups, Back to Basics, Winter Orb, Static Orb; 5 two-card infinite combos (all over 6 mana))"
+  },
+  {
+   "file": "scorched-sky.txt",
+   "name": "Scorched Sky (The Ur-Dragon)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0.3,
+    "by5": 4.8,
+    "by6": 23.9,
+    "by7": 54.7,
+    "by8": 77.7,
+    "byT": 94.5,
+    "cmdrMedian": 7,
+    "mana4": 5.01,
+    "winBy": {
+     "damage": 77.2,
+     "poison": 5.9,
+     "combo": 10.4,
+     "commander": 0.9,
+     "effect": 0.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Old Gnawbone + Aggravated Assault: the Treasures from each combat pay for the next",
+     "share": 0.068,
+     "avgTurn": 7.311764705882353
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12052,
+    "losses": 7932,
+    "none": 24,
+    "errors": 0,
+    "winRate": 60.2,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Aura Shards",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Drannith Magistrate",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gaea's Cradle",
+     "Jeska's Will",
+     "Mana Vault",
+     "Mox Diamond",
+     "Opposition Agent",
+     "Rhystic Study",
+     "Smothering Tithe",
+     "Teferi's Protection",
+     "The One Ring",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [
+     "Armageddon",
+     "Ravages of War",
+     "Vorinclex, Voice of Hunger"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "19 Game Changers (B3 allows 3)",
+     "mass land denial: Armageddon, Ravages of War, Vorinclex, Voice of Hunger",
+     "2 two-card infinite combos (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (19 Game Changers (B3 allows 3); mass land denial: Armageddon, Ravages of War, Vorinclex, Voice of Hunger; 2 two-card infinite combos (all over 6 mana))"
+  },
+  {
+   "file": "second-breakfast.txt",
+   "name": "Second Breakfast (Frodo & Sam)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 2.2,
+    "by6": 11.1,
+    "by7": 31.3,
+    "by8": 59.9,
+    "byT": 92.7,
+    "cmdrMedian": 3,
+    "mana4": 4.19,
+    "winBy": {
+     "damage": 42.3,
+     "combo": 43,
+     "effect": 7,
+     "commander": 0.4
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Vito, Thorn of the Dusk Rose + Bloodthirsty Conqueror: each drain gains life, each life gained drains",
+     "share": 0.1696,
+     "avgTurn": 7.563679245283019
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 8218,
+    "losses": 11739,
+    "none": 47,
+    "errors": 4,
+    "winRate": 41.1,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Imperial Seal",
+     "Mana Vault",
+     "Mox Diamond",
+     "Necropotence",
+     "Smothering Tithe",
+     "Teferi's Protection",
+     "The One Ring",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 8,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Heliod, Sun-Crowned",
+       "Walking Ballista"
+      ],
+      "mv": 3,
+      "does": [
+       "Infinite damage"
+      ]
+     },
+     {
+      "cards": [
+       "Archangel of Thune",
+       "Walking Ballista"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite damage"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "12 Game Changers (B3 allows 3)",
+     "2 cheap two-card infinite combos (e.g. Heliod, Sun-Crowned + Walking Ballista, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (12 Game Changers (B3 allows 3); 2 cheap two-card infinite combos (e.g. Heliod, Sun-Crowned + Walking Ballista, 3 mana))"
+  },
+  {
+   "file": "second-draw.txt",
+   "name": "Second Draw (Alandra)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 1.3,
+    "by6": 9.2,
+    "by7": 32.1,
+    "by8": 64,
+    "byT": 95.4,
+    "cmdrMedian": 4,
+    "mana4": 4.55,
+    "winBy": {
+     "damage": 91.6,
+     "commander": 3.8
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9333,
+    "losses": 10602,
+    "none": 52,
+    "errors": 21,
+    "winRate": 46.7,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Consecrated Sphinx",
+     "Cyclonic Rift",
+     "Rhystic Study"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)",
+     "1 two-card infinite combo (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none); 1 two-card infinite combo (all over 6 mana))"
+  },
+  {
+   "file": "sodium-seraphim.txt",
+   "name": "Sodium Seraphim (Gisela, the Broken Blade)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0,
+    "by5": 0.4,
+    "by6": 7.4,
+    "by7": 24.3,
+    "by8": 57.9,
+    "byT": 95.9,
+    "cmdrMedian": 4,
+    "mana4": 4.49,
+    "winBy": {
+     "damage": 85.6,
+     "commander": 10.3
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12671,
+    "losses": 6961,
+    "none": 366,
+    "errors": 10,
+    "winRate": 63.4,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Drannith Magistrate",
+     "Mana Vault",
+     "Smothering Tithe",
+     "Teferi's Protection"
+    ],
+    "massLandDenial": [
+     "Armageddon",
+     "Ravages of War",
+     "Static Orb",
+     "Winter Orb"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "5 Game Changers (B3 allows 3)",
+     "mass land denial: Armageddon, Ravages of War, Static Orb, Winter Orb"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (5 Game Changers (B3 allows 3); mass land denial: Armageddon, Ravages of War, Static Orb, Winter Orb)"
+  },
+  {
+   "file": "soul-brokers.txt",
+   "name": "Soul Brokers (Teysa Karlov)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0,
+    "by6": 0.8,
+    "by7": 8.8,
+    "by8": 37.4,
+    "byT": 88,
+    "cmdrMedian": 4,
+    "mana4": 4.24,
+    "winBy": {
+     "damage": 88,
+     "commander": 0
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 8457,
+    "losses": 11505,
+    "none": 37,
+    "errors": 9,
+    "winRate": 42.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Bolas's Citadel",
+     "Smothering Tithe",
+     "Vampiric Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "the-kings-gambit.txt",
+   "name": "The King's Gambit (Kenrith, the Returned King)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 4,
+    "by5": 10.3,
+    "by6": 26.3,
+    "by7": 48.1,
+    "by8": 67.8,
+    "byT": 88,
+    "cmdrMedian": 4,
+    "mana4": 4.21,
+    "winBy": {
+     "commander": 48.7,
+     "combo": 23.3,
+     "damage": 11.4,
+     "effect": 4.6
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Tainted Pact exiles the library, then Thassa's Oracle wins",
+     "share": 0.0528,
+     "avgTurn": 6.606060606060606
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 8816,
+    "losses": 11168,
+    "none": 24,
+    "errors": 0,
+    "winRate": 44.1,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ad Nauseam",
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gamble",
+     "Grim Monolith",
+     "Imperial Seal",
+     "Intuition",
+     "Jeska's Will",
+     "Lion's Eye Diamond",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Necropotence",
+     "Opposition Agent",
+     "Orcish Bowmasters",
+     "Rhystic Study",
+     "Thassa's Oracle",
+     "Underworld Breach",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 9,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Tainted Pact",
+       "Thassa's Oracle"
+      ],
+      "mv": 4,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Laboratory Maniac"
+      ],
+      "mv": 4,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Hermit Druid",
+       "Thassa's Oracle"
+      ],
+      "mv": 4,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Tainted Pact",
+       "Laboratory Maniac"
+      ],
+      "mv": 5,
+      "does": [
+       "Win the game"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "24 Game Changers (B3 allows 3)",
+     "9 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (24 Game Changers (B3 allows 3); 9 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "tidal-loop.txt",
+   "name": "Tidal Loop (Hakbal of the Surging Soul)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.1,
+    "by5": 1,
+    "by6": 15,
+    "by7": 49.9,
+    "by8": 79.4,
+    "byT": 94.3,
+    "cmdrMedian": 4,
+    "mana4": 4.74,
+    "winBy": {
+     "damage": 54.3,
+     "commander": 37.8,
+     "combo": 2.2
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Isochron Scepter + Dramatic Reversal) into Walking Ballista",
+     "share": 0.0108,
+     "avgTurn": 7.148148148148148
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9962,
+    "losses": 10010,
+    "none": 36,
+    "errors": 0,
+    "winRate": 49.8,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Survival of the Fittest",
+     "Thassa's Oracle",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 3,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     },
+     {
+      "cards": [
+       "Freed from the Real",
+       "Gyre Engineer"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite green mana"
+      ]
+     },
+     {
+      "cards": [
+       "Pemmin's Aura",
+       "Gyre Engineer"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite green mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "12 Game Changers (B3 allows 3)",
+     "3 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (12 Game Changers (B3 allows 3); 3 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "tidecaller.txt",
+   "name": "Tidecaller (Thrasios, Triton Hero)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 2.7,
+    "by5": 5,
+    "by6": 9.1,
+    "by7": 17.4,
+    "by8": 33.3,
+    "byT": 69.8,
+    "cmdrMedian": 2,
+    "mana4": 4.55,
+    "winBy": {
+     "damage": 46.5,
+     "combo": 22.8,
+     "commander": 0.6
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Basalt Monolith + Rings of Brighthearth) into Thrasios, Triton Hero: draws the library and finds Walking Ballista",
+     "share": 0.0404,
+     "avgTurn": 6.98019801980198
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 6947,
+    "losses": 13035,
+    "none": 25,
+    "errors": 1,
+    "winRate": 34.7,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Cyclonic Rift",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Grim Monolith",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Rhystic Study",
+     "Survival of the Fittest",
+     "Thassa's Oracle",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [
+     "Back to Basics"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 6,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     },
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Power Artifact",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Power Artifact",
+       "Grim Monolith"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Freed from the Real",
+       "Gyre Engineer"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite green mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "13 Game Changers (B3 allows 3)",
+     "mass land denial: Back to Basics",
+     "6 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (13 Game Changers (B3 allows 3); mass land denial: Back to Basics; 6 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "tidewoven.txt",
+   "name": "Tidewoven (Tymna + Thrasios)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 7.5,
+    "by5": 18,
+    "by6": 32.2,
+    "by7": 47.5,
+    "by8": 65.9,
+    "byT": 93.9,
+    "cmdrMedian": 3,
+    "mana4": 5.12,
+    "winBy": {
+     "combo": 74.9,
+     "damage": 18.8,
+     "effect": 0.2
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Devoted Druid + Vizier of Remedies) into Thrasios, Triton Hero: draws the library and finds Walking Ballista",
+     "share": 0.1332,
+     "avgTurn": 6.8258258258258255
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 12760,
+    "losses": 7228,
+    "none": 19,
+    "errors": 1,
+    "winRate": 63.8,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Crop Rotation",
+     "Cyclonic Rift",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Imperial Seal",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Opposition Agent",
+     "Orcish Bowmasters",
+     "Rhystic Study",
+     "Smothering Tithe",
+     "Thassa's Oracle",
+     "Vampiric Tutor",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 5,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Tainted Pact",
+       "Thassa's Oracle"
+      ],
+      "mv": 4,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     },
+     {
+      "cards": [
+       "Kinnan, Bonder Prodigy",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     },
+     {
+      "cards": [
+       "Devoted Druid",
+       "Vizier of Remedies"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite green mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "19 Game Changers (B3 allows 3)",
+     "5 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (19 Game Changers (B3 allows 3); 5 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "tookens.txt",
+   "name": "Tookens (Belladonna Took)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0,
+    "by5": 1.2,
+    "by6": 15.4,
+    "by7": 58.9,
+    "by8": 87.2,
+    "byT": 98.8,
+    "cmdrMedian": 2,
+    "mana4": 4.38,
+    "winBy": {
+     "damage": 97.6,
+     "commander": 0.6,
+     "effect": 0.6
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "a card",
+     "share": 0.0072,
+     "avgTurn": 8.222222222222221
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 11313,
+    "losses": 8662,
+    "none": 33,
+    "errors": 0,
+    "winRate": 56.5,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Smothering Tithe",
+     "Teferi's Protection"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "2 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B3 (2 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "ulalek-titanstorm.txt",
+   "name": "Ulalek Titanstorm (Ulalek, Fused Atrocity)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0.3,
+    "by6": 3.5,
+    "by7": 16.8,
+    "by8": 45.1,
+    "byT": 85.3,
+    "cmdrMedian": 4,
+    "mana4": 5.12,
+    "winBy": {
+     "damage": 83.1,
+     "combo": 2.2,
+     "mill": 0,
+     "commander": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Ulalek, Fused Atrocity + Echoes of Eternity + Glaring Fleshraker: every copy of Artisan of Kozilek makes Spawn that pay for the next copy, and each one that enters deals 1 damage",
+     "share": 0.0032,
+     "avgTurn": 8.25
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 7316,
+    "losses": 12670,
+    "none": 22,
+    "errors": 0,
+    "winRate": 36.6,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Crop Rotation",
+     "Field of the Dead",
+     "Mana Vault"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "4 Game Changers (B3 allows 3)",
+     "1 cheap two-card infinite combo (e.g. Rings of Brighthearth + Basalt Monolith, 6 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (4 Game Changers (B3 allows 3); 1 cheap two-card infinite combo (e.g. Rings of Brighthearth + Basalt Monolith, 6 mana))"
+  },
+  {
+   "file": "undead-witches.txt",
+   "name": "Undead Witches (Zul Ashur)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0,
+    "by5": 0.6,
+    "by6": 8.4,
+    "by7": 37.8,
+    "by8": 72.3,
+    "byT": 96.1,
+    "cmdrMedian": 2,
+    "mana4": 4.54,
+    "winBy": {
+     "damage": 96,
+     "commander": 0.1
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9859,
+    "losses": 10101,
+    "none": 48,
+    "errors": 0,
+    "winRate": 49.3,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Demonic Tutor",
+     "Vampiric Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "unified-misery.txt",
+   "name": "Unified Misery (Jodah, the Unifier)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0.3,
+    "by5": 4.3,
+    "by6": 26.9,
+    "by7": 62.4,
+    "by8": 83.1,
+    "byT": 95.7,
+    "cmdrMedian": 5,
+    "mana4": 5.22,
+    "winBy": {
+     "damage": 79.8,
+     "commander": 6.4,
+     "combo": 9.9,
+     "poison": 0.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Najeela, the Blade-Blossom + Derevi, Empyrial Tactician: every hit untaps a land, and the lands pay for another combat",
+     "share": 0.0992,
+     "avgTurn": 7.568548387096774
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 13804,
+    "losses": 6172,
+    "none": 20,
+    "errors": 12,
+    "winRate": 69,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Chrome Mox",
+     "Mox Diamond",
+     "Smothering Tithe",
+     "Rhystic Study",
+     "The One Ring",
+     "Demonic Tutor",
+     "Vampiric Tutor",
+     "Worldly Tutor",
+     "Enlightened Tutor",
+     "Tergrid, God of Fright // Tergrid's Lantern",
+     "Grand Arbiter Augustin IV",
+     "Cyclonic Rift",
+     "Force of Will",
+     "Fierce Guardianship",
+     "Teferi's Protection",
+     "Opposition Agent",
+     "Drannith Magistrate",
+     "Gaea's Cradle",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [
+     "Vorinclex, Voice of Hunger",
+     "Hokori, Dust Drinker",
+     "Armageddon",
+     "Ravages of War",
+     "Cataclysm",
+     "Jokulhaups"
+    ],
+    "extraTurns": [
+     "Emrakul, the Promised End"
+    ],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Najeela, the Blade-Blossom",
+       "Derevi, Empyrial Tactician"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colored mana",
+       "Infinite combat phases"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "20 Game Changers (B3 allows 3)",
+     "mass land denial: Vorinclex, Voice of Hunger, Hokori, Dust Drinker, Armageddon, Ravages of War, Cataclysm, Jokulhaups",
+     "1 extra-turn card",
+     "1 cheap two-card infinite combo (e.g. Najeela, the Blade-Blossom + Derevi, Empyrial Tactician, 6 mana)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (20 Game Changers (B3 allows 3); mass land denial: Vorinclex, Voice of Hunger, Hokori, Dust Drinker, Armageddon, Ravages of War, Cataclysm, Jokulhaups; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Najeela, the Blade-Blossom + Derevi, Empyrial Tactician, 6 mana))"
+  },
+  {
+   "file": "void-tax.txt",
+   "name": "Void Tax (Zhulodok, Void Gorger)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0.5,
+    "by5": 6.8,
+    "by6": 23.6,
+    "by7": 46.5,
+    "by8": 65.4,
+    "byT": 85.1,
+    "cmdrMedian": 5,
+    "mana4": 5.15,
+    "winBy": {
+     "damage": 19.2,
+     "commander": 61.8,
+     "poison": 1.1,
+     "combo": 3.3
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "infinite mana (Basalt Monolith + Forsaken Monument) into Walking Ballista",
+     "share": 0.0152,
+     "avgTurn": 7.2105263157894735
+    }
+   },
+   "field": {
+    "games": 20008,
+    "wins": 9346,
+    "losses": 10417,
+    "none": 245,
+    "errors": 0,
+    "winRate": 46.7,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Glacial Chasm",
+     "Grim Monolith",
+     "Mana Vault",
+     "Mishra's Workshop",
+     "Mox Diamond",
+     "The One Ring",
+     "The Tabernacle at Pendrell Vale"
+    ],
+    "massLandDenial": [
+     "Static Orb",
+     "Winter Orb"
+    ],
+    "extraTurns": [
+     "Emrakul, the Promised End"
+    ],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "8 Game Changers (B3 allows 3)",
+     "mass land denial: Static Orb, Winter Orb",
+     "1 extra-turn card",
+     "1 cheap two-card infinite combo (e.g. Rings of Brighthearth + Basalt Monolith, 6 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (8 Game Changers (B3 allows 3); mass land denial: Static Orb, Winter Orb; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Rings of Brighthearth + Basalt Monolith, 6 mana))"
+  },
+  {
+   "file": "zimone-infinite-analyst.txt",
+   "name": "Zimone, Infinite Analyst",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 0,
+    "by5": 1,
+    "by6": 11.8,
+    "by7": 48,
+    "by8": 81.6,
+    "byT": 97.2,
+    "cmdrMedian": 3,
+    "mana4": 4.35,
+    "winBy": {
+     "damage": 80.6,
+     "commander": 16.7
+    },
+    "topLine": null
+   },
+   "field": {
+    "games": 20008,
+    "wins": 8515,
+    "losses": 11452,
+    "none": 40,
+    "errors": 1,
+    "winRate": 42.6,
+    "opponents": "41 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Cyclonic Rift",
+     "Rhystic Study",
+     "Seedborn Muse"
+    ],
+    "massLandDenial": [
+     "Vorinclex, Voice of Hunger"
+    ],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)",
+     "mass land denial: Vorinclex, Voice of Hunger"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (3 Game Changers (B1-B2 allow none); mass land denial: Vorinclex, Voice of Hunger)"
+  }
+ ]
+}

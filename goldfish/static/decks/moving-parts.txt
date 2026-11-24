@@ -1,5 +1,6 @@
 // Moving Parts (Urza, Lord High Artificer)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T9, 5% by T5, 27% by T7; field win 46.7%; 11 Game Changers; B4 confirmed
 // Format: Commander (paper), Bracket 4
 // COMMANDER
 1 Urza, Lord High Artificer

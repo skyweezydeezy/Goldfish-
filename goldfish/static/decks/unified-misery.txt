@@ -1,5 +1,6 @@
 // Unified Misery (Jodah, the Unifier)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 4.3% by T5, 62.4% by T7; field win 69%; 20 Game Changers; B4 confirmed
 // COMMANDER
 1 Jodah, the Unifier (SLD) 2839
 // DECK

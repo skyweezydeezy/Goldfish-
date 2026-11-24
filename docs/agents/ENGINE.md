@@ -65,7 +65,7 @@ is large, finish the piece in hand, update this file, push, and tell the Visuals
   `eachTrigger(g, kind, ev)`, `applyEffects`, `leavePerm`, `flushLeaves`, `sba`, `abilityMenu`, `useAbility`, `comboLines`.
 
 ## State of the work (engine session 5, `session_01K5kL4Xff1pQB7F6PZZaw6f`: T-036, batches 57–61 on `claude/engine-rules`; 52–56 live by v154)
-- Pool of 5,000 most played Commander cards: **283 cards (328 lines) still have an unread line** (after batch 61; 320 after batch 56). Session 4 handoff: `docs/agents/ENGINE-4-HANDOFF.md`; session 3: `docs/agents/ENGINE-3-HANDOFF.md`.
+- Pool of 5,000 most played Commander cards: **258 cards (294 lines) still have an unread line** (after batch 66; 283 after 61, 320 after 56). Session 5 handoff: `docs/agents/ENGINE-5-HANDOFF.md`; session 4: `docs/agents/ENGINE-4-HANDOFF.md`.
 - Batches 57–61 added: effects `titanic`, `attackerPump` (a person picks the attacker), `baseEot` (base X/X until end of turn), `nogi`; `flickerOne` `counter`; gates `flickerWorth`, `baseHand`, `minGy` (threshold on an ability); dyn kinds `perOther`, `selfEquipped`, `selfLife`, `selfOil`; combatDamage `minDmg`; equippedAttack `alone`; cond `wasCast`; `eqBase` (equip {1}) and `crewOf` (crew 1) for Astor; base P/T in condAnthem (`worldOoze`); counters moving on death in fireDies (`sinDies`, `roleModel`, asks `kind: 'target', what: 'counters'`); `a.kickCounters`; Hollowmurk Siege modes.
 - None of the pool's unread cards are in a built-in deck (checked for T-023; Card teaching owns those).
 - Batches 52–56 added: effects `topToBf`, `exileTopCastOne`, `tokenDoubleEot`, `fabricateSubj`, `cascadeMv`, `recklessEndeavor`; statics `stormAll`, `myco`,

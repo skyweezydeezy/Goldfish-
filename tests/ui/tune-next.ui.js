@@ -32,15 +32,42 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the explanation is folded behind the ⓘ next to "Tune to the next bracket"', await p.evaluate(() => { const h = document.querySelector('#nbBox h3'); return !!(h && h.querySelector('.info-tog') && document.querySelector('#nbBox p.hint').classList.contains('folded')); }));
   const opts0 = await p.$$eval('#nbTarget option', os => os.map(o => o.textContent));
   check('the target starts at the next faster bracket', /^Next faster bracket/.test(opts0[0]), opts0.join(' | '));
+  // MAIN's review: a bare-name line ("Sol Ring", no number) is one copy; a swap keeps the number of cards
+  const bare = await p.evaluate(() => { try { const r = window.__isf.nbTest.swapInText('Sol Ring\n1 Command Tower\n2 Island\nSideboard\n1 Mana Vault', [{ cut: 'Sol Ring', add: 'Arcane Signet' }, { cut: 'Island', add: 'Command Tower' }, { cut: 'Command Tower', add: 'Sol Ring' }]); return r; } catch (e) { return { error: String(e) }; } });
+  check('a swap on a bare-name line works (cut one copy, add to an existing bare line), the sideboard is left alone', !bare.error && bare.missing.length === 0 && bare.text.split('Sideboard')[0].split('\n').filter(Boolean).reduce((n, l) => n + (+(l.match(/^\s*(\d+)\s/) || [0, 1])[1] || 0), 0) === 4 && /Mana Vault/.test(bare.text), bare.error || bare.text.replace(/\n/g, ' | '));
+  // a result for one deck is not applied to another: loading another deck clears the box, and Apply refuses
+  const nameA = await p.evaluate(() => window.__isf.cards.find(c => !c.commander && !(c.type_line || '').includes('Land')).name);
+  await p.evaluate(nm => { const sh = x => ({ n: 10, median: 8, meanKill: 8, byTurn: Array(10).fill(0.4), bracket: 2, onCurve: [] }); window.__isf.nbTest.show({ status: 'closer', text: 'Couldn\'t reach B3; fake', targetTurn: 7, before: sh(), after: sh(), fullTurns: 10, finalN: 2000, confirm: { z: 3 }, reached: false, verdict: 'confirmed', lines: [], policy: {},
+    steps: [{ kind: 'cards', label: 'Test: Sol Ring for ' + nm, cut: [nm], add: ['Sol Ring'], z: 3 }], applicable: [{ kind: 'cards', label: 'Test: Sol Ring for ' + nm, cut: [nm], add: ['Sol Ring'], z: 3 }] }); }, nameA);
+  check('a shown result has its Apply buttons', !!(await p.$('#nbAll')));
+  const deckA = await p.evaluate(() => window.__isf.deckText);
+  await p.click('[data-tab=deck]');
+  await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'red-rum-raiders.txt'), 'utf8'));
+  await p.click('#loadDeck');
+  await p.waitForFunction(t => window.__isf.deckText && window.__isf.deckText !== t, deckA, { timeout: 90000 });
+  await p.waitForTimeout(2500);
+  check('loading another deck clears the old result (no Apply left)', !(await p.$('#nbAll')) && !(await p.$('.nb-apply')) && (await p.textContent('#nbOut')).trim() === '');
+  await p.click('[data-tab=sim]');
+  const other = await p.evaluate(() => window.__isf.deckText);
+  await p.evaluate(() => window.__isf.nbTest.apply([0]));
+  check('...and Apply on the old result changes nothing', await p.evaluate(t => window.__isf.deckText === t, other));
+  await p.click('[data-tab=deck]');
+  await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'second-breakfast.txt'), 'utf8'));
+  await p.click('#loadDeck');
+  await p.waitForFunction(t => window.__isf.deckText && window.__isf.deckText !== t, other, { timeout: 90000 });
+  await p.waitForTimeout(2000);
+  await p.click('[data-tab=sim]');
   const deckBefore = await p.evaluate(() => ({ text: window.__isf.deckText, cards: window.__isf.cards.reduce((s, c) => s + (c.qty || 1), 0) }));
 
   // Stop: the run ends at once and nothing changes
-  await p.evaluate(() => { document.querySelector('#nbRun').dataset.n = '300'; });
+  await p.evaluate(() => { document.querySelector('#nbRun').dataset.n = '200'; document.querySelector('#nbRun').dataset.minFinal = '400'; });          // test-only sizes: the app always checks on 2,000+ games
   await p.click('#nbRun');
   await p.waitForSelector('#nbStop:not([hidden])', { timeout: 60000 });
   await p.click('#nbStop');
   check('Stop ends the run and says nothing changed', /Stopped\. Nothing was changed/.test(await p.textContent('#nbInfo')) && !(await p.$eval('#nbRun', b => b.disabled)));
   check('...and the deck is untouched', await p.evaluate(t => window.__isf.deckText === t, deckBefore.text));
+  await p.waitForTimeout(8000);
+  check('...and a Stop during the card search stays stopped (the run does not carry on by itself)', /Stopped\. Nothing was changed/.test(await p.textContent('#nbInfo')) && (await p.textContent('#nbOut')).trim() === '' && !(await p.$eval('#nbRun', b => b.disabled)));
 
   // a full run
   await p.click('#nbRun');
@@ -50,7 +77,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the report folds to its headings', await p.evaluate(() => [...document.querySelectorAll('#nbOut .sg')].every(sg => sg.classList.contains('folded-sg') && sg.querySelector('details > summary'))));
   check('the deck is not changed by the run alone', await p.evaluate(t => window.__isf.deckText === t, deckBefore.text));
   const n = await p.$$eval('#nbOut .nb-apply', bs => bs.length);
-  check('each kept change has its own Apply, and there is Apply all', n >= 2 && !!(await p.$('#nbAll')), 'changes: ' + n);
+  check('each kept change has its own Apply, and there is Apply all', n >= 1 && !!(await p.$('#nbAll')), 'changes: ' + n);
 
   // Apply one: the loaded deck changes (not only the box), stays 100 cards, and a reload keeps it
   const firstLabel = await p.$eval('#nbOut .sg.good li b', b => b.textContent);

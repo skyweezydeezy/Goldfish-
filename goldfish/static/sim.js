@@ -3707,6 +3707,7 @@
   const NO_KW = new Set();
   function touch(g) {
     g.bfVer = (g.bfVer || 0) + 1;
+    if (!g.story && tableHas(g, 'storyBuff') && g.battlefield.some(q => q.card.a.storyBuff) && storyCount(g) >= 3) g.story = true;          // Óin the Brave: storied, latched whenever the board changes (enters, stolen, returned, phased in)
     if (g._devo) for (const p of (tableHas(g, 'devotionCreature') ? g.battlefield : NONE)) { const dc = p.card.a.devotionCreature; if (dc) p.noCreature = devotionTo(g, dc.color) + (dc.color2 ? devotionTo(g, dc.color2) : 0) < dc.n; }          // Heliod, Sun-Crowned is a creature only with enough devotion
   }
   function devotionTo(g, color) { let n = 0; const re = new RegExp('\\{[^}]*' + color + '[^}]*\\}', 'g'); for (const p of g.battlefield) n += ((p.card.mana_cost || '').match(re) || []).length; return n; }
@@ -4806,7 +4807,6 @@
     const c = g._bf, wasValid = c && c.arr === g.battlefield && c.len === g.battlefield.length && c.ver === (g.bfVer || 0);
     know(g, inst.card);
     g.battlefield.push(perm); touch(g);
-    if (!g.story && tableHas(g, 'storyBuff') && g.battlefield.some(q => q.card.a.storyBuff) && storyCount(g) >= 3) g.story = true;          // Óin the Brave: storied, an enduring story for the rest of the game
     if (wasValid) { addToInfo(c, perm); c.len = g.battlefield.length; c.ver = g.bfVer; }       // add in place instead of rebuilding: bulk token creation stays fast
     return perm;
   }
@@ -12750,7 +12750,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     ev.push({ type: 'note', text: `${c.card.name} is cast: the ability of ${source && source.card ? source.card.name : 'a permanent'} is copied`, source: source || null });
     const now = { last: g.lastCast, sc: g.spellsCast, x: g.xValue, much: g.thatMuch };
     g.lastCast = was.last; g.spellsCast = was.sc; g.xValue = was.x; g.thatMuch = was.much;
-    g.inCopy = true; try { again(); } finally { g.inCopy = false; g.lastCast = now.last; g.spellsCast = now.sc; g.xValue = now.x; g.thatMuch = now.much; }
+    g.inCopy = true; try { again(); } finally {          // what the copy itself did is kept: spells it cast (discover, cascade) count on top of Return the Favor
+      g.inCopy = false; const cast = (g.spellsCast || 0) - (was.sc || 0);
+      if (g.lastCast === was.last) g.lastCast = now.last; g.spellsCast = (now.sc || 0) + Math.max(0, cast);
+      if (g.xValue === was.x) g.xValue = now.x; if (g.thatMuch === was.much) g.thatMuch = now.much;
+    }
     return true;
   }
   function plusBonus(g, src) { if (!g || g.dry || !src || !src.card || !tableHas(g, 'torbran')) return 0; let n = 0; for (const q of g.battlefield) if (q.card.a.torbran) n += q.card.a.torbran; return n && colorsOf(g, src.card).includes('R') ? n : 0; }          // Torbran, Thane of Red Fell: a red source of yours deals 2 more

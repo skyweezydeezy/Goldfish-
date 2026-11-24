@@ -18,10 +18,12 @@ const GIANT = card('Homebrew Giant', 'Creature — Giant', '', { mana_cost: '{4}
 const BEAR = card('Grizzly Bears', 'Creature — Bear', '', { mana_cost: '{1}{G}', cmc: 2, power: '2', toughness: '2', colors: ['G'] });
 const SAGE = card('Homebrew Sage', 'Creature — Human Wizard', 'When this creature enters, draw three cards.', { mana_cost: '{3}{U}', cmc: 4, power: '1', toughness: '1', colors: ['U'] });
 const WALKER = card('Homebrew Walker', 'Legendary Planeswalker — Homebrew', '+1: Draw three cards.', { mana_cost: '{3}{U}', cmc: 4, colors: ['U'], loyalty: '3' });
+const SEEKER = card('Homebrew Seeker', 'Creature — Human', 'When this creature enters, discover 4.', { mana_cost: '{3}{R}', cmc: 4, power: '2', toughness: '2', colors: ['R'] });
+const SPARK = card('Homebrew Spark', 'Sorcery', 'Draw a card.', { mana_cost: '{1}{R}', cmc: 2, colors: ['R'], qty: 20 });
 const NOVA = card('Homebrew Nova', 'Sorcery', 'Draw a card.', { mana_cost: '{4}{R}', cmc: 5, colors: ['R'] });
 const STONE = card('Homebrew Stone', 'Artifact', '', { mana_cost: '{1}', cmc: 1 });
 const all = NAMES.concat(HELPERS);
-const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n))).concat([GIANT, BEAR, SAGE, WALKER, STONE, NOVA]);
+const cards = base.cards.filter(c => !all.includes(c.name)).slice(0, 30).concat(all.map(n => base.cards.find(c => c.name === n) || find(n))).concat([GIANT, BEAR, SAGE, WALKER, STONE, NOVA, SEEKER, SPARK]);
 const deck = G.buildDeck(cards, base.tokens);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 let pass = 0, fail = 0;
@@ -100,13 +102,22 @@ T('review fixes', () => {
     const pw = g.battlefield.filter(q => q.token && /Phyrexian|Incubator/.test(q.card.name || '')).map(q => G.powerOf(g, q)).sort().join(',');
     check('Return the Favor copies Seedshark\'s trigger for a mana value 5 spell: two 5/5s (and a 2/2: the Favor is a noncreature spell too)', g.graveyard.includes(rf) && pw === '2,5,5', inc.join(' | '));
   } finally { sh.a.triggers = keep; }
+  // 1b. what the copy itself casts still counts (round 2): a copied "discover 4" casts a second spell
+  { const sk = by('Homebrew Seeker'), kp = sk.a.triggers; sk.a.triggers = kp.map(t => t.kinds.includes('etb') ? Object.assign({}, t, { fx: t.fx.concat([{ type: 'draw', n: 3 }]) }) : t);
+    try {
+      const g = bare(27); g.library = g.library.filter(i => !i.card.a.isLand && (i.card.a.mv || 0) <= 4); g.library.unshift(...[0, 1, 2, 3].map(() => inst(g, 'Homebrew Spark'))); lands(g, 3);
+      const rf = inst(g, 'Return the Favor'); g.hand.push(rf); const sc = g.spellsCast || 0; G.enterWithTriggers(g, inst(g, 'Homebrew Seeker'), {}, []);
+      check('a copied "discover 4": the original\'s spell, Return the Favor and the copy\'s spell all count (+3)', g.graveyard.includes(rf) && (g.spellsCast || 0) - sc === 3, `spells cast +${(g.spellsCast || 0) - sc}`);
+    } finally { sk.a.triggers = kp; } }
   // 2. reading a creature's power does not change the game
   const o = bare(21), oin = putOn(o, 'Óin the Brave'); putOn(o, 'Homebrew Stone'); G.powerOf(o, oin); G.hasKw(o, oin, 'haste');
   check('Óin: looking at its power with two of three changes nothing', !o.story && G.powerOf(o, oin) === 1);
-  const other = bare(22), extra = putOn(other, 'Homebrew Stone'); o.battlefield.push(extra); G.touch(o);
-  check('...a third artifact that got there without entering counts while it is there, but sets nothing', G.powerOf(o, oin) === 2 && !o.story);
-  o.battlefield.splice(o.battlefield.indexOf(extra), 1); G.touch(o); putOn(o, 'Homebrew Stone');
-  check('...a third artifact that enters gives the enduring story for good', o.story === true && G.powerOf(o, oin) === 2);
+  const other = bare(22), extra = putOn(other, 'Homebrew Stone'); o.battlefield.push(extra);
+  check('...a third artifact on the battlefield counts for the lookup, and reading still sets nothing', G.powerOf(o, oin) === 2 && !o.story);
+  G.touch(o); check('...once the board change is noted (stolen, returned, phased in, entered) the story is latched', o.story === true);
+  o.battlefield.splice(o.battlefield.indexOf(extra), 1); G.touch(o); check('...and it stays when that artifact leaves again (a stolen one going back)', G.powerOf(o, oin) === 2 && G.hasKw(o, oin, 'haste'));
+  { const q = bare(25), oq = putOn(q, 'Óin the Brave'); putOn(q, 'Homebrew Stone'); const vic = bare(26), st = putOn(vic, 'Homebrew Stone'); G.linkMatch(q, vic); G.stealPerm(q, st, []);
+    check('...a third artifact stolen with stealPerm latches it too', q.story === true && G.powerOf(q, oq) === 2, `story ${q.story}, power ${G.powerOf(q, oq)}`); }
   // 3. in a match a creature is not tapped while the other player has creatures to attack with
   const mk = () => { const a = bare(23), b = bare(24); G.linkMatch(a, b); a.activeTurn = true; b.activeTurn = false; a.turn = 4; return { a, b }; };
   { const { a, b } = mk(); const cav = putOn(a, 'Axgard Cavalry'); fresh(a, 'Homebrew Giant'); putOn(b, 'Grizzly Bears'); G.previewAttack(a);

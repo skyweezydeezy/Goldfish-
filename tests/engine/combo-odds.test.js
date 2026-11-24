@@ -40,6 +40,16 @@ check('...and the same seed gives the same number', sm2.p[0] === sm.p[0]);
 const many = Array.from({ length: 12 }, (_, i) => ['x' + i, 'y' + i]);
 const mr = Combos.anySeen(N, many, q1, [10]);
 check('24 different pieces: sampled, not exact', !mr.exact && mr.err[0] > 0, mr.p[0].toFixed(4) + '±' + mr.err[0].toFixed(4));
+// more than 32 pieces: 20 disjoint 2-card combos (40 pieces). Exact by inclusion-exclusion over the combos:
+// P(any) = sum over k of (-1)^(k+1) C(20,k) P(2k given cards all seen), P(m cards all in n of N) = C(N-m, n-m) / C(N, n)
+const disjoint = (K, size, n) => { let p = 0; for (let k = 1; k <= K; k++) p += (k & 1 ? 1 : -1) * c(K, k) * c(N - size * k, n - size * k) / c(N, n); return p; };
+const forty = Array.from({ length: 20 }, (_, i) => ['a' + i, 'b' + i]);
+const f40 = Combos.anySeen(N, forty, q1, [10, 20, 30], { seed: 3 }), x40 = [10, 20, 30].map(n => disjoint(20, 2, n));
+check('40 different pieces (past 32): the sample matches the exact value within its margin', !f40.exact && f40.p.every((p, i) => Math.abs(p - x40[i]) <= Math.max(f40.err[i] * 1.5, 0.002)), f40.p.map((p, i) => p.toFixed(4) + '±' + f40.err[i].toFixed(4) + ' vs ' + x40[i].toFixed(4)).join(', '));
+const f70 = Combos.anySeen(N, Array.from({ length: 35 }, (_, i) => ['a' + i, 'b' + i]), q1, [25], { seed: 4 }), x70 = disjoint(35, 2, 25);
+check('70 different pieces: still right', Math.abs(f70.p[0] - x70) <= Math.max(f70.err[0] * 1.5, 0.002), f70.p[0].toFixed(4) + ' vs ' + x70.toFixed(4));
+const e22 = Combos.anySeen(N, forty.slice(0, 11), q1, [20], { maxExact: 24 });
+check('22 pieces counted exactly (maxExact 24) match the formula', e22.exact && near(e22.p[0], disjoint(11, 2, 20), 1e-9), e22.p[0]);
 check('no combos: 0; a combo of commanders only: 1', Combos.anySeen(N, [], q1, [7]).p[0] === 0 && Combos.anySeen(N, [[]], q1, [7]).p[0] === 1);
 
 // turns: opening 7, then a card a turn; none on turn 1 on the play

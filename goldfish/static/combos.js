@@ -81,8 +81,9 @@
     if (!sets.length) return { p: ns.map(() => 0), exact: true, err: ns.map(() => 0) };
     if (sets.some(s => !s.length)) return { p: ns.map(() => 1), exact: true, err: ns.map(() => 0) };
     const names = [...new Set(sets.flat())], R = names.length, q = names.map(qtyOf), QR = q.reduce((a, b) => a + b, 0);
-    const masks = [...new Set(sets.map(s => s.reduce((m, n) => m | 1 << names.indexOf(n), 0)))];
-    if (R <= (o.maxExact || MAX_EXACT)) {
+    const at = new Map(names.map((n, i) => [n, i])), idx = sets.map(s => [...new Set(s.map(n => at.get(n)))]);
+    if (R <= Math.min(o.maxExact || MAX_EXACT, 24)) {
+      const masks = [...new Set(idx.map(js => js.reduce((m, j) => m | 1 << j, 0)))];          // R <= 24: every piece has its own bit
       // good[X]: X (the relevant cards seen) holds a whole combo. Bad sets X are grouped by how many of their cards have 1, 2, ... copies.
       const size = 1 << R, good = new Uint8Array(size);
       masks.forEach(m => { good[m] = 1; });
@@ -113,7 +114,7 @@
       let k = 0;
       for (let j = 0; j < R; j++) { let f = N; for (let c = 0; c < q[j]; c++, k++) { const r = k + Math.floor(rnd() * (N - k)), t = pos[k]; pos[k] = pos[r]; pos[r] = t; if (pos[k] < f) f = pos[k]; } first[j] = f; }
       let best = N;
-      for (const m of masks) { let t = 0; for (let j = 0; j < R; j++) if (m >> j & 1 && first[j] > t) t = first[j]; if (t < best) best = t; }
+      for (const js of idx) { let t = 0; for (const j of js) if (first[j] > t) t = first[j]; if (t < best) best = t; }          // piece lists, not bit masks: any number of pieces
       done[best]++;
     }
     const cum = []; let acc = 0; for (let i = 0; i <= N; i++) { acc += done[i]; cum[i] = acc / S; }

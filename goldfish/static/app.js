@@ -52,7 +52,7 @@
     if (t === 'hands' && S.deck) renderOpenLandsChart();
     requestAnimationFrame(refit);
     if (t === 'table' && S.deck && !S.game) newTableGame();
-    if (t === 'sim') { fillMirror(); renderLabSaved(); renderComboRaise(); }
+    if (t === 'sim') { fillMirror(); renderLabSaved(); renderComboRaise(); }          // recomputes only when the deck or play/draw changed
     if (t === 'sim' && S.sim) renderSim();
     if (t === 'odds' && S.deck) renderOdds();
     dirty();
@@ -1825,7 +1825,7 @@
         S.sim = e.data.result; S.simOpts = o; fillTune();
         $('#simInfo').textContent = `${o.n.toLocaleString()} games × ${o.turns} turns in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
         renderSim();
-        renderComboRaise();          // the default cut now comes from this run
+        renderComboRaise({ simDone: true });          // a cut you did not choose yourself now comes from this run
       }
     };
     worker.onerror = err => { $('#runSim').disabled = false; $('#simInfo').textContent = 'Simulation error: ' + err.message; };
@@ -2844,7 +2844,7 @@
 
   // ---- Simulate: "Raise your combo odds" (combos.js additions / swapOdds): one card in, one out, and the any-combo odds by turn 6, 8, 10 ----
   const RAISE_TURNS = [6, 8, 10];
-  let raiseRun = 0, raiseFor = null;
+  let raiseRun = 0, raiseFor = null, raiseUserCut = false, raiseKey = '';
   const gainTxt = g => (g >= 0 ? '+' : '−') + Math.abs(g * 100).toFixed(1);
   function raiseCells(r, base) { return r.any.p.map((p, i) => `<td class="num">${comboPct(p, r.any.err[i])}${base ? ` <span class="${r.any.p[i] - base.any.p[i] > 0.0005 ? 'gain' : 'hint'}">${gainTxt(r.any.p[i] - base.any.p[i])}</span>` : ''}</td>`).join(''); }
   // the default cut: drawn but often not cast in the last run (Suggest.deadCards), else the costliest card in no combo
@@ -2854,19 +2854,28 @@
     const c = S.deck.unique.filter(c => free(c) && !c.a.isLand).sort((a, b) => b.a.mv - a.a.mv || a.name.localeCompare(b.name))[0];
     return c ? { name: c.name, why: 'the costliest card in no combo (run a simulation to rate your cards)' } : { name: '', why: '' };
   }
-  function renderComboRaise(keepCut) {
+  // o.simDone: a run just finished (a cut you did not pick yourself follows it). Nothing is recomputed while the deck, play/draw and cut are the same.
+  function renderComboRaise(ro) {
+    ro = ro || {};
     const box = $('#comboRaise'); if (!box || typeof Combos === 'undefined' || !Combos.additions) return;
     const deck = S.deck; if (!deck) { box.hidden = true; return; }
     loadComboDb().then(async db => {
       if (!db || S.deck !== deck) return;
       const o = opts(), id = deckIdentity(deck), sel = $('#raiseCut');
-      if (!keepCut || raiseFor !== deck) {
-        const def = raiseDefaultCut(db, id);
-        sel.innerHTML = deck.unique.filter(c => !c.commander).sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option${c.name === def.name ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
-        $('#raiseWhy').textContent = def.why ? `Default: ${def.name}, ${def.why}.` : '';
-        raiseFor = deck; $('#raiseOwn').innerHTML = ''; $('#raiseSim').innerHTML = '';
+      const fresh = raiseFor !== deck;
+      if (fresh) {                                   // another deck: its own cut list, and the last deck's results go
+        sel.innerHTML = deck.unique.filter(c => !c.commander).map(c => c.name).filter((n, i, a) => a.indexOf(n) === i).sort((a, b) => a.localeCompare(b)).map(n => `<option>${esc(n)}</option>`).join('');
+        raiseFor = deck; raiseUserCut = false; raiseKey = ''; $('#raiseOwn').innerHTML = ''; $('#raiseSim').innerHTML = '';
       }
-      const cut = sel.value, run = ++raiseRun;
+      if (fresh || (ro.simDone && !raiseUserCut)) {
+        const def = raiseDefaultCut(db, id);
+        if (def.name) sel.value = def.name;
+        $('#raiseWhy').textContent = def.why ? `Default: ${def.name}, ${def.why}.` : '';
+      }
+      const cut = sel.value, key = cut + '|' + o.onPlay;
+      if (key === raiseKey && S.comboRaise && (S.comboRaise.done || raiseRun)) return;          // same deck, cut and play/draw: keep what is shown
+      raiseKey = key;
+      const run = ++raiseRun;
       const found = Combos.find(db, deck.unique.map(c => c.name), id);
       const base = Combos.comboOdds(deck, found.included, RAISE_TURNS, o.onPlay, { anyOnly: true });
       S.comboRaise = { base, rows: [], cut, done: false };
@@ -2915,15 +2924,18 @@
   }
   $('#raiseGo').addEventListener('click', raiseOwn);
   $('#raiseAdd').addEventListener('keydown', e => { if (e.key === 'Enter') raiseOwn(); });
-  $('#raiseCut').addEventListener('change', () => renderComboRaise(true));
+  $('#raiseCut').addEventListener('change', () => { raiseUserCut = true; renderComboRaise(); });
   // the swap in the deck: the cut card's line loses a copy and the added card goes right after it, then the list is loaded again
+  const nameKey = n => String(n || '').split(' // ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[‘’]/g, "'").trim().toLowerCase().replace(/\s+/g, ' ');
   async function raiseApply(add, cut) {
-    const ta = $('#deckText'), lines = ta.value.split(/\r?\n/);
-    const i = lines.findIndex(l => { const e = Source.parseDecklist(l)[0]; return e && (e.name === cut || e.name.split(' // ')[0] === cut.split(' // ')[0]); });
-    if (i < 0) return toast(`${cut} is not in the decklist box`);
+    const text = S.deckText; if (!text) return toast('Load the deck from a list first');
+    const lines = text.split(/\r?\n/);
+    const want = new Set([cut].concat(S.cards.filter(c => !c.commander && c.name === cut).map(c => c.input_name)).filter(Boolean).map(nameKey));
+    const i = lines.findIndex(l => { const e = Source.parseDecklist(l)[0]; return e && e.section !== 'commander' && want.has(nameKey(e.name)); });
+    if (i < 0) return toast(`${cut} was not found in the loaded list`);
     const e = Source.parseDecklist(lines[i])[0], q = e.qty || 1;
     lines.splice(i, 1, ...(q > 1 ? [lines[i].replace(/^\s*\d+/, String(q - 1))] : []), '1 ' + add);
-    ta.value = lines.join('\n');
+    $('#deckText').value = lines.join('\n');          // the box shows the list that is now loaded
     const ok = await loadDeck();
     if (ok) { toast(`Swapped ${cut} for ${add}`); showTab('sim'); }
   }

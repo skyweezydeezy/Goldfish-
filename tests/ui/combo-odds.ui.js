@@ -80,6 +80,12 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     await p.selectOption('#raiseCut', pick);
     await p.waitForFunction(c => window.__isf.comboRaise.done && window.__isf.comboRaise.cut === c, pick, { timeout: 60000 });
     check(`${name}: choosing another cut recomputes the ranking`, await p.evaluate(c => window.__isf.comboRaise.cut === c && window.__isf.comboRaise.rows.length > 0, pick), pick);
+    // leaving Simulate and coming back keeps your cut and your results, and recomputes nothing
+    await p.fill('#raiseAdd', cr.rows[0].card); await p.click('#raiseGo'); await p.waitForTimeout(300);
+    await p.evaluate(() => { window.__isf.comboRaise.mark = 1; });
+    await p.click('.tab[data-tab="odds"]'); await p.waitForTimeout(300); await p.click('.tab[data-tab="sim"]'); await p.waitForTimeout(800);
+    const kept = await p.evaluate(() => ({ cut: document.querySelector('#raiseCut').value, own: document.querySelector('#raiseOwn').textContent.length, same: window.__isf.comboRaise.mark === 1 }));
+    check(`${name}: coming back to Simulate keeps the cut you chose and your own swap, without recomputing`, kept.cut === pick && kept.own > 0 && kept.same, JSON.stringify(kept));
     check(`${name}: the box fits the screen width`, await p.$eval('#comboRaise', e => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('table')].every(t => t.getBoundingClientRect().right <= e.getBoundingClientRect().right + 1)));
     await p.$eval('#comboRaise', e => { e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); }); await p.waitForTimeout(200);
     if (shot) await p.screenshot({ path: `${shot}/combo-raise-${name}.png` });
@@ -94,10 +100,20 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     // Apply: the deck changes only now
     const hadIt = await p.evaluate(a => window.__isf.deck.unique.some(c => c.name === a), topAdd);
     const cutNow = await p.$eval('#raiseCut', e => e.value), cutQty = await p.evaluate(c => window.__isf.deck.unique.filter(x => x.name === c).reduce((s, x) => s + x.qty, 0), cutNow);
+    await p.$eval('#deckText', e => { e.value = ''; });          // as after Clear: Apply works on the loaded list, not the box
     await p.click(`#raiseBody button.raise-apply[data-add="${topAdd}"]`);
     await p.waitForFunction(a => window.__isf.deck && window.__isf.deck.unique.some(c => c.name === a), topAdd, { timeout: 90000 });
     const swapped = await p.evaluate(([a, c]) => ({ has: window.__isf.deck.unique.some(x => x.name === a), cut: window.__isf.deck.unique.filter(x => x.name === c).reduce((s, x) => s + x.qty, 0), size: window.__isf.deck.library.length + window.__isf.deck.commanders.length }), [topAdd, cutNow]);
     check(`${name}: nothing changed before Apply; Apply swaps the cards and keeps 100`, !hadIt && swapped.has && swapped.cut === cutQty - 1 && swapped.size === 100, JSON.stringify(swapped) + ' cut ' + cutNow);
+
+    // a list written in lower case still finds the card to cut
+    await p.click('.tab[data-tab="deck"]'); await load(DECK.replace('1 Sol Ring', '1 sol ring'));
+    await p.click('.tab[data-tab="sim"]'); await p.waitForFunction(() => window.__isf.comboRaise && window.__isf.comboRaise.done, null, { timeout: 60000 });
+    await p.selectOption('#raiseCut', 'Sol Ring'); await p.waitForFunction(() => window.__isf.comboRaise.done && window.__isf.comboRaise.cut === 'Sol Ring', null, { timeout: 60000 });
+    await p.fill('#raiseAdd', "Ashnod's Altar"); await p.click('#raiseGo'); await p.waitForTimeout(300);
+    await p.click('#raiseOwn button.raise-apply');
+    await p.waitForFunction(() => window.__isf.deck && window.__isf.deck.unique.some(c => c.name === "Ashnod's Altar"), null, { timeout: 90000 });
+    check(`${name}: Apply finds "sol ring" in a list written in lower case`, await p.evaluate(() => !window.__isf.deck.unique.some(c => c.name === 'Sol Ring') && window.__isf.deck.library.length === 99));
 
     // a list with no combo
     await p.click('.tab[data-tab="deck"]'); await p.selectOption('#optFormat', '60').catch(() => {}); await load(PLAIN);

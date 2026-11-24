@@ -4470,7 +4470,7 @@
     const inf = bfInfo(g), add = Math.max(n, counterAmount(g, np, kind, n));
     const viz = kind === '-1/-1' && inf.vizier && isCreaturePerm(np) ? 1 : 0, more = (add - viz) - (n - viz);
     if (more > 0) np.counters = (np.counters || 0) + (kind === '-1/-1' ? -more : more);
-    countersPutAfter(g, np, kind, add, ev, np, inf);
+    const placed = add - viz; if (placed > 0) countersPutAfter(g, np, kind, placed, ev, np, inf);          // Vizier of Remedies: one fewer, and none placed is no event
   }
   function addCounters(g, p, kind, n, ev, source, noDouble) {
     const inf = bfInfo(g), add = counterAmount(g, p, kind, n, noDouble); if (!(add > 0)) return 0;
@@ -4871,6 +4871,7 @@
     if (o.asMdfcLand) { perm.asLand = true; perm.produce = { colors: a.mdfcProduce, amount: 1 }; perm.tapped = a.mdfcTapped; perm.mdfc = true; }
     else if (a.isLand) perm.tapped = o.tapped ? true : landEntersTapped(g, a, inst);          // put onto the battlefield tapped: a shock land pays no life
     else { perm.sick = a.isCreature; if (a.etbTapped) perm.tapped = true; }
+    perm.enteredSeq = turnSeq(g);          // the shared turn sequence (a match's turns, not only this player's): Neriv's "entered this turn"
     if (o.flyCounter) perm.flyCounter = true;          // the counters a returning creature comes back with are on it as it enters (Luminous Broodmoth, persist, undying,
     if (o.counters) perm.counters = (perm.counters || 0) + o.counters;          // Undying Malice), so dying at once (Elesh Norn's -X/-X) does not bring it back again and again
     if (o.tapped) perm.tapped = true;
@@ -7519,7 +7520,7 @@
   function stealPerm(g, q, ev, untilEot, from) {
     const og = from || g.opp;
     if (!og || !og.battlefield.includes(q) || g.battlefield.length >= 250) return null;
-    removePerm(og, q); q.owner = q.owner || og; q.stolen = true; q.returnEot = !!untilEot; q.tapped = false; q.sick = false; q.enteredTurn = g.turn;
+    removePerm(og, q); q.owner = q.owner || og; q.stolen = true; q.returnEot = !!untilEot; q.tapped = false; q.sick = false; q.enteredTurn = g.turn; q.enteredSeq = turnSeq(g);
     g.battlefield.push(q); touch(g); touch(og);
     ev.push({ type: 'note', text: `Gained control of ${q.card.name}${untilEot ? ' until end of turn' : ''}`, source: q });
     return q;
@@ -7801,7 +7802,7 @@
     if (ba.superNova && !g.dry) { g.novaEmblem = (g.novaEmblem || 0) + 1; ev.push({ type: 'note', text: 'Super Nova: an emblem, whenever a creature dies an opponent loses 1 life and you gain 1' }); }
     if (same) { p.card = back; know(g, p.card); p.transformed = true; touch(g); return; }          // "Transform ~" (Jennifer Walters): the same permanent, nothing resets
     p.frontCard = p.frontCard === back ? null : from;
-    p.card = back; know(g, p.card); p.transformed = true; p.enteredTurn = g.turn; p.tapped = false; p.counters = 0; p.other = null; p.attachedTo = null; p.lore = 0;
+    p.card = back; know(g, p.card); p.transformed = true; p.enteredTurn = g.turn; p.enteredSeq = turnSeq(g); p.tapped = false; p.counters = 0; p.other = null; p.attachedTo = null; p.lore = 0;
     p.sick = ba.isCreature; p.pwTurn = undefined; p.pwN = 0; p.actUsed = undefined;
     p.produce = ba.produce; p.sacMana = ba.sacMana; p.asLand = ba.isLand;
     p.loyalty = ba.loyalty * (ba.isPlaneswalker ? counterMult(g) : 1);
@@ -12459,7 +12460,7 @@ g.actSeq = (g.actSeq || 0) + 1;
             if (left > 0) { if (hasKw(g, a, 'trample')) marks.push({ to: 'player', n: left, from: a, game: g }); else marks.push({ to: bl[bl.length - 1], n: left, from: a, game: g }); }
           } else if (hasKw(g, a, 'trample')) marks.push({ to: 'player', n: pw, from: a, game: g });
         }
-        for (const b of bl) { const pb = Math.max(0, dmgPow(d, b)); if (strikes(d, b) && pb > 0 && !a.noDmgTo) marks.push({ to: a, n: pb, from: b, game: d }); }
+        for (const b of bl) { const pb = Math.max(0, dmgPow(d, b)) * infernoMult(d, b, true); if (strikes(d, b) && pb > 0 && !a.noDmgTo) marks.push({ to: a, n: pb, from: b, game: d }); }
       }
       for (const m of marks) {
         if (m.to === 'player') {
@@ -12780,7 +12781,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function ownMult(g) { if (!g || g.dry) return 1; const n = bfInfo(g).ownDouble || 0; return n ? Math.pow(2, Math.min(n, 4)) : 1; }          // Angrath's Marauders: your own sources
   function unlockCostOf(g, c) { const less = g.battlefield.reduce((t, q) => t + (q.card.a.statics.unlockLess || 0), 0); return less && c ? { generic: Math.max(0, c.generic - less), pips: c.pips, x: c.x } : c; }          // Inquisitive Glimmer
   function infernoMult(g, src, combat) { if (!g || g.dry || !src || !src.card) return 1; let m = 1; for (const q of ((tableHas(g, 'inferno') || tableHas(g, 'flareStar')) ? g.battlefield : NONE)) if ((q.card.a.inferno && q.infernoType && matchesFilter(src.card, q.infernoType)) || (q.card.a.flareStar && matchesFilter(src.card, q.card.a.flareStar))) m *= 2; for (const q of ((src.iid != null && tableHas(g, 'mjolnir')) ? g.battlefield : NONE)) if (q.card.a.mjolnir && q.attachedTo === src.iid) m *= 2;
-    if ((tableHas(g, 'unrestDouble') || tableHas(g, 'nerivDouble') || tableHas(g, 'attachDouble')) && g.battlefield.includes(src) && isCreaturePerm(src)) for (const q of g.battlefield) { const a = q.card.a; if ((a.unrestDouble && (src.counters || 0) > 0) || (a.nerivDouble && src.enteredTurn === g.turn) || (a.attachDouble && combat && q.attachedTo === src.iid)) m *= 2; }          // attachDouble: combat damage only (T-046)          // rules batch 62: Uncivil Unrest, Neriv, The Sound of Drums, Inquisitor's Flail
+    if ((tableHas(g, 'unrestDouble') || tableHas(g, 'nerivDouble') || tableHas(g, 'attachDouble')) && g.battlefield.includes(src) && isCreaturePerm(src)) for (const q of g.battlefield) { const a = q.card.a; if ((a.unrestDouble && (src.counters || 0) > 0) || (a.nerivDouble && src.enteredTurn === g.turn && (src.enteredSeq || 0) === turnSeq(g)) || (a.attachDouble && combat && q.attachedTo === src.iid)) m *= 2; }          // attachDouble: combat damage only (T-046)          // rules batch 62: Uncivil Unrest, Neriv, The Sound of Drums, Inquisitor's Flail
     return m; }          // Mjölnir: the creature it equips          // Collective Inferno
   // T-041 (issue #78): Magda, Brazen Outlaw sees every Dwarf that becomes tapped outside combat; the Dwarves' own abilities
   // a seated person is asked before each of these (the autopilot's choice is the default, so taking every default plays the autopilot's game)

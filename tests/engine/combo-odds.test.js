@@ -80,5 +80,25 @@ if (best) {
   check('...its any-combo odds rise turn by turn and are at least the best single combo', ro.any.p.every((p, i, a) => !i || p >= a[i - 1] - 1e-9) && ro.any.p.every((p, i) => ro.rows.every(x => x.p[i] <= p + (ro.any.err[i] || 0) + 1e-9)), ro.any.p.map(x => x.toFixed(3)).join(' ') + (ro.any.exact ? ' exact' : ' sampled'));
   check('...in under 3 seconds', ms < 3000, ms + ' ms');
 }
+
+// T-052: one card in, one out
+const sw = Combos.swapDeck(deck, 'Rings of Brighthearth', 'Plains');
+check('swapDeck: one Plains fewer, a second Rings, same library size', Combos.libraryOf(sw).N === 98 && Combos.libraryOf(sw).qty.get('Rings of Brighthearth') === 2 && Combos.libraryOf(sw).qty.get('Plains') === 94);
+const sw2 = Combos.swapDeck(deck, 'Dramatic Reversal', 'Walking Ballista');
+check('swapDeck: cutting the last copy removes the card; a new card comes in with one copy', !sw2.unique.some(c => c.name === 'Walking Ballista') && sw2.unique.find(c => c.name === 'Dramatic Reversal').qty === 1);
+if (best) {
+  const id = null, cut = best.dk.unique.find(c => !c.commander && /^(Plains|Swamp|Island|Mountain|Forest)$/.test(c.name)).name;
+  const adds = Combos.additions(db, best.dk, id, cut, 20);
+  check('additions: Spellbook cards that complete a combo with ' + best.d.name, adds.length > 0 && adds.every(a => a.combos.length && a.combos.every(c => c.missing === a.card)), adds.slice(0, 3).map(a => a.card).join(', '));
+  const base = Combos.comboOdds(best.dk, best.f.included, [6, 8, 10], true, { anyOnly: true });
+  const a0 = Combos.swapOdds(db, best.dk, id, adds[0].card, cut, [6, 8, 10], true);
+  check('...adding one raises the any-combo odds (it completes a combo, a basic land is cut)', a0.any.p.every((p, i) => p > base.any.p[i]) && a0.included.length > best.f.included.length, base.any.p.map(x => x.toFixed(3)).join(' ') + ' -> ' + a0.any.p.map(x => x.toFixed(3)).join(' ') + ' (+' + adds[0].card + ')');
+  const piece = best.f.included[0].cards.find(n => !best.dk.unique.find(c => c.name === n).commander);
+  const cutPiece = Combos.swapOdds(db, best.dk, id, '', piece, [6, 8, 10], true);
+  check('cutting a combo piece removes its combos and lowers the odds', cutPiece.included.length < best.f.included.length && cutPiece.any.p.every((p, i) => p <= base.any.p[i] + 1e-12), piece);
+  check('a card of a cut piece is never offered back as completing a combo that needs the cut card', Combos.additions(db, best.dk, id, piece, 50).every(a => a.combos.every(c => !c.cards.includes(piece))));
+  const pcs = Combos.comboPieces(db, best.dk, id);
+  check('comboPieces: every card of an included combo is a piece', best.f.included.every(c => c.cards.every(n => pcs.has(n))));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

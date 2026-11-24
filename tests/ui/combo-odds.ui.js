@@ -1,6 +1,8 @@
 // Odds tab, "Combo odds" (T-051): the chance of having drawn every piece of at least one Commander Spellbook combo in the deck, by turn,
 // overall and by what the combos do, folded to the headline. Simulate tab, "Raise your combo odds" (T-052). Saves screenshots when SHOTS is set.
 const { chromium, devices } = require('playwright');
+const fs = require('fs'), path = require('path');
+const DEATH_TAX = fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', 'death-tax.txt'), 'utf8');
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
 const shot = process.env.SHOTS;
@@ -53,6 +55,49 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     await p.click('.tab[data-tab="odds"]'); await p.waitForTimeout(800);
     const after = await p.evaluate(() => window.__isf.comboOdds.any.p);
     check(`${name}: switching play/draw changes the later turns, not the opening hand`, !play || (after[0] === before[0] && after.slice(1).some((x, i) => x !== before[i + 1])), after.map(x => x.toFixed(3)).join(' '));
+
+    // ---- T-052: Simulate, "Raise your combo odds", on a built-in deck ----
+    await p.click('.tab[data-tab="deck"]'); await load(DEATH_TAX);
+    await p.click('.tab[data-tab="sim"]');
+    await p.waitForFunction(() => window.__isf.comboRaise && window.__isf.comboRaise.done, null, { timeout: 60000 }); await p.waitForTimeout(300);
+    check(`${name}: Simulate shows "Raise your combo odds" without a run`, await p.$eval('#comboRaise', e => !e.hidden && /Raise your combo odds/.test(e.querySelector('h2').textContent)));
+    check(`${name}: its explanation sits behind the ⓘ`, await p.$eval('#comboRaise .box-head', e => !!e.querySelector('.info-tog') && e.querySelector('.hint').classList.contains('folded')));
+    const cr = await p.evaluate(() => { const r = window.__isf.comboRaise; return { cut: r.cut, base: r.base.any.p, rows: r.rows.map(x => ({ card: x.card, p: x.r.any.p, gain: x.gain })) }; });
+    const pieces = await p.evaluate(() => [...new Set((window.__isf.comboRaise.rows || []).flatMap(x => x.combos.flatMap(c => c.cards.filter(n => n !== c.missing))))]);
+    check(`${name}: a default cut is chosen and explained, and it is no combo piece`, !!cr.cut && !pieces.includes(cr.cut) && await p.$eval('#raiseWhy', e => /Default: /.test(e.textContent)), cr.cut);
+    const score = x => x.gain.reduce((s, g) => s + g, 0);
+    check(`${name}: real Spellbook additions are ranked by what they add`, cr.rows.length > 0 && cr.rows.every((x, i, a) => !i || score(a[i - 1]) >= score(x) - 1e-12) && score(cr.rows[0]) > 0, cr.rows.slice(0, 3).map(x => x.card + ' ' + x.gain.map(g => (g * 100).toFixed(1)).join('/')).join(' | '));
+    const shown = await p.$$eval('#raiseBody tr[data-add]', ts => ts.map(t => ({ add: t.dataset.add, cells: [...t.querySelectorAll('td.num')].map(c => c.textContent.trim()) })));
+    check(`${name}: the table shows the top additions with T6/T8/T10 and the change`, shown.length === Math.min(5, cr.rows.length) && shown[0].add === cr.rows[0].card && shown[0].cells.length === 3 && /[+−]\d/.test(shown[0].cells[0]), JSON.stringify(shown[0]));
+    check(`${name}: what each addition completes (up to 10) is folded`, await p.$eval('#raiseBody .sg details', d => !d.open && d.querySelectorAll('li').length === Math.min(10, window.__isf.comboRaise.rows.length)));
+    // your own swap: the top addition typed in gives the same numbers
+    await p.fill('#raiseAdd', cr.rows[0].card); await p.click('#raiseGo'); await p.waitForTimeout(500);
+    const own = await p.evaluate(() => window.__isf.comboRaiseOwn && window.__isf.comboRaiseOwn.r.any.p);
+    check(`${name}: "Try your own" with the top addition gives the same odds`, !!own && own.every((x, i) => Math.abs(x - cr.rows[0].p[i]) < 1e-12), own && own.map(x => x.toFixed(3)).join(' '));
+    // another cut
+    const other = await p.$$eval('#raiseCut option', os => os.map(o => o.value));
+    const pick = other.find(n => /^(Plains|Swamp)$/.test(n)) || other[0];
+    await p.selectOption('#raiseCut', pick);
+    await p.waitForFunction(c => window.__isf.comboRaise.done && window.__isf.comboRaise.cut === c, pick, { timeout: 60000 });
+    check(`${name}: choosing another cut recomputes the ranking`, await p.evaluate(c => window.__isf.comboRaise.cut === c && window.__isf.comboRaise.rows.length > 0, pick), pick);
+    check(`${name}: the box fits the screen width`, await p.$eval('#comboRaise', e => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('table')].every(t => t.getBoundingClientRect().right <= e.getBoundingClientRect().right + 1)));
+    await p.$eval('#comboRaise', e => { e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); }); await p.waitForTimeout(200);
+    if (shot) await p.screenshot({ path: `${shot}/combo-raise-${name}.png` });
+    const topAdd = await p.evaluate(() => window.__isf.comboRaise.rows[0].card);
+    if (name === 'PC') {
+      // simulated check: 2,000 games of each deck
+      await p.click(`#raiseBody button.raise-sim[data-add="${topAdd}"]`);
+      await p.waitForFunction(() => window.__isf.comboRaiseSim, null, { timeout: 300000 });
+      const sim = await p.evaluate(() => { const s = window.__isf.comboRaiseSim; return { a: s.a.kill.length, b: s.b.kill.length, text: document.querySelector('#raiseSim').textContent }; });
+      check(`${name}: "Simulate" plays both decks and labels the result as simulated`, sim.a > 0 && sim.b > 0 && /Simulated/.test(sim.text) && /2,000 games/.test(sim.text) && /Median kill/.test(sim.text), sim.text.slice(0, 120));
+    }
+    // Apply: the deck changes only now
+    const hadIt = await p.evaluate(a => window.__isf.deck.unique.some(c => c.name === a), topAdd);
+    const cutNow = await p.$eval('#raiseCut', e => e.value), cutQty = await p.evaluate(c => window.__isf.deck.unique.filter(x => x.name === c).reduce((s, x) => s + x.qty, 0), cutNow);
+    await p.click(`#raiseBody button.raise-apply[data-add="${topAdd}"]`);
+    await p.waitForFunction(a => window.__isf.deck && window.__isf.deck.unique.some(c => c.name === a), topAdd, { timeout: 90000 });
+    const swapped = await p.evaluate(([a, c]) => ({ has: window.__isf.deck.unique.some(x => x.name === a), cut: window.__isf.deck.unique.filter(x => x.name === c).reduce((s, x) => s + x.qty, 0), size: window.__isf.deck.library.length + window.__isf.deck.commanders.length }), [topAdd, cutNow]);
+    check(`${name}: nothing changed before Apply; Apply swaps the cards and keeps 100`, !hadIt && swapped.has && swapped.cut === cutQty - 1 && swapped.size === 100, JSON.stringify(swapped) + ' cut ' + cutNow);
 
     // a list with no combo
     await p.click('.tab[data-tab="deck"]'); await p.selectOption('#optFormat', '60').catch(() => {}); await load(PLAIN);

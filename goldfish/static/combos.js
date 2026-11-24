@@ -137,10 +137,41 @@
     const rows = [];
     for (const c of combos) { const pc = piecesOf(c, lib); if (pc) rows.push({ combo: c, pieces: pc, group: groupOf(c), p: ns.map(n => pc.length ? allSeen(lib.N, pc.map(qtyOf), Math.min(n, lib.N)) : 1) }); }
     const any = anySeen(lib.N, rows.map(r => r.pieces), qtyOf, ns, o);
-    const groups = GROUPS.map(([key, name]) => { const rs = rows.filter(r => r.group === key); return rs.length ? Object.assign({ key, name, rows: rs }, anySeen(lib.N, rs.map(r => r.pieces), qtyOf, ns, o)) : null; }).filter(Boolean);
+    const groups = o && o.anyOnly ? [] : GROUPS.map(([key, name]) => { const rs = rows.filter(r => r.group === key); return rs.length ? Object.assign({ key, name, rows: rs }, anySeen(lib.N, rs.map(r => r.pieces), qtyOf, ns, o)) : null; }).filter(Boolean);
     return { N: lib.N, turns, ns, rows, any, groups };
   }
-  const api = { find, played, goldfished, LINK, choose, seenBy, libraryOf, piecesOf, allSeen, anySeen, groupOf, comboOdds, GROUPS };
+  // ---------- raising the combo odds (Simulate tab): one card in, one card out ----------
+  const front = n => String(n).split(' // ')[0];
+  // the deck after a swap: one more copy of `add`, one fewer of `cut` (either may be empty). Only names and copies, as the odds see it.
+  function swapDeck(deck, add, cut) {
+    const u = deck.unique.map(c => ({ name: c.name, qty: c.qty || 1, commander: !!c.commander }));
+    if (cut) { const c = u.find(x => !x.commander && (x.name === cut || front(x.name) === front(cut))); if (c) c.qty--; }
+    if (add) { const c = u.find(x => !x.commander && (x.name === add || front(x.name) === front(add))); if (c) c.qty++; else u.push({ name: add, qty: 1, commander: false }); }
+    return { unique: u.filter(c => c.qty > 0) };
+  }
+  // the any-combo odds after a swap (o.anyOnly by default: no per-group numbers)
+  function swapOdds(db, deck, identity, add, cut, turns, onPlay, o) {
+    const d = swapDeck(deck, add, cut), f = find(db, d.unique.map(c => c.name), identity);
+    return Object.assign(comboOdds(d, f.included, turns, onPlay, Object.assign({ anyOnly: true }, o)), { included: f.included });
+  }
+  // the cards Commander Spellbook says complete a combo with this deck (one card away, in its colours), most popular combo first,
+  // each with the combos it completes. The card to cut is left out, and so is any combo that needs it.
+  function additions(db, deck, identity, cut, max) {
+    const f = find(db, deck.unique.map(c => c.name), identity), by = new Map();
+    for (const c of f.almost) {
+      if (cut && c.cards.some(n => front(n) === front(cut)) || c.missing === cut) continue;
+      let a = by.get(c.missing); if (!a) by.set(c.missing, a = { card: c.missing, combos: [] });
+      a.combos.push(c);
+    }
+    return [...by.values()].slice(0, max || 20);
+  }
+  // the cards a combo of this deck uses (included, and the other pieces of the ones a card away): not offered as the default cut
+  function comboPieces(db, deck, identity) {
+    const f = find(db, deck.unique.map(c => c.name), identity), out = new Set();
+    f.included.concat(f.almost).forEach(c => c.cards.forEach(n => { if (n !== c.missing) { out.add(n); out.add(front(n)); } }));
+    return out;
+  }
+  const api = { find, played, goldfished, LINK, choose, seenBy, libraryOf, piecesOf, allSeen, anySeen, groupOf, comboOdds, GROUPS, swapDeck, swapOdds, additions, comboPieces };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Combos = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -1314,3 +1314,11 @@ body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }
 @media (max-width: 600px) { .combo-odds { font-size: 12px; } .combo-odds th, .combo-odds td { padding: 4px 4px; } .combo-odds td .hint { display: none; } }
 .combo-odds tr.any td { font-weight: 600; }
 .combo-odds td .hint { font-size: 11px; }
+/* Raise your combo odds (Simulate tab) */
+.combo-odds .gain { color: var(--good); font-size: 12px; }
+.combo-odds.raise td:last-child { white-space: nowrap; }
+.combo-odds.raise button { padding: 2px 8px; font-size: 12px; }
+.raise-ctl, .raise-try { margin: 8px 0; gap: 8px; align-items: center; }
+.raise-ctl select { max-width: 60vw; }
+#comboRaise .raise-ctl .hint { font-size: 12px; }
+@media (max-width: 600px) { .combo-odds.raise td:last-child { white-space: normal; } .combo-odds.raise button { margin: 2px 0; } }

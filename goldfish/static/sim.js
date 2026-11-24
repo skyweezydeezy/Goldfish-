@@ -2321,6 +2321,7 @@
         if (a.levelUp && a.levelUp.levels.length) {                                                                                       // lines under "LEVEL N": they count from that level on
           const L = a.levelUp.levels[a.levelUp.levels.length - 1], parts = line.toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
           if (parts.length && parts.every(x => KEYWORDS.includes(x))) { L.kw = (L.kw || []).concat(parts); parts.forEach(x => kwSet.delete(x)); rec.status = 'ok'; continue; }
+          if (/^\{t\}: add /i.test(line) && a.produceLevel == null) a.produceLevel = L.min;          // rules batch 71: a mana ability under LEVEL N counts from that level (Joraga Treespeaker); read on below as usual
           if (/^elves you control have "\{t\}: add \{g\}\{g\}\."$/i.test(line)) { a.elfGrantMana = L.min; rec.status = 'ok'; continue; }          // rules batch 70: Joraga Treespeaker, level 5+ (manaUnits)
           if ((mx = line.match(/^other (\w+) creatures you control get \+(\d+)\/\+(\d+)/i))) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'levelLord', min: L.min, filter: singular(mx[1]).toLowerCase(), p: +mx[2], t: +mx[3] }); rec.status = 'ok'; continue; }
         }
@@ -4095,6 +4096,7 @@
     const moon = info.moonSeen || otherPlayers(g).some(o => bfInfo(o).moonSeen) ? moonOf(g) : null;          // Blood Moon
     for (const p of info.producers) {
       if (p.tapped || p.held || !p.produce) continue;          // held: kept untapped for a counterspell
+      if (p.card.a.produceLevel && (p.level || 0) < p.card.a.produceLevel) continue;          // level up: its mana ability is not there yet (Joraga Treespeaker below level 1)
       if (g.opp && g.opp.splendorSeen && isCreaturePerm(p) && splendored(g)) continue;
       if (stony && (p.card.a.isArtifact || p.sacMana && p.token)) continue;                              // Stony Silence (Treasures too)
       if (abilAny && abilBlocked(g, p, true)) continue;          // Karn, Linvala: no mana from their artifacts and creatures

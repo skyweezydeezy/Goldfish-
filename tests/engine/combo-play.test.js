@@ -74,4 +74,31 @@ const D = require('../../goldfish/static/decide.js');
 g = scep(); hand(g, 'Walking Ballista'); let q = null;
 g.ask = (gg, d) => { if (d.kind === 'combo') q = D.question(gg, d); return d.def; }; run(g);
 check('decide.js: kind combo has a title "Combo assembled: <name> (<cards>)", labelled options and the default starred', q && /^Combo assembled: /.test(q.title) && q.options.length >= 3 && q.options.every(o => o.name) && q.def.length === 1 && q.options[q.def[0]].id === 'win', q && q.title);
+
+// ---- review fixes (MAIN 3) ----
+// 1. "Don't go off now" gives the pieces back: nothing was paid or cast
+g = fresh(); lands(g, 5, 'Mountain'); put(g, 'Grizzly Bears'); const dm = hand(g, 'Dualcaster Mage'), tf = hand(g, 'Twinflame'); g.ask = chooser('hold'); asked.length = 0;
+const bfBefore = g.battlefield.length, tappedBefore = g.battlefield.filter(x => x.tapped).length; ev = run(g);
+check('hold on a board combo: both cards are still in the hand', g.hand.includes(dm) && g.hand.includes(tf) && g.killTurn == null, g.hand.map(i => i.card.name).join(','));
+check('...nothing entered, nothing in the graveyard, no land tapped', g.battlefield.length === bfBefore && g.battlefield.filter(x => x.tapped).length === tappedBefore && !g.graveyard.some(i => i.card.name === 'Twinflame'));
+run(g); run(g);
+check('...and later actions neither ask again nor log the banner again', asked.length === 1, asked.length);
+g = fresh(); lands(g, 5, 'Mountain'); put(g, 'Grizzly Bears'); hand(g, 'Dualcaster Mage'); hand(g, 'Twinflame'); g.ask = chooser('hold'); asked.length = 0; ev = run(g);
+check('one banner event for one question', ev.filter(e => e.type === 'combo').length === 1);
+// 2. the library emptier asks once
+g = fresh(); lands(g, 3, 'Island'); lands(g, 2, 'Swamp'); hand(g, "Thassa's Oracle"); hand(g, 'Demonic Consultation'); g.ask = chooser('win'); asked.length = 0; ev = run(g);
+check('Consultation + Oracle: asked once, one banner, then the win', asked.length === 1 && ev.filter(e => e.type === 'combo').length === 1 && g.killTurn != null, asked.length + ' ' + ev.filter(e => e.type === 'combo').length);
+// 3. colours: a colourless loop makes only colourless mana
+g = fresh(); lands(g, 2, 'Island'); put(g, 'Sol Ring'); const sr2 = put(g, 'Sol Ring'); const scc = put(g, 'Isochron Scepter'); scc.imprinted = { iid: 990, card: by('Dramatic Reversal') };
+g.ask = chooser('mana:inf'); g.floating = []; run(g);
+check('infinite mana from two Sol Rings is colourless only', g.infMana && g.infMana.colors.join('') === 'C' && g.floating.every(u => u.colors.size === 1 && u.colors.has('C')), g.infMana && g.infMana.colors.join(','));
+// 4. a typed amount is capped: more than 99 means ∞
+const typed = n => { const gg = scep(); hand(gg, 'Walking Ballista'); gg.floating = []; D.seat(gg); D.resolveSync([gg], 0, gs => { const e = []; G.comboLines(gs[0], e); return e; }, q => (q.kind === 'combo' ? { mana: n } : 'auto')); return gg; };
+g = typed(100000);
+check('a typed 100000 mana is ∞ (one capped pool, flagged), not 100000 objects', g.infMana && g.floating.length <= 99 && g.killTurn == null, g.floating.length);
+g = typed(7);
+check('a typed 7 mana is 7 floating units', !g.infMana && g.floating.length === 7 && g.killTurn == null, g.floating.length);
+g = fresh(); lands(g, 2, 'Island'); put(g, 'Sol Ring'); put(g, 'Sol Ring'); const scd = put(g, 'Isochron Scepter'); scd.imprinted = { iid: 989, card: by('Dramatic Reversal') }; hand(g, 'Walking Ballista');
+g.ask = chooser('mana:inf'); g.floating = []; run(g);
+check('with an outlet too, a colourless loop still gives only colourless mana', g.infMana && g.infMana.colors.join('') === 'C', g.infMana && g.infMana.colors.join(','));
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

@@ -324,7 +324,7 @@
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
       return ks.length >= q.min && ks.length <= q.max ? ks.map(k => d.options[k]) : d.def;
     }
-    if (d.kind === 'combo' && a.pick && typeof a.pick === 'object' && Number.isInteger(a.pick.mana) && a.pick.mana > 0 && d.options.some(o => o.id === 'mana:inf')) { const n = Math.min(a.pick.mana, 100000); return { id: 'mana:' + n, label: `${n} mana`, note: '' }; }          // "[number] mana": any amount typed
+    if (d.kind === 'combo' && a.pick && typeof a.pick === 'object' && Number.isInteger(a.pick.mana) && a.pick.mana > 0 && d.options.some(o => o.id === 'mana:inf')) { const n = a.pick.mana; return n > 99 ? d.options.find(o => o.id === 'mana:inf') : { id: 'mana:' + n, label: `${n} mana`, note: '' }; }          // "[number] mana": any amount typed
     if (a.pick === 'none') return q.optional ? null : d.def;
     return Number.isInteger(a.pick) && a.pick >= 0 && a.pick < d.options.length ? d.options[a.pick] : d.def;          // an option may itself be false (explore: "keep it on top")
   }

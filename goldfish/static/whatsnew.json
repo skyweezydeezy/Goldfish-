@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 172,
+      "lines": [
+        "Simulate: Tune to the next bracket finds card swaps and play changes that make your deck kill faster, checks them over 2,000 games, and tells you what to change. Apply one or all; nothing changes until you do."
+      ]
+    },
+    {
       "v": 171,
       "lines": [
         "New built-in deck: Overtime at the Treasure Mine (Magda, Brazen Outlaw), checked at Bracket 4.",

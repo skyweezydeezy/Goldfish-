@@ -62,5 +62,35 @@ const interaction = new Set(rr.cards.filter(c => ['removal', 'counter', 'wipe', 
   check('kill: the deck list stays the same size', size(rr.cards) === 100 && listSize(text) === 100 && listSize(C.applyChanges(text, r.lines.join('\n')).text) === 100);
   console.log(`      (${((Date.now() - t0) / 1000).toFixed(0)}s)`); }
 
+// ---- "Tune to the next bracket" (T-055): the next faster bracket's median kill turn, in plain words ----
+{ check('the final check plays at least 2,000 games unless a test lowers it', T.FINAL_MIN === 2000);
+  const big = JSON.parse(fs.readFileSync(path.join(DATA, 'top-cards.json'), 'utf8')).cards.slice(0, 1500), pool2 = [];
+  for (const t of big) {
+    if (!sets[t.set]) { try { sets[t.set] = JSON.parse(fs.readFileSync(path.join(DATA, 'sets', t.set + '.json'), 'utf8')); } catch (e) { sets[t.set] = { cards: [] }; } }
+    const c = sets[t.set].cards.find(x => x.name === t.name && x.oracle_text != null); if (c) pool2.push(c);
+  }
+  const cp = ld('combo-pieces'), t0 = Date.now();
+  const r = T.nextBracket(G, P, { cards: cp.cards, tokens: cp.tokens, pool: pool2 }, O, { n: 250, rounds: 5, seed: 99, minFinal: 500 });
+  check('next bracket: B2 -> B3 (median kill by turn 7) is reached, and the median really gets faster on fresh shuffles', r.status === 'reached' && r.current === 2 && r.target === 3 && r.after.median < r.before.median && r.after.median <= 7, `median ${r.before.median} -> ${r.after.median}`);
+  check('next bracket: confirmed on fresh shuffles by more than chance (z > 2), and the games are not the search\'s own', r.verdict === 'confirmed' && r.confirm.z > 2 && r.freshSeed !== r.seed);
+  check('next bracket: the answer names the target, the cuts, the adds and before -> after', /^To reach B3 \(median kill by turn 7\): cut .+; add .+; result median turn 7 \(was turn 8\), kills by turn 7 \d+% → \d+%\.$/.test(r.text), r.text);
+  const text0 = cp.cards.map(c => `${c.qty || 1} ${c.name}`).join('\n'), ch = C.applyChanges(text0, r.lines.join('\n'));
+  check('next bracket: the changes keep 100 cards and apply to the list; no commander cut', ch.missing.length === 0 && listSize(ch.text) === listSize(text0) && !ch.cuts.some(n => cp.cards.find(c => c.name === n && c.commander)), r.lines.join(' | '));
+  check('next bracket: each kept change carries its own cut and add, to Apply one by one', r.steps.every(x => x.kind === 'policy' || (x.cut.length && x.add.length === x.cut.length)));
+  console.log(`      (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+  // the other way round: B5 is out of reach for Frodo; it must say so, with the best it found, and never claim success
+  const fr = ld('frodo'), t1 = Date.now();
+  const q = T.nextBracket(G, P, { cards: fr.cards, tokens: fr.tokens, pool: pool2 }, O, { n: 150, rounds: 1, seed: 5, bracket: 5, minFinal: 400 });
+  check('next bracket: an out-of-reach target says "Couldn\'t reach B5", not success', !q.reached && /^Couldn't reach B5/.test(q.text) && q.status !== 'reached', q.text.slice(0, 160));
+  check('next bracket: ...and gives the best it found (a median) or says nothing beat chance', /the best found gets to median|no change beat chance|did not hold up/.test(q.text));
+  const same = T.nextBracket(G, P, { cards: fr.cards, tokens: fr.tokens, pool: [] }, O, { n: 80, seed: 5, bracket: 1 });
+  check('next bracket: a target at or below the deck\'s bracket needs no tuning', same.status === 'already' && /needs no tuning/.test(same.text), same.text);
+  // a Spellbook piece that is banned or not legal in Commander is never offered (poolSize counts what the search may add)
+  { const ring = pool2.find(c => c.name === 'Sol Ring'), mk = lg => Object.assign({}, ring, { name: 'Test Ring ' + lg, legal_commander: lg });
+    const run = extra => T.tune(G, P, { cards: fr.cards, tokens: fr.tokens, pool: [], extra }, O, { kind: 'kill', bracket: 3 }, { n: 40, rounds: 1, seed: 3, wide: true, finalN: 40, fullTurns: 10 }).poolSize;
+    const base = run([]), lg = run([mk('legal')]), bn = run([mk('banned')]), nl = run([mk('not_legal')]);
+    check('next bracket: a banned combo piece is not offered, a legal one is', !!ring && lg === base + 1 && bn === base && nl === base, `legal +${lg - base}, banned +${bn - base}, not_legal +${nl - base}`); }
+  console.log(`      (${((Date.now() - t1) / 1000).toFixed(0)}s)`); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

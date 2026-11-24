@@ -346,6 +346,7 @@
     S.deck = G.buildDeck(cards, S.tokens, currentPolicy().tribe);
     S.byUid = S.deck.unique;
     S.game = null; S.sim = null; S.bookCombos = []; S.oddsSel.clear();
+    try { nbReset(); } catch (e) { /* the box is not built yet */ }          // another deck: the next-bracket box (a result for the old deck, a run in progress) goes
     const msgs = $('#deckMsgs'); msgs.innerHTML = '';
     const add = (cls, html) => msgs.appendChild(h('div', 'msg ' + cls, html));
     const cmdrs = S.deck.commanders.map(i => i.card.name);
@@ -2185,6 +2186,7 @@
     sel.innerHTML = list.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
     if (list.some(o => o[0] === cur)) sel.value = cur;
     const on = t => now.onCurve[t - 1] != null ? pct(now.onCurve[t - 1]) : '?';
+    fillNext();
     $('#tnNow').textContent = !S.deck ? '' : now ? `Now: ${k ? 'median kill turn ' + k : 'no kill in half the games by turn ' + now.turns} (bracket speed ${now.bracket ? 'B' + now.bracket : `at most B${now.atMost}: needs more turns to tell`}) · land drop 3 on turn 3 in ${on(3)}, 4 on turn 4 in ${on(4)}.`
       : 'Now: measured when you press Tune (or run the simulation above).';
   }
@@ -2255,6 +2257,141 @@
       pol.forEach(k => savePolicy(k, r.policy[k], `tuned: ${goalTxt}`));
       fillLabChoices(); toast(`Saved ${pol.length} choice${pol.length === 1 ? '' : 's'} for this deck`);
     });
+  }
+
+  // ---------- Simulate: "Tune to the next bracket" (tune.js nextBracket, T-055): card swaps and lab choices that move the median kill turn up a bracket ----------
+  const NB_N = 400;                                                                                  // games per change; the Run button's data-n overrides it (tests); the final check is always 2,000+
+  let nbWorker = null, nbResult = null, nbRunId = 0, nbApplying = false;
+  function nbReset(force) {
+    if (nbApplying && !force) return;
+    nbRunId++; if (nbWorker) { nbWorker.terminate(); nbWorker = null; }
+    nbResult = null; const o = $('#nbOut'); if (o) { o.innerHTML = ''; $('#nbInfo').textContent = ''; nbDone(); fillNext(); }
+  }
+  function fillNext() {
+    const sel = $('#nbTarget'); if (!sel) return;
+    const now = simNow(), cur = sel.value;
+    const b = now && now.bracket;
+    const opts = [['next', b ? (b >= 5 ? 'Already the fastest bracket' : `Next faster bracket (B${b + 1})`) : 'Next faster bracket']]
+      .concat(Tune.SPEED.slice().reverse().map(([t, bk]) => [String(bk), `B${bk}: median kill by turn ${t - 1}`]).filter(([v]) => !b || +v > b));
+    sel.innerHTML = opts.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+    if (opts.some(o => o[0] === cur)) sel.value = cur;
+    $('#nbNow').textContent = !S.deck ? '' : now ? `Now: ${now.median ? 'median kill turn ' + now.median : 'no kill in half the games by turn ' + now.turns} (bracket speed ${now.bracket ? 'B' + now.bracket : `at most B${now.atMost}: needs more turns to tell`}).` : 'Now: measured when you press the button (or run the simulation above).';
+  }
+  fillNext();
+  // text edits: the cut lines lose a copy (a line of one copy goes), the added card takes a copy on its own line (or joins its line), the list is loaded again
+  function swapInText(text, pairs, names) {
+    const lines = text.split(/\r?\n/), GONE = '\u0001gone';
+    const inMain = i => { const a = Source.parseDecklist(lines.slice(0, i + 1).join('\n')), b = Source.parseDecklist(lines.slice(0, i).join('\n')); return a.length > b.length && !a[a.length - 1].commander; };
+    const find = want => { for (let i = 0; i < lines.length; i++) { if (lines[i] === GONE) continue; const e = Source.parseDecklist(lines[i])[0]; if (e && want.has(nameKey(e.name)) && inMain(i)) return i; } return -1; };
+    const QTY = /^(\s*)(\d+)(x?)(\s+)/i;          // a line with no number ("Sol Ring") is one copy
+    const qtyAt = i => { const m = lines[i].match(QTY); return m ? +m[2] : 1; };
+    const setQty = (i, q) => { lines[i] = QTY.test(lines[i]) ? lines[i].replace(QTY, (m, a, n, x, z) => a + q + x + z) : lines[i].match(/^\s*/)[0] + q + ' ' + lines[i].trimStart(); };
+    const missing = [];
+    for (const { cut, add } of pairs) {
+      const want = new Set([cut].concat(names(cut)).filter(Boolean).map(nameKey)), i = find(want);
+      if (i < 0) { missing.push(cut); continue; }
+      const q = qtyAt(i);
+      if (q > 1) setQty(i, q - 1); else lines[i] = GONE;
+      const j = find(new Set([nameKey(add)]));
+      if (j >= 0) setQty(j, qtyAt(j) + 1); else lines.splice(i + 1, 0, '1 ' + add);
+    }
+    return { text: lines.filter(l => l !== GONE).join('\n'), missing };
+  }
+  async function applyNext(idxs) {
+    const r = nbResult; if (!r || !S.deck) return;
+    if (r.deck !== S.deck) { nbReset(true); return toast('The deck has changed since it was tuned: run it again'); }          // never apply one deck's result to another
+    r.applied = r.applied || new Set();
+    idxs = idxs.filter(i => !r.applied.has(i));
+    if (!idxs.length) return toast('Those changes are already applied');
+    const steps = idxs.map(i => r.steps[i]).filter(Boolean);
+    const pairs = steps.filter(x => x.kind === 'cards').flatMap(x => x.cut.map((c, k) => ({ cut: c, add: x.add[k] }))).filter(p => p.add);
+    const pols = steps.filter(x => x.kind === 'policy');
+    if (pairs.length) {
+      const text = S.deckText || $('#deckText').value;
+      if (!text.trim()) return toast('Load the deck from a list first');
+      const out = swapInText(text, pairs, c => S.cards.filter(x => x.name === c).map(x => x.input_name));
+      if (out.missing.length) return toast(`${out.missing.join(', ')} not found in the loaded list: nothing was changed`);
+      $('#deckText').value = out.text;
+      nbApplying = true; let ok = false;
+      try { ok = await loadDeck({ quiet: true, text: out.text }); } finally { nbApplying = false; }
+      if (!ok) { $('#deckText').value = text; return; }
+      r.deck = S.deck;          // the deck we just changed is the one this result is about
+      localStorage.setItem('gf_last', out.text);          // a reload brings back the tuned list
+    }
+    pols.forEach(x => savePolicy(x.key, x.value, 'tuned: next bracket'));
+    if (pols.length) fillLabChoices();
+    toast(`Applied ${steps.length} change${steps.length === 1 ? '' : 's'}${pairs.length ? ' to the loaded deck' : ''}`);
+    idxs.forEach(i => { r.applied.add(i); const bt = $('#nbOut').querySelector(`.nb-apply[data-i="${i}"]`); if (bt) { bt.disabled = true; bt.textContent = 'Applied ✓'; } });
+    if (r.applied.size >= r.steps.length) { const all = $('#nbAll'); if (all) all.disabled = true; }
+    $('#nbInfo').textContent = 'Applied to the loaded deck. The numbers above are from the deck before the change: run the simulation again to see the new deck.';
+    fillNext();
+  }
+  const nbDone = () => { $('#nbRun').disabled = false; $('#nbStop').hidden = true; };
+  $('#nbStop').addEventListener('click', () => {
+    nbRunId++; if (nbWorker) { nbWorker.terminate(); nbWorker = null; }          // a run still searching for cards ends too (its token is out of date)
+    nbDone(); $('#nbInfo').textContent = 'Stopped. Nothing was changed in your deck.';
+  });
+  async function runNext() {
+    if (!need()) return;
+    const btn = $('#nbRun'), v = $('#nbTarget').value, deck = S.deck, run = ++nbRunId;
+    if (nbWorker) { nbWorker.terminate(); nbWorker = null; }
+    let nbBook = null;
+    btn.disabled = true; $('#nbStop').hidden = false; $('#nbOut').innerHTML = ''; nbResult = null;
+    const ident = [...new Set((deck.commanders.length ? deck.commanders.map(i => i.card) : S.cards).flatMap(c => c.color_identity || []))];
+    const say = t => { $('#nbInfo').textContent = t; };
+    say('Finding ramp, card draw, finishers and combo pieces in your colors…');
+    let pool = [], extra = [];
+    const queries = [Compare.roleQuery('ramp', ident), Compare.roleQuery('draw', ident)].filter(Boolean).map(q => q + ' cmc<=3')
+      .concat([`legal:commander id<=${(ident.join('') || 'C').toLowerCase()} -is:digital -t:land cmc<=5 (o:"each opponent loses" or o:"damage to each opponent" or o:"you win the game" or o:"extra turn")`]);
+    for (const q of queries) { try { pool = pool.concat(await Source.searchCards(q, 12)); } catch (e) { /* no suggestions */ } if (run !== nbRunId) return; }
+    try {
+      const db = typeof Combos !== 'undefined' && Combos.additions ? await loadComboDb() : null;
+      if (db) for (const a of Combos.additions(db, deck, deckIdentity(deck), '', 5)) {
+        try { const got = await Source.loadDeck('1 ' + a.card, () => {}); if (got.cards[0]) extra.push(got.cards[0]); } catch (e) { /* one card missing */ }
+        if (run !== nbRunId) return;
+      }
+      if (db && extra.length) {          // the Spellbook combos any candidate completes count for the goldfish, once every piece of one is in the deck
+        const o = opts(), all = S.cards.concat(extra.map(c => Object.assign({}, c, { qty: 1, commander: false }))), names = all.map(c => c.name), id = deckIdentity(deck);
+        try { nbBook = Combos.goldfished(Combos.find(db, names, id), G.deckCombos(G.buildDeck(all, S.tokens, currentPolicy().tribe))); } catch (e) { nbBook = null; }
+      } else nbBook = null;
+    } catch (e) { nbBook = null; }
+    if (run !== nbRunId || S.deck !== deck) { if (run === nbRunId) nbDone(); return; }
+    const n = Math.max(40, Math.min(4000, +btn.dataset.n || NB_N));
+    nbWorker = new Worker('worker.js');
+    const bar = $('#nbProgress div'); bar.style.width = '0';
+    let note = '';
+    const t0 = performance.now();
+    say(`Tuning: ${n.toLocaleString()} games for each change, then 2,000 fresh games to check${pool.length + extra.length ? '' : ' (no cards found to add: lands and choices only)'}…`);
+    nbWorker.onmessage = e => {
+      if (run !== nbRunId) return;
+      if (e.data.progress != null) { bar.style.width = (e.data.progress * 100).toFixed(1) + '%'; if (e.data.note) note = e.data.note; say(`Tuning: ${note || 'measuring'} (${Math.round(e.data.progress * 100)}%)…`); return; }
+      if (!e.data.result) return;
+      bar.style.width = '100%'; nbDone(); nbWorker = null;
+      if (S.deck !== deck) { say('The deck changed while tuning: run it again.'); return; }
+      say(`Done in ${((performance.now() - t0) / 1000).toFixed(0)}s.`);
+      e.data.result.deck = deck; renderNext(e.data.result);
+    };
+    nbWorker.onerror = err => { if (run !== nbRunId) return; nbDone(); nbWorker = null; say('Tune error: ' + err.message); };
+    const o = Object.assign(opts(), nbBook ? { bookCombos: nbBook } : {});
+    nbWorker.postMessage({ nextBracket: { cards: S.cards, tokens: S.tokens, pool, extra, identity: ident, bracket: v === 'next' ? undefined : +v, rounds: 5, minFinal: +btn.dataset.minFinal || undefined }, opts: o, n, seed: rseed() });
+  }
+  $('#nbRun').addEventListener('click', runNext);
+  S.nbTest = { swapInText: (t, p) => swapInText(t, p, () => []), show: r => renderNext(r), apply: idxs => applyNext(idxs) };          // for the UI tests
+  function renderNext(r) {
+    const out = $('#nbOut'), P = x => (100 * (x || 0)).toFixed(0) + '%', b = r.before, a = r.after;
+    if (r.status === 'top' || r.status === 'already') { out.innerHTML = `<p><b>${esc(r.text)}</b></p>`; return; }
+    nbResult = r; r.deck = r.deck || S.deck;
+    const T = r.targetTurn, med = m => m.median ? 'turn ' + m.median : `after turn ${r.fullTurns}`, row = (l, x, y) => `<tr><td>${l}</td><td>${x}</td><td>${y}</td></tr>`;
+    const li = r.applicable.map((s, i) => `<li><b>${esc(s.label)}</b> <span class="hint">z ${s.z.toFixed(1)} on the search's shuffles</span> <button class="ghost nb-apply" data-i="${i}">Apply</button></li>`).join('');
+    const table = row('Median kill turn', b.median || '—', a.median || '—') + row('Average kill turn', b.meanKill.toFixed(1), a.meanKill.toFixed(1))
+      + [...new Set([T, 6, 8])].sort((x, y) => x - y).map(t => row(`Kills by turn ${t}`, P(b.byTurn[t - 1]), P(a.byTurn[t - 1]))).join('') + row('Bracket speed', b.bracket ? 'B' + b.bracket : '?', a.bracket ? 'B' + a.bracket : '?');
+    out.innerHTML = `<p class="nb-answer"><b>${r.reached ? '✓ ' : ''}${esc(r.text)}</b></p><div class="suggest">`
+      + (r.applicable.length ? `<div class="sg good"><b>The changes (${r.applicable.length})</b><p class="hint">The changes were checked together on fresh games; one change alone is not checked.</p><ul>${li}</ul></div>` : '')
+      + `<div class="sg"><b>Before → after: ${r.finalN.toLocaleString()} fresh games each${r.confirm ? `, z ${r.confirm.z.toFixed(1)}` : ''}</b><table class="labtable"><thead><tr><th></th><th>Before</th><th>After</th></tr></thead><tbody>${table}</tbody></table></div></div>`
+      + (r.applicable.length ? `<div class="row wrap"><button id="nbAll" class="primary">Apply all</button></div>` : '');
+    tidy(out);
+    out.querySelectorAll('.nb-apply').forEach(bt => bt.addEventListener('click', () => applyNext([+bt.dataset.i])));
+    const all = $('#nbAll'); if (all) all.addEventListener('click', () => applyNext(r.applicable.map((s, i) => i)));
   }
 
   // ---------- Policy lab: swaps by role (the diagnosis grouped by what cards do: "more ramp", then 2 cards to add and 2 to remove) ----------

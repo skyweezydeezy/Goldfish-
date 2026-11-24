@@ -42,6 +42,7 @@ This keeps merges in one place, so branches stop colliding on the live branch.
 - The Visuals session starts a fresh session with that note as its brief, on the same branch, tells the other sessions the new session id, and archives the old session.
 - The Visuals session does the same for itself: it writes `docs/agents/VISUALS.md`, starts its replacement, and updates the session id at the top of this file.
 - A new task that is unrelated to a long session's current work goes to a fresh session from the start.
+- **Archive the old session as soon as a new one takes over its work** (the user: "remember to archive a previous session when a new session takes over it"): MAIN archives it with archive_session once the replacement is running and nothing of the old one is unmerged.
 - Hand over as well after a verified milestone, when the task's scope changes a lot, or when the session keeps making context mistakes. Before any hand-over: push the work, update the note (MAIN: `PROJECT_STATE.md` too), list what is unfinished, and write the exact next action. Chat memory and the automatic summary are not a hand-over.
 - A replacement MAIN reads `PROJECT_STATE.md`, this file and `docs/agents/VISUALS.md`, checks them against the repository (branches, open pull requests, the live version), finds the active tasks and the reports not yet answered, and resumes from the latest verified version. It does not redo finished work, reassign active tasks, or call something merged because an old summary says so.
 

@@ -209,6 +209,11 @@ async function simulate() {
   const doc = { about: 'Bracket check of the built-in decks. Re-run: node tools/verify-brackets.js; then --apply. Method: docs/agents/DECK-BRACKETS.md',
     version: +version, date: new Date().toISOString().slice(0, 10), gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED,
     seconds: Math.round((Date.now() - t0) / 1000), jobs: JOBS, rules: RULES, decks: keep.concat(results).sort((a, b) => a.file.localeCompare(b.file)) };
+  if (ONLY && old.decks) {          // a run for some decks only: the full run's details stay at the top, this run is listed under "runs"
+    const run = { only: results.map(r => r.file), version: doc.version, date: doc.date, gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds: doc.seconds, jobs: JOBS };
+    results.forEach(r => { r.version = doc.version; r.date = doc.date; });
+    Object.assign(doc, { version: old.version, date: old.date, gamesPerDeck: old.gamesPerDeck, matchesPerPair: old.matchesPerPair, seconds: old.seconds, jobs: old.jobs, runs: (old.runs || []).concat([run]) });
+  }
   fs.writeFileSync(OUT, JSON.stringify(doc, null, 1) + '\n');
   for (const v of results) console.log(`${(v.stated ? 'B' + v.stated : '--')} -> ${v.verified ? 'B' + v.verified : '--'}  ${v.name.slice(0, 48).padEnd(48)} med T${v.goldfish.medianKill} by5 ${v.goldfish.by5}% GC ${v.rules.gameChangers.length} field ${v.field ? v.field.winRate + '%' : '-'}`);
   console.log(`${results.length} decks, ${GAMES} goldfish games each, ${perPair} matches per pair; ${doc.seconds} s on ${JOBS} threads. Wrote ${path.relative(ROOT, OUT)}`);
@@ -221,7 +226,7 @@ function apply() {
   for (const v of doc.decks) {
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
-    let line = `// Checked by ICEYfish (v${doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
+    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
     if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
@@ -232,7 +237,7 @@ function apply() {
   }
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)
   const SYNC = path.join(DECKS, 'drive-sync.json'), sync = JSON.parse(fs.readFileSync(SYNC, 'utf8'));
-  for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander) { rec.verified = v.verified; rec.verifiedAt = doc.date; } }
+  for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander) { rec.verified = v.verified; rec.verifiedAt = v.date || doc.date; } }
   fs.writeFileSync(SYNC, JSON.stringify(sync, null, 1) + '\n');
   console.log('Now run: node tools/build-deck-index.js');
 }

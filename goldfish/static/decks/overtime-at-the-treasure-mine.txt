@@ -1,5 +1,6 @@
 // Overtime at the Treasure Mine (Magda, Brazen Outlaw)
 // Bracket 4
+// Checked by ICEYfish (v167, 20,000 games): median kill T7, 2.7% by T5, 54.9% by T7; field win 36.5%; 0 Game Changers; B4 confirmed
 // COMMANDER
 1 Magda, Brazen Outlaw
 // DECK

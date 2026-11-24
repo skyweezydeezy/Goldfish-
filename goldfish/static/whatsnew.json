@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 169,
+      "lines": [
+        "Odds: a Combo odds box shows your chance of having every piece of a combo by each turn. Simulate: Raise your combo odds suggests one-card additions and lets you try your own swap.",
+        "A deck the Commander rule refuses no longer leaves the deck menu on the wrong deck."
+      ]
+    },
+    {
       "v": 167,
       "lines": [
         "Fixed rare game errors (a creature with echo that lost its abilities; a blanked mana rock). Blockers' damage is doubled by Uncivil Unrest, Neriv and the like too.",

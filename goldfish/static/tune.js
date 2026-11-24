@@ -22,10 +22,17 @@
   const KEEP_ROLES = new Set(['ramp', 'fast-mana', 'draw', 'removal', 'wipe', 'counter', 'protection', 'tutor', 'wincon']);
   const LAND_GOALS = [{ turn: 3, share: 0.9 }, { turn: 4, share: 0.8 }, { turn: 5, share: 0.7 }];
 
-  // byTurn[t] = share of games that killed by turn t+1 (cumulative); no median inside it counts as later than the last turn
+  // byTurn[t] = share of games that killed by turn t+1 (cumulative). With no median inside the games, the median is only known to be
+  // later than the last turn played: that is BASE_BRACKET once the games reach past every threshold, and unknown (null) for a run too
+  // short to tell. bracketAtMost(byTurn) gives the fastest bracket still possible then, for an "at most B3, needs more turns" note.
   function bracketOf(byTurn) {
     const mi = byTurn.findIndex(v => v >= 0.5);
-    return speedBracket(mi < 0 ? byTurn.length + 1 : mi + 1);
+    if (mi >= 0) return speedBracket(mi + 1);
+    return speedBracket(byTurn.length + 1) === BASE_BRACKET ? BASE_BRACKET : null;
+  }
+  function bracketAtMost(byTurn) {
+    const mi = byTurn.findIndex(v => v >= 0.5);
+    return speedBracket(mi >= 0 ? mi + 1 : byTurn.length + 1);
   }
   const bracketGoal = b => BRACKET_SPEED.find(x => x.bracket === b) || null;
 
@@ -240,7 +247,7 @@
   }
   const strip = m => ({ n: m.n, errors: m.errors, median: m.median, meanKill: m.meanKill, byTurn: m.byTurn, onCurve: m.onCurve, bracket: m.bracket });
 
-  const api = { tune, bracketOf, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
+  const api = { tune, bracketOf, bracketAtMost, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Tune = api;
 })(typeof self !== 'undefined' ? self : this);

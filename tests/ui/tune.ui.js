@@ -41,6 +41,12 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('after a simulation: the median kill turn, its bracket speed and the land drops now', /bracket speed B[2-5]/.test(now) && /land drop 3 on turn 3 in [\d.]+%/.test(now), now);
   check('...and "2 turns earlier" names the target turn', /\(median turn \d+\)/.test(await p.$eval('#tnTarget option[value=e2]', o => o.textContent)));
 
+  // a run too short to tell: 4 turns with no median kill gives "at most", never a made-up bracket
+  await p.evaluate(() => { document.querySelector('#optTurns').value = '4'; document.querySelector('#runSim').click(); });
+  await p.waitForFunction(() => /by turn 4/.test(document.querySelector('#tnNow').textContent), null, { timeout: 120000 });
+  const short = await p.textContent('#tnNow');
+  check('a 4-turn run with no median kill: "at most B4: needs more turns to tell", not a bracket', /bracket speed at most B4: needs more turns to tell/.test(short), short);
+  await p.evaluate(() => { document.querySelector('#optTurns').value = '10'; });
   // hit land drops more often: land drop 4 on turn 4
   await p.selectOption('#tnGoal', 'lands');
   const lands = await p.$$eval('#tnTarget option', os => os.map(o => o.textContent));

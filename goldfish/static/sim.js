@@ -4190,7 +4190,7 @@
     if (!g.dry && g.ojerQueue && g.ojerQueue.length) for (const i of g.ojerQueue.splice(0)) { const at = g.graveyard.indexOf(i); if (at < 0) continue; g.graveyard.splice(at, 1); const tp = i.card.a.dieTransform !== 'untapped'; const np = enterWithTriggers(g, i, { tapped: tp }, ev || []); transformPerm(g, np, ev || []); np.tapped = tp; (ev || []).push({ type: 'note', text: `${i.card.name} returns transformed: ${np.card.name}` }); }
     if (!g.dry && g.slashQueue && g.slashQueue.length) for (const { i, stun, counter } of g.slashQueue.splice(0)) {          // back tapped: Unstoppable Slasher (two stun counters), Supernatural Stamina, Undying Malice (a +1/+1 counter)
       const at = g.graveyard.indexOf(i); if (at < 0) continue;
-      g.graveyard.splice(at, 1); const np = enterWithTriggers(g, i, { tapped: true, counters: counter || 0 }, ev || []); np.tapped = true; if (stun) np.stun = stun;
+      g.graveyard.splice(at, 1); const np = enterWithTriggers(g, i, { tapped: true }, ev || []); np.tapped = true; if (stun) np.stun = stun; if (counter) addCounters(g, np, '+1/+1', counter, ev || [], np);          // its deathReturn does not carry over, so this never loops
       (ev || []).push({ type: 'note', text: `${i.card.name} returns to the battlefield tapped${stun ? ' with two stun counters' : counter ? ' with a +1/+1 counter' : ''}`, source: np });
     }
     if (!g.dry && g.nexusDead && g.nexusDead.n) { const nd = g.nexusDead; g.nexusDead = null;
@@ -4293,11 +4293,11 @@
       const np = enterWithTriggers(g, p.inst, { flyCounter: true }, ev); np.flyCounter = true; ev.push({ type: 'note', text: `${p.card.name} returns with a flying counter (Luminous Broodmoth)` });
     } else
     if (wasCreature && !p.token && p.inst && !g.dry && undyingBy && undyingBy !== p && (p.counters || 0) <= 0 && dest !== 'exile' && dest !== 'hand' && g.graveyard.includes(p.inst) && g.battlefield.includes(undyingBy) && g.battlefield.length < 250) {          // Mikaeus: undying
-      g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const np = enterWithTriggers(g, p.inst, { counters: 1 }, ev); np.counters = 1; ev.push({ type: 'note', text: `${p.card.name} returns with a +1/+1 counter (undying)` });
+      g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const np = enterWithTriggers(g, p.inst, { counters: 1 }, ev); np.counters = 1; returnCounters(g, np, '+1/+1', 1, ev); ev.push({ type: 'note', text: `${p.card.name} returns with ${np.counters > 1 ? np.counters + ' +1/+1 counters' : 'a +1/+1 counter'} (undying)` });
     } else
     if (wasCreature && !p.token && p.inst && p.card.a.kw && p.card.a.kw.has('persist') && (p.counters || 0) >= 0 && dest !== 'exile' && dest !== 'hand' && g.battlefield.length < 250 && !g.dry) {       // Persist (Kitchen Finks): back with a -1/-1 counter
       const gi = g.graveyard.indexOf(p.inst); if (gi >= 0) g.graveyard.splice(gi, 1);
-      const np = enterWithTriggers(g, p.inst, { counters: bfInfo(g).vizier ? 0 : -1 }, ev); np.counters = bfInfo(g).vizier ? 0 : -1; ev.push({ type: 'note', text: `${p.card.name} persists: it returns with ${np.counters ? 'a -1/-1 counter' : 'no counter (Vizier of Remedies)'}` });
+      const np = enterWithTriggers(g, p.inst, { counters: bfInfo(g).vizier ? 0 : -1 }, ev); np.counters = bfInfo(g).vizier ? 0 : -1; returnCounters(g, np, '-1/-1', 1, ev); ev.push({ type: 'note', text: `${p.card.name} persists: it returns with ${np.counters < -1 ? -np.counters + ' -1/-1 counters' : np.counters ? 'a -1/-1 counter' : 'no counter (Vizier of Remedies)'}` });
     }
   }
   // Relentless Dead: when it dies, pay {B} to return it to your hand, and {X} to return another Zombie with mana value X
@@ -4383,13 +4383,38 @@
     const tl = (card.type_line || '').toLowerCase();
     return types.some(w => tl.includes(singular(w)));
   }
-  function addCounters(g, p, kind, n, ev, source, noDouble) {
+  // how many counters "put n" actually puts, after the replacement effects (Vorinclex, Hardened Scales, Doubling Season, Mauhúr, Loading Zone)
+  function counterAmount(g, p, kind, n, noDouble) {
     if (n > 0 && !g.dry && othersHave(g, 'vorinHalf')) n = Math.floor(n / 2);          // Vorinclex, Monstrous Raider on another player's side
     if (!(n > 0)) return 0;
     const inf = bfInfo(g);
     const lz = inf.cplusLz && (isCreaturePerm(p) || p.card.a.isPlaneswalker) ? inf.cplusLz : 0;          // Lae'zel: one more of each kind
     let add = noDouble ? n : (kind === '+1/+1' && isCreaturePerm(p) ? (n + lz + inf.cplus + (inf.cplusOther ? inf.cplusOther.filter(h => h !== p).length : 0)) * counterMult(g) * Math.pow(2, inf.cbr) : (n + (inf.cplusAll && kind !== 'loyalty' && (isCreaturePerm(p) || p.card.a.isArtifact) ? inf.cplusAll : 0) + (kind === '+1/+1' ? 0 : lz)) * counterMult(g));          // Hardened Scales adds one first, then Doubling Season and Branching Evolution double
     if (!noDouble && inf.loadingZone && isCreaturePerm(p) && g.battlefield.includes(p)) add *= Math.pow(2, inf.loadingZone);          // Loading Zone
+    return add;
+  }
+  // what follows counters being put on a permanent: the 'counters' event, All Will Be One, Animation Module, countersPut watchers (Shalai and Hallar)
+  function countersPutAfter(g, p, kind, add, ev, source, inf) {
+    ev.push({ type: 'counters', n: add, kind, perms: [p], source });
+    { const aw = bfInfo(g).awbo; if (aw && !g.dry && add > 0 && g.killTurn == null && (g.awboDepth || 0) < 30) { g.awboDepth = (g.awboDepth || 0) + 1; damageOpp(g, add, ev, aw); g.awboDepth--; } }          // All Will Be One
+    if (kind === '+1/+1' && inf.modules && !g.dry && !g.inModule && (g.moduleTurn !== g.turn || (g.moduleN || 0) < 3)) for (const md of inf.modules) {          // Animation Module: pay {1} for a Servo (up to three a turn)
+      const c1 = { generic: 1, pips: [], x: 0 };
+      if (canPay(c1, allUnits(g)) && pay(g, c1) != null) { g.moduleN = (g.moduleTurn === g.turn ? g.moduleN : 0) + 1; g.moduleTurn = g.turn; g.inModule = true; try { createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: [], subtypes: ['Servo'], keywords: [], artifact: true, name: 'Servo' }, 1, ev, md); } finally { g.inModule = false; } }
+    }
+    if (kind === '+1/+1' && isCreaturePerm(p)) for (const q of bfInfo(g).watchers.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('countersPut') && (!t.selfOnly || q === p) && !(t.otherOnly && (q === p || (t.notType && cardHasType(p.card, t.notType)))) && !(t.onceTurn && q.cpTurn === g.turn)) { if (t.onceTurn) q.cpTurn = g.turn; fire(g, t, q, ev, p, add); }
+  }
+  // persist, undying: the creature enters with its counter already on it (so dying at once under Elesh Norn does not return it forever); the
+  // replacement effects on counters still apply and the counters are "put" on it, so watchers see them (rule 122.6). They only add: a
+  // returning creature never ends up with fewer than its one counter (Vorinclex's halving is not applied here, which could loop).
+  function returnCounters(g, np, kind, n, ev) {
+    if (g.dry || !(n > 0) || !g.battlefield.includes(np)) return;
+    const inf = bfInfo(g), add = Math.max(n, counterAmount(g, np, kind, n));
+    const viz = kind === '-1/-1' && inf.vizier && isCreaturePerm(np) ? 1 : 0, more = (add - viz) - (n - viz);
+    if (more > 0) np.counters = (np.counters || 0) + (kind === '-1/-1' ? -more : more);
+    countersPutAfter(g, np, kind, add, ev, np, inf);
+  }
+  function addCounters(g, p, kind, n, ev, source, noDouble) {
+    const inf = bfInfo(g), add = counterAmount(g, p, kind, n, noDouble); if (!(add > 0)) return 0;
     if (kind === 'charge' && p.card.a.stages && p.card.a.stages.kind === 'station') { p.charge = (p.charge || 0) + add; stageSync(g, p); ev.push({ type: 'counters', n: add, kind, perms: [p], source }); return add; }
     if (kind === '+1/+1') p.counters = (p.counters || 0) + add;
     else if (kind === '-1/-1') p.counters = (p.counters || 0) - (isCreaturePerm(p) && g.battlefield.includes(p) && inf.vizier ? add - 1 : add);          // Vizier of Remedies: one fewer
@@ -4399,13 +4424,7 @@
       g.library.push(...g.hand.splice(0), ...g.graveyard.splice(0)); shuffle(g.library, g.rnd); removePerm(g, p); if (p.inst) g.exile.push(p.inst);
       ev.push({ type: 'note', text: `${p.card.name}: the twelfth hour, hand and graveyard shuffled into the library`, source: p }); draw(g, 7, ev);
     }   // a new object each time: dry-run copies never share it
-    ev.push({ type: 'counters', n: add, kind, perms: [p], source });
-    { const aw = bfInfo(g).awbo; if (aw && !g.dry && add > 0 && g.killTurn == null && (g.awboDepth || 0) < 30) { g.awboDepth = (g.awboDepth || 0) + 1; damageOpp(g, add, ev, aw); g.awboDepth--; } }          // All Will Be One
-    if (kind === '+1/+1' && inf.modules && !g.dry && !g.inModule && (g.moduleTurn !== g.turn || (g.moduleN || 0) < 3)) for (const md of inf.modules) {          // Animation Module: pay {1} for a Servo (up to three a turn)
-      const c1 = { generic: 1, pips: [], x: 0 };
-      if (canPay(c1, allUnits(g)) && pay(g, c1) != null) { g.moduleN = (g.moduleTurn === g.turn ? g.moduleN : 0) + 1; g.moduleTurn = g.turn; g.inModule = true; try { createTokens(g, { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: [], subtypes: ['Servo'], keywords: [], artifact: true, name: 'Servo' }, 1, ev, md); } finally { g.inModule = false; } }
-    }
-    if (kind === '+1/+1' && isCreaturePerm(p)) for (const q of bfInfo(g).watchers.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('countersPut') && (!t.selfOnly || q === p) && !(t.otherOnly && (q === p || (t.notType && cardHasType(p.card, t.notType)))) && !(t.onceTurn && q.cpTurn === g.turn)) { if (t.onceTurn) q.cpTurn = g.turn; fire(g, t, q, ev, p, add); }
+    countersPutAfter(g, p, kind, add, ev, source, inf);
     return add;
   }
   // "target Halfling or Treefolk", "target creature you control other than ~": the best matching creature gets them (the strongest, so the counters pay off)

@@ -129,6 +129,15 @@
       if (ramp.length > 1 && slow.length > 1) out.push({ kind: 'cards', cut: [slow[0].name, slow[1].name], add: [ramp[0].card, ramp[1].card], label: `Cheap ramp: ${ramp[0].card.name} and ${ramp[1].card.name} for ${cutLabel(slow.slice(0, 2))}` });
     }
     if (draw.length && slow.length) out.push({ kind: 'cards', cut: [slow[0].name], add: [draw[0].card], label: `Cheap card draw: ${draw[0].card.name} for ${slow[0].name}` });
+    if (ctx.wide) {                                                           // next-bracket search: the 3 slowest cards x ramp, draw, finishers and combo pieces
+      const seen = new Set(out.filter(m => m.kind === 'cards').map(m => m.cut.join('|') + '>' + m.add.map(c => c.name || c.card && c.card.name).join('|')));
+      const adds = [['Ramp', ramp.slice(0, 3)], ['Card draw', draw.slice(0, 2)], ['Combo piece', pool('combo').slice(0, 3)], ['Finisher', pool('wincon').filter(p => !p.roles.has('ramp') && !p.roles.has('draw') && !p.roles.has('combo')).slice(0, 2)]];
+      for (const s of slow.slice(0, 3)) for (const [kind, list] of adds) for (const a of list) {
+        const key = s.name + '>' + a.card.name; if (seen.has(key)) continue; seen.add(key);
+        out.push({ kind: 'cards', cut: [s.name], add: [a.card], label: `${kind}: ${a.card.name} for ${s.name}` });
+      }
+      for (const b of basics.slice(0, 1)) for (const s of slow.slice(2, 4)) out.push({ kind: 'cards', cut: [s.name], add: [b], label: `One more land: ${b.name} for ${s.name}` });
+    }
     if (ctx.goal.kind === 'kill' && ramp.length && basics.length && (basics[0].qty || 1) > 1) out.push({ kind: 'cards', cut: [basics[0].name], add: [ramp[0].card], label: `Ramp instead of a land: ${ramp[0].card.name} for a ${basics[0].name}` });
     return out;
   }
@@ -156,13 +165,15 @@
 
   // The cheap ramp and card draw to try, from a list of cards (the app finds them on Scryfall, the tests read the set data): in the deck's
   // colors, mana value 2 or less, every line simulated. Most played first, as given.
-  function poolFrom(G, P, cards, identity, isCommander) {
-    const ci = new Set(identity || []), out = [];
+  function poolFrom(G, P, cards, identity, isCommander, wide) {
+    const ci = new Set(identity || []), out = [], want = wide ? ['ramp', 'draw', 'wincon'] : ['ramp', 'draw'];
     for (const card of cards || []) {
-      if (!card || !card.name || (card.cmc || 0) > 2 || /\bLand\b/.test(card.type_line || '')) continue;
+      if (!card || !card.name || /\bLand\b/.test(card.type_line || '')) continue;
+      if ((card.cmc || 0) > (wide ? 5 : 2)) continue;
       if ((card.color_identity || []).some(x => !ci.has(x))) continue;
       if (isCommander && card.legal_commander && card.legal_commander !== 'legal') continue;
-      const roles = P.roles(card); if (!roles.has('ramp') && !roles.has('draw')) continue;
+      const roles = P.roles(card); if (!want.some(r => roles.has(r))) continue;
+      if (wide && (card.cmc || 0) > 3 && !roles.has('wincon')) continue;                  // wide pools: ramp and draw up to 3, finishers up to 5
       let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, card)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ }
       if (lvl !== 'ok') continue;
       if (!out.some(p => p.card.name === card.name)) out.push({ card, roles });
@@ -180,7 +191,15 @@
     const isCmdr = input.cards.some(c => c.commander);
     let state = { cards: clone(input.cards), tokens: input.tokens || [], policy: policy0, tried: new Set(), changes: [], policyChanges: {} };
     state.deck = G.buildDeck(state.cards, state.tokens, policy0.tribe);
-    const pool = poolFrom(G, P, input.pool, input.identity || [...new Set(state.cards.filter(c => c.commander).flatMap(c => c.color_identity || []))], isCmdr);
+    const identity = input.identity || [...new Set(state.cards.filter(c => c.commander).flatMap(c => c.color_identity || []))];
+    const pool = poolFrom(G, P, input.pool, identity, isCmdr, !!cfg.wide);
+    // combo pieces to try (the app takes them from Commander Spellbook): any mana value, in the colors, every line simulated
+    if (cfg.wide) for (const card of input.extra || []) {
+      if (!card || !card.name || (card.color_identity || []).some(x => !identity.includes(x)) || pool.some(p => p.card.name === card.name)) continue;
+      let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, card)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ }
+      if (lvl === 'ok') pool.push({ card, roles: new Set(['combo']) });
+    }
+    const finalN = Math.max(n, cfg.finalN || 0);
     const fullTurns = Math.max(10, Math.min(20, cfg.fullTurns || 14));
     // progress: the measure (n), each step's screen and check, the before/after on fresh shuffles (2n)
     let done = 0, total = n * (3 + rounds * 12);
@@ -199,7 +218,8 @@
     const start = mean(cur.score), steps = [];
     const half = Math.floor(n / 2);
     for (let r = 0; r < rounds; r++) {
-      const ms = moves(G, P, state, cur, { pool, goal: g });
+      const ms = moves(G, P, state, cur, { pool, goal: g, wide: !!cfg.wide });
+      if (onProgress && cfg.wide) onProgress(Math.min(0.99, done / total), `Step ${r + 1}: trying ${ms.length} changes`);
       if (!ms.length) break;
       total = Math.max(total, done + ms.length * half + 3 * (n - half) + 2 * n * fullTurns / Math.max(1, g.turn) + n);
       // screen every change on half the shuffles, then play the 3 most promising on the rest too
@@ -219,35 +239,63 @@
       // the next step's "slowest cards" come from the new deck's games
       const tr = play(G, best.x.st.deck, optsFor(best.x.st), g, half, seed, true, null);
       const merged = { score: best.all, drawn: tr.drawn.map((v, i) => v + best.rest.drawn[i]), stuck: tr.stuck.map((v, i) => v + best.rest.stuck[i]) };
-      steps.push({ label: best.x.mv.label, kind: best.x.mv.kind, key: best.x.mv.key, value: best.x.mv.value, before: mean(cur.score), after: mean(best.all), z: best.pr.z });
+      steps.push({ label: best.x.mv.label, kind: best.x.mv.kind, key: best.x.mv.key, value: best.x.mv.value, cut: best.x.mv.cut, add: best.x.mv.add && best.x.mv.add.map(c => c.name), before: mean(cur.score), after: mean(best.all), z: best.pr.z });
       state = best.x.st; cur = merged;
       if (mean(cur.score) >= 0.995) break;
+      if (cfg.untilGoal && g.kind === 'kill') { let hit = 0; for (const v of cur.score) if (v >= 1) hit++; if (hit / n >= g.share + 0.03) break; }          // the search's own games say the target is met: confirm on fresh ones
     }
     // 3. before and after on fresh shuffles the search never saw
     const deck0 = G.buildDeck(input.cards, input.tokens || [], policy0.tribe);
-    const before = measure(G, deck0, Object.assign({}, opts, { policy: policy0 }), fullTurns, n, fresh, tick);
-    const after = steps.length ? measure(G, state.deck, optsFor(state), fullTurns, n, fresh, tick) : before;
+    total = Math.max(total, done + 2 * finalN);
+    const before = measure(G, deck0, Object.assign({}, opts, { policy: policy0 }), fullTurns, finalN, fresh, tick);
+    const after = steps.length ? measure(G, state.deck, optsFor(state), fullTurns, finalN, fresh, tick) : before;
     // how sure, on the fresh games: kill goals by the paired change in kill turn (a game with no kill counts as one turn past the last),
     // land goals by the paired change in games that made the land drop
     let confirm = null;
     if (steps.length && g.kind === 'kill') { const d = paired(before.killTurns, after.killTurns); confirm = { diff: -d.diff, se: d.se, z: -d.z, turns: d.diff }; }
     if (steps.length && g.kind === 'lands') {
-      const a = play(G, deck0, Object.assign({}, opts, { policy: policy0 }), g, n, fresh, false, null).score, b = play(G, state.deck, optsFor(state), g, n, fresh, false, null).score;
+      const a = play(G, deck0, Object.assign({}, opts, { policy: policy0 }), g, finalN, fresh, false, null).score, b = play(G, state.deck, optsFor(state), g, finalN, fresh, false, null).score;
       confirm = paired(a, b);
     }
     if (onProgress) onProgress(1);
     const verdict = !steps.length ? 'none' : confirm.z > 1.96 && confirm.diff > 0 ? 'confirmed' : confirm.diff > 0 ? 'likely' : 'unconfirmed';
     return {
-      goal: g, n, seed, freshSeed: fresh, fullTurns, poolSize: pool.length,
+      goal: g, n, finalN, seed, freshSeed: fresh, fullTurns, poolSize: pool.length,
       now: strip(now), before: strip(before), after: strip(after),
       search: { start, end: mean(cur.score) }, steps, verdict, confirm,
-      lines: changeLines(state.changes), policy: state.policyChanges,
+      lines: changeLines(state.changes), policy: state.policyChanges, changes: state.changes,
       reached: goalShare(after, g) >= g.share,
     };
   }
+  // ---- "Tune to the next bracket" (T-055): the goal is the next faster bracket's median kill turn; the search is tune() with wider candidates ----
+  // input: { cards, tokens, pool: ramp and card draw to try, extra: combo pieces to try, identity }; cfg: { n, rounds, seed, bracket (target; default the next one up), finalN (at least 2,000) }
+  const FINAL_MIN = 2000;
+  const turnTxt = m => m.median ? 'turn ' + m.median : 'after turn ' + (m.byTurn.length);
+  const pctTxt = x => Math.round(100 * (x || 0)) + '%';
+  function nextBracket(G, P, input, opts, cfg, onProgress) {
+    const n = Math.max(40, cfg.n || 400), seed = cfg.seed >>> 0, fullTurns = Math.max(10, Math.min(20, cfg.fullTurns || 14));
+    const now = measure(G, G.buildDeck(input.cards, input.tokens || [], (opts.policy || {}).tribe), Object.assign({}, opts, { policy: opts.policy || {} }), fullTurns, n, seed, null);
+    const cur = now.bracket || BASE_BRACKET, target = cfg.bracket || cur + 1;
+    if (target > 5 || cur >= 5) return { status: 'top', current: cur, target: cur, text: 'This deck is already at bracket 5 speed (median kill before turn 4): there is no faster bracket to reach.' };
+    if (target <= cur) return { status: 'already', current: cur, target, text: `This deck already kills at bracket ${cur} speed (median ${turnTxt(now)}), so B${target} needs no tuning.` };
+    const goal = { kind: 'kill', bracket: target }, tc = Object.assign({}, cfg, { n, wide: true, untilGoal: true, rounds: Math.max(1, cfg.rounds || 5), finalN: Math.max(FINAL_MIN, cfg.finalN || 0), fullTurns });
+    const r = tune(G, P, input, opts, goal, tc, onProgress);
+    const T = r.goal.turn, sure = r.verdict === 'confirmed';
+    const reached = sure && r.reached && (r.after.bracket || 0) >= target;
+    const cuts = r.lines.filter(l => l[0] === '-').map(l => l.slice(2)), adds = r.lines.filter(l => l[0] === '+').map(l => l.slice(2));
+    const sets = r.steps.filter(x => x.kind === 'policy').map(x => x.label);
+    const bits = [cuts.length ? 'cut ' + cuts.join(', ') : '', adds.length ? 'add ' + adds.join(', ') : '', sets.length ? 'play: ' + sets.join('; ') : ''].filter(Boolean).join('; ');
+    const was = turnTxt(r.before), got = turnTxt(r.after), by = `kills by turn ${T} ${pctTxt(r.before.byTurn[T - 1])} → ${pctTxt(r.after.byTurn[T - 1])}`;
+    let text;
+    if (reached) text = `To reach B${target} (median kill by turn ${T}): ${bits}; result median ${got} (was ${was}), ${by}.`;
+    else if (sure) text = `Couldn't reach B${target}; the best found gets to median ${got} (was ${was}): ${bits}; ${by}.`;
+    else text = `Couldn't reach B${target}: ${r.steps.length ? 'the changes the search liked did not hold up on fresh games' : 'no change beat chance'} (median stays ${was}).`;
+    return Object.assign(r, { status: reached ? 'reached' : sure ? 'closer' : 'none', current: cur, target, targetTurn: T, reached, text, cuts, adds, sets,
+      applicable: sure ? r.steps : [] });
+  }
   const strip = m => ({ n: m.n, errors: m.errors, median: m.median, meanKill: m.meanKill, byTurn: m.byTurn, onCurve: m.onCurve, bracket: m.bracket });
 
-  const api = { tune, bracketOf, bracketAtMost, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
+  const api = { tune, nextBracket, FINAL_MIN, bracketOf, bracketAtMost, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Tune = api;
 })(typeof self !== 'undefined' ? self : this);

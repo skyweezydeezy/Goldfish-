@@ -582,6 +582,16 @@
    "bracket": 4
   },
   {
+   "file": "overtime-at-the-treasure-mine.txt",
+   "name": "Overtime at the Treasure Mine (Magda, Brazen Outlaw)",
+   "commanders": [
+    "Magda, Brazen Outlaw"
+   ],
+   "colors": "R",
+   "cards": 100,
+   "bracket": 4
+  },
+  {
    "file": "second-draw.txt",
    "name": "Second Draw (Alandra)",
    "commanders": [

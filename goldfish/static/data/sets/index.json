@@ -44,12 +44,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/aer.svg?1794805200",
    "partial": true,
-   "cards": 36,
-   "originals": 36,
+   "cards": 37,
+   "originals": 37,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 28,
+    "full": 29,
     "approx": 2,
     "partial": 4,
     "none": 2
@@ -1393,6 +1393,24 @@
    "released_at": "2014-03-14",
    "set_type": "duel_deck",
    "icon": "https://svgs.scryfall.io/sets/ddm.svg?1794805200",
+   "partial": true,
+   "cards": 1,
+   "originals": 0,
+   "reprints": 1,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "ddg",
+   "name": "Duel Decks: Knights vs. Dragons",
+   "released_at": "2011-04-01",
+   "set_type": "duel_deck",
+   "icon": "https://svgs.scryfall.io/sets/ddg.svg?1795410000",
    "partial": true,
    "cards": 1,
    "originals": 0,
@@ -2798,12 +2816,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/lrw.svg?1794805200",
    "partial": true,
-   "cards": 50,
-   "originals": 50,
+   "cards": 51,
+   "originals": 51,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 42,
+    "full": 43,
     "approx": 1,
     "partial": 5,
     "none": 2

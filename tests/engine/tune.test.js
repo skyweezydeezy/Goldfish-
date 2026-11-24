@@ -8,11 +8,18 @@ const FIX = path.join(__dirname, '..', 'fixtures'), DATA = path.join(__dirname, 
 const ld = n => JSON.parse(fs.readFileSync(path.join(FIX, n + '-loaded.json'), 'utf8'));
 const O = { turns: 10, oppLife: 40, minLands: 2, maxLands: 5, freeMulligan: true, prioritizeCommander: true, minHandSize: 5, idealLandRatio: 0.42, policy: {} };
 
-// ---- bracket speed: one table (docs/DATA.md's rule) ----
-{ const by = (k6, k8) => Array.from({ length: 12 }, (_, t) => t + 1 < 6 ? 0 : t + 1 < 8 ? k6 : k8);
-  check('40% of kills by turn 6 is bracket 5 speed', T.bracketOf(by(0.4, 0.9)) === 5);
-  check('60% by turn 8 is bracket 4, 30% bracket 3, less bracket 2', T.bracketOf(by(0.2, 0.6)) === 4 && T.bracketOf(by(0.1, 0.3)) === 3 && T.bracketOf(by(0, 0.29)) === 2);
-  check('a bracket as a goal gives its turn and share', JSON.stringify(T.bracketGoal(4)) === JSON.stringify({ bracket: 4, turn: 8, share: 0.6 }) && T.bracketGoal(1) === null); }
+// ---- bracket speed: the one table, shared with the bracket check (tools/verify-brackets.js, T-035) ----
+{ const V = require('../../tools/verify-brackets.js');
+  const med = m => Array.from({ length: 12 }, (_, t) => t + 1 >= m ? 0.6 : 0.2);          // a kill distribution whose median is turn m
+  check('the median kill turn sets the speed: before T4 B5, before T6 B4, before T8 B3, before T9 B2, else B1', [3, 4, 5, 6, 7, 8, 9, 11].map(m => T.bracketOf(med(m))).join('') === '54433211');
+  check('no median inside the games counts as later than the last turn (B1)', T.bracketOf(Array(10).fill(0.3)) === 1);
+  check('the bracket check reads the same table, not a copy', V.speedBracket && [3, 4, 5, 6, 7, 8, 9, 11].map(V.speedBracket).join('') === [3, 4, 5, 6, 7, 8, 9, 11].map(T.speedBracket).join('') && /require\(path\.join\(STATIC, 'tune\.js'\)\)\.SPEED/.test(require('fs').readFileSync(require.resolve('../../tools/verify-brackets.js'), 'utf8')));
+  const none = L => Array(L).fill(0);          // a deck that never kills, in a run of L turns
+  check('no kill in 3 turns: the bracket is unknown (at most B4), not B4', T.bracketOf(none(3)) === null && T.bracketAtMost(none(3)) === 4);
+  check('no kill in 5 turns: unknown (at most B3), not B3', T.bracketOf(none(5)) === null && T.bracketAtMost(none(5)) === 3);
+  check('no kill in 10 turns: past every threshold, so B1', T.bracketOf(none(10)) === 1 && T.bracketAtMost(none(10)) === 1);
+  check('8 turns are enough to tell (a median after turn 8 is B1); 7 are not (at most B2)', T.bracketOf(none(8)) === 1 && T.bracketOf(none(7)) === null && T.bracketAtMost(none(7)) === 2);
+  check('a bracket as a goal: the median kill by the turn before its threshold', JSON.stringify(T.bracketGoal(4)) === JSON.stringify({ bracket: 4, turn: 5, share: 0.5 }) && T.bracketGoal(5).turn === 3 && T.bracketGoal(1) === null); }
 
 // ---- change lines for the A/B test: a cut and an add of the same card cancel out ----
 { const l = T.changeLines([{ sign: '-', name: 'Ponder' }, { sign: '-', name: 'Opt' }, { sign: '+', name: 'Island' }, { sign: '+', name: 'Island' }, { sign: '+', name: 'Opt' }]);

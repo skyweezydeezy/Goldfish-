@@ -1225,7 +1225,7 @@
   function logTurn(t) { $('#gameLog').appendChild(h('li', 'turn', `Turn ${t}`)); }
 
   // ---- undo via snapshots ----
-  const SCALARS = ['turn', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn', 'extortOwed', 'combatNames', 'combatDone'];
+  const SCALARS = ['turn', 'seq', 'damage', 'manaSpent', 'spentThisTurn', 'landThisTurn', 'turnDone', 'killTurn', 'commanderCast', 'landsPlayedThisTurn', 'extraLandsThisTurn', 'extraCombats', 'nextIid', 'landPlayed', 'spellsCast', 'nontokenCreatureEnters', 'life', 'lifeGainedThisTurn', 'extortOwed', 'combatNames', 'combatDone'];
   function snap() {
     const g = S.game;
     const scal = {}; SCALARS.forEach(k => { scal[k] = g[k]; });
@@ -2158,18 +2158,18 @@
     const r = S.sim; if (!S.deck || !r || !r.kill || !r.onCurveLands) return null;
     const byTurn = []; let c = 0; for (let t = 0; t < r.turns; t++) { c += r.kill[t]; byTurn.push(c); }
     const mi = byTurn.findIndex(v => v >= 0.5);
-    return { median: mi < 0 ? null : mi + 1, byTurn, onCurve: r.onCurveLands, bracket: Tune.bracketOf(byTurn), turns: r.turns };
+    return { median: mi < 0 ? null : mi + 1, byTurn, onCurve: r.onCurveLands, bracket: Tune.bracketOf(byTurn), atMost: Tune.bracketAtMost(byTurn), turns: r.turns };
   }
   function fillTune() {
     const sel = $('#tnTarget'); if (!sel) return;
     const now = simNow(), cur = sel.value, k = now && now.median;
     const list = $('#tnGoal').value === 'lands' ? Tune.LAND_GOALS.map((x, i) => [`l${i}`, `Land drop ${x.turn} on turn ${x.turn} in ${Math.round(100 * x.share)}% of games`])
       : [1, 2, 3].map(e => [`e${e}`, `${e} turn${e > 1 ? 's' : ''} earlier${k ? ` (median turn ${Math.max(3, k - e)})` : ''}`])
-        .concat(Tune.BRACKET_SPEED.slice().reverse().map(b => [`b${b.bracket}`, `Bracket ${b.bracket} speed: ${Math.round(100 * b.share)}% of games by turn ${b.turn}`]));
+        .concat(Tune.BRACKET_SPEED.slice().reverse().map(b => [`b${b.bracket}`, `Bracket ${b.bracket} speed: median kill by turn ${b.turn}`]));
     sel.innerHTML = list.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
     if (list.some(o => o[0] === cur)) sel.value = cur;
     const on = t => now.onCurve[t - 1] != null ? pct(now.onCurve[t - 1]) : '?';
-    $('#tnNow').textContent = !S.deck ? '' : now ? `Now: ${k ? 'median kill turn ' + k : 'no kill in half the games by turn ' + now.turns} (bracket speed B${now.bracket}) · land drop 3 on turn 3 in ${on(3)}, 4 on turn 4 in ${on(4)}.`
+    $('#tnNow').textContent = !S.deck ? '' : now ? `Now: ${k ? 'median kill turn ' + k : 'no kill in half the games by turn ' + now.turns} (bracket speed ${now.bracket ? 'B' + now.bracket : `at most B${now.atMost}: needs more turns to tell`}) · land drop 3 on turn 3 in ${on(3)}, 4 on turn 4 in ${on(4)}.`
       : 'Now: measured when you press Tune (or run the simulation above).';
   }
   $('#tnGoal').addEventListener('change', fillTune);
@@ -2204,6 +2204,7 @@
   }
   $('#tnRun').addEventListener('click', runTune);
   function renderTune(r) {
+    const bk = m => m.bracket ? 'B' + m.bracket : '?';          // the report's games run 10+ turns, so the bracket is always known; guarded all the same
     const g = r.goal, b = r.before, a = r.after, P = x => (100 * (x || 0)).toFixed(0) + '%';
     const share = m => g.kind === 'lands' ? m.onCurve[g.turn - 1] : m.byTurn[g.turn - 1];
     const med = m => m.median ? 'turn ' + m.median : `after turn ${r.fullTurns}`;
@@ -2212,7 +2213,7 @@
     const sure = r.confirm ? ` (fresh shuffles, z ${r.confirm.z.toFixed(1)})` : '';
     const goalTxt = g.kind === 'lands' ? `land drop ${g.turn} on turn ${g.turn} in ${P(g.share)} of games` : `${P(g.share)} of games killed by turn ${g.turn}`;
     const head = !r.steps.length ? `No change moved the goal by more than chance explains with ${r.n.toLocaleString()} games each. That is a real answer: the choices and swaps tried are not what holds this deck back; more games can reveal a small difference.`
-      : (r.verdict === 'confirmed' ? '✓ ' : r.verdict === 'likely' ? '≈ Probably: ' : '✗ It did not hold up on fresh shuffles: ') + what + sure + `. Bracket speed B${b.bracket} → B${a.bracket}.`;
+      : (r.verdict === 'confirmed' ? '✓ ' : r.verdict === 'likely' ? '≈ Probably: ' : '✗ It did not hold up on fresh shuffles: ') + what + sure + `. Bracket speed ${bk(b)} → ${bk(a)}.`;
     const reached = share(a) >= g.share ? ` The goal, ${goalTxt}, is reached.` : ` The goal, ${goalTxt}, is not reached yet.`;
     const steps = r.steps.map(s => `<li><b>${esc(s.label)}</b> ${g.kind === 'lands' ? `${P(s.before)} → ${P(s.after)} of games` : `${pts(s.after - s.before)} points`} on the search's shuffles (z ${s.z.toFixed(1)})</li>`).join('');
     const row = (l, x, y) => `<tr><td>${l}</td><td>${x}</td><td>${y}</td></tr>`;
@@ -2220,7 +2221,7 @@
     const table = row('Median kill turn', b.median || '—', a.median || '—') + row('Average kill turn', b.meanKill.toFixed(1), a.meanKill.toFixed(1))
       + kills.map(t => row(`Kills by turn ${t}`, P(b.byTurn[t - 1]), P(a.byTurn[t - 1]))).join('')
       + [3, 4, 5].map(t => row(`Land drop ${t} on turn ${t}`, P(b.onCurve[t - 1]), P(a.onCurve[t - 1]))).join('')
-      + row('Bracket speed', 'B' + b.bracket, 'B' + a.bracket);
+      + row('Bracket speed', bk(b), bk(a));
     const pol = Object.keys(r.policy || {});
     $('#tnOut').innerHTML = `<p><b>${head}</b>${r.steps.length ? esc(reached) : ''}</p><div class="suggest">`
       + (r.steps.length ? `<div class="sg good"><b>The changes (${r.steps.length})</b><ul>${steps}</ul></div>` : '')

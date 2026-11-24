@@ -30,8 +30,11 @@ saves the lab choices for the deck.
 - **Ramp and draw to add:** the app asks Scryfall with the A/B test's `Compare.roleQuery(role, identity) + ' cmc<=2'`; `poolFrom` keeps
   cards in the colors, mana value ≤ 2, ramp or draw, fully simulated. No Scryfall: lands and choices only. The engine test builds the
   pool from `data/top-cards.json` and the set files.
-- **Bracket speed:** `BRACKET_SPEED` in tune.js, docs/DATA.md's rule (B5 40% by turn 6, B4 60% by turn 8, B3 30% by turn 8, else B2).
-  When T-035 (Deck Brackets) settles its thresholds, swap that one table; the UI labels read it.
+- **Bracket speed (T-049):** `Tune.SPEED` in tune.js is the only copy of the thresholds: the median goldfish kill turn before turn
+  4 / 6 / 8 / 9 -> B5 / B4 / B3 / B2, otherwise B1 (Wizards' "turns played" guide, T-035). `tools/verify-brackets.js` reads
+  `RULES.speed` from it, so the lab's goal and the built-in decks' bracket check cannot drift apart. A bracket goal is "median kill
+  by the turn before the threshold" (`BRACKET_SPEED`, derived): B5 turn 3, B4 turn 5, B3 turn 7, B2 turn 8. Change the numbers
+  in tune.js only, then re-run `node tools/verify-brackets.js` (and `node tests/run.js deck-brackets`).
 
 ## Measured (Node, 300-400 games per change)
 - Second Breakfast, 1 turn earlier (turn 7): kills by turn 7 35% → 46%, average kill turn −0.56 (z 6.1). Commander like any other

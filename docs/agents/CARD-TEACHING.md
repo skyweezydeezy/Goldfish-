@@ -1,10 +1,10 @@
 # Handoff: Card-teaching session
 
-**Status: ARCHIVED — SUPERSEDED BY session_01K5kL4YhRxNwAucFcxv2DYT; accepted by MAIN (session_01K5kL4WjxCpfdEjqWh1igWP), live by Version 142; the area's current session is in PROJECT_STATE.md**
+**Status: HANDING OVER: Card teaching 2 (`session_01K5kL4YhRxNwAucFcxv2DYT`) stops here (context about 560k tokens); MAIN starts Card teaching 3 from this note.**
 
-- **Session now:** Card teaching 2 (session `session_01K5kL4YhRxNwAucFcxv2DYT`), a TASK session. MAIN is `session_01K5kL4WjxCpfdEjqWh1igWP`.
+- **Session:** Card teaching 2 (`session_01K5kL4YhRxNwAucFcxv2DYT`), a TASK session. MAIN is now `session_01K5kL4ZUQQXFpA18Ru3kKV8` (see CLAUDE.md).
 - **Old session:** `session_01K5kL4Y1MvoJcQ6QEUCvRD4`, closed.
-- **Branch:** `claude/card-teaching`, made from the default branch at Version 142 (`90f6117`). The old branch `claude/nifty-shannon-ikmmqa` is no longer used.
+- **Branches:** `claude/card-teaching` (T-047 round 2, ends `d229492`, on Version 164); `claude/card-teaching-t050` (T-050, `8fccba6`, PR #113); `claude/card-teaching-followup` is redundant (its commits are in `claude/card-teaching`), MAIN may delete it.
 
 ## Area
 Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the coverage parser, deckAbilities). Handle "Teach:" GitHub issues (template `.github/ISSUE_TEMPLATE/teach-card.yml`). Look after the A/B test and Policy lab (`compare.js`, `app.js`). Each card taught gets a test in `tests/engine/`, run with `node tests/run.js <name>`.
@@ -36,7 +36,23 @@ Teach the engine cards it doesn't simulate yet (`goldfish/static/sim.js`, the co
 - After MAIN's review: a seated person is asked before each of these actions (`askUse`, kind 'protect', the autopilot's choice as the default), so taking every default plays the autopilot's game (`tests/engine/issue-78-seated.test.js`). `hasteTaps` runs in `combatStart`, so `previewAttack` and combat agree. Return the Favor asks a seated person too.
 - Test: `tests/engine/issue-78.test.js`. Sweep bad 0; fingerprint unchanged (no fixture deck has these cards).
 
+## State at hand-over (2026-11-24, live Version 164)
+- **Done and live:** T-017 (issue #67, v148), T-025 (built-in deck cards, v153), T-041 (issue #78, v162). Issues #27, #67, #78 are closed.
+- **T-050, reported, waiting for merge:** Rune of Flight's Equipment line simulated (`a.equipAuraKw`, `hasKw`), so every card from #27, #67 and #78 (16, with Champion's Helm) reads 'ok' or 'neutral'. Branch `claude/card-teaching-t050`, PR #113.
+- **T-047, round 2 done, to be reported:** on `claude/card-teaching` (PR #109). Round 1: favorCopy's copied trigger reads the pre-Favor lastCast/spellsCast/xValue/thatMuch; `enduringStory()` is a pure lookup; `blockersWanted(g)` keeps Cavalry, Vault Robber and Óin's rummage home in a match while the other player has creatures. Round 2: what `again()` changed is kept (a copied discover/cascade counts its spells); `g.story` latches in `touch(g)` (any board change: enter, stealPerm, sendHome, phasing). Tests: issue-78 38/38, issue-78-seated 9/9, engine 191/191, sweep bad 0.
+- **Standing rule (the user, in CLAUDE.md):** Teach requests go first, before any other work, and are done only when the app no longer lists the cards (every line 'ok' or 'neutral'). Check each card's `coverage` rows, not just `coverageLevel`.
+
+## Exact next action for Card teaching 3
+1. Read CLAUDE.md, PROJECT_STATE.md and this note. Check PRs #109 and #113 and the live version.
+2. If MAIN sent T-047 or T-050 back, fix it on its branch; otherwise wait for the next "Teach:" issue (MAIN's hourly check sends them).
+3. For each Teach issue: fetch the cards from Scryfall (the issue body has the lines), check coverage with `G.buildDeck([card], []).unique[0].a.coverage`, teach in `sim.js` (keep the hunks local), add a `tests/engine/issue-<n>.test.js`, and add set data for missing cards with `fetch-sets.js --query` (see Gotchas). Run the issue test, the full suite, the every-default sweep (and a seated test if the card makes the autopilot act), then push, open a draft PR and report with the form.
+
 ## Gotchas
+- A new autopilot action must also run for a seated person, asked first (`askUse`, kind 'protect', the autopilot's choice as the default), or the every-default rule breaks. Put actions before attackers in `combatStart` so `previewAttack` sees them.
+- Never write game state in a lookup (`powerOf`, `hasKw`, `condAnthem`); latch at a board change (`touch`).
+- In a match, a creature tapped on your turn stays tapped through theirs: keep blockers home (`blockersWanted`).
+- `fetch-sets.js --report` rewrites the coverage of every set; keep only your sets' files, take `index.json` and `docs/SETS.md` from the branch and patch only those rows. When merging live gives a conflict in set data, take live's files and refresh again.
+- A force-push is refused here; reset a branch with a normal push when the old remote head is in its history.
 - `fetch-sets.js --query` rebuilds the coverage of every set; keep only the files for your cards, and patch `index.json` and `docs/SETS.md` for those rows.
 - A spell's effects pass `source = null`; a permanent's pass the permanent. `g.lastCast` is the spell being cast.
 

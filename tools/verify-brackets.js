@@ -58,7 +58,8 @@ const RULES = {
   // speed ("Setting Bracket Expectations and Turns Played", 2025-10-21: "expect to be able to play at least nine / eight / six / four
   // turns before you win or lose"; B5: "could end on any turn"). Read as: in the median goldfish game the deck has not won before turn
   // N. Median kill turn (games not won by turn 10 count as later than 10):
-  speed: [[4, 5], [6, 4], [8, 3], [9, 2]],               // median < 4 -> B5, < 6 -> B4, < 8 -> B3, < 9 -> B2, otherwise B1
+  speed: require(path.join(STATIC, 'tune.js')).SPEED,  // median < 4 -> B5, < 6 -> B4, < 8 -> B3, < 9 -> B2, otherwise B1. The one copy is in
+                                                         //   goldfish/static/tune.js, so the Policy lab's bracket-speed goal uses the same numbers
 };
 const ENDS = { test: f => /win the game|loses the game/i.test(f) || (/^(near-)?infinite/i.test(f) && /mana|damage|lifeloss|mill|combat|turns/i.test(f) && !/self-mill|damage to (all )?creatures|until end of turn/i.test(f)) };
 const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };

@@ -58,8 +58,37 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
 
     // ---- T-052: Simulate, "Raise your combo odds", on a built-in deck ----
     await p.click('.tab[data-tab="deck"]'); await load(DEATH_TAX);
+    await p.evaluate(() => {          // T-059: watch the progress bar (visible?, fill, label) from the moment the Simulate tab opens
+      window.__prog = []; const bar = document.querySelector('#raiseProg');
+      new MutationObserver(() => window.__prog.push({ hidden: bar.hidden, w: parseFloat(bar.querySelector('.progress div').style.width) || 0, now: +bar.querySelector('.progress').getAttribute('aria-valuenow'), t: bar.querySelector('#raiseProgTxt').textContent })).observe(bar, { attributes: true, childList: true, subtree: true, characterData: true });
+    });
     await p.click('.tab[data-tab="sim"]');
     await p.waitForFunction(() => window.__isf.comboRaise && window.__isf.comboRaise.done, null, { timeout: 60000 }); await p.waitForTimeout(300);
+    const prog = await p.evaluate(() => window.__prog), vis = prog.filter(x => !x.hidden);
+    check(`${name}: T-059 a progress bar appears while the additions are checked, with "Checking N of M…"`, vis.length > 2 && vis.some(x => /^Checking \d+ of \d+…$/.test(x.t)), vis.length + ' updates, last: ' + (vis.length && vis[vis.length - 1].t));
+    check(`${name}: ...its fill only grows, from near 0 toward 100%, and aria-valuenow follows`, vis.every((x, i) => !i || x.w >= vis[i - 1].w) && vis[vis.length - 1].w > vis[0].w && vis.every(x => x.now === x.w || isNaN(x.now)), vis.map(x => x.w).filter((w, i, a) => !i || w !== a[i - 1]).join(' '));
+    check(`${name}: ...and it is hidden once the list is shown`, await p.$eval('#raiseProg', e => e.hidden) && prog[prog.length - 1].hidden);
+    check(`${name}: ...the fill animates (a width transition) unless reduced motion is asked for`, await p.$eval('#raiseProg .progress div', e => parseFloat(getComputedStyle(e).transitionDuration) > 0));
+    // T-059: only cards in the commander's colours; remove one and the next best fills the slot
+    const idn = await p.evaluate(() => [...new Set(window.__isf.deck.commanders.flatMap(i => i.card.color_identity || []))]);
+    check(`${name}: T-059 every suggested combo is inside the commander's colours (${idn.join('') || 'colourless'})`, await p.evaluate(id => window.__isf.comboRaise.rows.every(x => x.combos.every(c => String(c.identity).split('').every(l => l === 'C' || id.includes(l)))), idn));
+    const rm0 = await p.evaluate(() => { const r = window.__isf.comboRaise; return { cut: r.cut, shown: r.shown.slice(), all: r.rows.map(x => x.card), deck: JSON.stringify(window.__isf.deck.unique.map(c => [c.name, c.qty])), text: window.__isf.deckText }; });
+    check(`${name}: the top ${rm0.shown.length} suggestions are listed, each with a ✕`, rm0.shown.length === Math.min(5, rm0.all.length) && await p.$$eval('#raiseBody tr[data-add] .raise-rm', bs => bs.length) === rm0.shown.length && rm0.all.length >= 6, rm0.all.length + ' candidates');
+    await p.click(`#raiseBody .raise-rm[data-add="${rm0.shown[1]}"]`);
+    const rm1 = await p.evaluate(() => ({ shown: window.__isf.comboRaise.shown.slice(), rows: [...document.querySelectorAll('#raiseBody tr[data-add]')].map(t => t.dataset.add), deck: JSON.stringify(window.__isf.deck.unique.map(c => [c.name, c.qty])), reset: !!document.querySelector('#raiseBody .raise-reset') }));
+    check(`${name}: removing the 2nd suggestion keeps the list the same length and brings in the next best (#6)`, rm1.rows.length === rm0.shown.length && !rm1.rows.includes(rm0.shown[1]) && rm1.rows.join() === [rm0.shown[0], rm0.shown[2], rm0.shown[3], rm0.shown[4], rm0.all[5]].join(), rm1.rows.join(' | '));
+    check(`${name}: the deck is unchanged by a removal`, rm1.deck === rm0.deck);
+    await p.click(`#raiseBody .raise-rm[data-add="${rm1.rows[0]}"]`);
+    const rm2 = await p.$$eval('#raiseBody tr[data-add]', ts => ts.map(t => t.dataset.add));
+    check(`${name}: removing another fills again; neither removed card comes back`, rm2.length === rm0.shown.length && !rm2.includes(rm0.shown[1]) && !rm2.includes(rm0.shown[0]) && rm2.includes(rm0.all[6]), rm2.join(' | '));
+    await p.click('#raiseBody .raise-reset');
+    check(`${name}: "Show removed" restores the original list and hides itself`, await p.$$eval('#raiseBody tr[data-add]', ts => ts.map(t => t.dataset.add).join()) === rm0.shown.join() && !(await p.$('#raiseBody .raise-reset')));
+    await p.click(`#raiseBody .raise-rm[data-add="${rm0.shown[0]}"]`);
+    await p.selectOption('#raiseCut', (await p.$$eval('#raiseCut option', os => os.map(o => o.value))).find(c => c !== rm0.cut));
+    await p.waitForFunction(() => window.__isf.comboRaise.done, null, { timeout: 60000 }); await p.waitForTimeout(300);
+    check(`${name}: a removed card stays removed after another cut is chosen`, await p.$$eval('#raiseBody tr[data-add]', (ts, c) => !ts.some(t => t.dataset.add === c), rm0.shown[0]));
+    await p.click('#raiseBody .raise-reset');
+    await p.selectOption('#raiseCut', rm0.cut); await p.waitForFunction(c => window.__isf.comboRaise.done && window.__isf.comboRaise.cut === c, rm0.cut, { timeout: 60000 }); await p.waitForTimeout(300);
     check(`${name}: Simulate shows "Raise your combo odds" without a run`, await p.$eval('#comboRaise', e => !e.hidden && /Raise your combo odds/.test(e.querySelector('h2').textContent)));
     check(`${name}: its explanation sits behind the ⓘ`, await p.$eval('#comboRaise .box-head', e => !!e.querySelector('.info-tog') && e.querySelector('.hint').classList.contains('folded')));
     const cr = await p.evaluate(() => { const r = window.__isf.comboRaise; return { cut: r.cut, base: r.base.any.p, rows: r.rows.map(x => ({ card: x.card, p: x.r.any.p, gain: x.gain })) }; });

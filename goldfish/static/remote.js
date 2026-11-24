@@ -23,37 +23,21 @@
   // Shown to each player before their first connection. Nothing is sent until that player ticks "I understand and accept"; each side
   // sends the version it accepted in its hello, and a side whose version differs is refused, so both players always agreed to the same
   // text. Any change to what is shared must change this list and bump the version.
-  // Version 2 was accepted by the user (the project owner) on 2026-11-21, and version 3 (the relay) on 2026-11-21. Version 4 would add
-  // the relay service.
-  // The relay (TURN), approved by the user: for when the two devices find no direct path (Safari hides a device's local address from
-  // web pages, and many home routers will not pass traffic between two devices on the same network by their public address). The
-  // traffic through it is encrypted end to end. Two ways, the user chose the first:
-  //   servers: the ICE servers of one Metered credential, as the Metered dashboard shows them. Its login is public in this file and
-  //            does not expire; changing it means changing this file.
-  //   service: the web address of a service that holds the Metered secret key and hands out credentials that expire
-  //            (server/php/turn/ice.php, or /ice of server/turn-service.js). Not used.
-  const METERED = { username: '3ee4b0a0a24eab2f0cbece7b', credential: 'tzpAlPTE8yY+RLLX' };          // the user's Metered credential (public by design)
-  const RELAY = { name: 'Metered', service: null, servers: [
-    { urls: 'stun:stun.relay.metered.ca:80' },
-    Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, METERED),
-    Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, METERED),
-    Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, METERED),
-    Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, METERED),
-  ] };
-  const relayOn = !!(RELAY.servers || RELAY.service);
-  const DISCLOSURE_VERSION = RELAY.service ? 4 : relayOn ? 3 : 2;
+  // Version 2 was accepted by the user (the project owner) on 2026-11-21, and version 3 (a relay) on 2026-11-21. The relay was removed on
+  // the user's word ("Change relay to 100% WebRTC"): the list is again what version 2 said, as version 4, so every player accepts it again.
+  // Play a friend is WebRTC peer to peer only: public STUN servers to find each device's address, no relay (TURN) of any kind.
+  const DISCLOSURE_VERSION = 4;
   const DISCLOSURE_TAGLINE = 'Do this with good friends. Don\'t be a victim.';
   const DISCLOSURE = [
     'Your whole deck list, your deck\'s autopilot settings and its name are sent to the other player\'s device.',
     'Both devices run the whole game, so the other device holds your hand, your library and the game\'s seed in memory. With the seed, a player who reads that memory can work out every card either of you will draw. The app does not show it, but it cannot stop someone who looks.',
     'The connection code holds your device\'s network address (your public IP address). Whoever receives the code, and whatever app you send it through, can see it.',
-    'To connect devices in different places, both devices contact Google\'s public STUN server, which learns both devices\' network addresses. It does not see your deck or your moves.',
+    'To connect devices in different places, both devices contact Google\'s public STUN servers, which learn both devices\' network addresses. It does not see your deck or your moves.',
     'Your name for the game and every move you make go to the other device.',
     'The other device\'s app could be changed by its owner. Moves it sends are checked before they are played, but what it can see cannot be hidden.',
     'The game\'s moves and both deck lists are saved in this browser so a game can be rejoined. They stay until you delete the game.',
     'Your device downloads the other player\'s card pictures from Scryfall, as it does for your own deck.',
-  ].concat(relayOn ? [`When the two devices cannot reach each other directly, the game goes through ${RELAY.name}'s relay server. It sees both devices' network addresses and how much data passes, but the moves are encrypted, so it cannot read them.`] : [],
-    RELAY.service ? ['To use the relay, your device first asks the ICEYfish server for its address and login, so that server sees your network address too. It keeps no record of your games.'] : []);
+  ];
   const accepted = () => +(localStorage.getItem(ACK_KEY) || 0) === DISCLOSURE_VERSION;
 
   // ---------- small helpers ----------
@@ -67,7 +51,7 @@
   async function squeeze(bytes, how) { const s = new Blob([bytes]).stream().pipeThrough(how); return new Uint8Array(await new Response(s).arrayBuffer()); }
   // A connection code: the offer or answer, cut down to what is not the same in every one (the connection keys, the security
   // fingerprint, the addresses) so that it fits in a QR code; the rest of the description is written back on arrival.
-  const SETUP = { actpass: 'a', active: 'c', passive: 'p' }, TYP = { host: 'h', srflx: 's', prflx: 's', relay: 'r' };
+  const SETUP = { actpass: 'a', active: 'c', passive: 'p' }, TYP = { host: 'h', srflx: 's', prflx: 's' };
   function shrink(kind, sdp) {
     const one = re => { const m = re.exec(sdp); return m ? m[1].trim() : ''; };
     const fp = one(/a=fingerprint:(\S+ \S+)/), hex = fp.split(' ')[1] || '';
@@ -82,7 +66,7 @@
   function grow(o) {
     const setup = Object.keys(SETUP).find(k => SETUP[k] === o.s) || 'actpass';
     const fp = Array.from(unb64(o.f)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(':');
-    const name = { h: 'host', s: 'srflx', r: 'relay' }, base = { h: 2130706431, s: 1694498815, r: 16777215 };
+    const name = { h: 'host', s: 'srflx' }, base = { h: 2130706431, s: 1694498815 };
     const lines = ['v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 't=0 0', `a=group:BUNDLE ${o.m}`, 'a=msid-semantic: WMS', 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0',
       `a=ice-ufrag:${o.u}`, `a=ice-pwd:${o.p}`, `a=fingerprint:${o.h || 'sha-256'} ${fp}`, `a=setup:${setup}`, `a=mid:${o.m}`, 'a=sctp-port:5000', 'a=max-message-size:262144'];
     o.c.forEach(([t, addr, port], i) => lines.push(`a=candidate:${i + 1} 1 udp ${base[t] - i} ${addr} ${port} typ ${name[t]}${t === 'h' ? '' : ' raddr 0.0.0.0 rport 0'} generation 0`));
@@ -159,7 +143,7 @@
 
   // ---------- the connection ----------
   // S.link: { pc, ch, inviter }. S.game: the game in progress, whether or not the link is up.
-  const S = { link: null, game: null, ice: null, relay: null, lastSeen: 0, parts: new Map(), pending: null, failAfter: 25000 };
+  const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pending: null, failAfter: 20000 };
   const PART = 15000;
   function open() { return !!(S.link && S.link.ch && S.link.ch.readyState === 'open'); }
   function raw(m) {
@@ -185,15 +169,15 @@
     ch.onclose = () => { redraw(); show(); };
     ch.onmessage = e => { S.lastSeen = Date.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } receive(m); };
   }
-  // What kinds of address a code carries: a local one (hidden behind a .local name by Safari), a public one (from the STUN server), a relay.
+  // What kinds of address a code carries: a local one (hidden behind a .local name by Safari), a public one (from the STUN server).
   function kinds(sdp) {
-    const k = { local: 0, hidden: 0, public: 0, relay: 0 };
+    const k = { local: 0, hidden: 0, public: 0 };
     for (const m of String(sdp || '').matchAll(/a=candidate:\S+ \d+ \w+ \d+ (\S+) \d+ typ (\w+)/g)) {
-      if (m[2] === 'host') k[/\.local$/.test(m[1]) ? 'hidden' : 'local']++; else if (m[2] === 'srflx' || m[2] === 'prflx') k.public++; else if (m[2] === 'relay') k.relay++;
+      if (m[2] === 'host') k[/\.local$/.test(m[1]) ? 'hidden' : 'local']++; else if (m[2] === 'srflx' || m[2] === 'prflx') k.public++;
     }
     return k;
   }
-  const said = k => [k.local && 'a local address', k.hidden && 'a hidden local address', k.public && 'a public address', k.relay && 'a relay'].filter(Boolean).join(', ') || 'no address at all';
+  const NO_DIRECT = 'Couldn\'t connect directly. Try both on the same Wi-Fi, or a different network.';
   // No connection after the codes: say so, and why, instead of "Connecting…" for ever
   function watch() {
     const L = S.link; if (!L) return;
@@ -203,30 +187,11 @@
   function failed() {
     const L = S.link; if (!L || L.failedSaid) return;
     L.failedSaid = true;
-    const mine = kinds(L.pc.localDescription && L.pc.localDescription.sdp), theirs = kinds(L.pc.remoteDescription && L.pc.remoteDescription.sdp);
-    const why = mine.relay || theirs.relay ? 'Even the relay server could not be reached: one of the networks may block it.'
-      : relayOn ? 'Neither device could reach the relay server, so there was no way through.'
-      : 'Safari hides each device\'s local address, and many home routers will not pass traffic between two devices on the same network by their public address. A relay server fixes this; it is not set up yet.';
-    status(`Could not connect. ${why} (This device offered ${said(mine)}; the other offered ${said(theirs)}.)`);
+    status(NO_DIRECT);
   }
-  // The servers to connect through: Google's STUN server, and the relay's (written here, or from the relay service, kept until shortly
-  // before they expire). Without a relay the direct path is still tried.
-  const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
-  async function iceServers() {
-    if (S.ice) return S.ice;
-    if (RELAY.servers) return STUN.concat(RELAY.servers);
-    if (!RELAY.service) return STUN;
-    if (S.relay && S.relay.until > Date.now()) return STUN.concat(S.relay.servers);
-    try {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 6000);
-      const r = await fetch(RELAY.service, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(t));
-      const d = r.ok ? await r.json() : null;
-      const servers = d && Array.isArray(d.iceServers) ? d.iceServers.filter(x => x && (typeof x.urls === 'string' || Array.isArray(x.urls))) : [];
-      if (!servers.length) throw new Error('no relay servers');
-      S.relay = { servers, until: Math.min(Date.parse(d.expires) || 0, Date.now() + 6 * 3600 * 1000) - 30 * 60 * 1000 };
-      return STUN.concat(servers);
-    } catch (e) { status('The relay could not be reached, so only a direct connection is tried.'); return STUN; }
-  }
+  // The servers to connect through: public STUN servers only (they tell each device its own public address; no traffic goes through them).
+  const STUN = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  async function iceServers() { return S.ice || STUN; }
   async function newPeer(inviter) {
     if (S.link && S.link.pc) try { S.link.pc.close(); } catch (e) {}
     const pc = new RTCPeerConnection({ iceServers: await iceServers() });
@@ -507,5 +472,5 @@
 
   build(); fromLink();
   window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,
-    set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set relayService(v) { RELAY.service = v; S.relay = null; }, set relayServers(v) { RELAY.servers = v; } };
+    NO_DIRECT, set ice(v) { S.ice = v; }, get ice() { return S.ice; } };
 })();

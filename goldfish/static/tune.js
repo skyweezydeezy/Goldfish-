@@ -196,6 +196,7 @@
     // combo pieces to try (the app takes them from Commander Spellbook): any mana value, in the colors, every line simulated
     if (cfg.wide) for (const card of input.extra || []) {
       if (!card || !card.name || (card.color_identity || []).some(x => !identity.includes(x)) || pool.some(p => p.card.name === card.name)) continue;
+      if (isCmdr && card.legal_commander && card.legal_commander !== 'legal') continue;          // a banned or not-legal piece is never offered
       let lvl = 'none'; try { lvl = G.buildDeck([Object.assign({ qty: 1 }, card)], []).unique[0].a.coverageLevel; } catch (e) { /* unreadable */ }
       if (lvl === 'ok') pool.push({ card, roles: new Set(['combo']) });
     }

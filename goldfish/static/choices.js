@@ -44,6 +44,8 @@
         <div class="ch-head"><b class="ch-title">${esc(q.title)}</b><button class="ghost ch-peek" title="Fold this away to look at the table">Look at the table</button></div>
         <div class="ch-body">
           <div class="ch-text hint">${esc(q.text)}${q.multi ? ` <b class="ch-count"></b>` : ''}</div>
+          ${q.combo ? `<div class="ch-combo" role="status"><b>Combo assembled</b><span class="ch-combo-name">${esc(q.combo.name)}</span>${q.combo.cards.length ? `<small>${esc(q.combo.cards.join(' + '))}</small>` : ''}</div>` : ''}
+          ${q.combo && q.combo.outcome === 'mana' ? `<div class="ch-mana row"><label>How much mana? <input class="ch-mana-n" type="number" min="1" step="1" placeholder="number" aria-label="How much mana"></label><button class="ch-mana-go" type="button" disabled>Take that much</button><button class="ch-mana-inf" type="button" title="As much as you like">∞</button></div>` : ''}
           ${q.dest ? `<div class="ch-dest"><span>Goes to</span> <b>${esc(q.dest)}</b></div>` : ''}
           ${ts.length > 12 ? '<input class="ch-filter" type="search" placeholder="Filter by name or type…" aria-label="Filter the cards">' : ''}
           ${q.stack && q.stack.length ? `<details class="ch-stack"><summary>On the stack · ${q.stack.length} <small>(top: ${esc(q.stack[0].name)})</small></summary><div class="ch-stack-list"></div></details>` : ''}
@@ -114,10 +116,13 @@
           else take.delete(tile);
           return refresh();
         }
+        if (t.closest('.ch-mana-go') && !t.closest('.ch-mana-go').disabled) return finish({ mana: Math.floor(+$('.ch-mana-n').value) });
+        if (t.closest('.ch-mana-inf')) { const k = q.options.findIndex(o => o.id === 'mana:inf'); if (k >= 0) return finish(k); }
         if (t.closest('.ch-auto')) return finish('auto');
         if (t.closest('.ch-none')) return finish('none');
         if (t.closest('.ch-ok') && !$('.ch-ok').disabled) return finish(q.multi ? picks() : picks()[0]);
       });
+      const mn = $('.ch-mana-n'); if (mn) mn.addEventListener('input', () => { $('.ch-mana-go').disabled = !(Math.floor(+mn.value) >= 1); });
       const flt = $('.ch-filter');
       if (flt) flt.addEventListener('input', () => { const v = flt.value.trim().toLowerCase(); box.querySelectorAll('.ch-opt').forEach(b => { b.hidden = !!v && !b.dataset.find.includes(v); }); layFan(); });
       // a two-faced card: one card, not two pictures side by side. ⟲ swings it around; the face showing is the face that is cast.

@@ -115,3 +115,12 @@
   .ch-btns button { flex: 1 1 auto; padding: 9px 8px; }
   .ch-auto small { display: none; }
 }
+
+/* T-061: an assembled combo */
+.ch-combo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 12px; border-radius: 10px; background: linear-gradient(90deg, rgba(212,175,55,.22), rgba(212,175,55,.06)); border: 1px solid rgba(212,175,55,.55); }
+.ch-combo b { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
+.ch-combo .ch-combo-name { font-weight: 700; font-size: 16px; }
+.ch-combo small { color: var(--muted); }
+.ch-mana { gap: 8px; align-items: center; flex-wrap: wrap; }
+.ch-mana .ch-mana-n { width: 90px; }
+.ch-mana .ch-mana-inf { font-size: 20px; line-height: 1; padding: 2px 12px; }

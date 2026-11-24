@@ -176,6 +176,7 @@
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
+      else if (d.kind === 'combo') { item.name = o.label; item.note = o.note || ''; item.id = o.id; }
       else if (d.kind === 'shock') { item.name = o === 'pay' ? `Pay ${d.life} life` : 'Enter tapped'; item.note = o === 'pay' ? `it enters untapped · you go to ${g.life - d.life} life` : 'no life paid · it can\'t tap for mana this turn'; }
       else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
@@ -287,6 +288,11 @@
       q.title = `${sn || 'This permanent'}: choose a color`;
       q.text = 'As it enters it names a color, and plays with that color from now on. ★ is the autopilot\'s pick: the color most of your remaining cards have.';
       if (src) { q.spell = src; q.spellNote = 'entering'; }
+    } else if (d.kind === 'combo') {                                                                      // T-061: an assembled combo, and what to do with it
+      const cb = d.combo || {};
+      q.title = `Combo assembled: ${cb.name}${cb.cards && cb.cards.length ? ' (' + cb.cards.join(' + ') + ')' : ''}`;
+      q.text = { mana: 'It makes mana without end. Say how much you want: ∞ is as much as you like.', mill: 'It can mill a whole library.', draw: 'It draws your whole library.', tokens: 'It makes as many hasty attackers as you like.', damage: 'It deals damage or drains every opponent as often as you like.' }[cb.outcome] + (opts.some(o => o.id === 'win') ? ' ★ is the autopilot\'s pick: play it out to the win.' : '');
+      q.combo = { name: cb.name, cards: cb.cards || [], outcome: cb.outcome };
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
       q.text = `As it enters, you may pay ${d.life} life. If you don't, it enters tapped.`;
@@ -318,6 +324,7 @@
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
       return ks.length >= q.min && ks.length <= q.max ? ks.map(k => d.options[k]) : d.def;
     }
+    if (d.kind === 'combo' && a.pick && typeof a.pick === 'object' && Number.isInteger(a.pick.mana) && a.pick.mana > 0 && d.options.some(o => o.id === 'mana:inf')) { const n = Math.min(a.pick.mana, 100000); return { id: 'mana:' + n, label: `${n} mana`, note: '' }; }          // "[number] mana": any amount typed
     if (a.pick === 'none') return q.optional ? null : d.def;
     return Number.isInteger(a.pick) && a.pick >= 0 && a.pick < d.options.length ? d.options[a.pick] : d.def;          // an option may itself be false (explore: "keep it on top")
   }

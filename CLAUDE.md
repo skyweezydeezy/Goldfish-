@@ -28,11 +28,11 @@ INTEGRATION NOTES:
 ```
 
 ## Send finished work to the Visuals session
-One session gathers everyone's work and merges it: the **Visuals** session (session `session_01K5kL4ZUQQXFpA18Ru3kKV8`).
+One session gathers everyone's work and merges it: the **Visuals** session (session `session_01K5kL4WCRt94PhekjADso9A`).
 This keeps merges in one place, so branches stop colliding on the live branch.
 
 - **Push, don't hold.** When a piece of work is finished and its tests pass, commit it and push it to your own work branch. Work that is only committed in your session's copy cannot be merged.
-- **Then tell the Visuals session.** Send it a message (`send_message` to `session_01K5kL4ZUQQXFpA18Ru3kKV8`) with your branch name, the commit it ends on, and one or two sentences on what it does. Bring your branch up to date with the default branch and re-run the tests first.
+- **Then tell the Visuals session.** Send it a message (`send_message` to `session_01K5kL4WCRt94PhekjADso9A`) with your branch name, the commit it ends on, and one or two sentences on what it does. Bring your branch up to date with the default branch and re-run the tests first.
 - **Don't merge into the default branch yourself**, unless the user asks you to in your own conversation. The Visuals session merges your branch into its work branch, runs the tests, and asks the user before anything goes live (the rules below still hold).
 - **The Visuals session** reports each merge back to the session that sent the work, with the new version number, or says what failed and leaves the fix to that session's area (for example, the engine's `goldfish/static/sim.js`).
 
@@ -44,6 +44,11 @@ This keeps merges in one place, so branches stop colliding on the live branch.
 - A new task that is unrelated to a long session's current work goes to a fresh session from the start.
 - Hand over as well after a verified milestone, when the task's scope changes a lot, or when the session keeps making context mistakes. Before any hand-over: push the work, update the note (MAIN: `PROJECT_STATE.md` too), list what is unfinished, and write the exact next action. Chat memory and the automatic summary are not a hand-over.
 - A replacement MAIN reads `PROJECT_STATE.md`, this file and `docs/agents/VISUALS.md`, checks them against the repository (branches, open pull requests, the live version), finds the active tasks and the reports not yet answered, and resumes from the latest verified version. It does not redo finished work, reassign active tasks, or call something merged because an old summary says so.
+
+## Models: Sonnet for every agent except MAIN (the user: "Except for the main thread, can you change every agent to work on the Sonnet level? Not Opus, not Fable, not Haiku, but on the Sonnet level and at most medium.")
+- Every TASK session, subagent and workflow agent runs on Sonnet (`claude-sonnet-5-5`) with effort at most medium. Only MAIN keeps its own model.
+- Create every new session with model `claude-sonnet-5-5` and effort `medium`; pass model `sonnet` and effort `medium` to every Agent call and every workflow `agent()` call.
+- A running session can't change model in place: MAIN replaces each existing TASK session with a Sonnet/medium one, briefed from its note in `docs/agents/`, at its next natural break (its current task reported, or idle now).
 
 ## Tests: keep them quick
 - GitHub runs the whole engine suite on every pull request and every push to a work branch (the "Tests" check). Locally, run the tests for what you changed (`node tests/run.js <name>`, `node tests/run.js --ui <name>`), then wait for the green check instead of running everything yourself.

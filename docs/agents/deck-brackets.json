@@ -8,6 +8,21 @@
  "seed": 20261123,
  "seconds": 10805,
  "jobs": 4,
+ "runs": [
+  {
+   "only": [
+    "overtime-at-the-treasure-mine.txt"
+   ],
+   "version": 167,
+   "date": "2026-11-24",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 477,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 232,
+   "jobs": 4
+  }
+ ],
  "rules": {
   "gameChangersMax": {
    "1": 0,
@@ -1936,6 +1951,72 @@
    },
    "speedBracket": 2,
    "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "overtime-at-the-treasure-mine.txt",
+   "name": "Overtime at the Treasure Mine (Magda, Brazen Outlaw)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0.7,
+    "by5": 2.7,
+    "by6": 18.4,
+    "by7": 54.9,
+    "by8": 82.5,
+    "byT": 97.6,
+    "cmdrMedian": 2,
+    "mana4": 5.08,
+    "winBy": {
+     "damage": 95.7,
+     "combo": 1.8,
+     "commander": 0.1
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Dualcaster Mage copies Twinflame, and every copy makes another Dualcaster Mage: endless hasty attackers",
+     "share": 0.0156,
+     "avgTurn": 5
+    }
+   },
+   "field": {
+    "games": 20034,
+    "wins": 7314,
+    "losses": 12656,
+    "none": 64,
+    "errors": 0,
+    "winRate": 36.5,
+    "opponents": "42 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dualcaster Mage",
+       "Twinflame"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite creature tokens with haste"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "1 cheap two-card infinite combo (e.g. Dualcaster Mage + Twinflame, 5 mana)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (1 cheap two-card infinite combo (e.g. Dualcaster Mage + Twinflame, 5 mana))",
+   "version": 167,
+   "date": "2026-11-24"
   },
   {
    "file": "permafrost-prodigy.txt",

@@ -4,8 +4,15 @@ The user: "my claim that these decks meet a certain bracket should be verified b
 minimum 20,000 test for greater accuracy and confirm their bracket. if it should be different change it and update the deck with logic and
 results."
 
-**Result:** 42 Commander decks checked (Took's Adventure, the 60-card deck, was removed by T-039 and is left out). **39 confirmed, 3 changed:**
+**Result (T-035):** 42 Commander decks checked (Took's Adventure, the 60-card deck, was removed by T-039 and is left out). **39 confirmed, 3 changed:**
 Mermaids, The King's Gambit and Tidecaller, **B5 → B4**. No deck moved up.
+
+**Added later (T-053, 2026-11-24, v167 engine):** Overtime at the Treasure Mine (Magda, Brazen Outlaw), from the Drive list
+"[B4]". 20,000 goldfish games and 20,034 matches (477 per pair against the 42 other decks, the same 20,000 spread over one more deck),
+232 s, no engine errors. Median kill T7, 2.7% by T5, 54.9% by T7; field win 36.5%; no Game Changers. **B4 confirmed:** the card rules
+give B4 for Dualcaster Mage + Twinflame (a 5-mana two-card infinite combo), and speed gives B3. Two rules lines were not read yet at the
+time: Mobile Garrison's attack untap and Fire-Belly Changeling's twice-a-turn pump (Teach task T-057). Partial runs like this one are
+listed under "runs" in `deck-brackets.json`, and the deck's row carries its own version and date.
 
 ## How to re-run
 
@@ -58,7 +65,7 @@ bracket, only the Game Changers list (Farewell and Biorhythm added). The 2025-10
     Voice of Hunger counts.
   - Extra-turn cards: 1–2 → B2, 3 or more → B4. The engine can't see intent, so it counts 3 or more as a chain.
   - Two-card infinite combos (Commander Spellbook snapshot `data/combos.json`): the combo is exactly two cards, needs nothing else, and wins
-    or ends the game by itself (infinite mana, damage, life loss, mill, combat or turns, or "wins/loses the game"). Any such combo → B3.
+    or ends the game by itself (infinite mana, damage, life loss, mill, combat or turns, infinite hasty creature tokens (added 2026-11-24 for Dualcaster Mage + Twinflame; no earlier deck's verdict changes), or "wins/loses the game"). Any such combo → B3.
     One whose two cards cost 6 mana or less in all → B4, because Wizards says "can happen cheaply and in about the first six or so turns".
   - Tutors: no limit since 2025-10-21; the efficient ones are Game Changers.
 - **Speed bracket**, from the median kill turn: before T4 → B5, before T6 → B4, before T8 → B3, before T9 → B2, otherwise B1. This reads
@@ -113,6 +120,7 @@ GC = Game Changers. % by T4…T10 are the shares of goldfish games won by that t
 | Night's Curfew (Y'shtola, Night's Blessed) | B4 | B4 | T8 | 3.6 | 7.2 | 17.1 | 36.8 | 64.1 | 91.8 | T4 | 4.52 | 62.1 | 30 | speed B2; cards ≥ B4: 30 Game Changers (B3 allows 3); mass land denial: Stasis, Winter Orb, Rising Waters, Hokori, Dust Drinker, Armageddon, Ravages of War, Sunder, Cataclysm; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Demonic Consultation + Thassa's Oracle, 3 mana) |
 | Nothing Personal (Ultima, Origin of Oblivion) | B4 | B4 | T8 | 0.1 | 1.5 | 12.9 | 45.1 | 76.8 | 95.2 | T4 | 6.25 | 61 | 5 | speed B2; cards ≥ B4: 5 Game Changers (B3 allows 3); mass land denial: Winter Orb; 1 extra-turn card; 1 two-card infinite combo (all over 6 mana) |
 | Odds and Ends (Yennett, Cryptic Sovereign) | B4 | B4 | T10 | 3.6 | 5.7 | 8.2 | 13.1 | 22.6 | 57 | T5 | 4.36 | 50.1 | 15 | speed B1; cards ≥ B4: 15 Game Changers (B3 allows 3); 3 extra-turn cards (a chain); 1 cheap two-card infinite combo (e.g. Demonic Consultation + Thassa's Oracle, 3 mana) |
+| Overtime at the Treasure Mine (Magda, Brazen Outlaw) | B4 | B4 | T7 | 0.7 | 2.7 | 18.4 | 54.9 | 82.5 | 97.6 | T2 | 5.08 | 36.5 | 0 | speed B3; cards ≥ B4: 1 cheap two-card infinite combo (e.g. Dualcaster Mage + Twinflame, 5 mana) |
 | Permafrost Prodigy (Kinnan, Bonder Prodigy) | B4 | B4 | T9 | 3.6 | 6.8 | 13.4 | 26.4 | 46.6 | 82.7 | T2 | 6.11 | 53.4 | 17 | speed B1; cards ≥ B4: 17 Game Changers (B3 allows 3); mass land denial: Mana Breach, Stasis, Static Orb, Sunder, Vorinclex, Voice of Hunger, Winter Orb; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Kinnan, Bonder Prodigy + Basalt Monolith, 5 mana) |
 | Red Rum Raiders (Admiral Beckett Brass) | B4 | B4 | T7 | 0 | 1.5 | 25.5 | 74.3 | 94.7 | 99.6 | T4 | 4.43 | 63.8 | 7 | speed B3; cards ≥ B4: 7 Game Changers (B3 allows 3) |
 | Salt Mine (Nekusar, the Mindrazer) | B4 | B4 | T8 | 0.5 | 4.8 | 21.5 | 49.9 | 73.8 | 94.5 | T5 | 4.6 | 46 | 9 | speed B2; cards ≥ B4: 9 Game Changers (B3 allows 3); mass land denial: Blood Moon, Ruination, Jokulhaups, Back to Basics, Winter Orb, Static Orb; 5 two-card infinite combos (all over 6 mana) |

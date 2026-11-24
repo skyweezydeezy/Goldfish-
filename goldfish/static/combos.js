@@ -107,14 +107,17 @@
       const p = ns.map(n => { n = Math.min(n, N); const all = choose(N, n); let bad = 0; classes.forEach(({ c, poly }) => poly.forEach((a, x) => { if (a) bad += c * a * choose(N - QR, n - x); })); return Math.max(0, Math.min(1, 1 - bad / all)); });
       return { p, exact: true, err: ns.map(() => 0) };
     }
-    // sample: where each relevant copy lands in the shuffled library; a combo is complete once every piece has a copy drawn
+    // sample: where each relevant copy lands in the shuffled library; a combo is complete once every piece has a copy drawn.
+    // A combo whose pieces include all of another's can never be complete first, so only the minimal piece lists are checked;
+    // the shuffles and their order are unchanged, so every number is the same as before.
+    const minimal = idx.map(js => [...js].sort((a, b) => a - b)).filter((a, i, all) => !all.some((b, k) => k !== i && (b.length < a.length || (b.length === a.length && k < i)) && b.every(x => a.includes(x))));
     const S = o.samples || 100000, rnd = mulberry32(o.seed == null ? 12345 : o.seed), pos = new Int32Array(N), first = new Int32Array(R), done = new Int32Array(N + 1);
     for (let s = 0; s < S; s++) {
       for (let i = 0; i < N; i++) pos[i] = i;
       let k = 0;
       for (let j = 0; j < R; j++) { let f = N; for (let c = 0; c < q[j]; c++, k++) { const r = k + Math.floor(rnd() * (N - k)), t = pos[k]; pos[k] = pos[r]; pos[r] = t; if (pos[k] < f) f = pos[k]; } first[j] = f; }
       let best = N;
-      for (const js of idx) { let t = 0; for (const j of js) if (first[j] > t) t = first[j]; if (t < best) best = t; }          // piece lists, not bit masks: any number of pieces
+      for (const js of minimal) { let t = 0; for (const j of js) { if (first[j] > t) { t = first[j]; if (t >= best) break; } } if (t < best) best = t; }          // piece lists, not bit masks: any number of pieces; stop once a piece comes later than the best so far
       done[best]++;
     }
     const cum = []; let acc = 0; for (let i = 0; i <= N; i++) { acc += done[i]; cum[i] = acc / S; }

@@ -273,12 +273,12 @@
   const turnTxt = m => m.median ? 'turn ' + m.median : 'after turn ' + (m.byTurn.length);
   const pctTxt = x => Math.round(100 * (x || 0)) + '%';
   function nextBracket(G, P, input, opts, cfg, onProgress) {
-    const n = Math.max(40, cfg.n || 400), seed = cfg.seed >>> 0, fullTurns = Math.max(10, Math.min(20, cfg.fullTurns || 14));
+    const n = Math.max(40, cfg.n || 400), seed = cfg.seed >>> 0, fullTurns = Math.max(10, Math.min(20, cfg.fullTurns || 10));          // 10 turns tell every bracket (B1 is a median after turn 8) and keep the games short
     const now = measure(G, G.buildDeck(input.cards, input.tokens || [], (opts.policy || {}).tribe), Object.assign({}, opts, { policy: opts.policy || {} }), fullTurns, n, seed, null);
     const cur = now.bracket || BASE_BRACKET, target = cfg.bracket || cur + 1;
     if (target > 5 || cur >= 5) return { status: 'top', current: cur, target: cur, text: 'This deck is already at bracket 5 speed (median kill before turn 4): there is no faster bracket to reach.' };
     if (target <= cur) return { status: 'already', current: cur, target, text: `This deck already kills at bracket ${cur} speed (median ${turnTxt(now)}), so B${target} needs no tuning.` };
-    const goal = { kind: 'kill', bracket: target }, tc = Object.assign({}, cfg, { n, wide: true, untilGoal: true, rounds: Math.max(1, cfg.rounds || 5), finalN: Math.max(FINAL_MIN, cfg.finalN || 0), fullTurns });
+    const goal = { kind: 'kill', bracket: target }, tc = Object.assign({}, cfg, { n, wide: true, untilGoal: true, rounds: Math.max(1, cfg.rounds || 5), finalN: Math.max(cfg.minFinal || FINAL_MIN, cfg.finalN || 0), fullTurns });
     const r = tune(G, P, input, opts, goal, tc, onProgress);
     const T = r.goal.turn, sure = r.verdict === 'confirmed';
     const reached = sure && r.reached && (r.after.bracket || 0) >= target;

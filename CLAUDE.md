@@ -45,6 +45,11 @@ This keeps merges in one place, so branches stop colliding on the live branch.
 - Hand over as well after a verified milestone, when the task's scope changes a lot, or when the session keeps making context mistakes. Before any hand-over: push the work, update the note (MAIN: `PROJECT_STATE.md` too), list what is unfinished, and write the exact next action. Chat memory and the automatic summary are not a hand-over.
 - A replacement MAIN reads `PROJECT_STATE.md`, this file and `docs/agents/VISUALS.md`, checks them against the repository (branches, open pull requests, the live version), finds the active tasks and the reports not yet answered, and resumes from the latest verified version. It does not redo finished work, reassign active tasks, or call something merged because an old summary says so.
 
+## Models: Sonnet for every agent except MAIN (the user: "Except for the main thread, can you change every agent to work on the Sonnet level? Not Opus, not Fable, not Haiku, but on the Sonnet level and at most medium.")
+- Every TASK session, subagent and workflow agent runs on Sonnet (`claude-sonnet-5-5`) with effort at most medium. Only MAIN keeps its own model.
+- Create every new session with model `claude-sonnet-5-5` and effort `medium`; pass model `sonnet` and effort `medium` to every Agent call and every workflow `agent()` call.
+- A running session can't change model in place: MAIN replaces each existing TASK session with a Sonnet/medium one, briefed from its note in `docs/agents/`, at its next natural break (its current task reported, or idle now).
+
 ## Tests: keep them quick
 - GitHub runs the whole engine suite on every pull request and every push to a work branch (the "Tests" check). Locally, run the tests for what you changed (`node tests/run.js <name>`, `node tests/run.js --ui <name>`), then wait for the green check instead of running everything yourself.
 - The Visuals session merges the work that arrived together first and tests the batch once, not once per session.

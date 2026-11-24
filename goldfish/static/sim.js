@@ -4399,10 +4399,10 @@
       g.graveyard.splice(g.graveyard.indexOf(p.inst), 1);
       const np = enterWithTriggers(g, p.inst, { flyCounter: true }, ev); np.flyCounter = true; ev.push({ type: 'note', text: `${p.card.name} returns with a flying counter (Luminous Broodmoth)` });
     } else
-    if (wasCreature && !p.token && p.inst && !g.dry && hadUndying && (p.counters || 0) <= 0 && dest !== 'exile' && dest !== 'hand' && g.graveyard.includes(p.inst) && g.battlefield.length < 250) {          // undying (the keyword, Mikaeus)
+    if (wasCreature && !p.token && p.inst && !g.dry && hadUndying && (p.counters || 0) <= 0 && dest !== 'exile' && dest !== 'hand' && g.graveyard.includes(p.inst) && g.battlefield.length < 250 && returnBudget(g) && ++(g.match || g).retN) {          // undying (the keyword, Mikaeus)
       g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const c1 = solemnOn(g) ? 0 : 1, np = enterWithTriggers(g, p.inst, { counters: c1 }, ev); np.counters = c1; returnCounters(g, np, '+1/+1', 1, ev); ev.push({ type: 'note', text: `${p.card.name} returns with ${np.counters > 1 ? np.counters + ' +1/+1 counters' : np.counters ? 'a +1/+1 counter' : 'no counter (Solemnity)'} (undying)` });
     } else
-    if (wasCreature && !p.token && p.inst && persistsNow(g, p) && (p.counters || 0) >= 0 && dest !== 'exile' && dest !== 'hand' && g.battlefield.length < 250 && !g.dry) {       // Persist (Kitchen Finks): back with a -1/-1 counter
+    if (wasCreature && !p.token && p.inst && persistsNow(g, p) && (p.counters || 0) >= 0 && dest !== 'exile' && dest !== 'hand' && g.battlefield.length < 250 && !g.dry && returnBudget(g) && ++(g.match || g).retN) {       // Persist (Kitchen Finks): back with a -1/-1 counter
       const gi = g.graveyard.indexOf(p.inst); if (gi >= 0) g.graveyard.splice(gi, 1);
       const noC = bfInfo(g).vizier || solemnOn(g), np = enterWithTriggers(g, p.inst, { counters: noC ? 0 : -1 }, ev); np.counters = noC ? 0 : -1; returnCounters(g, np, '-1/-1', 1, ev); ev.push({ type: 'note', text: `${p.card.name} persists: it returns with ${np.counters < -1 ? -np.counters + ' -1/-1 counters' : np.counters ? 'a -1/-1 counter' : solemnOn(g) ? 'no counter (Solemnity)' : 'no counter (Vizier of Remedies)'}` });
     }
@@ -4410,7 +4410,7 @@
   // Relentless Dead: when it dies, pay {B} to return it to your hand, and {X} to return another Zombie with mana value X
   function dieAbilities(g, p, ev) {
     const a = p.card.a;
-    if (a.enduring && !g.dry && p.inst && !p.token && !p.noCreature && g.graveyard.includes(p.inst)) { g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const np = enterWithTriggers(g, p.inst, {}, ev); np.noCreature = true; touch(g); ev.push({ type: 'note', text: `${p.card.name} returns as an enchantment` }); }          // Enduring Vitality
+    if (a.enduring && !g.dry && p.inst && !p.token && !p.noCreature && g.graveyard.includes(p.inst)) { g.graveyard.splice(g.graveyard.indexOf(p.inst), 1); const np = enterWithTriggers(g, p.inst, { noCreature: true }, ev); np.noCreature = true; touch(g); ev.push({ type: 'note', text: `${p.card.name} returns as an enchantment` }); }          // Enduring Vitality
     if (a.modular && !g.dry && (p.counters || 0) > 0) { const t = g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.card.a.isArtifact).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0]; if (t) addCounters(g, t, '+1/+1', p.counters, ev, p); }          // Modular: the counters move to another artifact creature
     if (a.afterlife && !g.dry) {                                                                          // Afterlife N: N 1/1 white and black flying Spirits (Teysa doubles it)
       const dd = 1 + g.battlefield.reduce((n, q) => n + (q.card.a.statics.deathDouble || 0), 0);
@@ -4528,6 +4528,9 @@
     if ((p.card.a.kw && p.card.a.kw.has('undying')) || (p.eotKw && p.eotKw.has('undying'))) return true;
     const ub = bfInfo(g).undying; return !!ub && ub !== p && !matchesFilter(p.card, 'human');
   }
+  // Persist and undying can loop for ever when nothing puts a counter on the creature (Solemnity, with the legend rule or a sacrifice outlet):
+  // at most 40 returns a turn at one table, then the creature stays in the graveyard (the same kind of cap as Aerie Ouphes's 20)
+  function returnBudget(g) { const m = g.match || g; if (m.retN == null || m.retTurn !== m.seq) { m.retTurn = m.seq; m.retN = 0; } return m.retN < 40; }
   // persist, undying: the creature enters with its counter already on it (so dying at once under Elesh Norn does not return it forever); the
   // replacement effects on counters still apply and the counters are "put" on it, so watchers see them (rule 122.6). They only add: a
   // returning creature never ends up with fewer than its one counter (Vorinclex's halving is not applied here, which could loop).
@@ -4940,6 +4943,7 @@
     else if (a.isLand) perm.tapped = o.tapped ? true : landEntersTapped(g, a, inst);          // put onto the battlefield tapped: a shock land pays no life
     else { perm.sick = a.isCreature; if (a.etbTapped) perm.tapped = true; }
     perm.enteredSeq = turnSeq(g);          // the shared turn sequence (a match's turns, not only this player's): Neriv's "entered this turn"
+    if (o.noCreature) perm.noCreature = true;          // Enduring creatures return as enchantments: not a creature as it enters (so -X/-X from Elesh Norn cannot kill it, again and again)
     if (o.flyCounter) perm.flyCounter = true;          // the counters a returning creature comes back with are on it as it enters (Luminous Broodmoth, persist, undying,
     if (o.counters) perm.counters = (perm.counters || 0) + o.counters;          // Undying Malice), so dying at once (Elesh Norn's -X/-X) does not bring it back again and again
     if (o.tapped) perm.tapped = true;

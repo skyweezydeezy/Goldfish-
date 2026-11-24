@@ -17,7 +17,10 @@ const ARTI = card('Homebrew Trinket', 'Artifact', '', { mana_cost: '{1}', cmc: 1
 const SAGE = card('Homebrew Sage', 'Creature — Wizard', 'When this creature enters, draw two cards.', { mana_cost: '{2}{U}', cmc: 3, power: '3', toughness: '3', colors: ['U'] });
 const BLOOD = card('Blood Artist', 'Creature — Vampire', 'Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.', { mana_cost: '{1}{B}', cmc: 2, power: '0', toughness: '1', colors: ['B'] });
 const names = ['Gollum, Patient Plotter', 'Blasting Station', 'Mikaeus, the Unhallowed', 'Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight', 'Revival // Revenge', 'Solemnity', 'Wall of Blood', 'Children of Korlis', 'Fiend Hunter', 'Marionette Apprentice'];
-const cards = names.map(get).concat([BEAR, SKEL, FINKS, WOLF, SEER, ARTI, BLOOD, SAGE], [
+const LEGEND = card('Homebrew Legend', 'Legendary Creature — Spirit', '', { mana_cost: '{2}', cmc: 2, power: '2', toughness: '2' });
+const GLIMMER = card('Homebrew Glimmer', 'Enchantment Creature — Glimmer', 'When Homebrew Glimmer dies, if it was a creature, return it to the battlefield under its owner\'s control. It\'s an enchantment.', { mana_cost: '{1}{W}', cmc: 2, power: '1', toughness: '2', colors: ['W'] });
+const extraNames = ['Elesh Norn, Grand Cenobite', 'Enduring Tenacity', 'Torbran, Thane of Red Fell'];
+const cards = names.concat(extraNames).map(get).concat([LEGEND, GLIMMER, BEAR, SKEL, FINKS, WOLF, SEER, ARTI, BLOOD, SAGE], [
   card('Swamp', 'Basic Land — Swamp', '{T}: Add {B}.', { mana_cost: '', cmc: 0, qty: 30, produced_mana: ['B'] })]);
 const deck = G.buildDeck(cards, []);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40 };
@@ -123,6 +126,27 @@ T('solemnity combo', () => {
   const n = bare(17); putOn(n, 'Homebrew Persister'); putOn(n, 'Viscera Seer'); putOn(n, 'Blood Artist'); G.comboLines(n, []); check('...without Solemnity it is not', !n.comboWin);
   const s = bare(18); putOn(s, 'Solemnity'); putOn(s, 'Homebrew Wolf'); putOn(s, 'Blasting Station'); G.comboLines(s, []); check('Solemnity + undying creature + Blasting Station: a ping loop', !!s.comboWin, s.comboWin);
   const k = bare(19); putOn(k, 'Solemnity'); putOn(k, 'Mikaeus, the Unhallowed'); putOn(k, 'Grizzly Bears'); putOn(k, 'Viscera Seer'); putOn(k, 'Blood Artist'); G.comboLines(k, []); check('Mikaeus gives a Bear undying: the loop works with it too', !!k.comboWin, k.comboWin);
+});
+
+T('errors found by the Dead Ringers rating (stack overflows)', () => {
+  // 1. Solemnity + Isilu (persist for the others) + Blasting Station + two copies of a legendary creature: the legend rule sends one to the
+  // graveyard, it persists back with no counter, the Station untaps and sacrifices it again... it used to run until the stack ran out
+  const g = bare(30); putOn(g, 'Solemnity'); const e = putOn(g, 'Eirdu, Carrier of Dawn'); G.transformPerm(g, e, []); putOn(g, 'Blasting Station');
+  let threw = null, ev = [];
+  try { putOn(g, 'Homebrew Legend'); putOn(g, 'Homebrew Legend'); for (let k = 0; k < 300; k++) { G.sba(g, ev); G.useAbilities(g, ev); } } catch (x) { threw = x; }
+  const returns = ev.filter(x => /persists: it returns/.test(x.text || '')).length;
+  check('legend rule + persist under Solemnity (the loop that overflowed the stack) is capped at 40 returns a turn', !threw && returns <= 41 && returns >= 10, threw ? String(threw.message).slice(0, 60) : returns + ' returns');
+  // 2. the cap: a persist creature killed again and again with no counter comes back at most 40 times in a turn
+  const h = bare(31); putOn(h, 'Solemnity'); putOn(h, 'Homebrew Persister'); let back = 0;
+  for (let k = 0; k < 100; k++) { const pr = named(h, 'Homebrew Persister')[0]; if (!pr) break; kill(h, pr); back++; }
+  check('persist under Solemnity returns the creature at most 40 times in a turn', back > 20 && back <= 41 && named(h, 'Homebrew Persister').length === 0, back);
+  // 3. an Enduring creature returning as an enchantment under Elesh Norn (-2/-2) was killed as a creature as it entered, again and again
+  const { g: m, b: o } = mirror(); putOn(o, 'Elesh Norn, Grand Cenobite'); let t2 = null;
+  try { putOn(m, 'Homebrew Glimmer'); G.sba(m, []); } catch (x) { t2 = x; }
+  check('an Enduring creature that dies under their Elesh Norn does not recurse for ever', !t2, t2 && String(t2.message).slice(0, 60));
+  // 4. "loses half their life" is life loss: Torbran does not add to it
+  const { g: m2, b: o2 } = mirror(); const tb = putOn(m2, 'Torbran, Thane of Red Fell'); o2.life = 40; G.applyEffects(m2, [{ type: 'halfLife' }], tb, [], null);
+  check('Revenge/halfLife: they lose exactly half (20), Torbran adds nothing', o2.life === 20, o2.life);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

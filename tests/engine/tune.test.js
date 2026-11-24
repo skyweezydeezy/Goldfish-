@@ -69,7 +69,11 @@ const interaction = new Set(rr.cards.filter(c => ['removal', 'counter', 'wipe', 
     if (!sets[t.set]) { try { sets[t.set] = JSON.parse(fs.readFileSync(path.join(DATA, 'sets', t.set + '.json'), 'utf8')); } catch (e) { sets[t.set] = { cards: [] }; } }
     const c = sets[t.set].cards.find(x => x.name === t.name && x.oracle_text != null); if (c) pool2.push(c);
   }
-  const cp = ld('combo-pieces'), t0 = Date.now();
+  // T-061: the engine now keeps combo hands, so the stock combo-pieces list already starts at B3 (median 7). The same list without its seven mana rocks
+  // (their places taken by Islands) is a B2 deck again (median turn 8), and the tuner can win the rocks back.
+  const cp = ld('combo-pieces'), t0 = Date.now(), NO_ROCKS = ['Sol Ring', 'Mana Vault', 'Grim Monolith', 'Basalt Monolith', 'Arcane Signet', 'Mind Stone', 'Fellwar Stone'];
+  cp.cards = cp.cards.filter(c => !NO_ROCKS.includes(c.name)).map(c => Object.assign({}, c));
+  { const isl = cp.cards.find(c => c.name === 'Island'); isl.qty = (isl.qty || 1) + NO_ROCKS.length; }
   const r = T.nextBracket(G, P, { cards: cp.cards, tokens: cp.tokens, pool: pool2 }, O, { n: 250, rounds: 5, seed: 99, minFinal: 500 });
   check('next bracket: B2 -> B3 (median kill by turn 7) is reached, and the median really gets faster on fresh shuffles', r.status === 'reached' && r.current === 2 && r.target === 3 && r.after.median < r.before.median && r.after.median <= 7, `median ${r.before.median} -> ${r.after.median}`);
   check('next bracket: confirmed on fresh shuffles by more than chance (z > 2), and the games are not the search\'s own', r.verdict === 'confirmed' && r.confirm.z > 2 && r.freshSeed !== r.seed);

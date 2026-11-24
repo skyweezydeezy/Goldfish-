@@ -2291,6 +2291,9 @@
   }
   async function applyNext(idxs) {
     const r = nbResult; if (!r || !S.deck) return;
+    r.applied = r.applied || new Set();
+    idxs = idxs.filter(i => !r.applied.has(i));
+    if (!idxs.length) return toast('Those changes are already applied');
     const steps = idxs.map(i => r.steps[i]).filter(Boolean);
     const pairs = steps.filter(x => x.kind === 'cards').flatMap(x => x.cut.map((c, k) => ({ cut: c, add: x.add[k] }))).filter(p => p.add);
     const pols = steps.filter(x => x.kind === 'policy');
@@ -2307,8 +2310,9 @@
     pols.forEach(x => savePolicy(x.key, x.value, 'tuned: next bracket'));
     if (pols.length) fillLabChoices();
     toast(`Applied ${steps.length} change${steps.length === 1 ? '' : 's'}${pairs.length ? ' to the loaded deck' : ''}`);
-    nbResult = null; $('#nbOut').querySelectorAll('button').forEach(b => { b.disabled = true; });
-    $('#nbInfo').textContent = 'Applied. The deck changed: run the simulation again to see it.';
+    idxs.forEach(i => { r.applied.add(i); const bt = $('#nbOut').querySelector(`.nb-apply[data-i="${i}"]`); if (bt) { bt.disabled = true; bt.textContent = 'Applied ✓'; } });
+    if (r.applied.size >= r.steps.length) { const all = $('#nbAll'); if (all) all.disabled = true; }
+    $('#nbInfo').textContent = 'Applied to the loaded deck. The numbers above are from the deck before the change: run the simulation again to see the new deck.';
     fillNext();
   }
   const nbDone = () => { $('#nbRun').disabled = false; $('#nbStop').hidden = true; };

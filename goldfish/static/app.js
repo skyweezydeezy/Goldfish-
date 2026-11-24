@@ -1017,13 +1017,22 @@
   // Your own actions on the Goldfish Table ask you what the card asks for (a library search, a target, a mode, a discard...), the same
   // way the 1v1 and Pod tables do: the engine call is tried on a copy of the game, each choice is asked in the sheet (choices.js), then
   // the call is made for real with your answers (decide.js). The autopilot's own turn never asks.
-  async function yours(run) {
+  async function yours(run, combo) {
     const g = S.game, D = window.Decide, C = window.__isfChoices;
     if (!D || !C || !g.ask) return run(g);
     const was = S.busy; S.busy = true;
-    try { const r = await D.resolve([g], 0, gs => run(gs[0]), q => C.ask(q)); if (S.game !== g) throw C.CANCELLED; return r; }
+    try {
+      let r = await D.resolve([g], 0, gs => run(gs[0]), q => C.ask(q)); if (S.game !== g) throw C.CANCELLED;
+      // T-061: after a card you cast or an ability you used, a combo that is now assembled is acknowledged and asked about (a banner, then what to do with it)
+      if (combo && Array.isArray(r) && g.killTurn == null && !G.matchOver(g)) {
+        const cev = await D.resolve([g], 0, gs => { const e = []; G.comboLines(gs[0], e); return e; }, q => C.ask(q)); if (S.game !== g) throw C.CANCELLED;
+        if (cev.length) r = r.concat(cev);
+      }
+      return r;
+    }
     finally { S.busy = was; }
   }
+  const yoursC = run => yours(run, true);
   const sameInst = (x, inst) => x.hand.concat(x.command, x.graveyard, x.exile).find(i => i.iid === inst.iid) || (x.library[0] && x.library[0].iid === inst.iid ? x.library[0] : null);
   const quiet = p => p.catch(e => { if (e && e.cancelled) return; console.error(e); toast('Something went wrong: ' + (e && e.message || e)); });
 
@@ -1146,11 +1155,14 @@
       if (le) await play([le, ...le.ev]);
       else log('<i>No land drop</i>');
     }
+    const combos = async () => { if (g.killTurn != null || G.matchOver(g)) return; const ev = []; G.comboLines(g, ev); if (ev.length) await play(ev); };          // T-061: an assembled combo is played out (the autopilot's answer is always the win)
+    await combos();
     for (let k = 0; k < 80; k++) {
       let ev = G.castOne(g);
       if (!ev) ev = G.useAbilities(g);
       if (!ev || !ev.length) break;
       await play(ev);
+      await combos();
     }
     await doCombat();
     await doPostCombat();
@@ -1202,6 +1214,7 @@
         case 'equip': log(`Equipped ${nm(e.perm)} to ${nm(e.target)}`); break;
         case 'activate': log(`Activated ${nm(e.perm)}: <i>${esc(e.text)}</i>`); break;
         case 'note': log(`↳ ${esc(e.text)}`); break;
+        case 'combo': log(`★ Combo assembled: ${esc(e.name)}${e.cards && e.cards.length ? ' (' + esc(e.cards.join(' + ')) + ')' : ''}`); break;
         case 'transform': log(`<b>🔄 ${esc(e.from.name.split(' // ')[0])} transforms into ${esc(e.to.name)}</b>`); break;
         case 'declare': log(`Attack with ${e.attackers.length > 6 ? e.attackers.length + ' creatures' : e.attackers.map(nm).join(', ')}`); break;
         case 'attack': log(`⚔ <b>${e.dmg}</b> combat damage (${e.total} total)`); break;
@@ -1287,7 +1300,7 @@
     if (a.isLand || asLand) {
       snap();
       if (!G.canPlayLand(g)) { sfx('error'); toast("You've already played your land this turn"); return; }          // one land a turn, unless something lets you play more (Exploration, Azusa)
-      quiet(yours(x => { const le = G.playLandCard(x, sameInst(x, inst), !!asLand); return [le, ...le.ev]; }).then(play));          // a fetch land asks which land
+      quiet(yoursC(x => { const le = G.playLandCard(x, sameInst(x, inst), !!asLand); return [le, ...le.ev]; }).then(play));          // a fetch land asks which land
       return;
     }
     // a two-faced card (Esika // The Prismatic Bridge): choose the face as it is cast (the sheet from choices.js)
@@ -1298,7 +1311,7 @@
     }
     if (fq && fq.only && fq.options[0].face === 1) return castFace(inst, 1, el);
     snap();
-    quiet(yours(x => G.castCard(x, sameInst(x, inst), force)).then(ev => castDone(ev, inst, el, a)));
+    quiet(yoursC(x => G.castCard(x, sameInst(x, inst), force)).then(ev => castDone(ev, inst, el, a)));
   }
   function castDone(ev, inst, el, a) {
     if (!ev) { S.undo.pop(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); sfx('error'); return toast(a.isAura ? 'You need a creature to enchant. Shift-click to cast anyway.' : 'Not enough mana. Shift-click to cast it anyway.'); }
@@ -1316,16 +1329,16 @@
       const k = pick === 'auto' ? q.def[0] : pick;
       if (k == null || k === 'none' || !q.options[k] || q.options[k].disabled) return render();
       const idx = q.options[k].i; snap();
-      quiet(yours(x => G.useLoyalty(x, x.battlefield.find(y => y.iid === obj.iid), idx)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
+      quiet(yoursC(x => G.useLoyalty(x, x.battlefield.find(y => y.iid === obj.iid), idx)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
     }).catch(() => { S.busy = false; });
   }
   // one of a permanent's activated abilities (or a graveyard card's, Cauldron Familiar), any time you have priority
   function useAbilityUI(obj, zone, i, ab) {
     if (!ab.ok) { sfx('error'); return toast(`${obj.card.name}: not now (${ab.why})`); }
     snap();
-    quiet(yours(x => G.useAbility(x, x[zone].find(y => y.iid === obj.iid), i)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
+    quiet(yoursC(x => G.useAbility(x, x[zone].find(y => y.iid === obj.iid), i)).then(ev => { if (!ev) { S.undo.pop(); sfx('error'); return toast('That ability cannot be used now'); } play(ev); }));
   }
-  function castFace(inst, face, el) { snap(); quiet(yours(x => face === 1 ? G.castBackFace(x, sameInst(x, inst)) : G.castCard(x, sameInst(x, inst))).then(ev => faceDone(ev, inst, face, el))); }
+  function castFace(inst, face, el) { snap(); quiet(yoursC(x => face === 1 ? G.castBackFace(x, sameInst(x, inst)) : G.castCard(x, sameInst(x, inst))).then(ev => faceDone(ev, inst, face, el))); }
   function faceDone(ev, inst, face, el) {
     if (!ev) { S.undo.pop(); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } sfx('error'); return toast(`Not enough mana for ${face === 1 ? 'the back face' : 'the front face'} of ${inst.card.name.split(' // ')[0]}`); }
     play(ev);
@@ -1763,14 +1776,16 @@
     const mp = $('#hMana'); mp.innerHTML = '';
     // one pip per kind of mana with how many: "4× W 1× U". A source of several colors is its own kind (shown as a gold pip, its colors on hover)
     const kinds = new Map();
-    units.forEach(u => { const cs = [...u.colors].sort((x, y) => 'WUBRGC'.indexOf(x) - 'WUBRGC'.indexOf(y)), key = cs.join('') + (u.floating ? '*' : ''); const k = kinds.get(key) || { cs, floating: !!u.floating, n: 0 }; k.n++; kinds.set(key, k); });
+    const inf = g.infMana && g.infMana.turn === g.turn ? g.infMana : null;          // T-061: an infinite-mana combo was taken: ∞ in place of the numbers, for the colours it makes
+    if (inf) inf.colors.slice().sort((x, y) => 'WUBRGC'.indexOf(x) - 'WUBRGC'.indexOf(y)).forEach(c => { const g2 = h('span', 'mana-kind inf', '<b class="inf-sym">∞</b>'); g2.title = 'infinite mana' + (inf.how ? ': ' + inf.how : ''); const pip = h('span', 'pip ' + c, c); g2.appendChild(pip); mp.appendChild(g2); });
+    (inf ? [] : units).forEach(u => { const cs = [...u.colors].sort((x, y) => 'WUBRGC'.indexOf(x) - 'WUBRGC'.indexOf(y)), key = cs.join('') + (u.floating ? '*' : ''); const k = kinds.get(key) || { cs, floating: !!u.floating, n: 0 }; k.n++; kinds.set(key, k); });
     [...kinds.values()].sort((x, y) => 'WUBRGC'.indexOf(x.cs[0]) - 'WUBRGC'.indexOf(y.cs[0]) || x.cs.length - y.cs.length).forEach(k => {
       const multi = k.cs.length > 1, cls = multi ? 'M' : k.cs[0];
       const g2 = h('span', 'mana-kind', `<b>${k.n}×</b>`); const pip = h('span', 'pip ' + cls + (k.floating ? ' floating' : ''), multi ? '' : cls);
       if (multi) pip.title = k.cs.join(' or '); if (k.floating) g2.title = 'floating (made this step)';
       g2.appendChild(pip); mp.appendChild(g2);
     });
-    if (!units.length) mp.innerHTML = '<span class="hint">none</span>';
+    if (!units.length && !inf) mp.innerHTML = '<span class="hint">none</span>';
 
     if (first) return;
     const dur = ($('#tFast').checked ? 200 : 420) * slow();

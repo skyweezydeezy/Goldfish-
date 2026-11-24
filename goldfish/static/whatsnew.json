@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 176,
+      "lines": [
+        "Combos: the autopilot keeps and assembles your combos and plays them out to the win. In Practice you're told when one is assembled and asked what to do: go off, how much mana (∞ for infinite), mill, draw your deck, or wait.",
+        "Infinite mana shows as ∞ in the mana pool."
+      ]
+    },
+    {
       "v": 175,
       "lines": [
         "Cauldron of Souls gives your creatures persist when they're at risk, and Aerie Ouphes (new) can shoot down an opponent's flyer and come back with persist."

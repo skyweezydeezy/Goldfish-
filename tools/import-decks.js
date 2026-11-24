@@ -55,7 +55,7 @@ for (const title of fs.readdirSync(dir).filter(f => /\.txt$/i.test(f)).sort()) {
     const rec = Object.values(sync.files).find(f => f.deck === file);
     if (cardKey(old).key === key) {
       if (rec && rec.verified && rec.bracket === bracket) out.same.push(name);          // ICEYfish checked this list (tools/verify-brackets.js): its verified bracket stays until the cards or the Drive bracket change
-      else if (bracket && String(bracket) !== oldBracket) {          // same cards: keep the file (it may carry set codes) and just set the bracket
+      else if (bracket && (String(bracket) !== oldBracket || /^\/\/\s*checked by iceyfish/im.test(old))) {          // same cards: keep the file (it may carry set codes) and just set the bracket; a check line goes too (also when the new Drive bracket equals the verified one)
         const lines = old.replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*(bracket|checked by iceyfish)/i.test(l));          // a new Drive bracket: the old check no longer applies
         lines.splice(1, 0, `// Bracket ${bracket}`);
         fs.writeFileSync(dest, lines.join('\n'));

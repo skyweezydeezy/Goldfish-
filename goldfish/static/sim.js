@@ -775,6 +775,11 @@
         if (/^if you would draw a card, draw two cards instead\.?$/i.test(line) && /max speed — if you would draw a card, draw two cards instead/i.test(text)) { a.statics.maxSpeedDraw = true; rec.status = 'ok'; continue; }          // Vnwxt, Verbose Host (draw)
         { const dv = line.match(/^when ~ enters, you may discard your hand, then draw cards equal to your devotion to (white|blue|black|red|green)\.?$/i); if (dv) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'devotionWheel', color: { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }[dv[1].toLowerCase()] }], text: raw }); rec.status = 'ok'; continue; } }          // Clive, Ifrit's Dominant
       }
+      // ---- rules batch 68: the top-5000 pool (one card each)
+      { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^whenever you cast a noncreature spell, amass (?:orcs|zombies) x, where x is that spell's mana value\.?$/i.test(line)) { TR(['cast'], [{ type: 'amass', n: 'LASTMV' }], { filter: 'noncreature' }); continue; }          // Saruman, the White Hand
+        if (/^whenever you cast a colorless spell, until end of turn, ~ gains trample and gets \+x\/\+x, where x is that spell's mana value\.?$/i.test(line)) { TR(['cast'], [{ type: 'pumpOne', self: true, p: 'X', t: 'X', count: { what: 'lastmv', zone: 'special' }, keywords: ['trample'] }], { filter: 'colorless' }); continue; }          // Skittering Cicada
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight

@@ -3668,8 +3668,8 @@
   function comboPiecesIn(g, hand) {
     const out = new Set(); if (!g || !g.deck) return out;
     for (const line of deckLines(g)) {
-      const slots = line.filter(sl => !COMMON_SLOTS.has(sl)); if (!slots.length) continue;
-      if (slots.filter(sl => hand.some(i => i.card.a && SLOT[sl](i.card))).length < Math.min(2, slots.length)) continue;
+      const slots = line.filter(sl => !COMMON_SLOTS.has(sl) && sl !== 'outlet' && sl !== 'castPing'); if (slots.length < 2) continue;          // outlets are ordinary cards: only the pieces that make the loop count
+      if (slots.filter(sl => hand.some(i => i.card.a && SLOT[sl](i.card))).length < slots.length) continue;
       for (const i of hand) if (i.card.a && slots.some(sl => SLOT[sl](i.card))) out.add(i);
     }
     return out;
@@ -11710,7 +11710,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // T-061: what an assembled combo gives, read off its text: mana, a mill, the library drawn, endless attackers, or damage / drain to every opponent
   function comboOutcome(text) {
     if (/^infinite mana|infinite mana \(|as much .*mana/i.test(text)) return 'mana';
-    if (/into the graveyard|until every library is empty|exiles the library|\bmills?\b/i.test(text)) return 'mill';
+    if (/into the graveyard|until every library is empty|exiles the library/i.test(text)) return 'mill';
     if (/draws the library|whole library drawn|draws? the whole library/i.test(text)) return 'draw';
     if (/attackers|hasty/i.test(text)) return 'tokens';
     return 'damage';
@@ -11724,13 +11724,27 @@ g.actSeq = (g.actSeq || 0) + 1;
     const head = clean.split(/: | and each | and every | copies /)[0], cards = head.split(/ \+ | with /).map(x => x.replace(/ \(.*$/, '').trim()).filter(Boolean);
     return { name: head.length > 60 ? head.slice(0, 57) + '…' : head, cards };
   }
+  // the colours an assembled loop makes: this turn's loop, else what the permanents that make mana can make (never more than the real combo)
+  function comboColors(g) {
+    if (g.loopMana && g.loopMana.turn === g.turn && g.loopMana.inf && g.loopMana.inf.colors) return [...g.loopMana.inf.colors];
+    const cs = new Set(); for (const q of g.battlefield) if (q.produce && q.produce.colors) for (const c of q.produce.colors) cs.add(c);
+    return cs.size ? [...cs] : ['C'];
+  }
+  // "Don't go off now" after the combo paid for and cast its pieces: put the game back as it was (zones, the permanents' own fields, the mana and the counts)
+  const COMBO_HOLD = { hold: true }, SNAP_Z = ['hand', 'battlefield', 'graveyard', 'exile', 'library', 'command', 'floating'], SNAP_N = ['life', 'damage', 'manaSpent', 'spentThisTurn', 'spellsCast', 'nextIid', 'landThisTurn', 'landsPlayedThisTurn', 'killTurn', 'loopMana'];
+  function comboSnap(g) { return { z: SNAP_Z.map(k => (g[k] || []).slice()), p: g.battlefield.map(q => [q, Object.assign({}, q)]), n: SNAP_N.map(k => g[k]) }; }
+  function comboRestore(g, sn) {
+    SNAP_Z.forEach((k, i) => { g[k] = sn.z[i]; });
+    for (const [q, c] of sn.p) { for (const k of Object.keys(q)) delete q[k]; Object.assign(q, c); }
+    SNAP_N.forEach((k, i) => { if (sn.n[i] === undefined) delete g[k]; else g[k] = sn.n[i]; });
+  }
   const COMBO_BIG = 99;          // the engine's stand-in for "as much as you like"; only the display says ∞
   // a seated person is asked what the assembled combo should do (decide kind 'combo'; the autopilot's pick, and every unseated game, is 'win').
   // Returns 'win' (carry on to the win), 'hold' (not now), or 'went' (it was played out in another way and the game goes on).
   function comboAsk(g, ev, text, info) {
     if (!g.ask || g.dry) return 'win';
     if (g.comboOk === text) { delete g.comboOk; return 'win'; }          // already asked (comboGate)
-    if (g.comboAsked && g.comboAsked[text] === g.turn) return 'hold';          // already answered this turn: not again
+    if (g.comboAsked && g.comboAsked[text] === g.turn) { if (g._rb) throw COMBO_HOLD; return 'hold'; }          // already answered this turn: not again
     const o = info.outcome, foes = isPod(g) ? podAlive(g) : g.opp ? [g.opp] : [];
     const opts = [];
     const WIN = { mana: ['Spend it: win the game', 'Use the mana on what wins the game now.'], mill: ['Mill everyone out: win the game', 'Play the loop out until every library is empty.'], draw: ['Draw your whole library and win', 'Play the loop out to its win.'],
@@ -11740,13 +11754,14 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (o === 'mill') { opts.push({ id: 'mill:self', label: 'Mill your whole deck', note: 'Your library goes to your graveyard; the game goes on.' }); if (foes.length) opts.push({ id: 'mill:opp', label: foes.length > 1 ? 'Mill each opponent' : 'Mill your opponent', note: 'Their libraries go to their graveyards; they lose at their next draw.' }); }
     if (o === 'draw') opts.push({ id: 'draw', label: 'Draw your deck', note: 'Your whole library goes to your hand; the game goes on.' });
     opts.push({ id: 'hold', label: "Don't go off now", note: 'Keep the pieces and play on.' });
+    ev.push({ type: 'combo', name: info.name, cards: info.cards, outcome: o, text });          // the banner: once, when the question is really asked
     const pick = decide(g, { kind: 'combo', options: opts, def: opts[0], source: null, combo: { name: info.name, cards: info.cards, outcome: o, text } });
     const id = pick && pick.id ? pick.id : 'win';
     if (id === 'win') return 'win';
     (g.comboAsked = g.comboAsked || {})[text] = g.turn;
-    if (id === 'hold') { ev.push({ type: 'note', text: `Combo assembled: ${info.name}: not going off now`, source: null }); return 'hold'; }
+    if (id === 'hold') { ev.push({ type: 'note', text: `Combo assembled: ${info.name}: not going off now`, source: null }); if (g._rb) throw COMBO_HOLD; return 'hold'; }
     if (id.startsWith('mana:')) {
-      const cols = [...(info.colors || (g.loopMana && g.loopMana.inf && g.loopMana.inf.colors) || new Set(ANY_MANA))], n = id === 'mana:inf' ? COMBO_BIG : +id.slice(5);
+      const cols = info.colors ? [...info.colors] : comboColors(g), n = id === 'mana:inf' ? COMBO_BIG : Math.min(+id.slice(5), COMBO_BIG);
       for (let k = 0; k < n; k++) g.floating.push({ src: null, colors: new Set(cols), floating: true });
       if (id === 'mana:inf') g.infMana = { turn: g.turn, colors: cols, how: info.name };
       ev.push({ type: 'note', text: id === 'mana:inf' ? `${info.name}: infinite mana (∞)` : `${info.name}: ${n} mana`, source: null });
@@ -11759,15 +11774,13 @@ g.actSeq = (g.actSeq || 0) + 1;
   function comboGate(g, ev, text) {
     if (!g.ask || g.dry) return true;
     const info = Object.assign(comboDescribe(g, text), { outcome: comboOutcome(text) });
-    ev.push({ type: 'combo', name: info.name, cards: info.cards, outcome: info.outcome, text });
     if (comboAsk(g, ev, text, info) !== 'win') return false;
     g.comboOk = text; return true;
   }
-  function comboWin(g, ev, text) {
+  function comboWin(g, ev, text, o) {
     if (g.killTurn != null || matchOver(g)) return true;
-    const info = Object.assign(comboDescribe(g, text), { outcome: comboOutcome(text) });
+    const info = Object.assign(comboDescribe(g, text), { outcome: (o && o.outcome) || comboOutcome(text) }, o && o.colors ? { colors: o.colors } : null);
     g.comboInfo = Object.assign({ text }, info);
-    if (g.ask && !g.dry) ev.push({ type: 'combo', name: info.name, cards: info.cards, outcome: info.outcome, text });
     const ans = comboAsk(g, ev, text, info);
     if (ans !== 'win') return false;
     ev.push({ type: 'note', text: 'Combo: ' + text, source: null });
@@ -12063,8 +12076,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const i of r.cast) { g.hand.splice(g.hand.indexOf(i), 1); if (i.card.a.isInstantSorcery) g.graveyard.push(i); else enterWithTriggers(g, i, {}, ev); }
       const names = b.c.cards.join(' + ') + ' (Commander Spellbook)';
       if (g.killTurn != null) return true;                                                                  // something that entered ended the game already
-      if (b.c.kind === 'w') return comboWin(g, ev, `${names}: ${(b.c.does || []).slice(0, 2).join('; ').toLowerCase() || 'the combo wins'}`);
-      if (pay0) return comboWin(g, ev, `${names}: ${pay0.what}, and ${pay0.name} turns each one into damage`);
+      if (b.c.kind === 'w') return comboWin(g, ev, `${names}: ${(b.c.does || []).slice(0, 2).join('; ').toLowerCase() || 'the combo wins'}`, { outcome: 'damage' });
+      if (pay0) return comboWin(g, ev, `${names}: ${pay0.what}, and ${pay0.name} turns each one into damage`, { outcome: 'damage' });
       if (!b.c.kind) continue;
       g.loopMana = { turn: g.turn, inf: { how: names, colors: new Set(b.c.kind === 'mC' ? ['C'] : ANY_MANA) } };
     }
@@ -12104,34 +12117,35 @@ g.actSeq = (g.actSeq || 0) + 1;
       [e, w].forEach(i => { g.hand.splice(g.hand.indexOf(i), 1); });
       g.graveyard.push(e); g.exile.push(...g.library); g.library = [];
       const text = `${e.card.name} exiles the library, then ${w.card.name} wins`, before = g.killTurn;
-      enterWithTriggers(g, w, {}, ev); delete g.comboOk;
-      if (before == null && g.killTurn != null) { g.comboWin = text; g.winBy = { kind: 'combo', text }; ev.push({ type: 'note', text: 'Combo: ' + text, source: null }); return true; }          // the winner's own enters ability ended the game
+      enterWithTriggers(g, w, {}, ev);
+      if (before == null && g.killTurn != null) { delete g.comboOk; g.comboWin = text; g.winBy = { kind: 'combo', text }; ev.push({ type: 'note', text: 'Combo: ' + text, source: null }); return true; }          // the winner's own enters ability ended the game
       return comboWin(g, ev, text);
     }
-    if (boardCombo(g, ev)) return true;
-    if (moreCombos(g, ev)) return true;
-    if (bookCombo(g, ev)) return true;
+    // a person's "Don't go off now" puts the game back as it was before the combo paid for anything (comboSnap)
+    const held = f => { if (!g.ask) return f(g, ev); const sn = comboSnap(g); g._rb = true; try { return f(g, ev); } catch (e) { if (e !== COMBO_HOLD) throw e; comboRestore(g, sn); return false; } finally { delete g._rb; } };
+    if (held(boardCombo)) return true;
+    if (held(moreCombos)) return true;
+    if (held(bookCombo)) return true;
     // B. infinite mana and an outlet
     const inf = infiniteMana(g);
     if (!inf) return;
     const bfHas = f => g.battlefield.some(p => f(comboKind(p.card)));
     const ballista = bfHas(k => k.ballista) || hand.some(i => comboKind(i.card).ballista);
-    if (ballista) return comboWin(g, ev, `infinite mana (${inf.how}) into Walking Ballista`);
+    if (ballista) return comboWin(g, ev, `infinite mana (${inf.how}) into Walking Ballista`, { outcome: 'mana', colors: inf.colors });
     const burn = hand.find(i => comboKind(i.card).xBurn && i.card.a.cost.pips.every(p => p.some(c => inf.colors.has(c)) || canPay({ generic: 0, pips: [p], x: 0 }, allUnits(g))));
-    if (burn) return comboWin(g, ev, `infinite mana (${inf.how}) into ${burn.card.name}`);
+    if (burn) return comboWin(g, ev, `infinite mana (${inf.how}) into ${burn.card.name}`, { outcome: 'mana', colors: inf.colors });
     const cp = inf.casts && g.battlefield.find(p => comboKind(p.card).castPing);          // the loop casts a spell every time round: Vivi Ornitier, Professor Onyx
-    if (cp) return comboWin(g, ev, `${inf.how}: a spell cast every time round, and ${cp.card.name} hits for each one`);
+    if (cp) return comboWin(g, ev, `${inf.how}: a spell cast every time round, and ${cp.card.name} hits for each one`, { outcome: 'mana', colors: inf.colors });
     const mp = g.battlefield.find(p => comboKind(p.card).manaPing && p.card.a.activated.some(x => !x.tap && x.fx.some(f => f.type === 'damage' || f.type === 'drain' || f.type === 'loseLife') && x.cost && x.cost.pips.every(pp => pp.some(c => inf.colors.has(c) || c === 'C'))));
-    if (mp) return comboWin(g, ev, `infinite mana (${inf.how}) into ${mp.card.name}`);
+    if (mp) return comboWin(g, ev, `infinite mana (${inf.how}) into ${mp.card.name}`, { outcome: 'mana', colors: inf.colors });
     const engine = g.battlefield.find(p => comboKind(p.card).drawEngine && !(p.sick && isCreaturePerm(p) && /\{T\}/.test(comboText(p.card)) && !hasKw(g, p, 'haste')));
     if (engine) {
       const finisher = g.library.concat(hand).find(i => { const k = comboKind(i.card); return k.oracleWin || k.drawWin || k.ballista || k.xBurn; }) || g.battlefield.find(p => comboKind(p.card).drawWin);
-      if (finisher) return comboWin(g, ev, `infinite mana (${inf.how}) into ${engine.card.name}: draws the library and finds ${finisher.card.name}`);
+      if (finisher) return comboWin(g, ev, `infinite mana (${inf.how}) into ${engine.card.name}: draws the library and finds ${finisher.card.name}`, { outcome: 'mana', colors: inf.colors });
     }
     if (!g._infNoted) { g._infNoted = true; ev.push({ type: 'note', text: `Infinite mana (${inf.how}), but no way to win with it yet`, source: null }); }
     if (g.ask && !g.dry) {          // a person still gets the mana: ∞, or a number of it, for the turn
       const t = `infinite mana (${inf.how})`, d = comboDescribe(g, t);
-      ev.push({ type: 'combo', name: d.name, cards: d.cards, outcome: 'mana', text: t });
       comboAsk(g, ev, t, { name: d.name, cards: d.cards, outcome: 'mana', noWin: true, colors: inf.colors });
     }
   }

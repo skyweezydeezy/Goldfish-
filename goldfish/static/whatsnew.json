@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 178,
+      "lines": [
+        "Play a friend connects directly (WebRTC) only: no relay server any more. If a direct connection can't be made, it says so and suggests the same Wi-Fi or another network."
+      ]
+    },
+    {
       "v": 177,
       "lines": [
         "Two new built-in decks: Short Circuit (Vivi Ornitier), checked at Bracket 4, and Dead Ringers (Ratadrabik of Urborg), checked at Bracket 3.",

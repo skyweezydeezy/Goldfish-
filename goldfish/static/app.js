@@ -403,11 +403,11 @@
   }
   // the combos Commander Spellbook knows in this list (a snapshot kept with the app: data/combos.json), beyond the ones the autopilot plays
   let comboDb = null;
+  const loadComboDb = () => (comboDb = comboDb || fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null));
   function renderComboBook(engine) {
     if (typeof Combos === 'undefined') return;
     const deck = S.deck;
-    comboDb = comboDb || fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null);
-    comboDb.then(db => {
+    loadComboDb().then(db => {
       const el = $('#comboBook'); if (!db || !el || S.deck !== deck) return;
       const cmd = deck.commanders.map(i => i.card), id = cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null;
       const r = Combos.find(db, deck.unique.map(c => c.name), id), more = r.included.filter(c => !Combos.played(c, engine));
@@ -2812,9 +2812,39 @@
   $('#catMinus').addEventListener('click', () => { $('#catN').value = Math.max(1, (+$('#catN').value || 7) - 1); renderCatOdds(); });
   $('#catPlus').addEventListener('click', () => { $('#catN').value = (+$('#catN').value || 7) + 1; renderCatOdds(); });
 
+  // ---- combo odds (combos.js comboOdds): every piece of at least one Commander Spellbook combo drawn, by turn ----
+  const deckIdentity = deck => { const cmd = deck.commanders.map(i => i.card); return cmd.length ? [...new Set(cmd.flatMap(c => c.color_identity || []))] : null; };
+  const comboTurns = max => [...new Set([0, 2, 4, 6, 8, 10].filter(t => t <= max).concat(max > 0 ? [max] : []))];
+  const comboPct = (p, e) => (p >= 0.9995 ? '100%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%') + (e ? ` <span class="hint">±${(e * 100).toFixed(1)}</span>` : '');
+  const comboCards = c => c.cards.map(esc).join(' + ');
+  function renderComboOdds() {
+    const box = $('#comboOdds'); if (!box || typeof Combos === 'undefined' || !Combos.comboOdds) return;
+    const deck = S.deck; if (!deck) { box.hidden = true; return; }
+    loadComboDb().then(db => {
+      if (!db || S.deck !== deck) return;
+      const o = opts(), found = Combos.find(db, deck.unique.map(c => c.name), deckIdentity(deck)), turns = comboTurns(o.turns || 10);
+      const r = Combos.comboOdds(deck, found.included, turns, o.onPlay);
+      const head = '<tr><th></th>' + turns.map(t => `<th>${t ? 'T' + t : 'Hand'}</th>`).join('') + '</tr>';
+      const line = (name, x, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td>` + x.p.map((p, i) => `<td class="num">${comboPct(p, x.err && x.err[i])}</td>`).join('') + '</tr>';
+      let html;
+      if (!r.rows.length) html = `<p>No Commander Spellbook combo has every piece in this deck.${found.almost.length ? ` ${found.almost.length} are one card away: the Simulate tab's "Raise your combo odds" shows what adding one would do.` : ''}</p>`;
+      else {
+        const last = turns.length - 1;
+        html = `<table class="cat-table combo-odds"><thead>${head}</thead><tbody>` + line(`<b>Any combo</b> <span class="hint">${r.rows.length}</span>`, r.any, 'any') +
+          r.groups.map(g => line(`${esc(g.name)} <span class="hint">${g.rows.length}</span>`, g)).join('') + '</tbody></table>' +
+          `<p class="hint">${o.onPlay ? 'On the play' : 'On the draw'}. ${r.any.exact ? 'Exact.' : `Estimated from ${r.any.samples.toLocaleString()} shuffles.`}</p>` +
+          r.groups.map(g => `<div class="sg"><b>${esc(g.name)}</b><ul>${g.rows.slice().sort((a, b) => b.p[last] - a.p[last]).slice(0, 25).map(x =>
+            `<li><a href="${esc(x.combo.url)}" target="_blank" rel="noopener">${comboCards(x.combo)}</a>: ${turns.map((t, i) => `${t ? 'T' + t : 'hand'} ${comboPct(x.p[i])}`).join(' · ')}${x.combo.does && x.combo.does.length ? `<br><span class="hint">${esc(x.combo.does.slice(0, 3).join('; '))}</span>` : ''}</li>`).join('')}</ul>${g.rows.length > 25 ? '<p>The 25 likeliest are shown.</p>' : ''}</div>`).join('');
+      }
+      $('#comboOddsBody').innerHTML = html; S.comboOdds = r;
+      box.hidden = false; tidy(box);
+    });
+  }
+
   function renderOdds(skipPicker) {
     if (!S.deck) return;
     renderCatOdds();
+    if (!skipPicker) renderComboOdds();
     if (!skipPicker) {
       const pk = $('#oddsPicker'); pk.innerHTML = '';
       S.deck.unique.filter(c => !c.commander).sort((a, b) => (a.a.isLand - b.a.isLand) || a.a.mv - b.a.mv || a.name.localeCompare(b.name)).forEach(c => {

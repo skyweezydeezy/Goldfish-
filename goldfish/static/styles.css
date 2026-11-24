@@ -1307,3 +1307,10 @@ body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }
 @keyframes bt-hit { 0%, 29% { transform: rotate(0); } 35% { transform: rotate(16deg); } 47% { transform: rotate(-7deg); } 58%, 100% { transform: rotate(0); } }
 @keyframes bt-spark { 0%, 27% { opacity: 0; transform: scale(.2); } 32% { opacity: 1; transform: scale(1); } 46%, 100% { opacity: 0; transform: scale(1.5); } }
 @media (prefers-reduced-motion: reduce) { .battle { display: none; } }
+/* Combo odds (Odds tab) */
+.combo-odds { width: auto; max-width: 100%; font-size: 14px; }
+.combo-odds th, .combo-odds td { padding: 5px 8px; }
+.combo-odds th:nth-child(n+2), .combo-odds td.num { text-align: right; width: auto; }
+@media (max-width: 600px) { .combo-odds { font-size: 12px; } .combo-odds th, .combo-odds td { padding: 4px 4px; } .combo-odds td .hint { display: none; } }
+.combo-odds tr.any td { font-weight: 600; }
+.combo-odds td .hint { font-size: 11px; }

@@ -1,5 +1,6 @@
 // Tookens (Belladonna Took)
 // Bracket 3
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 1.2% by T5, 58.9% by T7; field win 56.5%; 2 Game Changers; B3 confirmed
 // Paper Commander | Bracket 3 | Mono-White
 // COMMANDER
 1 Belladonna Took (HOB) 214

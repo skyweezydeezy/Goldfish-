@@ -1,5 +1,6 @@
 // Ice Age Engine (Urza, Lord High Artificer)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T>10, 0.1% by T5, 1.9% by T7; field win 43.9%; 15 Game Changers; B4 confirmed
 // COMMANDER
 1 Urza, Lord High Artificer (CMM) 1060
 // DECK

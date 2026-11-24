@@ -189,7 +189,7 @@
         for (const [k, el] of ctl) set(k, el);
         for (const [k, d] of sections()) if (k in ui.open) d.open = ui.open[k];
         if (ui.deck && !/[#&]deck=/.test(location.hash)) {                 // (a deck link being opened wins)
-          await A.loadDeck({ text: ui.deck, quiet: true });
+          await A.loadDeck({ text: ui.deck, quiet: true, lenient: true });          // lenient: a deck remembered from before the Commander deck rule still comes back
           if (!S.deck) { held = ui.deck; throw new Error('the deck could not be loaded'); }
           if (ui.saved != null && $('#savedDecks') && [...$('#savedDecks').options].some(o => o.value === ui.saved)) $('#savedDecks').value = ui.saved;
           for (const [k, el] of controls()) set(k, el);                    // the controls a deck brings (the lab's choices, tag menus)

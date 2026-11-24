@@ -1,5 +1,6 @@
 // Gnome Alone (Anim Pakal)
 // Bracket 3
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 6.8% by T5, 76.5% by T7; field win 60.9%; 3 Game Changers; B3 confirmed
 // COMMANDER
 1 Anim Pakal, Thousandth Moon (PLCI) 223s
 // DECK

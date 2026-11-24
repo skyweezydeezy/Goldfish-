@@ -1,5 +1,6 @@
 // Sodium Seraphim (Gisela, the Broken Blade)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 0.4% by T5, 24.3% by T7; field win 63.4%; 5 Game Changers; B4 confirmed
 // COMMANDER
 1 Gisela, the Broken Blade (SLD) 1335
 // DECK

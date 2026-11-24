@@ -1,5 +1,6 @@
 // Zimone, Infinite Analyst
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1% by T5, 48% by T7; field win 42.6%; 3 Game Changers; B4 confirmed
 // COMMANDER
 1 Zimone, Infinite Analyst (SOC) 10
 // DECK

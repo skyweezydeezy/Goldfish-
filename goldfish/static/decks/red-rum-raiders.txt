@@ -1,5 +1,6 @@
 // Red Rum Raiders (Admiral Beckett Brass)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 1.5% by T5, 74.3% by T7; field win 63.8%; 7 Game Changers; B4 confirmed
 // COMMANDER
 1 Admiral Beckett Brass
 // DECK

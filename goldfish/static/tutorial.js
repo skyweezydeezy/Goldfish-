@@ -239,7 +239,7 @@
     if (sm.kind === 'practice' && window.__isfChoices) window.__isfChoices.close();          // a Duel goes on as a normal game, questions and all
     if (sm.ctl) for (const sel in sm.ctl) { const e = document.querySelector('#tab-duel ' + sel); if (e) { e.value = sm.ctl[sel][0]; if (sm.ctl[sel][1]) e.dataset.touched = sm.ctl[sel][1]; else delete e.dataset.touched; } }          // your own Duel settings come back for the next game
     if (sm.prev) {          // the person had a deck: it comes back, and the sample game is thrown away
-      A().setDeck(sm.prev);
+      A().setDeck(sm.prev, true);          // true: their own deck comes back as it was, past the Commander deck rule
       if (document.body.dataset.view === 'table') A().showTab('table');          // a new game with their own deck
     }          // no deck of their own: the sample deck stays, and the game is a normal game from here
     const p = load(); p.seen['sample:' + sm.kind] = 1; for (const t of sm.kind === 'duel' ? ['duel'] : ['hands', 'table']) p.seen['tab:' + t] = 1; save(p);          // the sample game showed what those tabs' tours would

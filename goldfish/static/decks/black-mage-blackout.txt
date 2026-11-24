@@ -1,5 +1,6 @@
 // Black Mage Blackout (Vivi Ornitier)
 // Bracket 4
+// Checked by ICEYfish (v151, 20,000 games): median kill T>10, 1.4% by T5, 6.9% by T7; field win 21.8%; 18 Game Changers; B4 confirmed
 // COMMANDER
 1 Vivi Ornitier (FIN) 570
 // DECK

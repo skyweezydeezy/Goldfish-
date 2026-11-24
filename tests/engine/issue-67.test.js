@@ -46,7 +46,7 @@ T('coverage', () => {
   check('Mjölnir: the discard sweeper is marked "needs an opponent"', status('Mjölnir, Hammer of Thor', '{2}{R}, Discard') === 'neutral opp');
   check('Samut: split second is marked as a mirror-match line', status('Samut, Tyrant of Naktamun', 'Instant and sorcery') === 'neutral opp' && by('Samut, Tyrant of Naktamun').a.coverage[0].mirror === true);
   check('Rune of Flight: flying on a creature is simulated', status('Rune of Flight', 'As long as enchanted permanent is a creature') === 'ok');
-  check('...the Equipment case is marked approximate (the Aura goes on a creature)', status('Rune of Flight', 'As long as enchanted permanent is an Equipment') === 'partial approx');
+  check('...the Equipment case is simulated too (T-050)', status('Rune of Flight', 'As long as enchanted permanent is an Equipment') === 'ok');
 });
 
 // ---- Gratuitous Violence and Mjölnir: damage by your creatures is doubled, damage by your spells is not
@@ -79,6 +79,16 @@ T('rune of flight', () => {
   const g = bare(13); const bear = putOn(g, 'Grizzly Bears'); check('a plain Grizzly Bears does not fly', !G.hasKw(g, bear, 'flying'));
   cast(g, 'Rune of Flight', 2); const rune = g.battlefield.find(q => q.card.name === 'Rune of Flight');
   check('Rune of Flight goes on the Bears and it flies', rune && rune.attachedTo === bear.iid && G.hasKw(g, bear, 'flying'), rune ? 'attached to ' + rune.attachedTo : 'not on the battlefield');
+});
+
+// ---- Rune of Flight on an Equipment (T-050): the creature the Equipment is attached to flies
+T('rune on an equipment', () => {
+  const g = bare(30), bear = putOn(g, 'Grizzly Bears'), other = putOn(g, 'Grizzly Bears'), eq = putOn(g, "Champion's Helm"), rune = putOn(g, 'Rune of Flight');
+  eq.attachedTo = bear.iid; rune.attachedTo = eq.iid; G.touch(g);
+  check('Rune of Flight on an Equipment: the equipped Bears fly', G.hasKw(g, bear, 'flying'));
+  check('...the other Bears do not', !G.hasKw(g, other, 'flying'));
+  eq.attachedTo = other.iid; G.touch(g); check('...the Equipment moves: now the other Bears fly', G.hasKw(g, other, 'flying') && !G.hasKw(g, bear, 'flying'));
+  rune.attachedTo = null; G.touch(g); check('...without the Rune nobody flies', !G.hasKw(g, other, 'flying'));
 });
 
 // ---- Bilbo: {1} less for spells cast from anywhere but the hand; the attack casts a card from your graveyard

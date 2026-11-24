@@ -2510,12 +2510,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/jud.svg?1794805200",
    "partial": true,
-   "cards": 17,
-   "originals": 17,
+   "cards": 18,
+   "originals": 18,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 15,
+    "full": 16,
     "approx": 0,
     "partial": 1,
     "none": 1
@@ -2636,13 +2636,13 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/khm.svg?1794805200",
    "partial": true,
-   "cards": 94,
-   "originals": 94,
+   "cards": 96,
+   "originals": 96,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 82,
-    "approx": 5,
+    "full": 85,
+    "approx": 4,
     "partial": 6,
     "none": 1
    }
@@ -3757,8 +3757,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 41,
-    "approx": 5,
+    "full": 42,
+    "approx": 4,
     "partial": 3,
     "none": 1
    }
@@ -4976,12 +4976,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/hob.svg?1794805200",
    "partial": true,
-   "cards": 21,
-   "originals": 21,
+   "cards": 22,
+   "originals": 22,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 19,
+    "full": 20,
     "approx": 0,
     "partial": 2,
     "none": 0

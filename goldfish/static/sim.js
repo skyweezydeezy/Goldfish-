@@ -1064,6 +1064,12 @@
         { const tb = line.match(/^if a red source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus (\d+) instead\.?$/i); if (tb) { a.torbran = +tb[1]; rec.status = 'ok'; continue; } }          // Torbran, Thane of Red Fell (plusBonus)
         { const gs = line.match(/^\+1: until end of turn, ~ becomes a (\d+)\/(\d+) [a-z ]+ creature with indestructible that's still a planeswalker\. prevent all damage that would be dealt to (?:him|her|it) this turn\.?$/i); if (gs) { a.pwAbilities.push({ cost: 1, x: false, fx: [{ type: 'pwSwing', p: +gs[1] }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; } }          // Gideon, Ally of Zendikar: a goldfish takes his 5 as he is activated; in a match he stays a planeswalker
         { const cr = line.match(/^whenever you commit a crime, (.*?)(?: this ability triggers only once each turn\.?)?$/i); if (cr) { const fx = /^exile up to one target black card from your graveyard and copy it\. you may cast the copy\. if you do, you lose 2 life\.?$/i.test(cr[1]) ? [{ type: 'kaervekCopy', life: 2 }] : parseEffects(cr[1]).fx; if (fx.length) { a.triggers.push({ kinds: ['crime'], fx, text: raw }); a.crimeTrig = true; rec.status = 'partial'; rec.tag = 'approx'; continue; } } }          // Gisa, Kaervek: a crime is a spell or ability of yours aimed at an opponent or what they control (CRIME_FX)
+        // ---- T-041, issue #78: Axgard Cavalry, Dwarven Bloodboiler, Vault Robber, Óin the Brave, Return the Favor (Magda: magdaTap)
+        if (/^\{t\}: target creature gains haste until end of turn\.?$/i.test(line) && !/start your engines/i.test(text)) { a.hasteTap = true; rec.status = 'ok'; continue; }          // Axgard Cavalry (hasteTaps, at the beginning of combat)
+        { const tp = line.match(/^tap an untapped (\w+) you control: target creature gets \+(\d+)\/\+0 until end of turn\.?$/i); if (tp) { a.tribeTapPump = { type: tp[1].toLowerCase(), p: +tp[2] }; rec.status = 'ok'; continue; } }          // Dwarven Bloodboiler (dwarfPump, once attackers are declared)
+        if (/^\{1\}, \{t\}, exile a creature card from your graveyard: create a treasure token\.?$/i.test(line)) { a.vaultRobber = parseCost('{1}'); rec.status = 'ok'; continue; }          // Vault Robber (dwarfEnd, at your end step)
+        { const sb = line.match(/^as long as you have an enduring story, (?:~|[^ ,]+) gets \+(\d+)\/\+(\d+) and has ([a-z ,]+)\.?$/i); if (sb) { a.storyBuff = { p: +sb[1], t: +sb[2], kw: kwList(sb[3]) }; rec.status = 'ok'; continue; } }          // Óin the Brave (enduringStory: storied)
+        if (/^\{1\}, \{t\}, discard a card: draw a card\.?$/i.test(line)) { a.tapRummage = parseCost('{1}'); rec.status = 'ok'; continue; }          // Óin the Brave (dwarfEnd: a spare land for a new card)
         if ((bm = line.match(/^whenever (?:~|thrakkus) attacks, double the power of each (\w+) you control until end of turn\.?$/i))) { a.thrakkus = singular(bm[1]).toLowerCase(); rec.status = 'ok'; continue; }          // Thrakkus the Butcher
         if (/^when ~ enters, reveal cards from the top of your library until you reveal a land card\. put that card onto the battlefield tapped and the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'revealLandTapped' }], text: raw }); rec.status = 'ok'; continue; }          // Clifftop Lookout
         if (/^whenever a food is put into a graveyard from the battlefield, put two \+1\/\+1 counters on ~\.?$/i.test(line)) { a.ygra = 2; rec.status = 'ok'; continue; }          // Ygra, Eater of All (every other creature is a Food)
@@ -2108,7 +2114,7 @@
         if (/^whenever another creature dies, target opponent loses 1 life and you gain 1 life\. if this is the fourth time this ability has resolved this turn, transform ~/i.test(line)) { T5(['dies'], [{ type: 'sephiroth' }], { who: 'another creature' }); continue; }
         if (/^whenever ~ attacks, you may sacrifice any number of other creatures\. if you do, draw that many cards/i.test(line)) { T5(['attack'], [{ type: 'sacDraw', max: 9 }], { who: '~' }); continue; }          // Sephiroth, One-Winged Angel
         if (/^as ~ transforms into ~, you get an emblem with "whenever a creature dies, target opponent loses 1 life and you gain 1 life\."/i.test(line)) { a.superNova = true; rec.status = 'ok'; continue; }
-        if (/^whenever an? (\w+) you control becomes tapped, create a treasure token/i.test(line)) { a.tapTreasure = singular(line.match(/^whenever an? (\w+) you control/i)[1]).toLowerCase(); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Magda: Dwarves tapped to attack (not other ways of tapping)
+        if (/^whenever an? (\w+) you control becomes tapped, create a treasure token/i.test(line)) { a.tapTreasure = singular(line.match(/^whenever an? (\w+) you control/i)[1]).toLowerCase(); rec.status = 'ok'; continue; }          // Magda: tapped to attack (combat), for mana (pay), for a {T} or tap cost (magdaTap)
         if (/^sacrifice five treasures: search your library for an artifact or dragon card, put that card onto the battlefield/i.test(line)) { a.magdaTutor = true; rec.status = 'ok'; continue; }
         if (/^when ~ enters, return target equipment card from your graveyard to the battlefield/i.test(line)) { T5(['etb'], [{ type: 'returnEquipment' }]); continue; }          // Forge Anew
         if (/^during your turn, you may activate equip abilities any time you could cast an instant/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
@@ -2198,7 +2204,7 @@
         if (/^as an additional cost to cast ~, pay 5 life or pay \{2\}/i.test(line)) { OPP(); continue; }          // Redirect Lightning: it only redirects another player's spell
         if (/^you may pay \{b\} rather than pay ~'s mana cost if there are thirteen or more creatures on the battlefield/i.test(line)) { a.altB13 = true; rec.status = 'ok'; continue; }          // Blasphemous Edict
         if (/^discard a card: exile the top two cards of your library\. you may play those cards this turn/i.test(line)) { a.harnfel = true; rec.status = 'ok'; continue; }          // Harnfel, Horn of Bounty
-        if (/^\+ \{1\} — copy target instant spell, sorcery spell, activated ability, or triggered ability/i.test(line)) { a.respondCopy = { extra: 1 }; a.spellFx.push({ type: 'copyRespond' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Return the Favor: copies your own instant or sorcery (not abilities)
+        if (/^\+ \{1\} — copy target instant spell, sorcery spell, activated ability, or triggered ability/i.test(line)) { a.respondCopy = { extra: 1 }; a.favorAbility = true; a.spellFx.push({ type: 'copyRespond' }); rec.status = 'ok'; continue; }          // Return the Favor: copies your own instant or sorcery (not abilities)
         if (/^\+ \{1\} — change the target of target spell or ability with a single target/i.test(line)) { OPP(); continue; }
         if (/^when ~(?: of ~)? enters, look at the top four cards of your library\. you may reveal a creature card from among them and put it into your hand/i.test(line)) { T3(['etb'], [{ type: 'lookFilter', look: 4, spec: 'creature' }]); continue; }          // Growing Rites of Itlimoc
         if (/^if you would draw a card except the first one you draw in each of your draw steps, draw two cards instead/i.test(line)) { a.statics.drawDouble = 1; rec.status = 'ok'; continue; }          // Teferi's Ageless Insight
@@ -3903,6 +3909,7 @@
   function condAnthem(g, p, k) {
     const info = bfInfo(g); let n = info.dyn.length ? dynBonus(g, p, k) : 0;
     if (k === 'p' && p.card.a.cdaDevotion) n += devotionTo(g, p.card.a.cdaDevotion);
+    if (p.card.a.storyBuff && enduringStory(g)) n += k === 'p' ? p.card.a.storyBuff.p : p.card.a.storyBuff.t;          // Óin the Brave: an enduring story
     for (const la of info.lifeAnthems) if (g.life >= (g.opts.startLife || 40) + la.over) n += k === 'p' ? la.p : la.t;
     for (const l of info.lieutenants) if (g.battlefield.some(q => q.card.commander)) n += l.src === p ? (k === 'p' ? l.lt.sp : l.lt.st) : (k === 'p' ? l.lt.op : l.lt.ot);
     if (g.gauntletSeen || (g.opp && g.opp.gauntletSeen)) for (const q of bothSides(g)) if (q.card.a.gauntletAnthem && q.gauntletColor && colorsOf(g, p.card).includes(q.gauntletColor)) n += 1;          // Gauntlet of Power
@@ -3990,6 +3997,7 @@
     if (k === 'flying' && p.flyCounter) return true;
     if (p.other && p.other[k] > 0) return true;          // a keyword counter (Gift of the Viper's reach and deathtouch)          // Wonder; Luminous Broodmoth: a flying counter
     if (p.card.a.lifeBuff && g.life >= p.card.a.lifeBuff.min && p.card.a.lifeBuff.kw.includes(k)) return true;          // Serra Ascendant
+    if (p.card.a.storyBuff && p.card.a.storyBuff.kw.includes(k) && enduringStory(g)) return true;          // Óin the Brave: an enduring story
     if (k === 'haste' && g._anger && isCreaturePerm(p)) return true;          // Anger (checked at the start of combat)
     if (k === 'flying' && g._wonder && isCreaturePerm(p)) return true;
     if (p.animated && p.animated.kw && p.animated.kw.includes(k)) return true;
@@ -4325,7 +4333,7 @@
     if (g.killTurn != null) return;
     if (!g.dry && (p.counters || 0) > 0 && !(p.owner && p.owner !== g) && (p.card.a.sinDies || p.card.a.roleModel || (tableHas(g, 'roleModel') && g.battlefield.some(q => q.card.a.roleModel && q !== p)))) {          // rules batch 60: Sin, Reluctant Role Model: its +1/+1 counters go to another creature
       const cs = g.battlefield.filter(q => q !== p && isCreaturePerm(q)); const def = cs.slice().sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0];
-      const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, source: p }) || def : def;
+      const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, n: p.counters, source: p }) || def : def;
       if (t) { addCounters(g, t, '+1/+1', p.counters, ev, p); ev.push({ type: 'note', text: `${p.card.name}'s ${p.counters} counters go to ${t.card.name}`, source: p }); }
     }
     if (!g.dry && p.card.a.sinDies && p.inst && !p.token) { const gi = g.graveyard.indexOf(p.inst); if (gi >= 0) { g.graveyard.splice(gi, 1); g.library.splice(Math.floor(g.rnd() * (g.library.length + 1)), 0, p.inst); } }          // Sin: shuffled into the library
@@ -4590,6 +4598,7 @@
     const barbs = g.dry ? 0 : (tableHas(g, 'manabarbs') ? bothSides(g).filter(q => q.card.a.manabarbs) : []).length;          // Manabarbs
     srcs.forEach(s => {
       s.tapped = true;
+      if (!s.asLand && !g.dry && tableHas(g, 'tapTreasure')) magdaTap(g, s, []);          // Magda: a Dwarf tapped for mana
       if (vor && s.asLand) s.vorSkip = true;          // Vorinclex, Voice of Hunger
       if (s.token && s.card && /Treasure/.test(s.card.name || '')) g._payTre = true;          // Rain of Riches
       if (s.card && s.card.a && s.card.a.tapWatch && !g.dry) for (const t of s.card.a.triggers) if (t.kinds.includes('selfTapped')) fire(g, t, s, [], s);
@@ -5087,6 +5096,7 @@
       const cp = (tableHas(g, 'trigCopy') ? g.battlefield.find(q => q.card.a.trigCopy && !q.tapped && q !== source && (!q.card.a.trigCopy.enchOnly || enchOn(g, source))) : undefined);          // Weaver of Harmony: an enchantment's ability
       if (cp && fxValue(g, trig.fx) >= 3.5 && canPay(cp.card.a.trigCopy.cost, allUnits(g).filter(u => u.src !== cp))) { cp.tapped = true; if (pay(g, cp.card.a.trigCopy.cost) != null) { ev.push({ type: 'note', text: `${cp.card.name}: copied the triggered ability of ${source.card.name}`, source: cp }); g.inCopy = true; try { fireOnce(g, trig, source, ev, subject, amount); } finally { g.inCopy = false; } } else cp.tapped = false; }
     }
+    if (source && source.card && !g.dry && !g.inCopy && tableHas(g, 'favorAbility')) favorCopy(g, trig.fx, source, ev, () => fireOnce(g, trig, source, ev, subject, amount));          // Return the Favor: a triggered ability
     if (source && source.card && !g.dry && !(source.card.colors || []).length && !source.asLand && source.card.a && !source.card.a.isLand && bfInfo(g).trigDoubleColorless) for (const q of (tableHas(g, 'statics.trigDoubleColorless') ? g.battlefield : NONE)) if (q.card.a.statics.trigDoubleColorless && q !== source) fireOnce(g, trig, source, ev, subject, amount);          // Echoes of Eternity
     if (source && isCreaturePerm(source) && !g.dry && bfInfo(g).trigDouble) for (const q of g.battlefield) { const td = q.card.a.statics.trigDouble; if (td && (q !== source || q.card.a.statics.trigDoubleSelf) && matchesFilter(source.card, td)) fireOnce(g, trig, source, ev, subject, amount); const tdp = q.card.a.statics.trigDoublePower; if (tdp != null && powerOf(g, source) <= tdp) fireOnce(g, trig, source, ev, subject, amount); }          // Roaming Throne, Harmonic Prodigy
   }
@@ -5099,6 +5109,7 @@
     ev.push({ type: 'note', text: `Rings of Brighthearth: paid {2} to copy the ability of ${p.card.name}`, source: p }); again();
   }
   function abilityCopy(g, fx, source, ev) {
+    if (!g.dry && fx && fx.length && tableHas(g, 'favorAbility')) favorCopy(g, fx, source, ev, () => applyEffects(g, fx, source, ev, null));          // Return the Favor: an activated ability
     if (!g.copierSeen || g.dry || !fx || !fx.length) return;
     if (source) for (const q of (tableHas(g, 'bracers') ? g.battlefield.slice() : NONE)) if (q.card.a.bracers && q.attachedTo === source.iid) { ev.push({ type: 'note', text: `${q.card.name}: the ability of ${source.card.name} is copied`, source: q }); applyEffects(g, fx, source, ev, null); }
     if (fxValue(g, fx) < 1.5) return;
@@ -6505,7 +6516,9 @@
           const scored = f.modes.map(mode => ({ mode, v: fxValue(g, mode) + (mode.some(x => x.type === 'removal' || x.type === 'counter') && !g.opp ? -50 : 0) })).sort((x, y) => y.v - x.v);
           const pick = f.pickIf && (f.pickIf.kicked ? !!(g.lastCast && g.lastCast.kicked) : f.pickIf.filter === 'commander' ? g.battlefield.some(q => q.card.commander) : g.battlefield.some(q => matchesFilter(q.card, f.pickIf.filter))) ? f.pickIf.pick : f.pick == null ? 1 : f.pick;          // 'commander': the Will cards (T-036)
           let chosen = pick === 'any' ? scored.filter(x => x.v > 0) : scored.slice(0, pick);
-          if (g.ask) chosen = decide(g, { kind: 'mode', options: scored, def: chosen, multi: true, pick, f, source });
+          if (g.ask) { const will = f.pickIf && f.pickIf.filter === 'commander', src = source ? source.card : g.lastCast && g.lastCast.card, bl = will && src ? String(src.oracle_text || '').split('\n').filter(l => /^• /.test(l)) : [];          // the "Will" cards: one mode, or one or both with your commander out
+            if (bl.length === f.modes.length) scored.forEach(x => { x.text = bl[f.modes.indexOf(x.mode)].slice(2); });
+            chosen = will && pick === 2 ? decide(g, { kind: 'mode', will: true, options: scored, def: chosen, multi: true, pick, upTo: true, min: 1, f, source }) || chosen : decide(g, { kind: 'mode', options: scored, def: chosen, multi: true, pick, f, source }); }
           if (g.lastCast && g.lastCast.entwined && g.lastCast.card.a.spellFx.includes(f)) chosen = f.modes.map(mode => ({ mode }));          // entwine paid: both modes
           for (const c of chosen) applyEffects(g, c.mode, source, ev, subject);
           break;
@@ -9242,7 +9255,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         let X = xs; if (xs > 1 && g.ask) { const opts = []; for (let k = 1; k <= xs; k++) opts.push(k); X = decide(g, { kind: 'x', options: opts, def: xs, source: p }); }          // {X} in the cost: you choose X
         if (ab.tap) p.tapped = true;
         const prev = g._payFor; g._payFor = { abilityOf: p }; pay(g, ab.cost.x ? { generic: c0.generic + X * ab.cost.x, pips: c0.pips, x: 0 } : c); g._payFor = prev;
-        ev.push({ type: 'activate', perm: p, text: ab.text });
+        ev.push({ type: 'activate', perm: p, text: ab.text }); if (ab.tap) magdaTap(g, p, ev);
         if (ab.sacFood) sacrificeFoods(g, ab.sacFood, ev);
         if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }
         const xv = g.xValue; if (X) g.xValue = X;
@@ -10113,7 +10126,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const abCost = ab.cost.x ? (c0 => ({ generic: c0.generic + xs * ab.cost.x, pips: c0.pips, x: 0 }))(actCost(g, p, ab.cost)) : actCost(g, p, ab.cost);
         { const prev = g._payFor; g._payFor = { abilityOf: p }; const ok = canPay(abCost, allUnits(g)) && pay(g, abCost) != null; g._payFor = prev; if (!ok) { if (ab.tap) p.tapped = false; continue; } }
         if (ab.key) p.abUsed = Object.assign({}, p.abUsed, { [ab.key]: g.turn }); else p.actUsed = g.turn;
-        ev.push({ type: 'activate', perm: p, text: ab.text });
+        ev.push({ type: 'activate', perm: p, text: ab.text }); if (ab.tap) magdaTap(g, p, ev);
         if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }                                // Magus of the Wheel: sacrificed as part of the cost
         { const xv = g.xValue; if (xs) g.xValue = xs; try { applyEffects(g, ab.fx, p, ev, null); abilityCopy(g, ab.fx, p, ev); if (xs && bfInfo(g).xCopy) { ev.push({ type: 'note', text: `Unbound Flourishing: the ability of ${p.card.name} is copied`, source: p }); applyEffects(g, ab.fx, p, ev, null); } } finally { g.xValue = xv; } }
         if (p.card.a.pages && g.battlefield.includes(p)) { p.pageN = (p.pageN || 0) + 1; if (p.pageN >= p.card.a.pages) { removePerm(g, p); if (p.inst) g.exile.push(p.inst); gainLife(g, 4, ev, p); ev.push({ type: 'note', text: `${p.card.name}: four page counters, exiled for 4 life`, source: p }); } }
@@ -10135,7 +10148,7 @@ g.actSeq = (g.actSeq || 0) + 1;
             if (gyf && !gyTarget(g, gyf)) break;                                // Samwise: as often as the Foods allow, but only with something worth returning
             if (ab.tap) p.tapped = true;
             pay(g, ab.cost);
-            ev.push({ type: 'activate', perm: p, text: ab.text });
+            ev.push({ type: 'activate', perm: p, text: ab.text }); if (ab.tap) magdaTap(g, p, ev);
             sacrificeFoods(g, ab.sacFood, ev);
             applyEffects(g, ab.fx, p, ev, null);
           }
@@ -11028,6 +11041,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry && g.opp) for (const { q } of othersPerms(g)) if (q.card.a.citadelDragons && q.siegeMode === 'dragons') { const t = g.battlefield.filter(x => isCreaturePerm(x) && !x.tapped && targetable(g, x)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t) { t.tapped = true; ev.push({ type: 'note', text: `${q.card.name} (Dragons): ${t.card.name} is tapped`, source: q }); } }          // Citadel Siege
     for (const q of (tableHas(g, 'hasteAll') ? g.battlefield : NONE)) if (q.card.a.hasteAll && !q.tapped && g.battlefield.some(c => isCreaturePerm(c) && c.sick)) { q.tapped = true; g.battlefield.forEach(c => { if (isCreaturePerm(c)) c.sick = false; }); }          // Crashing Drawbridge
     for (const q of (tableHas(g, 'hasteGive') ? g.battlefield : NONE)) { const hg = q.card.a.hasteGive; if (hg && !q.tapped) { const t = g.battlefield.filter(c => isCreaturePerm(c) && c.sick && !c.tapped && powerOf(g, c) >= 2).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; if (t && canPay(hg.cost, allUnits(g).filter(u => u.src !== q))) { q.tapped = true; pay(g, hg.cost); t.sick = false; t.eotP = (t.eotP || 0) + hg.p; } } }          // Slayers' Stronghold
+    if (!g.dry) hasteTaps(g, ev);          // Axgard Cavalry: here, at the beginning of combat, so the attack preview (previewAttack) sees the hasted creature too
     g._wonder = g.graveyard.some(i => i.card.a.wonderFly) && g.battlefield.some(q => q.asLand && /\bIsland\b/.test(q.card.type_line || ''));
     g._anger = g.graveyard.some(i => i.card.a.angerHaste) && g.battlefield.some(q => q.asLand && /\bMountain\b/.test(q.card.type_line || ''));
     if (!g.dry) for (const q of g.battlefield.slice()) {
@@ -11172,6 +11186,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const units = allUnits(g), keep = g.hand.filter(c => !c.card.a.isLand && canPay(effectiveCost(g, c), units)).reduce((m, c) => Math.max(m, (ec => ec.generic + ec.pips.length)(effectiveCost(g, c))), 0);          // mana kept for the spell the second main phase would cast
         for (let k = 0; k < 10 && toughnessOf(g, t) > 1 && allUnits(g).length - (ap.cost.generic + ap.cost.pips.length) >= keep && canPay(ap.cost, allUnits(g)); k++) { pay(g, ap.cost); t.eotP = (t.eotP || 0) + 1; t.eotT = (t.eotT || 0) - 1; } }
       for (const p of attackers.slice()) { const pu = p.card.a.pumpAb; if (pu) for (let k = 0; k < 8 && canPay(pu.cost, allUnits(g)); k++) { pay(g, pu.cost); p.eotP = (p.eotP || 0) + pu.p; p.eotT = (p.eotT || 0) + pu.t; } }          // firebreathing: spare mana makes the attackers bigger
+      dwarfPump(g, attackers, ev);          // Dwarven Bloodboiler
       // The Ring, level 2: "whenever your Ring-bearer attacks, draw a card, then discard a card"
       let rb = ringBearer(g);
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
@@ -11377,6 +11392,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function endTurn0(g) {
     const iw = [];
     if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
+    if (!g.dry && !matchOver(g)) dwarfEnd(g, iw);          // Vault Robber, Óin the Brave
     for (const i of g.hand.slice()) if (i.borrowed) { g.hand.splice(g.hand.indexOf(i), 1); const o = i.borrowed; i.borrowed = null; i.foreign = false; o.hand.push(i); }          // Sen Triplets: the cards you did not play go back to their owner's hand
     for (const q of g.battlefield.slice()) if (q.sneakTurn === g.turn) { iw.push({ type: "note", text: `${q.card.name} is sacrificed (Sneak Attack)`, source: q }); leavePerm(g, q, iw); flushLeaves(g, iw); }          // Sneak Attack, used by a person: sacrificed at the end step
     toxrillEnd(g, []);
@@ -12677,6 +12693,60 @@ g.actSeq = (g.actSeq || 0) + 1;
   function ownMult(g) { if (!g || g.dry) return 1; const n = bfInfo(g).ownDouble || 0; return n ? Math.pow(2, Math.min(n, 4)) : 1; }          // Angrath's Marauders: your own sources
   function unlockCostOf(g, c) { const less = g.battlefield.reduce((t, q) => t + (q.card.a.statics.unlockLess || 0), 0); return less && c ? { generic: Math.max(0, c.generic - less), pips: c.pips, x: c.x } : c; }          // Inquisitive Glimmer
   function infernoMult(g, src) { if (!g || g.dry || !src || !src.card) return 1; let m = 1; for (const q of ((tableHas(g, 'inferno') || tableHas(g, 'flareStar')) ? g.battlefield : NONE)) if ((q.card.a.inferno && q.infernoType && matchesFilter(src.card, q.infernoType)) || (q.card.a.flareStar && matchesFilter(src.card, q.card.a.flareStar))) m *= 2; for (const q of ((src.iid != null && tableHas(g, 'mjolnir')) ? g.battlefield : NONE)) if (q.card.a.mjolnir && q.attachedTo === src.iid) m *= 2; return m; }          // Mjölnir: the creature it equips          // Collective Inferno
+  // T-041 (issue #78): Magda, Brazen Outlaw sees every Dwarf that becomes tapped outside combat; the Dwarves' own abilities
+  // a seated person is asked before each of these (the autopilot's choice is the default, so taking every default plays the autopilot's game)
+  function askUse(g, what, why, source, target) { return !g.ask || decide(g, { kind: 'protect', options: [what], def: what, optional: true, why, target: target || null, source: source || null }) != null; }
+  function magdaTap(g, q, ev) { if (g.dry || !q || !q.card || !tableHas(g, 'tapTreasure') || !isCreaturePerm(q)) return; for (const mg of g.battlefield.filter(x => x.card.a.tapTreasure)) if (matchesFilter(q.card, mg.card.a.tapTreasure)) createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev || [], mg); }
+  function enduringStory(g) { if (g.story) return true; if (g.battlefield.filter(q => artOn(g, q) || q.card.a.isLegendary || /\bSaga\b/.test(q.card.type_line || '')).length >= 3) g.story = true; return !!g.story; }          // storied: three artifacts, legendaries and/or Sagas once, for the rest of the game
+  function hasteTaps(g, ev) {          // Axgard Cavalry: {T} before attackers: haste for a creature that came in this turn and hits harder than the Cavalry
+    for (const p of (tableHas(g, 'hasteTap') ? g.battlefield.slice() : NONE)) {
+      if (!p.card.a.hasteTap || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste'))) continue;
+      const t = g.battlefield.filter(q => q !== p && isCreaturePerm(q) && q.sick && !q.tapped && !hasKw(g, q, 'haste') && !hasKw(g, q, 'defender')).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
+      if (!t || powerOf(g, t) <= powerOf(g, p)) continue;
+      if (!askUse(g, `Tap ${p.card.name}: ${t.card.name} gains haste`, `${p.card.name}, before attackers`, p, t)) continue;
+      p.tapped = true; t.eotKw = new Set([...(t.eotKw || []), 'haste']); ev.push({ type: 'note', text: `${p.card.name}: ${t.card.name} gains haste`, source: p }); magdaTap(g, p, ev);
+    }
+  }
+  function dwarfPump(g, attackers, ev) {          // Dwarven Bloodboiler: each untapped Dwarf that is not attacking taps: an attacker gets +2/+0 (not in a match: they stay home to block)
+    if (g.dry || g.opp) return;
+    for (const b of (tableHas(g, 'tribeTapPump') ? g.battlefield.slice() : NONE)) {
+      const tp = b.card.a.tribeTapPump; if (!tp || !g.battlefield.includes(b)) continue;
+      for (const d of g.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && !attackers.includes(q) && matchesFilter(q.card, tp.type))) {
+        const t = attackers.filter(x => g.battlefield.includes(x)).sort((x, y) => ((hasKw(g, y, 'double strike') ? 1 : 0) - (hasKw(g, x, 'double strike') ? 1 : 0)) || powerOf(g, y) - powerOf(g, x))[0]; if (!t) return;
+        if (!askUse(g, `Tap ${d.card.name}: ${t.card.name} gets +${tp.p}/+0`, `${b.card.name}, attackers declared`, b, t)) continue;
+        d.tapped = true; t.eotP = (t.eotP || 0) + tp.p; ev.push({ type: 'note', text: `${b.card.name}: ${d.card.name} taps, ${t.card.name} gets +${tp.p}/+0`, source: b }); magdaTap(g, d, ev);
+      }
+    }
+  }
+  function dwarfEnd(g, ev) {          // at your end step, with the mana left: Vault Robber (a creature card from the graveyard for a Treasure), Óin the Brave (a spare land for a new card)
+    if (g.dry) return;
+    for (const p of (tableHas(g, 'vaultRobber') ? g.battlefield.slice() : NONE)) {
+      const vr = p.card.a.vaultRobber; if (!vr || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste'))) continue;
+      const fod = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander).sort((x, y) => (x.card.a.mv || 0) - (y.card.a.mv || 0))[0];
+      if (!fod) continue;
+      if (!canPay(vr, allUnits(g).filter(u => u.src !== p)) || !askUse(g, `{1}, tap ${p.card.name}, exile ${fod.card.name}: a Treasure`, `${p.card.name}, your end step`, p)) continue;
+      p.tapped = true; if (!canPay(vr, allUnits(g)) || pay(g, vr) == null) { p.tapped = false; continue; }
+      g.graveyard.splice(g.graveyard.indexOf(fod), 1); g.exile.push(fod);
+      createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev, p); ev.push({ type: 'note', text: `${p.card.name}: ${fod.card.name} exiled from the graveyard for a Treasure`, source: p }); magdaTap(g, p, ev);
+    }
+    for (const p of (tableHas(g, 'tapRummage') ? g.battlefield.slice() : NONE)) {
+      const rc = p.card.a.tapRummage; if (!rc || p.tapped || !isCreaturePerm(p) || (p.sick && !hasKw(g, p, 'haste')) || !g.library.length) continue;
+      if (g.battlefield.filter(q => q.asLand).length < 5 || !g.hand.some(i => i.card.a.isLand)) continue;          // only a land you no longer need
+      if (!canPay(rc, allUnits(g).filter(u => u.src !== p)) || !askUse(g, `{1}, tap ${p.card.name}, discard a card: draw a card`, `${p.card.name}, your end step`, p)) continue;
+      p.tapped = true; if (!canPay(rc, allUnits(g)) || pay(g, rc) == null) { p.tapped = false; continue; }
+      ev.push({ type: 'note', text: `${p.card.name}: discard a card, draw a card`, source: p }); discardWorst(g, ev); draw(g, 1, ev); magdaTap(g, p, ev);
+    }
+  }
+  function favorCopy(g, fx, source, ev, again) {          // Return the Favor from your hand ({R}{R} and {1}): copy a triggered or activated ability of yours worth it
+    if (g.dry || g.inCopy || g.inRespond || g.killTurn != null || !tableHas(g, 'favorAbility') || !fx || !fx.length || fxValue(g, fx) < 4) return false;
+    const c = g.hand.find(i => i.card.a.favorAbility); if (!c) return false;
+    const base = effectiveCost(g, c), cost = { generic: base.generic + 1, pips: base.pips, x: 0 };
+    if (!canPay(cost, allUnits(g)) || !askUse(g, `Cast ${c.card.name}: copy the ability of ${source && source.card ? source.card.name : 'a permanent'}`, `${source && source.card ? source.card.name : 'An ability'}`, source || null) || pay(g, cost) == null) return false;
+    g.hand.splice(g.hand.indexOf(c), 1); g.graveyard.push(c); fireCastTriggers(g, c, ev); g.spellsCast = (g.spellsCast || 0) + 1;
+    ev.push({ type: 'note', text: `${c.card.name} is cast: the ability of ${source && source.card ? source.card.name : 'a permanent'} is copied`, source: source || null });
+    g.inCopy = true; try { again(); } finally { g.inCopy = false; }
+    return true;
+  }
   function plusBonus(g, src) { if (!g || g.dry || !src || !src.card || !tableHas(g, 'torbran')) return 0; let n = 0; for (const q of g.battlefield) if (q.card.a.torbran) n += q.card.a.torbran; return n && colorsOf(g, src.card).includes('R') ? n : 0; }          // Torbran, Thane of Red Fell: a red source of yours deals 2 more
   function fireBonus(g) { if (!g || g.dry) return 0; let n = 0; for (const q of (tableHas(g, 'firepowerBonus') ? g.battlefield : NONE)) if (q.card.a.firepowerBonus) n += (q.other && q.other.fire) || 0; return n; }          // Fated Firepower
   function twinMult(g) { if (g.dry) return 1; const n = (tableHas(g, 'statics.twinGods') ? bothSides(g).filter(q => q.card.a.statics.twinGods) : []).length; return n ? Math.pow(2, Math.min(n, 4)) : 1; }

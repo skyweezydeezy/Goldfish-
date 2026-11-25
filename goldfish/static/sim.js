@@ -8948,7 +8948,14 @@
     if (!card || card.layout !== 'modal_dfc' || !card.a.backCard) return 'auto';
     const f = (pol(g, 'faces') || {})[card.name];
     if (f === 'front' || f === 'back') return f;
-    return card.commander && pol(g, 'mdfcFace') === 'back' ? 'back' : 'auto';
+    if (card.commander) {
+      const saved = g.opts && g.opts.policy && g.opts.policy.mdfcFace;
+      if (saved === 'front' || saved === 'back') return saved;
+      // An upkeep engine on the back is the commander plan: do not spend the card on its cheaper front while ramping.
+      const back = card.a.backCard.a;
+      if (!back.isCreature && back.triggers.some(t => t.kinds.includes('upkeep') && t.fx.some(f => f.type === 'revealToBf'))) return 'back';
+    }
+    return 'auto';
   }
   function backFaceCost(g, c) { const k = c.card.a.backCard.a.cost; return c.card.commander ? Object.assign({}, k, { generic: k.generic + 2 * (g.cmdrCasts[c.iid] || 0) }) : k; }
   function canCastBack(g, c) { const bc = c && c.card.a.backCard; return !!(bc && c.card.layout === 'modal_dfc' && bc.mana_cost && !bc.a.isLand && (g.hand.includes(c) || g.command.includes(c)) && !(c.card.commander && bc.a.isLegendary && g.battlefield.some(p => p.card.name === bc.name)) && canPay(backFaceCost(g, c), allUnits(g))); }
@@ -8976,7 +8983,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const brood = !g.dry && bfInfo(g).gyCastLand && g.broodTurn !== g.turn && g.battlefield.filter(q => q.asLand).length >= 6;
     const cands = g.hand.filter(c => !c.card.a.isLand).concat(g.command).concat(g.graveyard.filter(i => (i.card.a.mayhem && i.mayhemTurn === g.turn) || i.chainerCast === g.turn || (brood && i.card.a.isPermanent && !i.card.a.isLand && !i.card.commander && (i.card.a.castMv || 0) >= 3 && !!(i.broodCast = g.turn)) || (i.card.a.yardCastIfZombie && hasZ) || i.zulCast === g.turn || (i.card.a.flashSac && fodderList(g, true).length >= i.card.a.flashSac) || (i.card.a.escape && g.graveyard.length > i.card.a.escape.n) || (g.wrennEmblem && i.card.a.isPermanent && !i.card.a.isLand && !i.card.commander) || retraceOk(g, i) || i.yardCastTurn === g.turn || (i.card.a.flashback && g.life > i.card.a.flashback.life + 5) || (g.muldTurn !== g.turn && i.card.a.isPermanent && !i.card.a.isLand && !i.card.commander && (tableHas(g, 'muldrotha') && g.battlefield.some(q => q.card.a.muldrotha))) || (!i.card.a.isLand && !i.card.commander && g.graveyard.length >= 4 && (tableHas(g, 'breach') && g.battlefield.some(q => q.card.a.breach)))))          // Gravecrawler, Zul Ashur: cast from the graveyard
       .concat(g.exile.filter(i => i.heldBy != null && i.anyMana && !i.card.a.isLand)).concat(g.exile.filter(i => i.warpCast || i.airbent || (i.foretoldTurn != null && i.foretoldTurn < g.turn)))          // warped cards wait in exile; Hostage Taker: cast the exiled card
-      .concat(topCastable(g) ? [g.library[0]] : []);          // Bolas's Citadel: the top card, paid for with life
+      .concat(topCastable(g) ? [g.library[0]] : []).filter(c => faceChoice(g, c.card) !== 'back');          // Honour back-face plans in the sacrifice-for-mana fallback paths too.
     let best = null, bestScore = -1, altarK = 0;
     const rMana = bfInfo(g).restrictMana, kinds = rMana ? new Map() : null;
     for (const c of cands) {
@@ -8984,7 +8991,6 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (castBlocked(g, c)) continue;          // not castable now
       const units = rMana ? unitsForKind(g, c, kinds) : units0;          // Cavern of Souls, Eldrazi Temple: the mana this spell could use
       if (!lockWorth(g, c)) continue;
-      if (faceChoice(g, c.card) === 'back') continue;          // this card is set to its back face (or the lab chose the commander's back face): never cast the front
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick)));
       if (c.card.a.squad) c.squads = squadChoice(g, c, units);          // T-036
       if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0) + xDiscountNow(g)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X (Zimone's discount pays for X too)

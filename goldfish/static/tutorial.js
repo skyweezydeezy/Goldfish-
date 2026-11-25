@@ -28,12 +28,14 @@
   //   before: () => (promise)   runs first; Next shows "…" meanwhile;  uses: 'id'   showing the step counts as using that feature (no tip) }
   let run = null;          // the tour on screen: { id, steps, i, root, spot, bubble, blockers, raf, last, prevFocus, done }
   const visible = e => { if (!e || !e.isConnected) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+  // a step may point into a folded section or at the top bar while a table has put it away (T-069): open it first
+  const reveal = e => { let b; while ((b = e.closest('.box-closed'))) b.classList.remove('box-closed'); while ((b = e.closest('details:not([open])'))) b.open = true; if (document.body.classList.contains('tfocus') && e.closest('.topbar')) document.body.classList.add('tbar-open'); };
   function findEl(step) {
     if (step.sheets) { const sh = document.querySelector('.ch-sheet'); if (sh && visible(sh)) return sh; }          // a question the game asks takes the spotlight while it is open
     if (!step.el) return null;
     for (const s of [].concat(step.el)) {
-      if (typeof s === 'function') { const e = s(); if (visible(e)) return e; continue; }
-      for (const e of document.querySelectorAll(s)) if (visible(e)) return e;
+      if (typeof s === 'function') { const e = s(); if (e && e.closest) reveal(e); if (visible(e)) return e; continue; }
+      for (const e of document.querySelectorAll(s)) { reveal(e); if (visible(e)) return e; }
     }
     return null;
   }

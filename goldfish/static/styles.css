@@ -1331,3 +1331,92 @@ body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }
 @keyframes raise-shine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 .raise-rm { padding: 2px 8px; }
 @media (prefers-reduced-motion: reduce) { .raise-prog .progress div { animation: none; transition: none; } }
+
+/* =====================================================================
+   T-069: table focus. While a table is open (Practice, or a Duel/Pod game) the top bar, tabs and page chrome get out of the way
+   so the table covers the whole screen (100dvh, inside the safe areas). The table's own toolbar has a ☰ button that brings the bar
+   back over the table; picking a tab, or tapping the table, puts it away again. app.js sets body.tfocus (see applyFocus).
+   --topbar-h is the height the chrome takes, so every table height that subtracts it fills the screen: here only the notch and home bar.
+   ===================================================================== */
+.focus-menu, .focus-leave { display: none; }
+.fs-btn { padding: 4px 10px; font-size: 16px; }
+.fs-btn[hidden] { display: none; }
+body.tfocus { --topbar-h: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)); }
+body.tfocus { overflow: hidden; }                       /* no page scrolling while a table is open */
+body.tfocus .topbar { display: none; }
+body.tfocus.tbar-open .topbar { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 420; padding-bottom: 8px; box-shadow: 0 14px 40px rgba(0,0,0,.65); }
+body.tfocus.tbar-open .topbar .brand-text, body.tfocus.tbar-open .topbar .status-pill { display: none; }
+body.tfocus .site-footer, body.tfocus .teach-banner { display: none; }
+body.tfocus main { padding: calc(4px + env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(6px, env(safe-area-inset-left, 0px)); max-width: none; }
+body.tfocus .focus-menu { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; min-height: 36px; padding: 2px 8px; font-size: 18px; line-height: 1; flex: none; }
+body.tfocus[data-view=duel] .topbar .focus-leave, body.tfocus[data-view=pod] .topbar .focus-leave { display: inline-flex; align-items: center; }
+body.tfocus[data-view=duel] #tab-duel > :not(.vs-game), body.tfocus[data-view=pod] #tab-pod > :not(.vs-game) { display: none !important; }
+body.tfocus .vs-screen { min-height: 0; height: calc(100vh - var(--topbar-h) - 8px); height: calc(100dvh - var(--topbar-h) - 8px); }
+.vs-logtog { display: none; }
+@media (min-width: 1401px) and (min-height: 600px), (min-width: 1181px) and (min-height: 600px) and (not (any-pointer: coarse)) {
+  body.tfocus .vs-game > .card-box { height: calc(100vh - var(--topbar-h) - 8px); height: calc(100dvh - var(--topbar-h) - 8px); margin-bottom: 0; }
+  body.tfocus .vs-game:not([hidden]) { gap: 8px; }
+}
+/* phones and tablets: the game log is a drawer over the table (the 📜 button beside ☰), like Practice's */
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
+  body.tfocus .vs-logtog { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; min-height: 36px; padding: 2px 8px; flex: none; }
+  body.tfocus .vs-game > .card-box { position: fixed; left: 0; right: 0; bottom: 0; z-index: 280; margin: 0; max-height: 55vh; max-height: 55dvh; overflow: auto; border-radius: 16px 16px 0 0;
+    padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateY(105%); transition: transform .25s ease; box-shadow: 0 -10px 40px rgba(0,0,0,.6); }
+  body.tfocus .vs-game:not(.log-open) > .card-box { display: none; }          /* closed: out of the page's height too (a fixed box slid off the bottom still counts) */
+  body.tfocus .vs-game.log-open > .card-box { transform: none; }
+  body.tfocus .vs-game .vs-log { max-height: 38vh; max-height: 38dvh; overflow: auto; }
+}
+@media (max-width: 1180px), (any-pointer: coarse) and (max-width: 1400px) {
+  body.tfocus[data-view=table] #tab-table.active { height: calc(100vh - var(--topbar-h) - 4px); height: calc(100dvh - var(--topbar-h) - 4px); }
+}
+
+/* T-069: report boxes fold to their header (app.js foldBoxes) */
+.card-box[data-fold] > .box-head, .card-box[data-fold] > h2:first-child { cursor: pointer; }
+.card-box[data-fold] > .box-head::after, .card-box[data-fold] > h2:first-child::after { content: "▾"; margin-left: auto; padding-left: 10px; color: var(--muted); font-size: 13px; transition: transform .15s; }
+.card-box[data-fold] > h2:first-child { display: flex; align-items: center; }
+.card-box.box-closed > .box-head::after, .card-box.box-closed > h2:first-child::after { transform: rotate(90deg); }
+.card-box.box-closed > :not(.box-head):not(h2:first-child) { display: none !important; }
+.card-box.box-closed > .box-head, .card-box.box-closed > h2:first-child { margin-bottom: 0; }
+.card-box.box-closed > .box-head > .hint:not(.folded) { display: none; }
+
+/* =====================================================================
+   T-069: compact everything. Tighter boxes, margins, headers and bars on every page; nothing removed, and tap targets stay >= 36px.
+   (Placed last so it wins over the earlier layouts at equal weight; the tables keep their own one-screen rules above.)
+   ===================================================================== */
+.card-box { padding: 10px 12px; margin-bottom: 9px; border-radius: 10px; }
+h2 { font-size: 14px; margin: 0 0 6px; }
+.box-head { gap: 4px 10px; margin-bottom: 6px; }
+.row { margin: 6px 0; gap: 6px; }
+main { padding-top: 10px; padding-bottom: 36px; }
+.topbar { padding-top: calc(5px + env(safe-area-inset-top)); padding-bottom: 5px; gap: 12px; }
+.tab { padding: 5px 11px; }
+.tiles, .two-col { gap: 8px; }
+.tile { padding: 8px 10px; }
+.tile .val { font-size: 22px; }
+.settings > summary, details.fold > summary { padding-top: 2px; padding-bottom: 2px; }
+.deck-input textarea { height: 150px; }
+@media (max-width: 900px) {
+  main { padding: 8px 8px 28px; }
+  .topbar { gap: 6px 8px; padding-left: 10px; padding-right: 10px; }
+  .brand .logo, .brand-text { } .brand .logo { width: 28px; height: 28px; }
+  .brand-text { display: none; }                         /* the logo is the brand; the row keeps its room for the pills and the sound button */
+  .tabs { gap: 2px; }
+  .tab { padding: 6px 9px; font-size: 13px; min-height: 36px; }
+  .deck-input textarea { height: 130px; }
+  .hand-zone { min-height: 140px; }
+  .fan { height: 210px; }
+}
+@media (pointer: coarse) { .tab { padding: 6px 10px; } button, select, input[type=number] { min-height: 38px; } }
+@media (max-width: 520px) {
+  .tab { padding: 6px 5px; font-size: 12px; }
+  .topbar { padding-left: 8px; padding-right: 8px; }
+}
+@media (max-width: 520px) {
+  .grid2 { grid-template-columns: 1fr 1fr; gap: 6px 8px; }          /* the rules sit two to a row on a phone */
+  .grid2 label { font-size: 12px; }
+  .grid2 input, .grid2 select { padding: 4px 6px; }
+  .deck-actions { gap: 5px; }
+  .deck-actions button, .deck-actions select { padding: 5px 10px; }
+  .tile .lbl, .tile small { font-size: 11px; }
+}
+body[data-view=table]:not(.tfocus) .topbar .fs-btn { display: none; }     /* the table's one-row tab bar has no room for it; with table focus on it is in the bar that ☰ opens */

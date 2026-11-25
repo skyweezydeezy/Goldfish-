@@ -2,15 +2,42 @@ importScripts('sim.js', 'suggest.js', 'profile.js', 'tags.js', 'compare.js', 'tu
 // T-064: Tune's games are jobs (tune.js). Here they are cut into parts and played by sub-workers (this same file), then joined in game order, so the search gives
 // exactly the result of one worker. Without sub-workers (no Worker in workers, one core) the search runs here as before.
 const POOL = Math.min(8, self.navigator && self.navigator.hardwareConcurrency || 1);
+// A sub-worker that dies, errors or goes quiet never stalls the search: its part goes back in the queue, and a part nobody answers within WATCHDOG ms (a sub-worker beats every
+// few games while it plays) is played here, in this thread, by the same code, so the result is the same either way. With no sub-worker left, every part is played here.
+const WATCHDOG = () => self.TUNE_WATCHDOG_MS || 60000;
 function tunePool() {
   if (typeof Worker === 'undefined' || POOL < 2) return null;
-  const ws = [], idle = [], waiting = [], pending = new Map(); let seq = 0;
-  const pump = () => { while (idle.length && waiting.length) { const w = idle.pop(), t = waiting.shift(); pending.set(t.id, t); w.cur = t.id; w.postMessage({ tpart: { id: t.id, j: t.j, from: t.from, to: t.to } }); } };
-  for (let k = 0; k < POOL; k++) {
-    const w = new Worker('worker.js'); ws.push(w); idle.push(w);
-    w.onmessage = ev => { const d = ev.data; if (!d.tdone) return; const t = pending.get(d.tdone); pending.delete(d.tdone); idle.push(w); t.res(d.r); pump(); };
-    w.onerror = err => { for (const t of pending.values()) t.rej(err); };
+  const ws = new Set(), idle = [], waiting = [], pending = new Map(); let seq = 0, closed = false;
+  const local = t => setTimeout(() => { try { t.res(self.Tune.runPart(self.Goldfish, t.j, t.from, t.to, null)); } catch (err) { t.rej(err); } });          // this thread plays the part
+  const drop = (w, requeue) => {
+    if (!ws.delete(w)) return;
+    clearTimeout(w.dog); const at = idle.indexOf(w); if (at >= 0) idle.splice(at, 1);
+    try { w.terminate(); } catch (e) { /* already gone */ }
+    const t = w.cur != null ? pending.get(w.cur) : null; w.cur = null;
+    if (t) { pending.delete(t.id); if (requeue) waiting.unshift(t); else local(t); }
+    pump();
+  };
+  const arm = w => { clearTimeout(w.dog); w.dog = setTimeout(() => { const t = w.cur != null ? pending.get(w.cur) : null; if (t) { pending.delete(t.id); w.cur = null; local(t); } drop(w, false); }, WATCHDOG()); };
+  function pump() {
+    if (closed) return;
+    if (!ws.size) { while (waiting.length) local(waiting.shift()); return; }          // no sub-worker left
+    while (idle.length && waiting.length) {
+      const w = idle.pop(), t = waiting.shift(); pending.set(t.id, t); w.cur = t.id; arm(w);
+      try { w.postMessage({ tpart: { id: t.id, j: t.j, from: t.from, to: t.to } }); } catch (err) { drop(w, true); }
+    }
   }
+  for (let k = 0; k < POOL; k++) {
+    let w; try { w = new Worker('worker.js'); } catch (err) { break; }
+    ws.add(w); idle.push(w);
+    w.onmessage = ev => {
+      const d = ev.data; if (!d) return;
+      if (d.tbeat) { if (w.cur === d.tbeat) arm(w); return; }
+      if (!d.tdone || w.cur !== d.tdone) return;                                                                    // a stale answer
+      const t = pending.get(d.tdone); pending.delete(d.tdone); w.cur = null; clearTimeout(w.dog); idle.push(w); t.res(d.r); pump();
+    };
+    w.onerror = () => drop(w, true); w.onmessageerror = () => drop(w, true);
+  }
+  if (!ws.size) return null;
   const part = (j, from, to) => new Promise((res, rej) => { waiting.push({ id: ++seq, j, from, to, res, rej }); });
   const run = (jobs, env) => Promise.all(jobs.map(job => {
     const j = Object.assign({}, job); delete j.deck;                                                    // a deck is rebuilt by each sub-worker from the cards
@@ -19,12 +46,13 @@ function tunePool() {
     const ps = []; for (let k = 0; k < np; k++) ps.push(part(j, cut[k], cut[k + 1]).then(r => { if (!j.quiet) env.tick(cut[k + 1] - cut[k]); return r; }));
     const all = Promise.all(ps); pump(); return all.then(parts => self.Tune.joinParts(j, parts));
   }));
-  return { run, close: () => ws.forEach(w => w.terminate()) };
+  return { run, close: () => { closed = true; for (const w of ws) { clearTimeout(w.dog); w.terminate(); } ws.clear(); } };
 }
 self.onmessage = (e) => {
   if (e.data.tpart) {                                   // a sub-worker: play part of a Tune job
     const t = e.data.tpart;
-    self.postMessage({ tdone: t.id, r: self.Tune.runPart(self.Goldfish, t.j, t.from, t.to, null) });
+    let beat = 0;
+    self.postMessage({ tdone: t.id, r: self.Tune.runPart(self.Goldfish, t.j, t.from, t.to, () => { if (++beat % 10 === 0) self.postMessage({ tbeat: t.id }); }) });
     return;
   }
   if (e.data.learn) {                                   // Policy lab: compare options by playing many games with each

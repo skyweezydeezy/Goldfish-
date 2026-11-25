@@ -58,14 +58,15 @@
   const isBasic = c => /\bBasic\b/.test(c.type_line || '') && /\bLand\b/.test(c.type_line || '');
 
   // ---- one candidate's games: a score per game (1 = the goal met in that game) plus what the next step needs ----
-  function play(G, deck, opts, goal, n, seed, track, tick) {
+  function play(G, deck, opts, goal, n, seed, track, tick, from, to) {
+    from = from || 0; to = to == null ? n : to;
     const T = goal.turn, o = Object.assign({}, opts, { turns: goal.kind === 'lands' ? T : T + KILL_GRACE });
-    const score = new Float64Array(n), drawn = track ? new Float64Array(deck.unique.length) : null, stuck = track ? new Float64Array(deck.unique.length) : null;
+    const score = new Float64Array(to - from), drawn = track ? new Float64Array(deck.unique.length) : null, stuck = track ? new Float64Array(deck.unique.length) : null;
     let errors = 0;
-    for (let i = 0; i < n; i++) {
+    for (let i = from; i < to; i++) {
       let g;
       try { g = G.simulate(deck, o, (seed + i * 7919) >>> 0); } catch (e) { errors++; tick && tick(); continue; }
-      score[i] = goal.kind === 'lands' ? ((g.turns[T - 1] || {}).lands >= T ? 1 : 0)
+      score[i - from] = goal.kind === 'lands' ? ((g.turns[T - 1] || {}).lands >= T ? 1 : 0)
         : g.killTurn == null ? 0 : Math.max(0, Math.min(1, 1 - (g.killTurn - T) / (KILL_GRACE + 1)));          // a kill by the target turn, part credit for one a turn or two later
       if (track) deck.unique.forEach((c, u) => { if (g.drawTurn[u] != null) { drawn[u]++; if (g.castTurn[u] == null) stuck[u]++; } });
       tick && tick();
@@ -82,22 +83,57 @@
     return { diff: m, se, z: se > 0 ? m / se : 0 };
   }
   // the whole picture of one deck on one set of shuffles (full-length games): median kill turn, kills by turn, land drops
-  function measure(G, deck, opts, turns, n, seed, tick) {
-    const o = Object.assign({}, opts, { turns }), kill = new Float64Array(turns + 1), onCurve = new Float64Array(turns), killTurns = new Float64Array(n);
+  function measureRaw(G, deck, opts, turns, n, seed, tick, from, to) {
+    from = from || 0; to = to == null ? n : to;
+    const o = Object.assign({}, opts, { turns }), kill = new Float64Array(turns + 1), onCurve = new Float64Array(turns), killTurns = new Float64Array(to - from);
     let errors = 0;
-    for (let i = 0; i < n; i++) {
+    for (let i = from; i < to; i++) {
       let g;
-      try { g = G.simulate(deck, o, (seed + i * 7919) >>> 0); } catch (e) { errors++; killTurns[i] = turns + 1; tick && tick(); continue; }
-      killTurns[i] = g.killTurn != null ? g.killTurn : turns + 1;
+      try { g = G.simulate(deck, o, (seed + i * 7919) >>> 0); } catch (e) { errors++; killTurns[i - from] = turns + 1; tick && tick(); continue; }
+      killTurns[i - from] = g.killTurn != null ? g.killTurn : turns + 1;
       kill[g.killTurn != null ? g.killTurn - 1 : turns]++;
       g.turns.slice(0, turns).forEach((tr, t) => { if (tr.lands >= t + 1) onCurve[t]++; });
       tick && tick();
     }
+    return { n, from, turns, errors, kill, onCurve, killTurns };
+  }
+  function measureFinish(r) {
+    const { n, turns, errors, kill, onCurve, killTurns } = r;
     const ok = Math.max(1, n - errors), byTurn = []; let cum = 0;
     for (let t = 0; t < turns; t++) { cum += kill[t] / ok; byTurn.push(cum); }
     const mi = byTurn.findIndex(v => v >= 0.5);
     let ks = 0; for (const v of killTurns) ks += v;
     return { n, errors, turns, median: mi < 0 ? null : mi + 1, meanKill: ks / Math.max(1, n), byTurn, onCurve: Array.from(onCurve, v => v / ok), killTurns, bracket: bracketOf(byTurn) };
+  }
+  const measure = (G, deck, opts, turns, n, seed, tick) => measureFinish(measureRaw(G, deck, opts, turns, n, seed, tick));
+  // ---- jobs: a batch of games a driver can play anywhere (here, or on other workers) and put back together in game order ----
+  // { t: 'play' | 'measure', cards, tokens, tribe (the deck's own), opts, goal | turns, n, seed, track, deck? (local only) }
+  const jobDeck = (G, j) => j.deck || G.buildDeck(j.cards, j.tokens, j.tribe);
+  function runPart(G, j, from, to, tick) {
+    const deck = jobDeck(G, j);
+    return j.t === 'play' ? play(G, deck, j.opts, j.goal, j.n, j.seed, j.track, tick, from, to) : measureRaw(G, deck, j.opts, j.turns, j.n, j.seed, tick, from, to);
+  }
+  function joinParts(j, parts) {          // parts in game order -> the result play() or measure() gives for the whole job
+    if (j.t === 'play') {
+      const score = new Float64Array(j.n); let at = 0, errors = 0, drawn = null, stuck = null;
+      for (const p of parts) { score.set(p.score, at); at += p.score.length; errors += p.errors; if (p.drawn) { drawn = drawn || new Float64Array(p.drawn.length); stuck = stuck || new Float64Array(p.drawn.length); p.drawn.forEach((v, i) => { drawn[i] += v; stuck[i] += p.stuck[i]; }); } }
+      return { score, errors, drawn, stuck };
+    }
+    const r = { n: j.n, turns: j.turns, errors: 0, kill: new Float64Array(j.turns + 1), onCurve: new Float64Array(j.turns), killTurns: new Float64Array(j.n) }; let at = 0;
+    for (const p of parts) { r.errors += p.errors; p.kill.forEach((v, i) => { r.kill[i] += v; }); p.onCurve.forEach((v, i) => { r.onCurve[i] += v; }); r.killTurns.set(p.killTurns, at); at += p.killTurns.length; }
+    return measureFinish(r);
+  }
+  // the synchronous driver: plays every job here, whole. env.tick is the search's progress counter.
+  function driveSync(G, gen, env) {
+    let r = gen.next();
+    while (!r.done) { r = gen.next(r.value.map(j => joinParts(j, [runPart(G, j, 0, j.n, j.quiet ? null : env.tick)]))); }
+    return r.value;
+  }
+  // the parallel driver: run(jobs) -> Promise of the results, one per job (it may split each job into parts, play them anywhere and joinParts them)
+  async function driveAsync(gen, run) {
+    let r = gen.next();
+    while (!r.done) r = gen.next(await run(r.value));
+    return r.value;
   }
   const goalShare = (m, goal) => goal.kind === 'lands' ? m.onCurve[goal.turn - 1] || 0 : m.byTurn[goal.turn - 1] || 0;
 
@@ -185,7 +221,7 @@
   // goal: { kind: 'kill', earlier: 2 } (turns earlier than the median now) | { kind: 'kill', bracket: 4 } | { kind: 'kill', turn, share }
   //       | { kind: 'lands', turn: 4, share: 0.8 }
   // cfg: { n (games per change), rounds (steps), seed, fullTurns (length of the before/after games) }
-  function tune(G, P, input, opts, goal, cfg, onProgress) {
+  function* tuneGen(G, P, input, opts, goal, cfg, onProgress, env) {
     const n = Math.max(40, cfg.n || 400), rounds = Math.max(1, cfg.rounds || 3), seed = cfg.seed >>> 0, fresh = (seed ^ 0x2f6b1c3d) >>> 0;
     const policy0 = Object.assign({}, opts.policy || {});
     const isCmdr = input.cards.some(c => c.commander);
@@ -204,10 +240,12 @@
     const fullTurns = Math.max(10, Math.min(20, cfg.fullTurns || 14));
     // progress: the measure (n), each step's screen and check, the before/after on fresh shuffles (2n)
     let done = 0, total = n * (3 + rounds * 12);
-    const tick = () => { done++; if (onProgress && done % 20 === 0) onProgress(Math.min(0.99, done / total)); };
+    const tick = (k) => { const was = done; done += k || 1; if (onProgress && Math.floor(done / 20) !== Math.floor(was / 20)) onProgress(Math.min(0.99, done / total)); }; env.tick = tick;
+    const pj = (st, o, g, nn, sd, track, quiet) => ({ t: 'play', deck: st.deck, cards: st.cards, tokens: st.tokens, tribe: st.deck.tribe, opts: o, goal: g, n: nn, seed: sd, track, quiet });
+    const mj = (dk, cards, tokens, o, nn, sd) => ({ t: 'measure', deck: dk, cards, tokens, tribe: dk.tribe, opts: o, turns: fullTurns, n: nn, seed: sd });
     const optsFor = st => Object.assign({}, opts, { policy: st.policy });
     // 1. where the deck is now (the search's shuffles, full-length games), and the goal as a turn and a share
-    const now = measure(G, state.deck, optsFor(state), fullTurns, n, seed, tick);
+    const now = (yield [mj(state.deck, state.cards, state.tokens, optsFor(state), n, seed)])[0];
     const g = Object.assign({}, goal);
     if (g.kind === 'kill') {
       if (g.bracket) { const b = bracketGoal(g.bracket) || BRACKET_SPEED[BRACKET_SPEED.length - 1]; g.turn = b.turn; g.share = b.share; }
@@ -215,7 +253,7 @@
       g.turn = Math.max(3, Math.min(fullTurns, g.turn || 8)); g.share = g.share || 0.5;
     } else { g.kind = 'lands'; g.turn = Math.max(2, Math.min(8, g.turn || 4)); g.share = g.share || 0.8; }
     // 2. the search: from the current deck, the best change; then the best from there; and so on
-    let cur = play(G, state.deck, optsFor(state), g, n, seed, true, tick);
+    let cur = (yield [pj(state, optsFor(state), g, n, seed, true)])[0];
     const start = mean(cur.score), steps = [];
     const half = Math.floor(n / 2);
     for (let r = 0; r < rounds; r++) {
@@ -224,21 +262,23 @@
       if (!ms.length) break;
       total = Math.max(total, done + ms.length * half + 3 * (n - half) + 2 * n * fullTurns / Math.max(1, g.turn) + n);
       // screen every change on half the shuffles, then play the 3 most promising on the rest too
-      const scr = ms.map(mv => {
-        const st = applyMove(G, state, mv), res = play(G, st.deck, optsFor(st), g, half, seed, false, tick);
+      const sts = ms.map(mv => applyMove(G, state, mv)), ress = yield sts.map(st => pj(st, optsFor(st), g, half, seed, false));
+      const scr = ms.map((mv, k) => {
+        const st = sts[k], res = ress[k];
         return { mv, st, res, d: mean(res.score) - mean(cur.score.subarray(0, half)) };
       }).sort((x, y) => y.d - x.d);
       scr.splice(3); for (let k = scr.length - 1; k >= 0; k--) if (!(scr[k].d > 0)) scr.splice(k, 1);
       let best = null;
-      for (const x of scr) {
-        const rest = play(G, x.st.deck, optsFor(x.st), g, n - half, (seed + half * 7919) >>> 0, true, tick);
+      const rests = yield scr.map(x => pj(x.st, optsFor(x.st), g, n - half, (seed + half * 7919) >>> 0, true));
+      for (let k = 0; k < scr.length; k++) {
+        const x = scr[k], rest = rests[k];
         const all = new Float64Array(n); all.set(x.res.score, 0); all.set(rest.score, half);
         const pr = paired(cur.score, all);
         if (pr.z > 1.64 && pr.diff > 0 && (!best || pr.diff > best.pr.diff)) best = { x, pr, all, rest };
       }
       if (!best) break;
       // the next step's "slowest cards" come from the new deck's games
-      const tr = play(G, best.x.st.deck, optsFor(best.x.st), g, half, seed, true, null);
+      const tr = (yield [pj(best.x.st, optsFor(best.x.st), g, half, seed, true, true)])[0];
       const merged = { score: best.all, drawn: tr.drawn.map((v, i) => v + best.rest.drawn[i]), stuck: tr.stuck.map((v, i) => v + best.rest.stuck[i]) };
       steps.push({ label: best.x.mv.label, kind: best.x.mv.kind, key: best.x.mv.key, value: best.x.mv.value, cut: best.x.mv.cut, add: best.x.mv.add && best.x.mv.add.map(c => c.name), before: mean(cur.score), after: mean(best.all), z: best.pr.z });
       state = best.x.st; cur = merged;
@@ -248,15 +288,15 @@
     // 3. before and after on fresh shuffles the search never saw
     const deck0 = G.buildDeck(input.cards, input.tokens || [], policy0.tribe);
     total = Math.max(total, done + 2 * finalN);
-    const before = measure(G, deck0, Object.assign({}, opts, { policy: policy0 }), fullTurns, finalN, fresh, tick);
-    const after = steps.length ? measure(G, state.deck, optsFor(state), fullTurns, finalN, fresh, tick) : before;
+    const fin = yield [mj(deck0, input.cards, input.tokens || [], Object.assign({}, opts, { policy: policy0 }), finalN, fresh)].concat(steps.length ? [mj(state.deck, state.cards, state.tokens, optsFor(state), finalN, fresh)] : []);
+    const before = fin[0], after = steps.length ? fin[1] : before;
     // how sure, on the fresh games: kill goals by the paired change in kill turn (a game with no kill counts as one turn past the last),
     // land goals by the paired change in games that made the land drop
     let confirm = null;
     if (steps.length && g.kind === 'kill') { const d = paired(before.killTurns, after.killTurns); confirm = { diff: -d.diff, se: d.se, z: -d.z, turns: d.diff }; }
     if (steps.length && g.kind === 'lands') {
-      const a = play(G, deck0, Object.assign({}, opts, { policy: policy0 }), g, finalN, fresh, false, null).score, b = play(G, state.deck, optsFor(state), g, finalN, fresh, false, null).score;
-      confirm = paired(a, b);
+      const ab = yield [{ t: 'play', deck: deck0, cards: input.cards, tokens: input.tokens || [], tribe: deck0.tribe, opts: Object.assign({}, opts, { policy: policy0 }), goal: g, n: finalN, seed: fresh, track: false, quiet: true }, pj(state, optsFor(state), g, finalN, fresh, false, true)];
+      confirm = paired(ab[0].score, ab[1].score);
     }
     if (onProgress) onProgress(1);
     const verdict = !steps.length ? 'none' : confirm.z > 1.96 && confirm.diff > 0 ? 'confirmed' : confirm.diff > 0 ? 'likely' : 'unconfirmed';
@@ -273,14 +313,15 @@
   const FINAL_MIN = 2000;
   const turnTxt = m => m.median ? 'turn ' + m.median : 'after turn ' + (m.byTurn.length);
   const pctTxt = x => Math.round(100 * (x || 0)) + '%';
-  function nextBracket(G, P, input, opts, cfg, onProgress) {
+  function* nextBracketGen(G, P, input, opts, cfg, onProgress, env) {
     const n = Math.max(40, cfg.n || 400), seed = cfg.seed >>> 0, fullTurns = Math.max(10, Math.min(20, cfg.fullTurns || 10));          // 10 turns tell every bracket (B1 is a median after turn 8) and keep the games short
-    const now = measure(G, G.buildDeck(input.cards, input.tokens || [], (opts.policy || {}).tribe), Object.assign({}, opts, { policy: opts.policy || {} }), fullTurns, n, seed, null);
+    const dk = G.buildDeck(input.cards, input.tokens || [], (opts.policy || {}).tribe);
+    const now = (yield [{ t: 'measure', deck: dk, cards: input.cards, tokens: input.tokens || [], tribe: dk.tribe, opts: Object.assign({}, opts, { policy: opts.policy || {} }), turns: fullTurns, n, seed, quiet: true }])[0];
     const cur = now.bracket || BASE_BRACKET, target = cfg.bracket || cur + 1;
     if (target > 5 || cur >= 5) return { status: 'top', current: cur, target: cur, text: 'This deck is already at bracket 5 speed (median kill before turn 4): there is no faster bracket to reach.' };
     if (target <= cur) return { status: 'already', current: cur, target, text: `This deck already kills at bracket ${cur} speed (median ${turnTxt(now)}), so B${target} needs no tuning.` };
     const goal = { kind: 'kill', bracket: target }, tc = Object.assign({}, cfg, { n, wide: true, untilGoal: true, rounds: Math.max(1, cfg.rounds || 5), finalN: Math.max(cfg.minFinal || FINAL_MIN, cfg.finalN || 0), fullTurns });
-    const r = tune(G, P, input, opts, goal, tc, onProgress);
+    const r = yield* tuneGen(G, P, input, opts, goal, tc, onProgress, env);
     const T = r.goal.turn, sure = r.verdict === 'confirmed';
     const reached = sure && r.reached && (r.after.bracket || 0) >= target;
     const cuts = r.lines.filter(l => l[0] === '-').map(l => l.slice(2)), adds = r.lines.filter(l => l[0] === '+').map(l => l.slice(2));
@@ -294,9 +335,14 @@
     return Object.assign(r, { status: reached ? 'reached' : sure ? 'closer' : 'none', current: cur, target, targetTurn: T, reached, text, cuts, adds, sets,
       applicable: sure ? r.steps : [] });
   }
+  const tune = (G, P, input, opts, goal, cfg, onProgress) => { const env = {}; return driveSync(G, tuneGen(G, P, input, opts, goal, cfg, onProgress, env), env); };
+  const nextBracket = (G, P, input, opts, cfg, onProgress) => { const env = {}; return driveSync(G, nextBracketGen(G, P, input, opts, cfg, onProgress, env), env); };
+  // the same searches with the games played by `run(jobs)` (the worker's pool); results are those of tune() / nextBracket()
+  const tuneAsync = (G, P, input, opts, goal, cfg, onProgress, run) => { const env = {}; return driveAsync(tuneGen(G, P, input, opts, goal, cfg, onProgress, env), jobs => run(jobs, env)); };
+  const nextBracketAsync = (G, P, input, opts, cfg, onProgress, run) => { const env = {}; return driveAsync(nextBracketGen(G, P, input, opts, cfg, onProgress, env), jobs => run(jobs, env)); };
   const strip = m => ({ n: m.n, errors: m.errors, median: m.median, meanKill: m.meanKill, byTurn: m.byTurn, onCurve: m.onCurve, bracket: m.bracket });
 
-  const api = { tune, nextBracket, FINAL_MIN, bracketOf, bracketAtMost, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
+  const api = { tune, nextBracket, tuneAsync, nextBracketAsync, runPart, joinParts, FINAL_MIN, bracketOf, bracketAtMost, bracketGoal, speedBracket, SPEED, poolFrom, changeLines, BRACKET_SPEED, BASE_BRACKET, LAND_GOALS, POLICY_KEYS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Tune = api;
 })(typeof self !== 'undefined' ? self : this);

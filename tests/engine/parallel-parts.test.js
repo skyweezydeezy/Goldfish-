@@ -17,4 +17,8 @@ const J = JSON.stringify;
 { const N = 12, ps = [A, B, C, D].map(x => ({ cards: x.cards, tokens: x.tokens, policy: {} })), one = J(G.podMonteCarlo(ps, OPTS, N, 3));
   const parts = [[0, 4], [4, N]].map(([f, t]) => G.podMonteCarloPart(ps, OPTS, N, 3, f, t));
   check('pod: parts merge to the single run', J(G.podMonteCarloMerge(parts)) === one); }
+{ const N = 30, cand = [{ name: 'base', policy: {} }, { name: 'alt', policy: { landDrops: 'greedy' } }], O2 = Object.assign({}, OPTS, { policy: {} });
+  for (const [mode, cb, tb] of [[undefined], ['mirror', B.cards, B.tokens], ['field', [{ cards: B.cards, tokens: B.tokens }, { cards: C.cards, tokens: C.tokens }], null]]) {
+    const one = J(G.comparePolicies(A.cards, A.tokens, O2, cand, N, 5, mode, cb, tb)), parts = [[16, N], [0, 16]].map(([f, t]) => G.comparePoliciesPart(A.cards, A.tokens, O2, cand, N, 5, mode, cb, tb, f, t));
+    check('lab (' + (mode || 'goldfish') + '): parts merge to the single run', J(G.comparePoliciesMerge(parts, cand, mode)) === one); } }
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

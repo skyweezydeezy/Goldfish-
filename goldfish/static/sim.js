@@ -13648,7 +13648,9 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Play the same games (same shuffles, same seats) with each candidate policy and compare the scores. The first candidate is the baseline;
   // another one wins only if it beats the baseline by more than chance would explain (z > 1.64, about 95% one-sided).
   // goldfish: score = how early you win (1 = turn 1, 0 = no win). mirror: 1 for a win, 0.5 for no winner, 0 for a loss, against the same deck or another one.
-  function comparePolicies(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, onProgress) {
+  // T-064: games [from, to) of the run, as raw parts that comparePoliciesMerge puts together in game order (several workers play one lab run)
+  function comparePolicies(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, onProgress) { return comparePoliciesMerge([comparePoliciesPart(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, 0, n, onProgress)], candidates, mode); }
+  function comparePoliciesPart(cardsA, tokensA, opts, candidates, n, seed, mode, cardsB, tokensB, from, to, onProgress) {
     // mode 'field': cardsB is a list of opponents [{ cards, tokens, policy? }]; game i is played against opponent i mod M (seats swapped every
     // other round), so every option meets the same opponents with the same shuffles. Opponents play with their own policy, else opts.policyB, else the defaults.
     const field = mode === 'field' && Array.isArray(cardsB) && cardsB.length > 0;
@@ -13660,25 +13662,33 @@ g.actSeq = (g.actSeq || 0) + 1;
     const builds = {}; const deckFor = cd => builds[tribeFor(cd)] || (builds[tribeFor(cd)] = buildDeck(cardsA, tokensA, tribeFor(cd)));
     const decksA = candidates.map(deckFor);
     const T = opts.turns, K = candidates.length;
-    const scores = candidates.map(() => new Float64Array(n)), kills = new Array(K).fill(0), killSum = new Array(K).fill(0), wins = new Array(K).fill(0);
+    const scores = candidates.map(() => new Float64Array(to - from)), kills = new Array(K).fill(0), killSum = new Array(K).fill(0), wins = new Array(K).fill(0);
     let errors = 0;
-    for (let i = 0; i < n; i++) {
-      const s = (seed + i * 7919) >>> 0, aOnPlay = field ? Math.floor(i / M) % 2 === 0 : i % 2 === 0;
+    for (let i = from; i < to; i++) {
+      const s = (seed + i * 7919) >>> 0, aOnPlay = field ? Math.floor(i / M) % 2 === 0 : i % 2 === 0, j = i - from;
       for (let c = 0; c < K; c++) {
         const o = Object.assign({}, opts, { policy: Object.assign({}, opts.policy, candidates[c].policy) });
         try {
           if (mode === 'mirror' || field) {
             const m = playMatch(decksA[c], field ? decksB[i % M] : deckB, o, s, aOnPlay, null, field && cardsB[i % M].policy ? Object.assign({}, optsB, { policy: cardsB[i % M].policy }) : optsB);
-            const w = m.match.winner; scores[c][i] = w == null ? 0.5 : w === 0 ? 1 : 0; if (w === 0) wins[c]++;
+            const w = m.match.winner; scores[c][j] = w == null ? 0.5 : w === 0 ? 1 : 0; if (w === 0) wins[c]++;
           } else {
             const g = simulate(decksA[c], o, s);
-            scores[c][i] = g.killTurn != null ? Math.max(0, (T + 1 - g.killTurn) / T) : 0;
+            scores[c][j] = g.killTurn != null ? Math.max(0, (T + 1 - g.killTurn) / T) : 0;
             if (g.killTurn != null) { kills[c]++; killSum[c] += g.killTurn; }
           }
-        } catch (err) { errors++; scores[c][i] = 0; }
+        } catch (err) { errors++; scores[c][j] = 0; }
       }
-      if (onProgress && i % 10 === 0) onProgress(i / n);
+      if (onProgress && i % 10 === 0) onProgress((i - from) / (to - from));
     }
+    return { n, from, to, scores, kills, killSum, wins, errors, M, T };
+  }
+  function comparePoliciesMerge(parts, candidates, mode) {
+    parts = parts.slice().sort((a, b) => a.from - b.from);
+    const n = parts[0].n, T = parts[0].T, M = parts[0].M, K = candidates.length;
+    const scores = candidates.map((_, c) => { const a = new Float64Array(n); for (const x of parts) a.set(x.scores[c], x.from); return a; });
+    const kills = new Array(K).fill(0), killSum = new Array(K).fill(0), wins = new Array(K).fill(0); let errors = 0;
+    for (const x of parts) { errors += x.errors; for (let c = 0; c < K; c++) { kills[c] += x.kills[c]; killSum[c] += x.killSum[c]; wins[c] += x.wins[c]; } }
     const stat = arr => { let m = 0; for (const v of arr) m += v; m /= arr.length; let q = 0; for (const v of arr) q += (v - m) * (v - m); return { mean: m, se: Math.sqrt(q / Math.max(1, arr.length - 1) / arr.length) }; };
     const rows = candidates.map((cd, c) => {
       const st = stat(scores[c]);
@@ -13877,7 +13887,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,
     lockUpkeep, ghostTurn, castBlocked, abilBlocked, searchRule, comboLines, infiniteMana, bestTutorTarget, stealPerm, discardWorst, setTribe: t => { curTribe = t; }, playMatch,
-    comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchMonteCarloPart, matchMonteCarloMerge, matchLog, linkMatch, matchOver, chooseBlocks,
+    comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, comparePoliciesPart, comparePoliciesMerge, matchMonteCarloPart, matchMonteCarloMerge, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenOf, COLOR_NAME, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,

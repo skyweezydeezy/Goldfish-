@@ -10,7 +10,7 @@ const BEAR = card('Grizzly Bears', 'Creature — Bear', '', { mana_cost: '{1}{G}
 const ONE = card('Quick Goblin', 'Creature — Goblin', '', { mana_cost: '{R}', cmc: 1, power: '3', toughness: '1', colors: ['R'] });
 const BIG = card('Big Dragon', 'Creature — Dragon', 'Flying', { mana_cost: '{4}{R}{R}', cmc: 6, power: '6', toughness: '6', colors: ['R'], keywords: ['Flying'] });
 const CLUE = card('Homebrew Rock', 'Artifact', '{T}: Add {C}.', { mana_cost: '{2}', cmc: 2, produced_mana: ['C'] });
-const cards = [get('nph', 'Brutalizer Exarch'), get('c15', 'Great Oak Guardian'), get('dmu', 'Llanowar Loamspeaker'), get('dsk', 'Marvin, Murderous Mimic'),
+const cards = [get('tmc', 'Michelangelo, the Heart'), get('nph', 'Brutalizer Exarch'), get('c15', 'Great Oak Guardian'), get('dmu', 'Llanowar Loamspeaker'), get('dsk', 'Marvin, Murderous Mimic'),
   get('rna', 'Prime Speaker Vannifar'), get('ons', 'Riptide Shapeshifter'), get('hob', 'The Notary Hobbits'), BEAR, ONE, BIG, CLUE,
   card('Forest', 'Basic Land — Forest', '{T}: Add {G}.', { mana_cost: '', cmc: 0, qty: 30, produced_mana: ['G'] })];
 const deck = G.buildDeck(cards, []);
@@ -26,7 +26,7 @@ const mkTok = g => { G.applyEffects(g, [{ type: 'token', n: 1, tapped: false, cr
 const named = (g, n) => g.battlefield.filter(q => q.card.name === n);
 
 T('coverage', () => {
-  for (const n of ['Brutalizer Exarch', 'Great Oak Guardian', 'Llanowar Loamspeaker', 'Marvin, Murderous Mimic', 'Prime Speaker Vannifar', 'Riptide Shapeshifter', 'The Notary Hobbits']) {
+  for (const n of ['Brutalizer Exarch', 'Great Oak Guardian', 'Llanowar Loamspeaker', 'Marvin, Murderous Mimic', 'Prime Speaker Vannifar', 'Riptide Shapeshifter', 'The Notary Hobbits', 'Michelangelo, the Heart']) {
     const a = by(n).a; check(`${n}: every line 'ok' or 'neutral'`, a.coverage.length > 0 && a.coverage.every(r => r.status === 'ok' || r.status === 'neutral'), a.coverage.map(r => r.status + ' ' + r.text.slice(0, 40)).join(' / '));
   }
 });
@@ -107,6 +107,17 @@ T('The Notary Hobbits: two token copies that are not legendary, once', () => {
   check('two of them are tokens', all.filter(q => q.token).length === 2);
   check('the tokens are not legendary (the legend rule keeps all three)', all.filter(q => q.token).every(q => !q.card.a.isLegendary) && o.card.a.isLegendary);
   check('the copies did not copy again (no more than 3)', all.length === 3);
+});
+
+// #143 (T-067)
+T('Michelangelo, the Heart: raid, a +1/+1 counter and a Food in the second main phase', () => {
+  const g = bare(3); const m = putOn(g, 'Michelangelo, the Heart'); g.attackedThisTurn = true;
+  const foods = () => g.battlefield.filter(q => /Food/.test(q.card.name)).length, pw = G.powerOf(g, m);
+  G.eachTrigger(g, 'postcombat', []);
+  check('you attacked: a Food token', foods() === 1, foods());
+  check('and a +1/+1 counter on the creature', G.powerOf(g, m) === pw + 1, G.powerOf(g, m));
+  const h = bare(3); const m2 = putOn(h, 'Michelangelo, the Heart'); h.attackedThisTurn = false; G.eachTrigger(h, 'postcombat', []);
+  check('you did not attack: nothing', !h.battlefield.some(q => /Food/.test(q.card.name)) && G.powerOf(h, m2) === G.powerOf(g, m) - 1);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -3032,6 +3032,7 @@
         if (/^whenever one or more land cards are put into your graveyard from anywhere for the first time each turn, create a 1\/1 green insect creature token\.?$/i.test(line)) { TR(['landToYard'], [{ type: 'token', n: 1, tapped: false, creature: true, p: 1, t: 1, colors: ['G'], subtypes: ['Insect'], keywords: [], artifact: false, name: 'Insect' }], { anywhere: true, onceTurn: true, text: raw + ' This ability triggers only once each turn.' }); continue; }          // Crawling Sensation
         if ((bm = line.match(/^~ enters with (a|an|two|three|four|five|six|\d+) ([a-z]+|-1\/-1) counters? on it\.?$/i)) && !/^(?:\+1\/\+1|loyalty)$/i.test(bm[2])) { TR(['etbStatic'], [{ type: 'counters', kind: bm[2].toLowerCase(), n: /^an?$/i.test(bm[1]) ? 1 : num(bm[1]), scope: 'self', other: false, excl: false, types: [] }]); continue; }          // Peter Parker's Camera, Gemstone Mine, Reckoner Bankbuster, Carnifex Demon
         if (/^exile any number of target players' graveyards\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Thraben Charm's third mode
+        if ((bm = line.match(/^(?:raid(?: \([^)]*\))? — )?at the beginning of your second main phase, if you attacked this turn, (.+)$/i))) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['postcombat'], r.fx, { cond: { kind: 'attacked' } }); continue; } }          // Michelangelo, the Heart: raid
         if ((bm = line.match(/^at the beginning of your second main phase, (.+)$/i)) && !/^if /i.test(bm[1])) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['postcombat'], r.fx); continue; } }          // Ninja Pizza
         if ((bm = line.match(/^whenever one or more (other )?([a-z]+?)s? you control deal combat damage to (?:a player|one or more players), (.+)$/i))) { const r = parseEffects(bm[3]); if (r.fx.length) { TR(['combatDamage'], r.fx, Object.assign({ who: 'one or more creatures you control' }, /^creature$/i.test(bm[2]) ? {} : { hitFilter: bm[2].toLowerCase() })); continue; } }          // The Odd Acorn Gang, Kastral, Contaminant Grafter
         if ((bm = line.match(/^whenever one or more creatures you control deal combat damage to one or more players, (.+)$/i))) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['combatDamage'], r.fx, { who: 'one or more creatures you control' }); continue; } }
@@ -4587,6 +4588,7 @@
       case 'handExactly': return g.hand.length === c.n;
       case 'countersOrHand': return !!(source && (source.counters || 0) >= c.counters) || g.hand.length >= c.hand;
       case 'secondCast': return (g.winSpellCasts || 0) >= 1;
+      case 'attacked': return !!g.attackedThisTurn;          // raid: you attacked this turn (Michelangelo, the Heart)
       case 'nontoken': return !!source && !source.token;          // The Notary Hobbits: "if they're not a token"
       case 'kicked': return !!(source && source.inst ? source.inst.kicked : g.lastCast && g.lastCast.kicked);
       case 'siege': return !!(source && source.siegeMode === c.mode);

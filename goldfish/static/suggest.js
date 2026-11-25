@@ -238,25 +238,34 @@
   // your win rate in games where you drew it with games where you did not. Drawing more cards in longer games shifts every
   // card the same way, so each gap is measured against the average gap of your cards ("compared with your average card").
   // Returns { n, base, avgGap, cards: [{ name, games, wrDrawn, wrNot, gap, z }] } sorted by gap, best first.
+  // T-064: the per-game facts matchImpact needs, taken from a played match (matchMonteCarloPart collects them in the same pass, so the games are played once)
+  function impactRec(m) { const dt = []; for (const k of Object.keys(m.gA.drawTurn)) dt.push([+k, m.gA.drawTurn[k]]); return { won: m.match.winner === 0 ? 1 : 0, lost: m.match.winner === 1 ? 1 : 0, turn: m.match.turn, dt, lands: m.gA.openingLands || 0, mulls: m.gA.mulligans || 0 }; }
   function matchImpact(G, cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) {
-    const deckA = G.buildDeck(cardsA, tokensA), deckB = G.buildDeck(cardsB, tokensB);
+    const deckA = G.buildDeck(cardsA, tokensA), deckB = G.buildDeck(cardsB, tokensB), raw = [];
+    for (let i = 0; i < n; i++) {
+      const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
+      let m;
+      try { m = G.playMatch(deckA, deckB, opts, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policyB || {} })); } catch (err) { continue; }
+      raw.push(impactRec(m));
+      if (onProgress && i % 25 === 0) onProgress(i / n);
+    }
+    return matchImpactFrom(G, cardsA, tokensA, opts, raw);
+  }
+  function matchImpactFrom(G, cardsA, tokensA, opts, raw) {
+    const deckA = G.buildDeck(cardsA, tokensA);
     const U = deckA.unique.length;
     const drawnWin = new Float64Array(U), drawnN = new Float64Array(U);
     let games = 0, wins = 0;
     const keep = deckA.unique.map(c => !(c.commander || (c.a.isLand && /Basic/.test(c.type_line || ''))));
     const records = [];
-    for (let i = 0; i < n; i++) {
-      const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
-      let m;
-      try { m = G.playMatch(deckA, deckB, opts, s, aOnPlay, null, Object.assign({}, opts, { policy: opts.policyB || {} })); } catch (err) { continue; }
-      const won = m.match.winner === 0 ? 1 : 0;
+    for (const r of raw) {
+      const won = r.won;
       games++; wins += won;
       const early = [];
-      for (const k of Object.keys(m.gA.drawTurn)) if (m.gA.drawTurn[k] <= EARLY) early.push(+k);
-      records.push({ won, lost: m.match.winner === 1 ? 1 : 0, turn: m.match.turn == null ? opts.turns : m.match.turn, early, lands: m.gA.openingLands || 0, mulls: m.gA.mulligans || 0 });
-      for (const k of Object.keys(m.gA.drawTurn)) { const u = +k; if (u >= 0 && u < U) { drawnN[u]++; drawnWin[u] += won; } }
-      records[records.length - 1].drawn = Object.keys(m.gA.drawTurn).map(Number).filter(u => u >= 0 && u < U && keep[u]).sort((a, b) => a - b);
-      if (onProgress && i % 25 === 0) onProgress(i / n);
+      for (const [k, t] of r.dt) if (t <= EARLY) early.push(k);
+      records.push({ won, lost: r.lost, turn: r.turn == null ? opts.turns : r.turn, early, lands: r.lands, mulls: r.mulls });
+      for (const [u] of r.dt) if (u >= 0 && u < U) { drawnN[u]++; drawnWin[u] += won; }
+      records[records.length - 1].drawn = r.dt.map(x => x[0]).filter(u => u >= 0 && u < U && keep[u]).sort((a, b) => a - b);
     }
     const rows = [];
     deckA.unique.forEach((c, u) => {
@@ -282,7 +291,7 @@
     return { best: clear.filter(r => r.gap > 0).slice(0, max), worst: clear.filter(r => r.gap < 0).reverse().slice(0, max), tested: imp.cards.length };
   }
 
-  const api = { fromSim, deadCards, matchImpact, impactHighlights, matchOutliers, matchPairs, matchTags };
+  const api = { fromSim, deadCards, matchImpact, matchImpactFrom, impactRec, impactHighlights, matchOutliers, matchPairs, matchTags };
   root.Suggest = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

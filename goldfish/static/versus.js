@@ -1176,7 +1176,7 @@
     const n = Math.max(20, Math.min(20000, +q('.vs-n').value || 2000)), seed = (Math.random() * 0x7fffffff) >>> 0;
     const t0 = performance.now();
     if (st.worker) st.worker.terminate();
-    st.worker = new Worker('worker.js');
+    st.worker = ParWorker();
     if (window.Battle) Battle.watch(st.worker, q('.vs-prog'), 'rival');
     st.worker.postMessage({ pod: { players: ps }, opts: o, n, seed });
     st.worker.onmessage = e => {

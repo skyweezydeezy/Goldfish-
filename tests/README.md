@@ -252,3 +252,31 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | missing-interactions | Interactions the "does nothing solo" label used to hide: Goblin Ringleader, Muxus and Brass Herald (reveal, then hand or battlefield), Kiki-Jiki (a hasty token copy each turn), Rhox Faithmender (life gain doubled), Ajani, Strength of the Pride, Grist, Conclave Mentor, Syr Ginger, Alchemist's Refuge and Emergence Zone, Necromancy; such lines stay in the unlearned-cards report |
 | profile | Deck profile (profile.js): card roles from rules text, and each built-in deck's strengths and weaknesses (spellslinger, fast mana, graveyard reliance, sacrifice engine, superfriends, tutors, going wide); no tuned deck short on a color; every identifier has a kind, label and detail |
 | suggest | Suggestions on one Monte Carlo result (suggest.js): level, title and detail; small runs flagged as noisy; dead cards never lands or the commander, cards drawn but never cast; missed land drops, flood (idle mana, empty hand) versus stuck cards (idle mana, full hand), land-light keeps; a healthy run says so first |
+| artifact-engine-cards | Artifact-engine cards taught 2026-11-22: Katsumasa, Myr Welder, Synod Artificer, Tezzeret Betrayer of Flesh, Thornbite Staff, Umbral Mantle |
+| cauldron-ouphes | T-060: Cauldron of Souls gives persist until end of turn; Aerie Ouphes' sacrifice damage and its persist |
+| chosen-type | "Choose a creature type" cards: the engine names the deck's tribe, the chosen-type lines are simulated for it, and the lab can test other types |
+| combo-odds | Combo odds (combos.js allSeen / anySeen / comboOdds) against hand-computed hypergeometric values; the Odds box and "Raise your combo odds" (T-051, T-052) |
+| dead-ringers-cards | T-063: the Dead Ringers cards (Gollum, Solemnity, Mikaeus, Eirdu // Isilu, ...) and the Solemnity + persist/undying + outlet loops |
+| deck-brackets | The verified brackets of the built-in decks: the Bracket line, the check note the parser ignores, and the card floor on the current cards |
+| decks | Built-in decks: every list parses, the index lists every file once, the dropdown groups run five colours down to colourless |
+| mobile-garrison-fire-belly | T-057: Mobile Garrison's attack trigger and Fire-Belly Changeling's twice-a-turn pump |
+| punishers | The goldfish opponent's hand: it draws, wheels make it discard and redraw, and punisher cards (Nekusar, Underworld Dreams, Megrim, ...) fire in goldfish games |
+| tags | Tags (tags.js): the vocabulary, the query language and the tag-level win rates in the mirror match |
+| tool-headers | The Node tools send tools/ua.js's User-Agent to Scryfall and Commander Spellbook; source.js passes them on (no network) |
+| tribe | Tribe detection (Profile.tribe): which creature type a "choose a creature type" card should name for a deck |
+| ui/battle | The battle scene under the progress bars while games run: appears, is replaced, ends, pauses when hidden, stays off with sound off or reduced motion |
+| ui/combo-odds | Odds tab "Combo odds" and Simulate tab "Raise your combo odds": ranking, cut, removal, Try your own (and its colour identity), Simulate, Apply (Sideboard kept, reload keeps the list) |
+| ui/combo-play | T-061: an assembled combo is announced and asked about in the Goldfish Table; each answer does what it says; ∞ shows in the mana pool |
+| ui/decklinks | Deck links and backups: Share link, opening or pasting a link adds the deck once, deck-site links explain, Export all and Import |
+| ui/fetch | The Second Breakfast deck on the Goldfish Table with autopilot: fetch lands crack into the graveyard, no page errors |
+| ui/hand-overflow | A hand of 40 cards never covers the Duel buttons on a PC, an iPad (both ways) and an iPhone |
+| ui/lab | The Policy lab on the Simulation tab: run, read the table, save a choice, the autopilot uses it |
+| ui/matfit | Moving and zooming the playmat (three fingers or Adjust): saved per mat, kept after a reload, used on every surface |
+| ui/mirror | The Mirror match card on the Simulation tab |
+| ui/remote-mobile | Play a friend on an emulated iPhone and iPad, upright and sideways: the whole way from Invite to a played turn |
+| ui/rift | Cyclonic Rift's on-screen effect in a Duel game: the tornado and exactly the opponent's returned cards |
+| ui/ring | The Ring tempts you: the HUD, the Ring-bearer, the manual temptations on the table |
+| ui/sorin | Sorin of House Markov on the Deck tab (back-face lines, only the -6 needs an opponent) and in play |
+| ui/tune-next | "Tune to the next bracket" (T-055): run, the answer in plain words, Stop, Apply one, Apply all; a reload keeps the deck |
+| ui/tune | The Policy lab's "Tune toward a goal": picker, target, folded report, changes to the A/B test, saved choices |
+| ui/version | The version pill in the top bar on a PC, an iPad and an iPhone; a newer deployed version shows outlined and one tap opens it |

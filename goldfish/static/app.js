@@ -272,8 +272,12 @@
   // after a deck loads (and autoSave has picked its entry): the menu's entry for it, a built-in being loaded, or the saved deck with this text
   function noteLoadedSel(trust) {          // trust: the menu already names the loaded deck (remember.js has just put it back)
     const v = $('#savedDecks').value, d = getDecks();
-    selLoaded = trust || (loadingBuiltin && v) || (v && d[v] === S.deckText) ? v : (Object.keys(d).find(n => d[n] === S.deckText) || '');
+    const same = t => lf(t) === lf(S.deckText);
+    selLoaded = trust || (loadingBuiltin && v) || (v && d[v] != null && same(d[v])) || (v && builtinLoaded && builtinByValue(v) && same(builtinLoaded)) ? v : (Object.keys(d).find(n => same(d[n])) || '');
+    builtinLoaded = loadingBuiltin ? $('#deckText').value : (builtinLoaded && selLoaded === v && builtinByValue(v) ? builtinLoaded : '');
   }
+  const lf = t => String(t || '').replace(/\r\n?/g, '\n');          // a saved deck with Windows line ends is the same deck
+  let builtinLoaded = '';          // the text of the built-in deck that is loaded: Load deck on it again keeps the menu on it
   async function loadDeck(o) {
     const quiet = !!(o && o.quiet), text = quiet ? o.text : $('#deckText').value;
     if (!text.trim()) return toast('Paste a decklist first');
@@ -304,7 +308,7 @@
   let loadingBuiltin = false;
   function autoSave(text) {
     if (!autoSaveOn() || loadingBuiltin || !S.deck) return;
-    const d = getDecks(); if (Object.values(d).includes(text)) return;
+    const d = getDecks(); if (Object.values(d).some(t => lf(t) === lf(text))) return;
     const base = S.deck.commanders.length ? S.deck.commanders.map(c => c.card.name.split(',')[0]).join(' + ') : 'Imported deck';
     const m = getMeta(), name = uniqueName(base, d);
     d[name] = text; m[name] = { saved: Date.now(), auto: true };
@@ -668,7 +672,7 @@
     try { text = await unpackDeck(link.code); } catch (e) { toast('Could not open the deck link: ' + e.message); return false; }
     if (!text.trim()) { toast('That deck link is empty'); return false; }
     const d = getDecks(), m = getMeta(), base = (link.name || summarize(text) || 'Linked deck').trim();
-    const same = Object.keys(d).find(n => d[n] === text);
+    const same = Object.keys(d).find(n => lf(d[n]) === lf(text));
     const name = same || uniqueName(base, d);
     if (!same) { d[name] = text; m[name] = { saved: Date.now(), from: 'link' }; if (!putDecks(d, m)) return false; }
     refreshSaved(); $('#deckText').value = text; localStorage.setItem('gf_last', text); $('#savedDecks').value = name;
@@ -800,6 +804,7 @@
     if (putDecks(d, m)) { refreshSaved(); renderManager(); toast(`Imported ${added} deck${added === 1 ? '' : 's'}`); }
   });
   refreshSaved();
+  const startedWithLink = !!readLink(location.hash);          // remember.js: a deck link opened at startup wins over the remembered deck (the address is tidied before it looks)
   const builtinsListed = loadBuiltinIndex();
   // a deck link opened at startup is checked against the format you had (remember.js restores the other settings later)
   (async () => {
@@ -3044,6 +3049,7 @@
       const cut = sel.value, key = cut + '|' + o.onPlay;
       if (key === raiseKey && S.comboRaise && (S.comboRaise.done || raiseRun)) return;          // same deck, cut and play/draw: keep what is shown
       raiseKey = key;
+      if (!fresh) { $('#raiseOwn').innerHTML = ''; $('#raiseSim').innerHTML = ''; S.comboRaiseOwn = null; S.comboRaiseSim = null; if (raiseUserCut) { const def = raiseDefaultCut(db, id); $('#raiseWhy').textContent = def.why && def.name === cut ? `Default: ${def.name}, ${def.why}.` : ''; } }          // another cut or play/draw: the old swap and check rows no longer match
       const run = ++raiseRun, tok = raiseClaim();
       try {
       const found = Combos.find(db, deck.unique.map(c => c.name), id);
@@ -3125,8 +3131,14 @@
   // your own swap: the same numbers for any card name
   async function raiseOwn() {
     const add = $('#raiseAdd').value.trim(), cut = $('#raiseCut').value, out = $('#raiseOwn'); if (!add || !S.deck) return;
+    out.innerHTML = ''; S.comboRaiseOwn = null;          // the last swap's row goes while this one is looked up
     const db = await loadComboDb(); if (!db) return;
     const o = opts(), id = deckIdentity(S.deck);
+    if (id) {          // the commander's colour identity: a card outside it cannot be in the deck (the suggestions already keep to it)
+      await raiseLookup([add]);
+      const info = raiseInfoOf(S.deck)(add), bad = info && (info.color_identity || []).filter(l => !id.includes(l));
+      if (bad && bad.length) { out.innerHTML = `<p class="hint">${esc(add)} is outside your commander's colour identity (${esc(bad.join(''))}), so it cannot go in this deck.</p>`; S.comboRaiseOwn = null; return; }
+    }
     const found = Combos.find(db, S.deck.unique.map(c => c.name), id), base = Combos.comboOdds(S.deck, found.included, RAISE_TURNS, o.onPlay, { anyOnly: true });
     const r = Combos.swapOdds(db, S.deck, id, add, cut, RAISE_TURNS, o.onPlay);
     const known = Combos.find(db, [add], null).included.length || db._where.has(add) || db._where.has(add.split(' // ')[0]);
@@ -3143,15 +3155,13 @@
   const nameKey = n => String(n || '').split(' // ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[‘’]/g, "'").trim().toLowerCase().replace(/\s+/g, ' ');
   async function raiseApply(add, cut) {
     const text = S.deckText; if (!text) return toast('Load the deck from a list first');
-    const lines = text.split(/\r?\n/);
-    const want = new Set([cut].concat(S.cards.filter(c => !c.commander && c.name === cut).map(c => c.input_name)).filter(Boolean).map(nameKey));
-    const i = lines.findIndex(l => { const e = Source.parseDecklist(l)[0]; return e && e.section !== 'commander' && want.has(nameKey(e.name)); });
-    if (i < 0) return toast(`${cut} was not found in the loaded list`);
-    const e = Source.parseDecklist(lines[i])[0], q = e.qty || 1;
-    lines.splice(i, 1, ...(q > 1 ? [lines[i].replace(/^\s*\d+/, String(q - 1))] : []), '1 ' + add);
-    $('#deckText').value = lines.join('\n');          // the box shows the list that is now loaded
-    const ok = await loadDeck();
-    if (ok) { toast(`Swapped ${cut} for ${add}`); showTab('sim'); }
+    const out = swapInText(text, [{ cut, add }], c => S.cards.filter(x => !x.commander && x.name === c).map(x => x.input_name));          // main-deck lines only: a Sideboard or Maybeboard copy is left alone
+    if (out.missing.length) return toast(`${cut} was not found in the loaded list`);
+    $('#deckText').value = out.text;          // the box shows the list that is now loaded
+    const ok = await loadDeck({ quiet: true, text: out.text });          // quiet: no extra saved copy; the loaded deck is the one that changed
+    if (!ok) { $('#deckText').value = text; return; }
+    localStorage.setItem('gf_last', out.text);          // a reload brings back the swapped list
+    toast(`Swapped ${cut} for ${add}`); showTab('sim');
   }
   // the swap checked by simulation: 2,000 goldfish games of each deck, the same shuffles
   let raiseWorker = null;
@@ -3227,7 +3237,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { noteLoadedSel, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

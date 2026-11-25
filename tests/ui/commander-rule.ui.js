@@ -159,6 +159,24 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.goto(sixtyLink.replace('?link=1', '?link=2').replace('name=Sixty', 'name=SixtyOld')); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 }); await p.waitForTimeout(1500);
   { const f = await p.evaluate(() => ({ fmt: document.querySelector('#optFormat').value, seen: !!window.__ruleSeen }));
     check('settings saved by an older version: the saved 60-card format is not restored, so the 60-card link meets the Commander rule', f.fmt === 'commander' && f.seen, JSON.stringify(f)); }
+  // T-065: the deck link opened at startup is the deck that is loaded (the remembered deck does not load over it)
+  await p.selectOption('#optFormat', '60'); await load(frodo); await p.waitForTimeout(1500);
+  await p.goto(sixtyLink.replace('?link=1', '?link=3').replace('name=Sixty', 'name=SixtyThree')); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 }); await p.waitForTimeout(2500);
+  { const n = await p.evaluate(() => (window.__isf.cards || []).reduce((s, c) => s + c.qty, 0)); check('a deck link opened at startup wins: the remembered deck does not load over it', n === 60, 'cards ' + n); }
+  // T-065: a built-in picked, then Load deck on it again: the menu keeps naming it, so a refused deck puts it back
+  await p.selectOption('#optFormat', 'commander');
+  await p.selectOption('#savedDecks', first);
+  await p.waitForFunction(() => window.__isf.deck, null, { timeout: 120000 }); await p.waitForTimeout(500);
+  await p.click('#loadDeck'); await p.waitForFunction(() => !document.querySelector('#loadDeck').disabled, null, { timeout: 120000 }); await p.waitForTimeout(500);
+  await load(ninetyNine);
+  check('built-in, then Load deck, then a refused deck: the menu names the built-in again', await p.$eval('#savedDecks', e => e.value) === first, await p.$eval('#savedDecks', e => e.value));
+  // T-065: a saved deck with Windows line ends is the same deck
+  await p.evaluate(t => { const d = JSON.parse(localStorage.getItem('gf_decks') || '{}'); d['CRLF deck'] = t.replace(/\n/g, '\r\n'); localStorage.setItem('gf_decks', JSON.stringify(d)); }, frodo);
+  await p.reload(); await p.waitForFunction(() => document.body.dataset.restored === '1', null, { timeout: 120000 });
+  await p.selectOption('#savedDecks', 'CRLF deck'); await p.waitForFunction(() => window.__isf.deck, null, { timeout: 120000 }); await p.waitForTimeout(500);
+  await p.fill('#deckText', frodo); await p.click('#loadDeck'); await p.waitForFunction(() => !document.querySelector('#loadDeck').disabled, null, { timeout: 120000 }); await p.waitForTimeout(500);
+  await load(ninetyNine);
+  check('a saved deck with Windows line ends: Load deck of the same text keeps the menu on it, a refused deck puts it back', await p.$eval('#savedDecks', e => e.value) === 'CRLF deck', await p.$eval('#savedDecks', e => e.value));
   check('no page errors', !errs.length, errs[0]);
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

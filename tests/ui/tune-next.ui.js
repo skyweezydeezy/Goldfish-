@@ -79,20 +79,34 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const n = await p.$$eval('#nbOut .nb-apply', bs => bs.length);
   check('each kept change has its own Apply, and there is Apply all', n >= 1 && !!(await p.$('#nbAll')), 'changes: ' + n);
 
-  // Apply one: the loaded deck changes (not only the box), stays 100 cards, and a reload keeps it
-  const firstLabel = await p.$eval('#nbOut .sg.good li b', b => b.textContent);
+  // Apply one: the loaded deck changes (not only the box), stays 100 cards, and a reload keeps it. Only a card swap (a cut and an add, "X for Y") changes the
+  // list: a play-choice change ("When to cast the commander: ...") is saved as a choice, so which change comes first (it depends on the seed) must not decide the check.
+  const labels = await p.$$eval('#nbOut .sg.good li', ls => ls.map(l => l.querySelector('b').textContent));
+  const ci = labels.findIndex(l => / for /.test(l)), pi = labels.findIndex(l => !/ for /.test(l));
   await p.click('#nbOut .sg.good summary');          // the list of changes is folded under its heading: open it
-  await p.click('#nbOut .nb-apply[data-i="0"]');
-  await p.waitForFunction(t => window.__isf.deckText !== t, deckBefore.text, { timeout: 90000 });
-  const one = await p.evaluate(() => ({ text: window.__isf.deckText, box: document.querySelector('#deckText').value, last: localStorage.getItem('gf_last'), cards: window.__isf.cards.reduce((s, c) => s + (c.qty || 1), 0), names: window.__isf.cards.map(c => c.name) }));
-  check('Apply one: the loaded deck changed and still has the same number of cards', one.text !== deckBefore.text && one.cards === deckBefore.cards, `${deckBefore.cards} -> ${one.cards} (${firstLabel})`);
-  check('...the box shows the loaded list and the remembered list is in step (a reload keeps it)', one.box === one.text && one.last === one.text);
-  check('...that button now says Applied', /Applied/.test(await p.textContent('#nbOut .nb-apply[data-i="0"]')));
-  if (n >= 2) {
+  if (pi >= 0) {          // a play-choice change: Applied, and the deck list stays as it is
+    await p.click(`#nbOut .nb-apply[data-i="${pi}"]`);
+    await p.waitForFunction(i => /Applied/.test(document.querySelector(`#nbOut .nb-apply[data-i="${i}"]`).textContent), pi, { timeout: 30000 });
+    check('Apply one (a play choice): it says Applied and the deck list is unchanged', await p.evaluate(t => window.__isf.deckText === t, deckBefore.text), labels[pi]);
+  }
+  let one = { text: deckBefore.text };
+  if (ci >= 0) {
+    const firstLabel = labels[ci];
+    await p.click(`#nbOut .nb-apply[data-i="${ci}"]`);
+    await p.waitForFunction(t => window.__isf.deckText !== t, deckBefore.text, { timeout: 90000 });
+    one = await p.evaluate(() => ({ text: window.__isf.deckText, box: document.querySelector('#deckText').value, last: localStorage.getItem('gf_last'), cards: window.__isf.cards.reduce((s, c) => s + (c.qty || 1), 0), names: window.__isf.cards.map(c => c.name) }));
+    check('Apply one: the loaded deck changed and still has the same number of cards', one.text !== deckBefore.text && one.cards === deckBefore.cards, `${deckBefore.cards} -> ${one.cards} (${firstLabel})`);
+    check('...the box shows the loaded list and the remembered list is in step (a reload keeps it)', one.box === one.text && one.last === one.text);
+    check('...that button now says Applied', /Applied/.test(await p.textContent(`#nbOut .nb-apply[data-i="${ci}"]`)));
+  } else console.log('      (this run kept no card swap, only play choices: the card-swap Apply checks are skipped)');
+  const swapsLeft = labels.filter(l => / for /.test(l)).length - (ci >= 0 ? 1 : 0), left = n - (pi >= 0 ? 1 : 0) - (ci >= 0 ? 1 : 0);
+  if (left >= 1 && !(await p.$('#nbAll:disabled'))) {
     await p.click('#nbAll');
-    await p.waitForFunction(t => window.__isf.deckText !== t, one.text, { timeout: 90000 }).catch(() => {});
+    if (swapsLeft >= 1) await p.waitForFunction(t => window.__isf.deckText !== t, one.text, { timeout: 90000 }).catch(() => {});
+    else await p.waitForTimeout(1500);
     const all = await p.evaluate(() => ({ text: window.__isf.deckText, cards: window.__isf.cards.reduce((s, c) => s + (c.qty || 1), 0), last: localStorage.getItem('gf_last') }));
-    check('Apply all: the remaining changes go in, still the same number of cards, the remembered list in step', all.text !== one.text && all.cards === deckBefore.cards && all.last === all.text, `${all.cards} cards`);
+    if (swapsLeft >= 1) check('Apply all: the remaining changes go in, still the same number of cards, the remembered list in step', all.text !== one.text && all.cards === deckBefore.cards && all.last === all.text, `${all.cards} cards`);
+    else check('Apply all: only play choices were left, so the deck list stays as it is', all.text === one.text && all.cards === deckBefore.cards);
     one.text = all.text;
   }
   await p.reload();

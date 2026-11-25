@@ -23,6 +23,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 
 | File | Covers |
 |---|---|
+| bridge-casting | A Bridge commander waits for WUBRG, continues casting ramp, respects explicit Esika/Bridge choices, and pays commander tax when recast; Esika in the ninety-nine retains automatic face selection. |
 | ring | The Ring tempts you, Ring-bearer, Frodo's conditions, counters engine |
 | tutors | Tutors and which card they fetch |
 | food | Food economy, Food payoffs |

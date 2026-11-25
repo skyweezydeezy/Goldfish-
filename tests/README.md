@@ -277,6 +277,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | ui/matfit | Moving and zooming the playmat (three fingers or Adjust): saved per mat, kept after a reload, used on every surface |
 | ui/mirror | The Mirror match card on the Simulation tab |
 | ui/remote-mobile | Play a friend on an emulated iPhone and iPad, upright and sideways: the whole way from Invite to a played turn |
+| ui/remote-nearby | Play a friend without codes (remote.js), the meeting point being a local mock MQTT broker (`tests/fixtures/mock-broker.js`, no internet): the Nearby list (a friend on the same address, no stranger), "wants to play. Accept?" declined and accepted, only setup messages through the broker, a room name typed two ways with the first broker down, the screen wake lock (taken, let go in the background, taken again), no false drop from a short or background silence or a 'disconnected' that mends, and automatic reconnect after the channel is killed (also after the broker dropped everyone) |
 | ui/rift | Cyclonic Rift's on-screen effect in a Duel game: the tornado and exactly the opponent's returned cards |
 | ui/ring | The Ring tempts you: the HUD, the Ring-bearer, the manual temptations on the table |
 | ui/sorin | Sorin of House Markov on the Deck tab (back-face lines, only the -6 needs an opponent) and in play |

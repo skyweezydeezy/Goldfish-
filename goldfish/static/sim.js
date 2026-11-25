@@ -12276,11 +12276,13 @@ g.actSeq = (g.actSeq || 0) + 1;
     return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
   }
 
-  function monteCarlo(cards, opts, n, seed, onProgress, tokens) {
-    const deck = buildDeck(cards, tokens, (opts.policy && opts.policy.tribe));
-    const T = opts.turns;
+  // T-064: a run of games is collected in parts (games [from, to) of the same seeded run) and merged in game order, so several workers can play one
+  // run and give exactly the numbers one worker gives. monteCarlo itself is one part from 0 to n.
+  function monteCarloPart(cards, opts, n, seed, from, to, onProgress, tokens, prebuilt) {
+    const deck = prebuilt || buildDeck(cards, tokens, (opts.policy && opts.policy.tribe));
+    const T = opts.turns, m = to - from;
     const per = { manaAvail: [], lands: [], cumSpent: [], spent: [], damage: [], hand: [], power: [] };
-    Object.keys(per).forEach(k => { for (let t = 0; t < T; t++) per[k].push(new Float64Array(n)); });
+    Object.keys(per).forEach(k => { for (let t = 0; t < T; t++) per[k].push(new Float64Array(m)); });
     const missed = new Float64Array(T), onCurveLands = new Float64Array(T);
     const cmdrBy = new Float64Array(T + 1), killBy = new Float64Array(T + 1);
     const mulls = new Float64Array(8), openLands = new Float64Array(8);
@@ -12289,13 +12291,13 @@ g.actSeq = (g.actSeq || 0) + 1;
     const gameScores = [];
     let cmdrKills = 0, errors = 0, firstError = null;
     const winBy = {}, winLines = new Map();          // how the won games were won, and which combo or "you win the game" card did it
-    for (let i = 0; i < n; i++) {
-      const s = (seed + i * 7919) >>> 0;
+    for (let i = from; i < to; i++) {
+      const s = (seed + i * 7919) >>> 0, j = i - from;
       let g;
       try { g = simulate(deck, opts, s); } catch (err) { errors++; if (!firstError) firstError = String(err && err.stack || err); continue; }
       g.turns.slice(0, T).forEach((tr, t) => {
-        per.manaAvail[t][i] = tr.manaAvail; per.lands[t][i] = tr.lands; per.cumSpent[t][i] = tr.cumSpent;
-        per.spent[t][i] = tr.spent; per.damage[t][i] = tr.damage; per.hand[t][i] = tr.hand; per.power[t][i] = tr.power;
+        per.manaAvail[t][j] = tr.manaAvail; per.lands[t][j] = tr.lands; per.cumSpent[t][j] = tr.cumSpent;
+        per.spent[t][j] = tr.spent; per.damage[t][j] = tr.damage; per.hand[t][j] = tr.hand; per.power[t][j] = tr.power;
         if (tr.missedDrop) missed[t]++;
         if (tr.lands >= t + 1) onCurveLands[t]++;
       });
@@ -12315,7 +12317,26 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (ct == null && g.drawTurn[u] != null) drawnNotCast[u]++;
       });
       gameScores.push({ seed: s, score: g.manaSpent + g.damage * 0.5 - (g.killTurn || T + 2) * 3 });
-      if (onProgress && i % 250 === 0) onProgress(i / n);
+      if (onProgress && i % 250 === 0) onProgress((i - from) / m);
+    }
+    return { n, from, to, T, uniqueN: deck.unique.length, hasCommander: deck.commanders.length > 0, per, missed, onCurveLands, cmdrBy, killBy, mulls, openLands, castBy, drawnNotCast, gameScores, cmdrKills, errors, firstError, winBy, winLines: [...winLines.values()] };
+  }
+  // Merge parts (in game order, covering 0..n) and finish the statistics exactly as one run would.
+  function monteCarloMerge(parts) {
+    parts = parts.slice().sort((a, b) => a.from - b.from);
+    const p0 = parts[0], n = p0.n, T = p0.T;
+    const add = (xs, k) => { const o = new Float64Array(xs[0][k].length); for (const x of xs) for (let t = 0; t < o.length; t++) o[t] += x[k][t]; return o; };
+    const per = {};
+    for (const k of Object.keys(p0.per)) per[k] = p0.per[k].map((_, t) => { const arr = new Float64Array(n); for (const x of parts) arr.set(x.per[k][t], x.from); return arr; });
+    const missed = add(parts, 'missed'), onCurveLands = add(parts, 'onCurveLands'), cmdrBy = add(parts, 'cmdrBy'), killBy = add(parts, 'killBy'), mulls = add(parts, 'mulls'), openLands = add(parts, 'openLands');
+    const castBy = p0.castBy.map((_, u) => { const o = new Float64Array(T + 2); for (const x of parts) for (let t = 0; t < T + 2; t++) o[t] += x.castBy[u][t]; return o; });
+    const drawnNotCast = p0.drawnNotCast.map((_, u) => parts.reduce((s, x) => s + x.drawnNotCast[u], 0));
+    const gameScores = [].concat(...parts.map(x => x.gameScores));
+    const cmdrKills = parts.reduce((s, x) => s + x.cmdrKills, 0), errors = parts.reduce((s, x) => s + x.errors, 0), firstError = (parts.find(x => x.firstError) || {}).firstError || null;
+    const winBy = {}, winLines = new Map();
+    for (const x of parts) {
+      for (const k of Object.keys(x.winBy)) winBy[k] = (winBy[k] || 0) + x.winBy[k];
+      for (const w of x.winLines) { const key = w.kind + '|' + w.text, r = winLines.get(key) || { kind: w.kind, text: w.text, n: 0, turns: 0 }; r.n += w.n; r.turns += w.turns; winLines.set(key, r); }
     }
     const ok = Math.max(1, n - errors);
     const agg = {};
@@ -12338,9 +12359,10 @@ g.actSeq = (g.actSeq || 0) + 1;
       winBy: Object.fromEntries(Object.entries(winBy).map(([k, v]) => [k, v / ok])),
       winLines: [...winLines.values()].sort((a, b) => b.n - a.n).slice(0, 8).map(r => ({ kind: r.kind, text: r.text, share: r.n / ok, avgTurn: r.turns / r.n })),
       samples: { worst: pick(0.05), low: pick(0.25), median: pick(0.5), high: pick(0.75), best: pick(0.95) },
-      hasCommander: deck.commanders.length > 0,
+      hasCommander: p0.hasCommander,
     };
   }
+  function monteCarlo(cards, opts, n, seed, onProgress, tokens) { return monteCarloMerge([monteCarloPart(cards, opts, n, seed, 0, n, onProgress, tokens)]); }
 
   // ======================= Mirror match =======================
   // Two full games run side by side, linked through g.opp: damage and life loss hit the other player's life, creatures block each other,
@@ -13522,13 +13544,14 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
 
   // Many matches. Seats alternate (A on the play in even games), so a mirror of the same deck comes out even.
-  function matchMonteCarlo(cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) {
+  // Parts and merge as for monteCarlo (T-064): matches [from, to) of one seeded run (`from` even, so the seats alternate as in a single run), merged in order.
+  function matchMonteCarloPart(cardsA, tokensA, cardsB, tokensB, opts, n, seed, from, to, onProgress, collect) {
     const deckA = buildDeck(cardsA, tokensA, (opts.policy && opts.policy.tribe)), deckB = buildDeck(cardsB, tokensB, (opts.policyB && opts.policyB.tribe));
     const optsB = Object.assign({}, opts, { policy: opts.policyB || {} });                 // the other deck plays with its own learned choices (or the defaults)
     const T = opts.turns;
-    const res = { n, turns: T, winA: 0, winB: 0, none: 0, histA: new Array(T + 2).fill(0), histB: new Array(T + 2).fill(0), reasons: { life: 0, commander: 0, empty: 0, poison: 0 },
-      playWins: 0, drawWins: 0, errors: 0, firstError: null, games: [], lifeA: 0, lifeB: 0 };
-    for (let i = 0; i < n; i++) {
+    const res = { n, from, to, turns: T, winA: 0, winB: 0, none: 0, histA: new Array(T + 2).fill(0), histB: new Array(T + 2).fill(0), reasons: { life: 0, commander: 0, empty: 0, poison: 0 },
+      playWins: 0, drawWins: 0, errors: 0, firstError: null, games: [], lives: [], recs: [] };
+    for (let i = from; i < to; i++) {
       const s = (seed + i * 7919) >>> 0, aOnPlay = i % 2 === 0;
       try {
         const m = playMatch(deckA, deckB, opts, s, aOnPlay, null, optsB);
@@ -13539,10 +13562,28 @@ g.actSeq = (g.actSeq || 0) + 1;
           if ((w === 0) === aOnPlay) res.playWins++; else res.drawWins++;
           { const rk = m.match.reason || 'empty'; res.reasons[rk] = (res.reasons[rk] || 0) + 1; }
         }
-        res.lifeA += Math.max(0, m.gA.life); res.lifeB += Math.max(0, m.gB.life);
+        res.lives.push(Math.max(0, m.gA.life), Math.max(0, m.gB.life));
+        if (collect) res.recs.push(collect(m));          // the caller's per-game facts (the matchup's card impact), taken from the same game
         res.games.push({ seed: s, aOnPlay, winner: w, turn: m.match.turn == null ? T : m.match.turn });
       } catch (err) { res.errors++; if (!res.firstError) res.firstError = String(err && err.stack || err); }
-      if (onProgress && i % 25 === 0) onProgress(i / n);
+      if (onProgress && i % 25 === 0) onProgress((i - from) / (to - from));
+    }
+    res.nameA = (deckA.commanders[0] || {}).card ? deckA.commanders[0].card.name : null;
+    res.nameB = (deckB.commanders[0] || {}).card ? deckB.commanders[0].card.name : null;
+    return res;
+  }
+  function matchMonteCarloMerge(parts) {
+    parts = parts.slice().sort((a, b) => a.from - b.from);
+    const p0 = parts[0], T = p0.turns, n = p0.n;
+    const res = { n, turns: T, winA: 0, winB: 0, none: 0, histA: new Array(T + 2).fill(0), histB: new Array(T + 2).fill(0), reasons: { life: 0, commander: 0, empty: 0, poison: 0 },
+      playWins: 0, drawWins: 0, errors: 0, firstError: null, games: [], lifeA: 0, lifeB: 0 };
+    for (const x of parts) {
+      for (const k of ['winA', 'winB', 'none', 'playWins', 'drawWins', 'errors']) res[k] += x[k];
+      for (let t = 0; t < T + 2; t++) { res.histA[t] += x.histA[t]; res.histB[t] += x.histB[t]; }
+      for (const k of Object.keys(x.reasons)) res.reasons[k] = (res.reasons[k] || 0) + x.reasons[k];
+      if (!res.firstError) res.firstError = x.firstError;
+      for (let k = 0; k < x.lives.length; k += 2) { res.lifeA += x.lives[k]; res.lifeB += x.lives[k + 1]; }
+      for (const g of x.games) res.games.push(g);
     }
     const ok = Math.max(1, n - res.errors);
     res.avgTurn = res.games.reduce((a, g) => a + g.turn, 0) / Math.max(1, res.games.length);
@@ -13550,10 +13591,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     const sorted = res.games.slice().sort((a, b) => a.turn - b.turn);
     const pick = q => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1)))] : null;
     res.samples = { quick: pick(0.1), median: pick(0.5), long: pick(0.9) };
-    res.nameA = (deckA.commanders[0] || {}).card ? deckA.commanders[0].card.name : null;
-    res.nameB = (deckB.commanders[0] || {}).card ? deckB.commanders[0].card.name : null;
+    res.nameA = p0.nameA; res.nameB = p0.nameB;
     return res;
   }
+  function matchMonteCarlo(cardsA, tokensA, cardsB, tokensB, opts, n, seed, onProgress) { return matchMonteCarloMerge([matchMonteCarloPart(cardsA, tokensA, cardsB, tokensB, opts, n, seed, 0, n, onProgress)]); }
 
   // ---------- Learning by trial and error ----------
   // Play the same games (same shuffles, same seats) with each candidate policy and compare the scores. The first candidate is the baseline;
@@ -13706,23 +13747,39 @@ g.actSeq = (g.actSeq || 0) + 1;
     return pod;
   }
   // Many pod games. players: [{ cards, tokens, policy, name }]. The first seat rotates so no deck always starts.
-  function podMonteCarlo(players, opts, n, seed, onProgress) {
+  function podMonteCarloPart(players, opts, n, seed, from, to, onProgress) {
     const decks = players.map(p => buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
     const optsList = players.map(p => Object.assign({}, opts, { policy: p.policy || {} }));
     const names = players.map((p, i) => p.name || 'Player ' + (i + 1)), P = players.length, T = opts.turns;
-    const res = { n, turns: T, players: P, names, wins: new Array(P).fill(0), none: 0, firstOut: new Array(P).fill(0), place: new Array(P).fill(0), hist: players.map(() => new Array(T + 2).fill(0)),
-      reasons: {}, errors: 0, firstError: null, games: [], life: new Array(P).fill(0), seatWins: new Array(P).fill(0) };
-    for (let i = 0; i < n; i++) {
+    const res = { n, from, to, turns: T, players: P, names, wins: new Array(P).fill(0), none: 0, firstOut: new Array(P).fill(0), place: new Array(P).fill(0), hist: players.map(() => new Array(T + 2).fill(0)),
+      reasons: {}, errors: 0, firstError: null, games: [], lives: [], seatWins: new Array(P).fill(0) };
+    for (let i = from; i < to; i++) {
       const s = (seed + i * 7919) >>> 0, first = i % P;
       try {
         const pod = playPod(decks, optsList, s, names, first), m = pod.match, w = m.winner;
         if (w == null) res.none++;
         else { res.wins[w]++; res.hist[w][Math.min(T + 1, m.round)]++; res.reasons[m.reason || 'empty'] = (res.reasons[m.reason || 'empty'] || 0) + 1; res.seatWins[(w - first + P) % P]++; }
         if (m.out[0] && !m.out[0].tie) res.firstOut[m.out[0].pid]++;                                  // everyone losing at once ("you win the game") is nobody going out first
-        pod.games.forEach((x, k) => { res.life[k] += x.dead ? 0 : Math.max(0, x.life); });
+        pod.games.forEach((x, k) => { res.lives.push(k, x.dead ? 0 : Math.max(0, x.life)); });
         res.games.push({ seed: s, first, winner: w, round: m.round });
       } catch (err) { res.errors++; if (!res.firstError) res.firstError = String(err && err.stack || err); }
-      if (onProgress && i % 10 === 0) onProgress(i / n);
+      if (onProgress && i % 10 === 0) onProgress((i - from) / (to - from));
+    }
+    res.commanders = decks.map(d => (d.commanders[0] || {}).card ? d.commanders[0].card.name : null);
+    return res;
+  }
+  function podMonteCarloMerge(parts) {
+    parts = parts.slice().sort((a, b) => a.from - b.from);
+    const p0 = parts[0], T = p0.turns, P = p0.players, n = p0.n;
+    const res = { n, turns: T, players: P, names: p0.names, wins: new Array(P).fill(0), none: 0, firstOut: new Array(P).fill(0), place: new Array(P).fill(0), hist: p0.hist.map(() => new Array(T + 2).fill(0)),
+      reasons: {}, errors: 0, firstError: null, games: [], life: new Array(P).fill(0), seatWins: new Array(P).fill(0) };
+    for (const x of parts) {
+      res.none += x.none; res.errors += x.errors;
+      for (let k = 0; k < P; k++) { res.wins[k] += x.wins[k]; res.firstOut[k] += x.firstOut[k]; res.place[k] += x.place[k]; res.seatWins[k] += x.seatWins[k]; for (let t = 0; t < T + 2; t++) res.hist[k][t] += x.hist[k][t]; }
+      for (const k of Object.keys(x.reasons)) res.reasons[k] = (res.reasons[k] || 0) + x.reasons[k];
+      if (!res.firstError) res.firstError = x.firstError;
+      for (let k = 0; k < x.lives.length; k += 2) res.life[x.lives[k]] += x.lives[k + 1];
+      for (const g of x.games) res.games.push(g);
     }
     const ok = Math.max(1, n - res.errors);
     res.life = res.life.map(v => v / ok);
@@ -13730,9 +13787,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     const sorted = res.games.slice().sort((a, b) => a.round - b.round);
     const pick = q => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1)))] : null;
     res.samples = { quick: pick(0.1), median: pick(0.5), long: pick(0.9) };
-    res.commanders = decks.map(d => (d.commanders[0] || {}).card ? d.commanders[0].card.name : null);
+    res.commanders = p0.commanders;
     return res;
   }
+  function podMonteCarlo(players, opts, n, seed, onProgress) { return podMonteCarloMerge([podMonteCarloPart(players, opts, n, seed, 0, n, onProgress)]); }
   // What happened in a turn, as short lines (used by the pod log and the played game)
   function turnSummary(g, ev) {
     const items = [];
@@ -13767,15 +13825,15 @@ g.actSeq = (g.actSeq || 0) + 1;
   const api = {
     parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay,
     effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
-    postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, createTokens, removePerm, applyEffects, damageOpp,
+    postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,
     lockUpkeep, ghostTurn, castBlocked, abilBlocked, searchRule, comboLines, infiniteMana, bestTutorTarget, stealPerm, discardWorst, setTribe: t => { curTribe = t; }, playMatch,
-    comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchLog, linkMatch, matchOver, chooseBlocks,
+    comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, matchMonteCarloPart, matchMonteCarloMerge, matchLog, linkMatch, matchOver, chooseBlocks,
     chooseAttackers, duel, canBlock, checkKill, flushLeaves, touch, sacrificeFoods, addCounters, temptRing, ringBearer, RING_TEXT, decide,
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenOf, COLOR_NAME, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
-    dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podLog, turnSummary, eliminate, canAttack,
+    dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podMonteCarloPart, podMonteCarloMerge, podLog, turnSummary, eliminate, canAttack,
     parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, yardCastable, otherAbilities, setChosenColor, autoColor, eachTrigger, bestTribeOnBoard, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;

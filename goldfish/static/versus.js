@@ -47,7 +47,7 @@
       </div>
       <div class="vs-game" hidden>
         <div class="vs-screen">
-          <div class="vs-top"><div class="row wrap vs-bar"></div></div>
+          <div class="vs-top"><button class="ghost focus-menu" type="button" title="Menu: the tabs, full screen" aria-label="Menu">☰</button><button class="ghost vs-logtog" type="button" title="Show the game log" aria-label="Game log">📜</button><div class="row wrap vs-bar"></div></div>
           <div class="vs-arena ${mode}"></div>
         </div>
         <div class="card-box"><div class="box-head"><h2>Game log</h2><span class="hint">Newest at the bottom</span></div><div class="vs-log"></div></div>
@@ -203,7 +203,7 @@
       const dice = !st.looping && !(!human && q('.vs-loop').checked) && localStorage.getItem('isf_dice') !== '0';          // the dice on screen: not between the games of a Loop, nor with dice switched off
       if (dice) say(mode, null, 'New game. Everyone rolls a D20 to see who goes first…'); else announce();
       render(mode);
-      if (!st.looping) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
+      if (!st.looping) if (!document.body.classList.contains('tfocus')) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
       const gm = st.game;
       if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
       if (dice) {                                      // the dice on screen (not between the games of a Loop). They never hold the game up:
@@ -237,7 +237,7 @@
       say(mode, null, rollText(roll, shown)); if (!setup.rejoin) showRoll(mode, roll, shown); }
     say(mode, null, `New game against ${setup.names[them]}. ${f === me ? 'You go' : setup.names[f] + ' goes'} first. Both start at ${pod.games[0].life} life.`);
     render(mode);
-    { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
+    if (!document.body.classList.contains('tfocus')) { const bar = document.querySelector('.topbar'), top = q('.vs-game').getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - 8; window.scrollTo({ top, behavior: 'smooth' }); }
     return st.game;
   }
   // A message from the other device: a move or an answer of their seat (never of yours). own: one of your own, from the saved game,

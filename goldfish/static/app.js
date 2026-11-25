@@ -40,13 +40,14 @@
   const sfxEv = (ev, o) => { if (window.__isfAudio) window.__isfAudio.events(ev, o); if (window.__isfFx) window.__isfFx.events(ev); };   // sounds, and on-screen card effects (card-effects.js)
 
   const S = { cards: [], deck: null, byUid: [], game: null, undo: [], sim: null, oddsSel: new Set(), busy: false };
+  window.__isfShowTab = t => showTab(t);
   window.__isf = S;                                  // read-only handle for automated UI tests
 
   // ======================= setup =======================
   $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
   const dirty = () => window.dispatchEvent(new Event('isf-dirty'));          // something worth remembering changed (remember.js saves it shortly)
   function showTab(t) {
-    document.body.dataset.view = t;
+    document.body.dataset.view = t; document.body.classList.remove('tleft', 'tbar-open'); if (window.__isfFocus) window.__isfFocus.apply();
     $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
     $$('.panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + t));
     if (t === 'hands' && S.deck) renderOpenLandsChart();
@@ -59,6 +60,27 @@
   }
 
   tidy(document.querySelector('main'));
+  // ---- T-069: every report box folds to its header (click the header; ▾ shows it). The long reference boxes start folded; on a phone so do the charts.
+  const FOLD_SHUT = /^(Curve wall|Lands & mana|How the engine reads|Sample games|When each card gets played|What a keepable|Play many games|Tags|Lands in your opening|Combos and win|Mirror match|Two-faced|Policy lab|Tune|A\/B test|Swaps|Raise your combo)/i;
+  const FOLD_SHUT_PHONE = /^(Mana available|Hitting every|Commander cast|Goldfish kill|Total damage|Board power|Draw odds|Probability by turn)/i;
+  const foldDefault = () => { try { const f = localStorage.getItem('isf_fold'); if (f) return f === 'on'; } catch (e) {} return !navigator.webdriver; };   // scripted browsers keep every box open unless isf_fold = on
+  function foldBoxes() {
+    const phone = window.matchMedia('(max-width: 700px)').matches;
+    document.querySelectorAll('main .card-box:not([data-fold])').forEach(box => {
+      if (box.closest('.vs-game') || box.classList.contains('deck-input') || box.classList.contains('rm-box')) return;
+      const hd = box.querySelector(':scope > .box-head, :scope > h2'); if (!hd) return;
+      const title = (hd.querySelector('h2') || hd).textContent.trim();
+      box.dataset.fold = '1';
+      if (foldDefault() && (FOLD_SHUT.test(title) || (phone && FOLD_SHUT_PHONE.test(title)))) box.classList.add('box-closed');
+    });
+  }
+  document.addEventListener('click', e => {
+    const hd = e.target.closest && e.target.closest('.card-box[data-fold] > .box-head, .card-box[data-fold] > h2'); if (!hd) return;
+    if (e.target.closest('button, a, input, select, label, summary, .info-tog, textarea')) return;
+    hd.parentElement.classList.toggle('box-closed');
+  });
+  foldBoxes();
+  { let ft; new MutationObserver(() => { clearTimeout(ft); ft = setTimeout(foldBoxes, 120); }).observe(document.querySelector('main'), { childList: true, subtree: true }); }
 
   Source.init().then(st => {
     const el = $('#mirrorStatus');
@@ -1373,6 +1395,49 @@
   const setTopbarH = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
   setTopbarH();
   if (window.ResizeObserver) new ResizeObserver(() => { setTopbarH(); refit(); }).observe(topbar);
+  // ---- table focus (T-069): while a table is open (Practice, or a Duel/Pod game) the top bar, tabs and page chrome get out of the way
+  // so the table covers the whole screen. A small "menu" button in the table's own toolbar brings the bar back (over the table); the
+  // bar's Fullscreen button uses the Fullscreen API where the browser has it (not iPhone Safari pages; a Home Screen app is standalone).
+  // localStorage isf_focus = "off" turns it off, "on" forces it on; scripted browsers (navigator.webdriver) keep the bar unless it is "on".
+  const lsFocus = () => { try { return localStorage.getItem('isf_focus'); } catch (e) { return null; } };
+  const tableOpen = () => {
+    const v = document.body.dataset.view;
+    if (v === 'table') return true;
+    const g = (v === 'duel' || v === 'pod') && document.querySelector('#tab-' + v + ' .vs-game');
+    return !!g && !g.hidden;
+  };
+  function applyFocus() {
+    const f = lsFocus(), on = (f ? f === 'on' : !navigator.webdriver) && tableOpen() && !document.body.classList.contains('tleft');
+    document.body.classList.toggle('tfocus', on);
+    if (on) window.scrollTo(0, 0);
+    if (!on) document.body.classList.remove('tbar-open');
+    setTopbarH(); requestAnimationFrame(refit);
+  }
+  new MutationObserver(applyFocus).observe(document.querySelector('main'), { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  const fsOk = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+  const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const fsWanted = () => { try { return localStorage.getItem('isf_fs') === '1'; } catch (x) { return false; } };
+  function fsToggle() {
+    try {
+      if (fsOn()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); try { localStorage.setItem('isf_fs', '0'); } catch (e) {} }
+      else { const r = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen; const pr = r.call(document.documentElement); if (pr && pr.catch) pr.catch(() => {}); try { localStorage.setItem('isf_fs', '1'); } catch (e) {} }
+    } catch (e) { /* the browser said no */ }
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest ? e.target : e.target.parentElement; if (!t) return;
+    if (t.closest('.focus-menu')) { e.stopPropagation(); document.body.classList.toggle('tbar-open'); return; }
+    if (t.closest('.focus-leave')) { document.body.classList.add('tleft'); applyFocus(); return; }               // back to the tab's settings
+    if (t.closest('.fs-btn')) { fsToggle(); return; }
+    { const lt = t.closest('.vs-logtog'); if (lt) { e.stopPropagation(); lt.closest('.vs-game').classList.toggle('log-open'); return; } }
+    { const g = document.querySelector('.vs-game.log-open'); if (g && !t.closest('.vs-game > .card-box')) g.classList.remove('log-open'); }
+    if (t.closest('.vs-new') || t.closest('#tNew')) { document.body.classList.remove('tleft'); setTimeout(applyFocus); }
+    if (fsOk && !fsOn() && fsWanted() && t.closest('.tab[data-tab=table], .tab[data-tab=duel], .tab[data-tab=pod]')) fsToggle();   // chose Fullscreen once: a table opens in it again (a tap, so the browser allows it)
+    if (document.body.classList.contains('tbar-open') && !t.closest('.topbar, #tutorial')) document.body.classList.remove('tbar-open');
+  }, true);
+  document.querySelectorAll('.fs-btn').forEach(b => { b.hidden = !fsOk; });
+  document.addEventListener('fullscreenchange', () => document.querySelectorAll('.fs-btn').forEach(b => b.classList.toggle('on', fsOn())));
+  window.__isfFocus = { apply: applyFocus };
+  applyFocus();
   // game log: a drawer on phones and tablets
   const logBox = $('.table-log');
   const setLog = open => { logBox.classList.toggle('open', open); $('#tLog').setAttribute('aria-expanded', open); };

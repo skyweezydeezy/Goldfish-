@@ -77,13 +77,18 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the report folds to its headings', await p.evaluate(() => [...document.querySelectorAll('#nbOut .sg')].every(sg => sg.classList.contains('folded-sg') && sg.querySelector('details > summary'))));
   check('the deck is not changed by the run alone', await p.evaluate(t => window.__isf.deckText === t, deckBefore.text));
   const n = await p.$$eval('#nbOut .nb-apply', bs => bs.length);
-  check('each kept change has its own Apply, and there is Apply all', n >= 1 && !!(await p.$('#nbAll')), 'changes: ' + n);
+  if (n >= 1) check('each kept change has its own Apply, and there is Apply all', !!(await p.$('#nbAll')), 'changes: ' + n);
+  else {          // under load the search can keep nothing: then the answer must say so, offer no Apply, and leave the deck alone
+    check('no change kept: the answer says it could not reach the bracket (no change beat chance, or none held up)', /^Couldn't reach B\d: (no change beat chance|the changes the search liked did not hold up)/.test(ans), ans.slice(0, 160));
+    check('...there is no Apply and no Apply all, and the deck is unchanged', !(await p.$('#nbAll')) && await p.evaluate(t => window.__isf.deckText === t, deckBefore.text));
+    console.log('      (this run kept no change: the Apply steps are skipped)');
+  }
 
   // Apply one: the loaded deck changes (not only the box), stays 100 cards, and a reload keeps it. Only a card swap (a cut and an add, "X for Y") changes the
   // list: a play-choice change ("When to cast the commander: ...") is saved as a choice, so which change comes first (it depends on the seed) must not decide the check.
   const labels = await p.$$eval('#nbOut .sg.good li', ls => ls.map(l => l.querySelector('b').textContent));
   const ci = labels.findIndex(l => / for /.test(l)), pi = labels.findIndex(l => !/ for /.test(l));
-  await p.click('#nbOut .sg.good summary');          // the list of changes is folded under its heading: open it
+  if (labels.length) await p.click('#nbOut .sg.good summary');          // the list of changes is folded under its heading: open it
   if (pi >= 0) {          // a play-choice change: Applied, and the deck list stays as it is
     await p.click(`#nbOut .nb-apply[data-i="${pi}"]`);
     await p.waitForFunction(i => /Applied/.test(document.querySelector(`#nbOut .nb-apply[data-i="${i}"]`).textContent), pi, { timeout: 30000 });

@@ -1837,6 +1837,51 @@
     return e;
   }
 
+  // ======================= several workers for one run (T-064) =======================
+  // ParWorker looks like a Worker (postMessage, onmessage, addEventListener, terminate) but plays a goldfish run, a mirror match or a pod run as many
+  // small slices ({ part: { from, to } }) on several workers, then has one worker merge them in game order: the same seeds and the same merge as one
+  // worker, so the numbers are identical, in a fraction of the time. Anything else (the lab, tune, A/B) goes to one plain worker.
+  function ParWorker() {
+    const L = { message: [], error: [] }, ws = [], me = { onmessage: null, onerror: null };
+    const emit = (t, data) => { const ev = t === 'message' ? { data } : data; for (const f of L[t].slice()) f(ev); const h = me['on' + t]; if (h) h(ev); };
+    me.addEventListener = (t, f) => { if (L[t]) L[t].push(f); };
+    me.removeEventListener = (t, f) => { if (L[t]) L[t] = L[t].filter(x => x !== f); };
+    me.terminate = () => { ws.forEach(w => w.terminate()); ws.length = 0; };
+    const plain = msg => { const w = new Worker('worker.js'); ws.push(w); w.onmessage = e => emit('message', e.data); w.onerror = err => emit('error', err); w.postMessage(msg); };
+    me.postMessage = msg => {
+      const kind = msg.pod ? 'pod' : msg.match ? 'match' : (msg.cards && !msg.learn && !msg.tune && !msg.nextBracket && !msg.diagnose && !msg.ab) ? 'sim' : null;
+      const o = msg.opts || {}, tribe = (o.policy && o.policy.tribe) || (o.policyB && o.policyB.tribe);
+      const K = Math.min(8, Math.max(1, navigator.hardwareConcurrency || 2));
+      if (!kind || K < 2 || msg.n < 120 || (kind === 'match' && tribe) || window.__noPar) return plain(msg);
+      const unit = 12, size = Math.max(unit, Math.ceil(msg.n / (K * 6) / unit) * unit);          // slices start on a multiple of 12, so seats and who plays first match a single run
+      const queue = []; for (let f = 0; f < msg.n; f += size) queue.push({ from: f, to: Math.min(msg.n, f + size) });
+      const done = [], fr = new Map(); let finished = 0, dead = false;
+      const report = () => { let g = done.reduce((t, x) => t + (x.to - x.from), 0); for (const [c, p] of fr) g += (c.to - c.from) * p; emit('message', { progress: Math.min(0.99, g / msg.n) }); };
+      const next = w => {
+        if (dead) return;
+        const c = queue.shift();
+        if (!c) { if (++finished === K) merge(); return; }
+        w.cur = c; fr.set(c, 0); w.postMessage(Object.assign({}, msg, { part: c }));
+      };
+      const merge = () => {
+        const m = ws[0]; m.onmessage = e => { if (e.data.result) emit('message', e.data); };
+        m.postMessage({ merge: { kind, parts: done, cardsA: msg.match && msg.match.cardsA, tokensA: msg.match && msg.match.tokensA }, opts: o });
+      };
+      for (let k = 0; k < K; k++) {
+        const w = new Worker('worker.js'); ws.push(w);
+        w.onmessage = e => {
+          if (dead) return;
+          if (e.data.part) { fr.delete(w.cur); done.push(e.data.part); report(); next(w); }
+          else if (e.data.progress != null && w.cur) { fr.set(w.cur, e.data.progress); report(); }
+        };
+        w.onerror = err => { dead = true; me.terminate(); emit('error', err); };
+        next(w);
+      }
+    };
+    return me;
+  }
+  window.ParWorker = ParWorker;
+
   // ======================= simulation =======================
   $('#runSim').addEventListener('click', runSim);
   let worker = null;
@@ -1844,7 +1889,7 @@
     if (!need()) return;
     if (worker) worker.terminate();
     const o = opts();
-    worker = new Worker('worker.js');
+    worker = ParWorker();
     if (window.Battle) Battle.watch(worker, '#simProgress', 'dummy');
     const bar = $('#simProgress div'); bar.style.width = '0';
     $('#runSim').disabled = true; $('#simInfo').textContent = `Goldfishing ${o.n.toLocaleString()} games…`;
@@ -1902,7 +1947,7 @@
     o.policyB = opp.policy || {};                                                          // the opponent plays with its own learned choices
     const n = Math.max(20, Math.min(20000, +$('#mmN').value || 2000));          // 2,000: any percentage within about ±2 points (95%)
     if (mmWorker) mmWorker.terminate();
-    mmWorker = new Worker('worker.js');
+    mmWorker = ParWorker();
     if (window.Battle) Battle.watch(mmWorker, '#mmProgress', 'rival');
     const bar = $('#mmProgress div'); bar.style.width = '0';
     const t0 = performance.now();
@@ -3158,7 +3203,7 @@
   function simOnce(cards, tokens, o, n, seed, bar) {
     return new Promise((res, rej) => {
       if (raiseWorker) raiseWorker.terminate();
-      raiseWorker = new Worker('worker.js');
+      raiseWorker = ParWorker();
       raiseWorker.onmessage = e => { if (e.data.progress != null && bar) bar(e.data.progress); if (e.data.result) res(e.data.result); };
       raiseWorker.onerror = err => rej(err);
       raiseWorker.postMessage({ cards, tokens, opts: o, n, seed });

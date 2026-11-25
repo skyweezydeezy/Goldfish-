@@ -26,20 +26,41 @@ self.onmessage = (e) => {
     self.postMessage({ result: self.Compare.abTest(self.Goldfish, d.v1, d.v2, d.opps, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p })) });
     return;
   }
+  // T-064: one run can be split over several workers (app.js: runParallel). A message with `part: { from, to }` plays only games [from, to) of the same
+  // seeded run and answers { part }; the page merges the parts in game order (Goldfish.*Merge), which gives exactly the numbers of one worker.
+  const part = e.data.part;
+  if (e.data.merge) {                                   // the parts of a split run, merged in game order (ParWorker in app.js)
+    const mg = e.data.merge, G = self.Goldfish;
+    let res;
+    if (mg.kind === 'pod') res = G.podMonteCarloMerge(mg.parts);
+    else if (mg.kind === 'match') {
+      res = G.matchMonteCarloMerge(mg.parts);
+      res.impact = self.Suggest.matchImpactFrom(G, mg.cardsA, mg.tokensA, e.data.opts, [].concat(...mg.parts.slice().sort((a, b) => a.from - b.from).map(x => x.recs)));
+    } else res = G.monteCarloMerge(mg.parts);
+    self.postMessage({ result: res });
+    return;
+  }
   if (e.data.pod) {                                     // 1v1 and Pod tabs: every seat on autopilot
+    if (part) { self.postMessage({ part: self.Goldfish.podMonteCarloPart(e.data.pod.players, e.data.opts, e.data.n, e.data.seed, part.from, part.to, p => self.postMessage({ progress: p })) }); return; }
     const res = self.Goldfish.podMonteCarlo(e.data.pod.players, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p }));
     self.postMessage({ result: res });
     return;
   }
   if (e.data.match) {                                   // mirror match: two decks play each other
-    const m = e.data.match;
-    const res = self.Goldfish.matchMonteCarlo(m.cardsA, m.tokensA, m.cardsB, m.tokensB, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p / 2 }));
-    // second pass over the same matches: which of your cards are linked to winning (suggest.js)
-    res.impact = self.Suggest.matchImpact(self.Goldfish, m.cardsA, m.tokensA, m.cardsB, m.tokensB, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: 0.5 + p / 2 }));
+    const m = e.data.match, o = e.data.opts, G = self.Goldfish;
+    // the card impact (suggest.js) comes from the very same games unless a tribe choice builds the decks differently (then a second pass, as before)
+    const shared = !(o.policy && o.policy.tribe) && !(o.policyB && o.policyB.tribe);
+    const collect = shared ? self.Suggest.impactRec : null;
+    if (part) { self.postMessage({ part: G.matchMonteCarloPart(m.cardsA, m.tokensA, m.cardsB, m.tokensB, o, e.data.n, e.data.seed, part.from, part.to, p => self.postMessage({ progress: p }), collect), shared }); return; }
+    const p0 = G.matchMonteCarloPart(m.cardsA, m.tokensA, m.cardsB, m.tokensB, o, e.data.n, e.data.seed, 0, e.data.n, p => self.postMessage({ progress: shared ? p : p / 2 }), collect);
+    const res = G.matchMonteCarloMerge([p0]);
+    res.impact = shared ? self.Suggest.matchImpactFrom(G, m.cardsA, m.tokensA, o, p0.recs)
+      : self.Suggest.matchImpact(G, m.cardsA, m.tokensA, m.cardsB, m.tokensB, o, e.data.n, e.data.seed, p => self.postMessage({ progress: 0.5 + p / 2 }));
     self.postMessage({ result: res });
     return;
   }
   const { cards, tokens, opts, n, seed } = e.data;
+  if (part) { self.postMessage({ part: self.Goldfish.monteCarloPart(cards, opts, n, seed, part.from, part.to, p => self.postMessage({ progress: p }), tokens) }); return; }
   const res = self.Goldfish.monteCarlo(cards, opts, n, seed, p => self.postMessage({ progress: p }), tokens);
   self.postMessage({ result: res });
 };

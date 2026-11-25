@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 187,
+      "lines": [
+        "A second run starts faster: the app keeps its game workers warm between runs."
+      ]
+    },
+    {
       "v": 186,
       "lines": [
         "The A/B deck test and its card check run on every core too, and a run that loses a helper carries on instead of stopping."

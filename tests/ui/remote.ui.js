@@ -57,6 +57,7 @@ let pages = [];          // the two devices, for the message when a step times o
 
   // ---- the list of what is shared comes first
   await tap(A, '[data-tab=duel]');
+  await A.evaluate(() => { document.querySelector('#tab-duel .rm-other').open = true; });          // the codes are under "Other ways to connect"
   check('the Duel tab has a "Play a friend" box with the tagline and the full list of what is shared',
     await A.$eval('#tab-duel .rm-box', e => /Play a friend/.test(e.textContent) && /Do this with good friends\. Don't be a victim\./.test(e.textContent) && e.querySelectorAll('.rm-list li').length >= 8 && !!e.querySelector('.rm-tick')));
   check('...the list says the hand, library and seed are in the other device\'s memory, and names the IP address and Google\'s STUN server',
@@ -196,9 +197,11 @@ let pages = [];          // the two devices, for the message when a step times o
   await B.waitForTimeout(1500);
   const rejoined = await st(B);
   check('Sam\'s device replays the saved game to exactly where it was', rejoined.fp === beforeReload.fp && rejoined.active === beforeReload.active, rejoined.fp + ' / ' + beforeReload.fp);
-  await tap(A, '#tab-duel .rm-lost .rm-invite');
+  // (the game began with codes: no meeting point, so no automatic reconnect; the codes under "Other ways to connect" mend it)
+  await tap(A, '#tab-duel .rm-other .rm-invite');
   await A.waitForSelector('#tab-duel .rm-mine', { state: 'attached', timeout: 20000 });
   const invite2 = await A.$eval('#tab-duel .rm-mine', e => e.value);
+  await B.evaluate(() => { document.querySelector('#tab-duel .rm-other').open = true; });
   await tap(B, '#tab-duel .rm-join');
   await B.fill('#tab-duel .rm-theirs', invite2);
   await tap(B, '#tab-duel .rm-reply');

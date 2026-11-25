@@ -511,7 +511,7 @@
     ...(m === 'duel' ? [
       { el: '#tab-duel .rm-box', optional: true, uses: 'friend', title: 'Play a friend', text: 'A Duel against a friend on another device. Each of you plays the deck on your own Build tab.' },
       { el: '#tab-duel .rm-box .rm-terms', optional: true, title: 'What is shared', text: 'Read what the other player gets to see, and accept it once, before you connect.' },
-      { el: '#tab-duel .rm-box .rm-start', optional: true, title: 'Invite or join', text: 'One of you taps Invite, the other Join. You pass two codes (or scan two QR codes) between you. No account needed.' },
+      { el: '#tab-duel .rm-box .rm-other', optional: true, title: 'Invite or join', text: 'Friends on the same Wi-Fi tap each other\'s name under Nearby; on other networks you both type the same room name. If that does not work, here one of you taps Invite and the other Join, and you pass two codes (or scan two QR codes). No account needed.' },
     ] : []),
     { el: [vs(m, '.vs-game:not([hidden]) .vs-bar')], title: 'Game bar', text: 'The round, the steps of the turn, and buttons to play on.' },
     { el: [vs(m, '.vs-game:not([hidden]) .vs-arena')], title: 'The table', text: 'Every player\'s cards in play. Glowing cards can be played. Tap any card to read it.' },

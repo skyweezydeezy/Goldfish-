@@ -150,6 +150,20 @@ const PLAIN = ['20 Grizzly Bears', '20 Forest'].join('\n');
     await p.waitForFunction(() => window.__isf.deck && window.__isf.deck.unique.some(c => c.name === "Ashnod's Altar"), null, { timeout: 90000 });
     check(`${name}: Apply finds "sol ring" in a list written in lower case`, await p.evaluate(() => !window.__isf.deck.unique.some(c => c.name === 'Sol Ring') && window.__isf.deck.library.length === 99));
 
+    // T-065: "Try your own" respects the commander's colour identity (Heliod is white)
+    await p.fill('#raiseAdd', 'Lightning Bolt'); await p.click('#raiseGo');
+    await p.waitForFunction(() => /colour identity/.test(document.querySelector('#raiseOwn').textContent), null, { timeout: 30000 });
+    check(`${name}: "Try your own" refuses a red card for a white commander`, await p.evaluate(() => !window.__isf.comboRaiseOwn && !document.querySelector('#raiseOwn button.raise-apply')));
+    // T-065: Apply leaves a Sideboard copy alone, and a reload brings back the swapped list
+    await p.click('.tab[data-tab="deck"]'); await load(DECK + '\n\nSideboard\n1 Ashnod\'s Altar\n1 Sol Ring');
+    await p.click('.tab[data-tab="sim"]'); await p.waitForFunction(() => window.__isf.comboRaise && window.__isf.comboRaise.done, null, { timeout: 60000 });
+    await p.selectOption('#raiseCut', 'Sol Ring'); await p.waitForFunction(() => window.__isf.comboRaise.done && window.__isf.comboRaise.cut === 'Sol Ring', null, { timeout: 60000 });
+    await p.fill('#raiseAdd', "Ashnod's Altar"); await p.click('#raiseGo'); await p.waitForTimeout(300);
+    await p.click('#raiseOwn button.raise-apply');
+    await p.waitForFunction(() => window.__isf.deck && window.__isf.deck.unique.some(c => c.name === "Ashnod's Altar"), null, { timeout: 90000 });
+    { const r = await p.evaluate(() => ({ text: window.__isf.deckText, last: localStorage.getItem('gf_last'), size: window.__isf.deck.library.length + window.__isf.deck.commanders.length, saved: Object.keys(JSON.parse(localStorage.getItem('gf_decks') || '{}')).length }));
+      check(`${name}: Apply swaps in the main deck, keeps the Sideboard lines, and remembers the swapped list`, r.size === 100 && /Sideboard\n1 Ashnod's Altar\n1 Sol Ring\s*$/.test(r.text) && r.last === r.text, JSON.stringify({ size: r.size, tail: r.text.slice(-60), same: r.last === r.text })); }
+
     // a list with no combo
     await p.click('.tab[data-tab="deck"]'); await p.selectOption('#optFormat', '60').catch(() => {}); await load(PLAIN);
     await p.click('.tab[data-tab="odds"]'); await p.waitForTimeout(800);

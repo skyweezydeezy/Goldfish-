@@ -1854,10 +1854,10 @@
     me.terminate = () => { ws.forEach(w => w.terminate()); ws.length = 0; };
     const plain = msg => { const w = new Worker('worker.js'); ws.push(w); w.onmessage = e => emit('message', e.data); w.onerror = err => emit('error', err); w.postMessage(msg); };
     me.postMessage = msg => {
-      const kind = msg.pod ? 'pod' : msg.match ? 'match' : (msg.cards && !msg.learn && !msg.tune && !msg.nextBracket && !msg.diagnose && !msg.ab) ? 'sim' : null;
+      const kind = msg.pod ? 'pod' : msg.match ? 'match' : msg.learn ? 'learn' : (msg.cards && !msg.learn && !msg.tune && !msg.nextBracket && !msg.diagnose && !msg.ab) ? 'sim' : null;
       const o = msg.opts || {}, tribe = (o.policy && o.policy.tribe) || (o.policyB && o.policyB.tribe);
       const K = Math.min(8, Math.max(1, navigator.hardwareConcurrency || 2));
-      if (!kind || K < 2 || msg.n < 120 || (kind === 'match' && tribe) || window.__noPar) return plain(msg);
+      if (!kind || K < 2 || msg.n < 120 || (kind === 'match' && tribe) || (kind === 'learn' && msg.n < 200) || window.__noPar) return plain(msg);
       const unit = 12, size = Math.max(unit, Math.ceil(msg.n / (K * 6) / unit) * unit);          // slices start on a multiple of 12, so seats and who plays first match a single run
       const queue = []; for (let f = 0; f < msg.n; f += size) queue.push({ from: f, to: Math.min(msg.n, f + size) });
       const done = [], fr = new Map(); let finished = 0, dead = false;
@@ -1870,7 +1870,7 @@
       };
       const merge = () => {
         const m = ws[0]; m.onmessage = e => { if (e.data.result) emit('message', e.data); };
-        m.postMessage({ merge: { kind, parts: done, cardsA: msg.match && msg.match.cardsA, tokensA: msg.match && msg.match.tokensA }, opts: o });
+        m.postMessage({ merge: { kind, parts: done, cardsA: msg.match && msg.match.cardsA, tokensA: msg.match && msg.match.tokensA, candidates: msg.learn && msg.learn.candidates, mode: msg.learn && msg.learn.mode }, opts: o });
       };
       for (let k = 0; k < K; k++) {
         const w = new Worker('worker.js'); ws.push(w);
@@ -2175,7 +2175,7 @@
     o.policy = JSON.parse(JSON.stringify(o.policy));
     const candidates = dec.options.map(op => ({ name: op.name, policy: { [dec.key]: op.value } }));
     if (plWorker) plWorker.terminate();
-    plWorker = new Worker('worker.js');
+    plWorker = ParWorker();
     if (window.Battle) Battle.watch(plWorker, '#plProgress', mode === 'goldfish' ? 'dummy' : 'rival');
     const bar = $('#plProgress div'); bar.style.width = '0';
     const vs = field ? ` against ${field.map(x => x.name).join(', ')}` : '';

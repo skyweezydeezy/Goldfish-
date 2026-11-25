@@ -2,6 +2,18 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 186,
+      "lines": [
+        "The A/B deck test and its card check run on every core too, and a run that loses a helper carries on instead of stopping."
+      ]
+    },
+    {
+      "v": 185,
+      "lines": [
+        "Tune, Tune to the next bracket and the Policy lab use every core of your device: about twice as fast, with the same answers."
+      ]
+    },
+    {
       "v": 184,
       "lines": [
         "Play a friend: on the same Wi-Fi your friend shows up under Nearby. Tap their name, they accept, and you play: no codes. On different networks, both type the same room name.",

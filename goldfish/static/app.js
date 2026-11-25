@@ -1919,34 +1919,56 @@
     me.terminate = () => { ws.forEach(w => w.terminate()); ws.length = 0; };
     const plain = msg => { const w = new Worker('worker.js'); ws.push(w); w.onmessage = e => emit('message', e.data); w.onerror = err => emit('error', err); w.postMessage(msg); };
     me.postMessage = msg => {
-      const kind = msg.pod ? 'pod' : msg.match ? 'match' : (msg.cards && !msg.learn && !msg.tune && !msg.nextBracket && !msg.diagnose && !msg.ab) ? 'sim' : null;
+      const kind = msg.pod ? 'pod' : msg.match ? 'match' : msg.learn ? 'learn' : (msg.cards && !msg.learn && !msg.tune && !msg.nextBracket && !msg.diagnose && !msg.ab) ? 'sim' : null;
       const o = msg.opts || {}, tribe = (o.policy && o.policy.tribe) || (o.policyB && o.policyB.tribe);
       const K = Math.min(8, Math.max(1, navigator.hardwareConcurrency || 2));
-      if (!kind || K < 2 || msg.n < 120 || (kind === 'match' && tribe) || window.__noPar) return plain(msg);
+      if (!kind || K < 2 || msg.n < 120 || (kind === 'match' && tribe) || (kind === 'learn' && msg.n < 200) || window.__noPar) return plain(msg);
       const unit = 12, size = Math.max(unit, Math.ceil(msg.n / (K * 6) / unit) * unit);          // slices start on a multiple of 12, so seats and who plays first match a single run
       const queue = []; for (let f = 0; f < msg.n; f += size) queue.push({ from: f, to: Math.min(msg.n, f + size) });
-      const done = [], fr = new Map(); let finished = 0, dead = false;
+      const done = [], fr = new Map(), live = new Set(); let dead = false, spare = 3, merging = false, mergeTries = 0;
       const report = () => { let g = done.reduce((t, x) => t + (x.to - x.from), 0); for (const [c, p] of fr) g += (c.to - c.from) * p; emit('message', { progress: Math.min(0.99, g / msg.n) }); };
+      // A worker that errors, dies or goes quiet (no message for window.__parWatchdogMs, 2 minutes) does not stall the run: its slice goes back in the queue, an idle worker
+      // or a replacement (up to 3 per run) plays it, and the numbers are the same whoever plays a slice. If nothing is left to play it, the run ends with an error.
+      const dogMs = () => window.__parWatchdogMs || 120000;
+      const arm = w => { clearTimeout(w.dog); w.dog = setTimeout(() => lose(w), dogMs()); };
+      const fail = text => { if (dead) return; dead = true; me.terminate(); emit('error', { message: text }); };
+      const maybeMerge = () => { if (!merging && !dead && !queue.length && [...live].every(w => w.idle)) merge(); };
       const next = w => {
         if (dead) return;
         const c = queue.shift();
-        if (!c) { if (++finished === K) merge(); return; }
-        w.cur = c; fr.set(c, 0); w.postMessage(Object.assign({}, msg, { part: c }));
+        if (!c) { w.idle = true; clearTimeout(w.dog); maybeMerge(); return; }
+        w.idle = false; w.cur = c; fr.set(c, 0); arm(w); w.postMessage(Object.assign({}, msg, { part: c }));
       };
       const merge = () => {
-        const m = ws[0]; m.onmessage = e => { if (e.data.result) emit('message', e.data); };
-        m.postMessage({ merge: { kind, parts: done, cardsA: msg.match && msg.match.cardsA, tokensA: msg.match && msg.match.tokensA }, opts: o });
+        const m = [...live][0]; if (!m) return fail('The workers stopped answering');
+        merging = true; m.merging = true; m.idle = false; arm(m);
+        m.postMessage({ merge: { kind, parts: done, cardsA: msg.match && msg.match.cardsA, tokensA: msg.match && msg.match.tokensA, candidates: msg.learn && msg.learn.candidates, mode: msg.learn && msg.learn.mode }, opts: o });
       };
-      for (let k = 0; k < K; k++) {
-        const w = new Worker('worker.js'); ws.push(w);
+      const lose = w => {
+        if (!live.delete(w)) return;
+        clearTimeout(w.dog); w.terminate(); const at = ws.indexOf(w); if (at >= 0) ws.splice(at, 1);
+        if (dead) return;
+        if (w.merging) { merging = false; if (++mergeTries > 1) return fail('The workers stopped answering'); if (spare-- > 0) { const nw = start(); nw.idle = true; merge(); } else fail('The workers stopped answering'); return; }
+        const c = w.cur; w.cur = null;
+        if (c) { fr.delete(c); queue.unshift(c); }
+        const iw = c && [...live].find(x => x.idle);
+        if (iw) next(iw);
+        else if (spare-- > 0) next(start());
+        else if (!live.size) fail('The workers stopped answering');
+        else maybeMerge();
+      };
+      function start() {
+        const w = new Worker('worker.js'); ws.push(w); live.add(w);
         w.onmessage = e => {
-          if (dead) return;
-          if (e.data.part) { fr.delete(w.cur); done.push(e.data.part); report(); next(w); }
-          else if (e.data.progress != null && w.cur) { fr.set(w.cur, e.data.progress); report(); }
+          if (dead || !live.has(w)) return;
+          if (e.data.part) { fr.delete(w.cur); w.cur = null; done.push(e.data.part); report(); next(w); }
+          else if (e.data.progress != null && w.cur) { fr.set(w.cur, e.data.progress); report(); arm(w); }
+          else if (e.data.result && w.merging) { clearTimeout(w.dog); emit('message', e.data); }
         };
-        w.onerror = err => { dead = true; me.terminate(); emit('error', err); };
-        next(w);
+        w.onerror = () => lose(w); w.onmessageerror = () => lose(w);
+        return w;
       }
+      for (let k = 0; k < K; k++) next(start());
     };
     return me;
   }
@@ -2240,7 +2262,7 @@
     o.policy = JSON.parse(JSON.stringify(o.policy));
     const candidates = dec.options.map(op => ({ name: op.name, policy: { [dec.key]: op.value } }));
     if (plWorker) plWorker.terminate();
-    plWorker = new Worker('worker.js');
+    plWorker = ParWorker();
     if (window.Battle) Battle.watch(plWorker, '#plProgress', mode === 'goldfish' ? 'dummy' : 'rival');
     const bar = $('#plProgress div'); bar.style.width = '0';
     const vs = field ? ` against ${field.map(x => x.name).join(', ')}` : '';

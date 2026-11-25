@@ -376,6 +376,7 @@
     if ((m = text.match(/^target player mills (\w+) cards\. then exile each opponent's graveyard/i))) fx.push({ type: 'millOpp', n: num(m[1]) }, { type: 'exileOppYards' });          // Ashiok, Dream Render
     if (/return target card from your graveyard to your hand/i.test(text) && !/target [a-z]+ card from your graveyard/i.test(text.replace(/target card/i, ''))) fx.push({ type: 'gyReturn', filter: 'any' });          // Eternal Witness, Tamiyo
     if (/put target nonland permanent into its owner's library third from the top/i.test(text)) fx.push({ type: 'removal', how: 'tuck', what: 'nonland' });          // Teferi, Hero of Dominaria
+    if (/put target noncreature permanent on the bottom of its owner's library/i.test(text)) fx.push({ type: 'removal', how: 'bottom', what: 'permanent', noncreature: true });          // Brutalizer Exarch
     if (/target creature becomes a treasure artifact/i.test(text)) fx.push({ type: 'removal', how: 'destroy', what: 'creature', give: { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' } });          // Vraska, Betrayal's Sting
     if (/return up to one target artifact, creature, or enchantment to its owner's hand/i.test(text)) fx.push({ type: 'bounce', what: 'nonland' });          // Teferi, Time Raveler
     // Interaction (used in mirror matches; inert against a goldfish): removal, bounce, burn at a creature, edicts, sweepers
@@ -433,6 +434,7 @@
     }
     if (/\bthe ring tempts you\b/i.test(text)) fx.push({ type: 'tempt' });                 // Frodo, Boromir...
 
+    if ((m = text.match(/\bcreatures target player controls get \+(\d+)\/\+(\d+) until end of turn\. untap them\b/i))) { fx.push({ type: 'pumpAll', p: +m[1], t: +m[2], keywords: [] }, { type: 'untapAll', what: 'creatures' }); }          // Great Oak Guardian: the target player is you (a goldfish has no one else to help)
     m = text.match(/creatures you control get \+(\d+|x)\/\+(\d+|x)(?: and gain ([a-z ,]+?))? until end of turn/i);
     if (m && /if x is \d+ or more, creatures you control get/i.test(text)) m = null;          // Finale of Devastation: the pump only happens with a huge X
     if (m) fx.push({ type: 'pumpAll', p: num(m[1]), t: num(m[2]), keywords: kwList(m[3]) });
@@ -1248,6 +1250,7 @@
         if (/^creatures you control have vigilance and "\{t\}: add one mana of any color\. spend this mana only to cast a creature spell\."\.?$/i.test(line)) { a.statics.ingaEsika = true; rec.status = 'ok'; continue; }          // Inga and Esika
         if (/^spells you cast from your graveyard or from exile cost \{2\} less to cast\.?$/i.test(line)) { a.statics.docAurlock = 2; rec.status = 'ok'; continue; }          // Doc Aurlock
         if (/^plotting cards from your hand costs \{2\} less\.?$/i.test(line)) { a.statics.plotLess = 2; rec.status = 'ok'; continue; }
+        if (/^when ~ enters?, if (?:it's|they're|it is|they are) not a token, create (?:one|two) tokens? that (?:is a copy|are copies) of (?:it|them), except (?:the|that|those) tokens? (?:isn't|aren't) legendary\.?$/i.test(line)) { a.triggers.push({ kinds: ['etb'], cond: { kind: 'nontoken' }, fx: [{ type: 'selfCopies', n: /create one\b/i.test(line) ? 1 : 2, notLegendary: true }], text: raw }); rec.status = 'ok'; continue; }          // The Notary Hobbits: two token copies that are not legendary
         if (/^when ~ enters, if it was kicked, create two tapped tokens that are copies of ~\.?$/i.test(line)) { a.triggers.push({ kinds: ['etb'], cond: { kind: 'kicked' }, fx: [{ type: 'selfCopies', n: 2, tapped: true }], text: raw }); rec.status = 'ok'; continue; }          // Skyclave Relic
         if ((bm = line.match(/^buyback ((?:\{[^}]+\})+)$/i))) { a.buyback = parseCost(bm[1]); rec.status = 'ok'; continue; }          // buyback (Reiterate)
         if (/^each spell you cast that's a demon, horror, or nightmare costs \{1\} less to cast\.?$/i.test(line)) { a.statics.reducers.push({ n: 1, filter: 'demon|horror|nightmare' }); rec.status = 'ok'; continue; }          // Ancient Cellarspawn
@@ -1927,6 +1930,9 @@
         if (/^target creature gains trample and gets \+x\/\+0 until end of turn, where x is its power\. at the beginning of the next end step, destroy that creature if it attacked this turn/i.test(line)) { a.spellFx.push({ type: 'berserk' }); rec.status = 'ok'; continue; }          // Berserk: only for lethal
         if ((mf = line.match(/^~ gets \+(\d+)\/\+(\d+) for each aura attached to it/i))) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'perAura', p: +mf[1], t: +mf[2] }); rec.status = 'ok'; continue; }          // Kor Spiritdancer
         if ((mf = line.match(/^((?:\{[^}]+\})+): until end of turn, ~ gets \+(\d+)\/\+(\d+) and gains (\w+)\.?$/i))) { a.selfPumpAct = { cost: parseCost(mf[1]), p: +mf[2], t: +mf[3], kw: mf[4].toLowerCase() }; rec.status = 'ok'; continue; }          // Resplendent Angel: before combat, with mana to spare
+        if (/^\{t\}, sacrifice another creature: search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put that card onto the battlefield, then shuffle\. activate only as a sorcery\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, tap: true, gate: 'sacUp', fx: [{ type: 'sacTutorUp' }], text: raw }); rec.status = 'ok'; continue; }          // Prime Speaker Vannifar
+        if ((mf = line.match(/^((?:\{[^}]+\})+), sacrifice ~: choose a creature type\. reveal cards from the top of your library until you reveal a creature card of that type\. put that card onto the battlefield and shuffle the rest into your library\.?$/i))) { a.activated.push({ cost: parseCost(mf[1]), sacSelf: true, late: true, gate: 'riptide', fx: [{ type: 'riptide' }], text: raw }); rec.status = 'ok'; continue; }          // Riptide Shapeshifter
+        if ((mf = line.match(/^((?:\{[^}]+\}(?:, )?)+): target land you control becomes an? (\d+)\/(\d+) [a-z ]*creature with ([a-z ]+?) until end of turn\. it's still a land\. activate only as a sorcery\.?$/i))) { const mc = mf[1].replace(/\{t\}(?:, )?/i, '').replace(/, $/, ''); a.activated.push({ cost: mc ? parseCost(mc) : { generic: 0, pips: [], x: 0 }, tap: /\{t\}/i.test(mf[1]), gate: 'landAttack', fx: [{ type: 'animateLand', p: +mf[2], t: +mf[3], kw: kwList(mf[4]) }], text: raw }); rec.status = 'ok'; continue; }          // Llanowar Loamspeaker: a land attacks as a 3/3 with haste (like Karn, only before combat and against no untapped blockers)
         if ((mf = line.match(/^((?:\{[^}]+\})+): target land becomes a (\d+)\/(\d+) creature until end of turn\. it's still a land/i))) { a.landAnimate = { cost: parseCost(mf[1]), p: +mf[2], t: +mf[3] }; rec.status = 'ok'; continue; }          // Kamahl, Fist of Krosa: spare lands attack
         if ((mf = line.match(/^((?:\{[^}]+\})+): you may put a creature card from your hand onto the battlefield\. that creature gains haste\. sacrifice the creature at the beginning of the next end step/i))) { a.sneak = parseCost(mf[1]); rec.status = 'ok'; continue; }          // Sneak Attack
         if ((mf = line.match(/^((?:\{[^}]+\})+), \{t\}, sacrifice ~: create (\w+) 1\/1 colorless eldrazi (scion|spawn) creature tokens\. they have "sacrifice ~: add \{c\}\."/i))) { a.activated.push({ cost: parseCost(mf[1]), tap: true, sacSelf: true, fx: [{ type: 'token', n: NUM[mf[2].toLowerCase()] || 1, tapped: false, creature: true, p: 1, t: 1, colors: [], subtypes: ['Eldrazi', mf[3][0].toUpperCase() + mf[3].slice(1)], keywords: [], artifact: false, name: 'Eldrazi ' + mf[3][0].toUpperCase() + mf[3].slice(1) }], late: true, gate: 'lands', minLands: 7, text: raw }); rec.status = 'ok'; continue; }          // Spawning Bed
@@ -2241,7 +2247,7 @@
         if (/^whenever you put one or more \+1\/\+1 counters on ~, draw a card\. this ability triggers only once each turn/i.test(line)) { T4(['countersPut'], [{ type: 'draw', n: 1 }], { selfOnly: true, onceTurn: true }); continue; }          // Exemplar of Light
         if ((mq = line.match(/^reconfigure ((?:\{[^}]+\})+)/i))) { a.equip = { cost: parseCost(mq[1]) }; a.reconfigure = true; a.isEquipment = true; rec.status = 'ok'; continue; }          // reconfigure: attach as Equipment, not a creature while attached
         if (/^as long as ~ is attached to a creature, you may play lands and cast spells from the top of your library/i.test(line)) { a.chipTop = true; rec.status = 'ok'; continue; }          // The Reality Chip
-        if (/^~ has all activated abilities of creatures you control that don't have the same name as ~/i.test(line)) { a.marvin = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Marvin: plain "cost: effect" and mana abilities
+        if (/^~ has all activated abilities of creatures you control that don't have the same name as ~/i.test(line)) { a.marvin = true; rec.status = 'ok'; continue; }          // Marvin: every ability in the other creatures' `activated` lists (Loamspeaker's land, Vannifar, Riptide...) and their mana; abilities kept in their own a.<field> (Kamahl's lands, Oswald...) are not borrowed
         if (/^if a nontoken creature an opponent controls would die, instead exile it and you gain 2 life/i.test(line)) { a.darkCrystal = true; OPP(); continue; }          // The Darkness Crystal (matches)
         if ((mq = line.match(/^((?:\{[^}]+\})+), \{t\}: put target creature card exiled with ~ onto the battlefield tapped under your control with two additional \+1\/\+1 counters on it/i))) { a.crystalReturn = parseCost(mq[1]); OPP(); continue; }
         if (/^discard three cards: exile ~\. return it to the battlefield tapped under its owner's control at the beginning of the next end step/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Nezahal: protection from removal
@@ -4581,6 +4587,7 @@
       case 'handExactly': return g.hand.length === c.n;
       case 'countersOrHand': return !!(source && (source.counters || 0) >= c.counters) || g.hand.length >= c.hand;
       case 'secondCast': return (g.winSpellCasts || 0) >= 1;
+      case 'nontoken': return !!source && !source.token;          // The Notary Hobbits: "if they're not a token"
       case 'kicked': return !!(source && source.inst ? source.inst.kicked : g.lastCast && g.lastCast.kicked);
       case 'siege': return !!(source && source.siegeMode === c.mode);
       case 'questAtLeast': return !!(source && source.other && (source.other.quest || 0) >= c.n);
@@ -6278,7 +6285,19 @@
         case 'reanimateAllX': { const X = f.max != null ? f.max : (g.xValue || 0); const ls = g.graveyard.filter(i => (i.card.a.isCreature || (!f.creaturesOnly && i.card.a.isPlaneswalker)) && !i.card.a.isLand && (i.card.a.mv || 0) <= X); /* Raise the Past: a fixed mana value */ for (const i of ls) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } ev.push({ type: 'note', text: `X = ${X}: ${ls.length} card${ls.length === 1 ? '' : 's'} return`, source }); break; }          // Ascend from Avernus
         case 'wrennReveal': { const top = g.library.splice(0, f.n || 4); for (const i of top) (i.card.a.isLand ? g.hand : g.graveyard).push(i); ev.push({ type: 'note', text: `Revealed ${top.length}: ${top.filter(i => i.card.a.isLand).length} land${top.filter(i => i.card.a.isLand).length === 1 ? '' : 's'} to your hand, the rest to the graveyard`, source }); break; }          // Wrenn and Seven +1
         case 'landsFromHand': { const ls = g.hand.filter(i => i.card.a.isLand); for (const l of ls) { g.hand.splice(g.hand.indexOf(l), 1); enterWithTriggers(g, l, { tapped: true }, ev); } if (ls.length) ev.push({ type: 'note', text: `${ls.length} land${ls.length === 1 ? '' : 's'} from your hand onto the battlefield tapped`, source }); break; }          // Wrenn and Seven 0
-        case 'selfCopies': if (source && source.card) { for (let k = 0; k < (f.n || 1) && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: source.card }, { tapped: !!f.tapped, token: true }, ev); np.token = true; if (f.tapped) np.tapped = true; } ev.push({ type: 'note', text: `${f.n || 1} token cop${(f.n || 1) === 1 ? 'y' : 'ies'} of ${source.card.name}`, source }); } break;          // Skyclave Relic, kicked
+        case 'sacTutorUp': {          // Prime Speaker Vannifar: sacrifice another creature, fetch a creature with mana value 1 more onto the battlefield
+          const pk = sacUpPick(g, source); if (!pk || (g.ask && !askUse(g, `sacrifice ${pk.v.card.name} for ${pk.t.card.name}`, 'Prime Speaker Vannifar', source, pk.v))) break;
+          const mv = pk.v.token ? 0 : (pk.v.card.a.mv || 0); leavePerm(g, pk.v, ev); flushLeaves(g, ev); sacEvent(g, pk.v, ev);
+          tutor(g, { filters: ['creature'], dest: 'battlefield', eqMv: mv + 1 }, ev, source); break;
+        }
+        case 'riptide': {          // Riptide Shapeshifter: name a creature type, reveal until one of it, put it onto the battlefield, shuffle the rest
+          const pk = riptidePick(g, source); if (!pk) break;
+          const got = g.library.splice(pk.k, 1)[0]; shuffle(g.library, g.rnd);
+          ev.push({ type: 'note', text: `${source ? source.card.name : 'Riptide'}: ${pk.ty}, revealed ${pk.k + 1} card${pk.k ? 's' : ''}, ${got.card.name} onto the battlefield`, source });
+          if (entryBlocked(g, got.card, 'lib')) g.exile.push(got); else { const perm = enterWithTriggers(g, got, {}, ev); ev.push({ type: 'rampLand', inst: got, perm, source }); }
+          break;
+        }
+        case 'selfCopies': if (source && source.card) { for (let k = 0; k < (f.n || 1) && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: f.notLegendary ? unlegendary(g, source.card) : source.card }, { tapped: !!f.tapped, token: true }, ev); np.token = true; if (f.tapped) np.tapped = true; } ev.push({ type: 'note', text: `${f.n || 1} token cop${(f.n || 1) === 1 ? 'y' : 'ies'} of ${source.card.name}`, source }); } break;          // Skyclave Relic, kicked
         case 'subjToHand': if (subject && subject.inst && !subject.token) { const H = subject.owner || g, at = H.graveyard.indexOf(subject.inst); if (at >= 0) { H.graveyard.splice(at, 1); H.hand.push(subject.inst); ev.push({ type: 'note', text: `${subject.card.name} returns to its owner's hand`, source }); } } break;          // Sword of the Realms
         case 'edictGreatest': for (const o of (isPod(g) ? otherPlayers(g) : g.opp ? [g.opp] : [])) { if (bfInfo(o).tamiyo) continue; const cs = o.battlefield.filter(isCreaturePerm); if (!cs.length) continue;          // Will of the Abzan: their creature with the greatest power
           const mx = Math.max(...cs.map(q => powerOf(o, q))), v = cs.filter(q => powerOf(o, q) === mx).sort((x, y) => creatureValue(o, x) - creatureValue(o, y))[0];
@@ -8548,6 +8567,7 @@
     for (const i of (f.yard ? g.library.concat(g.graveyard) : g.library)) {
       if (!tutorMatches(i, f.filters)) continue;
       if (f.colors && !f.colors.some(c => colorsOf(g, i.card).includes(c))) continue;
+      if (f.eqMv != null && (i.card.a.mv || 0) !== f.eqMv) continue;          // Prime Speaker Vannifar: exactly 1 more than the sacrificed creature
       if (f.maxMv != null && (i.card.a.mv || 0) > (f.maxMv === 'X' ? (g.xValue || 0) : f.maxMv === 'SAC2' ? 2 + ((g._sacStats && g._sacStats.mv) || 0) : f.maxMv)) continue;
       if (f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands)) continue;
       if (f.dest === 'battlefield' && i.card.a.cost && i.card.a.cost.x && i.card.a.isCreature && !(i.card.a.toughness > 0)) continue;          // a 0/0 that "enters with X counters": put onto the battlefield without being cast, X is 0 and it dies
@@ -8596,6 +8616,29 @@
     else if (f.dest === 'battlefield' && entryBlocked(g, t.inst.card, 'lib')) { g.exile.push(t.inst); ev.push({ type: 'note', text: `${t.inst.card.name} cannot enter the battlefield from the library and is exiled`, source }); }
     else if (f.dest === 'battlefield') { const perm = enterWithTriggers(g, t.inst, {}, ev); ev.push({ type: 'rampLand', inst: t.inst, perm, source }); }
     else { g.hand.push(t.inst); ev.push({ type: 'tutor', inst: t.inst, source }); }
+  }
+  // What a creature card is worth on the battlefield (creatureValue for a card that is not there yet)
+  const cardValue = card => { const a = card.a; return (a.mv || 0) + Math.max(0, a.power || 0) * 0.7 + a.triggers.length * 0.8 + (a.isLegendary ? 1 : 0); };
+  const subtypesOf = card => ((card.type_line || '').split(/\s+[—-]\s+/)[1] || '').trim().split(/\s+/).filter(Boolean);
+  const hasCreatureType = (card, ty) => !!card.a.isCreature && (subtypesOf(card).includes(ty) || (card.keywords || []).includes('Changeling') || /\bchangeling\b/i.test(card.oracle_text || ''));
+  // Prime Speaker Vannifar: the creature to sacrifice and the creature with 1 more mana value that it fetches; null unless that gains at least 2
+  function sacUpPick(g, src) {
+    let best = null;
+    for (const v of g.battlefield) {
+      if (v === src || !isCreaturePerm(v) || v.card.commander) continue;
+      const mv = v.token ? 0 : (v.card.a.mv || 0), t = bestTutorTarget(g, { filters: ['creature'], dest: 'battlefield', eqMv: mv + 1 });
+      if (!t) continue;
+      const gain = cardValue(t.inst.card) - creatureValue(g, v);
+      if (gain >= 2 && (!best || gain > best.gain)) best = { v, t: t.inst, gain };
+    }
+    return best;
+  }
+  // Riptide Shapeshifter: the creature type that finds the best creature card (the first card of that type from the top; changelings fit every type)
+  function riptidePick(g, src) {
+    const types = new Set(); for (const i of g.library) if (i.card.a.isCreature) subtypesOf(i.card).forEach(t => types.add(t));
+    let best = null;
+    for (const ty of types) { const k = g.library.findIndex(i => hasCreatureType(i.card, ty)); if (k < 0) continue; const i = g.library[k]; if (i.card.a.cost && i.card.a.cost.x && !(i.card.a.toughness > 0)) continue; const v = cardValue(i.card); if (!best || v > best.v) best = { ty, k, v }; }
+    return best && best.v - creatureValue(g, src) >= 3 ? best : null;
   }
   // Creatures that are fine to sacrifice (Diabolic Intent's cost, Ashnod's Altar): a token, or a plain small creature. With an Altar a creature that comes
   // back for a Food (Cauldron Familiar) is the best fodder of all. Worst-to-lose first.
@@ -10131,6 +10174,9 @@ g.actSeq = (g.actSeq || 0) + 1;
   // when an ability that waits for the right moment is worth activating
   const countedTokens = ab => ab.fx.some(f => f.type === 'token' && f.n === 'X' && f.count && f.creature);          // "create X tokens, where X is the number of ..." (Krenko, Mob Boss)
   function abilityGate(g, p, ab) {
+    if (ab.gate === 'landAttack') return !g.combatDone && g.activeTurn !== false && !(g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped)) && g.battlefield.some(q => q.asLand && !q.animated && !q.tapped && !q.card.a.isCreature) && g.battlefield.filter(q => q.asLand && !q.tapped).length >= 2;          // Llanowar Loamspeaker: an untapped land (haste) and no blockers; the other land pays for what the turn needs
+    if (ab.gate === 'sacUp') return !g.dry && !g.combatDone && g.activeTurn !== false && !!sacUpPick(g, p);          // Prime Speaker Vannifar: sorcery speed, only for a real upgrade
+    if (ab.gate === 'riptide') return !g.dry && !!riptidePick(g, p);          // Riptide Shapeshifter: the card it finds is worth much more than it is
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
     if (ab.minGy && g.graveyard.length < ab.minGy) return false;          // rules batch 58: threshold (Barbarian Ring)
     if (ab.gate === 'baseHand') return !g.combatDone && g.battlefield.filter(q => isCreaturePerm(q) && canAttack(g, q)).reduce((t, q) => t + Math.max(0, g.hand.length - powerOf(g, q)), 0) >= 4;          // rules batch 61: Jolrael, before combat when it makes the attackers bigger
@@ -12757,8 +12803,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   function doRemoval(g, f, source, ev) {
     if (f.metal && g.battlefield.filter(q => artOn(g, q)).length < 3) return;          // Dispatch: metalcraft
     let t = pickRemovalTarget(g, f);
-    if (g.ask) { t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source }); if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
-    if (t && (f.noTarget || !answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'warp' ? 'exile' : 'destroy', source, ev))) removalOf(g, f, source, ev, t);
+    if (g.ask) { t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source }); if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
+    if (t && (f.noTarget || !answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' || f.how === 'warp' ? 'exile' : 'destroy', source, ev))) removalOf(g, f, source, ev, t);
   }
   // the other player answers a targeted effect: true when nothing more happens (the target is protected, regenerated or indestructible)
   function answered(g, t, kind, source, ev) {
@@ -12796,8 +12842,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     if (source && source.card && source.card.a.linkReturn && f.how === 'exile' && !t.token && t.inst && !t.card.commander) (source.linked = source.linked || []).push({ inst: t.inst, owner: t.owner || d, how: source.card.a.linkReturn });          // Oblivion Ring, Skyclave Apparition, Angel of Serenity: until it leaves
     if (f.thief && g._casting) g._casting.oppDrawOnLeave = true;          // Thief of Existence: when it leaves, the other player draws a card
-    ev.push({ type: 'note', text: `${f.how === 'exile' ? 'Exiled' : 'Destroyed'} the opponent's ${t.card.name}`, source });
-    leavePerm(d, t, ev, f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'library3' : 'graveyard');
+    ev.push({ type: 'note', text: `${f.how === 'exile' ? 'Exiled' : f.how === 'bottom' ? 'Put on the bottom of its owner\'s library:' : 'Destroyed'} the opponent's ${t.card.name}`, source });
+    leavePerm(d, t, ev, f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'library3' : f.how === 'bottom' ? 'libraryBottom' : 'graveyard');
     flushLeaves(d, ev);
     if (f.gainPower && pw > 0) gainLife(d, pw, ev, null);
     if (f.ramp) applyEffects(d, [{ type: 'ramp', bf: 1, hand: 0, tapped: f.ramp.tapped, basicOnly: true }], null, ev, null);

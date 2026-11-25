@@ -21,6 +21,6 @@ const bad = src.match(/['"`]turns?:|username|credential|metered|\bRELAY\b|relayO
 check('no relay of any kind is left in the file: no turn:/turns:, login, relay host or relay service', bad.length === 0, bad.join(','));
 const comments = src.split('\n').filter(l => /relay/i.test(l)).length;
 check('the only mentions of "relay" are the comments saying it was removed', src.split('\n').filter(l => /relay/i.test(l) && !/^\s*\/\//.test(l)).length === 0, comments + ' comment lines');
-check('the disclosure no longer mentions a relay, and is version 4', /DISCLOSURE_VERSION = 4;/.test(src) && !/relay server/i.test(src));
+check('the disclosure no longer mentions a relay, and is version 5', /DISCLOSURE_VERSION = 5;/.test(src) && !/relay server/i.test(src));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

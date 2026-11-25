@@ -30,6 +30,7 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
     await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 120000 });
     await p.evaluate(() => { const R = window.__isfRemote; R.ice = []; R.state.failAfter = 3000; localStorage.setItem('isf_remote_ack', String(R.DISCLOSURE_VERSION)); });
     await p.click('[data-tab=duel]');
+    await p.evaluate(() => { document.querySelector('#tab-duel .rm-other').open = true; });          // the codes are under "Other ways to connect"
     return p;
   };
   const [A, B] = [await device('A'), await device('B')];
@@ -41,7 +42,7 @@ const deck = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt')
   const built = await A.evaluate(() => window.__isfRemote.state.link.pc.getConfiguration().iceServers.map(s => ({ urls: [].concat(s.urls), login: !!(s.username || s.credential) })));
   const all = built.flatMap(s => s.urls);
   check('as shipped, the site connects with public STUN servers only: no TURN, no login', all.length > 0 && all.every(u => /^stun:/.test(u)) && built.every(s => !s.login), all.join(', '));
-  check('...and the list of what is shared (version 4) has no relay line', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 4 && !R.DISCLOSURE.some(t => /relay/i.test(t)); }));
+  check('...and the list of what is shared (version 5) has no relay line', await A.evaluate(() => { const R = window.__isfRemote; return R.DISCLOSURE_VERSION === 5 && !R.DISCLOSURE.some(t => /relay/i.test(t)); }));
   await A.evaluate(() => { const R = window.__isfRemote; R.ice = []; R.state.failAfter = 3000; });
 
   // ---- no way through

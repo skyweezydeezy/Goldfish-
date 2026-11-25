@@ -74,6 +74,7 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
     await A.goto(BASE); await loadDeck(A, deckA);
     await A.tap('[data-tab=duel]');
     await A.waitForSelector('#tab-duel .rm-box');
+    await A.evaluate(() => { document.querySelector('#tab-duel .rm-other').open = true; });          // the codes are under "Other ways to connect"
     let bad = await fits(A, BOX);
     check(`${tag} ${la}: the Play a friend box and the list of what is shared fit the screen`, !bad.length, bad.join('; '));
     let t = await taps(A, '#tab-duel .rm-box button');
@@ -164,10 +165,10 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
     await until((a, c) => a.active !== first && c.active !== first && a.phase === 'main' && c.phase === 'main' && a.quiet && c.quiet, 60000);
     const [e0, e1] = [await st(A), await st(B)];
     check(`${tag} a turn passes: the other player's turn on both devices, the same table, no device stopped the game`, e0.fp === e1.fp && !e0.halted && !e1.halted, e0.fp + ' / ' + e1.fp);
-    // the bar after a quiet spell: the other device says nothing for 13 s and a move redraws the table here ("Not connected"); then a
+    // the bar after a quiet spell: the other device says nothing for longer than S.silentMs and a move redraws the table here ("Not connected"); then a
     // message arrives. The 4-second check must put "Connected" back, though it never drew "Not connected" itself.
     if (la === PAIRS[0][0]) {
-      await A.evaluate(() => { const S = window.__isfRemote.state, t = S.lastSeen; S.lastSeen = Date.now() - 20000; window.__isfVersus.redraw('duel'); S.lastSeen = Math.max(t, Date.now()); });
+      await A.evaluate(() => { const S = window.__isfRemote.state, t = S.lastSeen; S.lastSeen = Date.now() - (S.silentMs + 5000); window.__isfVersus.redraw('duel'); S.lastSeen = Math.max(t, Date.now()); });
       const off = await A.$eval('#tab-duel .vs-conn', e => e.textContent);
       await A.waitForFunction(() => /● Connected/.test(document.querySelector('#tab-duel .vs-conn').textContent), null, { timeout: 12000, polling: 200 }).catch(() => {});
       const on = await A.$eval('#tab-duel .vs-conn', e => e.textContent);

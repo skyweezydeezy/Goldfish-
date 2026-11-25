@@ -1,0 +1,202 @@
+// Browser test: how "Play a friend" finds a friend with no codes (remote.js): Nearby, room names, automatic reconnect, no false drops, the
+// screen wake lock. The meeting point (a public MQTT broker over WebSocket) is a local mock (tests/fixtures/mock-broker.js) that Playwright
+// puts in place of broker.hivemq.com and broker.emqx.io, so no internet is used for it; Scryfall is still needed for the decks.
+// Pair 1 (same public address): the Nearby list shows the friend and not a stranger behind another address, a request is declined,
+// then accepted, and the game starts; the channel is killed and both devices connect again by themselves (also when the meeting point
+// dropped them in between); a short silence is not a lost connection; the wake lock is taken, let go in the background and taken again.
+// Pair 2 (different addresses, the first broker down): the same room word typed differently finds the friend through the second broker.
+const { chromium } = require('playwright');
+const fs = require('fs'), path = require('path');
+const mockBroker = require('../fixtures/mock-broker');
+const UA = 'goldfish-calc-test/0.1';
+let pass = 0, fail = 0;
+const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
+const deckA = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8');
+const deckB = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'veyran.txt'), 'utf8');
+const BASE = 'http://127.0.0.1:8800/';
+const POLL = 200;
+const wait = (p, fn, arg, ms) => p.waitForFunction(fn, arg, { timeout: ms || 30000, polling: POLL });
+const tap = async (p, sel, ms) => {
+  await wait(p, s => { const e = document.querySelector(s); return !!e && !e.disabled && e.getClientRects().length > 0; }, sel, ms || 30000);
+  await p.evaluate(s => document.querySelector(s).click(), sel);
+};
+
+(async () => {
+  const b = await chromium.launch({ args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] });
+  const errs = [];
+  // a device: its own storage; the brokers' addresses answered by the mock; a stand-in for the screen wake lock that counts its calls
+  const device = async (label, broker, down) => {
+    const ctx = await b.newContext({ viewport: { width: 1280, height: 950 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => {
+      try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); s.bg = false; s.sfx = false; s.music = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } catch (e) {}
+      window.__wl = { requests: 0, releases: 0, live: 0 };
+      Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => {
+        const l = new EventTarget(); window.__wl.requests++; window.__wl.live++;
+        l.release = async () => { window.__wl.releases++; window.__wl.live--; l.dispatchEvent(new Event('release')); };
+        return l; } } });
+    });
+    await ctx.routeWebSocket(/broker\.hivemq\.com/, ws => { if (down) ws.close({ code: 1011 }); else broker.attach(ws); });
+    await ctx.routeWebSocket(/broker\.emqx\.io/, ws => broker.attach(ws));
+    await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
+      const r = route.request(), cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+      if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      try {
+        const res = await fetch(r.url(), { method: r.method(), headers: { 'User-Agent': UA, 'Accept': 'application/json;q=0.9,*/*;q=0.8', ...(r.method() === 'POST' ? { 'Content-Type': 'application/json' } : {}) }, body: r.method() === 'POST' ? r.postData() : undefined });
+        route.fulfill({ status: res.status, headers: { ...cors, 'content-type': res.headers.get('content-type') || 'application/octet-stream' }, body: Buffer.from(await res.arrayBuffer()) });
+      } catch (e) { route.abort(); }
+    });
+    const p = await ctx.newPage();
+    p.on('pageerror', e => errs.push(label + ': ' + e.message));
+    p.label = label;
+    return p;
+  };
+  const load = async (p, text, address) => {
+    await p.goto(BASE);
+    if (text) {
+      await p.evaluate(t => { document.querySelector('#deckText').value = t; document.querySelector('#loadDeck').click(); }, text);
+      await wait(p, () => window.__isf && window.__isf.deck, null, 120000);
+    } else await wait(p, () => window.__isfRemote, null, 60000);
+    // no internet STUN here: the "public address" is given, as the STUN reply would give it; and no 3D dice for the roll for first
+    await p.evaluate(a => { const R = window.__isfRemote; R.ice = []; R.address = a; if (window.Dice) window.Dice.rollInto = null; }, address);
+    await tap(p, '[data-tab=duel]');
+  };
+  const near = p => p.$$eval('#tab-duel .rm-peerlist li', l => l.map(e => e.querySelector('.rm-pname').textContent));
+  const text = (p, sel) => p.$eval(sel, e => e.textContent);
+  const st = p => p.evaluate(() => { const g = window.__isfVersus.duel.game, R = window.__isfRemote; return g ? { local: g.human, phase: g.phase, fp: R.fp(g.games), connected: R.connected(), names: g.match.names, acting: g.acting, busy: g.busy } : null; });
+  const linked = p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && window.__isfRemote.connected(); }, null, 40000);
+
+  // ================= pair 1: Nearby =================
+  const broker = mockBroker();
+  const A = await device('A', broker), B = await device('B', broker), C = await device('C (stranger)', broker);
+  await Promise.all([load(A, deckA, 'wifi-1'), load(B, deckB, 'wifi-1'), load(C, null, 'wifi-2')]);
+  await A.fill('#tab-duel .rm-name', 'Alex'); await B.fill('#tab-duel .rm-name', 'Sam'); await C.fill('#tab-duel .rm-name', 'Cy');
+  check('before the list of what is shared is accepted there is no Nearby list and nothing is announced', await A.$eval('#tab-duel .rm-near', e => e.hidden) && broker.log.length === 0 && broker.count() === 0);
+  check('the list of what is shared is version 5 and names the meeting point, the address and who can see the name',
+    await A.evaluate(() => { const R = window.__isfRemote, t = R.DISCLOSURE.join(' '); return R.DISCLOSURE_VERSION === 5 && /broker\.hivemq\.com/.test(t) && /broker\.emqx\.io/.test(t) && /same Wi-Fi/.test(t) && /same room name/.test(t) && /Nothing starts until you accept/.test(t); }));
+  for (const p of [A, B, C]) await p.check('#tab-duel .rm-tick');
+  await wait(A, () => document.querySelectorAll('#tab-duel .rm-peerlist li').length === 1, null, 20000);
+  await wait(B, () => document.querySelectorAll('#tab-duel .rm-peerlist li').length === 1, null, 20000);
+  check('Alex sees Sam under Nearby, and Sam sees Alex: no code, no link', (await near(A)).join() === 'Sam' && (await near(B)).join() === 'Alex' && !(await A.$('#tab-duel .rm-mine')));
+  check('a stranger behind another address sees no one, and no one sees them', (await near(C)).length === 0 && !(await near(A)).includes('Cy'));
+  check('Nearby is the whole screen to start: the codes are folded under "Other ways to connect"', await A.$eval('#tab-duel .rm-other', e => !e.open && /Other ways to connect/.test(e.textContent)));
+  const topics = [...new Set(broker.log.map(m => m.topic))];
+  check('the topic is a hash: it does not contain the address, and the two Wi-Fi networks have different topics', topics.length === 2 && topics.every(t => /^isf5\/[0-9a-f]{40}$/.test(t) && !/wifi/.test(t)), topics.join(' '));
+
+  // a request declined
+  await tap(A, '#tab-duel .rm-ask');
+  await wait(B, () => /Alex wants to play\. Accept\?/.test(document.querySelector('#tab-duel .rm-incoming').textContent), null, 20000);
+  check('Sam is asked "Alex wants to play. Accept?", with Accept and Decline', await B.$eval('#tab-duel .rm-incoming', e => /Alex wants to play\. Accept\?/.test(e.textContent) && !!e.querySelector('.rm-yes') && !!e.querySelector('.rm-no')));
+  check('...a stranger is not asked', (await text(C, '#tab-duel .rm-incoming')) === '');
+  await tap(B, '#tab-duel .rm-no');
+  await wait(A, () => /Sam said no/.test(document.querySelector('#tab-duel .rm-status').textContent), null, 20000);
+  check('Decline: Alex is told, and no game starts', !(await st(A)) && !(await st(B)) && (await B.$eval('#tab-duel .rm-incoming', e => e.textContent)) === '');
+
+  // messages that are not addressed to this device are not acted on
+  await A.evaluate(() => window.__isfRemote.M.topic).then(t => { broker.inject(t, { t: 'ask', id: 'feedfacefeedface', name: 'Evil', deck: '' }); broker.inject(t, { t: 'ask', id: 'feedfacefeedface', to: 'someoneelse', name: 'Evil', deck: '' }); broker.inject(t, { t: 'offer', id: 'feedfacefeedface', code: 'x' }); });
+  await B.waitForTimeout(800);
+  check('an ask with no addressee, or for another device, shows nothing and starts nothing', (await text(B, '#tab-duel .rm-incoming')) === '' && !(await st(B)));
+  // a request accepted
+  await tap(A, '#tab-duel .rm-ask');
+  await wait(B, () => !!document.querySelector('#tab-duel .rm-yes'), null, 20000);
+  await tap(B, '#tab-duel .rm-yes');
+  await Promise.all([A, B].map(linked));
+  await Promise.all([A, B].map(p => wait(p, () => window.__isfVersus.duel.game.phase === 'mull', null, 30000)));
+  const [a0, b0] = [await st(A), await st(B)];
+  check('Accept: both devices connect and start the game, Alex (who asked) in seat 0 and Sam in seat 1, with no code typed or scanned', a0.local === 0 && b0.local === 1 && a0.names.join() === 'Alex,Sam' && a0.fp === b0.fp && !(await A.$('#tab-duel .rm-mine')));
+  const bad = broker.log.filter(m => { let j; try { j = JSON.parse(m.payload); } catch (e) { return true; } return !['here', 'gone', 'ask', 'yes', 'no', 'offer', 'answer', 'again'].includes(j.t) || /Swords to Plowshares|Counterspell|"seed"|"cards"|"act"/.test(m.payload); });
+  check('only the setup went through the meeting point: names, deck names, offer and answer; no deck, seed or move', bad.length === 0, bad.slice(0, 2).map(m => m.payload.slice(0, 80)).join(' | '));
+  const nearlyGone = await A.evaluate(() => ({ visible: window.__isfRemote.M.visible }));
+  check('a device in a game is off the Nearby list', nearlyGone.visible === false && !(await near(C)).length);
+  await tap(A, '#tab-duel .vs-mull'); await A.waitForTimeout(300); await tap(A, '#tab-duel .vs-keep');
+
+  // the wake lock
+  const wl = p => p.evaluate(() => Object.assign({}, window.__wl));
+  const w1 = await Promise.all([A, B].map(wl));
+  check('a game takes the screen wake lock on both devices, once', w1.every(w => w.requests === 1 && w.live === 1), JSON.stringify(w1));
+  const hide = (p, on) => p.evaluate(on => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => on }); document.dispatchEvent(new Event('visibilitychange')); }, on);
+  await hide(A, true); await A.waitForTimeout(300);
+  const w2 = await wl(A);
+  check('...let go when the tab goes to the background', w2.live === 0 && w2.releases === 1, JSON.stringify(w2));
+  check('...and while it is in the background the link is not judged by silence: 3 minutes of quiet is not "gone"',
+    await A.evaluate(() => { const S = window.__isfRemote.state; S.lastSeen = Date.now() - 180000; return window.__isfRemote.connected(); }));
+  await hide(A, false); await A.waitForTimeout(500);
+  const w3 = await wl(A);
+  check('...and taken again when it comes back (it does not have to be started again)', w3.live === 1 && w3.requests === 2, JSON.stringify(w3));
+  check('a tab that just came back is given a moment to hear the other device before it counts as quiet (20 s of silence, 8 s after coming back)',
+    await A.evaluate(() => { const S = window.__isfRemote.state; S.lastSeen = Date.now() - 200000; return window.__isfRemote.connected(); }));
+  const short = await A.evaluate(() => { const S = window.__isfRemote.state; S.grace = 0; S.lastSeen = Date.now() - 20000; const a = window.__isfRemote.connected(); S.lastSeen = Date.now() - S.silentMs - 3000; const c = window.__isfRemote.connected(); S.lastSeen = Date.now(); return [a, c]; });
+  check('a visible tab treats 20 s of silence as still connected, and only a long one as lost', short[0] === true && short[1] === false, short.join());
+  await B.evaluate(() => { const S = window.__isfRemote.state; S.peerHidden = false; });
+
+  // the channel is killed: both devices connect again by themselves
+  const linkBefore = await A.evaluate(() => (window.__isfRemote.state.link.__id = Math.random()));
+  const gameBefore = await A.evaluate(() => window.__isfRemote.state.game.id);
+  await A.evaluate(() => window.__isfRemote.state.link.ch.close());
+  await Promise.all([A, B].map(p => wait(p, () => !window.__isfRemote.connected(), null, 20000)));
+  check('the channel is killed: both devices notice and say the game waits', /Not connected/.test(await text(A, '#tab-duel .rm-sv')) && /Not connected/.test(await text(B, '#tab-duel .rm-sv')));
+  check('...and say they connect again by themselves', /connect again by themselves/.test(await text(A, '#tab-duel .rm-sv')));
+  await Promise.all([A, B].map(p => wait(p, () => window.__isfRemote.connected(), null, 60000)));
+  const [a1, b1] = [await st(A), await st(B)];
+  check('both devices connect again with no action: the same game, the same table', (await A.evaluate(() => window.__isfRemote.state.game.id)) === gameBefore && a1.fp === b1.fp && !(await A.$('#tab-duel .rm-mine')));
+  check('...and a new link was made through the same topic', await A.evaluate(id => window.__isfRemote.state.link.__id !== id, linkBefore));
+  await tap(B, '#tab-duel .vs-keep');
+  await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g.phase === 'main' && !g.acting && !g.busy; }, null, 40000)));
+  const [a2, b2] = [await st(A), await st(B)];
+  check('the game goes on after the automatic reconnect: both kept, the same table, no device stopped it', a2.fp === b2.fp && a2.phase === 'main');
+
+  // the meeting point drops everyone, and then the channel dies: still mended (the client reconnects to the broker itself)
+  broker.dropAll();
+  await wait(A, () => !window.__isfRemote.M.up, null, 10000);
+  await A.evaluate(() => window.__isfRemote.state.link.ch.close());
+  await Promise.all([A, B].map(p => wait(p, () => !window.__isfRemote.connected(), null, 20000)));
+  await Promise.all([A, B].map(p => wait(p, () => window.__isfRemote.connected(), null, 90000)));
+  const [a3, b3] = [await st(A), await st(B)];
+  check('the meeting point dropped both devices and then the channel died: they still connect again by themselves', a3.fp === b3.fp && a3.connected && b3.connected);
+
+  // a lost 'disconnected' that mends itself is not a loss; one that lasts is
+  const mend = await A.evaluate(async () => {
+    const R = window.__isfRemote, S = R.state, L = S.link, pc = L.pc; S.discGrace = 600;
+    const ev = new Event('connectionstatechange');
+    Object.defineProperty(pc, 'connectionState', { configurable: true, get: () => 'disconnected' }); pc.dispatchEvent(ev);
+    await new Promise(r => setTimeout(r, 200));
+    Object.defineProperty(pc, 'connectionState', { configurable: true, get: () => 'connected' }); pc.dispatchEvent(ev);
+    await new Promise(r => setTimeout(r, 1000));
+    return { lost: !!L.lost, connected: R.connected(), same: S.link === L };
+  });
+  check('"disconnected" that mends within the grace time is not treated as lost: the link and the game stay as they were', !mend.lost && mend.connected && mend.same, JSON.stringify(mend));
+  check('no page errors in pair 1', !errs.length, errs.slice(0, 3).join(' | '));
+  for (const p of [A, B, C]) await p.context().close();
+
+  // ================= pair 2: a room name, the first broker down =================
+  const broker2 = mockBroker();
+  const D = await device('D', broker2, true), E = await device('E', broker2, true);
+  await Promise.all([load(D, deckA, 'wifi-3'), load(E, deckB, 'wifi-4')]);
+  await D.fill('#tab-duel .rm-name', 'Dana'); await E.fill('#tab-duel .rm-name', 'Eli');
+  await D.check('#tab-duel .rm-tick'); await E.check('#tab-duel .rm-tick');
+  await wait(D, () => /Could not work out|No one nearby|Looking/.test(document.querySelector('#tab-duel .rm-near').textContent), null, 10000);
+  await D.fill('#tab-duel .rm-room', 'Dragon  FIRE!'); await tap(D, '#tab-duel .rm-roomgo');
+  await E.fill('#tab-duel .rm-room', 'dragon fire'); await E.press('#tab-duel .rm-room', 'Enter');
+  await wait(D, () => document.querySelectorAll('#tab-duel .rm-peerlist li').length === 1, null, 30000);
+  await wait(E, () => document.querySelectorAll('#tab-duel .rm-peerlist li').length === 1, null, 30000);
+  check('different networks: the same word typed differently ("Dragon  FIRE!" and "dragon fire") finds the friend, through the second broker', (await near(D)).join() === 'Eli' && (await near(E)).join() === 'Dana' && broker2.count() === 2);
+  check('the room is named on screen, and the topic is a hash of the word', /dragon fire/.test(await text(D, '#tab-duel .rm-neartitle')) && broker2.log.every(m => /^isf5\/[0-9a-f]{40}$/.test(m.topic)));
+  await tap(E, '#tab-duel .rm-ask');
+  await wait(D, () => !!document.querySelector('#tab-duel .rm-yes'), null, 20000);
+  check('the same ask and accept: "Eli wants to play. Accept?"', /Eli wants to play\. Accept\?/.test(await text(D, '#tab-duel .rm-incoming')));
+  await tap(D, '#tab-duel .rm-yes');
+  await Promise.all([D, E].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
+  const [d0, e0] = [await st(D), await st(E)];
+  check('the room game starts on both devices: Eli (who asked) is seat 0', d0.local === 1 && e0.local === 0 && d0.names.join() === 'Eli,Dana' && d0.fp === e0.fp, d0.names.join());
+  check('no page errors in pair 2', !errs.length, errs.slice(0, 3).join(' | '));
+
+  // ================= neither broker reachable: say so, and show the codes =================
+  const brokerOff = await device('F', broker2, true);
+  await brokerOff.context().routeWebSocket(/broker\.emqx\.io/, ws => ws.close({ code: 1011 }));
+  await load(brokerOff, null, 'wifi-5');
+  await brokerOff.check('#tab-duel .rm-tick');
+  await wait(brokerOff, () => /Couldn't reach the meeting point/.test(document.querySelector('#tab-duel .rm-nearstat').textContent), null, 40000);
+  check('neither broker answers: the list says it could not reach the meeting point, and the codes are opened', await brokerOff.$eval('#tab-duel .rm-other', e => e.open) && !!(await brokerOff.$('#tab-duel .rm-other .rm-invite')), await text(brokerOff, '#tab-duel .rm-nearstat'));
+  await b.close();
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); console.log(`\n${pass} passed, ${fail + 1} failed`); process.exit(1); });

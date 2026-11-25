@@ -5,6 +5,7 @@ const POOL = Math.min(8, self.navigator && self.navigator.hardwareConcurrency ||
 // A sub-worker that dies, errors or goes quiet never stalls the search: its part goes back in the queue, and a part nobody answers within WATCHDOG ms (a sub-worker beats every
 // few games while it plays) is played here, in this thread, by the same code, so the result is the same either way. With no sub-worker left, every part is played here.
 const WATCHDOG = () => self.TUNE_WATCHDOG_MS || 60000;
+const SUBIDLE = [];          // sub-workers kept between runs: they have parsed the scripts and warmed up
 function tunePool() {
   if (typeof Worker === 'undefined' || POOL < 2) return null;
   const ws = new Set(), idle = [], waiting = [], pending = new Map(); let seq = 0, closed = false;
@@ -27,7 +28,7 @@ function tunePool() {
     }
   }
   for (let k = 0; k < POOL; k++) {
-    let w; try { w = new Worker('worker.js'); } catch (err) { break; }
+    let w = SUBIDLE.pop(); if (w) { w.cur = null; } else try { w = new Worker('worker.js'); } catch (err) { break; }
     ws.add(w); idle.push(w);
     w.onmessage = ev => {
       const d = ev.data; if (!d) return;
@@ -47,7 +48,8 @@ function tunePool() {
     const ps = []; for (let k = 0; k < np; k++) ps.push(part(j, cut[k], cut[k + 1]).then(r => { if (!j.quiet) env.tick(cut[k + 1] - cut[k]); return r; }));
     const all = Promise.all(ps); pump(); return all.then(parts => (j.fam === 'cmp' ? self.Compare : self.Tune).joinParts(j, parts));
   }));
-  return { run, close: () => { closed = true; for (const w of ws) { clearTimeout(w.dog); w.terminate(); } ws.clear(); } };
+  // close(true): the run finished, so every sub-worker is idle and goes back to SUBIDLE; close(false): a run that failed ends them
+  return { run, close: keep => { closed = true; for (const w of ws) { clearTimeout(w.dog); if (keep && w.cur == null && SUBIDLE.length < POOL) { w.onmessage = w.onerror = w.onmessageerror = null; SUBIDLE.push(w); } else w.terminate(); } ws.clear(); } };
 }
 self.onmessage = (e) => {
   if (e.data.tpart) {                                   // a sub-worker: play part of a Tune job
@@ -65,7 +67,7 @@ self.onmessage = (e) => {
   }
   if (e.data.tune || e.data.nextBracket) {              // Policy lab, "Tune toward a goal"; Simulate tab, "Tune to the next bracket" (T-055)
     const G = self.Goldfish, P = self.Profile, T = self.Tune, pool = tunePool();
-    const done = res => { if (pool) pool.close(); self.postMessage({ result: res }); }, fail = err => { if (pool) pool.close(); setTimeout(() => { throw err; }); };          // surfaces as the worker's error
+    const done = res => { if (pool) pool.close(true); self.postMessage({ result: res }); }, fail = err => { if (pool) pool.close(false); setTimeout(() => { throw err; }); };          // surfaces as the worker's error
     if (e.data.tune) {
       const t = e.data.tune, inp = { cards: t.cards, tokens: t.tokens, pool: t.pool, identity: t.identity }, cfg = { n: e.data.n, rounds: t.rounds, seed: e.data.seed }, prog = p => self.postMessage({ progress: p });
       if (pool) T.tuneAsync(G, P, inp, e.data.opts, t.goal, cfg, prog, pool.run).then(done, fail); else done(T.tune(G, P, inp, e.data.opts, t.goal, cfg, prog));
@@ -77,7 +79,7 @@ self.onmessage = (e) => {
   }
   if (e.data.diagnose || e.data.ab) {                   // A/B test: step 1 (diagnose) and step 2 (version 2 against version 1), games played by the pool like Tune's
     const G = self.Goldfish, C = self.Compare, pool = tunePool(), o = e.data.opts, n = e.data.n, seed = e.data.seed, prog = p => self.postMessage({ progress: p });
-    const done = res => { if (pool) pool.close(); self.postMessage({ result: res }); }, fail = err => { if (pool) pool.close(); setTimeout(() => { throw err; }); };
+    const done = res => { if (pool) pool.close(true); self.postMessage({ result: res }); }, fail = err => { if (pool) pool.close(false); setTimeout(() => { throw err; }); };
     if (e.data.diagnose) {
       const d = e.data.diagnose;
       if (pool) C.diagnoseAsync(G, d.cards, d.tokens, d.opps, o, n, seed, prog, pool.run).then(done, fail); else done(C.diagnose(G, d.cards, d.tokens, d.opps, o, n, seed, prog));

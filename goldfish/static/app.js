@@ -1911,13 +1911,29 @@
   // ParWorker looks like a Worker (postMessage, onmessage, addEventListener, terminate) but plays a goldfish run, a mirror match or a pod run as many
   // small slices ({ part: { from, to } }) on several workers, then has one worker merge them in game order: the same seeds and the same merge as one
   // worker, so the numbers are identical, in a fraction of the time. Anything else (the lab, tune, A/B) goes to one plain worker.
+  // Finished workers are kept for the next run (their scripts are parsed and their code is warm, and a Tune worker keeps its own sub-workers); a worker that
+  // failed, or is still busy when a run is stopped, is terminated instead. Kept workers are let go after 5 minutes.
+  const parIdle = [];
+  const getWorker = () => { const w = parIdle.pop(); if (w) { clearTimeout(w.free); return w; } return new Worker('worker.js'); };
+  function keepWorkers(list) {
+    for (const w of list) {
+      w.onmessage = w.onerror = w.onmessageerror = null; w.cur = null; w.idle = false; w.merging = false; clearTimeout(w.dog);
+      if (parIdle.length >= 8) { w.terminate(); continue; }
+      parIdle.push(w); w.free = setTimeout(() => { const i = parIdle.indexOf(w); if (i >= 0) parIdle.splice(i, 1); w.terminate(); }, 300000);
+    }
+  }
   function ParWorker() {
     const L = { message: [], error: [] }, ws = [], me = { onmessage: null, onerror: null };
     const emit = (t, data) => { const ev = t === 'message' ? { data } : data; for (const f of L[t].slice()) f(ev); const h = me['on' + t]; if (h) h(ev); };
     me.addEventListener = (t, f) => { if (L[t]) L[t].push(f); };
     me.removeEventListener = (t, f) => { if (L[t]) L[t] = L[t].filter(x => x !== f); };
     me.terminate = () => { ws.forEach(w => w.terminate()); ws.length = 0; };
-    const plain = msg => { const w = new Worker('worker.js'); ws.push(w); w.onmessage = e => emit('message', e.data); w.onerror = err => emit('error', err); w.postMessage(msg); };
+    const plain = msg => {
+      const w = getWorker(); ws.push(w);
+      w.onmessage = e => { if (e.data && e.data.result) { ws.splice(ws.indexOf(w), 1); keepWorkers([w]); } emit('message', e.data); };
+      w.onerror = err => { const i = ws.indexOf(w); if (i >= 0) ws.splice(i, 1); w.terminate(); emit('error', err); };
+      w.postMessage(msg);
+    };
     me.postMessage = msg => {
       const kind = msg.pod ? 'pod' : msg.match ? 'match' : msg.learn ? 'learn' : (msg.cards && !msg.learn && !msg.tune && !msg.nextBracket && !msg.diagnose && !msg.ab) ? 'sim' : null;
       const o = msg.opts || {}, tribe = (o.policy && o.policy.tribe) || (o.policyB && o.policyB.tribe);
@@ -1958,12 +1974,12 @@
         else maybeMerge();
       };
       function start() {
-        const w = new Worker('worker.js'); ws.push(w); live.add(w);
+        const w = getWorker(); ws.push(w); live.add(w);
         w.onmessage = e => {
           if (dead || !live.has(w)) return;
           if (e.data.part) { fr.delete(w.cur); w.cur = null; done.push(e.data.part); report(); next(w); }
           else if (e.data.progress != null && w.cur) { fr.set(w.cur, e.data.progress); report(); arm(w); }
-          else if (e.data.result && w.merging) { clearTimeout(w.dog); emit('message', e.data); }
+          else if (e.data.result && w.merging) { clearTimeout(w.dog); const all = [...live]; live.clear(); ws.length = 0; keepWorkers(all); emit('message', e.data); }
         };
         w.onerror = () => lose(w); w.onmessageerror = () => lose(w);
         return w;
@@ -2357,7 +2373,7 @@
     for (const role of ['ramp', 'draw']) { const q = Compare.roleQuery(role, ident); if (q) { try { pool = pool.concat(await Source.searchCards(q + ' cmc<=2', 12)); } catch (e) { /* no suggestions */ } } }
     const n = Math.max(40, Math.min(4000, +btn.dataset.n || TN_N));
     if (tnWorker) tnWorker.terminate();
-    tnWorker = new Worker('worker.js');
+    tnWorker = ParWorker();
     if (window.Battle) Battle.watch(tnWorker, '#tnProgress', 'dummy');
     const bar = $('#tnProgress div'); bar.style.width = '0';
     $('#tnInfo').textContent = `Tuning: ${n.toLocaleString()} games for each change${pool.length ? '' : ' (no ramp or card draw found to try: lands and choices only)'}…`;
@@ -2509,7 +2525,7 @@
     } catch (e) { nbBook = null; }
     if (run !== nbRunId || S.deck !== deck) { if (run === nbRunId) nbDone(); return; }
     const n = Math.max(40, Math.min(4000, +btn.dataset.n || NB_N));
-    nbWorker = new Worker('worker.js');
+    nbWorker = ParWorker();
     const bar = $('#nbProgress div'); bar.style.width = '0';
     let note = '';
     const t0 = performance.now();
@@ -2558,7 +2574,7 @@
     const n = Math.max(500, Math.min(20000, +$('#abN').value || 2000));
     $('#plInfo').textContent = `Swaps by role: ${n.toLocaleString()} matches against ${opps.map(o => o.name).join(', ')}…`;
     if (plRolesWorker) plRolesWorker.terminate();
-    plRolesWorker = new Worker('worker.js');
+    plRolesWorker = ParWorker();
     if (window.Battle) Battle.watch(plRolesWorker, '#plRolesProgress', 'rival');
     const bar = $('#plRolesProgress div'); bar.style.width = '0';
     const o = Object.assign(opts(), { turns: Math.max(5, Math.min(40, +$('#mmT').value || 20)) });
@@ -2639,7 +2655,7 @@
   }
   function abRun(msg, onDone) {
     if (abWorker) abWorker.terminate();
-    abWorker = new Worker('worker.js');
+    abWorker = ParWorker();
     if (window.Battle) Battle.watch(abWorker, '#abProgress', 'rival');
     const bar = $('#abProgress div'); bar.style.width = '0';
     const t0 = performance.now();

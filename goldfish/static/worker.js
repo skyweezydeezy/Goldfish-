@@ -8,7 +8,7 @@ const WATCHDOG = () => self.TUNE_WATCHDOG_MS || 60000;
 function tunePool() {
   if (typeof Worker === 'undefined' || POOL < 2) return null;
   const ws = new Set(), idle = [], waiting = [], pending = new Map(); let seq = 0, closed = false;
-  const local = t => setTimeout(() => { try { t.res(self.Tune.runPart(self.Goldfish, t.j, t.from, t.to, null)); } catch (err) { t.rej(err); } });          // this thread plays the part
+  const local = t => setTimeout(() => { try { t.res((t.j.fam === 'cmp' ? self.Compare : self.Tune).runPart(self.Goldfish, t.j, t.from, t.to, null)); } catch (err) { t.rej(err); } });          // this thread plays the part
   const drop = (w, requeue) => {
     if (!ws.delete(w)) return;
     clearTimeout(w.dog); const at = idle.indexOf(w); if (at >= 0) idle.splice(at, 1);
@@ -40,11 +40,12 @@ function tunePool() {
   if (!ws.size) return null;
   const part = (j, from, to) => new Promise((res, rej) => { waiting.push({ id: ++seq, j, from, to, res, rej }); });
   const run = (jobs, env) => Promise.all(jobs.map(job => {
-    const j = Object.assign({}, job); delete j.deck;                                                    // a deck is rebuilt by each sub-worker from the cards
+    const j = Object.assign({}, job); delete j.deck; delete j.fieldDecks;                                          // decks are rebuilt by each sub-worker from the cards
+    if (j.own) j.own = Object.assign({}, j.own, { deck: undefined }); if (j.other) j.other = Object.assign({}, j.other, { deck: undefined });
     const np = Math.max(1, Math.min(jobs.length >= 2 * POOL ? 1 : Math.ceil(2 * POOL / jobs.length), Math.floor(j.n / 40))), cut = [];
     for (let k = 0; k <= np; k++) cut.push(Math.floor(j.n * k / np));
     const ps = []; for (let k = 0; k < np; k++) ps.push(part(j, cut[k], cut[k + 1]).then(r => { if (!j.quiet) env.tick(cut[k + 1] - cut[k]); return r; }));
-    const all = Promise.all(ps); pump(); return all.then(parts => self.Tune.joinParts(j, parts));
+    const all = Promise.all(ps); pump(); return all.then(parts => (j.fam === 'cmp' ? self.Compare : self.Tune).joinParts(j, parts));
   }));
   return { run, close: () => { closed = true; for (const w of ws) { clearTimeout(w.dog); w.terminate(); } ws.clear(); } };
 }
@@ -52,7 +53,7 @@ self.onmessage = (e) => {
   if (e.data.tpart) {                                   // a sub-worker: play part of a Tune job
     const t = e.data.tpart;
     let beat = 0;
-    self.postMessage({ tdone: t.id, r: self.Tune.runPart(self.Goldfish, t.j, t.from, t.to, () => { if (++beat % 10 === 0) self.postMessage({ tbeat: t.id }); }) });
+    self.postMessage({ tdone: t.id, r: (t.j.fam === 'cmp' ? self.Compare : self.Tune).runPart(self.Goldfish, t.j, t.from, t.to, () => { if (++beat % 10 === 0) self.postMessage({ tbeat: t.id }); }) });
     return;
   }
   if (e.data.learn) {                                   // Policy lab: compare options by playing many games with each
@@ -74,14 +75,16 @@ self.onmessage = (e) => {
     }
     return;
   }
-  if (e.data.diagnose) {                                // A/B test, step 1: which cards are linked to winning and losing against other decks
-    const d = e.data.diagnose;
-    self.postMessage({ result: self.Compare.diagnose(self.Goldfish, d.cards, d.tokens, d.opps, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p })) });
-    return;
-  }
-  if (e.data.ab) {                                      // A/B test, step 2: version 2 against version 1, same opponents and seeds, then fresh seeds
-    const d = e.data.ab;
-    self.postMessage({ result: self.Compare.abTest(self.Goldfish, d.v1, d.v2, d.opps, e.data.opts, e.data.n, e.data.seed, p => self.postMessage({ progress: p })) });
+  if (e.data.diagnose || e.data.ab) {                   // A/B test: step 1 (diagnose) and step 2 (version 2 against version 1), games played by the pool like Tune's
+    const G = self.Goldfish, C = self.Compare, pool = tunePool(), o = e.data.opts, n = e.data.n, seed = e.data.seed, prog = p => self.postMessage({ progress: p });
+    const done = res => { if (pool) pool.close(); self.postMessage({ result: res }); }, fail = err => { if (pool) pool.close(); setTimeout(() => { throw err; }); };
+    if (e.data.diagnose) {
+      const d = e.data.diagnose;
+      if (pool) C.diagnoseAsync(G, d.cards, d.tokens, d.opps, o, n, seed, prog, pool.run).then(done, fail); else done(C.diagnose(G, d.cards, d.tokens, d.opps, o, n, seed, prog));
+    } else {
+      const d = e.data.ab;
+      if (pool) C.abTestAsync(G, d.v1, d.v2, d.opps, o, n, seed, prog, pool.run).then(done, fail); else done(C.abTest(G, d.v1, d.v2, d.opps, o, n, seed, prog));
+    }
     return;
   }
   // T-064: one run can be split over several workers (app.js: runParallel). A message with `part: { from, to }` plays only games [from, to) of the same

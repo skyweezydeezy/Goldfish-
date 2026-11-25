@@ -188,7 +188,7 @@
         const ctl = controls(), set = (k, el) => { if (k in ui.ctl && setValue(el, ui.ctl[k])) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } };
         for (const [k, el] of ctl) set(k, el);
         for (const [k, d] of sections()) if (k in ui.open) d.open = ui.open[k];
-        if (ui.deck && !/[#&]deck=/.test(location.hash)) {                 // (a deck link being opened wins)
+        if (ui.deck && !A.startedWithLink && !/[#&]deck=/.test(location.hash)) {                 // (a deck link being opened wins)
           await A.loadDeck({ text: ui.deck, quiet: true, lenient: true });          // lenient: a deck remembered from before the Commander deck rule still comes back
           if (!S.deck) { held = ui.deck; throw new Error('the deck could not be loaded'); }
           if (ui.saved != null && $('#savedDecks') && [...$('#savedDecks').options].some(o => o.value === ui.saved)) { $('#savedDecks').value = ui.saved; if (A.noteLoadedSel) A.noteLoadedSel(true); }          // app.js: the menu entry of the loaded deck, for a refused pick later

@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 183,
+      "lines": [
+        "Raise your combo odds: \"Try your own\" refuses a card outside your commander's colours, and Apply leaves your Sideboard alone and survives a reload."
+      ]
+    },
+    {
       "v": 182,
       "lines": [
         "Simulate, Mirror match and Pod runs use every core of your device, so they finish much faster, with the same results as before."

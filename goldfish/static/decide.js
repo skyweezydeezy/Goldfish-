@@ -144,6 +144,7 @@
     untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
     demandCost: ['sacrifice an artifact or discard a card', 'Choose what you give up as an additional cost to cast it: an artifact you control, or a card from your hand.'],
     lookBf: ['put a creature onto the battlefield?', 'Choose a creature card from the cards you looked at: it enters the battlefield, and the rest go to the bottom of your library in a random order.'],
+    firebend: ['give firebending to which creature?', 'Choose the creature that gains firebending until end of turn: when it attacks it adds red mana that lasts until end of combat.'],
     tapCost: ['tap which permanent?', 'Choose the untapped permanent you tap as part of the cost of this mana ability.'],
     return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],

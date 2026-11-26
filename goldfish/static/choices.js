@@ -204,11 +204,11 @@
   // The steps of a turn as a strip in the bar above the table. The strip is written once and the step being played is lit in place
   // (lightStep), so the buttons beside it are not rebuilt at every step: a click on Pause always lands.
   const SHORT = { untap: 'Untap', upkeep: 'Upkeep', draw: 'Draw', main1: 'Main', combat: 'Combat', main2: 'Main 2', end: 'End' };
-  function stepsHtml(D) { return `<span class="vs-steps" hidden>${D.STEPS.map(s => `<i data-step="${s}">${SHORT[s]}</i>`).join('')}</span>`; }
+  // A static box: it is never hidden and never changes size (see choices.css). index.html writes the same seven items for Practice.
+  function stepsHtml(D) { return `<span class="vs-steps">${D.STEPS.map(s => `<i data-step="${s}" data-t="${SHORT[s]}">${SHORT[s]}</i>`).join('')}</span>`; }
   function lightStep(strip, D, step, who) {
     if (!strip) return;
-    strip.hidden = !step;
-    strip.title = step ? `${who ? who + ': ' : ''}${D.STEP_NAME[step]} step` : '';
+    strip.title = step && D ? `${who ? who + ': ' : ''}${D.STEP_NAME[step]} step` : '';
     strip.querySelectorAll('i').forEach(i => i.classList.toggle('on', i.dataset.step === step));
   }
 

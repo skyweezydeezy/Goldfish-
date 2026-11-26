@@ -2,7 +2,7 @@
 
 /* ---------- the table ---------- */
 .vs-bar { margin: 0 0 10px; align-items: center; }
-.vs-round { margin-right: 8px; }
+.vs-round { margin-right: 8px; font-variant-numeric: tabular-nums; }
 .vs-note { color: #f7cf6f; }
 .vs-arena {
   --vc: clamp(38px, min(5.6vw, 7vh), 84px);        /* a card on the battlefield: sized so a whole 1v1 table fits one screen */
@@ -19,7 +19,7 @@
 
 /* ---------- one player ---------- */
 .vs-seat { position: relative; isolation: isolate; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; border-radius: 12px;
-  background-image: var(--mat, radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%)); background-size: var(--mat-size, cover); background-position: center;
+  background-image: var(--mat, linear-gradient(180deg, var(--felt) 0%, var(--felt-2) 100%)); background-size: var(--mat-size, cover); background-position: center;
   border: 1px solid rgba(160,215,255,.14); border-left: 4px solid var(--muted); transition: box-shadow .2s; }
 .vs-seat::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: rgba(4,12,20,.14); pointer-events: none; }
 .vs-seat.a, .vs-line.a { border-left-color: var(--ice, #8fd8ff); }
@@ -375,10 +375,11 @@
 .speed-bar[hidden] { display: none !important; }          /* a game against a person has a fixed pace (versus.js slowOf) */
 
 /* the turn clock in the game's top bar (versus.js tickClock) */
-.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; }
+.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 6ch; text-align: center; }
 .vs-clock.still { opacity: .6; }
 .vs-clock.low { background: #c0392b; color: #fff; opacity: 1; }
 .vs-clock[hidden] { display: none; }
+.vs-clock[hidden][data-timed] { display: inline-block; visibility: hidden; }          /* in a timed game its place is kept while it is not shown, so the bar beside it never shifts */
 
 /* an explorer reveals the top card of their library to everyone (T-079) */
 .vs-reveal { position: fixed; right: 14px; top: 28%; z-index: 80; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: vs-reveal-in .25s ease-out, vs-reveal-out .4s ease-in 2.4s forwards; }
@@ -391,10 +392,11 @@
 
 
 /* the turn clock in the game's top bar (versus.js tickClock) */
-.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; }
+.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 6ch; text-align: center; }
 .vs-clock.still { opacity: .6; }
 .vs-clock.low { background: #c0392b; color: #fff; opacity: 1; }
 .vs-clock[hidden] { display: none; }
+.vs-clock[hidden][data-timed] { display: inline-block; visibility: hidden; }          /* in a timed game its place is kept while it is not shown, so the bar beside it never shifts */
 
 /* the combat readout (versus.js dmgSpan, app.js #tDmg) */
 .vs-dmgrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0; font-size: 14px; }

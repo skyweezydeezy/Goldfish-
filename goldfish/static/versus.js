@@ -1259,7 +1259,8 @@
   function tickClock(mode) {
     const st = V[mode], gm = st.game, el = st.clockEl; if (!el) return;
     const owner = gm && !gm.over && !gm.halted && gm.human != null && gm.phase !== 'mull' ? cur(gm).pid : null;
-    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; return; }
+    if (gm && gm.turnTimer) el.dataset.timed = '1'; else delete el.dataset.timed;          // a timed game keeps the clock's place all game long
+    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; if (gm && gm.turnTimer && !el.textContent) el.textContent = '⏱ 0:00'; return; }
     const g = gm.games[owner], key = clockKey(gm), now = Date.now(), scale = clockScale(), mineTurn = owner === gm.human;
     let c = gm.clock;
     if (!c || c.key !== key) { const limit = clockLimit(g.turn); c = gm.clock = { key, owner, limit, left: limit * 1000 * scale, at: now, run: false, fired: false, sentAt: 0, sentRun: null }; }

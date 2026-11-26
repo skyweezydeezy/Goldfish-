@@ -519,11 +519,14 @@
     }
     if (count && /"[^"]*for each[^"]*"/i.test(withQuotes) && !/for each/i.test(withQuotes.replace(/"[^"]*"/g, ''))) { count = null; if (/"[^"]*gets \+1\/\+1 for each artifact you control[^"]*"/i.test(withQuotes)) fx.forEach(f => { if (f.type === 'token') f.cda = 'artifacts you control'; }); }          // the "for each" belongs to the token's own ability (Urza's Construct), not to how many are made
     if (count) fx.forEach(f => { f.count = count; if (/for each/i.test(text) && f.n !== 'X') f.mult = true; });
-    if (CRIME_RE.test(text)) for (const f of fx) if (CRIME_FX.has(f.type)) f.crime = true;          // T-025: "you commit a crime" (Gisa, Kaervek): this effect targets an opponent or what they control
+    if (CRIME_RE.test(text)) for (const f of fx) { if (CRIME_FX.has(f.type)) f.crime = true; }          // T-025: "you commit a crime" (Gisa, Kaervek): this effect targets an opponent or what they control
+    else { const ct = text.match(CRIMET_RE); if (ct) for (const f of fx) if (CRIMET_FX.has(f.type)) f.crimeT = ct[1].toLowerCase(); }          // T-094: "target creature" (no owner named) is a crime when the target is an opponent's: checked as it is cast or activated (crimeCommitted)
     return { fx, neutral, approx };
   }
   const CRIME_RE = /\btarget (?:opponent|player)\b|\bany target\b|\btarget [^.]*?(?:an opponent controls|you don't control)|\btarget [^.]*?opponent's graveyard/i;
-  const CRIME_FX = new Set(['damage', 'drain', 'loseLife', 'removal', 'burnCreature', 'bounce', 'edict', 'oppDiscard', 'oppExileTop', 'poison', 'fight', 'millOpp', 'oppHandExile', 'poisonWin', 'jaceUlt']);
+  const CRIME_FX = new Set(['damage', 'drain', 'loseLife', 'removal', 'burnCreature', 'bounce', 'edict', 'oppDiscard', 'oppExileTop', 'poison', 'fight', 'millOpp', 'oppHandExile', 'poisonWin', 'jaceUlt', 'oppYard', 'millTarget', 'threaten']);
+  const CRIMET_RE = /\btarget ((?:[a-z-]+ )*?(?:creature|artifact|enchantment|planeswalker|permanent|land|battle)(?: or (?:[a-z-]+ )*?(?:creature|artifact|enchantment|planeswalker|permanent|land|battle))*)s?\b(?![^.]*\byou control)/i;
+  const CRIMET_FX = new Set(['damage', 'removal', 'burnCreature', 'bounce', 'fight', 'threaten']);
 
   // ---------- Ability parsing ----------
   const TRIGGERS = [
@@ -1226,8 +1229,8 @@
         if (/^if a source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus an amount of damage equal to the number of fire counters on ~ instead\.?$/i.test(line)) { a.firepowerBonus = true; rec.status = 'ok'; continue; }          // (it was "Needs opponent": a goldfish takes the damage too)
         // ---- T-025, built-in deck cards: Torbran, Gideon (Ally of Zendikar), and the crime triggers of Gisa and Kaervek
         { const tb = line.match(/^if a red source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus (\d+) instead\.?$/i); if (tb) { a.torbran = +tb[1]; rec.status = 'ok'; continue; } }          // Torbran, Thane of Red Fell (plusBonus)
-        { const gs = line.match(/^\+1: until end of turn, ~ becomes a (\d+)\/(\d+) [a-z ]+ creature with indestructible that's still a planeswalker\. prevent all damage that would be dealt to (?:him|her|it) this turn\.?$/i); if (gs) { a.pwAbilities.push({ cost: 1, x: false, fx: [{ type: 'pwSwing', p: +gs[1] }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; } }          // Gideon, Ally of Zendikar: a goldfish takes his 5 as he is activated; in a match he stays a planeswalker
-        { const cr = line.match(/^whenever you commit a crime, (.*?)(?: this ability triggers only once each turn\.?)?$/i); if (cr) { const fx = /^exile up to one target black card from your graveyard and copy it\. you may cast the copy\. if you do, you lose 2 life\.?$/i.test(cr[1]) ? [{ type: 'kaervekCopy', life: 2 }] : parseEffects(cr[1]).fx; if (fx.length) { a.triggers.push({ kinds: ['crime'], fx, text: raw }); a.crimeTrig = true; rec.status = 'partial'; rec.tag = 'approx'; continue; } } }          // Gisa, Kaervek: a crime is a spell or ability of yours aimed at an opponent or what they control (CRIME_FX)
+        { const gs = line.match(/^\+1: until end of turn, ~ becomes a (\d+)\/(\d+) [a-z ]+ creature with indestructible that's still a planeswalker\. prevent all damage that would be dealt to (?:him|her|it) this turn\.?$/i); if (gs) { a.pwAbilities.push({ cost: 1, x: false, fx: [{ type: 'pwAnimate', p: +gs[1], t: +gs[2] }], text: raw }); rec.status = 'ok'; continue; } }          // Gideon, Ally of Zendikar: a 5/5 indestructible creature until end of turn, still a planeswalker (damage to him is never kept: it is prevented)
+        { const cr = line.match(/^whenever you commit a crime, (.*?)(?: this ability triggers only once each turn\.?)?$/i); if (cr) { const fx = /^exile up to one target black card from your graveyard and copy it\. you may cast the copy\. if you do, you lose 2 life\.?$/i.test(cr[1]) ? [{ type: 'kaervekCopy', life: 2 }] : parseEffects(cr[1]).fx; if (fx.length) { a.triggers.push({ kinds: ['crime'], fx, text: raw }); a.crimeTrig = true; rec.status = 'ok'; continue; } } }          // Gisa, Kaervek: a crime is a spell or ability of yours aimed at an opponent or what they control (CRIME_FX)
         // ---- T-041, issue #78: Axgard Cavalry, Dwarven Bloodboiler, Vault Robber, Óin the Brave, Return the Favor (Magda: magdaTap)
         if (/^\{t\}: target creature gains haste until end of turn\.?$/i.test(line) && !/start your engines/i.test(text)) { a.hasteTap = true; rec.status = 'ok'; continue; }          // Axgard Cavalry (hasteTaps, at the beginning of combat)
         { const tp = line.match(/^tap an untapped (\w+) you control: target creature gets \+(\d+)\/\+0 until end of turn\.?$/i); if (tp) { a.tribeTapPump = { type: tp[1].toLowerCase(), p: +tp[2] }; rec.status = 'ok'; continue; } }          // Dwarven Bloodboiler (dwarfPump, once attackers are declared)
@@ -1297,6 +1300,9 @@
         if ((bm = line.match(/^(wizard|elf|goblin|sliver|zombie|dragon|knight|merfolk|soldier|warrior|cleric|rogue|shaman|halfling)cycling ((?:\{[^}]+\})+)$/i))) { a.creatureCycle = { cost: parseCost(bm[2]), type: bm[1].toLowerCase() }; rec.status = 'ok'; continue; }          // wizardcycling and the like
         if (/^untap all green and\/or blue creatures you control during each other player's untap step\.?$/i.test(line)) { a.statics.otherUntap = 'gucreatures'; rec.status = 'ok'; continue; }          // Murkfiend Liege
         if (/^tap two untapped tokens you control: add one mana of any color\.?$/i.test(line)) { a.baylenMana = true; rec.status = 'ok'; continue; }          // Baylen, the Haymaker
+        { const fm = line.match(/^(\{t\}, )?tap an untapped (creature|artifact|permanent) you control: add (one mana of any color|(?:\{[wubrgc]\})+)\.?$/i);          // T-097: Springleaf Drum, Survivors' Encampment, Jaspera Sentinel, Relic of Legends, Urza, Gene Pollinator...: the permanent tapped is part of the cost
+          if (fm) { const any = /any color/i.test(fm[3]), cs = any ? null : [...fm[3].matchAll(/\{([wubrgc])\}/gi)].map(x => x[1].toUpperCase()); a.fodderMana = { tap: !!fm[1], filter: fm[2].toLowerCase(), colors: cs ? new Set(cs) : null, amount: cs ? cs.length : 1 }; if (!fm[1]) a.noTapMana = true; rec.status = 'ok'; continue; }
+        }          // Relic of Legends and Grand Architect have rules of their own (statics.legendMana, statics.blueTap)
         if (/^tap three untapped tokens you control: draw a card\.?$/i.test(line)) { a.baylenDraw = true; rec.status = 'ok'; continue; }
         if (/^tap four untapped tokens you control: put three \+1\/\+1 counters on ~\. it gains trample until end of turn\.?$/i.test(line)) { a.baylenGrow = true; rec.status = 'ok'; continue; }
         if (/^web-slinging ((?:\{[^}]+\})+)$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Spider-Sense: an alternative cost for a counterspell
@@ -2029,6 +2035,8 @@
       { let mf;
         if ((mf = line.match(/^whenever (a|another) creature you control enters, you gain life equal to (?:its|that creature's) toughness/i))) { a.triggers.push({ kinds: ['permEtb'], other: /another/i.test(mf[1]), nontoken: false, filter: 'creature', fx: [{ type: 'gainLife', n: 'SUBJTOUGH' }], text: raw }); rec.status = 'ok'; continue; }          // Angelic Chorus, Trostani
         if ((mf = line.match(/^whenever another (\w+) or (\w+) you control enters, you gain life equal to that creature's toughness/i))) { a.triggers.push({ kinds: ['permEtb'], other: true, nontoken: false, filter: mf[1].toLowerCase() + '|' + mf[2].toLowerCase(), fx: [{ type: 'gainLife', n: 'SUBJTOUGH' }], text: raw }); rec.status = 'ok'; continue; }          // Righteous Valkyrie
+        if ((mf = line.match(/^((?:\{[^}]+\})+), \{t\}: target legendary creature gets \+(\d+)\/\+(\d+) until end of turn\.?$/i))) { a.activated.push({ cost: parseCost(mf[1]), tap: true, gate: 'legendPump', fx: [{ type: 'pumpOne', self: false, legendary: true, p: +mf[2], t: +mf[3], keywords: [] }], text: raw }); rec.status = 'ok'; continue; }          // Okina, Temple to the Grandfathers: a legendary creature that will attack
+        if ((mf = line.match(/^((?:\{[^}]+\})+): create a token that's a copy of another target artifact you control\. that token gains haste\. sacrifice it at the beginning of the next end step\.?$/i))) { a.activated.push({ cost: parseCost(mf[1]), gate: 'domeWorth', fx: [{ type: 'domeCopy' }], text: raw }); rec.status = 'ok'; continue; }          // Chrome Dome: a hasty copy of the artifact worth the most
         if ((mf = line.match(/^((?:\{[^}]+\})+)(, \{t\})?: (?:target player gains|you gain) (\w+) life(?: for each colorless creature you control)?\.(?: activate only if you control two or more green permanents\.)?$/i))) {          // Kenrith, Staff of Domination, Sapseep Forest, Tomb of the Spirit Dragon: life when it is worth something
           const n = /for each colorless creature/i.test(line) ? 'COLORLESSC' : (NUM[mf[3].toLowerCase()] || +mf[3]);
           a.activated.push(Object.assign({ cost: parseCost(mf[1]), tap: !!mf[2], fx: [{ type: 'gainLife', n }], late: true, gate: 'life', key: 'life', text: raw }, /two or more green permanents/i.test(line) ? { greenPerms: 2 } : {})); rec.status = 'ok'; continue;
@@ -2070,7 +2078,7 @@
         if ((mf = line.match(/^((?:\{[^}]+\})+), sacrifice ~: draw a card\. then you may put a land card from your hand onto the battlefield tapped/i))) { a.fungus = parseCost(mf[1]); rec.status = 'ok'; continue; }          // Insidious Fungus
         if (/^enchanted creature loses all abilities and is a green and white citizen creature with base power and toughness 1\/1/i.test(line)) { OPPO(); continue; }          // Witness Protection
         if (/^if you would draw a card, you may instead choose land or nonland and reveal cards from the top of your library until you reveal a card of the chosen kind/i.test(line)) { a.statics.abundance = true; rec.status = 'ok'; continue; }          // Abundance
-        if (/^~ is the chosen type\.?$/i.test(line)) { a.chosenBasic = true; rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Multiversal Passage: any color the deck uses
+        if (/^~ is the chosen type\.?$/i.test(line)) { a.chosenBasic = true; rec.status = 'ok'; continue; }          // Multiversal Passage: the basic land type chosen as it enters (passageType), so it taps for that color only
         if ((mf = line.match(/^((?:\{[^}]+\})+): target player searches their library for a card, then shuffles and puts that card on top/i)) && /^Boast/i.test(raw)) { a.boast = parseCost(mf[1]); rec.status = 'ok'; continue; }          // Varragoth: boast, after it attacked
         if (/^sacrifice three treasures: create a 4\/4 red scorpion dragon creature token with flying and haste/i.test(line)) { a.hoardDragon = true; rec.status = 'ok'; continue; }          // Magda, the Hoardmaster
         if (/^whenever one or more creatures you control with trample deal combat damage to a player, create an x\/x green dinosaur beast creature token with trample/i.test(line)) { a.quartzwood = true; rec.status = 'ok'; continue; }          // Quartzwood Crasher
@@ -3320,7 +3328,7 @@
       } else if (rec.status === 'partial') rec.tag = 'approx';
       if (rec.status === 'neutral' && rec.tag === 'solo' && OPP_TOO.test(t)) rec.tag = 'opp';
       if (rec.status === 'ok' && rec.tag) rec.tag = null;
-      if (rec.status === 'ok' && !rec.back && /\b(destroy|exile) (up to one )?target (?!card)|return target [a-z' ]+ to its owner's hand|deals \d+ damage to target creature|sacrifices (a|one) creature/i.test(t) && !/you control/i.test(t.replace(/you don't control/gi, '')) && !/\bdraw|create [^.]*token|gets? (?:a|an|one|two|\d+) poison counters?/i.test(t.replace(/(?:its|that [a-z]+'s) controller creates[^.]*/i, ''))) { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }
+      if (rec.status === 'ok' && !rec.back && !/^whenever you commit a crime/i.test(t) && /\b(destroy|exile) (up to one )?target (?!card)|return target [a-z' ]+ to its owner's hand|deals \d+ damage to target creature|sacrifices (a|one) creature/i.test(t) && !/you control/i.test(t.replace(/you don't control/gi, '')) && !/\bdraw|create [^.]*token|gets? (?:a|an|one|two|\d+) poison counters?/i.test(t.replace(/(?:its|that [a-z]+'s) controller creates[^.]*/i, ''))) { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }
     }
     mergeModal();
     a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb' || k === 'countersPut'));
@@ -3462,6 +3470,7 @@
       const m = text.match(/(^|\n)(?:[A-Z][a-z]+ — )?(\{T\}|\{T\}, Sacrifice ~|Sacrifice ~): Add [^\n]*/i);          // "Metalcraft — {T}: Add" (Mox Opal) too
       if (m) { const pr = parseAdd(m[0]); if (pr) { a.produce = pr; if (/sacrifice/i.test(m[0])) a.sacMana = true; if (!/\{T\}/i.test(m[0])) a.noTapMana = true; } }          // Eldrazi Spawn: no {T}, so summoning sickness does not stop it
     }
+    if (a.fodderMana) { const F = a.fodderMana; if (!a.produce || !a.isLand) a.produce = { colors: F.colors || new Set(COLORS), amount: F.amount }; else if (F.colors) a.produce = Object.assign({}, a.produce, { colors: F.colors, amount: F.amount }); }          // T-097: the mana it makes (manaUnits adds the permanent it taps)
     { const pm = text.match(/(?:^|\n)\{T\}: Add \{[WUBRGC]\} for each ([^.\n]+?)\.?(?=\n|$)/i), per = pm && manaPer(pm[1]);          // Gaea's Cradle, Elvish Archdruid, Priest of Titania, Gyre Sage
       if (per && a.produce) a.produce = Object.assign({}, a.produce, { per, floor: /(?:^|\n)\{T\}: Add (?:\{[WUBRGC]\})+\.?(?=\n|$)/i.test(text) ? 1 : 0 }); }
     { const rp = !a.fetch && restrictParse(text); if (rp) a.produce = Object.assign(rp.base ? { colors: rp.base.colors, amount: rp.base.amount } : { colors: rp.restrict.colors, amount: 0 }, { restrict: rp.restrict }); }          // Cavern of Souls, Eldrazi Temple, Mishra's Workshop, Castle Garenbrig: mana only for some spells
@@ -4271,12 +4280,24 @@
     return g.battlefield.filter(p => (!count.other || p !== self) && (w === 'land' ? p.asLand : w === 'permanent' ? true : (w === 'creature' ? isCreaturePerm(p) : matchesFilter(p.card, w)))).length;
   }
 
+  // T-097: a mana ability whose cost taps another permanent you control ("{T}, Tap an untapped creature you control: Add one mana of any color"). Summoning sickness
+  // only stops the {T} of the permanent itself, so a creature that just came in can be tapped for the cost. The permanent tapped cannot make mana of its own at the same
+  // time (it is only counted when it makes none now), and one permanent pays one cost: every unit carries the one it taps (fodder) and the others it could (pool).
+  function fodderUnits(g, p, info, taken, units) {
+    const F = p.card.a.fodderMana, cols = F.colors || ANY_COLOR;
+    const makesMana = q => q.produce && !q.tapped && !q.held && !(q.sick && isCreaturePerm(q) && !info.abilityHaste && !hasKw(g, q, 'haste') && !q.card.a.noTapMana);
+    const ok = q => q !== p && !q.tapped && !q.phased && !makesMana(q) && !q.card.a.fodderMana && (F.filter === 'permanent' || (/artifact/.test(F.filter) ? q.card.a.isArtifact : isCreaturePerm(q)) && (!/legendary/.test(F.filter) || q.card.a.isLegendary));
+    const pool = g.battlefield.filter(ok).sort((x, y) => ((y.sick ? 1 : 0) - (x.sick ? 1 : 0)) || (creatureValue(g, x) - creatureValue(g, y)) || (x.iid - y.iid));          // a creature that cannot attack yet first, then the least valuable
+    if (F.tap) { const f = pool.find(q => !taken.has(q)); if (f) { taken.add(f); units.push({ src: p, colors: cols, fodder: f, pool }); } return; }
+    for (const f of pool) if (!taken.has(f)) { taken.add(f); for (let k = 0; k < F.amount; k++) units.push({ src: { pseudo: true, fodderOf: p, produce: p.produce }, colors: cols, fodder: f, pool }); }          // no {T}: the permanent is not tapped, each cost makes mana
+  }
   function manaUnits(g) {
     const units = [];
     const info = bfInfo(g);
     const stony = (g.stonySeen || (g.opp && g.opp.stonySeen)) && (tableHas(g, 'statics.stony') && bothSides(g).some(q => q.card.a.statics.stony));
     const abilAny = info.abilStax || g.senSeq === turnSeq(g) || otherPlayers(g).some(o => bfInfo(o).abilStax);          // Karn, Linvala, Pithing Needle, Sen Triplets
     const moon = info.moonSeen || otherPlayers(g).some(o => bfInfo(o).moonSeen) ? moonOf(g) : null;          // Blood Moon
+    const fodTaken = new Set();          // T-097: the permanents already promised as the "tap an untapped ..." cost of another source
     for (const p of info.producers) {
       if (p.tapped || p.held || !p.produce) continue;          // held: kept untapped for a counterspell
       { const pl = p.card.a.produceLevel; if (pl && ((p.level || 0) < pl.min || (pl.max != null && (p.level || 0) > pl.max))) continue; }          // level up: its mana ability is not there yet (Joraga Treespeaker below level 1)
@@ -4285,6 +4306,7 @@
       if (abilAny && abilBlocked(g, p, true)) continue;          // Karn, Linvala: no mana from their artifacts and creatures
       if (moon && p.asLand && !isBasicLand(p)) { units.push({ src: p, colors: new Set([moon]) }); continue; }          // Blood Moon: a Mountain
       if (p.sick && isCreaturePerm(p) && !info.abilityHaste && !hasKw(g, p, 'haste') && !p.card.a.noTapMana) continue;
+      if (p.card.a.fodderMana) { fodderUnits(g, p, info, fodTaken, units); continue; }          // T-097: Springleaf Drum and the others: {T}, tap an untapped creature you control
       if (p.card.a.metalMana && g.battlefield.filter(q => artOn(g, q)).length < 3) continue;          // Mox Opal: metalcraft
       if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
       let cols = (info.landsAnyColor && p.asLand) ? ANY_COLOR : (info.allSwamps && p.asLand && !p.produce.colors.has('B')) ? new Set([...p.produce.colors, 'B', ...(info.allForests ? ['G'] : [])]) : (info.allForests && p.asLand && !p.produce.colors.has('G')) ? new Set([...p.produce.colors, 'G']) : p.produce.colors;          // Urborg: every land also taps for {B}; Wrenn: any colour
@@ -4932,6 +4954,7 @@
     const out = [], s = u.src;
     if (u.floating || !s) return ['floating mana'];
     const a = s.card && s.card.a;
+    if (u.fodder) out.push('taps ' + u.fodder.card.name);          // T-097
     if (s.pseudo) { if (s.handCard) out.push('exiles it from your hand'); if (s.foods) out.push('taps ' + s.foods.length + ' permanents'); if (s.counterOf) out.push('removes a counter'); return out; }
     if (!a) return out;
     if (a.tapPain) out.push(a.tapPain + ' damage to you'); if (a.manaPing) out.push(a.manaPing + ' damage to the opponent');
@@ -4986,6 +5009,12 @@
     let idx = canPay(cost, units);
     if (!idx) return null;
     if (g.ask && !g.dry && !g._noPayAsk) idx = payPick(g, cost, units, idx);          // T-089: a person may choose which sources pay and which colour each makes (a game without a chooser never gets here)
+    if (g.ask && !g.dry && !g._noPayAsk && idx.some(i => units[i].pool)) {          // T-097: a person chooses which permanent a "tap an untapped creature you control" cost taps (the autopilot's pick is the default)
+      const taking = new Set(idx.map(i => units[i].fodder).filter(Boolean));
+      for (const i of idx) { const u = units[i]; if (!u.pool) continue; const alts = u.pool.filter(q => q === u.fodder || (!taking.has(q) && !q.tapped)); if (alts.length < 2) continue;
+        const pick = decide(g, { kind: 'target', what: 'tapCost', options: alts, def: u.fodder, source: u.src.pseudo ? u.src.fodderOf : u.src }); if (pick && pick !== u.fodder) { taking.delete(u.fodder); taking.add(pick); u.fodder = pick; } }
+    }
+    for (const i of idx) { const f = units[i].fodder; if (f) { f.tapped = true; touch(g); } }          // the permanent tapped as part of the cost
     const usedFloat = new Set(idx.filter(i => units[i].floating).map(i => units[i]));
     const srcs = new Set(idx.filter(i => !units[i].floating).map(i => units[i].src));
     for (const s of srcs) if (s && s.card && s.card.a.tendo && s.charge > 0 && !canPay(cost, units.map(u => u.src === s ? { src: s, colors: new Set(['C']) } : u))) s.charge--;          // Tendo Ice Bridge spent its charge counter on a color
@@ -5291,6 +5320,16 @@
   // the creature type you control most of (a choose-a-type spell in a deck with no type of its own)
   function bestTribeOnBoard(g) { const cnt = {}; for (const q of g.battlefield) if (isCreaturePerm(q)) for (const w of ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean)) cnt[w] = (cnt[w] || 0) + 1; return Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x] || x.localeCompare(y))[0] || null; }
   // "choose a color": the color most cards in your library and hand have (not the one the card excludes)
+  const BASIC_OF = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
+  // Multiversal Passage: the basic land type whose color the hand wants most and your lands make least (the color most of your cards have breaks a tie)
+  function passageColor(g) {
+    const need = {}, have = {};
+    for (const i of g.hand.concat(g.command)) if (!i.card.a.isLand) (i.card.a.cost.pips || []).forEach(pp => pp.forEach(c => { need[c] = (need[c] || 0) + 1 / pp.length; }));
+    for (const q of g.battlefield) if (q.produce && q.produce.colors) q.produce.colors.forEach(c => { have[c] = (have[c] || 0) + 1 / q.produce.colors.size; });
+    const cols = ['W', 'U', 'B', 'R', 'G'], auto = autoColor(g, null);
+    const sc = c => (need[c] || 0) * 2 - (have[c] || 0) * 1.5 + (c === auto ? 0.5 : 0);
+    return cols.slice().sort((x, y) => sc(y) - sc(x))[0];
+  }
   function autoColor(g, not) { const cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) if (c !== not) cnt[c] = (cnt[c] || 0) + 1; return Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0] || (not === 'G' ? 'W' : 'G'); }
   // the color chosen for a permanent as it entered: what it taps for, its anthem and its land Aura read it (also called for a person's choice)
   function setChosenColor(g, perm, color) {
@@ -5343,6 +5382,12 @@
     if (g.nextCreatureCounter === g.turn && !g.dry && isCreaturePerm(perm) && !perm.token) { g.nextCreatureCounter = null; addCounters(g, perm, '+1/+1', 1, ev, perm); }          // "the next creature spell enters with an additional counter"
     if (a.fading) perm.fade = a.fading;
     if (a.vanishing) perm.other = Object.assign({}, perm.other, { time: a.vanishing });
+    if (a.chosenBasic) {                                                                                  // Multiversal Passage: "choose a basic land type": it is that type and taps for its color (a person chooses, the autopilot's pick is the default)
+      const auto = passageColor(g); let col = auto;
+      if (g.ask && !g.dry) { const cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) cnt[c] = (cnt[c] || 0) + 1; col = decide(g, { kind: 'color', basic: true, options: ['W', 'U', 'B', 'R', 'G'], def: auto, counts: cnt, source: { card: inst.card } }) || auto; }
+      perm.chosenBasic = col; perm.produce = { colors: new Set([col]), amount: 1 }; touch(g);
+      (ev || []).push({ type: 'note', text: `${inst.card.name} is a ${BASIC_OF[col]}: it taps for {${col}}`, source: perm });
+    }
     if (a.choosesColor) { const auto = autoColor(g, a.choosesColor.not); let col = auto;          // a person chooses the color, the autopilot's as the default
       if (g.ask && !g.dry) { const opts = COLORS.filter(c => c !== a.choosesColor.not), cnt = {}; for (const i of g.library.concat(g.hand)) for (const c of (i.card.colors || [])) cnt[c] = (cnt[c] || 0) + 1; col = decide(g, { kind: 'color', options: opts, def: opts.includes(auto) ? auto : opts[0], counts: cnt, source: { card: inst.card } }) || auto; }
       setChosenColor(g, perm, col); }          // the autopilot's color: the one most of your cards have (a person is asked: the decision points)
@@ -6254,8 +6299,23 @@
     if (made && !g.dry && groups.some(gr => gr.spec.creature)) for (const q of (tableHas(g, 'storyStaff') ? g.battlefield.filter(x => x.card.a.storyStaff) : [])) q.other = Object.assign({}, q.other, { story: ((q.other && q.other.story) || 0) + 1 });          // Staff of the Storyteller
   }
 
+  // T-094: you commit a crime as you cast a spell, activate an ability or put a triggered ability on the stack that targets an opponent, anything they control or a card in their
+  // graveyard (CR 700.13). The effect's own text says so (f.crime: "target opponent", "any target", "an opponent controls"), or it names a kind of permanent without an owner (f.crimeT:
+  // "target creature"): then it is a crime only when the target is an opponent's (the spell's locked target if it has one, else an opponent's legal target must exist).
+  function crimeCommitted(g, fx, lk) {
+    for (const f of fx) {
+      if (f.crime) return true;
+      if (!f.crimeT) continue;
+      const L = lk && lk.map.get(f);
+      if (L) { if (L.t ? holderOf(g, L.t) !== g : L.ts ? L.ts.some(x => holderOf(g, x.q) !== g) : !!L.face) return true; continue; }
+      const kinds = f.crimeT, ok = q => targetable(g.opp, q) && (/permanent/.test(kinds) || (/creature/.test(kinds) && isCreaturePerm(q)) || (/artifact/.test(kinds) && q.card.a.isArtifact) || (/enchantment/.test(kinds) && q.card.a.isEnchantment) || (/planeswalker/.test(kinds) && q.card.a.isPlaneswalker) || (/land/.test(kinds) && q.asLand) || (/battle/.test(kinds) && /\bBattle\b/.test(q.card.type_line || '')));
+      if (g.opp && g.opp.battlefield.some(ok)) return true;
+    }
+    return false;
+  }
+  function fireCrimes(g, ev) { for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('crime')) fire(g, t, q, ev, null); }          // Gisa, Kaervek
   function applyEffects(g, fx, source, ev, subject) {
-    if (fx && fx.length && !g.dry && !lockRec && tableHas(g, 'crimeTrig') && fx.some(f => f.crime)) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('crime')) fire(g, t, q, ev, null);          // T-025: you commit a crime (Gisa, Kaervek)
+    if (fx && fx.length && !g.dry && !lockRec && tableHas(g, 'crimeTrig') && fx !== g._crimedFx && crimeCommitted(g, fx, null)) fireCrimes(g, ev);          // T-025: you commit a crime (Gisa, Kaervek); a spell did so as it was cast (castCard)
     for (const f of fx) {
       if (f.cond && !condMet(g, f.cond, source)) { if (f.cond.kind === 'secondCast' && !g.dry && !lockRec) g.winSpellCasts = (g.winSpellCasts || 0) + 1; continue; }             // e.g. Frodo's draw only while he is the Ring-bearer; Approach of the Second Sun remembers its first cast
       let n = f.n;
@@ -6306,6 +6366,17 @@
           if (spec.p === 'X' || spec.t === 'X') { const x = countFor(g, f.count, source); if (spec.p === 'X') spec.p = x; if (spec.t === 'X') spec.t = x; }
           if (f.minX && !(spec.p >= f.minX)) break;          // rules batch 53: Chrome Host Seedshark (incubate 0 makes nothing)
           createTokens(g, spec, Math.min(n, 60), ev, source);
+          break;
+        }
+        case 'domeCopy': {                                                                                      // Chrome Dome: a token copy of another artifact you control, with haste; sacrificed at the beginning of the next end step
+          if (g.dry || !source) break;
+          const arts = g.battlefield.filter(q => q !== source && q.card.a.isArtifact && !q.phased); if (!arts.length) break;
+          let cp = domePick(g, source) || arts.sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0];
+          if (g.ask) cp = decide(g, { kind: 'target', what: 'copy', options: arts, def: cp, source }) || cp;          // a person chooses what is copied
+          if (cp && g.battlefield.length < 250) {
+            const np = enterWithTriggers(g, { iid: g.nextIid++, card: cp.card }, { token: true }, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.sacEnd = true;
+            ev.push({ type: 'token', perm: np, inst: np.inst, source }); ev.push({ type: 'note', text: `${source.card.name}: a hasty token copy of ${cp.card.name}, sacrificed at the end step`, source });
+          }
           break;
         }
         case 'copyToken': {
@@ -6913,6 +6984,12 @@
             ev.push({ type: 'note', text: `${zada.card.name}: the spell targets only Zada and is copied for ${others.length} other creature${others.length === 1 ? '' : 's'}`, source: zada });
             break;
           }
+          if (f.legendary) {          // Okina: "target legendary creature" (a person chooses among them, the best attacker is the default)
+            const pool = g.battlefield.filter(q => isCreaturePerm(q) && q.card.a.isLegendary && !q.phased); if (!pool.length) break;
+            const def = pool.filter(q => canAttack(g, q)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0] || pool.sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
+            const tg = g.ask && !g.dry && pool.length > 1 ? decide(g, { kind: 'target', what: 'pump', options: pool, def, source }) || def : def;
+            tg.eotP = (tg.eotP || 0) + f.p; tg.eotT = (tg.eotT || 0) + f.t; ev.push({ type: 'pump', perms: [tg], p: f.p, t: f.t, source }); break;
+          }
           const target = f.self && source && isCreaturePerm(source) ? source : ownCreature(g, (b0 => b0 && b0.card.a.sacOnTarget && !source ? g.battlefield.filter(q => isCreaturePerm(q) && !q.card.a.sacOnTarget).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0] || null : b0)(bestCreature(g)), 'pump', source);          // a spell never targets Departed Deckhand (it would be sacrificed)
           if (target) {
             const p = f.p === 'X' ? countFor(g, f.count, source) : f.p, t = f.t === 'X' ? countFor(g, f.count, source) : f.t;
@@ -7052,18 +7129,26 @@
           if (t) { const X = f.what === 'power' ? Math.max(0, powerOf(g, t)) : countWhat(g, f.what, t); t.sick = false; t.eotP = (t.eotP || 0) + X; if (f.t) t.eotT = (t.eotT || 0) + X; ev.push({ type: 'note', text: `${t.card.name} gains haste and +${X}/+${f.t ? X : 0}`, source }); }
           break;
         }
-        case 'pwSwing': {                                                                                      // Gideon, Ally of Zendikar's +1: against a goldfish he attacks as a 5/5 (his damage is dealt as he is activated)
-          if (g.dry || g.opp || !source || source.enteredTurn === g.turn) break;
-          damageOpp(g, (f.p + fireBonus(g)) * infernoMult(g, source), ev, source, true); break;
+        case 'pwAnimate': {                                                                                    // Gideon, Ally of Zendikar's +1: until end of turn he is a 5/5 Human Soldier Ally creature with indestructible, still a planeswalker; he attacks in combat if he was here at the start of the turn
+          if (!source || g.dry) break;
+          source.animated = { p: f.p, t: f.t, perm: false, untilTurn: null, kw: ['indestructible'], pw: true }; source.sick = source.enteredTurn === g.turn && !hasKw(g, source, 'haste'); touch(g);
+          ev.push({ type: 'note', text: `${source.card.name} becomes a ${f.p}/${f.t} indestructible creature until end of turn (still a planeswalker; all damage to him is prevented)`, source }); break;
         }
-        case 'kaervekCopy': {                                                                                  // Kaervek, the Punisher: a black card from your graveyard is exiled, its copy cast (2 life)
-          if (g.dry || g.life <= f.life + 5) break;
-          const t = g.graveyard.filter(i => !i.card.a.isLand && !i.card.commander && colorsOf(g, i.card).includes('B') && (i.card.a.isPermanent || i.card.a.spellFx.length)).sort((x, y) => (y.card.a.castMv || y.card.a.mv || 0) - (x.card.a.castMv || x.card.a.mv || 0))[0];
+        case 'kaervekCopy': {                                                                                  // Kaervek, the Punisher: "exile up to one target black card from your graveyard and copy it. You may cast the copy. If you do, you lose 2 life."
+          if (g.dry) break;
+          const black = g.graveyard.filter(i => !i.card.a.isLand && !i.card.commander && colorsOf(g, i.card).includes('B'));
+          const castable = i => !effectiveCost(g, i).x && canPay(effectiveCost(g, i), allUnits(g)) && (i.card.a.isPermanent || i.card.a.spellFx.length) && !i.card.a.counter;
+          let t = g.life > f.life + 5 ? black.filter(castable).sort((x, y) => (y.card.a.castMv || y.card.a.mv || 0) - (x.card.a.castMv || x.card.a.mv || 0))[0] : null;          // the autopilot targets a card only when it will cast the copy: its mana cost is paid
+          if (g.ask) t = gyAsk(g, t, black, 'kaervek', source) || null;
           if (!t) break;
-          g.graveyard.splice(g.graveyard.indexOf(t), 1); g.exile.push(t); g.life -= f.life;
-          ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}a copy of ${t.card.name} is cast from exile (${f.life} life)`, source });
+          g.graveyard.splice(g.graveyard.indexOf(t), 1); g.exile.push(t);
+          const cost = effectiveCost(g, t);
+          if (cost.x || !canPay(cost, allUnits(g)) || pay(g, cost) == null) { ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${t.card.name} is exiled; its copy is not cast (its mana cost cannot be paid)`, source }); break; }
+          g.life -= f.life; checkDeath(g, ev);
+          ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}a copy of ${t.card.name} is cast from exile (its mana cost paid, ${f.life} life)`, source });
           const cp = { iid: g.nextIid++, card: Object.assign({}, t.card, { isToken: true }) };
           fireCastTriggers(g, cp, ev); g.spellsCast = (g.spellsCast || 0) + 1;
+          if (g.opp && tryCounter(g, cp, ev)) break;
           if (t.card.a.isPermanent) { const np = enterWithTriggers(g, cp, { token: true }, ev); np.token = true; } else applyEffects(g, t.card.a.spellFx, null, ev, null);
           break;
         }
@@ -8655,7 +8740,8 @@
       const os = podAlive(g);
       if (os.length > 1 && os.includes(g.opp)) { const o = decide(g, { kind: 'player', options: os, def: g.opp, source: { card: inst.card } }); if (o && o !== g.opp) { g._oppWas = g.opp; g.opp = o; } }
     }
-    { const lk = lockTargets(g, inst); if (lk) PENDING.set(inst, lk); }          // T-072: targets are chosen as the spell is cast, before anyone can respond
+    { const lk = lockTargets(g, inst); if (lk) PENDING.set(inst, lk);          // T-072: targets are chosen as the spell is cast, before anyone can respond
+      inst.crimed = false; if (!g.dry && a.isInstantSorcery && tableHas(g, 'crimeTrig') && crimeCommitted(g, inst.overloaded ? (a.overload && a.overload.fx) || [] : a.spellFx, lk)) { inst.crimed = true; fireCrimes(g, ev); } }          // T-094: a crime is committed as the spell is cast (even if it is then countered)
     if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
     if (g.ask && !g.dry && a.isInstantSorcery && !inst.card.tribeBase) { const was = inst.card; chooseTribeOnEnter(g, inst, true); if (inst.card !== was) { a = inst.card.a; g._castTribe = inst.card.chosenType; } }          // Kindred Summons: a person names the creature type as it resolves
@@ -8752,7 +8838,7 @@
         else { flipLost = true; ev.push({ type: 'note', text: `${kr.card.name}: flip lost, ${inst.card.name} returns to your hand`, source: kr }); }
       }
       if (flipLost) inst.buybackPaid = true; else
-      { const lk = PENDING.get(inst), was = LOCKS.get(g); if (lk) { PENDING.delete(inst); LOCKS.set(g, lk); } try { applyEffects(g, inst.overloaded ? a.overload.fx : willModes(g, inst) || a.spellFx, null, ev, null); } finally { if (lk) { if (was) LOCKS.set(g, was); else LOCKS.delete(g); } } }
+      { const lk = PENDING.get(inst), was = LOCKS.get(g); if (lk) { PENDING.delete(inst); LOCKS.set(g, lk); } try { const sfx = inst.overloaded ? a.overload.fx : willModes(g, inst) || a.spellFx; if (inst.crimed) { g._crimedFx = sfx; inst.crimed = false; } try { applyEffects(g, sfx, null, ev, null); } finally { g._crimedFx = null; } } finally { if (lk) { if (was) LOCKS.set(g, was); else LOCKS.delete(g); } } }
       const seventh = !g.dry && !inst.exileInstead && !inst.foreign && g.killTurn == null && !matchOver(g) && a.spellFx.some(f => f.cond && f.cond.kind === 'secondCast');          // Approach of the Second Sun, first cast: it goes into the library seventh from the top
       if (inst.buybackPaid && !seventh) { inst.buybackPaid = false; g.hand.push(inst); } else          // buyback: back to your hand
       if (seventh) g.library.splice(Math.min(6, g.library.length), 0, inst); else (inst.exileInstead || a.selfExile ? g.exile : inst.foreign && g.opp ? g.opp.graveyard : g.graveyard).push(inst);
@@ -10698,8 +10784,15 @@ g.actSeq = (g.actSeq || 0) + 1;
   function spareFainWork(g, fain) { return g.battlefield.some(q => q !== fain && q.token && /Food|Clue|Blood/.test(q.card.name || '')); }
   // when an ability that waits for the right moment is worth activating
   const countedTokens = ab => ab.fx.some(f => f.type === 'token' && f.n === 'X' && f.count && f.creature);          // "create X tokens, where X is the number of ..." (Krenko, Mob Boss)
+  // Chrome Dome: the artifact worth a {5} copy: an enters-the-battlefield trigger worth real value, or a creature that hits hard (the copy has haste, so it attacks at once)
+  function domePick(g, dome) {
+    const val = q => { let v = 0; for (const t of q.card.a.triggers) if (t.kinds.includes('etb') && t.who === '~') v += fxValue(g, t.fx); if (isCreaturePerm(q) && !g.combatDone && !hasKw(g, q, 'defender')) v += Math.max(0, powerOf(g, q) - 2); return v; };
+    return g.battlefield.filter(q => q !== dome && q.card.a.isArtifact && !q.phased && !q.asLand && !q.card.a.isLegendary).map(q => ({ q, v: val(q) })).filter(x => x.v >= 3).sort((x, y) => y.v - x.v).map(x => x.q)[0] || null;
+  }
   function abilityGate(g, p, ab) {
     if (ab.gate === 'landAttack') return !g.combatDone && g.activeTurn !== false && !(g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped)) && g.battlefield.some(q => q.asLand && !q.animated && !q.tapped && !q.card.a.isCreature) && g.battlefield.filter(q => q.asLand && !q.tapped).length >= 2;          // Llanowar Loamspeaker: an untapped land (haste) and no blockers; the other land pays for what the turn needs
+    if (ab.gate === 'legendPump') return !g.dry && !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => isCreaturePerm(q) && q.card.a.isLegendary && canAttack(g, q));          // Okina: a legendary creature that can attack gets the +1/+1 first
+    if (ab.gate === 'domeWorth') return !g.dry && g.activeTurn !== false && !!domePick(g, p);          // Chrome Dome: only for a copy worth {5}
     if (ab.gate === 'artisan') return !g.dry && !g.combatDone && g.activeTurn !== false && !!artisanPick(g, p, Math.max(0, allUnits(g).length - 1));          // rules batch 78: Fiend Artisan, sorcery speed, with all the spare mana as X
     if (ab.gate === 'personOnly') return !!g.ask && !g.dry;          // rules batch 78: an ability the autopilot never has a use for (Magus of the Candelabra)
     if (ab.gate === 'counterMove') return !g.combatDone && !g.dry && (p.counters || 0) >= 2 && g.battlefield.some(q => q !== p && isCreaturePerm(q) && creatureValue(g, q) > creatureValue(g, p));          // Spike Feeder: only to a better creature, and never its last counter
@@ -10795,7 +10888,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (p.loyalty + c < 0) continue;                              // cannot pay the loyalty cost
       if (!ab.fx.length && ab.cost < 0) continue;                    // an ultimate that needs an opponent (Sorin's -6) would only burn loyalty
       let v = fxValue(g, ab.fx) + c * (+pol(g, 'pwLoyalty') || 0);
-      if (ab.fx.some(f => f.type === 'pwSwing')) v += (!g.opp && p.enteredTurn !== g.turn) ? ab.fx[0].p * 0.9 : -100;          // Gideon, Ally of Zendikar: only a Gideon that was here at the start of the turn attacks
+      if (ab.fx.some(f => f.type === 'pwAnimate')) v += p.enteredTurn !== g.turn && !g.combatDone ? ab.fx[0].p * 0.9 : 0;          // Gideon, Ally of Zendikar: only a Gideon that was here at the start of the turn attacks (he cannot be hurt: damage to him is prevented)
       if (ab.fx.some(f => f.n === 'GYCREATURES') && g.graveyard.filter(i => i.card.a.isCreature).length >= oppLifeLeft(g)) v += 1000;         // Grist's -5 as the finisher
       if (v > bs) { bs = v; best = ab; }
     }

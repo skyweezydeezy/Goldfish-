@@ -9,6 +9,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 1000 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { localStorage.setItem('isf_dice', '0'); } catch (e) {} });          // the 3D dice are not under test here, and they can starve the page of frames for seconds
   await ctx.addInitScript(() => localStorage.setItem('isf_sound', JSON.stringify({ bg: false, music: false, sfx: false })));
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const r = route.request(), cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

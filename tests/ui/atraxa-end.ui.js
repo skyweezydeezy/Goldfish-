@@ -90,16 +90,18 @@ const shot = process.env.VERSUS_SHOTS;
   await arrange('duel', { clear: true, lands: [['Swamp', 3], ['Plains', 3]], mine: ["Atraxa, Praetors' Voice", 'Samwise Gamgee', 'Peregrin Took'], oppClear: true, opp: ['Academy Manufactor'] });
   await p.evaluate(() => { const gm = window.__isfVersus.duel.game, me = gm.games[0]; me.battlefield.find(q => q.card.name === 'Samwise Gamgee').counters = 1; gm.games[1].battlefield.find(q => q.card.name === 'Academy Manufactor').counters = 1; window.__isfVersus.redraw('duel'); });
   const cnt = () => p.evaluate(() => { const gm = window.__isfVersus.duel.game; return { sam: gm.games[0].battlefield.find(q => q.card.name === 'Samwise Gamgee').counters || 0, pip: gm.games[0].battlefield.find(q => q.card.name === 'Peregrin Took').counters || 0, opp: gm.games[1].battlefield.find(q => q.card.name === 'Academy Manufactor').counters || 0 }; });
-  await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
-  let sh = null;
-  for (let k = 0; k < 40 && !sh; k++) {
+  // Who goes first is random: the opponent may take its turn before mine. So end MY turn whenever the game is at my main phase (once per turn), whatever came before, and wait up to 90 s for the sheet.
+  let sh = null, endedTurn = -1; const t0 = Date.now();
+  while (Date.now() - t0 < 90000 && !sh) {
     const s = await state('duel');
-    if (s.choice === 'target') { const x = await sheet(); if (/proliferate/.test(x.title)) { sh = x; break; } }
+    if (s.choice === 'target') { const x = await sheet(); if (x && /proliferate/.test(x.title)) { sh = x; break; } }
     if (s.choice) await p.click('.ch-sheet .ch-auto');
+    else if (s.phase === 'main' && !s.acting && !s.busy && endedTurn !== s.turn) { endedTurn = s.turn; await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click()); }
     else if (s.phase === 'block') await p.evaluate(() => document.querySelector('#tab-duel .vs-block-go').click());
     else if (s.phase === 'respond') await p.evaluate(() => document.querySelector('#tab-duel .vs-pass').click());
     await p.waitForTimeout(250);
   }
+  if (!sh) { check('ending the turn: the end-step trigger asks which permanents to proliferate', false, JSON.stringify(await state('duel'))); await b.close(); console.log(`\n${pass} passed, ${fail} failed`); process.exit(1); }
   check('ending the turn: the end-step trigger asks which permanents to proliferate', !!sh && /Atraxa, Praetors' Voice: proliferate/.test(sh.title), sh && sh.title);
   check('...the sheet lists your permanent and the opponent\'s that have a counter', sh && sh.tiles === 2, sh && sh.tiles);
   check('...the autopilot\'s pick is your own permanent only (a +1/+1 counter of theirs would help them)', sh && sh.def.length === 1 && sh.def[0] === 'Samwise Gamgee', sh && sh.def.join(','));

@@ -10,6 +10,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": ">10",
+   "by5": 0,
+   "by7": 1.5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -22,6 +25,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 5.5,
+   "by7": 45.9,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -33,7 +39,10 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 0,
+   "by7": 7.1
   },
   {
    "file": "scorched-sky.txt",
@@ -44,6 +53,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 4.8,
+   "by7": 54.7,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -56,6 +68,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 0,
+   "by7": 12.2,
    "medianKill": 9,
    "floor": 4,
    "speedBracket": 1,
@@ -70,6 +85,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 10.3,
+   "by7": 48.1,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -82,6 +100,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 0.3,
+   "by7": 16.8,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -108,6 +129,9 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 4.3,
+   "by7": 62.4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -120,6 +144,9 @@
    "colors": "WUBG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 13.6,
+   "by7": 74.3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -132,6 +159,9 @@
    "colors": "WUBG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 1.3,
+   "by7": 39.7,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -145,6 +175,9 @@
    "colors": "WUBR",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 10.3,
+   "by7": 36.4,
    "medianKill": 8,
    "floor": 4,
    "speedBracket": 2,
@@ -159,6 +192,9 @@
    "colors": "WUBG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 0.8,
+   "by7": 14,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -172,6 +208,9 @@
    "colors": "WUBG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 18,
+   "by7": 47.5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -184,6 +223,9 @@
    "colors": "UBR",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 10,
+   "by7": 23.7,
    "policy": {
     "comboChase": "eager"
    },
@@ -202,6 +244,27 @@
    "learnedVs": "field"
   },
   {
+   "file": "heavy-metal-landfall.txt",
+   "name": "Heavy Metal Landfall (Toph, the First Metalbender)",
+   "commanders": [
+    "Toph, the First Metalbender"
+   ],
+   "colors": "WRG",
+   "cards": 100,
+   "bracket": 3,
+   "checkedMedian": 8,
+   "by5": 0.7,
+   "by7": 27.8,
+   "earliestKill": 4,
+   "by2": 0,
+   "by3": 0,
+   "by4": 0,
+   "medianKill": 8,
+   "floor": 3,
+   "speedBracket": 2,
+   "checkedAt": "2026-11-26"
+  },
+  {
    "file": "nights-curfew.txt",
    "name": "Night's Curfew (Y'shtola, Night's Blessed)",
    "commanders": [
@@ -210,6 +273,9 @@
    "colors": "WUB",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 7.2,
+   "by7": 36.8,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -222,6 +288,9 @@
    "colors": "WUB",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 10,
+   "by5": 5.7,
+   "by7": 13.1,
    "policy": {
     "comboChase": "eager"
    },
@@ -248,6 +317,9 @@
    "colors": "UBR",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 1.5,
+   "by7": 74.3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -260,6 +332,9 @@
    "colors": "UBR",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 4.8,
+   "by7": 49.9,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -273,6 +348,9 @@
    "colors": "WBG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 2.2,
+   "by7": 31.3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -285,6 +363,9 @@
    "colors": "UR",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": ">10",
+   "by5": 1.4,
+   "by7": 6.9,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -297,6 +378,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 0.3,
+   "by7": 15.3,
    "medianKill": 9,
    "floor": 4,
    "speedBracket": 1,
@@ -310,7 +394,10 @@
    ],
    "colors": "WB",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "checkedMedian": 8,
+   "by5": 7.2,
+   "by7": 36.4
   },
   {
    "file": "dead-sea.txt",
@@ -321,6 +408,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 5.9,
+   "by7": 18.7,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -347,6 +437,9 @@
    "colors": "WB",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 0.4,
+   "by7": 11.9,
    "policy": {
     "tutorFocus": "mana"
    },
@@ -373,6 +466,9 @@
    "colors": "UR",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 1,
+   "by7": 32.6,
    "policy": {
     "counterWorth": "two"
    },
@@ -399,6 +495,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 7,
+   "by5": 3.9,
+   "by7": 76.1,
    "policy": {
     "tribeFirst": "on"
    },
@@ -425,6 +524,9 @@
    "colors": "WR",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 7,
+   "by5": 6.8,
+   "by7": 76.5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -437,6 +539,9 @@
    "colors": "WG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 2.2,
+   "by7": 36.9,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -455,6 +560,27 @@
    "learnedVs": "field"
   },
   {
+   "file": "landslide-victory.txt",
+   "name": "Landslide Victory (Bumi, Unleashed)",
+   "commanders": [
+    "Bumi, Unleashed"
+   ],
+   "colors": "RG",
+   "cards": 100,
+   "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 3.1,
+   "by7": 58,
+   "earliestKill": 4,
+   "by2": 0,
+   "by3": 0,
+   "by4": 0.1,
+   "medianKill": 7,
+   "floor": 4,
+   "speedBracket": 3,
+   "checkedAt": "2026-11-26"
+  },
+  {
    "file": "mermaids.txt",
    "name": "Mermaids (Hakbal of the Surging Soul)",
    "commanders": [
@@ -463,6 +589,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 10.3,
+   "by7": 80,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -475,6 +604,9 @@
    "colors": "WU",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 8,
+   "by5": 2.6,
+   "by7": 37.1,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -487,6 +619,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 6.8,
+   "by7": 26.4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -498,7 +633,10 @@
    ],
    "colors": "UR",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 2,
+   "by7": 13.3
   },
   {
    "file": "soul-brokers.txt",
@@ -509,6 +647,9 @@
    "colors": "WB",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 9,
+   "by5": 0,
+   "by7": 8.8,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -521,6 +662,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 3.8,
+   "by7": 64.9,
    "medianKill": 7,
    "floor": 4,
    "speedBracket": 3,
@@ -535,6 +679,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 1,
+   "by7": 49.9,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -561,6 +708,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 5,
+   "by7": 17.4,
    "policy": {
     "tutorFocus": "payoff"
    },
@@ -579,6 +729,27 @@
    "learnedVs": "field"
   },
   {
+   "file": "winota.txt",
+   "name": "Winota (Winota, Joiner of Forces)",
+   "commanders": [
+    "Winota, Joiner of Forces"
+   ],
+   "colors": "WR",
+   "cards": 100,
+   "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 6.3,
+   "by7": 69.8,
+   "earliestKill": 3,
+   "by2": 0,
+   "by3": 0,
+   "by4": 0.3,
+   "medianKill": 7,
+   "floor": 4,
+   "speedBracket": 3,
+   "checkedAt": "2026-11-26"
+  },
+  {
    "file": "zimone-infinite-analyst.txt",
    "name": "Zimone, Infinite Analyst",
    "commanders": [
@@ -587,6 +758,9 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 1,
+   "by7": 48,
    "policy": {
     "commanderTiming": "first"
    },
@@ -613,6 +787,9 @@
    "colors": "G",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 9,
+   "by5": 0.7,
+   "by7": 24.5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -624,7 +801,10 @@
    ],
    "colors": "G",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "checkedMedian": 7,
+   "by5": 18.9,
+   "by7": 74.4
   },
   {
    "file": "ice-age-engine.txt",
@@ -635,6 +815,9 @@
    "colors": "U",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": ">10",
+   "by5": 0.1,
+   "by7": 1.9,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -646,7 +829,10 @@
    ],
    "colors": "R",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "checkedMedian": 7,
+   "by5": 11.4,
+   "by7": 85
   },
   {
    "file": "moving-parts.txt",
@@ -656,7 +842,10 @@
    ],
    "colors": "U",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "checkedMedian": 9,
+   "by5": 5,
+   "by7": 27
   },
   {
    "file": "overtime-at-the-treasure-mine.txt",
@@ -666,7 +855,10 @@
    ],
    "colors": "R",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 2.7,
+   "by7": 54.9
   },
   {
    "file": "second-draw.txt",
@@ -677,6 +869,9 @@
    "colors": "U",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 8,
+   "by5": 1.3,
+   "by7": 32.1,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -689,6 +884,9 @@
    "colors": "W",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 0.4,
+   "by7": 24.3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -700,7 +898,10 @@
    ],
    "colors": "W",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "checkedMedian": 7,
+   "by5": 1.2,
+   "by7": 58.9
   },
   {
    "file": "undead-witches.txt",
@@ -711,6 +912,9 @@
    "colors": "B",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 8,
+   "by5": 0.6,
+   "by7": 37.8,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   },
@@ -723,6 +927,9 @@
    "colors": "G",
    "cards": 100,
    "bracket": 3,
+   "checkedMedian": 9,
+   "by5": 0.2,
+   "by7": 9.8,
    "medianKill": 9,
    "floor": 3,
    "speedBracket": 1,
@@ -736,7 +943,10 @@
    ],
    "colors": "",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 1.5,
+   "by7": 45.1
   },
   {
    "file": "void-tax.txt",
@@ -747,6 +957,9 @@
    "colors": "",
    "cards": 100,
    "bracket": 4,
+   "checkedMedian": 8,
+   "by5": 6.8,
+   "by7": 46.5,
    "learnedAt": "2026-11-19",
    "learnedVs": "field"
   }

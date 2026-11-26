@@ -10,6 +10,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
 (async () => {
   const b = await chromium.launch({ args: ['--autoplay-policy=user-gesture-required'] });
   const ctx = await b.newContext({ viewport: { width: 1360, height: 900 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const r = route.request();
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
@@ -167,7 +168,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   check('twelve turns bring casts, attacks and new-turn chimes', (seen.has('card') || [...seen].some(x => /^card:/.test(x))) && seen.has('turn') && (seen.has('attack') || seen.has('declare')), [...seen].join(','));
   check('the Practice table also hands every cast to the on-screen card effects', (await A(() => window.__fxCasts)) > 0, (await A(() => window.__fxCasts)) + ' casts');
   n = await count(); await p.click('#tUndo');
-  check('undo has its own sound', (await since(n)).includes('undo'));
+  check('a refused undo (the last turn drew a card) plays the error sound', (await since(n)).includes('error'));
 
   // ---- 1v1, every seat on autopilot ----
   await p.click('[data-tab=duel]');

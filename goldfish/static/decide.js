@@ -56,7 +56,7 @@
   // The whole state of a pod as text: two games are in the same state exactly when their dumps are equal (used by the tests).
   // skip: more keys to leave out. SCRATCH: what the engine writes while it works out what a card costs (G.effectiveCost), recomputed
   // before it is used. Looking at a card (can it be cast?) writes them, so two devices showing different cards differ only there.
-  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped', '_phyLife', '_phyPick']);
+  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped', '_phyLife', '_phyPick', '_dl']);
   function dump(games, skip) {
     const ids = new Map();
     ownAll(games);
@@ -135,15 +135,29 @@
   }
   // T-080: "<spell> ... unless that player pays {N}" (Rhystic Study, Smothering Tithe, Mystic Remora, Esper Sentinel, Mana Leak): what happens when you do not pay
   const taxThen = (d, g, m) => String(d.then || 'it takes effect').replace('{who}', d.owner && m && m.names ? m.names[d.owner.pid] : 'The opponent');
-  const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
+  const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', pitchX: 'counter it: exile a blue card with that mana value', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    needle: ['name a card', 'Choose a nonland card name: activated abilities of sources with that name can\'t be activated. The permanents with an activated ability on the table are listed.'],
+    breath: ['attach Breath of Fury to which creature?', 'The enchanted creature is sacrificed: choose another creature you control to enchant. Then untap all your creatures and there is an additional combat phase.'],
+    redirect: ['choose the new target', 'Change the target of the spell to another legal target: the spell then does what it says to that permanent.'],
     strive: ['choose the creatures to copy', 'Choose any number of creatures you control: each gets a token copy with haste, exiled at the beginning of the next end step. Each target beyond the first costs {2}{R} more.'],
     untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
     demandCost: ['sacrifice an artifact or discard a card', 'Choose what you give up as an additional cost to cast it: an artifact you control, or a card from your hand.'],
     lookBf: ['put a creature onto the battlefield?', 'Choose a creature card from the cards you looked at: it enters the battlefield, and the rest go to the bottom of your library in a random order.'],
+    sozin: ['put which creature cards onto the battlefield?', 'Choose creature cards from that player\'s graveyard with total mana value up to what you can pay for {X}: each enters the battlefield under your control.'],
+    airbendMany: ['airbend which permanents?', 'Choose any number of other nonland permanents you control (none is allowed): each is exiled, and while it is exiled you may cast it for {2} rather than its mana cost.'],
+    goad: ['goad which creature?', 'Choose the creature an opponent controls that is goaded: until your next turn it attacks each combat if able.'],
+    yardExile: ['exile which card?', 'Choose a card from a graveyard to exile (or none).'],
+    yardBottomAll: ['whose graveyard goes to the bottom?', 'Choose up to one player: that player puts all the cards from their graveyard on the bottom of their library in a random order.'],
+    bounceMany: ['return which permanents?', 'Choose up to the number of other nonland permanents the card names (none is allowed): each returns to its owner\'s hand.'],
+    mirrorCopy: ['copy which creature?', 'Choose the creature on the battlefield it becomes a copy of until end of turn (it has haste), or none.'],
+    becomeArtifact: ['make which permanent an artifact?', 'Choose the permanent that becomes an artifact in addition to its other types until end of turn.'],
+    yardBottom: ['put which card on the bottom?', 'Choose a card from your graveyard to put on the bottom of your library.'],
+    airbend: ['airbend which permanent?', 'Choose the permanent to exile. While it is exiled, its owner may cast it for {2} rather than its mana cost (a token is gone for good).'],
+    firebend: ['give firebending to which creature?', 'Choose the creature that gains firebending until end of turn: when it attacks it adds red mana that lasts until end of combat.'],
     tapCost: ['tap which permanent?', 'Choose the untapped permanent you tap as part of the cost of this mana ability.'],
     return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],
@@ -184,7 +198,7 @@
     const src = srcOf(d, g), sn = src ? src.name : null, owner = p => (m && m.players ? m.players.find(x => x.battlefield.includes(p)) : null) || g;
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
-      const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
+      const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o), smart: !!(d.smart && d.smart.includes(o)) };
       if (d.kind === 'pay') {                                                                             // T-089: one (source, role) pair of a payment
         const u = d.units[o.u], same = d.units.filter((x, i) => i < o.u && x.src === u.src && x.src).length, sn2 = u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating mana' : 'Mana');
         item.name = sn2 + (same ? ' #' + (same + 1) : '') + ' → ' + (o.role === 'generic' ? 'generic' : (G.COLOR_NAME[o.role] || (o.role === 'C' ? 'colorless' : o.role))); item.iid = u.src && u.src.iid != null ? u.src.iid : null; item.card = u.src && u.src.card ? u.src.card : null;
@@ -194,7 +208,7 @@
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
-      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : (HOW[o.how] || '') + (o.free && o.how === 'respond' ? ' (free: you control a commander)' : ''); }
+      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitchX' ? `counter it (X is its mana value): exile ${o.pitch.card.name}` : o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : (HOW[o.how] || '') + (o.free && o.how === 'respond' ? ' (free: you control a commander)' : ''); }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
       else if (d.kind === 'combo') { item.name = o.label; item.note = o.note || ''; item.id = o.id; }
@@ -204,6 +218,7 @@
       else if (d.kind === 'color') { item.name = d.basic ? { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' }[o] + ' (' + (G.COLOR_NAME[o] || o) + ')' : G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x' && d.what === 'squad') { item.name = o ? `Pay squad ${o === 1 ? 'once' : o + ' times'}` : 'Don\'t pay squad'; item.note = o ? `${o} token cop${o === 1 ? 'y' : 'ies'} of it as it enters` : 'just the card'; }
+      else if (d.kind === 'x' && d.what === 'prelate') { item.name = 'Number ' + o; item.note = 'noncreature spells with mana value ' + o + ' can\'t be cast'; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? (d.spellAsk ? 'the autopilot\'s pick · ' : 'learned · ') : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}${d.spellAsk ? ' in your graveyard' : ''}` : 'named by your cards'); }
       else {
@@ -292,6 +307,8 @@
       q.title = `${sn}: pay squad how many times?`;
       q.text = `Squad${cs ? ' ' + cs : ''}: each time you pay it, a token copy of it enters with it. Up to ${opts[opts.length - 1]} with the mana you have.`;
       q.spell = src; q.spellNote = 'being cast';
+    } else if (d.kind === 'x' && d.what === 'prelate') {
+      q.title = `${sn}: choose a number`; q.text = 'Noncreature spells with mana value equal to the chosen number can\'t be cast.';
     } else if (d.kind === 'x') {
       q.title = `${sn}: choose X`;
       q.text = `X can be up to ${opts[opts.length - 1]} with the mana you have${d.less ? ` (your first X spell this turn costs {${d.less}} less)` : ''}.`;
@@ -335,10 +352,13 @@
     } else if (d.kind === 'pay') {                                                                        // T-089: pay a cost with the sources you choose
       const c = d.cost, sym = x => (/^[WUBRGC]$/.test(x) ? x : '?'), ctext = (c.generic ? '{' + c.generic + '}' : '') + c.pips.map(p => '{' + p.map(sym).join('/') + '}').join('');
       q.title = `${sn ? sn + ': pay ' : 'Pay '}${ctext || 'nothing'}`;
-      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is what the autopilot would tap.';
+      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is the payment that wastes no mana.';
       if (src && src.type_line) { q.spell = src; q.spellNote = 'being paid for'; }
       q.pay = { cost: { generic: c.generic, pips: c.pips.map(p => p.slice()) }, n: c.generic + c.pips.length, text: ctext, units: d.units.map((u, i) => ({ u: i, name: u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating' : 'Mana'), card: u.src && u.src.card ? u.src.card : null, colors: [...u.colors].filter(x => d.options.some(o => o.u === i && o.role === x)), side: d.side(u), floating: !!u.floating, used: d.options.some(o => o.u === i) })).filter(x => x.used),
         // sel: [{ u, force }]: the option numbers of a payment that pays exactly, or null
+        smart: d.smart ? d.smart.map(o => d.options.indexOf(o)).filter(k => k >= 0) : null,
+        // T-099: what a selection (unit numbers) leaves floating: [{ name, made, left }]
+        waste: sel => G.payWaste(d.units, new Set(sel)).map(w => ({ name: w.name, made: w.made, left: w.left })),
         solve: sel => { const roles = G.payAssign(d.cost, d.units, sel.map(x => ({ i: x.u, force: x.force || null }))); if (!roles) return null; const ks = sel.map((x, j) => d.options.findIndex(o => o.u === x.u && o.role === roles[j])); return ks.some(k => k < 0) ? null : ks.sort((x, y) => x - y); } };
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
@@ -368,6 +388,7 @@
   function take(d, q, a, c) {
     if (!a || a.sig !== q.sig) { c.mismatch = (c.mismatch || 0) + 1; return d.def; }          // not the question that was answered: the autopilot's pick
     if (a.pick === 'auto' || a.pick == null) return d.def;
+    if (a.pick === 'smart') return d.smart || d.def;          // T-099: a person's "Pay automatically": the payment that wastes no mana
     if (q.multi) {
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
       if (!(ks.length >= q.min && ks.length <= q.max)) return d.def;

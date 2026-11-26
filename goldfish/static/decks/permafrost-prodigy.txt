@@ -1,6 +1,6 @@
 // Permafrost Prodigy (Kinnan, Bonder Prodigy)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T9, 6.8% by T5, 26.4% by T7; field win 53.4%; 17 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T9, 6.8% by T5, 26.4% by T7; 17 Game Changers; B4 confirmed
 // COMMANDER
 1 Kinnan, Bonder Prodigy (FCA) 55
 // DECK

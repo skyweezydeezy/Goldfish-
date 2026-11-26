@@ -1032,7 +1032,7 @@
     }
     const units = G.allUnits(g).length;
     const now = gm.attackNow && gm.games[gm.attackNow.def] ? A.attackSum(g, gm.attackNow.iids.map(id => g.battlefield.find(p => p.iid === id)).filter(Boolean), gm.games[gm.attackNow.def]) : null;
-    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
+    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>${(() => { const fl = G.floatingLoss(g).n; return fl ? ` <span class="mana-warn" role="status" title="Floating mana is lost when the turn ends">⚠ ${fl} floating: lost at the end of the turn</span>` : ''; })()}. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
       ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
@@ -1110,7 +1110,7 @@
     // the bar is rewritten only when it changes (the step of the turn is lit in place), so its buttons stay put while a game plays itself
     const bar = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + C.stepsHtml(D) + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
-      : `<span class="hint">${gm.choice ? 'Your choice' : gm.remote != null && !gm.over ? esc(waitText(gm)) : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
+      : `<span class="hint" data-status>${gm.choice ? 'Your choice' : gm.remote != null && !gm.over ? esc(waitText(gm)) : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
       (gm.io ? `<span class="vs-conn ${gm.io.connected() ? 'on' : 'off'}" title="${gm.io.connected() ? 'Connected to the other device' : 'Not connected: the game waits until the other device is back'}">${gm.io.connected() ? '● Connected' : '○ Not connected'}</span>` : '') +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
         `<button class="ghost open-sound" title="Music and sound effects"><span class="sound-ic">${window.__isfAudio && !(window.__isfAudio.get().sfx || window.__isfAudio.get().music) ? '🔇' : '🔊'}</span><span class="wide"> Sound</span></button>` +
@@ -1130,7 +1130,7 @@
     if (!gm || gm.human == null || gm.over || gm.acting || gm.choice) return null;
     const iid = el.dataset.iid; if (iid == null || !el.closest('.vs-hand, .vs-seat.me')) return null;
     const out = [];
-    const fresh = sel => () => { const t = root.querySelector(sel); if (t) t.click(); };
+    const fresh = sel => () => { const t = root.querySelector(sel); if (t) { bypassSel = true; try { t.click(); } finally { bypassSel = false; } } };
     const cardSel = `.vs-card[data-iid="${iid}"]`;
     if (el.classList.contains('vs-card') && el.classList.contains('can')) {
       const label = gm.phase === 'mull' ? (gm.bottom.has(+iid) ? 'Keep it (take it off the bottom)' : 'Put it on the bottom') : (card.a && card.a.isLand ? '▶ Play land' : '▶ Cast');
@@ -1142,6 +1142,26 @@
     if (stk && gm.picking) { const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id)); out.push([all ? 'Hold it back' : 'Attack with it', fresh(`.vs-seat.me .vs-stack.pickable[data-iids="${stk.dataset.iids}"]`), 'primary']); }
     return out;
   });
+  // T-102: on a phone a tap on a glowing card selects it (lifted, enlarged, with its option); only the option plays it. Local: nothing is sent until then.
+  let bypassSel = false;
+  function pickFirst(el, label, run) {
+    if (bypassSel || !A.isPhoneTouch()) return false;
+    const card = A.cardOf(el); if (!card) return false;
+    A.selectCard(el, card, [[label, run, 'primary']]); return true;
+  }
+  // T-112: printings. The seat played on this device owns its cards (one tap in the viewer switches the printing); every other seat's cards
+  // are view-only. A switch redraws this table's own pictures only: nothing about it is sent to another device (the engine's card rules,
+  // and so the game's fingerprint, do not change; the other player keeps seeing the printing they were sent at the start).
+  const mineOf = mode => { const gm = V[mode] && V[mode].game; return gm && gm.human != null && gm.games ? gm : null; };
+  A.addPrintOwner(card => {
+    for (const mode of ['duel', 'pod']) {
+      const gm = mineOf(mode); if (!gm) continue;
+      const i = gm.games.findIndex(g => g.deck && g.deck.unique.includes(card));
+      if (i >= 0) return i === gm.human;
+    }
+    return undefined;
+  });
+  A.addPrintHook(name => ['duel', 'pod'].flatMap(mode => { const gm = mineOf(mode); return gm ? gm.games[gm.human].deck.unique.filter(c => c.name === name) : []; }));
   function wire(mode) {
     const root = V[mode].root;
     root.addEventListener('change', e => {
@@ -1178,6 +1198,16 @@
       if (hit('vs-nextround')) return advance(mode, gm.games.filter(g => !g.dead).length);
       if (hit('vs-toend')) return advance(mode, 9999);
       if (gm.phase === 'block' && gm.block && !gm.over) {      // an answer, not a move: asked in the middle of the attacker's move
+        const bm = A.isPhoneTouch() && t.closest('.vs-seat.me .mtg[data-iid]');          // T-102, phones: tap a creature, choose what it blocks; the Block button still confirms
+        const bsel = bm && root.querySelector(`.vs-blk[data-iid="${bm.dataset.iid}"]`);
+        if (bsel && A.cardOf(bm)) {
+          e.stopPropagation();
+          const set = v => () => { bsel.value = v; bsel.dispatchEvent(new Event('change', { bubbles: true })); };
+          const opts = [...bsel.options].filter(o => o.value).map(o => [(o.selected ? '✓ ' : '') + 'Block ' + o.textContent.replace(/^blocks /, ''), set(o.value), 'primary']);
+          if (bsel.value) opts.push(['Does not block', set('')]);
+          if (opts.length) A.selectCard(bm, A.cardOf(bm), opts);
+          return;
+        }
         if (hit('vs-block-none')) return confirmBlocks(mode, {});
         if (hit('vs-block-go')) { const map = {}; root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) (map[sel.value] = map[sel.value] || []).push(+sel.dataset.iid); }); return confirmBlocks(mode, map); }
         return;
@@ -1190,11 +1220,11 @@
         if (hit('vs-abil')) return input(mode, 'abilities');
         if (hit('vs-cycle')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-cycle').dataset.iid, 'cycle'); }
         const ac = t.closest('.vs-seat.me .mtg.vs-act');     // a Food, Gilded Goose...: an ability in response
-        if (ac) { e.stopPropagation(); return input(mode, 'ability', +ac.dataset.iid); }
+        if (ac) { e.stopPropagation(); return pickFirst(ac, '⚡ Use its ability', () => input(mode, 'ability', +ac.dataset.iid)) || input(mode, 'ability', +ac.dataset.iid); }
         const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
-        if (lw) { e.stopPropagation(); return input(mode, 'loyalty', +lw.dataset.iid); }
+        if (lw) { e.stopPropagation(); return pickFirst(lw, '◆ Loyalty abilities…', () => input(mode, 'loyalty', +lw.dataset.iid)) || input(mode, 'loyalty', +lw.dataset.iid); }
         const c = t.closest('.vs-card.can');
-        if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }
+        if (c) { e.stopPropagation(); return pickFirst(c, '▶ Cast', () => input(mode, 'play', +c.dataset.iid, false)) || input(mode, 'play', +c.dataset.iid, false); }
         return;
       }
       if (gm.picking && myMain(gm)) {
@@ -1207,9 +1237,10 @@
         if (stk) {                                            // click a creature (or a stack of tokens) to send it or hold it back
           e.stopPropagation();
           const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id));
-          ids.forEach(id => { if (all) gm.pick.delete(id); else gm.pick.add(id); });
-          sfx('tap');
-          render(mode);
+          const toggle = () => { ids.forEach(id => { if (all) gm.pick.delete(id); else gm.pick.add(id); }); sfx('tap'); render(mode); };
+          const face = stk.querySelector('.mtg');          // T-102, phones: a tap selects it, an option attacks or holds it back (Attack / All / None still finish)
+          if (A.isPhoneTouch() && face && A.cardOf(face)) return A.selectCard(face, A.cardOf(face), [[all ? 'Hold it back' : 'Attack with it', toggle, 'primary']]);
+          toggle();
         }
         return;
       }
@@ -1228,10 +1259,10 @@
       if (hit('vs-asland')) { e.stopPropagation(); return input(mode, 'play', +hit('vs-asland').dataset.iid, true); }
       const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
       const ac = t.closest('.vs-seat.me .mtg.vs-act');       // a glowing permanent with an activated ability (a Food: gain 3 life)
-      if (ac) { e.stopPropagation(); return input(mode, 'ability', +ac.dataset.iid); }
-      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? input(mode, 'veil', p.iid) : input(mode, 'loyalty', +lw.dataset.iid); }
+      if (ac) { e.stopPropagation(); return pickFirst(ac, '⚡ Use its ability', () => input(mode, 'ability', +ac.dataset.iid)) || input(mode, 'ability', +ac.dataset.iid); }
+      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid), go = () => p && p.card.a.chainVeil ? input(mode, 'veil', p.iid) : input(mode, 'loyalty', +lw.dataset.iid); return pickFirst(lw, p && p.card.a.chainVeil ? '◆ Pay {4} and tap it' : '◆ Loyalty abilities…', go) || go(); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
-      if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }
+      if (c) { const land = !!(A.cardOf(c) || {}).a && A.cardOf(c).a.isLand, go = () => input(mode, 'play', +c.dataset.iid, false); e.stopPropagation(); return pickFirst(c, land ? '▶ Play land' : '▶ Cast', go) || go(); }
       if (hit('vs-abil')) return input(mode, 'abilities');
       if (hit('vs-attack') && !gm.attacked) {
         if (!D.quietBeginCombat(gm.games, g.pid)) return input(mode, 'beginAttack');          // something happens at the beginning of combat: it resolves first
@@ -1239,7 +1270,7 @@
         gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
         return render(mode);
       }
-      if (hit('vs-end')) return input(mode, 'end', false);
+      if (hit('vs-end')) { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; return input(mode, 'end', false); }          // T-099
       if (hit('vs-autoturn') && gm.remote == null) return input(mode, 'end', true);
     });
   }
@@ -1259,7 +1290,8 @@
   function tickClock(mode) {
     const st = V[mode], gm = st.game, el = st.clockEl; if (!el) return;
     const owner = gm && !gm.over && !gm.halted && gm.human != null && gm.phase !== 'mull' ? cur(gm).pid : null;
-    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; return; }
+    if (gm && gm.turnTimer) el.dataset.timed = '1'; else delete el.dataset.timed;          // a timed game keeps the clock's place all game long
+    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; if (gm && gm.turnTimer && !el.textContent) el.textContent = '⏱ 0:00'; return; }
     const g = gm.games[owner], key = clockKey(gm), now = Date.now(), scale = clockScale(), mineTurn = owner === gm.human;
     let c = gm.clock;
     if (!c || c.key !== key) { const limit = clockLimit(g.turn); c = gm.clock = { key, owner, limit, left: limit * 1000 * scale, at: now, run: false, fired: false, sentAt: 0, sentRun: null }; }

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Checks the Commander bracket of every built-in deck with ICEYfish's own engine (task T-035, report in docs/agents/DECK-BRACKETS.md).
 //   node tools/verify-brackets.js [--games=20000] [--jobs=4] [--only=death-tax]    simulate, write docs/agents/deck-brackets.json
-//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin (field win % stays empty)
+//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin 
+//   node tools/verify-brackets.js --matches-only                                   the round robin only (no longer used: there is no internal ranking for now, the user 2026-11-26), added to the goldfish results already in docs/agents/deck-brackets.json
 //   node tools/verify-brackets.js --apply                                         write the verified bracket and a check line into each deck
 //   node tools/verify-brackets.js --report                                        the table in docs/agents/DECK-BRACKETS.md
 // Offline: the cards come from the set data (goldfish/static/data/sets), the combos from data/combos.json.
@@ -69,7 +70,7 @@ const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized'
 
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 const GAMES = +arg('games', 20000), JOBS = +arg('jobs', os.cpus().length), ONLY = arg('only', ''), SEED = 20261123;
-const GF_ONLY = process.argv.includes('--goldfish-only'), CHUNK = 2500, MATCH_TURNS = 25;
+const GF_ONLY = process.argv.includes('--goldfish-only'), MATCH_ONLY = process.argv.includes('--matches-only'), CHUNK = 2500, MATCH_TURNS = 25;
 
 function loadAll() {
   const G = require(path.join(STATIC, 'sim.js')), Source = require(path.join(STATIC, 'source.js')), Combos = require(path.join(STATIC, 'combos.js'));
@@ -147,7 +148,8 @@ function verdict(L, gf, field) {
   const verified = L.cmdr ? Math.max(rules.floor, spd) : null;
   return {
     file: L.d.file, name: L.d.name, stated: L.d.bracket || null, verified, commander: L.cmdr,
-    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by2: pct(cum(2)), by3: pct(cum(3)), by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+      earliestKill: (i => i < 0 || i >= T ? null : i + 1)(gf.kill.findIndex(x => x > 0)), killHist: gf.kill.map(x => Math.round(x * 100000) / 1000),          // earliest turn a game was won (null: none by T10); killHist: % of games won on turn 1..T, then % not won by T
       cmdrMedian: L.cmdr ? (medianTurn(gf.cmdr) > T ? `>${T}` : medianTurn(gf.cmdr)) : null, mana4: Math.round(gf.mana4 * 100) / 100,
       winBy: Object.fromEntries(Object.entries(gf.winBy).map(([k, v]) => [k, pct(v)])), topLine: (gf.winLines[0] || null) },
     field: field ? { games: field.n, wins: field.w, losses: field.l, none: field.none, errors: field.errors, winRate: pct(field.w / Math.max(1, field.n - field.errors)), opponents: field.opps } : null,
@@ -167,7 +169,7 @@ async function simulate() {
   const pick = decks.map((L, i) => i).filter(i => !ONLY || decks[i].d.file.includes(ONLY));
   const cmd = decks.map((L, i) => i).filter(i => decks[i].cmdr), perPair = Math.ceil(GAMES / Math.max(1, cmd.length - 1));
   const jobs = [];
-  for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0 }); }
+  if (!MATCH_ONLY) for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0 }); }
   if (!GF_ONLY) {
   for (let x = 0; x < cmd.length; x++) for (let y = x + 1; y < cmd.length; y++) if (pick.includes(cmd[x]) || pick.includes(cmd[y])) jobs.push({ kind: 'match', i: cmd[x], j: cmd[y], n: perPair, seed: (SEED + 1000003 * (x * 64 + y)) >>> 0 });
   for (const i of pick) if (!decks[i].cmdr) for (let k = 0; k * CHUNK < GAMES; k++) jobs.push({ kind: 'match', i, j: i, n: Math.min(CHUNK, GAMES - k * CHUNK), seed: (SEED + 77 + k * CHUNK * 7919) >>> 0 });
@@ -175,24 +177,41 @@ async function simulate() {
   jobs.sort((a, b) => (b.kind === 'match' ? b.n * 2.5 : b.n) - (a.kind === 'match' ? a.n * 2.5 : a.n));
   const gf = new Map(), field = new Map(), total = jobs.length; let done = 0, next = 0;
   const addField = (i, w, l, none, errors, n, opp) => { const f = field.get(i) || { n: 0, w: 0, l: 0, none: 0, errors: 0, opps: new Set() }; f.n += n; f.w += w; f.l += l; f.none += none; f.errors += errors; f.opps.add(opp); field.set(i, f); };
+  // Checkpoint: every finished job is appended to a file, so a run that is killed (this container is restarted while idle) resumes where it stopped.
+  // The file is named by mode, games, engine version and seed; a different engine version starts afresh.
+  const verNow = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+  const CK_DIR = process.env.ISF_CKPT_DIR || path.join(os.tmpdir(), 'isf-verify'), CK = path.join(CK_DIR, `${MATCH_ONLY ? 'match' : GF_ONLY ? 'gf' : 'full'}-${GAMES}-v${verNow}-s${SEED}${ONLY ? '-' + ONLY : ''}.jsonl`);
+  fs.mkdirSync(CK_DIR, { recursive: true });
+  const keyOf = j => [j.kind, decks[j.i].d.file, j.j != null ? decks[j.j].d.file : '', j.n, j.seed].join('|'), finished = new Set();
+  const absorb = r => {
+    const j = r.job;
+    if (j.kind === 'goldfish') {
+      const g = gf.get(j.i) || { n: 0, errors: 0, kill: null, cmdr: null, mana4: 0, winBy: {}, winLines: [] }, ok = r.n - r.errors;
+      const mix = (a, b) => (a ? a.map((v, t) => v + b[t] * ok) : b.map(v => v * ok));
+      g.kill = mix(g.kill, r.kill); g.cmdr = mix(g.cmdr, r.cmdr); g.mana4 += r.mana4 * r.n; g.n += r.n; g.errors += r.errors;
+      for (const [k, v] of Object.entries(r.winBy)) g.winBy[k] = (g.winBy[k] || 0) + v * ok;
+      if (!g.winLines.length) g.winLines = r.winLines;
+      gf.set(j.i, g);
+    } else if (j.i === j.j) addField(j.i, r.a + r.b, 0, r.none, r.errors, r.n, 'mirror');
+    else { addField(j.i, r.a, r.b, r.none, r.errors, r.n, decks[j.j].d.file); addField(j.j, r.b, r.a, r.none, r.errors, r.n, decks[j.i].d.file); }
+  };
+  if (fs.existsSync(CK)) for (const line of fs.readFileSync(CK, 'utf8').split('\n')) {
+    if (!line) continue; let r; try { r = JSON.parse(line); } catch (e) { continue; }                  // a half-written last line is ignored
+    const k = keyOf(r.job); if (!finished.has(k) && jobs.some(x => keyOf(x) === k)) { finished.add(k); absorb(r); done++; }
+  }
+  if (done) console.log(`  resuming: ${done} of ${total} jobs already done (${CK})`);
+  const todo = jobs.filter(j => !finished.has(keyOf(j)));
   await new Promise((resolve, reject) => {
-    let live = 0;
-    for (let w = 0; w < Math.min(JOBS, jobs.length); w++) {
+    let live = 0, nx = 0;
+    if (!todo.length) return resolve();
+    for (let w = 0; w < Math.min(JOBS, todo.length); w++) {
       const wk = new Worker(__filename, { argv: process.argv.slice(2) }); live++;
-      const feed = () => { if (next < jobs.length) wk.postMessage(jobs[next++]); else { wk.terminate(); if (--live === 0) resolve(); } };
+      const feed = () => { if (nx < todo.length) wk.postMessage(todo[nx++]); else { wk.terminate(); if (--live === 0) resolve(); } };
       wk.on('message', r => {
         const j = r.job;
         if (r.errors && r.firstError) console.warn('  engine error in', j.kind, decks[j.i].d.file, j.j != null ? 'vs ' + decks[j.j].d.file : '', String(r.firstError).split('\n')[0]);
-        if (j.kind === 'goldfish') {
-          const g = gf.get(j.i) || { n: 0, errors: 0, kill: null, cmdr: null, mana4: 0, winBy: {}, winLines: [] }, ok = r.n - r.errors;
-          const mix = (a, b) => (a ? a.map((v, t) => v + b[t] * ok) : b.map(v => v * ok));
-          g.kill = mix(g.kill, r.kill); g.cmdr = mix(g.cmdr, r.cmdr); g.mana4 += r.mana4 * r.n; g.n += r.n; g.errors += r.errors;
-          for (const [k, v] of Object.entries(r.winBy)) g.winBy[k] = (g.winBy[k] || 0) + v * ok;
-          if (!g.winLines.length) g.winLines = r.winLines;
-          gf.set(j.i, g);
-        } else if (j.i === j.j) addField(j.i, r.a + r.b, 0, r.none, r.errors, r.n, 'mirror');
-        else { addField(j.i, r.a, r.b, r.none, r.errors, r.n, decks[j.j].d.file); addField(j.j, r.b, r.a, r.none, r.errors, r.n, decks[j.i].d.file); }
-        if (++done % 25 === 0 || done === total) process.stdout.write(`\r  ${done}/${total} jobs, ${Math.round((Date.now() - t0) / 1000)} s   `);
+        absorb(r); fs.appendFileSync(CK, JSON.stringify(r) + '\n');
+        if (++done % 5 === 0 || done === total) console.log(`  ${done}/${total} jobs, ${Math.round((Date.now() - t0) / 1000)} s`);
         feed();
       });
       wk.on('error', reject);
@@ -200,6 +219,16 @@ async function simulate() {
     }
   });
   console.log('');
+  if (MATCH_ONLY) {            // the goldfish results stay as they are; each deck gets its field win % (same fields as verdict() writes)
+    const old = JSON.parse(fs.readFileSync(OUT, 'utf8')), version = +(fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+    for (const i of pick) {
+      const v = old.decks.find(x => x.file === decks[i].d.file), f = field.get(i); if (!v || !f) throw new Error('no goldfish result or no matches for ' + decks[i].d.file);
+      v.field = { games: f.n, wins: f.w, losses: f.l, none: f.none, errors: f.errors, winRate: pct(f.w / Math.max(1, f.n - f.errors)), opponents: f.opps.has('mirror') ? 'its own mirror' : f.opps.size + ' other Commander decks' };
+    }
+    old.roundRobin = { version, date: new Date().toISOString().slice(0, 10), matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds: Math.round((Date.now() - t0) / 1000), jobs: JOBS, decks: pick.length };
+    fs.writeFileSync(OUT, JSON.stringify(old, null, 1) + '\n');
+    console.log(`round robin: ${pick.length} decks, ${perPair} matches per pair; ${old.roundRobin.seconds} s on ${JOBS} threads. Wrote ${path.relative(ROOT, OUT)}`); return;
+  }
   const results = pick.map(i => {
     const g = gf.get(i), ok = Math.max(1, g.n - g.errors);
     g.kill = g.kill.map(v => v / ok); g.cmdr = g.cmdr.map(v => v / ok); g.mana4 /= g.n; for (const k in g.winBy) g.winBy[k] /= ok;
@@ -230,22 +259,26 @@ function apply() {
     if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
-    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
-    if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
+    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; ${v.rules.gameChangers.length} Game Changers`;
+    if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : (v.stated ? `; was B${v.stated} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > v.stated ? `; the rules rule out B${v.stated}` : '') : `; B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket} (no Drive bracket given)`);
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
     const at = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l));
     lines.splice(at >= 0 ? at + 1 : 1, 0, line);
     fs.writeFileSync(file, lines.join('\n'));
-    if (v.commander && v.verified !== v.stated) console.log(`B${v.stated} -> B${v.verified}  ${v.name}: ${v.reason}`);
+    if (v.commander && v.verified !== v.stated) console.log(`${v.stated ? "B" + v.stated : "no Drive bracket"} -> B${v.verified}  ${v.name}: ${v.reason}`);
   }
   // index.json: the ranking fields the deck menus sort by (T-077). bracket = the verified one (the higher of floor and speedBracket).
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) {
     const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
-    d.medianKill = v.goldfish.medianKill; if (v.field) d.fieldWin = v.field.winRate;
+    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
+  }
+  for (const d of idx.decks) {            // the kill-turn ceiling: share of games won by turn 2, 3 and 4, and the earliest turn a game was won (T-077)
+    const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY)) || v.goldfish.by2 == null) continue;
+    d.by2 = v.goldfish.by2; d.by3 = v.goldfish.by3; d.by4 = v.goldfish.by4; d.earliestKill = v.goldfish.earliestKill;
   }
   fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)

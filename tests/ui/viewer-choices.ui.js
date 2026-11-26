@@ -9,6 +9,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   const b = await chromium.launch();
   const ctx = await b.newContext({ ...devices['iPad (gen 7) landscape'], deviceScaleFactor: 1, serviceWorkers: 'block' });
   await ctx.addInitScript(() => { try { localStorage.setItem('isf_dice', '0'); } catch (e) {} });          // the 3D dice are not under test here, and they can starve the page of frames for seconds
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); localStorage.setItem('isf_autosave', '0'); } catch (e) {} });
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const q = route.request(), c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
@@ -31,7 +32,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.click('[data-tab=table]'); await p.waitForFunction(() => window.__isf.game, null, { timeout: 30000 });
   await p.evaluate(() => { const g = window.__isf.game; const ns = ['Sol Ring', 'Forest']; ns.forEach(n => { if (g.hand.some(i => i.card.name === n)) return; const k = g.library.findIndex(i => i.card.name === n); if (k >= 0) g.hand.push(g.library.splice(k, 1)[0]); }); });
   await redraw();
-  const menu = (zone, name) => p.evaluate(([z, n]) => { const g = window.__isf.game, inst = (z === 'hand' ? g.hand : g.battlefield.map(x => x.inst || x)).find(i => (i.card || i).name === n); const iid = inst.iid; const el = document.querySelector('.table .mtg[data-iid="' + iid + '"]'); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })); return iid; }, [zone, name]);
+  const menu = (zone, name) => p.evaluate(([z, n]) => { const g = window.__isf.game, inst = (z === 'hand' ? g.hand : g.battlefield.map(x => x.inst || x)).find(i => (i.card || i).name === n); const iid = inst.iid; const el = document.querySelector('.table .mtg[data-iid="' + iid + '"]'); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })); return iid; }, [zone, name]).then(async iid => { await p.waitForTimeout(400); return iid; });          // T-102: a touch menu ignores taps in its first 350 ms (ghost-tap guard)
   await menu('hand', 'Forest'); await p.click('#ctxMenu button:has-text("Play land")'); await p.waitForTimeout(900);
   const lands = await p.evaluate(() => window.__isf.game.battlefield.filter(x => x.card.name === 'Forest').length);
   check('setup: a Forest is on the battlefield', lands >= 1);

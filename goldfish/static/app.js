@@ -162,8 +162,8 @@
   });
 
   // Display (app-wide, kept in this browser like sound and the playmat): how a tab fades in, and the order of the built-in deck menus
-  const DECK_ORDERS = ['bracket-rank', 'color-bracket', 'color-rank', 'rank'];
-  let deckOrder = 'bracket-rank', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
+  const DECK_ORDERS = ['bracket', 'color-bracket', 'color'], LEGACY_ORDER = { 'bracket-rank': 'bracket', 'color-rank': 'color', rank: 'bracket' };          // the old rank orders are gone
+  let deckOrder = 'bracket', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
   (() => {
     const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
     let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
@@ -174,8 +174,8 @@
       window.__isfPayChoose = $('#dispPayChoose').checked;          // T-089: read by the question sheet (choices.js)
     };
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
-    if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
-    if (d.payChoose) $('#dispPayChoose').checked = true;
+    { const o = LEGACY_ORDER[d.deckOrder] || d.deckOrder; if (o && DECK_ORDERS.includes(o)) $('#dispDeckOrder').value = o; }
+    $('#dispPayChoose').checked = d.payChoose !== false;          // T-099: on unless the person switched it off
     apply();
     for (const id of ['#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
       apply();
@@ -210,6 +210,7 @@
     const e = h('div', 'mtg');
     e.dataset.uid = card.uid;
     e._card = card;                                         // the card itself: hover preview and viewer use this, so cards of other decks (1v1, Pod) work too
+    e._o = o;                                               // how it was built, so a changed printing can redraw its picture in place (refreshArt)
     if (o.iid != null) e.dataset.iid = o.iid;
     const src = imgFor(card, o.face);
     const fb = () => { e.innerHTML = `<div class="fallback"><b>${esc(card.name)}</b><span>${esc(card.mana_cost)}</span><span>${esc(card.type_line)}</span></div>`; addExtras(); };
@@ -302,6 +303,17 @@
     const same = t => lf(t) === lf(S.deckText);
     selLoaded = trust || (loadingBuiltin && v) || (v && d[v] != null && same(d[v])) || (v && builtinLoaded && builtinByValue(v) && same(builtinLoaded)) ? v : (Object.keys(d).find(n => same(d[n])) || '');
     builtinLoaded = loadingBuiltin ? $('#deckText').value : (builtinLoaded && selLoaded === v && builtinByValue(v) ? builtinLoaded : '');
+    showSpeed(selLoaded && builtinByValue(selLoaded));
+  }
+  // "Fastest possible" for a built-in deck that was checked: the earliest win turn seen and the share of games won by turns 2, 3 and 4 (T-093).
+  // One compact line; what it means is behind the ⓘ.
+  const pctS = x => (x < 1 && x > 0 ? x.toFixed(1) : Math.round(x * 10) / 10) + '%';
+  { const t = $('#deckSpeed .info-tog'); if (t) t.addEventListener('click', () => { const p = $('#deckSpeed .hint'), open = p.classList.toggle('folded') === false; t.setAttribute('aria-expanded', String(open)); t.classList.toggle('on', open); }); }
+  function showSpeed(d) {
+    const el = $('#deckSpeed'); if (!el) return;
+    if (!d || d.by2 == null) { el.hidden = true; return; }
+    el.querySelector('.ds-line').textContent = `Fastest win ${d.earliestKill ? 'T' + d.earliestKill : 'after T4'} · ${pctS(d.by2)} by T2 · ${pctS(d.by3)} by T3 · ${pctS(d.by4)} by T4`;
+    el.hidden = false;
   }
   const lf = t => String(t || '').replace(/\r\n?/g, '\n');          // a saved deck with Windows line ends is the same deck
   let builtinLoaded = '';          // the text of the built-in deck that is loaded: Load deck on it again keeps the menu on it
@@ -319,7 +331,7 @@
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
       else {
         r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false;
-        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); }
+        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); renderTeach(); }          // again: the banner first drew before the menu named the deck (Save to Drive is for decks that are not built in)
         else { $('#savedDecks').value = selLoaded; dirty(); }          // refused: the deck menu names the deck that is still loaded again (and so does the remembered state)
       }
     } catch (err) {
@@ -539,12 +551,90 @@
     return `${TEACH_REPO}/issues/new?${q.toString()}`;
   }
   function teachButton(cards, label) { return `<a class="teach-btn" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  // ---- Save to Drive for teaching (T-109): a deck that is not built in, with unread lines, becomes a .txt in the built-in deck format. A phone's
+  // share sheet (Web Share, files) lets the person pick Google Drive and the ManaBox folder; elsewhere the file downloads. Nothing is sent by the app.
+  const isBuiltinLoaded = () => /^builtin:/.test(selLoaded || '');
+  function driveDeck() {
+    const cards = (S.cards || []).filter(c => c && c.name), cmd = cards.filter(c => c.commander), rest = cards.filter(c => !c.commander);
+    const cname = cmd.map(c => c.name).join(' + '), bm = /^\s*\/\/\s*bracket\s*([1-5])/im.exec(S.deckText || ''), br = bm ? bm[1] : '?';
+    const saved = selLoaded && !isBuiltinLoaded() ? selLoaded : '';
+    const clean = t => String(t).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = clean(saved || (cmd[0] ? cmd[0].name.split(',')[0] : 'Imported deck')) || 'Imported deck';
+    const file = `${name} [B${br}]${cname ? ' (' + clean(cname) + ')' : ''}.txt`;
+    const text = [`// ${name}${cname ? ' (' + cname + ')' : ''}`, br === '?' ? '// Bracket ?' : '// Bracket ' + br, '// COMMANDER', ...cmd.map(c => `${c.qty || 1} ${c.name}`), '// MAINBOARD', ...rest.map(c => `${c.qty || 1} ${c.name}`)].join('\n') + '\n';
+    return { file, text };
+  }
+  async function saveToDrive(why) {          // why: the short reason the direct upload fell back to this
+    const pre = why ? why + ' ' : '';
+    const d = driveDeck(), f = new File([d.text], d.file, { type: 'text/plain' });
+    if (navigator.canShare && navigator.canShare({ files: [f] }) && navigator.share) {
+      try { await navigator.share({ files: [f], title: d.file }); return toast(pre + 'Shared. Pick Google Drive and your ManaBox folder.'); }
+      catch (e) { if (e && e.name === 'AbortError') return; }          // closed the sheet: nothing happens; any other failure falls back to the download
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = d.file; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(pre + 'Saved ' + d.file + '. Put it in your ManaBox folder in Google Drive.');
+  }
+  // ---- Save to my Drive (T-109 phase 2): Google Identity Services (a drive.file token from the tap, kept in memory only) and the Picker (the
+  // person picks the ManaBox folder once; only its id is remembered). The scripts and drive-config.js load on the first tap, not at startup.
+  // No config, a blocked popup, offline or any error falls back to the share sheet / download of phase 1, with a short reason.
+  const DRIVE_FOLDER = 'isf_drive_folder';
+  let driveTok = null, driveTokEnd = 0;
+  const driveScripts = {};
+  const driveLoad = src => driveScripts[src] || (driveScripts[src] = new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.async = true; s.onload = res; s.onerror = () => { delete driveScripts[src]; rej(new Error('load')); }; document.head.appendChild(s); }));
+  const driveFolder = () => { try { return localStorage.getItem(DRIVE_FOLDER) || ''; } catch (e) { return ''; } };
+  const driveToken = cfg => driveTok && Date.now() < driveTokEnd ? Promise.resolve(driveTok) : new Promise((res, rej) => {
+    const tc = google.accounts.oauth2.initTokenClient({ client_id: cfg.clientId, scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: r => { if (r && r.access_token) { driveTok = r.access_token; driveTokEnd = Date.now() + ((+r.expires_in || 3600) - 60) * 1000; res(driveTok); } else rej(new Error(r && r.error === 'access_denied' ? 'denied' : 'token')); },
+      error_callback: e => rej(new Error(e && e.type === 'popup_failed_to_open' ? 'popup' : e && e.type === 'popup_closed' ? 'closed' : 'token')) });
+    tc.requestAccessToken({ prompt: '' });
+  });
+  const drivePick = (cfg, tok) => new Promise(res => {
+    const v = new google.picker.DocsView(google.picker.ViewId.FOLDERS).setSelectFolderEnabled(true).setIncludeFolders(true).setMimeTypes('application/vnd.google-apps.folder');
+    new google.picker.PickerBuilder().addView(v).setTitle('Pick your ManaBox folder').setOAuthToken(tok).setDeveloperKey(cfg.apiKey).setAppId(cfg.appId)
+      .setCallback(d => { const A = google.picker.Action; if (d.action === A.PICKED) res(d.docs && d.docs[0] && d.docs[0].id || ''); else if (d.action === A.CANCEL) res(''); }).build().setVisible(true);
+  });
+  async function driveUpload(tok, folder, d) {
+    const b = 'isf' + Math.random().toString(36).slice(2), meta = { name: d.file, parents: [folder], mimeType: 'text/plain' };
+    const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${d.text}\r\n--${b}--`;
+    return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'multipart/related; boundary=' + b }, body });
+  }
+  let driveBusy = false;
+  async function saveDirect() {
+    if (driveBusy) return; driveBusy = true;
+    try {
+      if (navigator.onLine === false) return await saveToDrive('Offline.');
+      let cfg;
+      try { await driveLoad('drive-config.js?v=' + (self.ISF_VERSION || 0)); cfg = self.ISF_DRIVE; } catch (e) { return await saveToDrive('Could not reach Google.'); }
+      if (!cfg || !cfg.clientId || !cfg.apiKey) return await saveToDrive('Drive upload is not set up.');
+      let tok;
+      try { await driveLoad('https://accounts.google.com/gsi/client'); tok = await driveToken(cfg); }
+      catch (e) { const m = e.message; if (m === 'closed') return toast('Cancelled.'); return await saveToDrive(m === 'popup' ? 'The sign-in popup was blocked.' : m === 'denied' ? 'Drive access was not allowed.' : 'Could not sign in to Google.'); }
+      let folder = driveFolder();
+      if (!folder) {
+        try { await driveLoad('https://apis.google.com/js/api.js'); await new Promise(r => gapi.load('picker', r)); folder = await drivePick(cfg, tok); }
+        catch (e) { return await saveToDrive('Could not open the folder picker.'); }
+        if (!folder) return toast('No folder picked: nothing was saved.');
+        try { localStorage.setItem(DRIVE_FOLDER, folder); } catch (e) { /* remembered only for this visit */ }
+        renderTeach();
+      }
+      let r;
+      try { r = await driveUpload(tok, folder, driveDeck()); } catch (e) { return await saveToDrive('Could not reach Drive.'); }
+      if (r.ok) return toast('Saved to your ManaBox folder. ICEYfish checks it within the hour.');
+      if (r.status === 401) { driveTok = null; return await saveToDrive('Google sign-in expired: tap again.'); }
+      if (r.status === 404) { try { localStorage.removeItem(DRIVE_FOLDER); } catch (e) { /* ignore */ } renderTeach(); return await saveToDrive('The folder was not found: you will pick it again.'); }
+      return await saveToDrive('Drive refused the file (' + r.status + ').');
+    } finally { driveBusy = false; }
+  }
   function renderTeach() {
     const box = $('#teachBanner'); if (!box) return;
     const cards = S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : [];
     if (!cards.length) { box.hidden = true; box.innerHTML = ''; return; }
     const names = cards.slice(0, 4).map(c => esc(c.name)).join(', ') + (cards.length > 4 ? ` and ${cards.length - 4} more` : '');
-    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}${isBuiltinLoaded() ? '' : '<button type="button" class="teach-btn teach-drive" id="driveSave">Save to Drive for teaching</button><button type="button" class="teach-btn teach-drive" id="driveDirect">Save to my Drive</button>' + (driveFolder() ? '<a href="#" class="teach-folder" id="driveFolder">Change folder</a>' : '')}${isBuiltinLoaded() ? '' : '<span class="hint teach-how teach-drive-how">Save it in your ManaBox folder in Google Drive; ICEYfish checks it within the hour and teaches its cards.</span>'}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    const ds = $('#driveSave'); if (ds) ds.addEventListener('click', () => saveToDrive());
+    const dd = $('#driveDirect'); if (dd) dd.addEventListener('click', saveDirect);
+    const df = $('#driveFolder'); if (df) df.addEventListener('click', e => { e.preventDefault(); try { localStorage.removeItem(DRIVE_FOLDER); } catch (x) { /* ignore */ } renderTeach(); toast('Folder forgotten: you will pick it on your next save.'); });
     box.hidden = false;
   }
   function renderCoverage() {
@@ -564,7 +654,15 @@
         const lines = h('div', 'lines');
         lines.appendChild(h('b', '', esc(c.name)));
         if (!c.a.coverage.length) lines.appendChild(h('div', 'ok', 'No rules text (vanilla).'));
-        c.a.coverage.forEach(x => lines.appendChild(h('div', x.status, pillHtml(x) + esc(x.text))));
+        c.a.coverage.filter(x => x.status !== 'neutral').forEach(x => lines.appendChild(h('div', x.status, pillHtml(x) + esc(x.text))));
+        // T-100 slice 4: the lines that do nothing on their own (neutral) fold under one header, grouped by why: "Matters only against opponents" (simulated in a Mirror match), "Not simulated", "Does nothing alone"
+        const neu = c.a.coverage.filter(x => x.status === 'neutral');
+        if (neu.length) {
+          const groups = [['Matters only against opponents', neu.filter(x => x.mirror || x.tag === 'opp')], ['Not simulated', neu.filter(x => !x.mirror && x.tag === 'unsim')], ['Does nothing alone', neu.filter(x => !x.mirror && x.tag !== 'opp' && x.tag !== 'unsim')]].filter(gp => gp[1].length);
+          const det = h('details', 'fold cov-neutral'), sm = h('summary', '', `Neutral lines <span class="fold-n">${neu.length}</span>`), body = h('div', 'fold-body');
+          groups.forEach(([title, rows]) => { body.appendChild(h('div', 'cov-neutral-head', esc(title))); rows.forEach(x => body.appendChild(h('div', 'neutral', pillHtml(x) + esc(x.text)))); });
+          det.appendChild(sm); det.appendChild(body); lines.appendChild(det);
+        }
         d.appendChild(lines);
         box.appendChild(d);
       });
@@ -594,13 +692,12 @@
   // ---- built-in decks (goldfish/static/decks, listed in decks/index.json by tools/build-deck-index.js), grouped by number of colors ----
   let BUILTIN = [];
   const COLOR_ORDER = 'WUBRG';
-  // Every built-in deck menu (Build, the mirror opponent, 1v1, Pod, the lab's opponents) is sorted by the "Deck order" setting (Display):
-  //   bracket-rank (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by rank
-  //   color-bracket: groups by color (below), inside a color by bracket (highest first), then rank
-  //   color-rank:    groups by color, inside a color by rank
-  //   rank:          one list by rank
-  // Rank = field win % (the round robin of tools/verify-brackets.js, decks/index.json "fieldWin"), highest first, then name; a deck that was
-  // never ranked comes last. Bracket = the verified one (higher of the card floor and the speed bracket, from the median kill turn).
+  // Every built-in deck menu (Build, the mirror opponent, 1v1, Pod, the lab's opponents) follows the "Deck order" setting (Display):
+  //   bracket (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by name
+  //   color-bracket:     groups by color (below), inside a color by bracket (highest first), then name
+  //   color:             groups by color, inside a color by name
+  // The bracket is the one filed on each deck (Wizards of the Coast's Commander Brackets, checked by ICEYfish: the card rules first). There is no
+  // internal strength ranking for now (the user, 2026-11-26): no win %, no kill turn, no rank in the menus until that system is rebuilt.
   // Color order (WUBRG): one color (W U B R G), two colors, three, four, five, colorless last. Inside a count the identities sort by
   // their letters in W U B R G order: WU WB WR WG UB UR UG BR BG RG; WUB WUR WUG WBR WBG WRG UBR UBG URG BRG; four colors by the color left out.
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
@@ -609,25 +706,22 @@
     UBRG: 'Four colors (no White)', WBRG: 'Four colors (no Blue)', WURG: 'Four colors (no Black)', WUBG: 'Four colors (no Red)', WUBR: 'Four colors (no Green)', WUBRG: 'Five colors', '': 'Colorless' };
   const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
   const colorRank = c => { const n = (c || '').length; return (n ? n : 9) + '.' + (n === 4 ? colorKey('WUBRG'.split('').filter(k => !c.includes(k)).join('')) : colorKey(c || '')); };
-  const byRank = (a, b) => ((b.fieldWin == null ? -1 : b.fieldWin) - (a.fieldWin == null ? -1 : a.fieldWin)) || a.name.localeCompare(b.name);
+  const byName = (a, b) => a.name.localeCompare(b.name);
   const byBracket = (a, b) => (b.bracket || 0) - (a.bracket || 0);
   const opt = (d, noColors) => {
     const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
-    bits.push(d.bracket ? 'B' + d.bracket + (d.bracketEst ? '?' : '') : '—');
-    bits.push(d.fieldWin != null ? Math.round(d.fieldWin) + '%' : '—');          // "—": not measured yet (the round robin has not run for this deck)
-    bits.push(d.medianKill != null ? 'T' + d.medianKill : '—');
+    if (d.bracket) bits.push('B' + d.bracket + (d.bracketEst ? '?' : ''));
     return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
   };
   function builtinOptions() {
     const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';
     const byColor = cmp => { const keys = [...new Set(BUILTIN.map(d => d.colors || ''))].sort((x, y) => colorRank(x).localeCompare(colorRank(y)));
       return keys.map(k => group(COLOR_NAME[k] || k, BUILTIN.filter(d => (d.colors || '') === k).sort(cmp), true)).join(''); };
-    if (deckOrder === 'rank') return group('All decks · by field win %', BUILTIN.slice().sort(byRank));
-    if (deckOrder === 'color-rank') return byColor(byRank);
-    if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byRank(a, b));
+    if (deckOrder === 'color') return byColor(byName);
+    if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byName(a, b));
     let html = '';
-    for (let b = 5; b >= 1; b--) html += group(`Bracket ${b} · ${BRACKET_NAME[b]}`, BUILTIN.filter(d => d.bracket === b).sort(byRank));
-    return html + group('No bracket', BUILTIN.filter(d => !d.bracket).sort(byRank));
+    for (let b = 5; b >= 1; b--) html += group(`Bracket ${b} · ${BRACKET_NAME[b]}`, BUILTIN.filter(d => d.bracket === b).sort(byName));
+    return html + group('No bracket', BUILTIN.filter(d => !d.bracket).sort(byName));
   }
   const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
   async function builtinText(d) {
@@ -1180,19 +1274,27 @@
     return quiet(beginTurnUI(!auto).then(() => render(true)));
   }
   // person: your turn starting (upkeep choices are asked); otherwise the autopilot's
+  // The step strip in the Practice bar: the step is kept by this page alone (the engine plays the same turn either way)
+  function stepP(k) { S.step = k; const C = window.__isfChoices; if (C) C.lightStep($('#tSteps'), window.Decide, k); }
   function beginTurnUI(person) {
     const g = S.game;
-    const done = ev => { g.turnDone = false; logTurn(g.turn); describe(ev); if (g.turn > 1) sfx('turn'); };
+    stepP('untap');
+    const done = ev => { stepP('main1'); g.turnDone = false; logTurn(g.turn); describe(ev); if (g.turn > 1) sfx('turn'); };
     if (person) return yours(x => G.beginTurn(x)).then(done);
     done(G.beginTurn(g));
     return Promise.resolve();
   }
   async function nextTurn() {
-    const g = S.game; snap();
-    if (!g.turnDone) { await doCombat(true); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
+    const g = S.game;
+    { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; }          // T-099
+    snap();
+    if (!g.turnDone) { await doCombat(true); await doPostCombat(true); stepP('end'); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
+  // T-102: an action that showed you new information (a draw, a search, a look at cards, a random result) cannot be taken back
+  const REVEALS = /draw|scry|surveil|tutor|search|shuffle|look|reveal|mill|discover|peer|explore|manifest|random|dice|coin|impulse|wheel|dig|plunder|cascade/i;
   async function play(ev) {
+    if (S.undo.length && (ev || []).some(e => e && REVEALS.test(e.type || ''))) S.undo[S.undo.length - 1].revealed = true;
     // animate a batch of events: highlight sources, float damage, then re-render
     describe(ev);
     sfxEv(ev);
@@ -1214,7 +1316,7 @@
   // mine: your own turn (Next turn). The beginning of combat is its own step first: its triggers resolve before attackers, with their
   // choices asked (Hakbal's Merfolk explore, even while Hakbal is summoning sick), then the attack, whose triggers ask too.
   async function doCombat(mine) {
-    const g = S.game;
+    const g = S.game; stepP('combat');
     if (mine) {
       const pre = await yours(x => (G.matchOver(x) ? { ev: [] } : G.previewAttack(x)).ev);
       if (pre.length) { log('<i>Beginning of combat</i>'); await play(pre); }
@@ -1237,12 +1339,13 @@
   // mine: your own turn (Next turn): the second main phase only resolves what happens by itself (its triggers); the autopilot's turn
   // also casts and uses what it would
   async function doPostCombat(mine) {
+    stepP('main2');
     const ev = mine ? await yours(x => G.postCombatTriggers(x)) : G.postCombat(S.game);
     if (ev.length) await play(ev);
   }
   async function autoTurn() {
     const g = S.game; snap();
-    if (g.turnDone) { describe(G.endTurn(g)); beginTurnUI(); render(); await sleep(delay()); }
+    if (g.turnDone) { stepP('end'); describe(G.endTurn(g)); beginTurnUI(); render(); await sleep(delay()); }
     if (!g.landThisTurn) {
       const le = G.landStep(g);
       if (le) await play([le, ...le.ev]);
@@ -1361,7 +1464,10 @@
   }
   function undo() {
     if (S.busy) return;                                                  // the table is busy (a question is open): keep the undo step for later
-    const s = S.undo.pop(); if (!s) return;
+    const top = S.undo[S.undo.length - 1]; if (!top) return;
+    const lib = S.game.library;
+    if (top.revealed || top.library.length !== lib.length || top.library.some((c, i) => c !== lib[i])) { sfx('error'); return toast("Can't undo: it showed you new cards"); }          // a draw, search or shuffle changed the library
+    const s = S.undo.pop();
     const g = S.game;
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
       floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems, ring: s.ring }, s.scal);
@@ -1547,9 +1653,57 @@
     return out;
   }
   const isRealCard = c => c && c.id && !String(c.uid).startsWith('t:') && !String(c.uid).startsWith('b:') && !String(c.uid).startsWith('preview:');
+  const isToken = c => c && String(c.uid).startsWith('t:') && !!c.name && !c.isFaceDown;
+  // T-112: a printing is the user's choice for THEIR deck, wherever its card is shown. Who owns a card on screen: a table (Duel, Pod) says
+  // true for the seat played on this device and false for the others; the loaded deck's own cards are the user's; anything else is view-only.
+  const printOwners = [], printHooks = [];
+  const ownsCard = card => {
+    for (const f of printOwners) { const r = f(card); if (r === true || r === false) return r; }
+    return isDeckCard(card);
+  };
+  const LINE_RE = /^\s*(?:(?<qty>\d+)\s*[xX]?\s+)?(?<name>.+?)(?:\s+\((?<set>[A-Za-z0-9]{2,6})\)(?:\s+(?<cn>[A-Za-z0-9\-★]+))?)?(?<tags>(?:\s+\*[^*]+\*|\s+\[[^\]]*\]|\s+#\S+)*)\s*$/;
+  // the decklist with the printing written on the card's main-deck and commander lines: "1 Sol Ring (C21) 263"
+  function pinInText(text, names, p) {
+    const lines = text.split(/\r?\n/); let changed = false;
+    const inMain = i => { const a = Source.parseDecklist(lines.slice(0, i + 1).join('\n')), b = Source.parseDecklist(lines.slice(0, i).join('\n')); return a.length > b.length; };
+    lines.forEach((ln, i) => {
+      const e = Source.parseDecklist(ln)[0]; if (!e || !names.has(nameKey(e.name)) || !inMain(i)) return;
+      const m = LINE_RE.exec(ln); if (!m) return;
+      const lead = ln.match(/^\s*(?:\d+\s*[xX]?\s+)?/)[0], out = `${lead}${m.groups.name} (${p.set.toUpperCase()}) ${p.cn}${m.groups.tags || ''}`;
+      if (out !== ln) { lines[i] = out; changed = true; }
+    });
+    return changed ? lines.join('\n') : text;
+  }
+  // The saved deck, the box and the remembered list all take the printing, so a reload (or loading the deck again) brings it back.
+  function savePrinting(card, p) {
+    const text = S.deckText || $('#deckText').value; if (!text) return;
+    const names = new Set([card.name].concat(S.cards.filter(x => x.name === card.name).map(x => x.input_name)).filter(Boolean).map(nameKey));
+    const out = pinInText(text, names, p); if (out === text) return;
+    const lfn = t => String(t || '').replace(/\r\n/g, '\n'), sel = $('#savedDecks').value, all = getDecks();
+    if (sel && all[sel] != null && lfn(all[sel]) === lfn(text)) { const meta = getMeta(); all[sel] = out; meta[sel] = Object.assign({}, meta[sel], { saved: Date.now() }); putDecks(all, meta); }
+    S.deckText = out; $('#deckText').value = out; localStorage.setItem('gf_last', out);
+  }
+  // Every copy of the card the user owns takes the printing's art: the loaded list, the game on the table, the opening hand, and (through
+  // printHooks) the games of Duel and Pod. Only pictures and the printing's name change; nothing the engine reads off the card does.
+  function retarget(c, p) {
+    c.id = p.id; c.set = p.set; c.cn = p.cn; c.images = []; c.remote_images = p.imgs;
+    const b = c.a && c.a.backCard; if (b) { b.images = []; b.remote_images = p.imgs.slice(1, 2); }
+  }
+  // redraw the pictures already on the page, in place (the elements stay, so nothing about the tables moves)
+  function refreshArt(p) {
+    document.querySelectorAll('.mtg').forEach(e => {
+      const c = cardOf(e); if (!c || c.id !== p.id || !isRealCard(c)) return;
+      const o = e._o || {}, face = e._face != null ? e._face : (e.classList.contains('flip-back') ? 1 : (o.face || 0)), src = imgFor(c, face), img = e.querySelector(':scope > img');
+      if (!src) return;
+      if (img) { img.dataset.tried = ''; img.src = src; } else { const fresh = cardEl(c, Object.assign({}, o, { face })); e.replaceChildren(...fresh.childNodes); }
+    });
+  }
   function applyPrinting(card, p) {
-    card.id = p.id; card.set = p.set; card.cn = p.cn; card.images = []; card.remote_images = p.imgs;
-    elCache.clear(); renderDeck(); if (S.game) render();
+    const same = x => x && x.name === card.name, seen = new Set();
+    [card].concat(S.cards || [], S.deck ? S.deck.unique : [], S.game && S.game.deck ? S.game.deck.unique : [], H && H.g && H.g.deck ? H.g.deck.unique : [],
+      printHooks.flatMap(f => f(card.name) || [])).filter(same).forEach(c => { if (!seen.has(c)) { seen.add(c); retarget(c, p); } });
+    savePrinting(card, p);
+    refreshArt(p);
     toast(`Now using the ${p.setName} printing`);
   }
   lbProviders.push((card, el) => { const m = el.closest && el.closest('.table') && el.dataset.iid != null ? ctxModel(el, true) : null; return m ? m.items : null; });
@@ -1612,8 +1766,10 @@
     };
     const cur = sel || null;
     paintShop(cur);
-    if (isRealCard(card)) {
-      pr.appendChild(h('div', 'lb-sec', 'Printings'));
+    if (isRealCard(card) || isToken(card)) {
+      const mine = isRealCard(card) && ownsCard(card);          // yours: one tap switches it everywhere. An opponent's card or a token: a read-only look
+      pr.classList.add(mine ? 'mine' : 'view');
+      pr.appendChild(h('div', 'lb-sec', mine ? 'Printings <small>tap one to use it in your deck</small>' : 'Printings <small>view only</small>'));
       const strip = h('div', 'lb-strip', '<span class="hint">Loading printings…</span>'); pr.appendChild(strip);
       fetchPrints(card).then(list => {
         if (lb.list[lb.i] !== card) return;
@@ -1624,16 +1780,14 @@
           const on = sel ? sel.id === p.id : idx === have;
           const b = h('button', 'lb-print' + (on ? ' on' : ''), `<img alt="" loading="lazy" src="${esc(p.thumb || p.imgs[0])}"><span>${esc(p.set.toUpperCase())} · ${esc(p.cn)}</span><small>${p.usd ? '$' + esc(p.usd) : '—'}</small>`);
           b.title = `${p.setName} (${p.date})`;
-          b.addEventListener('click', () => { lb.sel = idx === have && !sel ? null : p; const sc = lightbox.scrollTop, st = strip.scrollLeft; paintLb(); lightbox.scrollTop = sc; const s2 = lightbox.querySelector('.lb-strip'); if (s2) s2.scrollLeft = st; });
+          b.addEventListener('click', () => {
+            if (mine) { if (!on || sel) { applyPrinting(card, p); lb.sel = null; } }          // yours: switch at once (the viewer, the deck and every table follow)
+            else lb.sel = idx === have && !sel ? null : p;                                    // not yours: only look
+            const sc = lightbox.scrollTop, st = strip.scrollLeft; paintLb(); lightbox.scrollTop = sc; const s2 = lightbox.querySelector('.lb-strip'); if (s2) s2.scrollLeft = st; });
           strip.appendChild(b);
           if (on && sel) paintShop(p);
         });
         if (!sel) paintShop(have >= 0 ? list[have] : null);
-        if (sel && S.deck && S.deck.unique.includes(card) && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {   // only for cards of the loaded deck
-          const use = h('button', 'primary lb-use', `Use this printing in my deck`);
-          use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
-          pr.appendChild(use);
-        }
         const t = strip.querySelector('.on');          // bring the chosen printing to the middle of the strip, and only the strip: the viewer behind it must not scroll off the card
         if (t) { const sr = strip.getBoundingClientRect(), tr = t.getBoundingClientRect(); strip.scrollLeft += (tr.left + tr.width / 2) - (sr.left + sr.width / 2); strip.scrollTop += (tr.top + tr.height / 2) - (sr.top + sr.height / 2); }
       });
@@ -1725,7 +1879,29 @@
   // context menu
   const ctx = $('#ctxMenu');
   const ctxBack = h('div', 'ctx-backdrop'); document.body.appendChild(ctxBack);
-  function closeCtx() { ctx.style.display = 'none'; ctxBack.classList.remove('show'); }
+  // T-102: on a touch device (phone or iPad) a tap only SELECTS a card: it is lifted and glows, an enlarged copy shows above the
+  // options sheet, and nothing happens until an option is tapped. iPad and PC keep their own flow.
+  const phoneQ = matchMedia('(pointer: coarse)');          // every touch device (phone and iPad); a mouse keeps its own flow
+  const isPhoneTouch = () => phoneQ.matches;
+  let selEl = null, selPrev = null, selAt = 0;
+  function clearSel() { if (selEl) selEl.classList.remove('sel-card'); selEl = null; if (selPrev) { selPrev.remove(); selPrev = null; } ctx.classList.remove('with-sel'); }
+  function showSel(m, card) {
+    clearSel(); if (!isPhoneTouch() || !card) return;
+    selEl = m; m.classList.add('sel-card'); selAt = Date.now();
+    selPrev = h('div', 'sel-preview'); selPrev.appendChild(cardEl(card, { face: 0 })); document.body.appendChild(selPrev);
+    ctx.classList.add('with-sel');
+    const sheet = ctx.offsetHeight, boxH = Math.max(120, innerHeight - sheet - 20);          // the card gets the room above the options, never behind them
+    selPrev.style.height = boxH + 'px'; selPrev.style.setProperty('--selw', Math.floor(Math.min(innerWidth * .8, 440, boxH * .7176)) + 'px');
+  }
+  // select a card and offer options: items are [label, run, style]; used by Duel and Pod
+  function selectCard(m, card, items) {
+    ctx.innerHTML = ''; ctx.appendChild(h('div', 'ctx-title', esc(card.name)));
+    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', esc(label)); b.addEventListener('click', ev => { ev.stopPropagation(); if (Date.now() - selAt < 350) return; closeCtx(); fn(); }); ctx.appendChild(b); });
+    const cancel = h('button', 'ctx-cancel', 'Cancel'); cancel.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); }); ctx.appendChild(cancel);
+    ctxBack.classList.add('show'); ctx.style.display = 'block'; ctx.scrollTop = 0;
+    showSel(m, card);
+  }
+  function closeCtx() { ctx.style.display = 'none'; ctxBack.classList.remove('show'); clearSel(); }
   // tapping anywhere off the menu closes it, and only closes it (the tap does not reach the card underneath)
   ctxBack.addEventListener('click', e => { e.stopPropagation(); closeCtx(); });
   ctxBack.addEventListener('contextmenu', e => { e.preventDefault(); closeCtx(); });
@@ -1804,10 +1980,11 @@
     const { inst, items } = model;
     ctx.innerHTML = '';
     ctx.appendChild(h('div', 'ctx-title', esc(inst.card.name)));
-    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', label); b.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); fn(); }); ctx.appendChild(b); });
+    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', label); b.addEventListener('click', ev => { ev.stopPropagation(); if (selEl && Date.now() - selAt < 350) return; closeCtx(); fn(); }); ctx.appendChild(b); });
     const cancel = h('button', 'ctx-cancel', 'Back'); cancel.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); }); ctx.appendChild(cancel);
     ctxBack.classList.add('show');
     ctx.style.display = 'block'; ctx.scrollTop = 0;
+    showSel(m, inst.card);
     ctx.style.left = Math.max(8, Math.min(cx, innerWidth - ctx.offsetWidth - 8)) + 'px'; ctx.style.top = Math.max(8, Math.min(cy, innerHeight - ctx.offsetHeight - 10)) + 'px';
   }
 
@@ -1903,6 +2080,7 @@
     for (const k of Array.from(elCache.keys())) if (!used.has(k)) elCache.delete(k);
 
     $('#cLibrary').textContent = g.library.length;
+    stepP(S.step || null);
     $('#hTurn').textContent = g.turn;
     $('#hLife').textContent = Math.max(0, g.opts.oppLife - g.damage);
     $('#hMyLife').textContent = g.life;
@@ -1928,6 +2106,8 @@
       g2.appendChild(pip); mp.appendChild(g2);
     });
     if (!units.length && !inf) mp.innerHTML = '<span class="hint">none</span>';
+    { const fl = G.floatingLoss(g);          // T-099: floating mana is shown, and the warning says what the end of the turn empties
+      if (fl.n && !inf) { const w = h('span', 'mana-warn', `⚠ ${fl.n} floating`); w.title = `${fl.n} mana ${fl.n === 1 ? 'is' : 'are'} floating and will be lost at ${fl.when}. Spend ${fl.n === 1 ? 'it' : 'them'} on a spell or ability first.`; w.setAttribute('role', 'status'); mp.appendChild(w); } }
 
     if (first) return;
     const dur = ($('#tFast').checked ? 200 : 420) * slow();
@@ -3471,7 +3651,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, isPhoneTouch, selectCard, cardOf, addViewerActions: f => lbProviders.push(f), addPrintOwner: f => printOwners.push(f), addPrintHook: f => printHooks.push(f), refreshArt, applyPrinting, abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

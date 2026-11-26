@@ -7,6 +7,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 1000 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const r = route.request();
@@ -55,7 +56,8 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('...and no stale creature face is left on the table', stale === 0, stale);
   await p.click('#tUndo'); await p.waitForTimeout(500);
   const undone = await p.evaluate(() => { const g = window.__isf.game; return g.battlefield.some(q => q.transformed); });
-  check('Undo takes the transform back (Sorin is a creature again)', !undone);
+  const toast = await p.evaluate(() => (document.querySelector('.toast') || {}).innerText || '');
+  check('Undo is refused after the turn drew a card (T-102), so the transform stays', undone && /Can't undo/.test(toast), toast);
   await p.screenshot({ path: require('path').join(require('os').tmpdir(), 'sorin-ui.png') });
   console.log('errors:', errs);
   check('no page errors', errs.length === 0);

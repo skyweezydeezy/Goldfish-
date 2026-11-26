@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="versus.css">
 <link rel="stylesheet" href="choices.css">
 <link rel="stylesheet" href="tutorial.css">
+<link rel="stylesheet" href="puzzle.css">
 </head>
 <body data-view="deck">
 <header class="topbar">
@@ -29,6 +30,7 @@
     <button class="tab" data-tab="odds" title="The chance of drawing the cards you need, turn by turn">Odds</button>
     <button class="tab" data-tab="duel" title="Play one opponent, Arena-style">Duel</button>
     <button class="tab" data-tab="pod" title="Play a four-player Commander pod">Pod</button>
+    <button class="tab" data-tab="puzzle" title="Puzzles that teach how cards work: a fast win or an endgame">Puzzle</button>
   </nav>
   <div id="mirrorStatus" class="status-pill">checking card data…</div>
   <button id="appVersion" class="status-pill app-ver" type="button" hidden title="ICEYfish version"></button>
@@ -53,6 +55,8 @@
           <select id="savedDecks" class="ghost"><option value="">Saved decks…</option></select>
           <button id="manageDecks" class="ghost" title="Rename, copy, export or delete saved decks">Manage</button>
         </div>
+        <div id="deckSpeed" class="deck-speed" hidden><span class="ds-line"></span> <button type="button" class="info-tog" title="What is this?" aria-expanded="false" aria-label="What is this?">i</button>
+          <p class="hint folded">The earliest turn this deck won in ICEYfish's goldfish games (the best case), and the share of games won by turn 2, 3 and 4. They come from the deck's last check; the median kill turn is in the deck menu.</p></div>
         <div id="deckMsgs"></div>
         <details class="settings" open>
           <summary>Goldfish rules</summary>
@@ -85,9 +89,9 @@
           <div class="grid2">
             <label title="How a tab appears when you switch to it">Tab switch
               <select id="dispFade"><option value="smooth">Smooth fade</option><option value="quick">Quick fade</option><option value="off">Instant</option></select></label>
-            <label title="How the built-in decks are ordered in every deck menu. Rank is the deck's win % in a round robin against the other built-in decks; the bracket is the verified one (its card rules, or its median kill turn if that is higher)">Deck order
-              <select id="dispDeckOrder"><option value="bracket-rank">Bracket, then rank</option><option value="color-bracket">Color, then bracket</option><option value="color-rank">Color, then rank</option><option value="rank">Rank only</option></select></label>
-            <label class="check" title="When you pay a cost in Practice, Duel, Pod or Play a friend, pick which lands, mana creatures, Treasures and floating mana pay, and the colour each makes. Off: one tap, the autopilot taps for you."><input id="dispPayChoose" type="checkbox"> Choose how I pay mana</label>
+            <label title="How the built-in decks are ordered in every deck menu. The bracket is the official Commander Bracket filed on each deck">Deck order
+              <select id="dispDeckOrder"><option value="bracket">Bracket</option><option value="color-bracket">Color, then bracket</option><option value="color">Color</option></select></label>
+            <label class="check" title="When you pay a cost in Practice, Duel, Pod or Play a friend, pick which lands, mana creatures, Treasures and floating mana pay, and the colour each makes. Off: nothing is asked and the payment that wastes no mana is made for you."><input id="dispPayChoose" type="checkbox" checked> Choose how I pay mana</label>
           </div>
         </details>
       </div>
@@ -161,6 +165,7 @@
     </div>
     <div class="table-controls row wrap">
       <button class="ghost focus-menu" type="button" title="Menu: the tabs, full screen" aria-label="Menu">☰</button>
+      <span id="tSteps" class="vs-steps"><i data-step="untap" data-t="Untap">Untap</i><i data-step="upkeep" data-t="Upkeep">Upkeep</i><i data-step="draw" data-t="Draw">Draw</i><i data-step="main1" data-t="Main">Main</i><i data-step="combat" data-t="Combat">Combat</i><i data-step="main2" data-t="Main 2">Main 2</i><i data-step="end" data-t="End">End</i></span>
       <button id="tNew" class="primary" title="Start a new game">🎲<span class="bl"> New game</span></button>
       <button id="tAuto" title="Let the autopilot take this whole turn">▶<span class="bl"> Autopilot turn</span></button>
       <button id="tAutoTo" title="Let the autopilot play up to this turn">⏩<span class="bl"> Autopilot to turn</span> <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
@@ -377,6 +382,7 @@
   <!-- ============ 1v1 and POD (versus.js) ============ -->
   <section id="tab-duel" class="panel"></section>
   <section id="tab-pod" class="panel"></section>
+  <section id="tab-puzzle" class="panel"></section>
 </main>
 
 <footer class="site-footer">
@@ -445,6 +451,8 @@
 <script src="remember.js"></script>
 <script src="install.js"></script>
 <script src="looks.js"></script>
+<script src="puzzle-core.js"></script>
+<script src="puzzle.js"></script>
 <script src="tutorial.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>

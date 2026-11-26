@@ -2,10 +2,83 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 217,
+      "lines": [
+        "Mana Tithe now gets cast against you and asks if you'll pay {1}. Demonic Consultation lets you name the card, even one that isn't in your library.",
+        "Basalt and Grim Monolith loops can be played by hand: untap from the card menu, then pick how much mana to make. Port Razer gets its extra combat."
+      ]
+    },
+    {
+      "v": 216,
+      "lines": [
+        "Puzzles: the Medium and Hard fast wins now end four different ways (Thassa's Oracle, Jace, Laboratory Maniac, a Vito drain), and you cast every piece yourself; the order matters."
+      ]
+    },
+    {
+      "v": 215,
+      "lines": [
+        "New deck: Winota (Winota, Joiner of Forces), Bracket 4.",
+        "More cards read exactly: Aether Vial, Breath of Fury, Clarion Conqueror, Spirit of the Labyrinth, Greymond, Slicer, Zurzoth, High Noon and others. Signal Pest's battle cry works now."
+      ]
+    },
+    {
+      "v": 214,
+      "lines": [
+        "The Puzzle tab is back with 12 new puzzles: win by turn 2–3 from your opening hand, or find the one line that finishes a late game. Easy, Medium and Hard; the opponent's hand stays hidden.",
+        "A wrong play plays out; afterwards you get hints (never the answer), and every puzzle ends with the mechanic it teaches."
+      ]
+    },
+    {
+      "v": 213,
+      "lines": [
+        "More cards answer spells as they're cast: Return the Favor, Wandering Archaic, Ricochet Trap, Hydroelectric Specimen, Disrupting Shoal, Orim's Chant, Autumn's Veil, Royal Treatment and Legolas's Quick Reflexes. Boromir counters spells cast without mana.",
+        "Redirect Lightning can now redirect bounce and burn spells too."
+      ]
+    },
+    {
+      "v": 212,
+      "lines": [
+        "Two new Avatar decks: Heavy Metal Landfall (Toph, the First Metalbender, Bracket 3) and Landslide Victory (Bumi, Unleashed, Bracket 4).",
+        "Decks are listed by their official bracket (or by color); win rates and kill turns are gone from the deck menus for now.",
+        "Cards can now answer a spell as it's cast: Redirect Lightning and Hullbreaker Horror. Also read exactly: Selvala, Hanweir Battlements, Sword of the Paruns, Teysa, Firestorm, Avarice Totem and 11 more.",
+        "The Puzzle tab is hidden while the puzzles are rebuilt."
+      ]
+    },
+    {
+      "v": 211,
+      "lines": [
+        "On phones and iPads a tap selects a card first (lifted and enlarged with its options); nothing is played until you tap an option. Undo can't take back a play that revealed new cards.",
+        "Change a card's printing from the card viewer anywhere (Build, Practice, Duel, Pod): one tap switches it everywhere the deck shows it.",
+        "\"Save to my Drive\" puts a pasted deck straight into your Drive folder for teaching. New: the Puzzle tab (win by turn 2, Easy to Hard, with score and streaks) and a \"The fastest deck\" tutorial.",
+        "Floating mana now empties at the end of each step and phase, and more cards are read exactly (Clock of Omens, Liquimetal, Cursed Mirror and others)."
+      ]
+    },
+    {
+      "v": 210,
+      "lines": [
+        "More cards read exactly: Noxious Gearhulk gains life equal to the destroyed creature's toughness, Heliod's Intervention destroys X targets, Demon of Fate's Design casts enchantments for life, Ramos makes mana, River Kelpie and Neyali (graveyards and attacking tokens)."
+      ]
+    },
+    {
+      "v": 209,
+      "lines": [
+        "You choose which lands and sources pay (on by default, in Settings), with no wasted mana and a warning before floating mana is lost. Rhystic Study and Smothering Tithe taxes use the same sheet.",
+        "The top bar is sharp, the step strip stays still on every phone, and Practice shows the steps too. The default table felt has no glow.",
+        "Firebending, Waterbend and Airbend work as written."
+      ]
+    },
+    {
+      "v": 208,
+      "lines": [
+        "Signets make mana now (pay {1}, get two colours). They were doing nothing before, so the 11 decks that play them get faster.",
+        "A deck you paste that has cards ICEYfish doesn't fully read gets a \"Save to Drive for teaching\" button: save it in your ManaBox folder and its cards are taught within the hour."
+      ]
+    },
+    {
       "v": 207,
       "lines": [
         "Earthbend works as written: any land you control (stack counters on one already earthbent), chosen as it's cast, and it comes back tapped once. Toph, the First Metalbender turns artifacts into lands.",
-        "Twinflame copies as many of your creatures as you pay Strive for. Teferi, Temporal Archmage's \u22121 untaps four permanents.",
+        "Twinflame copies as many of your creatures as you pay Strive for. Teferi, Temporal Archmage's −1 untaps four permanents.",
         "Settings: the Spacing choice is gone; everyone gets Standard."
       ]
     },

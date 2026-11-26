@@ -1,6 +1,6 @@
 // Court of Ruin (Kefka, Court Mage)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T9, 10% by T5, 23.7% by T7; field win 48.5%; 24 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T9, 10% by T5, 23.7% by T7; 24 Game Changers; B4 confirmed
 // COMMANDER
 1 Kefka, Court Mage (FIN) 543
 // MAINBOARD

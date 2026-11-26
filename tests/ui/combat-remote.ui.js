@@ -18,6 +18,7 @@ const tap = async (p, sel, ms) => { await wait(p, s => { const e = document.quer
   const errs = [], broker = mockBroker();
   const device = async (label, text) => {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 950 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false, sfx: false, music: false })); } catch (e) {} });
     await ctx.routeWebSocket(/broker\.(hivemq\.com|emqx\.io)/, ws => broker.attach(ws, label));
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {

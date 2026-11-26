@@ -1,0 +1,104 @@
+/* ICEYfish - Puzzle (puzzle.js, T-115): the Puzzle tab */
+.pz-body { max-width: 980px; margin: 0 auto; padding: 4px 2px 40px; }
+.pz-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 8px; }
+.pz-head h2 { margin: 0; flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-head button { min-height: 36px; padding: 4px 12px; flex: 0 0 auto; }
+.pz-score { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 12px; margin: 4px 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); color: var(--text-secondary); font-size: 13px; }
+.pz-score b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.pz-chip.nowin { opacity: .8; border-style: dashed; }
+.pz-streak { font-size: 12px; }
+.pz-sub { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+.pz-goal { margin: 6px 0; color: var(--text-secondary); font-size: 14px; }
+.pz-err { color: var(--warning); }
+.pz-modes { display: flex; gap: 6px; margin: 4px 0 10px; }
+.pz-modes button { flex: 1; min-height: 38px; }
+.pz-modes button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pz-line, .pz-deck { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); margin: 8px 0; }
+.pz-deck { background: var(--surface-2); margin: 6px 8px; }
+.pz-line > summary, .pz-deck > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; min-height: 44px; list-style: none; }
+.pz-line > summary::-webkit-details-marker, .pz-deck > summary::-webkit-details-marker { display: none; }
+.pz-line > summary::before, .pz-deck > summary::before { content: '▸'; color: var(--muted); }
+.pz-line[open] > summary::before, .pz-deck[open] > summary::before { content: '▾'; }
+.pz-n { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.pz-linetext { margin: 0 12px 6px; }
+.pz-hand { padding: 8px 12px 10px; border-top: 1px solid var(--border); }
+.pz-when { font-size: 12px; color: var(--ice); margin-bottom: 4px; }
+.pz-cards { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.pz-cards span { font-size: 11px; padding: 1px 6px; border-radius: 99px; background: var(--surface-3); color: var(--text-secondary); }
+.pz-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pz-chip { min-height: 36px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface-3); cursor: pointer; font-size: 13px; }
+.pz-chip.solved { border-color: var(--good); }
+.pz-chip.solved .pz-tick { color: var(--good); }
+.pz-opp { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); padding: 8px 10px; margin: 6px 0; }
+.pz-oh { font-size: 13px; }
+.pz-oh span { color: var(--ice-2); }
+.pz-why { margin: 4px 0 2px; font-size: 13px; color: var(--text-secondary); }
+.pz-meta { margin: 4px 0; font-size: 12px; color: var(--muted); }
+.pz-tiles { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.pz-t { width: 64px; flex: 0 0 auto; border-radius: 5px; }
+.pz-t img { width: 100%; display: block; border-radius: 5px; }
+.pz-t .fallback { font-size: 9px; padding: 3px; }
+.pz-opp-t { width: 56px; }
+.pz-bf-t { width: 46px; }
+.pz-bf-t.tapped { transform: rotate(90deg); margin: 0 8px; opacity: .8; }
+.pz-table { border: 1px solid var(--border); border-radius: var(--radius); background: var(--felt); padding: 8px 10px; margin: 8px 0; }
+.pz-zone { margin-bottom: 8px; }
+.pz-zh { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.pz-card { padding: 0; border: 2px solid transparent; border-radius: 7px; background: none; cursor: pointer; }
+.pz-card:disabled { cursor: default; opacity: .85; }
+.pz-card.can { border-color: rgba(143,216,255,.45); }
+.pz-card.sel { border-color: var(--warning); box-shadow: 0 0 0 2px rgba(250,178,25,.35); }
+.pz-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; position: sticky; bottom: 0; background: var(--page); padding: 8px 0; z-index: 2; }
+.pz-bar button { min-height: 42px; padding: 6px 14px; }
+.pz-bar .pz-hinttext, .pz-bar .pz-busy { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--text-secondary); }
+.pz-banner { border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.pz-banner.win { background: rgba(12,163,12,.16); border: 1px solid var(--good); }
+.pz-banner.lose { background: rgba(250,178,25,.12); border: 1px solid var(--warning); }
+.pz-banner span { font-size: 12px; color: var(--text-secondary); }
+.pz-sol { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); padding: 8px 12px; font-size: 13px; }
+.pz-sol p { margin: 4px 0; }
+.pz-after { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.pz-after button { min-height: 42px; padding: 6px 16px; }
+.pz-log { margin-top: 10px; font-size: 12px; color: var(--text-secondary); }
+.pz-log ol { margin: 6px 0 0; padding-left: 20px; }
+.pz-fold { margin: 4px 0 8px; }
+@media (max-width: 520px) {
+  .pz-t { width: 56px; } .pz-opp-t { width: 48px; } .pz-bf-t { width: 40px; }
+  .pz-bar button { flex: 1 1 calc(50% - 8px); padding: 6px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .pz * { transition: none !important; animation: none !important; } }
+
+.pz-lessonnote { margin: 6px 0; padding: 6px 10px; border-radius: var(--radius); background: rgba(250,178,25,.12); border: 1px solid var(--warning); font-size: 13px; }
+
+/* T-115: picker rows, hidden hand, permanents, hints and lesson */
+.pz-type { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); margin: 8px 0; }
+.pz-type > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; min-height: 44px; list-style: none; }
+.pz-type > summary::-webkit-details-marker { display: none; }
+.pz-type > summary::before { content: '▸'; color: var(--muted); }
+.pz-type[open] > summary::before { content: '▾'; }
+.pz-typetext { margin: 0 12px 6px; }
+.pz-level { padding: 4px 12px 8px; }
+.pz-lh { font-size: 12px; color: var(--ice); margin: 4px 0; }
+.pz-rows { display: flex; flex-direction: column; gap: 6px; }
+.pz-pick { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-3); cursor: pointer; text-align: left; font-size: 14px; }
+.pz-pick.solved { border-color: var(--good); }
+.pz-pick.solved .pz-tick { color: var(--good); }
+.pz-pt { flex: 1; min-width: 0; }
+.pz-lv { font-size: 11px; color: var(--muted); }
+.pz-premise { margin: 4px 0 6px; font-size: 14px; color: var(--text-primary); }
+.pz-sub2 { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.pz-life { font-variant-numeric: tabular-nums; color: var(--ice-2); }
+.pz-perm { padding: 0; border: 2px solid transparent; border-radius: 7px; background: none; cursor: pointer; }
+.pz-perm:disabled { cursor: default; }
+.pz-perm.can { border-color: rgba(143,216,255,.45); }
+.pz-perm.sel, .pz-perm.picked { border-color: var(--warning); box-shadow: 0 0 0 2px rgba(250,178,25,.35); }
+.pz-perm.tapped .pz-t { transform: rotate(90deg); margin: 0 8px; opacity: .8; }
+.pz-opp-t.tapped { transform: rotate(90deg); margin: 0 8px; opacity: .8; }
+.pz-hint2 { font-size: 12px; color: var(--muted); align-self: center; }
+.pz-hints { margin: 8px 0; }
+.pz-hintlist { margin: 6px 0 0; padding-left: 20px; font-size: 14px; color: var(--text-secondary); }
+.pz-hintlist li { margin: 4px 0; }
+.pz-lesson { margin: 8px 0; }
+.pz-lbody { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); padding: 8px 12px; margin-top: 6px; font-size: 14px; }
+.pz-lbody p { margin: 4px 0; }
+@media (max-width: 520px) { .pz-bf-t { width: 44px; } }

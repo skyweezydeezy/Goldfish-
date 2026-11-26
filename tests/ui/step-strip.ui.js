@@ -91,20 +91,21 @@ async function acrossSteps(p, label, barSel, stripSel, narrow) {
     if (shot) await p.evaluate(light('combat')), await p.locator('#tab-duel .vs-bar').screenshot({ path: path.join(shot, `duel-${w}x${h}.png`) });
     if (phone) {
       // a game you play yourself, with the turn clock: the whole top of the screen (bar items, speed slider, clock) keeps every box while turns pass
-      await p.evaluate(() => { const v = document.querySelector('#tab-duel .vs-you'); if (v) v.value = 'you'; });
+      await p.evaluate(() => { const v = document.querySelector('#tab-duel .vs-you'); if (v) v.value = 'human'; });
       await p.evaluate(() => document.querySelector('#tab-duel .vs-new').click()); await p.waitForTimeout(800);
       const snaps = new Set(), hints = new Set(); let clockSeen = new Set();
       for (let j = 0; j < 110; j++) {
         const r = await p.evaluate(() => {
           const top = document.querySelector('#tab-duel .vs-top'); if (!top) return null;
           const t0 = top.getBoundingClientRect(), bar = top.querySelector('.vs-bar'), b0 = bar.getBoundingClientRect();
-          const rc = (e, o) => { const b = e.getBoundingClientRect(); return [(e.className || e.tagName).toString().slice(0, 24), Math.round((b.x - o.x) * 10) / 10, Math.round((b.y - o.y) * 10) / 10, Math.round(b.width * 10) / 10, Math.round(b.height * 10) / 10]; };
+          const rc = (e, o) => { const b = e.getBoundingClientRect(); return [(e.className || e.tagName).toString().split(' ').filter(c => !/^(still|low)$/.test(c)).join(' ').slice(0, 24), Math.round((b.x - o.x) * 10) / 10, Math.round((b.y - o.y) * 10) / 10, Math.round(b.width * 10) / 10, Math.round(b.height * 10) / 10]; };
           const vis = e => e.offsetWidth > 0 && getComputedStyle(e).display !== 'none';
           const h = bar.querySelector('.hint:not(.vs-note)'), ck = top.querySelector('.vs-clock');
-          return { boxes: [...top.children].filter(e => vis(e) && !e.classList.contains('vs-info')).map(e => rc(e, t0)).concat([...bar.children].filter(vis).map(e => rc(e, b0))),
+          return { boxes: [...top.children].filter(e => vis(e) && !e.classList.contains('vs-info') && !e.classList.contains('vs-note')).map(e => rc(e, t0)).concat([...bar.children].filter(e => vis(e) && !e.classList.contains('vs-note')).map(e => rc(e, b0))),
             hint: h ? h.textContent : '', clock: ck && getComputedStyle(ck).visibility === 'visible' && vis(ck) ? 1 : 0, over: !bar.querySelector('.vs-play, .hint') };
         });
-        if (!r) break; if (r.over) break;
+        if (!r) break; if (!r.hint) { await p.waitForTimeout(120); continue; }          // still the bar of the game before
+        if (r.over) break;
         snaps.add(JSON.stringify(r.boxes)); if (r.hint) hints.add(r.hint); clockSeen.add(r.clock);
         await p.evaluate(() => { for (const c of ['.vs-keep:not([disabled])', '.vs-pass', '.vs-noattack', '.vs-attack-none', '.vs-block-none', '.vs-nostop']) { const e = document.querySelector('#tab-duel ' + c); if (e) { e.click(); break; } } });
         await p.waitForTimeout(120);

@@ -223,7 +223,7 @@
   body[data-view=duel] .topbar .brand, body[data-view=duel] .topbar .status-pill, body[data-view=pod] .topbar .brand, body[data-view=pod] .topbar .status-pill { display: none; }
 }
 
-/* =====================================================================
+/* ==============================================================
    One screen: every player's cards in play are always in view.
    The table fills the screen under the top bar. Each player's two rows share the height they are given and the cards
    size themselves to their row, so nothing in play is ever scrolled away; tap any card to see it full size.
@@ -320,6 +320,10 @@
 .vs-die.b .d20-face { background: linear-gradient(160deg, #ffe7a3, #e2a92c 60%, #9c6b0f); }
 .vs-die.c .d20-face { background: linear-gradient(160deg, #b8f2c8, #3fae66 60%, #1d6b3a); }
 .vs-die.d .d20-face { background: linear-gradient(160deg, #ffd0ee, #d066ad 60%, #8a2f6c); }
+.vs-flat { width: 70px; height: 70px; display: grid; place-items: center; font: 800 26px/1 system-ui, sans-serif; color: #fff; background: linear-gradient(160deg, #6fb7ff, #2f6fd6 60%, #1c4a99); clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+.vs-die.b .vs-flat { background: linear-gradient(160deg, #ffe7a3, #e2a92c 60%, #9c6b0f); }
+.vs-die.c .vs-flat { background: linear-gradient(160deg, #b8f2c8, #3fae66 60%, #1d6b3a); }
+.vs-die.d .vs-flat { background: linear-gradient(160deg, #ffd0ee, #d066ad 60%, #8a2f6c); }
 .vs-die.out { opacity: .35; filter: grayscale(.6); }
 .vs-die.win .dice-stage { filter: drop-shadow(0 0 10px #f5d17a) drop-shadow(0 0 20px rgba(245, 209, 122, .6)); animation: vs-win .5s ease-out; }
 .vs-die.win b, .vs-die.win span { color: #f5d17a; font-weight: 700; }
@@ -375,3 +379,12 @@
 .vs-clock.still { opacity: .6; }
 .vs-clock.low { background: #c0392b; color: #fff; opacity: 1; }
 .vs-clock[hidden] { display: none; }
+
+/* an explorer reveals the top card of their library to everyone (T-079) */
+.vs-reveal { position: fixed; right: 14px; top: 28%; z-index: 80; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: vs-reveal-in .25s ease-out, vs-reveal-out .4s ease-in 2.4s forwards; }
+.vs-reveal .mtg { --card-w: 130px; box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+.vs-reveal-cap { background: rgba(10,20,30,.92); border: 1px solid var(--border, #345); border-radius: 8px; padding: 4px 8px; font-size: 12px; max-width: 170px; text-align: center; }
+@keyframes vs-reveal-in { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes vs-reveal-out { to { opacity: 0; } }
+@media (max-width: 700px) { .vs-reveal { right: 6px; top: 22%; } .vs-reveal .mtg { --card-w: 92px; } }
+.vs-pile.top-open .mtg { outline: 2px solid rgba(120,200,255,.55); outline-offset: 1px; }

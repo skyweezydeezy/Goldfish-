@@ -161,21 +161,25 @@
     toast('Rules back to their defaults');
   });
 
-  // Display (app-wide, kept in this browser like sound and the playmat): spacing and how a tab fades in
+  // Display (app-wide, kept in this browser like sound and the playmat): spacing, how a tab fades in, and the order of the built-in deck menus
+  const DECK_ORDERS = ['bracket-rank', 'color-bracket', 'color-rank', 'rank'];
+  let deckOrder = 'bracket-rank', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
   (() => {
     const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
     let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
     const apply = () => {
       const den = $('#dispDensity').value, fade = $('#dispFade').value;
+      const ord = $('#dispDeckOrder').value; if (ord !== deckOrder) { deckOrder = ord; if (decksListed) refillDeckMenus(); }
       document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
       document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
     };
     if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
+    if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
     apply();
-    for (const id of ['#dispDensity', '#dispFade']) $(id).addEventListener('change', () => {
+    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder']) $(id).addEventListener('change', () => {
       apply();
-      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value })); } catch (e) { /* storage blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value })); } catch (e) { /* storage blocked */ }
     });
   })();
 
@@ -589,22 +593,41 @@
   }
   // ---- built-in decks (goldfish/static/decks, listed in decks/index.json by tools/build-deck-index.js), grouped by number of colors ----
   let BUILTIN = [];
-  const COLOR_GROUP = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
   const COLOR_ORDER = 'WUBRG';
-  const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
-  // Decks with a Commander bracket (the [B1]…[B5] of the ManaBox lists, see tools/import-decks.js) are grouped by bracket, highest first;
-  // within a bracket by number of colors, then name. Decks without a bracket keep the color grouping after them.
+  // Every built-in deck menu (Build, the mirror opponent, 1v1, Pod, the lab's opponents) is sorted by the "Deck order" setting (Display):
+  //   bracket-rank (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by rank
+  //   color-bracket: groups by color (below), inside a color by bracket (highest first), then rank
+  //   color-rank:    groups by color, inside a color by rank
+  //   rank:          one list by rank
+  // Rank = field win % (the round robin of tools/verify-brackets.js, decks/index.json "fieldWin"), highest first, then name; a deck that was
+  // never ranked comes last. Bracket = the verified one (higher of the card floor and the speed bracket, from the median kill turn).
+  // Color order (WUBRG): one color (W U B R G), two colors, three, four, five, colorless last. Inside a count the identities sort by
+  // their letters in W U B R G order: WU WB WR WG UB UR UG BR BG RG; WUB WUR WUG WBR WBG WRG UBR UBG URG BRG; four colors by the color left out.
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
-  const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
-  const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket + (d.bracketEst ? '?' : '') : ''}</option>`;
-  // Every deck dropdown is tiered the same way: bracket first (highest first), then number of colors (fewest first), then color order
-  // (W U B R G) and name. A dropdown cannot nest groups, so each tier is its own heading: "Bracket 4 · Optimized · Two colors".
+  const COLOR_NAME = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', WU: 'Azorius', WB: 'Orzhov', WR: 'Boros', WG: 'Selesnya', UB: 'Dimir', UR: 'Izzet', UG: 'Simic',
+    BR: 'Rakdos', BG: 'Golgari', RG: 'Gruul', WUB: 'Esper', WUR: 'Jeskai', WUG: 'Bant', WBR: 'Mardu', WBG: 'Abzan', WRG: 'Naya', UBR: 'Grixis', UBG: 'Sultai', URG: 'Temur', BRG: 'Jund',
+    UBRG: 'Four colors (no White)', WBRG: 'Four colors (no Blue)', WURG: 'Four colors (no Black)', WUBG: 'Four colors (no Red)', WUBR: 'Four colors (no Green)', WUBRG: 'Five colors', '': 'Colorless' };
+  const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
+  const colorRank = c => { const n = (c || '').length; return (n ? n : 9) + '.' + (n === 4 ? colorKey('WUBRG'.split('').filter(k => !c.includes(k)).join('')) : colorKey(c || '')); };
+  const byRank = (a, b) => ((b.fieldWin == null ? -1 : b.fieldWin) - (a.fieldWin == null ? -1 : a.fieldWin)) || a.name.localeCompare(b.name);
+  const byBracket = (a, b) => (b.bracket || 0) - (a.bracket || 0);
+  const opt = (d, noColors) => {
+    const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
+    bits.push(d.bracket ? 'B' + d.bracket + (d.bracketEst ? '?' : '') : '—');
+    bits.push(d.fieldWin != null ? Math.round(d.fieldWin) + '%' : '—');          // "—": not measured yet (the round robin has not run for this deck)
+    bits.push(d.medianKill != null ? 'T' + d.medianKill : '—');
+    return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
+  };
   function builtinOptions() {
+    const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';
+    const byColor = cmp => { const keys = [...new Set(BUILTIN.map(d => d.colors || ''))].sort((x, y) => colorRank(x).localeCompare(colorRank(y)));
+      return keys.map(k => group(COLOR_NAME[k] || k, BUILTIN.filter(d => (d.colors || '') === k).sort(cmp), true)).join(''); };
+    if (deckOrder === 'rank') return group('All decks · by field win %', BUILTIN.slice().sort(byRank));
+    if (deckOrder === 'color-rank') return byColor(byRank);
+    if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byRank(a, b));
     let html = '';
-    const tier = (ds, head) => { for (let k = 0; k <= 5; k++) { const g = ds.filter(d => (d.colors || '').length === k).sort(byColors); if (g.length) html += `<optgroup label="${head} · ${COLOR_GROUP[k]}">` + g.map(opt).join('') + '</optgroup>'; } };
-    for (let b = 5; b >= 1; b--) tier(BUILTIN.filter(d => d.bracket === b), `Bracket ${b} · ${BRACKET_NAME[b]}`);
-    tier(BUILTIN.filter(d => !d.bracket), 'No bracket');
-    return html;
+    for (let b = 5; b >= 1; b--) html += group(`Bracket ${b} · ${BRACKET_NAME[b]}`, BUILTIN.filter(d => d.bracket === b).sort(byRank));
+    return html + group('No bracket', BUILTIN.filter(d => !d.bracket).sort(byRank));
   }
   const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
   async function builtinText(d) {
@@ -626,8 +649,13 @@
       const r = await fetch('decks/index.json');
       if (!r.ok) return;
       BUILTIN = ((await r.json()).decks || []).filter(d => d && d.file && d.name);
-      refreshSaved(); fillMirror();
+      decksListed = true; refreshSaved(); fillMirror();
     } catch (e) { /* offline and never loaded: only saved decks are listed */ }
+  }
+  function refillDeckMenus() {            // the Deck order setting changed: every built-in deck menu is rebuilt, keeping what each one has selected
+    refreshSaved(); fillMirror();
+    const lab = $('#plOppList'); if (lab && lab.options.length) { const on = new Set([...lab.selectedOptions].map(o => o.value)); fillLabOpponents(); [...lab.options].forEach(o => { o.selected = on.has(o.value); }); }
+    if (window.__isfVersus && window.__isfVersus.fill) ['duel', 'pod'].forEach(m => window.__isfVersus.fill(m));
   }
   function refreshSaved() {
     const all = getDecks(), sel = $('#savedDecks'), cur = sel.value;
@@ -1833,6 +1861,8 @@
       if (cnt) $(cnt).textContent = arr.length;
     };
     pile('#zGrave', g.graveyard, '#cGrave'); pile('#zExile', g.exile, '#cExile'); pile('#zCommand', g.command);
+    { const lt = document.querySelector('#zLibrary .lib-top'), view = G.topCardView(g), top = g.library[0];          // Mystic Forge and the like: the top card is shown face up, kept up to date
+      if (lt) { if (view && top) { const e = tableEl(top.card, top.iid, 0, used); clearState(e); lt.replaceChildren(h('div', 'pile-label', view === 'all' ? 'Top card (revealed)' : 'Top card'), e); lt.hidden = false; } else { lt.hidden = true; lt.replaceChildren(); } } }
     for (const k of Array.from(elCache.keys())) if (!used.has(k)) elCache.delete(k);
 
     $('#cLibrary').textContent = g.library.length;

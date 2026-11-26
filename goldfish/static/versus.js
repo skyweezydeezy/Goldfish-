@@ -158,21 +158,26 @@
     const box = h('div', 'vs-dice'); box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite');
     const seat = pid => SEAT[pid] || 'a', label = pid => names[pid] === 'You' ? 'You' : names[pid];
     // each player's die is the 3D d20 of dice.js (Dice.rollInto), tinted in their seat colour; the number it lands on shows under it too
-    const n3d = !!(window.Dice && window.Dice.rollInto), size = roll.rounds[0].length > 2 ? 34 : 42;
+    const n3d = !!(window.Dice && window.Dice.rollInto) && !(window.CSS && CSS.supports && !(CSS.supports('transform-style', 'preserve-3d') || CSS.supports('-webkit-transform-style', 'preserve-3d'))), size = roll.rounds[0].length > 2 ? 34 : 42;
     const die = pid => `<div class="vs-die ${seat(pid)}${n3d ? ' d3' : ''}" data-pid="${pid}"><div class="dice-stage"></div><b>&nbsp;</b><span>${esc(label(pid))}</span></div>`;
     box.innerHTML = `<div class="vs-dice-card"><div class="vs-dice-title">Roll for first</div><div class="vs-dice-row">${roll.rounds[0].map(x => die(x.pid)).join('')}</div><div class="vs-dice-say"></div></div>`;
-    (V[mode].root || document.body).appendChild(box);
+    box.dataset.mode = mode;
+    document.body.appendChild(box);                       // on the body, not in the tab: the tab fades in with an opacity animation that would trap the dice (and flatten their 3D) on Safari
     const say = t => { box.querySelector('.vs-dice-say').textContent = t; };
     const D = pid => box.querySelector(`.vs-die[data-pid="${pid}"]`);
     const wait = ms => new Promise(r => setTimeout(r, ms));
+    const shown = () => { const r = V[mode].root; return !r || r.getClientRects().length > 0; };
+    // no 3D to tumble: a flat die shows numbers ticking over until it lands
+    const flat = (stage, v, ms) => new Promise(res => { stage.textContent = ''; const f = h('div', 'vs-flat'); stage.appendChild(f); const t0 = Date.now(), tick = setInterval(() => { const done = Date.now() - t0 >= ms || !box.isConnected; f.textContent = done ? v : 1 + Math.floor(Math.random() * 20); if (done) { clearInterval(tick); res(); } }, 80); });
     return (async () => {
       for (let i = 0; i < roll.rounds.length; i++) {
         if (!box.isConnected) return;                         // skipped
+        if (!shown()) { box.remove(); return; }              // the tab went away
         const r = roll.rounds[i];
         box.querySelectorAll('.vs-die').forEach(d => d.classList.toggle('out', !r.some(x => x.pid === +d.dataset.pid)));
         if (!reduce) sfx('dice');
         r.forEach(x => { D(x.pid).querySelector('b').innerHTML = '&nbsp;'; });
-        if (n3d) await Promise.all(r.map(x => window.Dice.rollInto(D(x.pid).querySelector('.dice-stage'), x.v, { size, ms: 1300 + Math.random() * 300 })));
+        { const ms = 1300 + Math.random() * 300; await Promise.all(r.map(x => { const st = D(x.pid).querySelector('.dice-stage'); return n3d ? Promise.resolve().then(() => window.Dice.rollInto(st, x.v, { size, ms })).catch(() => flat(st, x.v, ms)) : flat(st, x.v, ms); })); }
         r.forEach(x => { D(x.pid).querySelector('b').textContent = x.v; });
         const top = Math.max(...r.map(x => x.v)), tied = r.filter(x => x.v === top);
         if (tied.length > 1 && i < roll.rounds.length - 1) { say(`Tie on ${top}! ${tied.map(x => label(x.pid)).join(' and ')} roll again.`); await wait(reduce ? 900 : 1100); }
@@ -217,7 +222,7 @@
       if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
       if (dice) {                                      // the dice on screen (not between the games of a Loop). They never hold the game up:
         let told = false;                                     // the table tells who goes first when they land, or at once if a turn is played first
-        const tell = () => { if (told) return; told = true; gm.onRoll = null; const d = st.root.querySelector('.vs-dice'); if (d) d.remove(); if (st.game === gm) { announce(); render(mode); } };
+        const tell = () => { if (told) return; told = true; gm.onRoll = null; document.querySelectorAll(`.vs-dice[data-mode="${mode}"]`).forEach(d => d.remove()); if (st.game === gm) { announce(); render(mode); } };
         gm.onRoll = tell;
         showRoll(mode, roll, pod.match.names).then(tell, tell);
       }
@@ -816,7 +821,19 @@
   // The card exiled with a permanent by imprint (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) is drawn tucked behind that
   // permanent, labelled, and opens like any card. app.js knows which card it is (imprintOf) and reads the engine's notes (noteImprints).
   const { imprintOf, noteImprints } = A;
-  const sum = (g, ev, viewer) => { noteImprints(g, ev); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
+  // CR 701.44a: an explorer reveals the top card to every player: the other players see it on the table for a moment
+  const revealedSeen = new WeakSet();
+  function flashReveals(g, ev, viewer) {
+    if (viewer == null) return;
+    for (const e of ev) {
+      if (e.type !== 'reveal' || !e.inst || revealedSeen.has(e)) continue;
+      revealedSeen.add(e); if (g.pid === viewer) continue;          // the explorer has it on their own question
+      const box = h('div', 'vs-reveal', ''), cap = h('div', 'vs-reveal-cap', `${esc((e.source && e.source.card.name) || 'A creature')} explores: reveals ${esc(e.inst.card.name)}`);
+      box.append(A.cardEl(e.inst.card, { eager: true }), cap); document.body.appendChild(box); setTimeout(() => box.remove(), 2800);
+    }
+  }
+  V.flashReveals = flashReveals;          // (the tests call it with an explore event)
+  const sum = (g, ev, viewer) => { noteImprints(g, ev); flashReveals(g, ev, viewer); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
   // identical lands and tokens in the same state share a stack (up to three pictures and a ×N count)
   function stacks(st, gm, g, perms) {
     const picking = !!gm.picking && gm.human === g.pid && myMain(gm), groups = new Map();
@@ -869,7 +886,8 @@
       p.dataset.pid = g.pid; p.appendChild(inner || h('div', 'vs-empty')); box.appendChild(p);
       return p;
     };
-    pile('lib', 'Library', 'Lib', g.library.length, g.library.length ? backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid) : null);
+    const tv = G.topCardView(g), shown = tv === 'all' || (tv === 'owner' && mine);          // Mystic Forge and the like: its player sees the top card face up; the others see a card back (a revealed top card is open to everyone)
+    pile('lib' + (shown ? ' top-open' : ''), 'Library', 'Lib', g.library.length, g.library.length ? (shown ? node(st, `lt${g.pid}:${g.library[0].iid}`, g.library[0].card) : backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid)) : null);
     let cz = null;
     if (g.command.length) {
       cz = h('div', 'vs-czone');

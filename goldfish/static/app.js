@@ -633,20 +633,23 @@
     UBRG: 'Four colors (no White)', WBRG: 'Four colors (no Blue)', WURG: 'Four colors (no Black)', WUBG: 'Four colors (no Red)', WUBR: 'Four colors (no Green)', WUBRG: 'Five colors', '': 'Colorless' };
   const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
   const colorRank = c => { const n = (c || '').length; return (n ? n : 9) + '.' + (n === 4 ? colorKey('WUBRG'.split('').filter(k => !c.includes(k)).join('')) : colorKey(c || '')); };
-  const byRank = (a, b) => ((b.fieldWin == null ? -1 : b.fieldWin) - (a.fieldWin == null ? -1 : a.fieldWin)) || a.name.localeCompare(b.name);
+  // Rank: until the round robin has measured every deck, rank is the Commander bracket (Wizards of the Coast's, as filed on each deck), highest
+  // first, then name (the user, 2026-11-26: "based on Wizards of the Coast bracket rankings and not head-to-head or any other numbers").
+  // Once every deck has a field win % (decks/index.json "fieldWin"), rank is that, highest first.
+  const rankByWin = () => BUILTIN.length > 0 && BUILTIN.every(d => d.fieldWin != null);
+  const byRank = (a, b) => (rankByWin() ? b.fieldWin - a.fieldWin : (b.bracket || 0) - (a.bracket || 0)) || a.name.localeCompare(b.name);
   const byBracket = (a, b) => (b.bracket || 0) - (a.bracket || 0);
   const opt = (d, noColors) => {
     const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
-    bits.push(d.bracket ? 'B' + d.bracket + (d.bracketEst ? '?' : '') : '—');
-    bits.push(d.fieldWin != null ? Math.round(d.fieldWin) + '%' : '—');          // "—": not measured yet (the round robin has not run for this deck)
-    bits.push(d.medianKill != null ? 'T' + d.medianKill : '—');
+    if (d.bracket) bits.push('B' + d.bracket + (d.bracketEst ? '?' : ''));
+    if (rankByWin()) { bits.push(Math.round(d.fieldWin) + '%'); if (d.medianKill != null) bits.push('T' + d.medianKill); }          // the win % and kill turn only show once every deck is measured
     return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
   };
   function builtinOptions() {
     const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';
     const byColor = cmp => { const keys = [...new Set(BUILTIN.map(d => d.colors || ''))].sort((x, y) => colorRank(x).localeCompare(colorRank(y)));
       return keys.map(k => group(COLOR_NAME[k] || k, BUILTIN.filter(d => (d.colors || '') === k).sort(cmp), true)).join(''); };
-    if (deckOrder === 'rank') return group('All decks · by field win %', BUILTIN.slice().sort(byRank));
+    if (deckOrder === 'rank') return group('All decks · by rank', BUILTIN.slice().sort(byRank));
     if (deckOrder === 'color-rank') return byColor(byRank);
     if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byRank(a, b));
     let html = '';

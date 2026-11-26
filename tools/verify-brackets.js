@@ -180,7 +180,7 @@ async function simulate() {
   // Checkpoint: every finished job is appended to a file, so a run that is killed (this container is restarted while idle) resumes where it stopped.
   // The file is named by mode, games, engine version and seed; a different engine version starts afresh.
   const verNow = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
-  const CK_DIR = path.join(os.tmpdir(), 'isf-verify'), CK = path.join(CK_DIR, `${MATCH_ONLY ? 'match' : GF_ONLY ? 'gf' : 'full'}-${GAMES}-v${verNow}-s${SEED}${ONLY ? '-' + ONLY : ''}.jsonl`);
+  const CK_DIR = process.env.ISF_CKPT_DIR || path.join(os.tmpdir(), 'isf-verify'), CK = path.join(CK_DIR, `${MATCH_ONLY ? 'match' : GF_ONLY ? 'gf' : 'full'}-${GAMES}-v${verNow}-s${SEED}${ONLY ? '-' + ONLY : ''}.jsonl`);
   fs.mkdirSync(CK_DIR, { recursive: true });
   const keyOf = j => [j.kind, decks[j.i].d.file, j.j != null ? decks[j.j].d.file : '', j.n, j.seed].join('|'), finished = new Set();
   const absorb = r => {

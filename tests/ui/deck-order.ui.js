@@ -54,6 +54,15 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the setting is remembered after a reload', await p.$eval('#dispDeckOrder', e => e.value) === 'rank' && (await read('#savedDecks')).length === 1);
   await set('bracket-rank');
   check('and back to the default', (await read('#savedDecks'))[0].label.startsWith('Bracket 5'));
+  // without measured numbers (the real index today): rank is the bracket, highest first, then name; options show no win % or kill turn
+  const p2 = await ctx.newPage(); await p2.unroute?.('**/decks/index.json').catch(() => {});
+  await ctx.unroute('**/decks/index.json');
+  await p2.addInitScript(() => { try { localStorage.setItem('isf_display', JSON.stringify({ deckOrder: 'rank' })); } catch (e) {} });
+  await p2.goto('http://127.0.0.1:8800/'); await p2.waitForFunction(() => document.querySelectorAll('#savedDecks optgroup').length > 0, null, { timeout: 30000 });
+  const g2 = await p2.$eval('#savedDecks', el => [...el.querySelectorAll('optgroup')].filter(g => g.label !== 'Saved in this browser').flatMap(g => [...g.children].map(o => o.textContent)));
+  const bs = g2.map(t => +((/· B(\d)/.exec(t) || [])[1] || 0));
+  check('unmeasured: "Rank only" is the bracket, highest first', g2.length >= 50 && bs.every((x, i) => !i || x <= bs[i - 1]), bs.slice(0, 5).join(',') + '…');
+  check('unmeasured: options show no win % or kill turn', g2.every(t => !/\d+%|· T\d/.test(t)), g2[0]);
   check('no page errors', !errs.length, errs[0]);
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

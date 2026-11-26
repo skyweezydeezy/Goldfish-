@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 189,
+      "lines": [
+        "Tables fit every iPhone and iPad, upright and sideways, and 1920×1080 screens. On a dual-screen device, each side of the table gets its own screen, with nothing under the hinge."
+      ]
+    },
+    {
       "v": 188,
       "lines": [
         "Pages are much more compact: report boxes fold to their headers (tap a header to open it).",

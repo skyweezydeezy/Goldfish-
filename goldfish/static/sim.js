@@ -2711,7 +2711,7 @@
       if (/^you may spend mana as though it were mana of any color\.?$/i.test(line)) { a.statics.anyColorMana = true; rec.status = 'ok'; continue; }          // Chromatic Orrery
       if (/^exile any number of target creatures you control\. return those cards to the battlefield under their owner's control at the beginning of the next end step/i.test(line)) { a.spellFx.push({ type: 'flickerAll' }); rec.status = 'ok'; continue; }          // Eerie Interlude
       if (/^return from your graveyard to the battlefield any number of target creature cards that each have a different mana value x or less/i.test(line)) { a.spellFx.push({ type: 'agadeem' }); rec.status = 'ok'; continue; }          // Agadeem's Awakening
-      { const kc = line.match(/^whenever an opponent casts a noncreature spell, (.*)$/i); if (kc) { const r = parseEffects(kc[1].replace(/that player loses/i, 'each opponent loses')); if (r.fx.length) { a.triggers.push({ kinds: ['oppCast'], fx: r.fx, text: raw }); rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; } } }          // Kambal, Consul of Allocation
+      { const kc = line.match(/^whenever an opponent casts a noncreature spell, (.*)$/i); if (kc) { const r = parseEffects(kc[1].replace(/that player loses/i, 'each opponent loses')); if (r.fx.length) { const um = kc[1].match(/unless that player pays \{(\d+)\}/i); a.triggers.push({ kinds: ['oppCast'], fx: r.fx, nonCreature: true, text: raw }); if (um) a.triggers[a.triggers.length - 1].unless = +um[1]; rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; } } }          // Kambal, Consul of Allocation; Mystic Remora (unless that player pays {4}); only noncreature spells (T-080)
       // ---- batch 6 (top-3000 pool)
       if (/^at the beginning of your upkeep, reveal the top card of your library and put that card into your hand\. you lose life equal to its mana value/i.test(line)) { a.triggers.push({ kinds: ['upkeep'], fx: [{ type: 'confidant' }], text: raw }); rec.status = 'ok'; continue; }          // Dark Confidant
       if (/^draw cards equal to the number of cards in your hand plus one/i.test(line)) { a.spellFx.push({ type: 'draw', n: 'HANDPLUS1' }); if (/no maximum hand size for the rest of the game/i.test(line)) a.spellFx.push({ type: 'noMaxHand' }); rec.status = 'ok'; continue; }          // Sea Gate Restoration
@@ -3780,7 +3780,7 @@
       g.drawSeq = (g.drawSeq || 0) + 1;                                                                     // which card of the turn this is ("your second card each turn")
       if (g.drawTurn[c.card.uid] == null) g.drawTurn[c.card.uid] = g.turn;
       if (ev && g.opp && !g.dry) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDraw') && (!t.drawNth || t.drawNth === g.drawSeq) && (!t.redPerm || g.opp.battlefield.some(x => colorsOf(g.opp, x.card).includes('R')))) {                 // Sheoldred, Smothering Tithe: the other player's draws (Faerie Mastermind: its second each turn)
-        if (t.unlessPay && canPay({ generic: t.unlessPay, pips: [], x: 0 }, allUnits(g))) { pay(g, { generic: t.unlessPay, pips: [], x: 0 }); ev.push({ type: 'note', text: `Paid ${t.unlessPay} to ${q.card.name}` }); } else fire(g.opp, t, q, ev, null);
+        if (t.unlessPay && payUnless(g, t.unlessPay, q, '{who} ' + taxThen(t.fx), `${q.card.name}: you drew a card.`)) ev.push({ type: 'note', text: `Paid ${t.unlessPay} to ${q.card.name}` }); else fire(g.opp, t, q, ev, null);
       }
       if (ev) { ev.push({ type: 'draw', inst: c }); if (!g.dry) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('onDraw') && (!t.drawNth || t.drawNth === g.drawSeq) && g.battlefield.includes(q)) fire(g, t, q, ev, null, 1); }
     }
@@ -8336,10 +8336,11 @@
       if (t.kinds.includes('castAnyOpp') && castFilterOk(t, inst, g)) fire(g.opp, t, q, ev, null);
       if (t.kinds.includes('oppCast')) {
         if (t.firstNc && (a.isCreature || g.ncN !== 1)) continue;          // Esper Sentinel: the first noncreature spell each turn
+        if (t.nonCreature && a.isCreature) continue;          // Kambal, Mystic Remora: noncreature spells only
         if (t.castNth && castsThisTurn(g) !== t.castNth) continue;          // Monologue Tax, Trouble in Pairs: the second spell each turn
         if (t.yourTurn && !g.opp.activeTurn) continue;          // Voice of Resurgence: during its controller's turn
         const un = t.unless === 'POWER' ? Math.max(0, powerOf(g.opp, q)) : t.unless;
-        if (un && canPay({ generic: un, pips: [], x: 0 }, allUnits(g))) { pay(g, { generic: un, pips: [], x: 0 }); ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${un} to ${q.card.name}` }); }
+        if (un && payUnless(g, un, q, '{who} ' + taxThen(t.fx), `${q.card.name}: ${inst.card.name} was cast.`)) ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${un} to ${q.card.name}` });
         else fire(g.opp, t, q, ev, null);
       }
     }
@@ -13831,9 +13832,20 @@ g.actSeq = (g.actSeq || 0) + 1;
     const was = cards.map(c => Object.assign({}, c));
     try { return fn(); } finally { cards.forEach((c, i) => { for (const k of Object.keys(c)) if (!(k in was[i])) delete c[k]; Object.assign(c, was[i]); }); }
   }
+  // T-080: "If you control a commander, you may cast this spell without paying its mana cost" (Flawless Maneuver, Obscuring Haze, Deflecting Swat, Fierce Guardianship)
+  // T-080: "unless that player pays {N}" (Rhystic Study, Mystic Remora, Esper Sentinel, Smothering Tithe, Mana Leak): the player it is aimed at chooses. Not offered when
+  // they cannot pay. The autopilot (and a person on defaults) pays whenever it can, as before. Returns true when they paid.
+  function payUnless(g, n, q, then, why, owner) {
+    const c = { generic: n, pips: [], x: 0 };
+    if (!(n > 0) || !canPay(c, allUnits(g))) return false;
+    if (g.ask && !g.dry && decide(g, { kind: 'tax', options: ['pay', 'allow'], def: 'pay', cost: n, then, why, owner: owner || g.opp, source: q }) !== 'pay') return false;
+    pay(g, c); return true;
+  }
+  const taxThen = fx => { const f = (fx || [])[0] || {}; return f.type === 'draw' ? (f.n > 1 ? `draws ${f.n} cards` : 'draws a card') : f.type === 'token' ? `creates ${f.n > 1 ? f.n + ' ' : 'a '}${f.name || 'token'}${f.n > 1 ? 's' : ''}` : 'gets its effect'; };
+  const freeNow = (d, c) => !!(c.card.a && c.card.a.freeIfCommander && d.battlefield.some(p => p.card.commander));
   function responseCards(d, exclude) {
     const units = manaUnits(d), cards = d.hand.concat(d.command);
-    return peekCards(cards, () => cards.filter(c => c !== exclude && c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(d, c.card) && !castBlocked(d, c) && canPay(effectiveCost(d, c), units)));
+    return peekCards(cards, () => cards.filter(c => c !== exclude && c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(d, c.card) && !castBlocked(d, c) && (freeNow(d, c) || canPay(effectiveCost(d, c), units))));
   }
   // a person's permanents with an ability they can use in a response (not the sorcery-speed ones): offered next to their instants
   function responseAbilities(d) {
@@ -13848,9 +13860,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     return true;
   }
   function respondWith(d, c, ev, spell) {
-    const was = d.inWindow, wr = d.inResponse; d.inWindow = true; d.inResponse = true;
+    const was = d.inWindow, wr = d.inResponse, fr = freeNow(d, c) && d.hand.includes(c); d.inWindow = true; d.inResponse = true;
     let r = null;
-    try { r = castCard(d, c); } finally { d.inWindow = was; d.inResponse = wr; }
+    if (fr) c.freeCast = true;          // T-080: with a commander out it costs nothing
+    try { r = castCard(d, c); } finally { d.inWindow = was; d.inResponse = wr; if (fr) c.freeCast = false; }
     if (!r) return false;
     ev.push({ type: 'note', text: `In response to ${spell.card.name}: cast ${c.card.name}`, source: null }, ...r);
     return true;
@@ -13911,8 +13924,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       const c = way.c, how = way.how, pitch = way.pitch, cost = way.cost, ca = c.card.a, k = ca.counter;
       let unless = k.perSpell ? 1 + (g.spellsCast || 0) : k.unless, extraDraw = 0;
       if (k.confluence) { const spare = allUnits(g).length, times = Math.min(3, Math.floor(spare / k.unless) + 1); unless = k.unless * times; extraDraw = 3 - times; }          // Mystic Confluence: the counter mode as often as needed to beat their spare mana, the rest draws
-      if (unless && canPay({ generic: unless, pips: [], x: 0 }, allUnits(g))) {                      // "unless its controller pays": a player with spare mana just pays
-        pay(g, { generic: unless, pips: [], x: 0 }); ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${unless} for ${c.card.name}` }); return false;
+      if (unless && payUnless(g, unless, { card: c.card }, `${inst.card.name} is countered`, `${c.card.name} counters ${inst.card.name} unless you pay.`, d)) {                      // "unless its controller pays": a player with spare mana just pays (a person is asked, T-080)
+        ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${unless} for ${c.card.name}` }); return false;
       }
       if (how === 'mana') pay(d, cost);
       else if (how === 'cleave') pay(d, ca.cleave);
@@ -13945,7 +13958,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // a person answers another player's spell: a counterspell (the way it is paid), a response (cast first, then asked again), or nothing
   function personAnswer(g, d, inst, ev, ways, def) {
     for (let k = 0; k < 4 && !d.dead && !matchOver(d); k++) {
-      const resp = responseCards(d, null).map(c => ({ c, how: 'respond' })).concat(responseAbilities(d));
+      const resp = responseCards(d, null).map(c => ({ c, how: 'respond', free: freeNow(d, c) })).concat(responseAbilities(d));
       const pick = decide(d, { kind: 'counter', options: ways.concat(resp), def: k ? null : def, optional: true, always: true, spell: inst, caster: g, targets: targetView(g, inst), unc: !ways.length && uncounterable(g, inst) });
       if (!pick || (pick.how !== 'respond' && pick.how !== 'ability')) return pick || null;
       if (!(pick.ability ? respondAbility(d, pick, ev, inst) : respondWith(d, pick.c, ev, inst))) return null;

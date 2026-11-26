@@ -133,6 +133,8 @@
     });
     return ts.length ? { list: ts, text: 'Targeting ' + ts.map(t => t.name).join(' and ') + '. ' } : null;
   }
+  // T-080: "<spell> ... unless that player pays {N}" (Rhystic Study, Smothering Tithe, Mystic Remora, Esper Sentinel, Mana Leak): what happens when you do not pay
+  const taxThen = (d, g, m) => String(d.then || 'it takes effect').replace('{who}', d.owner && m && m.names ? m.names[d.owner.pid] : 'The opponent');
   const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
@@ -183,11 +185,12 @@
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
-      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : HOW[o.how] || ''; }
+      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : (HOW[o.how] || '') + (o.free && o.how === 'respond' ? ' (free: you control a commander)' : ''); }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
       else if (d.kind === 'combo') { item.name = o.label; item.note = o.note || ''; item.id = o.id; }
       else if (d.kind === 'shock') { item.name = o === 'pay' ? `Pay ${d.life} life` : 'Enter tapped'; item.note = o === 'pay' ? `it enters untapped · you go to ${g.life - d.life} life` : 'no life paid · it can\'t tap for mana this turn'; }
+      else if (d.kind === 'tax') { item.name = o === 'pay' ? `Pay {${d.cost}}` : 'Do not pay'; item.note = o === 'pay' ? `you have ${G.allUnits(g).length} untapped mana` : taxThen(d, g, m); }          // T-080: "unless that player pays"
       else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x' && d.what === 'squad') { item.name = o ? `Pay squad ${o === 1 ? 'once' : o + ' times'}` : 'Don\'t pay squad'; item.note = o ? `${o} token cop${o === 1 ? 'y' : 'ies'} of it as it enters` : 'just the card'; }
@@ -304,6 +307,10 @@
       q.title = `Combo assembled: ${cb.name}${cb.cards && cb.cards.length ? ' (' + cb.cards.join(' + ') + ')' : ''}`;
       q.text = { mana: 'It makes mana without end. Say how much you want: ∞ is as much as you like.', mill: 'It can mill a whole library.', draw: 'It draws your whole library.', tokens: 'It makes as many hasty attackers as you like.', damage: 'It deals damage or drains every opponent as often as you like.' }[cb.outcome] + (opts.some(o => o.id === 'win') ? ' ★ is the autopilot\'s pick: play it out to the win.' : '');
       q.combo = { name: cb.name, cards: cb.cards || [], outcome: cb.outcome };
+    } else if (d.kind === 'tax') {                                                                        // "...unless that player pays {N}": the player the tax is aimed at chooses
+      q.title = `${sn || 'Tax'}: pay {${d.cost}}, or ${taxThen(d, g, m)}?`;
+      q.text = `${d.why || 'You may pay'} Pay {${d.cost}} and nothing happens, or do not pay and ${taxThen(d, g, m)}. You can spend ${G.allUnits(g).length} mana now. ★ is the autopilot's pick: it pays when it can.`;
+      if (src) { q.spell = src; q.spellNote = 'it taxes you'; }
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
       q.text = `As it enters, you may pay ${d.life} life. If you don't, it enters tapped.`;

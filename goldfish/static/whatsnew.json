@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 200,
+      "lines": [
+        "Fierce Guardianship and friends can always answer a spell (free with your commander out). Rhystic Study, Smothering Tithe and similar cards ask the player to pay or not."
+      ]
+    },
+    {
       "v": 199,
       "lines": [
         "Five more of your Drive decks are in the deck chooser, bracket-checked. Settings has a Deck order: bracket then rank (the default), color then bracket, or color then rank.",

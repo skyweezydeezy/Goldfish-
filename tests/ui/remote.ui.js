@@ -123,8 +123,8 @@ let pages = [];          // the two devices, for the message when a step times o
     while (Date.now() - t0 < (ms || 60000)) {
       const [a, c] = [await st(A), await st(B)];
       if (cond(a, c)) return true;
-      for (const [p, s] of [[A, a], [B, c]]) {
-        if (s.choice && o.keepChoice !== true && o.keepChoice !== p.label) await p.evaluate(() => { const x = document.querySelector('.ch-sheet .ch-auto'); if (x) x.click(); });
+      for (const [p, s] of [[A, a], [B, c]]) {          // a choice sheet in a game against a person has no autopilot answer: confirm what it starts on (.ch-ok), or "none" when nothing is chosen
+        if (s.choice && o.keepChoice !== true && o.keepChoice !== p.label) await p.evaluate(() => { const x = document.querySelector('.ch-sheet .ch-ok:not([disabled])') || document.querySelector('.ch-sheet .ch-none'); if (x) x.click(); });
         else if (s.respond === s.local && !o.keepRespond) await p.evaluate(() => { const x = document.querySelector('#tab-duel .vs-pass'); if (x) x.click(); });
         else if (s.block && !o.keepBlock) await p.evaluate(() => { const x = document.querySelector('#tab-duel .vs-block-go'); if (x) x.click(); });
       }

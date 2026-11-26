@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 199,
+      "lines": [
+        "Five more of your Drive decks are in the deck chooser, bracket-checked. Settings has a Deck order: bracket then rank (the default), color then bracket, or color then rank.",
+        "Duel and Pod: the roll-for-first dice now show on every screen (they could be heard but not seen on some phones)."
+      ]
+    },
+    {
       "v": 198,
       "lines": [
         "Mystic Forge, Bolas's Citadel, Future Sight and similar cards show your top card face up (only to you). Courser of Kruphix and friends show it to everyone.",

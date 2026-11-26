@@ -320,6 +320,10 @@
 .vs-die.b .d20-face { background: linear-gradient(160deg, #ffe7a3, #e2a92c 60%, #9c6b0f); }
 .vs-die.c .d20-face { background: linear-gradient(160deg, #b8f2c8, #3fae66 60%, #1d6b3a); }
 .vs-die.d .d20-face { background: linear-gradient(160deg, #ffd0ee, #d066ad 60%, #8a2f6c); }
+.vs-flat { width: 70px; height: 70px; display: grid; place-items: center; font: 800 26px/1 system-ui, sans-serif; color: #fff; background: linear-gradient(160deg, #6fb7ff, #2f6fd6 60%, #1c4a99); clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+.vs-die.b .vs-flat { background: linear-gradient(160deg, #ffe7a3, #e2a92c 60%, #9c6b0f); }
+.vs-die.c .vs-flat { background: linear-gradient(160deg, #b8f2c8, #3fae66 60%, #1d6b3a); }
+.vs-die.d .vs-flat { background: linear-gradient(160deg, #ffd0ee, #d066ad 60%, #8a2f6c); }
 .vs-die.out { opacity: .35; filter: grayscale(.6); }
 .vs-die.win .dice-stage { filter: drop-shadow(0 0 10px #f5d17a) drop-shadow(0 0 20px rgba(245, 209, 122, .6)); animation: vs-win .5s ease-out; }
 .vs-die.win b, .vs-die.win span { color: #f5d17a; font-weight: 700; }

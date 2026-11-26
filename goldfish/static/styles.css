@@ -688,7 +688,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .lb-print img { width: 100%; border-radius: 4px; display: block; aspect-ratio: 488 / 680; object-fit: cover; background: #222; }
 .lb-print small { color: var(--ice); font-weight: 650; }
 .lb-print.on { border-color: var(--ice); color: var(--text-primary); }
-.lb-use { margin-top: 6px; width: 100%; }
+.lb-sec small { text-transform: none; letter-spacing: 0; opacity: .8; margin-left: 4px; }          /* T-112: the hint beside Printings */
 .lb-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .lb-buy { flex: 1 1 120px; text-align: center; padding: 11px 12px; border-radius: 10px; background: var(--surface-3); color: var(--text-primary); text-decoration: none; font-weight: 650; box-shadow: inset 0 0 0 1px var(--border); }
 .lb-buy:hover { background: #2c4c66; }
@@ -1030,6 +1030,7 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .teach-icon { font-size: 24px; }
 .teach-text { flex: 1 1 320px; }
 .teach-btn { display: inline-block; padding: 9px 18px; border-radius: 999px; background: #4cc2ff; color: #06121c; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.teach-folder { color: #4cc2ff; font-size: 13px; }
 .teach-btn:hover { filter: brightness(1.08); }
 button.teach-drive { border: 1px solid #4cc2ff; background: transparent; color: #4cc2ff; font: inherit; font-weight: 700; cursor: pointer; }
 .teach-how { flex-basis: 100%; margin: 0; }
@@ -1485,3 +1486,17 @@ body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child 
 .cov-card .lines details.cov-neutral { border-left: 3px solid #555; padding: 2px 6px; }
 .cov-card .lines details.cov-neutral summary { cursor: pointer; color: var(--muted); }
 .cov-card .lines .cov-neutral-head { border: 0; padding: 4px 0 0; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* T-102: a phone tap selects a card (lifted, glowing, enlarged above the options sheet); nothing is played until an option is tapped */
+.mtg.sel-card { box-shadow: 0 0 0 3px #4db3f5, 0 0 18px rgba(77,179,245,.9); transform: translateY(-10px); z-index: 7; position: relative; }
+.sel-preview { position: fixed; left: 0; right: 0; top: calc(8px + env(safe-area-inset-top)); z-index: 300; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.sel-preview .mtg { width: var(--selw, 200px); max-width: 80vw; box-shadow: 0 0 0 3px #4db3f5, 0 10px 40px rgba(0,0,0,.7); }
+@media (pointer: coarse) { .ctx-menu.with-sel { max-height: 52vh; } }
+/* T-102: upright phones: action buttons at least 44 px tall (widths stay: ten toolbar buttons do not fit 44 px wide on 375 px) */
+@media (pointer: coarse) and (max-width: 600px) and (min-height: 560px) {
+  button, select, input[type=number] { min-height: 44px; }
+  .table-controls button, .vs-top button { min-height: 44px; }
+}
+
+.deck-speed { margin: 6px 0 0; font-size: .85rem; color: var(--muted, #8a93a6); }
+.deck-speed .hint { margin: 4px 0 0; }

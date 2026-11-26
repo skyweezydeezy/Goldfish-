@@ -228,17 +228,17 @@
   const menuBtn = re => () => [...document.querySelectorAll('#ctxMenu button')].find(b => re.test(b.textContent) && b.offsetParent) || null;
   const onBoard = () => document.querySelector('#zCreatures .mtg[data-iid]');
   let sample = null;          // { prev: the person's own deck (put back afterwards), view }
-  async function useSampleDeck() {
-    const st = S();
-    if (st.loaded && st.loaded.tutorial) return;
-    sample.prev = st.deck && st.loaded ? st.loaded : null;
-    const res = await fetch('decks/' + SAMPLE_FILE); if (!res.ok) throw new Error('the sample deck could not be opened');
+  async function useSampleDeck(file) {
+    const st = S(); file = file || SAMPLE_FILE;
+    if (st.loaded && st.loaded.tutorial && (st.loaded.tutorialFile || SAMPLE_FILE) === file) return;
+    if (!(st.loaded && st.loaded.tutorial)) sample.prev = st.deck && st.loaded ? st.loaded : null;          // a sample deck already loaded is never "the person's own"
+    const res = await fetch('decks/' + file); if (!res.ok) throw new Error('the sample deck could not be opened');
     const r = await A().useDeck(await res.text());
     if (!r.cards.length) throw new Error('the sample deck could not be loaded');
-    r.tutorial = true;
+    r.tutorial = true; r.tutorialFile = file;
   }
   function endSample(how) {
-    const sm = sample; sample = null; queued = null;
+    const sm = sample; sample = null; queued = null; stopCaps();
     if (!sm) return;
     if (sm.kind === 'practice' && window.__isfChoices) window.__isfChoices.close();          // a Duel goes on as a normal game, questions and all
     if (sm.ctl) for (const sel in sm.ctl) { const e = document.querySelector('#tab-duel ' + sel); if (e) { e.value = sm.ctl[sel][0]; if (sm.ctl[sel][1]) e.dataset.touched = sm.ctl[sel][1]; else delete e.dataset.touched; } }          // your own Duel settings come back for the next game
@@ -246,7 +246,7 @@
       A().setDeck(sm.prev, true);          // true: their own deck comes back as it was, past the Commander deck rule
       if (document.body.dataset.view === 'table') A().showTab('table');          // a new game with their own deck
     }          // no deck of their own: the sample deck stays, and the game is a normal game from here
-    const p = load(); p.seen['sample:' + sm.kind] = 1; for (const t of sm.kind === 'duel' ? ['duel'] : ['hands', 'table']) p.seen['tab:' + t] = 1; save(p);          // the sample game showed what those tabs' tours would
+    const p = load(); p.seen['sample:' + sm.kind] = 1; for (const t of sm.kind === 'duel' ? ['duel'] : sm.kind === 'fastest' ? ['deck', 'hands', 'table'] : ['hands', 'table']) p.seen['tab:' + t] = 1; save(p);          // the sample game showed what those tabs' tours would
     return how;
   }
   // Duel: Counter Culture against a copy of itself. The opponent goes first; in round 4 it attacks into your creature, you block and
@@ -341,6 +341,111 @@
     return start('', steps).then(endSample);
   }
 
+  // "The fastest deck" (T-093): the built-in deck with the best CEILING: the most wins by turn 2, then by turn 3, then by turn 4, then the
+  // median kill turn. Read from decks/index.json at run time (by2/by3/by4/earliestKill/medianKill/by7 are copied by tools/build-deck-index.js
+  // from each list's "Checked by ICEYfish" line), so a fresh check of the decks changes the tutorial by itself. Until a deck has the turn 2-4
+  // numbers, decks without them are ranked by the older speed numbers (median, then by T7, then by T5).
+  const killN = k => k == null ? Infinity : +String(k).replace('>', '') + (String(k)[0] === '>' ? 0.5 : 0);
+  const medOf = d => killN(d.medianKill != null ? d.medianKill : d.checkedMedian);          // medianKill is the measured one; checkedMedian is read from the list's check line
+  const fastestOf = decks => {
+    const ceil = decks.filter(d => d.by2 != null && d.by3 != null && d.by4 != null);
+    if (ceil.length) return ceil.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || medOf(a) - medOf(b) || (b.by7 || 0) - (a.by7 || 0))[0];
+    return decks.filter(d => d.by5 != null && medOf(d) !== Infinity).sort((a, b) => medOf(a) - medOf(b) || b.by7 - a.by7 || b.by5 - a.by5)[0] || null;
+  };
+  async function fastestDeck() { const r = await fetch('decks/index.json'); return r.ok ? fastestOf((await r.json()).decks || []) : null; }
+  let fast = null;          // { deck: the index row, seed, kill: the turn the picked game kills on }
+  const deckName = d => d.name.replace(/\s*\(.*\)\s*$/, '');
+  const list = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0] || '';
+  const pc = x => (x > 0 && x < 1 ? x.toFixed(1) : Math.round(x * 10) / 10) + '%';
+  function fastMana() {
+    const d = S().deck; let mana = [];
+    try { const T = window.Tags, ix = S().tags || T.index(d, {}); mana = [0, 1, 2].flatMap(v => T.query(ix, 'role:ramp -type:land mv:' + v).cards.map(c => c.name)); } catch (e) { /* no tags: no mana line */ }
+    return mana.filter((n, i) => mana.indexOf(n) === i);
+  }
+  // short captions on the key plays, read from the game log as the autopilot writes it (the lines the engine writes: "Played X", "Cast X",
+  // "⚡ … search …" for a tutor, "★ Combo assembled: …", "☠ Goldfish dead …"); the Watch step shows the latest one
+  let cap = '', capObs = null, capQ = [], capTimer = 0;          // each caption stays at least a moment: later ones wait in the queue
+  const trim = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;
+  function captionFor(t, mana, cmd) {
+    let m;
+    if ((m = /^★ Combo assembled: ([^(]+)/.exec(t))) return `The combo is assembled: ${trim(m[1].trim(), 60)}`;
+    if (/^☠/.test(t)) return `The kill: ${trim(t.replace(/^☠\s*/, ''), 60)}`;
+    if (/^⚡.*\bsearch/i.test(t)) return 'A tutor finds the missing pieces';
+    if ((m = /^(?:Played|Cast) (.+)$/.exec(t))) { const n = m[1].trim(); if (cmd.includes(n)) return `The commander comes down: ${n}`; if (mana.includes(n)) return `Fast mana: ${n}`; }
+    return null;
+  }
+  function startCaps() {
+    stopCaps(); cap = 'Key plays show up here as they happen.';
+    const ol = document.querySelector('#gameLog'); if (!ol) return;
+    const mana = fastMana(), cmd = S().deck ? S().deck.commanders.map(c => c.card.name) : [];
+    capObs = new MutationObserver(ms => { for (const mu of ms) for (const n of mu.addedNodes) { const c = n.textContent && captionFor(n.textContent.trim(), mana, cmd); if (c) capQ.push(c); } });
+    capObs.observe(ol, { childList: true });
+    capTimer = setInterval(() => { if (capQ.length) cap = capQ.shift(); }, 1500);
+  }
+  function stopCaps() { if (capObs) capObs.disconnect(); capObs = null; clearInterval(capTimer); capQ = []; }
+  // the plan, from the loaded deck: its commander, its cheap mana, the combos the engine plays
+  function planText() {
+    const d = S().deck, G = window.Goldfish; if (!d) return '';
+    const cm = d.commanders.map(c => c.card.name), out = [];
+    const mana = fastMana();
+    let combos = []; try { combos = G.deckCombos(d).filter(c => !c.open); } catch (e) { /* no combo data */ }
+    if (cm.length) out.push(`Its commander, ${list(cm)}, leads the plan.`);
+    if (mana.length) out.push(`Cheap mana (${list(mana.slice(0, 4))}) pays for it early.`);
+    if (combos.length) out.push(`The engine plays ${combos.length === 1 ? 'a combo' : combos.length + ' combos'}: ${list(combos.slice(0, 2).map(c => c.name))}.`);
+    return out.join(' ') || 'A cheap curve and a lot of mana.';
+  }
+  // a seed whose game, played like the Practice table plays it, kills as early as this deck ever does (or the earliest found in a few seconds)
+  function pickSeed(target) {
+    const G = window.Goldfish, o = A().opts(), t0 = Date.now(); let best = null;
+    for (let sd = 1; sd <= 5000 && Date.now() - t0 < 5000; sd++) {
+      try {
+        const g = G.newGame(S().deck, o, sd); G.draw(g, 7);
+        const lands = g.hand.filter(c => c.card.a && c.card.a.isLand).length; if (lands < 2 || lands > 5) continue;          // a hand you would keep
+        for (let t = 0; t < 4 && g.killTurn == null; t++) G.playTurn(g);
+        if (g.killTurn == null) continue;
+        if (!best || g.killTurn < best.kill) best = { seed: sd, kill: g.killTurn };
+        if (best.kill <= target) break;
+      } catch (e) { /* that seed does not play: try the next */ }
+    }
+    return best || { seed: 1, kill: null };
+  }
+  const killTurnNow = () => { const g = S() && S().game; return g && g.killTurn != null ? g.killTurn : null; };
+  const speedLine = d => d.by2 != null ? `${pc(d.by2)} of its games are won by turn 2, ${pc(d.by3)} by turn 3, ${pc(d.by4)} by turn 4.` : `Median turn ${d.medianKill != null ? d.medianKill : d.checkedMedian}, ${pc(d.by5)} by turn 5, ${pc(d.by7)} by turn 7.`;
+  const FASTEST = [
+    { title: 'The fastest deck', text: () => fast ? `${deckName(fast.deck)}${fast.deck.earliestKill ? ` can win on turn ${fast.deck.earliestKill}` : ' is the fastest built-in deck'}. ${speedLine(fast.deck)}` : '' },
+    { before: async () => { await useSampleDeck(fast.deck.file); A().showTab('deck'); await sleep(350); },
+      el: ['#deckTiles:not(:empty)', '.deck-view', '#tab-deck'], title: 'The plan', text: () => planText() },
+    { before: async () => {
+        await waitFor(() => S().deck); await sleep(1500); A().showTab('hands');
+        const h = fast.hand;
+        if (h) {          // a real hand from data/turn2-hands.json: dealt (and mulliganed) with the app's own options, then handed to the Mulligan tab
+          const G = window.Goldfish, g = G.newGame(S().deck, Object.assign({}, A().opts(), { onPlay: false }), h.seed); G.mulligan(g);
+          g.killTurn = null; A().hand.set({ g, mulls: g.mulligans || h.mull || 0 }); fast.kill = null;
+          const w = G.newGame(S().deck, Object.assign({}, A().opts(), { onPlay: false }), h.seed); G.mulligan(w);          // the same game, played out once to know the kill turn
+          for (let t = 0; t < 10 && w.killTurn == null; t++) G.playTurn(w);
+          fast.kill = w.killTurn;
+        } else { const p = pickSeed(fast.deck.earliestKill || 2); fast.seed = p.seed; fast.kill = p.kill; queued = fast.seed; }
+        await sleep(300); },
+      get el() { return fast.hand ? '#handStage .fan' : '#drawHand'; }, get tap() { return !fast.hand; }, back: false, title: () => fast.hand ? 'A real winning hand' : 'Draw a 7',
+      text: () => fast.hand ? `A real hand from the games, kept${fast.hand.mull ? ' after ' + fast.hand.mull + ' mulligan' + (fast.hand.mull > 1 ? 's' : '') : ''}: it wins on turn ${fast.kill || 2}. ${fast.hand.how}.` : `Tap Draw a 7. This opening hand wins${fast.kill ? ' on turn ' + fast.kill : ' early'}.` },
+    { before: () => waitFor(() => document.querySelector('#handStage .fan .mtg')), el: '#keepHand', tap: true, back: false, title: 'Keep', text: 'Keep it. The autopilot plays the rest.' },
+    { before: async () => { await waitFor(() => document.body.dataset.view === 'table' && S().game && idle()); autoTo = fast.kill || 2; const n = document.querySelector('#tAutoToN'); if (n) n.value = String(autoTo); startCaps(); },
+      el: '#tAutoTo', tap: true, back: false, title: 'Watch the win', text: () => `Tap Autopilot to turn ${autoTo}: it plays every turn up to the kill.` },
+    { el: ['.table-main'], live: true, back: false, hold: () => capQ.length > 0 || (killTurnNow() == null && !(S().game && S().game.turn >= autoTo && idle())), title: 'Key plays', text: () => cap },
+    { before: () => sleep(600).then(() => waitFor(() => killTurnNow() != null || (S().game && S().game.turn >= autoTo && idle()), 60000)), el: ['.table-main'], back: false, title: () => killTurnNow() != null ? `Dead on turn ${killTurnNow()}` : 'Not yet',
+      text: () => killTurnNow() != null ? `The goldfish is dead on turn ${killTurnNow()}. Tap Log to read each play.` + (sample && sample.prev ? ' Your own deck comes back when you tap Next.' : ' The deck stays loaded: play on.') : `No kill by turn ${S().game ? S().game.turn : autoTo} this time. Tap Autopilot to go on.` },
+  ];
+  async function fastestGame() {
+    stop();
+    try {
+      const d = await fastestDeck(); if (!d) throw new Error('no deck has speed numbers yet'); fast = { deck: d, seed: null, kill: null, hand: null };
+      try { const t = await (await fetch('data/turn2-hands.json')).json(), hs = ((t.draw || {})[deckName(d)] || {}).hands || []; fast.hand = hs.find(h => !h.mull) || hs[0] || null; } catch (e) { /* no table: a seed is searched instead */ }
+    }
+    catch (e) { toast('The fastest deck could not be found: ' + (e && e.message || e)); return 'error'; }
+    sample = { kind: 'fastest', prev: null };
+    return start('', FASTEST).then(endSample);
+  }
+
   // ---- the tours: one per tab, three to six steps, the key features only ----
   const TOURS = {
     deck: [
@@ -394,7 +499,7 @@
       { el: () => { const e = $('#tab-pod .vs-run'); return e && e.closest('.card-box'); }, title: 'Play many games', text: 'See how often each deck wins the pod.' },
     ],
   };
-  const NAMES = { deck: 'Build', hands: 'Mulligan', table: 'Practice', sim: 'Simulate', odds: 'Odds', duel: 'Duel', pod: 'Pod' };
+  const NAMES = { deck: 'Build', hands: 'Mulligan', table: 'Practice', sim: 'Simulate', odds: 'Odds', duel: 'Duel', pod: 'Pod', puzzle: 'Puzzle' };
   const view = () => document.body.dataset.view || 'deck';
   const blocked = () => !!document.querySelector('.modal.show, .lightbox.show, .ch-sheet');          // another sheet is open: wait
 
@@ -555,6 +660,7 @@
       ['☰', 'Every feature, every tab', () => fullAll(), 'tut-m-fullall'],
       ['🐟', 'Sample game: Practice', () => sampleGame('practice'), 'tut-m-sample'],
       ['⚔', 'Sample game: Duel', () => sampleGame('duel'), 'tut-m-duel'],
+      ['⚡', 'The fastest deck', () => fastestGame(), 'tut-m-fastest'],
       ['✓', `First goals · ${goalCount()} of ${GOALS.length}`, () => openGoals(), 'tut-m-goals'],
       ['★', 'What\'s new', () => whatsNew(true), 'tut-m-new'],
       ['⚙', `First-visit tours: ${tourStyle() === 'full' ? 'every feature' : 'short'}`, () => toggleStyle(), 'tut-m-style'],
@@ -724,7 +830,7 @@
   function reset() { try { localStorage.removeItem(KEY); } catch (e) { /* nothing saved */ } }
   function restart() { stop(); reset(); const p = load(); p.welcome = 1; save(p); maybeAuto(); if (!autoOn()) tour(view()); }
 
-  window.ISFTutorial = { start, stop, tour, restart, reset, sampleGame, takeSeed, welcome, whatsNew, checkTips, fullAll, full: FULL, goals: GOALS, tips: TIPS, tours: TOURS, autoOn, progress: load, get active() { return run ? { id: run.id, step: run.i, of: run.steps.length } : null; }, get target() { const st = run && run.steps[run.i]; return st ? findEl(st) : null; } };
+  window.ISFTutorial = { start, stop, tour, restart, reset, sampleGame, fastestGame, fastestOf, takeSeed, welcome, whatsNew, checkTips, fullAll, full: FULL, goals: GOALS, tips: TIPS, tours: TOURS, autoOn, progress: load, get active() { return run ? { id: run.id, step: run.i, of: run.steps.length } : null; }, get target() { const st = run && run.steps[run.i]; return st ? findEl(st) : null; } };
 
   addButtons();
   setTimeout(onLoad, 700);          // what's new or the welcome card, then the tab the app opens on (Remember State may restore one)

@@ -1,0 +1,989 @@
+{
+ "about": "Real turn-2 wins found by MAIN 3 on Version 204 (2026-11-26): 1,500 goldfish games per deck, seeds (777 + k*7919)>>>0, opts as in tools/verify-brackets.js loadAll (turns 10, freeMulligan for commander decks), onPlay false (draw) and true (play). Replay: G.newGame(deck, Object.assign({}, opts, {onPlay}), seed); G.mulligan(g); then G.playTurn(g) until killTurn. hand = the kept opening hand; table = permanents when it won; how = winBy text.",
+ "draw": {
+  "Captain's Lockdown": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 15,
+    "4": 19,
+    "5": 54,
+    "6": 185,
+    "7": 442,
+    "8": 411,
+    "9": 195,
+    "10": 89
+   },
+   "hands": [
+    {
+     "seed": 6240949,
+     "mull": 0,
+     "hand": [
+      "Thassa's Oracle",
+      "Lotus Petal",
+      "Demonic Consultation",
+      "Plaza of Heroes",
+      "Elesh Norn, Mother of Machines",
+      "Tergrid, God of Fright // Tergrid's Lantern",
+      "Stasis"
+     ],
+     "table": [
+      "Plaza of Heroes",
+      "Bayou",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "The King's Gambit": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 28,
+    "4": 29,
+    "5": 98,
+    "6": 220,
+    "7": 319,
+    "8": 304,
+    "9": 180,
+    "10": 105
+   },
+   "hands": [
+    {
+     "seed": 10430100,
+     "mull": 1,
+     "hand": [
+      "Demonic Consultation",
+      "Spell Pierce",
+      "Bayou",
+      "Scalding Tarn",
+      "Noble Hierarch",
+      "Marsh Flats"
+     ],
+     "table": [
+      "Bayou",
+      "Noble Hierarch",
+      "Volcanic Island",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "Fine Print, Fatal Clause": {
+   "t2wins": 7,
+   "killHist": {
+    "2": 7,
+    "3": 29,
+    "4": 54,
+    "5": 58,
+    "6": 104,
+    "7": 291,
+    "8": 388,
+    "9": 330,
+    "10": 123
+   },
+   "hands": [
+    {
+     "seed": 2661561,
+     "mull": 2,
+     "hand": [
+      "Mystical Tutor",
+      "Mental Misstep",
+      "Demonic Tutor",
+      "Badlands",
+      "Underworld Breach"
+     ],
+     "table": [
+      "Gemstone Caverns",
+      "Badlands"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 4649230,
+     "mull": 2,
+     "hand": [
+      "Mox Diamond",
+      "Arid Mesa",
+      "Otawara, Soaring City",
+      "Vampiric Tutor",
+      "Thassa's Oracle"
+     ],
+     "table": [
+      "Gemstone Caverns",
+      "Volcanic Island",
+      "Mox Diamond",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    },
+    {
+     "seed": 4736339,
+     "mull": 0,
+     "hand": [
+      "Gamble",
+      "Verdant Catacombs",
+      "Lion's Eye Diamond",
+      "Redirect Lightning",
+      "Brain Freeze",
+      "Misty Rainforest",
+      "Underground Sea"
+     ],
+     "table": [
+      "Badlands",
+      "Tundra"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 5306507,
+     "mull": 0,
+     "hand": [
+      "Lion's Eye Diamond",
+      "Underworld Breach",
+      "Arcane Signet",
+      "Ancient Tomb",
+      "Copy Enchantment",
+      "Permission Denied",
+      "Brain Freeze"
+     ],
+     "table": [
+      "Ancient Tomb",
+      "Arcane Signet",
+      "Lion's Eye Diamond",
+      "Plateau"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 7135796,
+     "mull": 0,
+     "hand": [
+      "Badlands",
+      "Lotus Petal",
+      "Mox Diamond",
+      "Command Tower",
+      "Lion's Eye Diamond",
+      "Underworld Breach",
+      "Polluted Delta"
+     ],
+     "table": [
+      "Command Tower",
+      "Badlands"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 7880182,
+     "mull": 0,
+     "hand": [
+      "Gleaming Splendor",
+      "Brain Freeze",
+      "Plateau",
+      "Enlightened Tutor",
+      "Misty Rainforest",
+      "Lion's Eye Diamond",
+      "Orcish Bowmasters"
+     ],
+     "table": [
+      "Plateau",
+      "Underground Sea"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 9923284,
+     "mull": 0,
+     "hand": [
+      "Fellwar Stone",
+      "Tarnished Citadel",
+      "Force of Will",
+      "Windswept Heath",
+      "Demonic Tutor",
+      "Mana Vault",
+      "Thassa's Oracle"
+     ],
+     "table": [
+      "Tundra",
+      "Mana Vault",
+      "Fellwar Stone",
+      "Tarnished Citadel",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "Tidewoven": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 24,
+    "4": 83,
+    "5": 175,
+    "6": 204,
+    "7": 235,
+    "8": 266,
+    "9": 283,
+    "10": 149
+   },
+   "hands": [
+    {
+     "seed": 2661561,
+     "mull": 1,
+     "hand": [
+      "Demonic Tutor",
+      "Birds of Paradise",
+      "Tropical Island",
+      "Bayou",
+      "Deathrite Shaman",
+      "Thassa's Oracle"
+     ],
+     "table": [
+      "Tropical Island",
+      "Birds of Paradise",
+      "Bayou",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "Court of Ruin": {
+   "t2wins": 6,
+   "killHist": {
+    "2": 6,
+    "3": 29,
+    "4": 56,
+    "5": 66,
+    "6": 60,
+    "7": 145,
+    "8": 311,
+    "9": 360,
+    "10": 224
+   },
+   "hands": [
+    {
+     "seed": 1584577,
+     "mull": 0,
+     "hand": [
+      "City of Brass",
+      "Scalding Tarn",
+      "Lion's Eye Diamond",
+      "Underworld Breach",
+      "Strip Mine",
+      "Vampiric Tutor",
+      "Island"
+     ],
+     "table": [
+      "City of Brass",
+      "Strip Mine"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 4538364,
+     "mull": 0,
+     "hand": [
+      "Polluted Delta",
+      "Hymn to Tourach",
+      "Underworld Breach",
+      "Flooded Strand",
+      "Misty Rainforest",
+      "Swamp",
+      "Brain Freeze"
+     ],
+     "table": [
+      "Xander's Lounge",
+      "Underground Sea"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 4688825,
+     "mull": 0,
+     "hand": [
+      "Bottomless Pit",
+      "Scalding Tarn",
+      "Thassa's Oracle",
+      "Imperial Seal",
+      "Toxic Deluge",
+      "Badlands",
+      "Mox Diamond"
+     ],
+     "table": [
+      "Badlands",
+      "Underground Sea",
+      "Mox Diamond",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    },
+    {
+     "seed": 6050893,
+     "mull": 0,
+     "hand": [
+      "Bojuka Bog",
+      "Mountain",
+      "Sheoldred, the Apocalypse",
+      "Lion's Eye Diamond",
+      "Snuff Out",
+      "Brain Freeze",
+      "Underworld Breach"
+     ],
+     "table": [
+      "Bojuka Bog",
+      "Volcanic Island"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 8236537,
+     "mull": 0,
+     "hand": [
+      "Lion's Eye Diamond",
+      "Strip Mine",
+      "Underworld Breach",
+      "Marsh Flats",
+      "Echo of Eons",
+      "Bloodstained Mire",
+      "Bojuka Bog"
+     ],
+     "table": [
+      "Xander's Lounge",
+      "Strip Mine"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 11111134,
+     "mull": 0,
+     "hand": [
+      "Gamble",
+      "Waste Not",
+      "Otawara, Soaring City",
+      "Strip Mine",
+      "Brain Freeze",
+      "Lion's Eye Diamond",
+      "Lotus Petal"
+     ],
+     "table": [
+      "Otawara, Soaring City",
+      "Lion's Eye Diamond",
+      "Badlands"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    }
+   ]
+  },
+  "Dead Sea": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 12,
+    "4": 33,
+    "5": 65,
+    "6": 61,
+    "7": 124,
+    "8": 219,
+    "9": 307,
+    "10": 242
+   },
+   "hands": [
+    {
+     "seed": 4728420,
+     "mull": 0,
+     "hand": [
+      "Expropriate",
+      "Island",
+      "Basalt Monolith",
+      "Otawara, Soaring City",
+      "Brainstorm",
+      "Rings of Brighthearth",
+      "Mana Vault"
+     ],
+     "table": [
+      "Island",
+      "Mana Vault",
+      "Basalt Monolith",
+      "Rings of Brighthearth",
+      "Boseiju, Who Endures",
+      "Thrasios, Triton Hero"
+     ],
+     "how": "infinite mana (Basalt Monolith + Rings of Brighthearth) into Thrasios, Triton Hero: draws the library and finds Walking Ballista"
+    }
+   ]
+  },
+  "Permafrost Prodigy": {
+   "t2wins": 4,
+   "killHist": {
+    "2": 4,
+    "3": 17,
+    "4": 34,
+    "5": 49,
+    "6": 95,
+    "7": 212,
+    "8": 298,
+    "9": 306,
+    "10": 237
+   },
+   "hands": [
+    {
+     "seed": 3968196,
+     "mull": 0,
+     "hand": [
+      "Basalt Monolith",
+      "Command Tower",
+      "Walking Ballista",
+      "Otawara, Soaring City",
+      "Mox Amber",
+      "Fierce Guardianship",
+      "Fact or Fiction"
+     ],
+     "table": [
+      "Command Tower",
+      "Mox Amber",
+      "Kinnan, Bonder Prodigy",
+      "Otawara, Soaring City",
+      "Basalt Monolith",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    },
+    {
+     "seed": 9551091,
+     "mull": 0,
+     "hand": [
+      "Walking Ballista",
+      "Island",
+      "Basalt Monolith",
+      "Wooded Foothills",
+      "Yavimaya Coast",
+      "Mox Amber",
+      "Island"
+     ],
+     "table": [
+      "Yavimaya Coast",
+      "Mox Amber",
+      "Mox Opal",
+      "Kinnan, Bonder Prodigy",
+      "Tropical Island",
+      "Basalt Monolith",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    },
+    {
+     "seed": 9685714,
+     "mull": 0,
+     "hand": [
+      "Forest",
+      "Island",
+      "Forest",
+      "Walking Ballista",
+      "Sol Ring",
+      "Basalt Monolith",
+      "Command Tower"
+     ],
+     "table": [
+      "Command Tower",
+      "Sol Ring",
+      "Forest",
+      "Basalt Monolith",
+      "Mox Diamond",
+      "Mox Amber",
+      "Kinnan, Bonder Prodigy",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    },
+    {
+     "seed": 10509290,
+     "mull": 0,
+     "hand": [
+      "Mox Opal",
+      "Sol Ring",
+      "Strip Mine",
+      "Basalt Monolith",
+      "Breeding Pool",
+      "Walking Ballista",
+      "Finale of Devastation"
+     ],
+     "table": [
+      "Breeding Pool",
+      "Mox Opal",
+      "Sol Ring",
+      "Strip Mine",
+      "Basalt Monolith",
+      "Kinnan, Bonder Prodigy",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    }
+   ]
+  }
+ },
+ "play": {
+  "Captain's Lockdown": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 9,
+    "4": 17,
+    "5": 30,
+    "6": 135,
+    "7": 396,
+    "8": 422,
+    "9": 257,
+    "10": 108
+   },
+   "hands": [
+    {
+     "seed": 6240949,
+     "mull": 0,
+     "hand": [
+      "Thassa's Oracle",
+      "Lotus Petal",
+      "Demonic Consultation",
+      "Plaza of Heroes",
+      "Elesh Norn, Mother of Machines",
+      "Tergrid, God of Fright // Tergrid's Lantern",
+      "Stasis"
+     ],
+     "table": [
+      "Plaza of Heroes",
+      "Bayou",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "The King's Gambit": {
+   "t2wins": 2,
+   "killHist": {
+    "2": 2,
+    "3": 16,
+    "4": 23,
+    "5": 60,
+    "6": 183,
+    "7": 308,
+    "8": 293,
+    "9": 204,
+    "10": 147
+   },
+   "hands": [
+    {
+     "seed": 103724,
+     "mull": 0,
+     "hand": [
+      "Scalding Tarn",
+      "Mystical Tutor",
+      "Teferi, Time Raveler",
+      "Underworld Breach",
+      "Flooded Strand",
+      "Lion's Eye Diamond",
+      "Laboratory Maniac"
+     ],
+     "table": [
+      "Tundra",
+      "Volcanic Island"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 10430100,
+     "mull": 1,
+     "hand": [
+      "Demonic Consultation",
+      "Spell Pierce",
+      "Bayou",
+      "Scalding Tarn",
+      "Noble Hierarch",
+      "Marsh Flats"
+     ],
+     "table": [
+      "Bayou",
+      "Noble Hierarch",
+      "Volcanic Island",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "Fine Print, Fatal Clause": {
+   "t2wins": 2,
+   "killHist": {
+    "2": 2,
+    "3": 18,
+    "4": 34,
+    "5": 67,
+    "6": 105,
+    "7": 233,
+    "8": 381,
+    "9": 338,
+    "10": 163
+   },
+   "hands": [
+    {
+     "seed": 7880182,
+     "mull": 0,
+     "hand": [
+      "Gleaming Splendor",
+      "Brain Freeze",
+      "Plateau",
+      "Enlightened Tutor",
+      "Misty Rainforest",
+      "Lion's Eye Diamond",
+      "Orcish Bowmasters"
+     ],
+     "table": [
+      "Plateau",
+      "Underground Sea"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 9923284,
+     "mull": 0,
+     "hand": [
+      "Fellwar Stone",
+      "Tarnished Citadel",
+      "Force of Will",
+      "Windswept Heath",
+      "Demonic Tutor",
+      "Mana Vault",
+      "Thassa's Oracle"
+     ],
+     "table": [
+      "Tarnished Citadel",
+      "Mana Vault",
+      "Fellwar Stone",
+      "Tundra",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "Tidewoven": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 20,
+    "4": 66,
+    "5": 157,
+    "6": 169,
+    "7": 228,
+    "8": 252,
+    "9": 266,
+    "10": 200
+   },
+   "hands": [
+    {
+     "seed": 2661561,
+     "mull": 1,
+     "hand": [
+      "Demonic Tutor",
+      "Birds of Paradise",
+      "Tropical Island",
+      "Bayou",
+      "Deathrite Shaman",
+      "Thassa's Oracle"
+     ],
+     "table": [
+      "Tropical Island",
+      "Birds of Paradise",
+      "Bayou",
+      "Thassa's Oracle"
+     ],
+     "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins"
+    }
+   ]
+  },
+  "Court of Ruin": {
+   "t2wins": 2,
+   "killHist": {
+    "2": 2,
+    "3": 17,
+    "4": 49,
+    "5": 47,
+    "6": 39,
+    "7": 117,
+    "8": 251,
+    "9": 371,
+    "10": 278
+   },
+   "hands": [
+    {
+     "seed": 1584577,
+     "mull": 0,
+     "hand": [
+      "City of Brass",
+      "Scalding Tarn",
+      "Lion's Eye Diamond",
+      "Underworld Breach",
+      "Strip Mine",
+      "Vampiric Tutor",
+      "Island"
+     ],
+     "table": [
+      "City of Brass",
+      "Strip Mine"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    },
+    {
+     "seed": 6050893,
+     "mull": 0,
+     "hand": [
+      "Bojuka Bog",
+      "Mountain",
+      "Sheoldred, the Apocalypse",
+      "Lion's Eye Diamond",
+      "Snuff Out",
+      "Brain Freeze",
+      "Underworld Breach"
+     ],
+     "table": [
+      "Bojuka Bog",
+      "Mountain"
+     ],
+     "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty"
+    }
+   ]
+  },
+  "Night's Curfew": {
+   "t2wins": 0,
+   "killHist": {
+    "3": 17,
+    "4": 21,
+    "5": 40,
+    "6": 121,
+    "7": 253,
+    "8": 382,
+    "9": 306,
+    "10": 160
+   },
+   "hands": []
+  },
+  "Odds and Ends": {
+   "t2wins": 0,
+   "killHist": {
+    "3": 14,
+    "4": 28,
+    "5": 32,
+    "6": 29,
+    "7": 71,
+    "8": 116,
+    "9": 205,
+    "10": 287
+   },
+   "hands": []
+  },
+  "Dead Sea": {
+   "t2wins": 1,
+   "killHist": {
+    "2": 1,
+    "3": 10,
+    "4": 20,
+    "5": 43,
+    "6": 62,
+    "7": 110,
+    "8": 197,
+    "9": 266,
+    "10": 266
+   },
+   "hands": [
+    {
+     "seed": 4728420,
+     "mull": 0,
+     "hand": [
+      "Expropriate",
+      "Island",
+      "Basalt Monolith",
+      "Otawara, Soaring City",
+      "Brainstorm",
+      "Rings of Brighthearth",
+      "Mana Vault"
+     ],
+     "table": [
+      "Island",
+      "Mana Vault",
+      "Basalt Monolith",
+      "Rings of Brighthearth",
+      "Boseiju, Who Endures",
+      "Thrasios, Triton Hero"
+     ],
+     "how": "infinite mana (Basalt Monolith + Rings of Brighthearth) into Thrasios, Triton Hero: draws the library and finds Walking Ballista"
+    }
+   ]
+  },
+  "Permafrost Prodigy": {
+   "t2wins": 4,
+   "killHist": {
+    "2": 4,
+    "3": 13,
+    "4": 26,
+    "5": 43,
+    "6": 82,
+    "7": 168,
+    "8": 247,
+    "9": 295,
+    "10": 310
+   },
+   "hands": [
+    {
+     "seed": 3968196,
+     "mull": 0,
+     "hand": [
+      "Basalt Monolith",
+      "Command Tower",
+      "Walking Ballista",
+      "Otawara, Soaring City",
+      "Mox Amber",
+      "Fierce Guardianship",
+      "Fact or Fiction"
+     ],
+     "table": [
+      "Command Tower",
+      "Mox Amber",
+      "Kinnan, Bonder Prodigy",
+      "Otawara, Soaring City",
+      "Basalt Monolith",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    },
+    {
+     "seed": 9551091,
+     "mull": 0,
+     "hand": [
+      "Walking Ballista",
+      "Island",
+      "Basalt Monolith",
+      "Wooded Foothills",
+      "Yavimaya Coast",
+      "Mox Amber",
+      "Island"
+     ],
+     "table": [
+      "Yavimaya Coast",
+      "Mox Amber",
+      "Kinnan, Bonder Prodigy",
+      "Tropical Island",
+      "Basalt Monolith",
+      "Mox Opal",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    },
+    {
+     "seed": 9685714,
+     "mull": 0,
+     "hand": [
+      "Forest",
+      "Island",
+      "Forest",
+      "Walking Ballista",
+      "Sol Ring",
+      "Basalt Monolith",
+      "Command Tower"
+     ],
+     "table": [
+      "Command Tower",
+      "Sol Ring",
+      "Forest",
+      "Basalt Monolith",
+      "Mox Diamond",
+      "Kinnan, Bonder Prodigy",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    },
+    {
+     "seed": 10509290,
+     "mull": 0,
+     "hand": [
+      "Mox Opal",
+      "Sol Ring",
+      "Strip Mine",
+      "Basalt Monolith",
+      "Breeding Pool",
+      "Walking Ballista",
+      "Finale of Devastation"
+     ],
+     "table": [
+      "Breeding Pool",
+      "Mox Opal",
+      "Sol Ring",
+      "Strip Mine",
+      "Basalt Monolith",
+      "Kinnan, Bonder Prodigy",
+      "Walking Ballista"
+     ],
+     "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista"
+    }
+   ]
+  },
+  "Tidecaller": {
+   "t2wins": 0,
+   "killHist": {
+    "3": 7,
+    "4": 23,
+    "5": 34,
+    "6": 62,
+    "7": 117,
+    "8": 202,
+    "9": 269,
+    "10": 263
+   },
+   "hands": []
+  },
+  "Final Heaven": {
+   "t2wins": 0,
+   "killHist": {
+    "3": 1,
+    "4": 41,
+    "5": 175,
+    "6": 345,
+    "7": 449,
+    "8": 303,
+    "9": 133,
+    "10": 36
+   },
+   "hands": []
+  },
+  "Mob Storm": {
+   "t2wins": 0,
+   "killHist": {
+    "3": 3,
+    "4": 20,
+    "5": 116,
+    "6": 493,
+    "7": 586,
+    "8": 177,
+    "9": 52,
+    "10": 23
+   },
+   "hands": []
+  },
+  "Moving Parts": {
+   "t2wins": 0,
+   "killHist": {
+    "3": 3,
+    "4": 7,
+    "5": 39,
+    "6": 110,
+    "7": 168,
+    "8": 233,
+    "9": 290,
+    "10": 265
+   },
+   "hands": []
+  }
+ }
+}

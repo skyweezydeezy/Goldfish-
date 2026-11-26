@@ -54,9 +54,8 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('printings are listed with prices', nPrint > 1, nPrint + ' printings');
   const shop = await p.$$eval('.lb-buy', x => x.map(a => a.href));
   check('shop links for TCGplayer, Card Kingdom and ManaPool', shop.length === 3 && /tcgplayer\.com/.test(shop[0]) && /cardkingdom\.com/.test(shop[1]) && /manapool\.com/.test(shop[2]));
-  const pr = await p.$$('.lb-print'); await pr[1].tap(); await p.waitForTimeout(700);
-  check('choosing a printing offers to use it, and its shop links follow it', await p.isVisible('.lb-use') && /tcgplayer\.com\/product\/\d+/.test(await p.$eval('.lb-buy', a => a.href)));
-  await p.tap('.lb-use'); await p.waitForTimeout(400);
+  const pr = await p.$$('.lb-print'); await pr[1].tap(); await p.waitForTimeout(900);          // T-112: a card of your deck switches at once (no separate button)
+  check('tapping a printing of your own card uses it at once, and its shop links follow it', !(await p.$('.lb-use')) && /tcgplayer\.com\/product\/\d+/.test(await p.$eval('.lb-buy', a => a.href)));
   check('using it confirms with a message', /Now using/.test(await p.textContent('#toast')));
   await p.tap('.lb-x'); await p.waitForTimeout(200);
   check('Close closes the viewer', !(await p.isVisible('#lightbox.show')));

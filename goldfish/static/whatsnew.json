@@ -2,6 +2,15 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 211,
+      "lines": [
+        "On phones and iPads a tap selects a card first (lifted and enlarged with its options); nothing is played until you tap an option. Undo can't take back a play that revealed new cards.",
+        "Change a card's printing from the card viewer anywhere (Build, Practice, Duel, Pod): one tap switches it everywhere the deck shows it.",
+        "\"Save to my Drive\" puts a pasted deck straight into your Drive folder for teaching. New: the Puzzle tab (win by turn 2, Easy to Hard, with score and streaks) and a \"The fastest deck\" tutorial.",
+        "Floating mana now empties at the end of each step and phase, and more cards are read exactly (Clock of Omens, Liquimetal, Cursed Mirror and others)."
+      ]
+    },
+    {
       "v": 210,
       "lines": [
         "More cards read exactly: Noxious Gearhulk gains life equal to the destroyed creature's toughness, Heliod's Intervention destroys X targets, Demon of Fate's Design casts enchantments for life, Ramos makes mana, River Kelpie and Neyali (graveyards and attacking tokens)."
@@ -26,7 +35,7 @@
       "v": 207,
       "lines": [
         "Earthbend works as written: any land you control (stack counters on one already earthbent), chosen as it's cast, and it comes back tapped once. Toph, the First Metalbender turns artifacts into lands.",
-        "Twinflame copies as many of your creatures as you pay Strive for. Teferi, Temporal Archmage's \u22121 untaps four permanents.",
+        "Twinflame copies as many of your creatures as you pay Strive for. Teferi, Temporal Archmage's −1 untaps four permanents.",
         "Settings: the Spacing choice is gone; everyone gets Standard."
       ]
     },

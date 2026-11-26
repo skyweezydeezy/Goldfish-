@@ -21,7 +21,7 @@ const put = (g, n, old) => { const p = G.enterWithTriggers(g, inst(g, n), {}, []
 { const g = fresh(); put(g, 'Yuna, Grand Summoner', true); const d = put(g, 'Shivan Dragon', true), e = put(g, 'Elvish Visionary', true); e.counters = 3; const dc = d.counters || 0;
   G.leavePerm(g, e, []); G.flushLeaves(g, []); check('Yuna: another permanent with 3 counters dies: 3 +1/+1 counters on a creature', (d.counters || 0) === dc + 3, d.counters);
   const g2 = fresh(); put(g2, 'Yuna, Grand Summoner', true); const d2 = put(g2, 'Shivan Dragon', true), e2 = put(g2, 'Elvish Visionary', true); G.leavePerm(g2, e2, []); G.flushLeaves(g2, []); check('...a permanent with no counters: nothing', (d2.counters || 0) === 0, d2.counters); }
-{ const fx = by('Nuclear Fallout').a.spellFx[0]; check('Nuclear Fallout: twice -X/-X (xShrink mult 2)', fx.type === 'xShrink' && fx.mult === 2);
+{ const fx = by('Nuclear Fallout').a.spellFx[0]; check('Nuclear Fallout: twice -X/-X (xShrink times 2)', fx.type === 'xShrink' && fx.times === 2);
   const g = fresh(); const e = put(g, 'Elvish Visionary', true), d = put(g, 'Shivan Dragon', true); g.xValue = 1; G.applyEffects(g, [fx], null, [], null); G.flushLeaves(g, []);
   check('...X = 1 acts as -2/-2: a 1/1 dies, a 5/5 does not', !g.battlefield.includes(e) && g.battlefield.includes(d)); g.xValue = 0;
   const g2 = fresh(); const dr = put(g2, 'Llanowar Elves', true); g2.xValue = 1; G.applyEffects(g2, [fx], null, [], null); G.flushLeaves(g2, []); check('...and X = 1 kills a 1/1 Elf', !g2.battlefield.includes(dr)); g2.xValue = 0; }

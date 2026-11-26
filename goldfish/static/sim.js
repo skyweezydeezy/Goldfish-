@@ -803,7 +803,7 @@
       }
       // ---- rules batch 74: the top-5000 pool (one card each)
       if (a.isInstantSorcery) {
-        if (/^each creature gets twice -x\/-x until end of turn\. each player gets x rad counters\.?$/i.test(line)) { a.spellFx.push({ type: 'xShrink', mult: 2 }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Nuclear Fallout (approx: creatures that survive are not shrunk, and rad counters are not kept)
+        if (/^each creature gets twice -x\/-x until end of turn\. each player gets x rad counters\.?$/i.test(line)) { a.spellFx.push({ type: 'xShrink', times: 2 }, { type: 'rad', n: 'X', who: 'each' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Nuclear Fallout (approx: creatures that survive are not shrunk)
         if (/^look at the top x cards of your library, where x is the number of lands you control\. put one of those cards into your hand\. if (?:this spell|~) was kicked, put two of those cards into your hand instead\. put the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.spellFx.push({ type: 'kickSwap', base: [{ type: 'lookTake', look: 'LANDS', take: 1 }], kick: [{ type: 'lookTake', look: 'LANDS', take: 2 }] }); rec.status = 'ok'; continue; }          // Consult the Star Charts
       }
       { let bm;
@@ -813,6 +813,20 @@
         if (/^escalate—tap an untapped creature you control\.?$/i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Collective Effort (approx: the spell is played with its one best mode)
         if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
         if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
+      }
+      // ---- rules batch 76: mill triggers and rad counters
+      { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        const TOK = (p, t, colors, subtypes, n) => ({ type: 'token', n: n || 1, tapped: false, creature: true, p, t, colors, subtypes, keywords: [], artifact: false, name: subtypes.join(' ') });
+        if (/^(?:hive mind — )?whenever a player mills one or more creature cards, you create a 1\/1 black horror creature token\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [TOK(1, 1, ['B'], ['Horror'])], { what: 'creature', whose: 'any' }); continue; }          // Zellix, Sanity Flayer
+        if (/^whenever one or more nonland cards are milled, put a \+1\/\+1 counter on each of up to x target creatures, where x is the number of nonland cards milled this way\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'upTo', upTo: 'MILLNL', other: false, excl: false, types: [] }], { what: 'nonland', whose: 'any' }); continue; }          // The Wise Mothman
+        if (/^whenever one or more nonland cards are milled, draw a card, then put a \+1\/\+1 counter on ~\. this ability triggers only once each turn\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [{ type: 'draw', n: 1 }, { type: 'counters', kind: '+1/+1', n: 1, scope: 'self' }], { what: 'nonland', whose: 'any', perTurn: true }); continue; }          // Mirelurk Queen
+        if (/^whenever one or more nonland cards are milled, you may create that many 2\/2 black zombie mutant creature tokens\. do this only once each turn\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [TOK(2, 2, ['B'], ['Zombie', 'Mutant'], 'MILLNL')], { what: 'nonland', whose: 'any', perTurn: true }); continue; }          // Screeching Scorchbeast
+        if (/^whenever a player mills a nonland card, you gain 1 life\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [{ type: 'gainLife', n: 1 }], { what: 'nonland', whose: 'any', each: true }); continue; }          // Glowing One
+        if (/^whenever one or more creature cards are put into your graveyard from your library, create a 2\/2 black zombie creature token\.?$/i.test(line)) { a.libYardTrig = true; TR(['libToYard'], [TOK(2, 2, ['B'], ['Zombie'])]); continue; }          // Sidisi, Brood Tyrant
+        if (/^whenever ~ enters or attacks, each player gets a rad counter\.?$/i.test(line)) { TR(['etb', 'attack'], [{ type: 'rad', n: 1, who: 'each' }]); continue; }          // The Wise Mothman
+        if (/^whenever ~ attacks, each player gets two rad counters\.?$/i.test(line)) { TR(['attack'], [{ type: 'rad', n: 2, who: 'each' }]); continue; }          // Screeching Scorchbeast
+        if (/^when ~ enters, target player gets two rad counters\.?$/i.test(line)) { TR(['etb'], [{ type: 'rad', n: 2, who: 'opp' }]); continue; }          // Mirelurk Queen (an opponent)
+        if (/^whenever ~ deals combat damage to a player, they get four rad counters\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'rad', n: 4, who: 'opp' }], { who: '~' }); continue; }          // Glowing One
       }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
@@ -6065,6 +6079,7 @@
       else if (n === 'GREATESTOTHERPOWER') n = Math.min(20, g.battlefield.filter(q => q !== source && isCreaturePerm(q)).reduce((m, q) => Math.max(m, powerOf(g, q)), 0));          // Prime Speaker Zegana
       else if (n === 'ISTURN') n = g.isT === g.turn ? (g.isN || 0) : 0;          // Sorcerer Class: instants and sorceries cast this turn
       else if (n === 'SUBJDIFF') n = subject && isCreaturePerm(subject) ? Math.abs(powerOf(g, subject) - toughnessOf(g, subject)) : 0;          // Jaws of Defeat
+      else if (n === 'MILLNL') n = g._milledNL || 0;          // rules batch 76: the nonland cards milled this way (Screeching Scorchbeast)
       else if (n === 'LASTMV') n = g.lastCast && g.lastCast.card ? (g.lastCast.card.a.mv || 0) : 0;          // Secret Arcade: that spell's mana value
       else if (n === 'SELFCOUNTERS') n = source ? Math.max(0, source.counters || 0) : 0;          // Big Mother Mouser: its +1/+1 counters
       else if (n === 'SRCCOUNTERS') n = source ? (source.counters || 0) + Object.values(source.other || {}).reduce((t, v) => t + (v > 0 ? v : 0), 0) : 0;          // Warden of the Grove
@@ -6140,6 +6155,7 @@
           const k = g.battlefield.filter(q => isCreaturePerm(q) && (q === subject || cl(q) || cl(subject) || tw(q).some(w => st.includes(w)))).length;
           for (let j = 0; j < k; j++) g.floating.push({ src: null, colors: new Set(['C']), floating: true }); if (k) ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: adds ${k} {C} (${k} creature${k > 1 ? 's' : ''} sharing a type with ${subject.card.name})`, source }); break; }          // rules batch 72: Mana Echoes
         case 'skirmisher': { const blockers = g.opp ? g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped) : false; const kw = blockers ? 'first strike' : 'lifelink'; applyEffects(g, [{ type: 'pumpAll', p: 0, t: 0, keywords: [kw] }], source, ev, null); ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: chooses ${kw}`, source }); break; }          // rules batch 74: Angelic Skirmisher (first strike against blockers, otherwise lifelink)
+        case 'rad': { const nn = n || 1; if (f.who !== 'opp') addRad(g, nn, ev, source); if (f.who !== 'you') for (const o of otherPlayers(g)) addRad(o, nn, ev, source); break; }          // rules batch 76: rad counters (each player / target opponent / you; a goldfish's opponent has no cards to mill)
         case 'treeSwap': { if (!source || !g.battlefield.includes(source) || !isCreaturePerm(source)) break; const t = toughnessOf(g, source), l = g.life; source.setT = l; g.life = t; touch(g); ev.push({ type: 'note', text: `${source.card.name}: exchanges life (${l}) with toughness (${t})` }); break; }          // rules batch 72: Tree of Redemption (its base toughness becomes the old life total; counters and boosts still apply)
         case 'massShrink': for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } ev.push({ type: 'note', text: `All creatures get -${f.n}/-${f.n} until end of turn`, source }); break;          // Golgari Charm
         case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
@@ -6254,11 +6270,11 @@
           break;
         }
         case 'mill': {
-          const milledCr = [];
+          const milledCr = [], milledAll = [];
           for (let k = 0; k < Math.min(n, 10) && g.library.length; k++) {
             const c = g.library.shift(); if (c.card.a.isCreature) milledCr.push(c);
             if (c.card.a.isLand && bfInfo(g).millLands && !g.dry) { enterWithTriggers(g, c, { tapped: true }, ev); ev.push({ type: 'note', text: `Milled ${c.card.name}: onto the battlefield tapped`, source }); continue; }          // Hedge Shredder
-            g.graveyard.push(c);
+            g.graveyard.push(c); milledAll.push(c);
             ev.push({ type: 'note', text: `Milled ${c.card.name}`, source });
             if (f.insect && source && /\bInsect\b/.test(c.card.type_line || '') && (g.millDepth || 0) < 5) {       // an Insect card milled: a loyalty counter, and repeat the whole ability
               addCounters(g, source, 'loyalty', 1, ev, source);
@@ -6266,6 +6282,7 @@
               if (ab) { g.millDepth = (g.millDepth || 0) + 1; applyEffects(g, ab.fx, source, ev, subject); g.millDepth--; }
             }
           }
+          if (milledAll.length && !g.dry) { milledEvent(g, milledAll, ev); libYardEvent(g, milledAll, ev); }          // rules batch 76
           if (milledCr.length && bfInfo(g).graveReaver && !g.dry) { const b = milledCr.filter(i => g.graveyard.includes(i)).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x))[0]; if (b) { g.graveyard.splice(g.graveyard.indexOf(b), 1); enterWithTriggers(g, b, {}, ev); ev.push({ type: 'note', text: `Colossal Grave-Reaver: ${b.card.name} is milled onto the battlefield`, source }); } }
           break;
         }
@@ -6611,7 +6628,7 @@
           if (f.scope === 'opp') { if (g.opp) { for (const p of g.opp.battlefield.filter(isCreaturePerm)) addCounters(g.opp, p, kind, n, ev, source); } break; }
           if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && hasSubtype(p.card, f.types));
           else if (f.scope === 'subject') targets = subject && g.battlefield.includes(subject) && isCreaturePerm(subject) ? [subject] : [];          // the Ordeals: the creature that attacked
-          else if (f.scope === 'upTo') { const k = /^(?:stun|-1\/-1)$/.test(kind) ? 0 : f.upTo === 'X' ? (g.xValue || 0) : f.upTo; targets = g.battlefield.filter(p => isCreaturePerm(p) && !((f.other || f.excl) && p === source) && hasSubtype(p.card, f.types)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x)); const best = targets.slice(0, k); if (k && g.ask && !g.dry && targets.length) { const pk = decide(g, { kind: 'target', what: 'counters', options: targets, def: best, multi: true, pick: k, upTo: true, f, n, source }); targets = Array.isArray(pk) ? pk : best; } else targets = best; }          // the best N, as support does; a person picks up to N (stun and -1/-1 counters are for the other players' creatures)
+          else if (f.scope === 'upTo') { const k = /^(?:stun|-1\/-1)$/.test(kind) ? 0 : f.upTo === 'X' ? (g.xValue || 0) : f.upTo === 'MILLNL' ? (g._milledNL || 0) : f.upTo; targets = g.battlefield.filter(p => isCreaturePerm(p) && !((f.other || f.excl) && p === source) && hasSubtype(p.card, f.types)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x)); const best = targets.slice(0, k); if (k && g.ask && !g.dry && targets.length) { const pk = decide(g, { kind: 'target', what: 'counters', options: targets, def: best, multi: true, pick: k, upTo: true, f, n, source }); targets = Array.isArray(pk) ? pk : best; } else targets = best; }          // the best N, as support does; a person picks up to N (stun and -1/-1 counters are for the other players' creatures)
           else if (f.scope === 'self') targets = source && (isCreaturePerm(source) || kind !== '+1/+1') ? [source] : [];
           else if (f.scope === 'lastToken') targets = g._lastTok && g.battlefield.includes(g._lastTok) ? [g._lastTok] : [];
           else { let b = counterTarget(g, f, source); if (b && g.ask) b = decide(g, { kind: 'target', what: 'counters', options: g.battlefield.filter(p => isCreaturePerm(p) && !(f.excl && p === source) && hasSubtype(p.card, f.types)), def: b, f, n, source }); if (b) targets = [b]; }
@@ -7470,7 +7487,7 @@
           ev.push({ type: 'note', text: `Their creatures get -${sk}/-${sk}: ${dead.length} die`, source });
         } break;
         case 'xShrink': {                                                                                      // The Meathook Massacre: each creature gets -X/-X
-          const X = (g.xValue || 1) * (f.mult || 1);          // rules batch 75: Nuclear Fallout (twice -X/-X)
+          const X = (g.xValue || 1) * (f.times || 1);          // rules batch 75: Nuclear Fallout (twice -X/-X)
           const mine = g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= X), theirs = g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g.opp, q) <= X) : [];
           theirs.forEach(q => leavePerm(g.opp, q, ev)); mine.forEach(q => leavePerm(g, q, ev)); if (g.opp) flushLeaves(g.opp, ev);
           ev.push({ type: 'note', text: `Each creature gets -${X}/-${X}: ${mine.length} of yours and ${theirs.length} of theirs die`, source });
@@ -7882,17 +7899,56 @@
     const top = g.library.splice(0, Math.min(n, g.library.length)), keep = [];
     for (const c of top) { if (wantsBottom(g, c)) { g.graveyard.push(c); ev.push({ type: 'note', text: `Surveil: ${c.card.name} into the graveyard`, source }); if (c.card.a.isLand) landToYard(g, ev, false); } else keep.push(c); }
     g.library.unshift(...keep);
+    libYardEvent(g, top.filter(c => !keep.includes(c)), ev);          // rules batch 76: Sidisi (surveil puts cards into the graveyard from the library; it is not a mill)
     if (keep.length < top.length) yardShuffle(g, ev);
   }
   // Karn, the Great Creator: a face-up artifact card of yours in exile (not foretold, suspended or held by another card)
   const karnPick = i => i.card.a.isArtifact && !i.card.a.isLand && i.foretoldTurn == null && !(i.suspendN > 0) && i.heldBy == null && !i.faceDown && !i.foreign;
+  // ---- rules batch 76: mill triggers and rad counters (CR 701.17 mill, CR 725 radiation)
+  // The cards a mill put into a graveyard, for every permanent at the table that watches a mill: triggers of kind 'milled'
+  // { what: 'nonland' | 'creature' | 'any', whose: 'you' | 'any', perTurn, each (once for every card of that kind) }.
+  // CR 603.2c: "one or more" triggers once per mill, "a ... card" once for each card.
+  function milledEvent(owner, cards, ev) {
+    if (!cards.length || owner.dry) return;
+    const nl = cards.filter(c => !c.card.a.isLand).length, cr = cards.filter(c => c.card.a.isCreature).length;
+    for (const h of [owner].concat(otherPlayers(owner))) { if (!tableHas(h, 'milledTrig')) continue; for (const q of h.battlefield.slice()) {
+      if (!q.card.a.milledTrig) continue;
+      for (const t of q.card.a.triggers) {
+        if (!t.kinds.includes('milled') || (t.whose === 'you' && h !== owner)) continue;
+        const n = t.what === 'nonland' ? nl : t.what === 'creature' ? cr : cards.length; if (!n) continue;
+        if (t.perTurn) { if (q.milledTurn === h.turn) continue; q.milledTurn = h.turn; }
+        const t0 = h._milledNL, x0 = h.xValue; h._milledNL = nl;
+        try { for (let k = 0; k < (t.each ? n : 1); k++) fire(h, t, q, ev, null); } finally { h._milledNL = t0; h.xValue = x0; }
+      }
+    } }
+  }
+  // creature cards put into your graveyard from your library by any means (Sidisi, Brood Tyrant)
+  function libYardEvent(g, cards, ev) {
+    if (g.dry || !cards.length || !tableHas(g, 'libYardTrig')) return;
+    const cr = cards.filter(c => c.card.a.isCreature).length; if (!cr) return;
+    for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('libToYard')) fire(g, t, q, ev, null);
+  }
+  // Rad counters: a player's precombat main phase mills that many cards; for each nonland card milled they lose 1 life and a rad counter comes off (CR 725.2)
+  function addRad(g, n, ev, source) {
+    if (!(n > 0) || g.dry || solemnOn(g)) return;
+    g.rad = (g.rad || 0) + n; ev.push({ type: 'note', text: `${source && source.card ? source.card.name + ': ' : ''}${n} rad counter${n > 1 ? 's' : ''} (${g.rad})`, source: source && source.card ? source : null });
+  }
+  function radStep(g, ev) {
+    if (g.dry || !(g.rad > 0)) return;
+    const cs = g.library.splice(0, Math.min(g.rad, g.library.length)); g.graveyard.push(...cs);
+    const nl = cs.filter(c => !c.card.a.isLand).length;
+    ev.push({ type: 'note', text: `Rad counters: mills ${cs.length}${nl ? `, ${nl} nonland: lose ${nl} life and ${nl} rad counter${nl > 1 ? 's' : ''}` : ''}`, source: null });
+    for (const c of cs) if (c.card.a.isLand) landToYard(g, ev, false);
+    if (nl) { g.rad = Math.max(0, g.rad - nl); g.life -= nl; checkDeath(g, ev); }
+    milledEvent(g, cs, ev); libYardEvent(g, cs, ev);
+  }
   // Milling an opponent: a real opponent's library in a match; in a goldfish game the opponent's library is a count (99 cards less the opening hand
   // in Commander, 60 otherwise), and an opponent with no card left to draw loses at its next draw
   function ghostLib(g) { if (g.oppLib == null) g.oppLib = (g.opts.oppLibrary || (g.opts.oppLife >= 40 ? 99 : 60)) - 7; return g.oppLib; }
   function millOpp(g, n, ev, source) {
     if (!(n > 0)) return;
     const os = otherPlayers(g);
-    if (os.length) { for (const o of os) { const cs = o.library.splice(0, n); o.graveyard.push(...cs); yardShuffle(o, ev); } ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}each opponent mills ${n}`, source }); return; }
+    if (os.length) { for (const o of os) { const cs = o.library.splice(0, n); o.graveyard.push(...cs); yardShuffle(o, ev); milledEvent(o, cs, ev); libYardEvent(o, cs, ev); } ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}each opponent mills ${n}`, source }); return; }
     if (g.dry) return;
     g.oppLib = Math.max(0, ghostLib(g) - n);
     ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}the opponent mills ${n} (${g.oppLib} left in its library)`, source });
@@ -11305,6 +11361,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       discardWorst(g, ev); const two = g.library.splice(0, 2), ctx = tutorContext(g); two.sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx));
       two[0].temp = g.turn; g.hand.push(two[0]); g.exile.push(two[1]); ev.push({ type: 'note', text: `${q.card.name}: discarded, ${two[0].card.name} may be played this turn`, source: q });
     }
+    radStep(g, ev);          // rules batch 76: rad counters mill at the start of your precombat main phase
     eachTrigger(g, 'main', ev);
     settle(g, ev);          // "at the beginning of your precombat main phase" triggers resolve before anything is cast
     return ev;

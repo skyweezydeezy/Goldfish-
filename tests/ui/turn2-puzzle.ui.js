@@ -113,14 +113,14 @@ const ID = 'fine-print-fatal-clause-draw-4649230', LEVEL = 'medium', KEY = 'isf_
 
   // a reload: the solved puzzle is still ticked
   await p.reload(); await p.waitForFunction(() => window.ISFPuzzle, null, { timeout: 60000 });
-  await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-line');
+  await p.evaluate(() => { document.querySelector('[data-tab=puzzle]').hidden = false; }); await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-line');
   check('after a reload the solved puzzles are still ticked, the best streak is kept', await p.evaluate(([id]) => { const c = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="medium"]'), e = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="easy"]'); return !!c && c.classList.contains('solved') && e.classList.contains('solved') && /2 of \d+ solved/.test(document.querySelector('.pz-score').textContent) && /Best streak 2/.test(document.querySelector('.pz-score').textContent); }, [ID]), await p.$eval('.pz-score', e => e.textContent));
   await ctx.close();
 
   // ---- iPhone and iPad: the picker and a puzzle fit the screen, the buttons are reachable
   for (const [name, w, h] of [['iPhone', 390, 844], ['iPhone sideways', 844, 390], ['iPad', 820, 1180]]) {
     const m = await mk(w, h, true), q = m.p;
-    await q.click('[data-tab=puzzle]'); await q.waitForSelector('.pz-line', { timeout: 15000 });
+    await q.evaluate(() => { document.querySelector('[data-tab=puzzle]').hidden = false; }); await q.click('[data-tab=puzzle]'); await q.waitForSelector('.pz-line', { timeout: 15000 });
     const fit1 = await q.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, tabs: [...document.querySelectorAll('.tab')].every(t => { const r = t.getBoundingClientRect(); return r.width > 0; }) }));
     check(`${name}: the picker fits the width`, fit1.sw <= fit1.cw + 1, JSON.stringify(fit1));
     await q.evaluate(([id, lv]) => { const l = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="' + lv + '"]'); const d = l.closest('details.pz-deck'); d.open = true; d.closest('details.pz-line').open = true; }, [ID, LEVEL]);

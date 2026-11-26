@@ -73,6 +73,17 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   t = await row('duel');
   check('poison counts toward ten: 8 on the table and +2 more is LETHAL', /\+2 poison/.test(t) && /LETHAL/.test(t), t);
   await p.evaluate(() => { window.__isfVersus.duel.game.games[0].poisonDealt = 0; });
+  // the poison badge beside each seat's commander damage: "☠ N/10" from 1 counter on, red from 8
+  const badge = (seat) => p.evaluate(s => { const e = document.querySelectorAll(`#tab-duel .vs-seat`)[0]; const seats = [...document.querySelectorAll('#tab-duel .vs-seat')]; const el = seats.find(x => +x.dataset.pid === s); const b = el && el.querySelector('.vs-ps'); return b ? { text: b.textContent, hot: b.classList.contains('hot') } : null; }, seat);
+  await p.evaluate(() => window.__isfVersus.redraw('duel'));
+  check('no poison, no badge on either seat', (await badge(0)) === null && (await badge(1)) === null);
+  await p.evaluate(() => { const V = window.__isfVersus, g = V.duel.game.games; g[1].opp = g[0]; g[0].opp = g[1]; g[0].poisonDealt = 3; V.redraw('duel'); });
+  let bd = await badge(1);
+  check('3 poison counters dealt to the opponent: its seat shows "☠ 3/10", not red; mine shows none', bd && /☠ 3\/10/.test(bd.text) && !bd.hot && (await badge(0)) === null, JSON.stringify(bd));
+  await p.evaluate(() => { const V = window.__isfVersus, g = V.duel.game.games; g[0].poisonDealt = 8; g[1].poisonDealt = 2; V.redraw('duel'); });
+  bd = await badge(1); const bm = await badge(0);
+  check('at 8 the badge turns red ("☠ 8/10"), and my own seat shows the 2 poison the other player dealt me', bd && /☠ 8\/10/.test(bd.text) && bd.hot && bm && /☠ 2\/10/.test(bm.text) && !bm.hot, JSON.stringify([bd, bm]));
+  await p.evaluate(() => { const V = window.__isfVersus, g = V.duel.game.games; g[0].poisonDealt = 0; g[1].poisonDealt = 0; V.redraw('duel'); });
   // commander damage toward 21
   const c = await board('duel', 0, [['Tifa, Fighter', 3, 3, [], { commander: true }]]);
   await p.evaluate(iid => { const g = window.__isfVersus.duel.game; g.games[0].cmdrDamage[iid + '>1'] = 18; window.__isfVersus.redraw('duel'); }, c[0]);
@@ -135,6 +146,11 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   const chip = await p.$eval('#tDmg', e => ({ hidden: e.hidden, text: e.textContent.replace(/\s+/g, ' ').trim() }));
   const mine = await p.evaluate(() => { const g = window.__isf.game, G = window.Goldfish; return window.__isfApi.attackSum(g, G.chooseAttackers(g, g.battlefield.filter(x => G.canAttack(g, x))), null).dmg; });
   check('Practice: the chip beside Next turn shows the autopilot\'s attack from the engine\'s numbers (a 3/3 and a 2/2 with haste: 5)', !chip.hidden && /⚔ 5/.test(chip.text) && mine === 5, chip.text + ' / ' + mine);
+  await p.evaluate(() => { window.__isf.game.poisonDealt = 9; });
+  p.removeAllListeners('dialog'); p.on('dialog', d => d.accept('1/1 Soldier'));
+  await p.click('#tToken'); await p.waitForTimeout(500);
+  const hp = await p.$eval('#hPoison', e => ({ text: e.textContent, hot: e.classList.contains('hot') }));
+  check('Practice: the HUD shows the opponent\'s poison ("9 / 10"), red from 8', /9 \/ 10/.test(hp.text) && hp.hot, JSON.stringify(hp));
   check('no page errors', !errs.length, errs.slice(0, 3).join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

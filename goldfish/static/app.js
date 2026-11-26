@@ -1909,6 +1909,7 @@
     $('#hSpent').textContent = g.manaSpent + (g.spentThisTurn || 0);
     const cd = Object.values(g.cmdrDamage || {});
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
+    { const ps = $('#hPoison'); if (ps) { ps.textContent = (g.poisonDealt || 0) + ' / 10'; ps.classList.toggle('hot', (g.poisonDealt || 0) >= 8); ps.title = 'Poison counters on the opponent (10 loses the game)'; } }          // the engine counts them on the opponent: the goldfish table has no attacker of its own
     $('#hPower').textContent = g.battlefield.reduce((s, p) => s + Math.max(0, G.powerOf(g, p)), 0);
     { const chip = $('#tDmg');                                       // what "Next turn" attacks for: the autopilot's attackers, from the engine's numbers
       const sum = chip && attackSum(g, G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))), null);

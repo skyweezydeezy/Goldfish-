@@ -943,6 +943,8 @@
     const cmd = g.deck.commanders.map(c => c.card.name.split(',')[0]).join(' + ');
     let cd = 0;                                               // the most commander damage this player has taken from one commander
     gm.games.forEach(o => Object.keys(o.cmdrDamage || {}).forEach(k => { if (String(k).endsWith('>' + g.pid)) cd = Math.max(cd, o.cmdrDamage[k]); }));
+    let ps = 0;                                               // the poison counters this player has: what the players attacking it have dealt (the engine keeps one count for each attacker, on the player it attacks)
+    gm.games.forEach(o => { if (o !== g && o.opp === g) ps = Math.max(ps, o.poisonDealt || 0); });
     const prev = st.life[g.pid]; st.life[g.pid] = g.life;
     const flash = prev == null || g.dead ? '' : g.life < prev ? ' down' : g.life > prev ? ' up' : '';
     const backs = mine ? '' : '<span class="vs-backs-slot"></span>';          // filled below with the kept fan of backs (backsEl)
@@ -951,7 +953,7 @@
     const rl = g.ring && g.ring.tempts > 0 ? Math.min(4, g.ring.tempts) : 0;
     const ring = rl ? `<span class="vs-ring" title="The Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×. ${esc(G.RING_TEXT.slice(0, rl).join(' '))}">💍 ${g.ring.tempts}</span>` : '';
     const plate = h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
-      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
+      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}${ps > 0 ? `<span class="vs-ps${ps >= 8 ? ' hot' : ''}" title="Poison counters (10 loses the game)">☠ ${ps}/10</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
     const slot = plate.querySelector('.vs-backs-slot'); if (slot) slot.replaceWith(backsEl(st, g));
     return plate;
   }
@@ -1063,7 +1065,7 @@
       G.isCreaturePerm(p) ? pt(g, p) : '', p.other ? JSON.stringify(p.other) : '', p.transformed ? 1 : 0, attacking(gm, g, p) ? 1 : 0, imprintOf(p) ? imprintOf(p).iid : ''];
     const top = z => z.length ? z[z.length - 1].iid : '';
     return JSON.stringify([mine ? 1 : 0, gm.over || '', cur(gm).pid, gm.phase || '', gm.picking ? 1 : 0, gm.block ? gm.block.attackers.map(a => a.iid) : '', gm.human, st.lookName[g.pid] || '',
-      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})),
+      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})), gm.games.map(o => (o.poisonDealt || 0) + ':' + (o.opp ? o.opp.pid : '')),
       g.hand.map(i => i.iid), g.command.map(i => i.iid), g.library.length, g.graveyard.length, top(g.graveyard), g.exile.length, top(g.exile), g.battlefield.map(P)]);
   }
   // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.

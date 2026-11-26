@@ -403,3 +403,7 @@
 .vs-likely { font-size: 13px; }
 #tDmg { align-self: center; font-size: 13px; padding: 3px 8px; }
 #tDmg[hidden] { display: none; }
+.vs-ps { flex: none; font-size: 11.5px; color: #b8f0b8; background: rgba(60,160,80,.22); border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+.vs-ps.hot, #hPoison.hot { color: #fff; background: #c0392b; }
+#hPoison.hot { padding: 0 6px; border-radius: 6px; }
+.vs-arena.pod .vs-opps .vs-ps { order: 4; font-size: 10px; padding: 1px 5px; }

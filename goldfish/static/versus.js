@@ -109,7 +109,11 @@
   // ---------- one game ----------
   // decide.js: a person's choices (ask first, then resolve) and the turn as a list of steps. choices.js: the question sheet.
   const D = window.Decide, C = window.__isfChoices;
-  const asking = mode => { const s = V[mode].q('.vs-ask'); return !s || s.value !== 'auto'; };
+  // In a game against a person on another device every decision is that person's own: the "My choices: Autopilot decides" setting and
+  // every autopilot control are not offered, and nothing of a remote seat is ever answered for it.
+  const asking = mode => { const g = V[mode].game; if (g && g.remote != null) return true; const s = V[mode].q('.vs-ask'); return !s || s.value !== 'auto'; };
+  // the pace of the table's own pauses: the 🐢…🐇 slider sets it, except in a game against a person on another device, where it is fixed at full speed
+  const slowOf = gm => (gm && gm.remote != null ? 1 : A.slow());
   const alive = gm => gm.human != null && !gm.games[gm.human].dead;
   // Whose priority it is. gm.human is the seat played on this device; in a game against a person on another device (remote.js) that
   // person's seat is gm.remote, and their turn runs through the same functions as yours.
@@ -288,7 +292,7 @@
   }
   async function choose(mode, gm, q, view) {
     if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
-    gm.preview = view; gm.choice = q; render(mode);          // the table shows the game as it stands at the moment of the question
+    gm.preview = view; gm.choice = q; q.noAuto = gm.remote != null; render(mode);          // the table shows the game as it stands at the moment of the question
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }
   }
   // The answer to a question of seat q.seat. Without a remote player: ask here (local). With one: the other player's answer comes from
@@ -372,7 +376,7 @@
   // attacked and have a creature that could block, the turn waits for their blocks.
   async function computerTurn(mode, g, pace) {
     const st = V[mode], gm = st.game, slowly = gm.human != null || pace;
-    const pause = async () => { if (!slowly) return; render(mode); await sleep(60 * A.slow()); if (st.game !== gm) throw C.CANCELLED; };
+    const pause = async () => { if (!slowly) return; render(mode); await sleep(60 * slowOf(gm)); if (st.game !== gm) throw C.CANCELLED; };
     let said = 0, turns = 0, force;
     for (const it of D.turnPlan(gm.games, g.pid)) {
       if (it.step === 'begin') {
@@ -442,7 +446,6 @@
     gm.step = 'end';
     await new Promise(done => {
       gm.phase = 'respond'; gm.respond = { g, done, abil, seat }; render(mode);
-      if (remote && seat === gm.human && !asking(mode)) setTimeout(() => input(mode, 'pass', false));          // "My choices: Autopilot decides"
     });
     gm.phase = null; gm.respond = null; gm.step = null;
     if (st.game !== gm) throw C.CANCELLED;
@@ -500,7 +503,7 @@
     sfx('turn');
     const ev = await act(mode, gs => D.turn.begin(gs[g.pid]));
     const st = V[mode];
-    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * A.slow()); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
+    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * slowOf(V[mode].game)); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
     gm.phase = 'main'; gm.step = 'main1';
     announce(mode);
   }
@@ -647,7 +650,7 @@
     } else {
       // Every step in order, each shown on the strip: beginning of combat (its triggers resolve: Hakbal explores, even while summoning
       // sick), combat with no attackers, the second main phase, then the end step and cleanup below. Nothing goes back to an earlier step.
-      const beat = async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * A.slow()); };
+      const beat = async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * slowOf(V[mode].game)); };
       if (!gm.attacked && !finished(gm)) {
         gm.step = 'combat'; await beat();
         const pv = await act(mode, gs => D.turn.declare(gs[pid]));
@@ -953,7 +956,7 @@
       const need = G.mullCost(g), next = G.mullCost(g, true), lands = g.hand.filter(i => i.card.a.isLand).length, canMull = (g.mulligans || 0) < 6 && 7 - next >= 1;
       [...gm.bottom].forEach(id => { if (!g.hand.some(i => i.iid === id)) gm.bottom.delete(id); });
       return `<div class="vs-ask"><b>Your opening hand</b> <span class="hint">${g.hand.length} cards, ${lands} land${lands === 1 ? '' : 's'}. ${need ? `Click ${need} card${need === 1 ? '' : 's'} to put on the bottom of your library (${gm.bottom.size}/${need}), then keep.` : 'Keep this hand or take a mulligan.'}</span></div>
-        <div class="row wrap"><button class="primary vs-keep"${need && gm.bottom.size !== need ? ' disabled' : ''}>Keep${need ? ' ' + (7 - need) : ''}</button>${canMull ? `<button class="vs-mull">Mulligan (${next === need ? 'free' : 'keep ' + (7 - next)})</button>` : ''}<button class="ghost vs-mull-auto">Let the autopilot decide</button></div>`;
+        <div class="row wrap"><button class="primary vs-keep"${need && gm.bottom.size !== need ? ' disabled' : ''}>Keep${need ? ' ' + (7 - need) : ''}</button>${canMull ? `<button class="vs-mull">Mulligan (${next === need ? 'free' : 'keep ' + (7 - next)})</button>` : ''}${gm.remote != null ? '' : '<button class="ghost vs-mull-auto">Let the autopilot decide</button>'}</div>`;
     }
     if (gm.phase === 'block' && gm.block) {
       const atk = gm.block.g, as = gm.block.attackers, KW = ['flying', 'menace', 'trample', 'deathtouch', 'first strike', 'double strike', 'lifelink', 'reach', 'indestructible'];
@@ -976,7 +979,7 @@
     }
     const units = G.allUnits(g).length;
     return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
-      ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
+      ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
   function handEl(st, gm, g) {
@@ -1061,6 +1064,7 @@
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
+    { const sb = q('.speed-bar'); if (sb) sb.hidden = gm.remote != null; }          // the pace of a game against a person is fixed (slowOf)
     endUi(mode, gm);
     if (gm.remote != null) setTimeout(() => pump(mode));          // a move of the other player may be waiting for this moment
   }
@@ -1151,7 +1155,7 @@
         const need = G.mullCost(g);
         if (hit('vs-keep')) { if (gm.bottom.size === need) input(mode, 'keep', g.hand.filter(i => gm.bottom.has(i.iid)).map(i => i.iid)); return; }
         if (hit('vs-mull')) return input(mode, 'mull');
-        if (hit('vs-mull-auto')) return input(mode, 'mullAuto');
+        if (hit('vs-mull-auto') && gm.remote == null) return input(mode, 'mullAuto');
         const c = t.closest('.vs-hand .vs-card');
         if (c && need) { e.stopPropagation(); const id = +c.dataset.iid; if (gm.bottom.has(id)) gm.bottom.delete(id); else if (gm.bottom.size < need) gm.bottom.add(id); sfx('tap'); return render(mode); }
         return;
@@ -1174,7 +1178,7 @@
         return render(mode);
       }
       if (hit('vs-end')) return input(mode, 'end', false);
-      if (hit('vs-autoturn')) return input(mode, 'end', true);
+      if (hit('vs-autoturn') && gm.remote == null) return input(mode, 'end', true);
     });
   }
 

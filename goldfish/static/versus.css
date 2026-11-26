@@ -367,3 +367,5 @@
 .vs-endp .vs-rmq { padding: 8px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .vs-outbar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--surface, #1b1f2a) 94%, transparent); border: 1px solid var(--border, rgba(128,128,128,.4)); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 .vs-outbar button { min-height: 40px; }
+
+.speed-bar[hidden] { display: none !important; }          /* a game against a person has a fixed pace (versus.js slowOf) */

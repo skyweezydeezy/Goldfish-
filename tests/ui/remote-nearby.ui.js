@@ -107,6 +107,11 @@ const tap = async (p, sel, ms) => {
   check('only the setup went through the meeting point: names, deck names, offer and answer; no deck, seed or move', bad.length === 0, bad.slice(0, 2).map(m => m.payload.slice(0, 80)).join(' | '));
   const nearlyGone = await A.evaluate(() => ({ visible: window.__isfRemote.M.visible }));
   check('a device in a game is off the Nearby list', nearlyGone.visible === false && !(await near(C)).length);
+  const noAuto = p => p.evaluate(() => ({ mullAuto: !!document.querySelector('#tab-duel .vs-mull-auto'), autoTurn: !!document.querySelector('#tab-duel .vs-autoturn'), speed: !!document.querySelector('#tab-duel .speed-bar') && document.querySelector('#tab-duel .speed-bar').getClientRects().length > 0, keep: !!document.querySelector('#tab-duel .vs-keep'),
+    ask: document.querySelector('#tab-duel .vs-ask select') && document.querySelector('#tab-duel .vs-ask select').value }));
+  const na = [await noAuto(A), await noAuto(B)];
+  check('Play a friend, opening hands: no "Let the autopilot decide" and no autopilot speed slider on either page (Keep is there)', na.every(x => !x.mullAuto && !x.speed && x.keep), JSON.stringify(na));
+  await A.evaluate(() => { document.querySelector('#tab-duel select.vs-ask').value = 'auto'; });          // "My choices: Autopilot decides" no longer reaches a game against a person
   await tap(A, '#tab-duel .vs-mull'); await A.waitForTimeout(300); await tap(A, '#tab-duel .vs-keep');
 
   // the wake lock
@@ -143,6 +148,17 @@ const tap = async (p, sel, ms) => {
   await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g.phase === 'main' && !g.acting && !g.busy; }, null, 40000)));
   const [a2, b2] = [await st(A), await st(B)];
   check('the game goes on after the automatic reconnect: both kept, the same table, no device stopped it', a2.fp === b2.fp && a2.phase === 'main');
+  const sheet = await A.evaluate(async () => {
+    const C = window.__isfChoices, mk = extra => Object.assign({ kind: 'target', title: 'Pick', text: 'Pick one', options: [{ name: 'Alpha' }, { name: 'Beta' }], def: [0], sig: 'x', seat: 0, max: 1 }, extra);
+    const out = {};
+    C.ask(mk({ noAuto: true })).catch(() => {}); out.remote = { auto: !!document.querySelector('.ch-sheet .ch-auto'), star: !!document.querySelector('.ch-sheet .ch-star'), ok: !!document.querySelector('.ch-sheet .ch-ok') };
+    C.close();
+    C.ask(mk({})).catch(() => {}); out.local = { auto: !!document.querySelector('.ch-sheet .ch-auto'), star: !!document.querySelector('.ch-sheet .ch-star') };
+    C.close(); return out;
+  });
+  check('a choice sheet in a game against a person has no "Let the autopilot decide" and no ★ autopilot mark (a local one still has the button)', sheet.remote.ok && !sheet.remote.auto && !sheet.remote.star && sheet.local.auto, JSON.stringify(sheet));
+  const na2 = [await noAuto(A), await noAuto(B)], mine = await Promise.all([A, B].map(p => p.evaluate(() => !!document.querySelector('#tab-duel .vs-end'))));
+  check('...and in the main phase the player whose turn it is has End turn but no "Autopilot the rest of my turn", on either page', mine.some(Boolean) && na2.every(x => !x.autoTurn && !x.speed), JSON.stringify(na2) + ' ' + mine);
 
   // the meeting point drops everyone, and then the channel dies: still mended (the client reconnects to the broker itself)
   broker.dropAll();

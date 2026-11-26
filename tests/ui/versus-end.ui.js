@@ -43,6 +43,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   await p.selectOption('#tab-duel .vs-opp', 'random');
   await start('duel');
   check('a game in progress has no end panel', !(await p.$('#tab-duel .vs-endp')));
+  check('a local Duel keeps its autopilot controls: Let the autopilot decide on the opening hand and the speed slider', !!(await p.$('#tab-duel .vs-mull-auto')) && await p.isVisible('#tab-duel .speed-bar'));
   check('table focus is on while the game is open (the top bar is out of the way)', await ev(() => document.body.classList.contains('tfocus')));
   const n0 = await names('duel');
   await finish('duel', 'Sky wins the game in round 11.');

@@ -815,7 +815,19 @@
   // The card exiled with a permanent by imprint (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) is drawn tucked behind that
   // permanent, labelled, and opens like any card. app.js knows which card it is (imprintOf) and reads the engine's notes (noteImprints).
   const { imprintOf, noteImprints } = A;
-  const sum = (g, ev, viewer) => { noteImprints(g, ev); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
+  // CR 701.44a: an explorer reveals the top card to every player: the other players see it on the table for a moment
+  const revealedSeen = new WeakSet();
+  function flashReveals(g, ev, viewer) {
+    if (viewer == null) return;
+    for (const e of ev) {
+      if (e.type !== 'reveal' || !e.inst || revealedSeen.has(e)) continue;
+      revealedSeen.add(e); if (g.pid === viewer) continue;          // the explorer has it on their own question
+      const box = h('div', 'vs-reveal', ''), cap = h('div', 'vs-reveal-cap', `${esc((e.source && e.source.card.name) || 'A creature')} explores: reveals ${esc(e.inst.card.name)}`);
+      box.append(A.cardEl(e.inst.card, { eager: true }), cap); document.body.appendChild(box); setTimeout(() => box.remove(), 2800);
+    }
+  }
+  V.flashReveals = flashReveals;          // (the tests call it with an explore event)
+  const sum = (g, ev, viewer) => { noteImprints(g, ev); flashReveals(g, ev, viewer); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
   // identical lands and tokens in the same state share a stack (up to three pictures and a ×N count)
   function stacks(st, gm, g, perms) {
     const picking = !!gm.picking && gm.human === g.pid && myMain(gm), groups = new Map();
@@ -868,7 +880,8 @@
       p.dataset.pid = g.pid; p.appendChild(inner || h('div', 'vs-empty')); box.appendChild(p);
       return p;
     };
-    pile('lib', 'Library', 'Lib', g.library.length, g.library.length ? backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid) : null);
+    const tv = G.topCardView(g), shown = tv === 'all' || (tv === 'owner' && mine);          // Mystic Forge and the like: its player sees the top card face up; the others see a card back (a revealed top card is open to everyone)
+    pile('lib' + (shown ? ' top-open' : ''), 'Library', 'Lib', g.library.length, g.library.length ? (shown ? node(st, `lt${g.pid}:${g.library[0].iid}`, g.library[0].card) : backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid)) : null);
     let cz = null;
     if (g.command.length) {
       cz = h('div', 'vs-czone');

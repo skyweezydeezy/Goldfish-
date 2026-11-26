@@ -3373,6 +3373,9 @@
     a.isInstantSorcery = /\b(Instant|Sorcery)\b/.test(tl);
     a.isAura = /\bAura\b/.test(tl);
     a.isEquipment = /\bEquipment\b/.test(tl);
+    a.topLook = /you may look at the top card of your library any time/i.test(text);          // Mystic Forge, Bolas's Citadel, Future Sight...: its controller may look
+    a.topReveal = /(?:^|\n)play with the top card of your library revealed/i.test(text);          // Courser of Kruphix, Experimental Frenzy...: everyone sees it
+    a.topRevealAll = /(?:each player plays|players play) with the top card of (?:their|each player's) librar(?:y|ies) revealed/i.test(text);
     a.isPermanent = !a.isInstantSorcery;
     a.noManaCost = !a.isLand && !card.isToken && !card.isBackFace && !(card.mana_cost || '').trim();
     a.cost = parseCost(card.mana_cost);
@@ -8025,17 +8028,26 @@
     if (p.lore >= sg.last && g.battlefield.includes(p) && p.card.a.saga === sg) { leavePerm(g, p, ev); flushLeaves(g, ev); }
   }
   // Explore: reveal the top card; a land goes to your hand, otherwise the creature gets a +1/+1 counter and the card may go to the graveyard
+  // Whose eyes the top card of g's library is open to: 'all' (revealed), 'owner' (its player may look at it any time: Mystic Forge...) or null
+  function topCardView(g) {
+    if (!g.library.length) return null;
+    let mode = null;
+    for (const q of g.battlefield) { const a = q.card.a; if (a.topReveal) return 'all'; if (a.topLook) mode = 'owner'; }
+    for (const o of otherPlayers(g)) for (const q of o.battlefield) if (q.card.a.topRevealAll) return 'all';
+    return mode;
+  }
   function explore(g, p, ev) {
     const times = (tableHas(g, 'statics.exploreTwice') && g.battlefield.some(q => q.card.a.statics.exploreTwice)) ? 2 : 1;                          // Topography Tracker
     for (let k = 0; k < times; k++) {
       if (!g.library.length || !g.battlefield.includes(p)) break;
       const top = g.library[0];
-      if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: ${top.card.name} to your hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
+      ev.push({ type: 'reveal', inst: top, source: p, pid: g.pid });          // CR 701.44a: the explorer reveals the top card, to every player
+      if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: reveals ${top.card.name}, a land: into hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
       else {
         addCounters(g, p, '+1/+1', 1, ev, p);
         let yard = exploreMill(g, top);
         if (g.ask && !g.dry) yard = decide(g, { kind: 'explore', options: [false, true], def: yard, reveal: top, source: p });          // a person: keep the revealed card on top, or put it into the graveyard
-        if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
+        if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: reveals ${top.card.name}, not a land: +1/+1 counter${g.library[0] === top ? ', it stays on top' : ', it goes to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
       fireExplore(g, 'explores', p, ev);
     }
   }
@@ -14281,7 +14293,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay,
     effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
-    powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
+    topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,
     lockUpkeep, ghostTurn, castBlocked, abilBlocked, searchRule, comboLines, infiniteMana, bestTutorTarget, stealPerm, discardWorst, setTribe: t => { curTribe = t; }, playMatch,
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, comparePoliciesPart, comparePoliciesMerge, matchMonteCarloPart, matchMonteCarloMerge, matchLog, linkMatch, matchOver, chooseBlocks,

@@ -219,6 +219,9 @@ label.small { font-size: 12px; }
 .pip.W { background: #f8f1d3; } .pip.U { background: #a9d4f0; } .pip.B { background: #b9aeaa; } .pip.R { background: #f19b7c; } .pip.G { background: #9bd3ae; } .pip.C { background: #cbc5c0; } .pip.M { background: conic-gradient(#f8f1d3 0 20%, #a9d4f0 0 40%, #b9aeaa 0 60%, #f19b7c 0 80%, #9bd3ae 0); }
 .zone-pile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 8px; }
 .pile-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+#zLibrary .lib-top { margin-top: 8px; text-align: center; }
+#zLibrary .lib-top .mtg { --card-w: 90px; margin: 0 auto; }
+#zLibrary .lib-top[hidden] { display: none; }
 #zLibrary .card-back { width: 90px; margin: 0 auto 6px; cursor: pointer; }
 .pile-cards { display: flex; flex-wrap: wrap; gap: 0; min-height: 10px; }
 .pile-cards .mtg { --card-w: 58px; margin: 0 -30px -60px 0; }
@@ -390,6 +393,7 @@ button, .tab, select, label { touch-action: manipulation; }
   .zone-pile .pile-cards .mtg { --card-w: 46px; margin: 0 -24px -48px 0; }
   #zCommand .pile-cards .mtg { --card-w: 96px; }
   #zLibrary .card-back { width: 64px; }
+  #zLibrary .lib-top .mtg { --card-w: 64px; }
   .bf-row { min-height: 120px; }
   .bf-row .mtg { --card-w: 76px; }
   .bf-row.lands .mtg { --card-w: 66px; }
@@ -454,6 +458,7 @@ html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; }   /* clip,
   .zone-pile { order: 2; }
   .table-log { order: 3; }
   #zLibrary .card-back { width: 54px; margin-bottom: 2px; }
+  #zLibrary .lib-top .mtg { --card-w: 54px; }
 }
 
 /* ---------- ICEYfish: frozen look ---------- */

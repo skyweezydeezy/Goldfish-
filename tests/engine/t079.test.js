@@ -75,5 +75,32 @@ T("Urza's Saga: chapter II is not III (a lore counter of 2 only)", () => {
   check('lore 2 after the first counter: still on the battlefield, no search', g.battlefield.includes(sg) && !g.battlefield.some(p => p.card.name === 'Sol Ring'));
 });
 
+
+// ---- the top card of a library: who may see it, and the explore reveal ----
+T('top card: "look any time" cards show it to their owner, "revealed" cards to everyone', () => {
+  const real = re => Object.keys(idx).filter(n => !idx[n].ref && re.test(idx[n].oracle_text || '') && !/\bAura\b|\/\//.test(idx[n].type_line || '')).slice(0, 12);          // every such card in the set data
+  const look = real(/you may look at the top card of your library any time/i), rev = real(/(?:^|\n)play with the top card of your library revealed/i);
+  const d2 = G.buildDeck([...new Set(look.concat(rev, ['Mystic Forge', 'Courser of Kruphix']))].map(n => get(n)).concat([ISLAND]), []), u = n => d2.unique.find(c => c.name === n);
+  check(`${look.length} "look at the top card any time" cards are read`, look.length >= 3 && look.every(n => u(n).a.topLook && !u(n).a.topReveal), look.join(', '));
+  check(`${rev.length} "play with the top card revealed" cards are read`, rev.length >= 2 && rev.every(n => u(n).a.topReveal), rev.join(', '));
+  const g = G.newGame(d2, O, 3); g.battlefield = []; g.library = [{ iid: 900, card: u('Mystic Forge') }];
+  check('no such permanent: nobody sees the top card', G.topCardView(g) === null);
+  G.enterWithTriggers(g, { iid: 901, card: u('Mystic Forge') }, {}, []);
+  check('Mystic Forge: the owner may look', G.topCardView(g) === 'owner');
+  G.enterWithTriggers(g, { iid: 902, card: u('Courser of Kruphix') }, {}, []);
+  check('Courser of Kruphix: everyone sees it', G.topCardView(g) === 'all');
+  g.library = [];
+  check('an empty library has no top card', G.topCardView(g) === null);
+});
+T('explore: the revealed card is an event for every player, and the log names it', () => {
+  const g = bare(); const fish = putOn(g, 'Silver Merfolk'); g.library = [inst(g, 'Island'), inst(g, 'Grizzly Bears')];
+  const ev = []; G.applyEffects(g, [{ type: 'exploreSelf' }], fish, ev, null);
+  const r = ev.find(e => e.type === 'reveal');
+  check('a reveal event naming the top card (a land)', !!r && r.inst.card.name === 'Island' && r.source === fish);
+  check('the note says it was revealed', ev.some(e => e.type === 'note' && /explores: reveals Island, a land/.test(e.text)), ev.map(e => e.text).filter(Boolean).join(' | '));
+  const ev2 = []; G.applyEffects(g, [{ type: 'exploreSelf' }], fish, ev2, null);
+  check('a nonland: revealed, +1/+1 counter, and the note says what happened to it', ev2.some(e => e.type === 'reveal' && e.inst.card.name === 'Grizzly Bears') && ev2.some(e => /explores: reveals Grizzly Bears, not a land: \+1\/\+1 counter/.test(e.text || '')), ev2.map(e => e.text).filter(Boolean).join(' | '));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

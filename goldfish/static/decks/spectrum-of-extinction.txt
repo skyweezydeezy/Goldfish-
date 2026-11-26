@@ -1,5 +1,6 @@
 // Spectrum of Extinction (Esika, God of the Tree // The Prismatic Bridge)
 // Bracket 4
+// Checked by ICEYfish (v193, 20,000 games): median kill T9, 0% by T5, 12.2% by T7; field win -%; 14 Game Changers; B4 confirmed
 // COMMANDER
 1 Esika, God of the Tree // The Prismatic Bridge
 

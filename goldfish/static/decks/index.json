@@ -55,7 +55,11 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "medianKill": 9,
+   "floor": 4,
+   "speedBracket": 1,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "the-kings-gambit.txt",
@@ -140,7 +144,11 @@
    ],
    "colors": "WUBR",
    "cards": 100,
-   "bracket": 5
+   "bracket": 4,
+   "medianKill": 8,
+   "floor": 4,
+   "speedBracket": 2,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "loyalty-program.txt",
@@ -288,7 +296,11 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "bracket": 5
+   "bracket": 4,
+   "medianKill": 9,
+   "floor": 4,
+   "speedBracket": 1,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "dead-ringers.txt",
@@ -508,7 +520,11 @@
    ],
    "colors": "UG",
    "cards": 100,
-   "bracket": 5
+   "bracket": 4,
+   "medianKill": 7,
+   "floor": 4,
+   "speedBracket": 3,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "tidal-loop.txt",
@@ -706,7 +722,11 @@
    ],
    "colors": "G",
    "cards": 100,
-   "bracket": 4
+   "bracket": 3,
+   "medianKill": 9,
+   "floor": 3,
+   "speedBracket": 1,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "nothing-personal.txt",

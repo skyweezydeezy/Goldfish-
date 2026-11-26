@@ -1,5 +1,6 @@
 // Value Meal (The Cabbage Merchant)
-// Bracket 4
+// Bracket 3
+// Checked by ICEYfish (v193, 20,000 games): median kill T9, 0.2% by T5, 9.8% by T7; field win -%; 1 Game Changers; was B4 -> B3: card rules B3, speed B1
 // Variation of a user-supplied Cabbage Merchant list: cost cut, salt cut, luck cut
 
 // COMMANDER

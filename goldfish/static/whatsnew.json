@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 196,
+      "lines": [
+        "Bill the Pony, Meriadoc Brandybuck and Spike Feeder play as written."
+      ]
+    },
+    {
       "v": 195,
       "lines": [
         "When a game ends: Play again, Change deck or Leave. In Play a friend your friend gets a rematch request, and Leave tells them you left.",

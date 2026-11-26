@@ -1,5 +1,6 @@
 // Landslide Victory (Bumi, Unleashed)
 // Bracket 4
+// Checked by ICEYfish (v211, 20,000 games): median kill T7, 3.1% by T5, 57.4% by T7; fastest T4: 0% by T2, 0% by T3, 0.1% by T4; 10 Game Changers; B4 confirmed
 // COMMANDER
 1 Bumi, Unleashed
 // MAINBOARD

@@ -567,7 +567,18 @@
    ],
    "colors": "RG",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 3.1,
+   "by7": 57.4,
+   "earliestKill": 4,
+   "by2": 0,
+   "by3": 0,
+   "by4": 0.1,
+   "medianKill": 7,
+   "floor": 4,
+   "speedBracket": 3,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "mermaids.txt",

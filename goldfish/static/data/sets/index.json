@@ -350,12 +350,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/tla.svg?1794805200",
    "partial": true,
-   "cards": 69,
-   "originals": 69,
+   "cards": 72,
+   "originals": 72,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 68,
+    "full": 71,
     "approx": 0,
     "partial": 0,
     "none": 1
@@ -368,12 +368,12 @@
    "set_type": "eternal",
    "icon": "https://svgs.scryfall.io/sets/tle.svg?1794805200",
    "partial": true,
-   "cards": 11,
-   "originals": 9,
+   "cards": 13,
+   "originals": 11,
    "reprints": 2,
    "missing": 0,
    "coverage": {
-    "full": 10,
+    "full": 12,
     "approx": 1,
     "partial": 0,
     "none": 0
@@ -386,12 +386,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/bfz.svg?1794805200",
    "partial": true,
-   "cards": 46,
-   "originals": 46,
+   "cards": 47,
+   "originals": 47,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 42,
+    "full": 43,
     "approx": 1,
     "partial": 2,
     "none": 1
@@ -661,8 +661,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 27,
-    "approx": 6,
+    "full": 28,
+    "approx": 5,
     "partial": 3,
     "none": 1
    }
@@ -843,8 +843,8 @@
    "coverage": {
     "full": 624,
     "approx": 23,
-    "partial": 57,
-    "none": 33
+    "partial": 58,
+    "none": 32
    }
   },
   {
@@ -1615,9 +1615,9 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 29,
+    "full": 30,
     "approx": 1,
-    "partial": 3,
+    "partial": 2,
     "none": 1
    }
   },
@@ -2132,12 +2132,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/gpt.svg?1794805200",
    "partial": true,
-   "cards": 17,
-   "originals": 17,
+   "cards": 18,
+   "originals": 18,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 17,
+    "full": 18,
     "approx": 0,
     "partial": 0,
     "none": 0
@@ -5390,12 +5390,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/ulg.svg?1794805200",
    "partial": true,
-   "cards": 19,
-   "originals": 19,
+   "cards": 20,
+   "originals": 20,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 19,
+    "full": 20,
     "approx": 0,
     "partial": 0,
     "none": 0
@@ -5595,8 +5595,8 @@
    "coverage": {
     "full": 32,
     "approx": 1,
-    "partial": 2,
-    "none": 3
+    "partial": 3,
+    "none": 2
    }
   },
   {

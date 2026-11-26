@@ -140,12 +140,16 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    redirect: ['choose the new target', 'Change the target of the spell to another legal target: the spell then does what it says to that permanent.'],
     strive: ['choose the creatures to copy', 'Choose any number of creatures you control: each gets a token copy with haste, exiled at the beginning of the next end step. Each target beyond the first costs {2}{R} more.'],
     untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
     demandCost: ['sacrifice an artifact or discard a card', 'Choose what you give up as an additional cost to cast it: an artifact you control, or a card from your hand.'],
     lookBf: ['put a creature onto the battlefield?', 'Choose a creature card from the cards you looked at: it enters the battlefield, and the rest go to the bottom of your library in a random order.'],
     sozin: ['put which creature cards onto the battlefield?', 'Choose creature cards from that player\'s graveyard with total mana value up to what you can pay for {X}: each enters the battlefield under your control.'],
     airbendMany: ['airbend which permanents?', 'Choose any number of other nonland permanents you control (none is allowed): each is exiled, and while it is exiled you may cast it for {2} rather than its mana cost.'],
+    goad: ['goad which creature?', 'Choose the creature an opponent controls that is goaded: until your next turn it attacks each combat if able.'],
+    yardExile: ['exile which card?', 'Choose a card from a graveyard to exile (or none).'],
+    yardBottomAll: ['whose graveyard goes to the bottom?', 'Choose up to one player: that player puts all the cards from their graveyard on the bottom of their library in a random order.'],
     bounceMany: ['return which permanents?', 'Choose up to the number of other nonland permanents the card names (none is allowed): each returns to its owner\'s hand.'],
     mirrorCopy: ['copy which creature?', 'Choose the creature on the battlefield it becomes a copy of until end of turn (it has haste), or none.'],
     becomeArtifact: ['make which permanent an artifact?', 'Choose the permanent that becomes an artifact in addition to its other types until end of turn.'],

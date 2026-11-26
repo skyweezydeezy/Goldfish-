@@ -1,6 +1,6 @@
 // Void Tax (Zhulodok, Void Gorger)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T8, 6.8% by T5, 46.5% by T7; field win 46.7%; 8 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 6.8% by T5, 46.5% by T7; 8 Game Changers; B4 confirmed
 // COMMANDER
 1 Zhulodok, Void Gorger (CMM) 752
 // DECK

@@ -2,6 +2,15 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 212,
+      "lines": [
+        "Two new Avatar decks: Heavy Metal Landfall (Toph, the First Metalbender, Bracket 3) and Landslide Victory (Bumi, Unleashed, Bracket 4).",
+        "Decks are listed by their official bracket (or by color); win rates and kill turns are gone from the deck menus for now.",
+        "Cards can now answer a spell as it's cast: Redirect Lightning and Hullbreaker Horror. Also read exactly: Selvala, Hanweir Battlements, Sword of the Paruns, Teysa, Firestorm, Avarice Totem and 11 more.",
+        "The Puzzle tab is hidden while the puzzles are rebuilt."
+      ]
+    },
+    {
       "v": 211,
       "lines": [
         "On phones and iPads a tap selects a card first (lifted and enlarged with its options); nothing is played until you tap an option. Undo can't take back a play that revealed new cards.",

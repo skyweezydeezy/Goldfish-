@@ -3373,6 +3373,9 @@
     a.isInstantSorcery = /\b(Instant|Sorcery)\b/.test(tl);
     a.isAura = /\bAura\b/.test(tl);
     a.isEquipment = /\bEquipment\b/.test(tl);
+    a.topLook = /you may look at the top card of your library any time/i.test(text);          // Mystic Forge, Bolas's Citadel, Future Sight...: its controller may look
+    a.topReveal = /(?:^|\n)play with the top card of your library revealed/i.test(text);          // Courser of Kruphix, Experimental Frenzy...: everyone sees it
+    a.topRevealAll = /(?:each player plays|players play) with the top card of (?:their|each player's) librar(?:y|ies) revealed/i.test(text);
     a.isPermanent = !a.isInstantSorcery;
     a.noManaCost = !a.isLand && !card.isToken && !card.isBackFace && !(card.mana_cost || '').trim();
     a.cost = parseCost(card.mana_cost);
@@ -8025,17 +8028,26 @@
     if (p.lore >= sg.last && g.battlefield.includes(p) && p.card.a.saga === sg) { leavePerm(g, p, ev); flushLeaves(g, ev); }
   }
   // Explore: reveal the top card; a land goes to your hand, otherwise the creature gets a +1/+1 counter and the card may go to the graveyard
+  // Whose eyes the top card of g's library is open to: 'all' (revealed), 'owner' (its player may look at it any time: Mystic Forge...) or null
+  function topCardView(g) {
+    if (!g.library.length) return null;
+    let mode = null;
+    for (const q of g.battlefield) { const a = q.card.a; if (a.topReveal) return 'all'; if (a.topLook) mode = 'owner'; }
+    for (const o of otherPlayers(g)) for (const q of o.battlefield) if (q.card.a.topRevealAll) return 'all';
+    return mode;
+  }
   function explore(g, p, ev) {
     const times = (tableHas(g, 'statics.exploreTwice') && g.battlefield.some(q => q.card.a.statics.exploreTwice)) ? 2 : 1;                          // Topography Tracker
     for (let k = 0; k < times; k++) {
       if (!g.library.length || !g.battlefield.includes(p)) break;
       const top = g.library[0];
-      if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: ${top.card.name} to your hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
+      ev.push({ type: 'reveal', inst: top, source: p, pid: g.pid });          // CR 701.44a: the explorer reveals the top card, to every player
+      if (top.card.a.isLand) { g.library.shift(); g.hand.push(top); ev.push({ type: 'note', text: `${p.card.name} explores: reveals ${top.card.name}, a land: into hand`, source: p }); fireExplore(g, 'exploreLand', p, ev); }
       else {
         addCounters(g, p, '+1/+1', 1, ev, p);
         let yard = exploreMill(g, top);
         if (g.ask && !g.dry) yard = decide(g, { kind: 'explore', options: [false, true], def: yard, reveal: top, source: p });          // a person: keep the revealed card on top, or put it into the graveyard
-        if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: +1/+1 counter${g.library[0] === top ? ', ' + top.card.name + ' stays on top' : ', ' + top.card.name + ' to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
+        if (yard) { g.library.shift(); g.graveyard.push(top); } ev.push({ type: 'note', text: `${p.card.name} explores: reveals ${top.card.name}, not a land: +1/+1 counter${g.library[0] === top ? ', it stays on top' : ', it goes to the graveyard'}`, source: p }); fireExplore(g, 'exploreNon', p, ev); }
       fireExplore(g, 'explores', p, ev);
     }
   }
@@ -8886,7 +8898,9 @@
     for (const i of (f.yard ? g.library.concat(g.graveyard) : g.library)) {
       if (!tutorMatches(i, f.filters)) continue;
       if (f.colors && !f.colors.some(c => colorsOf(g, i.card).includes(c))) continue;
-      if (f.eqMv != null && (i.card.a.mv || 0) !== f.eqMv) continue;          // Prime Speaker Vannifar: exactly 1 more than the sacrificed creature
+      if (f.eqMv != null && (i.card.a.mv || 0) !== f.eqMv) continue;
+      if (f.manaCost && !f.manaCost.test(i.card.mana_cost || '')) continue;          // Urza's Saga III: a mana cost of {0} or {1}, not just mana value 0 or 1
+      if (f.notLand && i.card.a.isLand) continue;          // Prime Speaker Vannifar: exactly 1 more than the sacrificed creature
       if (f.maxMv != null && (i.card.a.mv || 0) > (f.maxMv === 'X' ? (g.xValue || 0) : f.maxMv === 'SAC2' ? 2 + ((g._sacStats && g._sacStats.mv) || 0) : f.maxMv)) continue;
       if (f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands)) continue;
       if (f.dest === 'battlefield' && i.card.a.cost && i.card.a.cost.x && i.card.a.isCreature && !(i.card.a.toughness > 0)) continue;          // a 0/0 that "enters with X counters": put onto the battlefield without being cast, X is 0 and it dies
@@ -11555,15 +11569,6 @@ g.actSeq = (g.actSeq || 0) + 1;
     for (const o of otherPlayers(g)) for (const q of o.battlefield.slice()) for (const t of q.card.a.triggers) if (t.each && t.kinds.includes('upkeep') && o.battlefield.includes(q)) fire(o, t, q, ev, null);          // their "each upkeep" triggers, on this player's upkeep
     extraUpkeeps(g, ev);
     if (g.initiative && !g.dry) venture(g, ev, null);
-    for (const p of (tableHas(g, 'saga') ? g.battlefield.slice() : NONE)) if (p.card.a.saga && p.enteredTurn < g.turn && !g.dry) sagaAdvance(g, p, ev);          // Sagas: the next chapter after the draw step
-    for (const p of (tableHas(g, 'urzaSaga') ? g.battlefield.slice() : NONE)) if (p.card.a.urzaSaga && p.enteredTurn < g.turn && !g.dry) {          // Urza's Saga: a lore counter after the draw step; III fetches a 0- or 1-cost artifact and the Saga is sacrificed
-      p.lore = (p.lore || 1) + 1;
-      if (p.lore >= 3) {
-        const ctx = tutorContext(g); const t = g.library.filter(i => i.card.a.isArtifact && !i.card.a.isLand && /^\{[01]\}$/.test(i.card.mana_cost || '')).sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx))[0];
-        if (t) { g.library.splice(g.library.indexOf(t), 1); shuffle(g.library, g.rnd); enterWithTriggers(g, t, {}, ev); ev.push({ type: 'note', text: `Urza's Saga III: ${t.card.name} onto the battlefield`, source: p }); }
-        leavePerm(g, p, ev); flushLeaves(g, ev);
-      }
-    }
     if (g.kayaEmblem && !g.dry) {                                                                       // Kaya's emblem: cast a legendary spell from hand, graveyard or exile for free
       const cands = g.hand.concat(g.graveyard, g.exile).filter(i => i.card.a.isLegendary && !i.card.a.isLand && !i.card.commander && !i.card.a.isInstantSorcery).sort((x, y) => y.card.a.mv - x.card.a.mv);
       const c = cands.find(i => !(i.card.a.isPlaneswalker && g.battlefield.some(q => q.card.name === i.card.name)) && !(i.card.a.isLegendary && g.battlefield.some(q => q.card.name === i.card.name)));
@@ -11580,6 +11585,15 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     for (const p of (tableHas(g, 'vaultDamage') ? g.battlefield : NONE)) if (p.card.a.vaultDamage && p.tapped) { g.life -= 1; ev.push({ type: 'note', text: `${p.card.name} deals 1 damage to you (${g.life})`, source: p }); checkDeath(g, ev); }
     marks.main = ev.length;
+    for (const p of (tableHas(g, 'saga') ? g.battlefield.slice() : NONE)) if (p.card.a.saga && p.enteredTurn < g.turn && !g.dry) sagaAdvance(g, p, ev);          // Sagas: the next chapter after the draw step
+    for (const p of (tableHas(g, 'urzaSaga') ? g.battlefield.slice() : NONE)) if (p.card.a.urzaSaga && p.enteredTurn < g.turn && !g.dry) {          // Urza's Saga: a lore counter as the precombat main phase begins (after the draw, CR 714.3b); III searches for an artifact with mana cost {0} or {1} (the library search question for a person), it enters, the library is shuffled, and only then is the Saga sacrificed (CR 714.4)
+      p.lore = (p.lore || 1) + 1;
+      if (p.lore >= 3) {
+        const n0 = g.battlefield.length; tutor(g, { filters: ['artifact'], dest: 'battlefield', manaCost: /^\{[01]\}$/, notLand: true }, ev, p);
+        if (g.battlefield.length === n0) ev.push({ type: 'note', text: "Urza's Saga III: no artifact with mana cost {0} or {1} found", source: p });
+        leavePerm(g, p, ev); flushLeaves(g, ev);
+      }
+    }
     if (!g.dry && g.hand.length) for (const q of (tableHas(g, 'thrasher') ? g.battlefield.filter(z => z.card.a.thrasher) : [])) {          // Party Thrasher: a dead card for the better of the top two
       const worst = g.hand.slice().sort((x, y) => discardValue(g, x) - discardValue(g, y))[0]; if (discardValue(g, worst) > 3 || g.library.length < 2) continue;
       discardWorst(g, ev); const two = g.library.splice(0, 2), ctx = tutorContext(g); two.sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx));
@@ -14123,7 +14137,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // { kind, options, def, ... } where def is what the autopilot picks; the chooser returns one of the options (or def). Dry runs never ask,
   // and no simulated game has a chooser, so Monte Carlo runs and all-autopilot games take exactly the path they always took.
   function decide(g, d) { if (!g.ask || g.dry) return d.def; const r = g.ask(g, d); return r === undefined ? d.def : r; }
-  function tutorOptions(g, f) { return (f.yard ? g.library.concat(g.graveyard) : g.library).filter(i => tutorMatches(i, f.filters) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands))); }
+  function tutorOptions(g, f) { return (f.yard ? g.library.concat(g.graveyard) : g.library).filter(i => tutorMatches(i, f.filters) && !(f.maxMv != null && (i.card.a.mv || 0) > f.maxMv) && !(f.eqMv != null && (i.card.a.mv || 0) !== f.eqMv) && !(f.manaCost && !f.manaCost.test(i.card.mana_cost || '')) && !(f.notLand && i.card.a.isLand) && !(f.permanent && (!i.card.a.isPermanent || i.card.a.isLand && !f.lands))); }          // (the seated person's search fan: the same rules as the autopilot's)
   function pickSearch(g, t, f, source) { if (t && g.ask) t.inst = decide(g, { kind: 'search', options: tutorOptions(g, f), def: t.inst, f, source }); return t; }
   // Jeska's Will and the other "Will" cards: with a commander of yours on the battlefield a person may choose one mode or both (both,
   // the autopilot's play, is the default). Only the cards whose two modes are one effect each; without a commander the engine plays both
@@ -14279,7 +14293,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay,
     effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
-    powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
+    topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,
     lockUpkeep, ghostTurn, castBlocked, abilBlocked, searchRule, comboLines, infiniteMana, bestTutorTarget, stealPerm, discardWorst, setTribe: t => { curTribe = t; }, playMatch,
     comparePolicies, tribeOf, labChoices, LAB_CHOICES, pol, crackFetch, matchMonteCarlo, comparePoliciesPart, comparePoliciesMerge, matchMonteCarloPart, matchMonteCarloMerge, matchLog, linkMatch, matchOver, chooseBlocks,

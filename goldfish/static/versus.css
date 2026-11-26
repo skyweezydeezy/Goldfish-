@@ -369,3 +369,11 @@
 .vs-outbar button { min-height: 40px; }
 
 .speed-bar[hidden] { display: none !important; }          /* a game against a person has a fixed pace (versus.js slowOf) */
+/* an explorer reveals the top card of their library to everyone (T-079) */
+.vs-reveal { position: fixed; right: 14px; top: 28%; z-index: 80; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: vs-reveal-in .25s ease-out, vs-reveal-out .4s ease-in 2.4s forwards; }
+.vs-reveal .mtg { --card-w: 130px; box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+.vs-reveal-cap { background: rgba(10,20,30,.92); border: 1px solid var(--border, #345); border-radius: 8px; padding: 4px 8px; font-size: 12px; max-width: 170px; text-align: center; }
+@keyframes vs-reveal-in { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes vs-reveal-out { to { opacity: 0; } }
+@media (max-width: 700px) { .vs-reveal { right: 6px; top: 22%; } .vs-reveal .mtg { --card-w: 92px; } }
+.vs-pile.top-open .mtg { outline: 2px solid rgba(120,200,255,.55); outline-offset: 1px; }

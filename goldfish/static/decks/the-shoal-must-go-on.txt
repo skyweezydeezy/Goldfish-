@@ -1,6 +1,6 @@
 // The Shoal Must Go On (Kinnan, Bonder Prodigy)
 // Bracket 4
-// Checked by ICEYfish (v193, 20,000 games): median kill T7, 3.8% by T5, 64.9% by T7; field win -%; 6 Game Changers; was B5 -> B4: card rules B4, speed B3; B5 needs a median kill before T4
+// Checked by ICEYfish (v193, 20,000 games): median kill T7, 3.8% by T5, 64.9% by T7; 6 Game Changers; was B5 -> B4: card rules B4, speed B3; B5 needs a median kill before T4
 // COMMANDER
 1 Kinnan, Bonder Prodigy
 

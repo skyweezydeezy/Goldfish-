@@ -1,6 +1,6 @@
 // Double Down (Veyran)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1% by T5, 32.6% by T7; field win 37.9%; 11 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1% by T5, 32.6% by T7; 11 Game Changers; B4 confirmed
 // COMMANDER
 1 Veyran, Voice of Duality (SLD) 1915
 // DECK

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Checks the Commander bracket of every built-in deck with ICEYfish's own engine (task T-035, report in docs/agents/DECK-BRACKETS.md).
 //   node tools/verify-brackets.js [--games=20000] [--jobs=4] [--only=death-tax]    simulate, write docs/agents/deck-brackets.json
-//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin (field win % stays empty)
-//   node tools/verify-brackets.js --matches-only                                   the round robin only (field win %), added to the goldfish results already in docs/agents/deck-brackets.json
+//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin 
+//   node tools/verify-brackets.js --matches-only                                   the round robin only (no longer used: there is no internal ranking for now, the user 2026-11-26), added to the goldfish results already in docs/agents/deck-brackets.json
 //   node tools/verify-brackets.js --apply                                         write the verified bracket and a check line into each deck
 //   node tools/verify-brackets.js --report                                        the table in docs/agents/DECK-BRACKETS.md
 // Offline: the cards come from the set data (goldfish/static/data/sets), the combos from data/combos.json.
@@ -259,7 +259,7 @@ function apply() {
     if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
-    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
+    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; ${v.rules.gameChangers.length} Game Changers`;
     if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
@@ -272,7 +272,7 @@ function apply() {
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) {
     const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
-    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7; if (v.field) d.fieldWin = v.field.winRate;
+    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
   }

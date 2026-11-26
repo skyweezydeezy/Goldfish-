@@ -1,6 +1,6 @@
 // Final Heaven (Tifa Lockhart)
 // Bracket 3
-// Checked by ICEYfish (v151, 20,000 games): median kill T7, 18.9% by T5, 74.4% by T7; field win 48.3%; 2 Game Changers; B3 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 18.9% by T5, 74.4% by T7; 2 Game Changers; B3 confirmed
 // COMMANDER
 1 Tifa Lockhart
 // MAINBOARD

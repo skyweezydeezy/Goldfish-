@@ -1,6 +1,6 @@
 // Fine Print, Fatal Clause (Kraum, Ludevic's Opus + Tymna the Weaver)
 // Bracket 4
-// Checked by ICEYfish (v193, 20,000 games): median kill T8, 10.3% by T5, 36.4% by T7; field win -%; 18 Game Changers; was B5 -> B4: card rules B4, speed B2; B5 needs a median kill before T4
+// Checked by ICEYfish (v193, 20,000 games): median kill T8, 10.3% by T5, 36.4% by T7; 18 Game Changers; was B5 -> B4: card rules B4, speed B2; B5 needs a median kill before T4
 // COMMANDER
 1 Kraum, Ludevic's Opus
 1 Tymna the Weaver

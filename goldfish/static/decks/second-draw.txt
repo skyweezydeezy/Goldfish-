@@ -1,6 +1,6 @@
 // Second Draw (Alandra)
 // Bracket 3
-// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1.3% by T5, 32.1% by T7; field win 46.7%; 3 Game Changers; B3 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1.3% by T5, 32.1% by T7; 3 Game Changers; B3 confirmed
 // COMMANDER
 1 Alandra, Sky Dreamer (J22) 9
 // DECK

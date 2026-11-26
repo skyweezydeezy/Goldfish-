@@ -1,6 +1,6 @@
 // Death Tax (Teysa Karlov)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T9, 0.4% by T5, 11.9% by T7; field win 35.9%; 11 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T9, 0.4% by T5, 11.9% by T7; 11 Game Changers; B4 confirmed
 // COMMANDER
 1 Teysa Karlov (SLD) 1235
 // DECK

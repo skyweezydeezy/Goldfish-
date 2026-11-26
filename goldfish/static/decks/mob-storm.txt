@@ -1,6 +1,6 @@
 // Mob Storm (Krenko, Mob Boss)
 // Bracket 3
-// Checked by ICEYfish (v151, 20,000 games): median kill T7, 11.4% by T5, 85% by T7; field win 63.8%; 2 Game Changers; B3 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T7, 11.4% by T5, 85% by T7; 2 Game Changers; B3 confirmed
 // COMMANDER
 1 Krenko, Mob Boss
 // MAINBOARD

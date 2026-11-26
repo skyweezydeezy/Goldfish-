@@ -1,6 +1,6 @@
 // Friendship Is Magic (Princess Twilight Sparkle)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T9, 0% by T5, 7.1% by T7; field win 30.9%; 17 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T9, 0% by T5, 7.1% by T7; 17 Game Changers; B4 confirmed
 // COMMANDER
 1 Princess Twilight Sparkle
 

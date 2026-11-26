@@ -729,6 +729,27 @@
    "learnedVs": "field"
   },
   {
+   "file": "winota.txt",
+   "name": "Winota (Winota, Joiner of Forces)",
+   "commanders": [
+    "Winota, Joiner of Forces"
+   ],
+   "colors": "WR",
+   "cards": 100,
+   "bracket": 4,
+   "checkedMedian": 7,
+   "by5": 6.3,
+   "by7": 69.8,
+   "earliestKill": 3,
+   "by2": 0,
+   "by3": 0,
+   "by4": 0.3,
+   "medianKill": 7,
+   "floor": 4,
+   "speedBracket": 3,
+   "checkedAt": "2026-11-26"
+  },
+  {
    "file": "zimone-infinite-analyst.txt",
    "name": "Zimone, Infinite Analyst",
    "commanders": [

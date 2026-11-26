@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 215,
+      "lines": [
+        "New deck: Winota (Winota, Joiner of Forces), Bracket 4.",
+        "More cards read exactly: Aether Vial, Breath of Fury, Clarion Conqueror, Spirit of the Labyrinth, Greymond, Slicer, Zurzoth, High Noon and others. Signal Pest's battle cry works now."
+      ]
+    },
+    {
       "v": 214,
       "lines": [
         "The Puzzle tab is back with 12 new puzzles: win by turn 2–3 from your opening hand, or find the one line that finishes a late game. Easy, Medium and Hard; the opponent's hand stays hidden.",

@@ -1130,7 +1130,7 @@
     if (!gm || gm.human == null || gm.over || gm.acting || gm.choice) return null;
     const iid = el.dataset.iid; if (iid == null || !el.closest('.vs-hand, .vs-seat.me')) return null;
     const out = [];
-    const fresh = sel => () => { const t = root.querySelector(sel); if (t) t.click(); };
+    const fresh = sel => () => { const t = root.querySelector(sel); if (t) { bypassSel = true; try { t.click(); } finally { bypassSel = false; } } };
     const cardSel = `.vs-card[data-iid="${iid}"]`;
     if (el.classList.contains('vs-card') && el.classList.contains('can')) {
       const label = gm.phase === 'mull' ? (gm.bottom.has(+iid) ? 'Keep it (take it off the bottom)' : 'Put it on the bottom') : (card.a && card.a.isLand ? '▶ Play land' : '▶ Cast');
@@ -1142,6 +1142,13 @@
     if (stk && gm.picking) { const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id)); out.push([all ? 'Hold it back' : 'Attack with it', fresh(`.vs-seat.me .vs-stack.pickable[data-iids="${stk.dataset.iids}"]`), 'primary']); }
     return out;
   });
+  // T-102: on a phone a tap on a glowing card selects it (lifted, enlarged, with its option); only the option plays it. Local: nothing is sent until then.
+  let bypassSel = false;
+  function pickFirst(el, label, run) {
+    if (bypassSel || !A.isPhoneTouch()) return false;
+    const card = A.cardOf(el); if (!card) return false;
+    A.selectCard(el, card, [[label, run, 'primary']]); return true;
+  }
   function wire(mode) {
     const root = V[mode].root;
     root.addEventListener('change', e => {
@@ -1178,6 +1185,16 @@
       if (hit('vs-nextround')) return advance(mode, gm.games.filter(g => !g.dead).length);
       if (hit('vs-toend')) return advance(mode, 9999);
       if (gm.phase === 'block' && gm.block && !gm.over) {      // an answer, not a move: asked in the middle of the attacker's move
+        const bm = A.isPhoneTouch() && t.closest('.vs-seat.me .mtg[data-iid]');          // T-102, phones: tap a creature, choose what it blocks; the Block button still confirms
+        const bsel = bm && root.querySelector(`.vs-blk[data-iid="${bm.dataset.iid}"]`);
+        if (bsel && A.cardOf(bm)) {
+          e.stopPropagation();
+          const set = v => () => { bsel.value = v; bsel.dispatchEvent(new Event('change', { bubbles: true })); };
+          const opts = [...bsel.options].filter(o => o.value).map(o => [(o.selected ? '✓ ' : '') + 'Block ' + o.textContent.replace(/^blocks /, ''), set(o.value), 'primary']);
+          if (bsel.value) opts.push(['Does not block', set('')]);
+          if (opts.length) A.selectCard(bm, A.cardOf(bm), opts);
+          return;
+        }
         if (hit('vs-block-none')) return confirmBlocks(mode, {});
         if (hit('vs-block-go')) { const map = {}; root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) (map[sel.value] = map[sel.value] || []).push(+sel.dataset.iid); }); return confirmBlocks(mode, map); }
         return;
@@ -1190,11 +1207,11 @@
         if (hit('vs-abil')) return input(mode, 'abilities');
         if (hit('vs-cycle')) { e.stopPropagation(); return input(mode, 'cycle', +hit('vs-cycle').dataset.iid, 'cycle'); }
         const ac = t.closest('.vs-seat.me .mtg.vs-act');     // a Food, Gilded Goose...: an ability in response
-        if (ac) { e.stopPropagation(); return input(mode, 'ability', +ac.dataset.iid); }
+        if (ac) { e.stopPropagation(); return pickFirst(ac, '⚡ Use its ability', () => input(mode, 'ability', +ac.dataset.iid)) || input(mode, 'ability', +ac.dataset.iid); }
         const lw = t.closest('.vs-seat.me .mtg.vs-loyal');   // Teferi, Master of Time: a loyalty ability on another player's turn
-        if (lw) { e.stopPropagation(); return input(mode, 'loyalty', +lw.dataset.iid); }
+        if (lw) { e.stopPropagation(); return pickFirst(lw, '◆ Loyalty abilities…', () => input(mode, 'loyalty', +lw.dataset.iid)) || input(mode, 'loyalty', +lw.dataset.iid); }
         const c = t.closest('.vs-card.can');
-        if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }
+        if (c) { e.stopPropagation(); return pickFirst(c, '▶ Cast', () => input(mode, 'play', +c.dataset.iid, false)) || input(mode, 'play', +c.dataset.iid, false); }
         return;
       }
       if (gm.picking && myMain(gm)) {
@@ -1207,9 +1224,10 @@
         if (stk) {                                            // click a creature (or a stack of tokens) to send it or hold it back
           e.stopPropagation();
           const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id));
-          ids.forEach(id => { if (all) gm.pick.delete(id); else gm.pick.add(id); });
-          sfx('tap');
-          render(mode);
+          const toggle = () => { ids.forEach(id => { if (all) gm.pick.delete(id); else gm.pick.add(id); }); sfx('tap'); render(mode); };
+          const face = stk.querySelector('.mtg');          // T-102, phones: a tap selects it, an option attacks or holds it back (Attack / All / None still finish)
+          if (A.isPhoneTouch() && face && A.cardOf(face)) return A.selectCard(face, A.cardOf(face), [[all ? 'Hold it back' : 'Attack with it', toggle, 'primary']]);
+          toggle();
         }
         return;
       }
@@ -1228,10 +1246,10 @@
       if (hit('vs-asland')) { e.stopPropagation(); return input(mode, 'play', +hit('vs-asland').dataset.iid, true); }
       const lw = t.closest('.vs-seat.me .mtg.vs-loyal');     // a glowing planeswalker: its loyalty abilities
       const ac = t.closest('.vs-seat.me .mtg.vs-act');       // a glowing permanent with an activated ability (a Food: gain 3 life)
-      if (ac) { e.stopPropagation(); return input(mode, 'ability', +ac.dataset.iid); }
-      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid); return p && p.card.a.chainVeil ? input(mode, 'veil', p.iid) : input(mode, 'loyalty', +lw.dataset.iid); }
+      if (ac) { e.stopPropagation(); return pickFirst(ac, '⚡ Use its ability', () => input(mode, 'ability', +ac.dataset.iid)) || input(mode, 'ability', +ac.dataset.iid); }
+      if (lw) { e.stopPropagation(); const p = g.battlefield.find(q => q.iid === +lw.dataset.iid), go = () => p && p.card.a.chainVeil ? input(mode, 'veil', p.iid) : input(mode, 'loyalty', +lw.dataset.iid); return pickFirst(lw, p && p.card.a.chainVeil ? '◆ Pay {4} and tap it' : '◆ Loyalty abilities…', go) || go(); }
       const c = t.closest('.vs-card.can');                   // a glowing card plays; any other card opens in the viewer
-      if (c) { e.stopPropagation(); return input(mode, 'play', +c.dataset.iid, false); }
+      if (c) { const land = !!(A.cardOf(c) || {}).a && A.cardOf(c).a.isLand, go = () => input(mode, 'play', +c.dataset.iid, false); e.stopPropagation(); return pickFirst(c, land ? '▶ Play land' : '▶ Cast', go) || go(); }
       if (hit('vs-abil')) return input(mode, 'abilities');
       if (hit('vs-attack') && !gm.attacked) {
         if (!D.quietBeginCombat(gm.games, g.pid)) return input(mode, 'beginAttack');          // something happens at the beginning of combat: it resolves first

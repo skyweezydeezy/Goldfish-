@@ -1221,7 +1221,10 @@
     if (!g.turnDone) { await doCombat(true); await doPostCombat(true); stepP('end'); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
+  // T-102: an action that showed you new information (a draw, a search, a look at cards, a random result) cannot be taken back
+  const REVEALS = /draw|scry|surveil|tutor|search|shuffle|look|reveal|mill|discover|peer|explore|manifest|random|dice|coin|impulse|wheel|dig|plunder|cascade/i;
   async function play(ev) {
+    if (S.undo.length && (ev || []).some(e => e && REVEALS.test(e.type || ''))) S.undo[S.undo.length - 1].revealed = true;
     // animate a batch of events: highlight sources, float damage, then re-render
     describe(ev);
     sfxEv(ev);
@@ -1391,7 +1394,10 @@
   }
   function undo() {
     if (S.busy) return;                                                  // the table is busy (a question is open): keep the undo step for later
-    const s = S.undo.pop(); if (!s) return;
+    const top = S.undo[S.undo.length - 1]; if (!top) return;
+    const lib = S.game.library;
+    if (top.revealed || top.library.length !== lib.length || top.library.some((c, i) => c !== lib[i])) { sfx('error'); return toast("Can't undo: it showed you new cards"); }          // a draw, search or shuffle changed the library
+    const s = S.undo.pop();
     const g = S.game;
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
       floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems, ring: s.ring }, s.scal);
@@ -1755,7 +1761,29 @@
   // context menu
   const ctx = $('#ctxMenu');
   const ctxBack = h('div', 'ctx-backdrop'); document.body.appendChild(ctxBack);
-  function closeCtx() { ctx.style.display = 'none'; ctxBack.classList.remove('show'); }
+  // T-102: on a touch device (phone or iPad) a tap only SELECTS a card: it is lifted and glows, an enlarged copy shows above the
+  // options sheet, and nothing happens until an option is tapped. iPad and PC keep their own flow.
+  const phoneQ = matchMedia('(pointer: coarse)');          // every touch device (phone and iPad); a mouse keeps its own flow
+  const isPhoneTouch = () => phoneQ.matches;
+  let selEl = null, selPrev = null, selAt = 0;
+  function clearSel() { if (selEl) selEl.classList.remove('sel-card'); selEl = null; if (selPrev) { selPrev.remove(); selPrev = null; } ctx.classList.remove('with-sel'); }
+  function showSel(m, card) {
+    clearSel(); if (!isPhoneTouch() || !card) return;
+    selEl = m; m.classList.add('sel-card'); selAt = Date.now();
+    selPrev = h('div', 'sel-preview'); selPrev.appendChild(cardEl(card, { face: 0 })); document.body.appendChild(selPrev);
+    ctx.classList.add('with-sel');
+    const sheet = ctx.offsetHeight, boxH = Math.max(120, innerHeight - sheet - 20);          // the card gets the room above the options, never behind them
+    selPrev.style.height = boxH + 'px'; selPrev.style.setProperty('--selw', Math.floor(Math.min(innerWidth * .8, 440, boxH * .7176)) + 'px');
+  }
+  // select a card and offer options: items are [label, run, style]; used by Duel and Pod
+  function selectCard(m, card, items) {
+    ctx.innerHTML = ''; ctx.appendChild(h('div', 'ctx-title', esc(card.name)));
+    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', esc(label)); b.addEventListener('click', ev => { ev.stopPropagation(); if (Date.now() - selAt < 350) return; closeCtx(); fn(); }); ctx.appendChild(b); });
+    const cancel = h('button', 'ctx-cancel', 'Cancel'); cancel.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); }); ctx.appendChild(cancel);
+    ctxBack.classList.add('show'); ctx.style.display = 'block'; ctx.scrollTop = 0;
+    showSel(m, card);
+  }
+  function closeCtx() { ctx.style.display = 'none'; ctxBack.classList.remove('show'); clearSel(); }
   // tapping anywhere off the menu closes it, and only closes it (the tap does not reach the card underneath)
   ctxBack.addEventListener('click', e => { e.stopPropagation(); closeCtx(); });
   ctxBack.addEventListener('contextmenu', e => { e.preventDefault(); closeCtx(); });
@@ -1834,10 +1862,11 @@
     const { inst, items } = model;
     ctx.innerHTML = '';
     ctx.appendChild(h('div', 'ctx-title', esc(inst.card.name)));
-    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', label); b.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); fn(); }); ctx.appendChild(b); });
+    items.forEach(([label, fn, cls]) => { const b = h('button', cls || '', label); b.addEventListener('click', ev => { ev.stopPropagation(); if (selEl && Date.now() - selAt < 350) return; closeCtx(); fn(); }); ctx.appendChild(b); });
     const cancel = h('button', 'ctx-cancel', 'Back'); cancel.addEventListener('click', ev => { ev.stopPropagation(); closeCtx(); }); ctx.appendChild(cancel);
     ctxBack.classList.add('show');
     ctx.style.display = 'block'; ctx.scrollTop = 0;
+    showSel(m, inst.card);
     ctx.style.left = Math.max(8, Math.min(cx, innerWidth - ctx.offsetWidth - 8)) + 'px'; ctx.style.top = Math.max(8, Math.min(cy, innerHeight - ctx.offsetHeight - 10)) + 'px';
   }
 
@@ -3504,7 +3533,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, isPhoneTouch, selectCard, cardOf, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

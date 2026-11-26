@@ -1481,3 +1481,14 @@ body[data-view=table]:not(.tfocus) .topbar .fs-btn { display: none; }     /* the
 /* a long question in your panel (blocks: one menu per attacker) scrolls inside the panel, and its buttons stay in view at the bottom of it */
 body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child { position: sticky; bottom: 0; z-index: 3; background: rgba(4, 12, 20, .94); padding: 4px 0 2px; margin-bottom: 0; }
 .mana-warn { color: #b45309; font-size: 12px; font-weight: 600; margin-left: 6px; white-space: nowrap; }          /* T-099: floating mana that the end of the turn empties */
+
+/* T-102: a phone tap selects a card (lifted, glowing, enlarged above the options sheet); nothing is played until an option is tapped */
+.mtg.sel-card { box-shadow: 0 0 0 3px #4db3f5, 0 0 18px rgba(77,179,245,.9); transform: translateY(-10px); z-index: 7; position: relative; }
+.sel-preview { position: fixed; left: 0; right: 0; top: calc(8px + env(safe-area-inset-top)); z-index: 300; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.sel-preview .mtg { width: var(--selw, 200px); max-width: 80vw; box-shadow: 0 0 0 3px #4db3f5, 0 10px 40px rgba(0,0,0,.7); }
+@media (pointer: coarse) { .ctx-menu.with-sel { max-height: 52vh; } }
+/* T-102: upright phones: action buttons at least 44 px tall (widths stay: ten toolbar buttons do not fit 44 px wide on 375 px) */
+@media (pointer: coarse) and (max-width: 600px) and (min-height: 560px) {
+  button, select, input[type=number] { min-height: 44px; }
+  .table-controls button, .vs-top button { min-height: 44px; }
+}

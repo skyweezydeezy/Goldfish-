@@ -78,7 +78,7 @@ const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != nu
     check(label + ': the first step names the fastest deck and its numbers', first.title === 'The fastest deck' && first.text.includes(want.name.replace(/\s*\(.*\)\s*$/, '')) && (want.by2 != null ? first.text.includes('by turn 2') && first.text.includes('by turn 4') : first.text.includes(`Median turn ${want.medianKill}`)), first.text);
     const r = await run(p, touch);
     check(label + ': the steps run to the end', !(await p.evaluate(() => window.ISFTutorial.active)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)) && !r.seen.some(t => /STUCK/.test(t)), r.seen.join(' › '));
-    check(label + ': it shows the plan, draws, plays to the kill and ends on the result', ['The plan', 'Draw a 7', 'Keep', 'Watch the win'].every(t => r.seen.includes(t)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)), r.seen.join(' › '));
+    check(label + ': it shows the plan, draws, plays to the kill and ends on the result', ['The plan', 'Keep', 'Watch the win'].every(t => r.seen.includes(t)) && (r.seen.includes('Draw a 7') || r.seen.includes('A real winning hand')) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)), r.seen.join(' › '));
     check(label + ': the key plays get short captions (a combo, a tutor, fast mana or the kill), each under 90 characters', r.caps.some(c => /^(The combo|The kill|A tutor|Fast mana|The commander)/.test(c)) && r.caps.every(c => c.length < 90), JSON.stringify(r.caps));
     check(label + ': every tap step had its element to point at', r.spotOk);
     const after = await snap();
@@ -124,6 +124,23 @@ const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != nu
     await p.click('#deckSpeed .info-tog');
     check('the ⓘ opens the explanation', !(await p.evaluate(() => document.querySelector('#deckSpeed .hint').classList.contains('folded'))));
     check('no page errors (deck info)', errs.length === 0, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+  // a deck with real turn-2 hands (data/turn2-hands.json): the ranking says Fine Print here; its fixed hand is dealt, kept and wins on turn 2
+  {
+    const hands = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'data', 'turn2-hands.json'), 'utf8')).draw['Fine Print, Fatal Clause'].hands, want1 = hands.find(h => !h.mull);
+    const ctx = await context(b, { viewport: { width: 1280, height: 800 } });
+    await ctx.route('**/decks/index.json', async route => { const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', 'index.json'), 'utf8')); j.decks.forEach(d => { delete d.by2; delete d.by3; delete d.by4; delete d.earliestKill; }); Object.assign(j.decks.find(x => x.file === 'fine-print-fatal-clause.txt'), { by2: 0.5, by3: 2.4, by4: 6, earliestKill: 2 }); route.fulfill({ contentType: 'application/json', body: JSON.stringify(j) }); });
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); await p.goto(URL); await p.waitForTimeout(800);
+    await p.evaluate(() => { window.ISFTutorial.fastestGame(); });
+    await p.waitForFunction(() => window.ISFTutorial.active, null, { timeout: 30000 });
+    const first = await p.evaluate(() => document.querySelector('.tut-text').textContent);
+    check('fixed hands: the ceiling rule picks Fine Print, Fatal Clause and the first step says it can win on turn 2', /^Fine Print, Fatal Clause can win on turn 2/.test(first), first);
+    const r = await run(p, false);
+    const hand = await p.evaluate(() => { const g = window.__isf.game; return g ? g.openingHand.map(c => c.card.name).sort().join(', ') : 'no game'; });
+    check('fixed hands: the real hand from the table is dealt (the same cards as in the file)', hand === want1.hand.slice().sort().join(', '), hand);
+    check('fixed hands: the game ends on turn 2 and the steps run to the end', r.seen.includes('A real winning hand') && r.seen.includes('Dead on turn 2') && !r.seen.some(x => /STUCK/.test(x)), r.seen.join(' › '));
+    check('fixed hands: no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
   await b.close();

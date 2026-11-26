@@ -414,8 +414,19 @@
     { title: 'The fastest deck', text: () => fast ? `${deckName(fast.deck)}${fast.deck.earliestKill ? ` can win on turn ${fast.deck.earliestKill}` : ' is the fastest built-in deck'}. ${speedLine(fast.deck)}` : '' },
     { before: async () => { await useSampleDeck(fast.deck.file); A().showTab('deck'); await sleep(350); },
       el: ['#deckTiles:not(:empty)', '.deck-view', '#tab-deck'], title: 'The plan', text: () => planText() },
-    { before: async () => { await waitFor(() => S().deck); await sleep(1500); const p = pickSeed(fast.deck.earliestKill || 2); fast.seed = p.seed; fast.kill = p.kill; A().showTab('hands'); queued = fast.seed; await sleep(300); },
-      el: '#drawHand', tap: true, back: false, title: 'Draw a 7', text: () => `Tap Draw a 7. This opening hand wins${fast && fast.kill ? ' on turn ' + fast.kill : ' early'}.` },
+    { before: async () => {
+        await waitFor(() => S().deck); await sleep(1500); A().showTab('hands');
+        const h = fast.hand;
+        if (h) {          // a real hand from data/turn2-hands.json: dealt (and mulliganed) with the app's own options, then handed to the Mulligan tab
+          const G = window.Goldfish, g = G.newGame(S().deck, Object.assign({}, A().opts(), { onPlay: false }), h.seed); G.mulligan(g);
+          g.killTurn = null; A().hand.set({ g, mulls: g.mulligans || h.mull || 0 }); fast.kill = null;
+          const w = G.newGame(S().deck, Object.assign({}, A().opts(), { onPlay: false }), h.seed); G.mulligan(w);          // the same game, played out once to know the kill turn
+          for (let t = 0; t < 10 && w.killTurn == null; t++) G.playTurn(w);
+          fast.kill = w.killTurn;
+        } else { const p = pickSeed(fast.deck.earliestKill || 2); fast.seed = p.seed; fast.kill = p.kill; queued = fast.seed; }
+        await sleep(300); },
+      get el() { return fast.hand ? '#handStage .fan' : '#drawHand'; }, get tap() { return !fast.hand; }, back: false, title: () => fast.hand ? 'A real winning hand' : 'Draw a 7',
+      text: () => fast.hand ? `A real hand from the games, kept${fast.hand.mull ? ' after ' + fast.hand.mull + ' mulligan' + (fast.hand.mull > 1 ? 's' : '') : ''}: it wins on turn ${fast.kill || 2}. ${fast.hand.how}.` : `Tap Draw a 7. This opening hand wins${fast.kill ? ' on turn ' + fast.kill : ' early'}.` },
     { before: () => waitFor(() => document.querySelector('#handStage .fan .mtg')), el: '#keepHand', tap: true, back: false, title: 'Keep', text: 'Keep it. The autopilot plays the rest.' },
     { before: async () => { await waitFor(() => document.body.dataset.view === 'table' && S().game && idle()); autoTo = fast.kill || 2; const n = document.querySelector('#tAutoToN'); if (n) n.value = String(autoTo); startCaps(); },
       el: '#tAutoTo', tap: true, back: false, title: 'Watch the win', text: () => `Tap Autopilot to turn ${autoTo}: it plays every turn up to the kill.` },
@@ -425,7 +436,10 @@
   ];
   async function fastestGame() {
     stop();
-    try { const d = await fastestDeck(); if (!d) throw new Error('no deck has speed numbers yet'); fast = { deck: d, seed: null, kill: null }; }
+    try {
+      const d = await fastestDeck(); if (!d) throw new Error('no deck has speed numbers yet'); fast = { deck: d, seed: null, kill: null, hand: null };
+      try { const t = await (await fetch('data/turn2-hands.json')).json(), hs = ((t.draw || {})[deckName(d)] || {}).hands || []; fast.hand = hs.find(h => !h.mull) || hs[0] || null; } catch (e) { /* no table: a seed is searched instead */ }
+    }
     catch (e) { toast('The fastest deck could not be found: ' + (e && e.message || e)); return 'error'; }
     sample = { kind: 'fastest', prev: null };
     return start('', FASTEST).then(endSample);

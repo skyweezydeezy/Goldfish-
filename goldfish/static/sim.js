@@ -5215,7 +5215,8 @@
     if (a.trigCopy || a.rings || a.lithoform || a.bracers) g.copierSeen = true;
     if (a.trawler) g.trawlerSeen = true;
     if (a.labyrinth && !g.dry) {                                                                          // Ugin's Labyrinth: imprint the biggest colorless card (mana value 7 or more) from your hand
-      const c = g.hand.filter(i => !i.card.a.isLand && !(i.card.colors || []).length && (i.card.a.mv || 0) >= 7 && !i.card.commander).sort((x, y) => y.card.a.mv - x.card.a.mv)[0];
+      let c = g.hand.filter(i => !i.card.a.isLand && !(i.card.colors || []).length && (i.card.a.mv || 0) >= 7 && !i.card.commander).sort((x, y) => y.card.a.mv - x.card.a.mv)[0];
+      if (g.ask) c = askImprint(g, perm, g.hand.filter(i => !(i.card.colors || []).length && (i.card.a.mv || 0) >= 7), c || null, 'a colorless card with mana value 7 or greater');
       if (c) { g.hand.splice(g.hand.indexOf(c), 1); perm.imprinted = c; perm.produce = { colors: new Set(['C']), amount: 2 }; touch(g); (ev || []).push({ type: 'note', text: `${inst.card.name}: imprinted ${c.card.name} (taps for {C}{C})`, source: perm }); }
     }
     if (g.nextCreatureCounter === g.turn && !g.dry && isCreaturePerm(perm) && !perm.token) { g.nextCreatureCounter = null; addCounters(g, perm, '+1/+1', 1, ev, perm); }          // "the next creature spell enters with an additional counter"
@@ -7334,8 +7335,10 @@
         }
         case 'lensImprint': if (source) {                                                                    // Extraplanar Lens: exile one of four or more lands with the same name; the rest make one more mana
           const by = {}; for (const q of g.battlefield) if (q.asLand && !q.token && q.produce) (by[q.card.name] = by[q.card.name] || []).push(q);
-          const nm = Object.keys(by).sort((x, y) => by[y].length - by[x].length)[0];
-          if (nm && by[nm].length >= 4) { const l = by[nm].sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0]; leavePerm(g, l, ev, 'exile'); source.lensName = nm; touch(g); ev.push({ type: 'note', text: `${source.card.name} exiles ${nm}: each other ${nm} makes one more mana`, source }); }
+          const nm0 = Object.keys(by).sort((x, y) => by[y].length - by[x].length)[0];
+          let nm = nm0, l = nm0 && by[nm0].length >= 4 ? by[nm0].sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0] : null;
+          if (g.ask && !g.dry) { l = askImprint(g, source, g.battlefield.filter(q => q.asLand && !q.token && q !== source), l, 'a land you control'); nm = l ? l.card.name : nm; }
+          if (l) { leavePerm(g, l, ev, 'exile'); source.lensName = nm; touch(g); ev.push({ type: 'note', text: `${source.card.name} exiles ${nm}: each other ${nm} makes one more mana`, source }); }
           break;
         } break;
         case 'ifKicked': if (g.lastCast && g.lastCast.kicked) applyEffects(g, f.fx, source, ev, subject); break;
@@ -7489,7 +7492,7 @@
         case 'imprint': if (f.kind === 'anvil') {          // Semblance Anvil: the nonland card whose type the rest of your spells share most, the cheapest of those
           if (!source || g.dry) break; const tys = ['creature', 'artifact', 'enchantment', 'instant', 'sorcery', 'planeswalker'], pool = g.hand.filter(i => !i.card.a.isLand && !i.card.commander);
           const score = i => tys.filter(t => cardHasType(i.card, t)).reduce((s0, t) => s0 + g.hand.concat(g.library.slice(0, 20)).filter(j => j !== i && !j.card.a.isLand && cardHasType(j.card, t)).length, 0) - (i.card.a.mv || 0) * 0.3;
-          const pick = pool.sort((x, y) => score(y) - score(x))[0]; if (!pick) break;
+          const auto = pool.slice().sort((x, y) => score(y) - score(x))[0], pick = askImprint(g, source, g.hand.filter(i => !i.card.a.isLand), auto || null, 'a nonland card'); if (!pick) break;
           g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); source.anvilTypes = tys.filter(t => cardHasType(pick.card, t)); touch(g);
           ev.push({ type: 'note', text: `${source.card.name} imprints ${pick.card.name}: ${source.anvilTypes.join(' and ')} spells cost {2} less`, source }); break;
         } else {                                                                                  // Chrome Mox / Isochron Scepter
@@ -7498,10 +7501,12 @@
           if (f.kind === 'mox') {
             const cands = hand.filter(i => !i.card.a.isArtifact && (i.card.colors || []).length).sort((x, y) => imprintValue(g, x) - imprintValue(g, y));
             pick = cands[0] && imprintValue(g, cands[0]) <= 5 ? cands[0] : null;
-            if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); source.produce = { colors: new Set(pick.card.colors), amount: 1 }; touch(g); ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} (Chrome Mox makes ${pick.card.colors.join('/')})`, source }); }
+            if (g.ask && !g.dry && source) pick = askImprint(g, source, g.hand.filter(i => !i.card.a.isLand && !i.card.a.isArtifact), pick, 'a nonartifact, nonland card');          // a person: any legal card in hand
+            if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); const cl = pick.card.colors || []; if (cl.length) source.produce = { colors: new Set(cl), amount: 1 }; touch(g); ev.push({ type: 'note', text: cl.length ? `Imprint: exiled ${pick.card.name} (Chrome Mox makes ${cl.join('/')})` : `Imprint: exiled ${pick.card.name} (colorless: Chrome Mox makes no mana)`, source }); }
           } else {
             const cands = hand.filter(i => scepterFodder(i.card) && !i.card.a.counter && i.card.a.spellFx.length).sort((x, y) => (comboNeed(g, y) - comboNeed(g, x)) || (fxValue(g, y.card.a.spellFx) - fxValue(g, x.card.a.spellFx)));
             pick = cands[0] || null;
+            if (g.ask && !g.dry && source) pick = askImprint(g, source, g.hand.filter(i => scepterFodder(i.card)), pick, 'an instant card with mana value 2 or less');
             if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); source.imprinted = pick; ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} under Isochron Scepter`, source }); }
           }
           break;
@@ -13483,7 +13488,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Mimic Vat: exile the dying card if it beats the one already there (that one goes back to its owner's graveyard)
   function vatTake(x, vat, H, i) {
     const at = H.graveyard.indexOf(i); if (at < 0) return false; const v = c => (c.card.a.power || 0) + (c.card.a.mv || 0) + (c.card.a.triggers.some(t => t.kinds.includes('etb')) ? 4 : 0);
-    if (vat.vatCard && v(vat.vatCard.i) >= v(i)) return false;
+    const want = !(vat.vatCard && v(vat.vatCard.i) >= v(i));
+    if (x.ask && !x.dry) { if (!askImprint(x, vat, [i], want ? i : null, 'the creature that died')) return false; } else if (!want) return false;
     if (vat.vatCard) { const o = vat.vatCard; const e = o.H.exile.indexOf(o.i); if (e >= 0) { o.H.exile.splice(e, 1); o.H.graveyard.push(o.i); } }
     H.graveyard.splice(at, 1); H.exile.push(i); vat.vatCard = { i, H }; return true;
   }
@@ -13513,6 +13519,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     return m; }          // Mjölnir: the creature it equips          // Collective Inferno
   // T-041 (issue #78): Magda, Brazen Outlaw sees every Dwarf that becomes tapped outside combat; the Dwarves' own abilities
   // a seated person is asked before each of these (the autopilot's choice is the default, so taking every default plays the autopilot's game)
+  // T-086: a seated person chooses the card an imprint ability exiles, from the cards the card's text allows (the caller lists them, in the zone the text names).
+  // The autopilot's choice is the default and "Don't imprint" is always offered; a person with no legal card is not asked.
+  function askImprint(g, source, options, def, what) { if (!g.ask || g.dry) return def; if (!options.length) return null; const r = decide(g, { kind: 'imprint', options, def, optional: true, what, source }); return r || null; }
   function askUse(g, what, why, source, target) { return !g.ask || decide(g, { kind: 'protect', options: [what], def: what, optional: true, why, target: target || null, source: source || null }) != null; }
   function magdaTap(g, q, ev) { if (g.dry || !q || !q.card || !tableHas(g, 'tapTreasure') || !isCreaturePerm(q)) return; for (const mg of g.battlefield.filter(x => x.card.a.tapTreasure)) if (matchesFilter(q.card, mg.card.a.tapTreasure)) createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev || [], mg); }
   const storyCount = g => g.battlefield.filter(q => artOn(g, q) || q.card.a.isLegendary || /\bSaga\b/.test(q.card.type_line || '')).length;

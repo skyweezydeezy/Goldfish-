@@ -245,6 +245,11 @@
       else {
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
+    } else if (d.kind === 'imprint') {                                                                      // T-086: Chrome Mox, Isochron Scepter, Semblance Anvil, Ugin's Labyrinth, Extraplanar Lens, Mimic Vat
+      const zone = /died/.test(d.what) ? 'graveyard' : /land you control/.test(d.what) ? 'battlefield' : 'hand';
+      q.title = `${sn || 'Imprint'}: ${zone === 'graveyard' ? 'exile the creature that died?' : 'imprint which card?'}`;
+      q.text = zone === 'graveyard' ? 'You may exile the creature card that just died. If you do, the card already exiled with it returns to its owner\'s graveyard.' : `You may exile ${/^a[n]? /.test(d.what) ? d.what : 'a card'} ${zone === 'battlefield' ? '' : 'from your hand '}as it comes in. Only the cards its text allows are listed.`.replace(/ +/g, ' ');
+      q.none = 'Don\'t imprint';
     } else if (d.kind === 'sacrifice') {
       const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
       q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : d.by ? `${by} makes you sacrifice a ${w}` : `${sn || 'Effect'}: sacrifice a ${w}`;          // no by: your own card's effect (Roiling Regrowth)

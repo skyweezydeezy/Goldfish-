@@ -148,12 +148,13 @@ const js = (p, sel) => p.evaluate(s => document.querySelector(s).click(), sel);
     const back = await p.evaluate(() => { const v = s => document.querySelector(s).value; return { t: v('#optTurns'), l: v('#optLife'), c: document.querySelector('#optCmdrFirst').checked, m: v('#optMullTo'), f: v('#optFormat'), my: v('#optMyLife'), nm: document.querySelector('#optNoMaxHand').checked }; });
     check('settings: Reset rules to defaults puts every rule back (the format stays)', back.t === '10' && back.l === '40' && back.c && back.m === '5' && back.f === 'commander' && back.my === '40' && !back.nm, JSON.stringify(back));
     await p.click('#displaySettings > summary');
-    await p.selectOption('#dispDensity', 'compact'); await p.selectOption('#dispFade', 'off');
-    const a = await p.evaluate(() => ({ cls: document.body.classList.contains('dense-compact'), fade: getComputedStyle(document.documentElement).getPropertyValue('--mode-fade').trim(), pad: getComputedStyle(document.querySelector('.card-box')).paddingTop }));
-    check('settings: Display applies at once (compact spacing, instant tab switch)', a.cls && a.fade === '0s' && a.pad === '10px', JSON.stringify(a));
+    check('settings: there is no Spacing choice: Standard for everyone (the user, 2026-11-26)', !(await p.$('#dispDensity')) && !(await p.evaluate(() => /dense-/.test(document.body.className))));
+    await p.selectOption('#dispFade', 'off');
+    const a = await p.evaluate(() => ({ fade: getComputedStyle(document.documentElement).getPropertyValue('--mode-fade').trim() }));
+    check('settings: Display applies at once (instant tab switch)', a.fade === '0s', JSON.stringify(a));
     await p.reload(); await p.waitForTimeout(1500);
-    const a2 = await p.evaluate(() => ({ cls: document.body.classList.contains('dense-compact'), fade: getComputedStyle(document.documentElement).getPropertyValue('--mode-fade').trim(), den: document.querySelector('#dispDensity').value }));
-    check('settings: Display survives a reload', a2.cls && a2.fade === '0s' && a2.den === 'compact', JSON.stringify(a2));
+    const a2 = await p.evaluate(() => ({ dense: /dense-/.test(document.body.className), fade: getComputedStyle(document.documentElement).getPropertyValue('--mode-fade').trim() }));
+    check('settings: Display survives a reload (and an old saved Compact/Roomy no longer applies)', !a2.dense && a2.fade === '0s', JSON.stringify(a2));
     check('settings: no page errors', p.errs.length === 0, p.errs.join(' | '));
     await ctx.close();
   }

@@ -506,7 +506,18 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       return;
     }
     if (m.t === 'ping') { S.peerHidden = !!m.h; return; }
-    if (m.t === 'bye') { S.link.final = true; status(m.why ? 'The other device ended the connection: ' + str(m.why, 300) : 'The other device left.'); try { S.link.pc.close(); } catch (e) {} return; }
+    if (m.t === 'bye') {
+      S.link.final = true;
+      const g = S.game;
+      if (m.why === 'left' && g && g.end) { g.end.left = true; g.end.asked = 0; g.end.incoming = null; g.end.note = `${g.setup.names[1 - g.local]} left.`; status(''); endRedraw(); }
+      else status(m.why ? 'The other device ended the connection: ' + str(m.why, 300) : 'The other device left.');
+      try { S.link.pc.close(); } catch (e) {} return;
+    }
+    if (m.t === 'rematch') return onRematch(m);
+    if (m.t === 'rematch-yes') return onRematchYes(m);
+    if (m.t === 'rematch-no') return onRematchNo();
+    if (m.t === 'choosing') return onChoosing(m);
+    if (m.t === 'redeal') return onRedeal(m);
     if (m.t === 'hello') return onHello(m);
     if (m.t === 'setup') return onSetup(m);
     if (m.t === 'halt') { if (S.game) { S.game.ended = 'halted'; save(); syncWake(); } V.halt(MODE, 'The other device stopped the game: ' + str(m.why || 'the two games differ', 300)); return; }
@@ -555,6 +566,79 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
     raw(m);
   }
 
+  // ---------- the end of a game: a rematch on the same connection, choosing another deck, leaving ----------
+  // Messages on the data channel (not numbered game messages): rematch {deck: the deck's name} asks; rematch-yes {deck} accepts and sends
+  // the accepter's deck; rematch-no declines; the asker deals (redeal {id, setup}: a new seed, the same flow as the first setup);
+  // choosing {on} says this player is picking another deck; bye {why: 'left'} leaves.
+  const doneGame = g => !!(g && (g.ended || (g.gm && g.gm.over)));
+  const them = g => g.setup.names[1 - g.local];
+  function endRedraw() { redraw(); show(); }
+  function offerRematch(g) {
+    if (!g || !open() || g.end.left || g.end.asked) return;
+    let deck; try { deck = myDeck(); } catch (e) { return status(e.message); }
+    const t = g.end.asked = Date.now(); g.end.askDeck = deck; g.end.note = ''; g.end.choosing = false;
+    raw({ t: 'rematch', name: myName(), deck: deckLabel() });
+    setTimeout(() => { if (g.end.asked === t) { g.end.asked = 0; g.end.note = `No answer from ${them(g)}.`; endRedraw(); } }, 60000);
+    endRedraw();
+  }
+  function onRematch(m) {
+    const g = S.game; if (!g || !g.end || !doneGame(g) || g.end.left) return;
+    if (g.end.asked) { if (g.local === 0) return; return answerRematch(g, true, true); }          // both asked at once: the seat that dealt the game before deals again
+    g.end.incoming = { name: them(g), deck: str(m.deck, 40) || '', at: Date.now() }; g.end.peerChoosing = false; g.end.note = '';
+    const at = g.end.incoming.at;
+    setTimeout(() => { if (g.end.incoming && g.end.incoming.at === at) { g.end.incoming = null; endRedraw(); } }, 90000);
+    endRedraw();
+  }
+  function answerRematch(g, yes, quiet) {
+    if (!g || !g.end) return;
+    if (!quiet && !g.end.incoming) return;
+    g.end.incoming = null;
+    if (!yes) { raw({ t: 'rematch-no' }); return endRedraw(); }
+    let deck; try { deck = myDeck(); } catch (e) { raw({ t: 'rematch-no' }); g.end.note = e.message; return endRedraw(); }
+    g.end.asked = 0; g.end.yes = Date.now(); g.end.choosing = false;
+    raw({ t: 'rematch-yes', deck }); status(''); endRedraw();
+  }
+  function onRematchYes(m) {
+    const g = S.game; if (!g || !g.end || !g.end.asked) return;
+    let deck; try { deck = cleanDeck(m.deck); } catch (e) { g.end.asked = 0; g.end.note = 'The deck it sent cannot be used.'; return endRedraw(); }
+    const mine = g.end.askDeck; g.end.asked = 0;
+    let names = [g.setup.names[g.local], g.setup.names[1 - g.local]]; if (names[0] === names[1]) names = [names[0], names[1] + ' (2)'];
+    const setup = { seed: crypto.getRandomValues(new Uint32Array(1))[0] >>> 1, first: crypto.getRandomValues(new Uint8Array(1))[0] & 1, names, decks: [mine, deck], opts: myOpts() };
+    const id = rid();
+    raw({ t: 'redeal', id, setup });
+    rematchBegin(id, 0, setup);
+  }
+  function onRematchNo() {
+    const g = S.game; if (!g || !g.end || !g.end.asked) return;
+    g.end.asked = 0; g.end.note = `${them(g)} said no to a rematch.`; endRedraw();
+  }
+  function onRedeal(m) {
+    const g = S.game; if (!g || !g.end || !(Date.now() - g.end.yes < 120000) || typeof m.id !== 'string') return;
+    let setup; try { setup = cleanSetup(m.setup); } catch (e) { return refuse('The game it sent cannot be used: ' + e.message + '.'); }
+    g.end.yes = 0;
+    rematchBegin(str(m.id, 40), 1, setup);
+  }
+  function rematchBegin(id, local, setup) {
+    const old = V[MODE].game; if (old) old.io = null;          // the finished game's table is replaced; it must not close the connection
+    begin(id, local, setup);
+  }
+  function onChoosing(m) { const g = S.game; if (!g || !g.end) return; g.end.peerChoosing = !!m.on; endRedraw(); }
+  function chooseDeck(g) {
+    if (!g || !g.end) return;
+    g.end.choosing = true; g.end.note = ''; g.ended = g.ended || 'over'; save();
+    raw({ t: 'choosing', on: 1 });
+    setTimeout(() => { show(); if (box) box.scrollIntoView({ block: 'start' }); });          // after versus.js has closed the table
+  }
+  // a local New game after Change deck: the link that was kept for the rematch is closed, and the other player is told ("<name> left")
+  function dropIdle() { const g = S.game; if (g && g.end && doneGame(g) && !V[MODE].game && open()) leaveGame(g); }
+  // leave: the other player is told ("<name> left"), the connection closes, and the saved game and the meeting-point subscription go
+  function leaveGame(g) {
+    if (!g || S.game !== g) return;
+    raw({ t: 'bye', why: 'left' });
+    const L = S.link; if (L) { L.final = true; setTimeout(() => { try { L.pc.close(); } catch (e) {} }, 300); }
+    S.game = null; forget(); syncWake(); meetStop(); show();
+  }
+
   // ---------- the game ----------
   function begin(id, local, setup, replay) {
     S.game = { id, local, setup, out: replay ? replay.out : [], inbox: replay ? replay.inbox : [], mine: {}, theirs: {}, sentK: 0, ended: replay ? replay.ended : null, setupSaved: !!replay,
@@ -578,6 +662,8 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       // answered is what the table shows, so the 4-second check compares with that
       connected: () => (S.shownOn = connected()),
     };
+    g.end = { asked: 0, askDeck: null, incoming: null, note: '', peerChoosing: false, choosing: false, left: false, yes: 0 };
+    Object.assign(io, { end: g.end, rematch: () => offerRematch(g), answerRematch: y => answerRematch(g, y), choose: () => chooseDeck(g), leave: () => leaveGame(g) });
     g.io = io;
     document.querySelector('[data-tab=duel]').click();
     const gm = V.startRemote(MODE, Object.assign({}, setup, { local }), io);
@@ -656,11 +742,19 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
     if (step) box.querySelector('.rm-other').open = true;                // a code step belongs to "Other ways to connect": show it
     box.querySelector('.rm-terms').innerHTML = termsHtml();
     const g = S.game, live = g && !g.ended, sv = !g && load(), playing = live && connected();
-    box.querySelector('.rm-near').hidden = !accepted() || !!live;
-    box.querySelector('.rm-other').hidden = !!playing;
+    box.querySelector('.rm-near').hidden = !accepted() || !!live || !!(g && g.end && open());
+    box.querySelector('.rm-other').hidden = !!playing || !!(g && open() && g.end && doneGame(g));
     const sc = box.querySelector('.rm-sv'), el = box.querySelector('.rm-step');
     el.innerHTML = playing ? '' : stepHtml();
-    if (playing) sc.innerHTML = `<div class="hint">Playing ${esc(g.setup.names[1 - g.local])}. The table is below.</div>`;
+    const side = g && g.end && !V[MODE].game && (g.end.choosing || g.end.incoming || g.end.left) ? g : null;
+    if (side) {
+      const e = side.end, who = esc(them(side));
+      sc.innerHTML = e.left ? `<div class="rm-lost"><b>${who} left.</b> <div class="row wrap"><button class="ghost rm-leave">Done</button></div></div>`
+        : `<div class="rm-lost">${e.incoming ? `<div class="rm-ask-in row wrap"><span><b>${esc(e.incoming.name)}</b> wants a rematch${e.incoming.deck ? ' with ' + esc(e.incoming.deck) : ''}. Accept?</span><button class="primary rm-rm-yes">Accept</button><button class="ghost rm-rm-no">Decline</button></div>` : ''}
+          ${e.choosing ? `<b>Choose a deck.</b> <span class="hint">${who} sees that you are choosing. Load a deck on the Build tab, then offer the rematch.</span>` : ''}
+          ${e.asked ? `<div class="hint">Waiting for ${who} to accept…</div>` : ''}${e.note ? `<div class="hint">${esc(e.note)}</div>` : ''}${e.peerChoosing ? `<div class="hint">${who} is choosing a deck.</div>` : ''}
+          <div class="row wrap">${e.choosing ? `<button class="primary rm-rematch"${e.asked || !open() ? ' disabled' : ''}>Offer a rematch with ${esc(deckLabel() || 'this deck')}</button>` : ''}<button class="ghost rm-leave">Leave</button></div></div>`;
+    } else if (playing) sc.innerHTML = `<div class="hint">Playing ${esc(g.setup.names[1 - g.local])}. The table is below.</div>`;
     else if (live) sc.innerHTML = g.topic
       ? `<div class="rm-lost"><b>Not connected to ${esc(g.setup.names[1 - g.local])}.</b> <span class="hint">The game waits. Both devices connect again by themselves; nothing to do. (Other ways to connect, below, also work.)</span></div>`
       : `<div class="rm-lost"><b>Not connected to ${esc(g.setup.names[1 - g.local])}.</b> <span class="hint">The game waits. One of you invites again and the other joins: the game goes on where it was.</span></div>`;
@@ -724,6 +818,10 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       status('Making an invite…'); show(null);
       return busy(hit('rm-invite'), invite().then(code => { status(''); show({ kind: 'invite', code }); }));
     }
+    if (hit('rm-rm-yes')) return answerRematch(S.game, true);
+    if (hit('rm-rm-no')) return answerRematch(S.game, false);
+    if (hit('rm-rematch')) return offerRematch(S.game);
+    if (hit('rm-leave')) { const g = S.game; if (g && g.end && !g.end.left) return leaveGame(g); S.game = null; forget(); meetStop(); return show(); }
     if (hit('rm-ask')) return ask(hit('rm-ask').dataset.id);
     if (hit('rm-yes')) return answerAsk(hit('rm-yes').dataset.id, true);
     if (hit('rm-no')) return answerAsk(hit('rm-no').dataset.id, false);
@@ -780,5 +878,5 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
 
   build(); fromLink();
   window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,
-    NO_DIRECT, BROKERS, M, set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set address(v) { S.addr = v; }, get address() { return S.addr; }, roomKey, syncWake };
+    NO_DIRECT, BROKERS, M, set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set address(v) { S.addr = v; }, get address() { return S.addr; }, roomKey, syncWake, dropIdle };
 })();

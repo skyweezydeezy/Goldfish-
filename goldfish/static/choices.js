@@ -54,7 +54,7 @@
           <div class="row wrap ch-btns">
             <button class="primary ch-ok"></button>
             ${q.none ? `<button class="ch-none">${esc(q.none)}</button>` : ''}
-            <button class="ghost ch-auto" title="Take what the autopilot would choose">Let the autopilot decide<small> · ${esc(defNames.length ? defNames.join(', ') : (q.none || 'nothing'))}</small></button>
+            ${q.noAuto ? '' : `<button class="ghost ch-auto" title="Take what the autopilot would choose">Let the autopilot decide<small> · ${esc(defNames.length ? defNames.join(', ') : (q.none || 'nothing'))}</small></button>`}
           </div>
         </div>`;
       const $ = s => el.querySelector(s), box = $('.ch-opts');
@@ -63,6 +63,7 @@
         for (const it of q.stack) { const b = h('div', 'ch-stack-item'); if (it.card) b.appendChild(A.cardEl(it.card, {})); b.appendChild(h('small', '', `${esc(it.who)} · ${KIND[it.kind] || it.kind}`)); if (it.text) b.title = it.text; $('.ch-stack-list').appendChild(b); }
       }
       if (q.spell) { const c = A.cardEl(q.spell, { eager: true }); $('.ch-spell').append(c, h('small', '', esc(q.spellNote || 'being cast'))); } else $('.ch-spell').remove();
+      if (q.targets && q.targets.length) { const tb = h('div', 'ch-targets'); for (const t of q.targets) { const b = h('div', 'ch-target'); if (t.card) b.appendChild(A.cardEl(t.card, {})); b.appendChild(h('small', '', esc('target: ' + t.name))); tb.appendChild(b); } const sp = $('.ch-spell'); if (sp) sp.appendChild(tb); }          // T-072: what the spell targets
       for (const t of ts) {
         const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text') + (t.o.disabled ? ' off' : ''));
         if (t.o.disabled) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }          // shown, with the reason in its note, but it cannot be picked
@@ -71,7 +72,7 @@
         if (t.o.card) { const c = A.cardEl(t.o.card, { face: t.o.face || 0 }); b.appendChild(c); const z = h('span', 'ch-zoom', '🔍'); z.title = 'Read this card'; b.appendChild(z); }
         b.appendChild(h('span', 'ch-name', esc(t.o.name) + (t.ks.length > 1 ? ` <i>×${t.ks.length}</i>` : '')));
         if (t.o.note) b.appendChild(h('small', 'ch-note', esc(t.o.note)));
-        if (t.def) b.appendChild(h('span', 'ch-star', '★ autopilot'));
+        if (t.def && !q.noAuto) b.appendChild(h('span', 'ch-star', '★ autopilot'));
         b.appendChild(h('span', 'ch-took'));
         box.appendChild(b);
       }

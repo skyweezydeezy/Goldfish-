@@ -54,6 +54,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('Simulation: card in a sample game replay', await opens('#replay .mtg') === true);
   check('Simulation: card name in the heatmap', await opens('#heatmap .mtg-ref') === true);
   await p.click('[data-tab=odds]'); await p.waitForTimeout(500);
+  await p.evaluate(() => { document.querySelector('#oddsChoose').open = true; }); await p.waitForTimeout(200);          // the picker is folded under "Choose cards" (T-076)
   const sel0 = await p.$$eval('#oddsPicker .mtg.sel', x => x.length);
   check('Draw Odds: picker card, 🔍 corner opens it without picking the card', await opens('#oddsPicker .mtg', 'corner') === true && sel0 === await p.$$eval('#oddsPicker .mtg.sel', x => x.length));
   check('Draw Odds: picker card, right-click', await opens('#oddsPicker .mtg', 'right') === true);

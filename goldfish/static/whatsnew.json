@@ -2,6 +2,32 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 197,
+      "lines": [
+        "Against an opponent, a spell's target is chosen when it is cast, as the rules say. Before you decide whether to counter, you see what it targets (\"Targeting your Serra Angel\" or \"Targeting you\"). If the target is gone when it resolves, the spell does nothing to it."
+      ]
+    },
+    {
+      "v": 196,
+      "lines": [
+        "Bill the Pony, Meriadoc Brandybuck and Spike Feeder play as written."
+      ]
+    },
+    {
+      "v": 195,
+      "lines": [
+        "When a game ends: Play again, Change deck or Leave. In Play a friend your friend gets a rematch request, and Leave tells them you left.",
+        "Play a friend has no autopilot: each player makes every choice themselves."
+      ]
+    },
+    {
+      "v": 194,
+      "lines": [
+        "Tags starts fully folded, groups too: tap its header to open it.",
+        "Odds: the Draw odds graph shows straight away (your ramp, else card draw, else lands). Pick other cards under Choose cards."
+      ]
+    },
+    {
       "v": 193,
       "lines": [
         "More cards play as written: life lost this turn (Essence Channeler, Luminarch Ascension), manifest (Ugin's Mastery), Fiend Artisan, dice rolls (Wyll, Component Pouch, Treasure Chest), copy spells (Fire Lord Azula, Double Major) and finality counters (Meathook Massacre II)."

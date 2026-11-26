@@ -4742,13 +4742,13 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/sth.svg?1794805200",
    "partial": true,
-   "cards": 26,
-   "originals": 26,
+   "cards": 27,
+   "originals": 27,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 26,
-    "approx": 0,
+    "approx": 1,
     "partial": 0,
     "none": 0
    }
@@ -5048,15 +5048,15 @@
    "set_type": "draft_innovation",
    "icon": "https://svgs.scryfall.io/sets/ltr.svg?1794805200",
    "partial": true,
-   "cards": 88,
-   "originals": 88,
+   "cards": 90,
+   "originals": 90,
    "reprints": 0,
    "missing": 0,
    "coverage": {
     "full": 84,
     "approx": 2,
-    "partial": 1,
-    "none": 1
+    "partial": 2,
+    "none": 2
    }
   },
   {

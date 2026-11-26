@@ -18,7 +18,7 @@ const wrong = titles.filter(t => {
 check('each one is filed under its verified bracket, else the one in its file name (deck file and index)', wrong.length === 0, wrong.join(', ') || titles.length + ' decks');
 check('known Drive brackets: Mermaids and The King\'s Gambit B5, Death Tax B4, Soul Brokers B3', ['mermaids.txt:5', 'the-kings-gambit.txt:5', 'death-tax.txt:4', 'soul-brokers.txt:3'].every(s => { const [f, b] = s.split(':'); return (Object.values(sync.files).find(r => r.deck === f) || {}).bracket === +b; }));
 check('every bracket is 1 to 5', index.every(d => d.bracket == null || (d.bracket >= 1 && d.bracket <= 5)));
-check('drive-sync keeps the Drive bracket of each list (the [Bn] in its file name)', titles.every(t => sync.files[t].bracket === +(t.match(/\[B(\d)\]/) || [])[1]));
+check('drive-sync keeps the Drive bracket of each list (the [Bn] in its file name)', titles.every(t => { const m = t.match(/\[B(\d)\]/); return m ? sync.files[t].bracket === +m[1] : sync.files[t].bracket == null; }));          // a name with no [Bn] (e.g. "[B?]") has no Drive claim
 check('each recorded list keeps its Drive file id', titles.every(t => /^[\w-]{20,}$/.test(sync.files[t].id || '')));
 
 // the importer: a new deck, an unchanged deck, a changed bracket, flavor cards left out

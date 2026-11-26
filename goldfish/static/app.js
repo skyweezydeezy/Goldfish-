@@ -654,7 +654,15 @@
         const lines = h('div', 'lines');
         lines.appendChild(h('b', '', esc(c.name)));
         if (!c.a.coverage.length) lines.appendChild(h('div', 'ok', 'No rules text (vanilla).'));
-        c.a.coverage.forEach(x => lines.appendChild(h('div', x.status, pillHtml(x) + esc(x.text))));
+        c.a.coverage.filter(x => x.status !== 'neutral').forEach(x => lines.appendChild(h('div', x.status, pillHtml(x) + esc(x.text))));
+        // T-100 slice 4: the lines that do nothing on their own (neutral) fold under one header, grouped by why: "Matters only against opponents" (simulated in a Mirror match), "Not simulated", "Does nothing alone"
+        const neu = c.a.coverage.filter(x => x.status === 'neutral');
+        if (neu.length) {
+          const groups = [['Matters only against opponents', neu.filter(x => x.mirror || x.tag === 'opp')], ['Not simulated', neu.filter(x => !x.mirror && x.tag === 'unsim')], ['Does nothing alone', neu.filter(x => !x.mirror && x.tag !== 'opp' && x.tag !== 'unsim')]].filter(gp => gp[1].length);
+          const det = h('details', 'fold cov-neutral'), sm = h('summary', '', `Neutral lines <span class="fold-n">${neu.length}</span>`), body = h('div', 'fold-body');
+          groups.forEach(([title, rows]) => { body.appendChild(h('div', 'cov-neutral-head', esc(title))); rows.forEach(x => body.appendChild(h('div', 'neutral', pillHtml(x) + esc(x.text)))); });
+          det.appendChild(sm); det.appendChild(body); lines.appendChild(det);
+        }
         d.appendChild(lines);
         box.appendChild(d);
       });

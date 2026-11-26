@@ -147,7 +147,7 @@ function verdict(L, gf, field) {
   const verified = L.cmdr ? Math.max(rules.floor, spd) : null;
   return {
     file: L.d.file, name: L.d.name, stated: L.d.bracket || null, verified, commander: L.cmdr,
-    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, earliest: (gf.kill.findIndex((x, t) => t < T && x > 0) + 1) || null, by2: pct(cum(2)), by3: pct(cum(3)), by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
       cmdrMedian: L.cmdr ? (medianTurn(gf.cmdr) > T ? `>${T}` : medianTurn(gf.cmdr)) : null, mana4: Math.round(gf.mana4 * 100) / 100,
       winBy: Object.fromEntries(Object.entries(gf.winBy).map(([k, v]) => [k, pct(v)])), topLine: (gf.winLines[0] || null) },
     field: field ? { games: field.n, wins: field.w, losses: field.l, none: field.none, errors: field.errors, winRate: pct(field.w / Math.max(1, field.n - field.errors)), opponents: field.opps } : null,
@@ -230,7 +230,7 @@ function apply() {
     if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
-    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
+    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliest ? 'T' + g.earliest : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
     if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
@@ -243,7 +243,7 @@ function apply() {
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) {
     const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
-    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7; if (v.field) d.fieldWin = v.field.winRate;
+    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7; d.by2 = v.goldfish.by2; d.by3 = v.goldfish.by3; d.by4 = v.goldfish.by4; d.earliest = v.goldfish.earliest; if (v.field) d.fieldWin = v.field.winRate;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
   }

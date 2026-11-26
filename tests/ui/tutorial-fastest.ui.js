@@ -48,7 +48,8 @@ async function run(p, touch) {
   }
   return { seen, spotOk };
 }
-const rule = decks => decks.filter(d => d.by5 != null && d.medianKill != null).sort((a, b) => (+String(a.medianKill).replace('>', '') + (String(a.medianKill)[0] === '>' ? .5 : 0)) - (+String(b.medianKill).replace('>', '') + (String(b.medianKill)[0] === '>' ? .5 : 0)) || b.by7 - a.by7 || b.by5 - a.by5)[0];
+const kn = k => +String(k).replace('>', '') + (String(k)[0] === '>' ? .5 : 0);
+const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != null && d.by4 != null); return c.length ? c.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || kn(a.medianKill) - kn(b.medianKill) || (b.by7 || 0) - (a.by7 || 0))[0] : decks.filter(d => d.by5 != null && d.medianKill != null).sort((a, b) => kn(a.medianKill) - kn(b.medianKill) || b.by7 - a.by7 || b.by5 - a.by5)[0]; };
 
 (async () => {
   const b = await chromium.launch();
@@ -73,10 +74,10 @@ const rule = decks => decks.filter(d => d.by5 != null && d.medianKill != null).s
     await (touch ? p.tap('.tut-m-fastest') : p.click('.tut-m-fastest'));
     await p.waitForFunction(() => window.ISFTutorial.active, null, { timeout: 20000 });
     const first = await p.evaluate(() => ({ title: document.querySelector('.tut-title').textContent, text: document.querySelector('.tut-text').textContent }));
-    check(label + ': the first step names the fastest deck and its numbers', first.title === 'The fastest deck' && first.text.includes(want.name.replace(/\s*\(.*\)\s*$/, '')) && first.text.includes(`Median turn ${want.medianKill}`) && first.text.includes(`${want.by5}%`) && first.text.includes(`${want.by7}%`), first.text);
+    check(label + ': the first step names the fastest deck and its numbers', first.title === 'The fastest deck' && first.text.includes(want.name.replace(/\s*\(.*\)\s*$/, '')) && (want.by2 != null ? first.text.includes('by turn 2') && first.text.includes('by turn 4') : first.text.includes(`Median turn ${want.medianKill}`)), first.text);
     const r = await run(p, touch);
-    check(label + ': the steps run to the end', !(await p.evaluate(() => window.ISFTutorial.active)) && r.seen.includes('That is the fastest deck') && !r.seen.some(t => /STUCK/.test(t)), r.seen.join(' › '));
-    check(label + ': it shows the plan, draws, plays to the kill and ends on the result', ['The plan', 'Draw a 7', 'Keep', 'Play to the kill'].every(t => r.seen.includes(t)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)), r.seen.join(' › '));
+    check(label + ': the steps run to the end', !(await p.evaluate(() => window.ISFTutorial.active)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)) && !r.seen.some(t => /STUCK/.test(t)), r.seen.join(' › '));
+    check(label + ': it shows the plan, draws, plays to the kill and ends on the result', ['The plan', 'Draw a 7', 'Keep', 'Watch the win'].every(t => r.seen.includes(t)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)), r.seen.join(' › '));
     check(label + ': every tap step had its element to point at', r.spotOk);
     const after = await snap();
     check(label + ': your own deck comes back', after.cmd === before.cmd && !after.tutorial, `${before.cmd} → ${after.cmd}`);
@@ -92,15 +93,35 @@ const rule = decks => decks.filter(d => d.by5 != null && d.medianKill != null).s
     const ctx = await context(b, { viewport: { width: 1280, height: 800 } });
     const p = await ctx.newPage(); await p.goto(URL); await p.waitForTimeout(800);
     const got = await p.evaluate(() => window.ISFTutorial.fastestOf([
-      { file: 'a', medianKill: 8, by5: 50, by7: 90 }, { file: 'b', medianKill: 7, by5: 5, by7: 60 }, { file: 'c', medianKill: 7, by5: 9, by7: 60 }, { file: 'd', medianKill: 7, by5: 1, by7: 70 }, { file: 'e', medianKill: '>10', by5: 0, by7: 1 }, { file: 'f' }]).file);
-    check('the rule: earliest median, then most wins by T7, then by T5', got === 'd', got);
+      { file: 'a', medianKill: 8, by5: 50, by7: 90, by2: 0, by3: 1, by4: 80 }, { file: 'b', medianKill: 7, by2: 0.4, by3: 1, by4: 5 }, { file: 'c', medianKill: 9, by2: 0.4, by3: 2, by4: 5 }, { file: 'd', medianKill: 9, by2: 0.4, by3: 2, by4: 9 }, { file: 'e', medianKill: 7, by5: 9, by7: 80 }, { file: 'f' }]).file);
+    check('the rule: most wins by T2, then T3, then T4, then the median (the ceiling, not the median)', got === 'd', got);
+    const fb = await p.evaluate(() => window.ISFTutorial.fastestOf([{ file: 'a', medianKill: 8, by5: 50, by7: 90 }, { file: 'b', medianKill: 7, by5: 5, by7: 60 }, { file: 'c', medianKill: 7, by5: 9, by7: 60 }, { file: 'e', medianKill: '>10', by5: 0, by7: 1 }, { file: 'f' }]).file);
+    check('without turn 2-4 numbers the median rule is the fallback', fb === 'c', fb);
     const live = await p.evaluate(async () => (await (await fetch('decks/index.json')).json()).decks.length && window.ISFTutorial.fastestOf((await (await fetch('decks/index.json')).json()).decks).file);
     check('the page picks the same deck as the test\'s own reading of index.json', live === want.file, live + ' vs ' + want.file);
     // stop at the first step of the game: the loaded sample deck is the fastest one
     await p.evaluate(() => { window.ISFTutorial.fastestGame(); });
+    await p.waitForFunction(() => window.ISFTutorial.active, null, { timeout: 30000 });
+    await p.click('.tut-next');          // the first step explains; the deck loads on Next
     await p.waitForFunction(() => window.__isf.loaded && window.__isf.loaded.tutorialFile, null, { timeout: 90000 });
     const loaded = await p.evaluate(() => window.__isf.loaded.tutorialFile);
     check('the deck loaded for the tutorial is the fastest by the rule', loaded === want.file, loaded);
+    await ctx.close();
+  }
+  // the deck's info: one line with the earliest win and the share won by T2, T3, T4 (here injected into the index), details behind the ⓘ
+  {
+    const ctx = await context(b, { viewport: { width: 1280, height: 800 } });
+    await ctx.route('**/decks/index.json', async route => { const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', 'index.json'), 'utf8')); const d = j.decks.find(x => x.file === 'mob-storm.txt'); Object.assign(d, { earliest: 3, by2: 0, by3: 0.6, by4: 12.5 }); route.fulfill({ contentType: 'application/json', body: JSON.stringify(j) }); });
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); await p.goto(URL);
+    check('no speed line before a checked built-in deck is loaded', await p.evaluate(() => document.querySelector('#deckSpeed').hidden));
+    await p.waitForFunction(() => document.querySelector('#savedDecks option[value="builtin:mob-storm.txt"]'), null, { timeout: 30000 });
+    await p.selectOption('#savedDecks', 'builtin:mob-storm.txt');
+    await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 }); await p.waitForTimeout(500);
+    const ds = await p.evaluate(() => ({ hidden: document.querySelector('#deckSpeed').hidden, line: document.querySelector('#deckSpeed .ds-line').textContent, folded: document.querySelector('#deckSpeed .hint').classList.contains('folded') }));
+    check('the deck info shows the earliest win and the % by T2, T3, T4 on one line, details folded', !ds.hidden && ds.line === 'Fastest win T3 · 0% by T2 · 0.6% by T3 · 12.5% by T4' && ds.folded, JSON.stringify(ds));
+    await p.click('#deckSpeed .info-tog');
+    check('the ⓘ opens the explanation', !(await p.evaluate(() => document.querySelector('#deckSpeed .hint').classList.contains('folded'))));
+    check('no page errors (deck info)', errs.length === 0, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
   await b.close();

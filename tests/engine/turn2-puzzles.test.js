@@ -12,7 +12,8 @@ const L = T.load(), hands = T.allHands(), pkgs = new Map(data.packages.map(p => 
 
 check('every hand of docs/agents/turn2-hands.json is a puzzle', hands.length === data.puzzles.length && hands.every(h => data.puzzles.some(p => p.deck === h.deck && p.side === h.side && p.seed === h.seed)), hands.length + ' vs ' + data.puzzles.length);
 check('the three lines and the seven decks are all there', ['oracle', 'breach', 'monolith'].every(l => data.puzzles.some(p => p.line === l)) && new Set(data.puzzles.map(p => p.deck)).size === 7, [...new Set(data.puzzles.map(p => p.deck))].join(', '));
-check('every scenario names a package; every package has what the page shows', data.puzzles.every(p => p.scenarios.every(s => pkgs.has(s.pkg))) && data.packages.every(p => p.name && p.why && p.kind));
+check('every hand has the three levels; medium is Force of Will, hard is the line\'s own stack of answers', data.puzzles.every(p => p.levels.easy.pkg === null && p.levels.medium.pkg === 'fow' && p.levels.hard.pkg === 'hard-' + p.line) && ['fow', 'hard-oracle', 'hard-breach', 'hard-monolith'].every(id => pkgs.has(id)));
+check('every package has what the page shows', data.packages.every(p => p.name && p.why && p.kind));
 
 // the real hands: the same kept hand from the seed, and the win on turn 2, with no opponent
 let same = 0, wins = 0;
@@ -23,27 +24,30 @@ for (const p of data.puzzles) {
   if (r.win) wins++;
 }
 check('every hand is dealt the same from its seed', same === data.puzzles.length, same + '/' + data.puzzles.length);
-check('...and wins on turn 2 with no opponent', wins === data.puzzles.length, wins + '/' + data.puzzles.length);
+check('...and wins on turn 2 with no opponent (the easy level)', wins === data.puzzles.length, wins + '/' + data.puzzles.length);
 check('the opts the page uses give the same hands as the tools', data.puzzles.every(p => { const d = L.decks.get(p.deck); return Object.keys(p.opts).every(k => k === 'prioritizeCommander' || d.opts[k] === p.opts[k]); }));
 
-// scenarios: the autopilot's line fails exactly where the data says, and a shipped solution wins
+// levels: the autopilot line wins or fails exactly where the data says, and a shipped solution wins
 let naiveOk = 0, naiveN = 0, solOk = 0, solN = 0, bad = [];
-for (const p of data.puzzles) for (const s of p.scenarios) {
-  const h = { deck: p.deck, seed: p.seed, side: p.side, onPlay: p.side === 'play' }, pkg = T.PACKAGES.find(x => x.id === s.pkg);
-  const naive = T.simulate(L, p.deck, h, h.onPlay, pkg, null);
-  naiveN++; if (naive.win === s.naiveWins) naiveOk++; else bad.push('naive ' + p.id + '/' + s.pkg);
-  if (s.solution) { solN++; const r = T.simulate(L, p.deck, h, h.onPlay, pkg, { moves: s.solution }, true); if (r.win && !r.invalid) solOk++; else bad.push('solution ' + p.id + '/' + s.pkg); }
-  if (!s.naiveWins && !s.solution && s.solvable) bad.push('solvable without a solution ' + p.id + '/' + s.pkg);
+for (const p of data.puzzles) for (const lv of ['easy', 'medium', 'hard']) {
+  const s = p.levels[lv], h = { deck: p.deck, seed: p.seed, side: p.side, onPlay: p.side === 'play' }, pkg = s.pkg && T.PACKAGES.find(x => x.id === s.pkg);
+  const naive = T.simulate(L, p.deck, h, h.onPlay, pkg || null, null);
+  naiveN++; if (naive.win === s.naiveWins) naiveOk++; else bad.push('naive ' + p.id + '/' + lv);
+  if (s.solution) { solN++; const r = T.simulate(L, p.deck, h, h.onPlay, pkg, { moves: s.solution }, true); if (r.win && !r.invalid) solOk++; else bad.push('solution ' + p.id + '/' + lv); }
+  if (!s.naiveWins && !s.solution && s.solvable) bad.push('solvable without a solution ' + p.id + '/' + lv);
+  if (s.naiveWins && s.solution) bad.push('solution where the autopilot wins ' + p.id + '/' + lv);
 }
-check('the autopilot line wins or fails as the data says', naiveOk === naiveN, naiveOk + '/' + naiveN + ' ' + bad.filter(x => /^naive/.test(x)).slice(0, 3).join(', '));
+check('the autopilot line wins or fails as the data says, at every level', naiveOk === naiveN, naiveOk + '/' + naiveN + ' ' + bad.filter(x => /^naive/.test(x)).slice(0, 3).join(', '));
 check('every shipped solution wins on turn 2', solN > 0 && solOk === solN, solOk + '/' + solN + ' ' + bad.filter(x => /^solution/.test(x)).slice(0, 3).join(', '));
-check('a solution is only ever shipped where the autopilot line fails', data.puzzles.every(p => p.scenarios.every(s => !(s.naiveWins && s.solution))));
-check('there are puzzles to solve and lessons to learn', data.puzzles.some(p => p.scenarios.some(s => !s.naiveWins && s.solvable)) && data.puzzles.some(p => p.scenarios.some(s => !s.naiveWins && !s.solvable)));
-check('at least four of the seven decks have a winnable puzzle (the others are lessons)', new Set(data.puzzles.filter(p => p.scenarios.some(s => !s.naiveWins && s.solvable)).map(p => p.deck)).size >= 4, [...new Set(data.puzzles.filter(p => p.scenarios.some(s => !s.naiveWins && s.solvable)).map(p => p.deck))].join(', '));
+check('a solution is only ever shipped where the autopilot line fails', !bad.some(x => /solvable without|solution where/.test(x)));
+check('easy is always won by the autopilot', data.puzzles.every(p => p.levels.easy.naiveWins && p.levels.easy.solvable));
+const lv = k => data.puzzles.flatMap(p => [p.levels[k]]);
+check('medium and hard have levels to solve and levels that cannot be won (said honestly)', lv('medium').some(s => !s.naiveWins && s.solvable) && lv('medium').some(s => !s.solvable) && lv('hard').some(s => !s.solvable), ['medium', 'hard'].map(k => k + ': ' + lv(k).filter(s => s.naiveWins).length + ' autopilot, ' + lv(k).filter(s => !s.naiveWins && s.solvable).length + ' to solve, ' + lv(k).filter(s => !s.solvable).length + ' lessons').join('; '));
+check('medium: at least four decks have a level to solve', new Set(data.puzzles.filter(p => !p.levels.medium.naiveWins && p.levels.medium.solvable).map(p => p.deck)).size >= 3, [...new Set(data.puzzles.filter(p => !p.levels.medium.naiveWins && p.levels.medium.solvable).map(p => p.deck))].join(', '));
 
 // one worked example, step by step: the Oracle hand with Mox Diamond, Vampiric Tutor against a Force of Will
 {
-  const p = data.puzzles.find(x => x.deck === 'Fine Print, Fatal Clause' && x.seed === 4649230 && x.side === 'draw'), s = p.scenarios.find(x => x.pkg === 'fow');
+  const p = data.puzzles.find(x => x.deck === 'Fine Print, Fatal Clause' && x.seed === 4649230 && x.side === 'draw'), s = p.levels.medium;
   const h = { deck: p.deck, seed: p.seed, side: p.side, onPlay: false }, pkg = T.PACKAGES.find(x => x.id === 'fow');
   const naive = T.simulate(L, p.deck, h, false, pkg, null), line = T.simulate(L, p.deck, h, false, pkg, { moves: s.solution }, true);
   check('worked example: Force of Will counters the first spell the autopilot casts, and the win is lost', !naive.win && naive.log.some(x => /Force of Will/.test(x)), naive.log.join(' | '));

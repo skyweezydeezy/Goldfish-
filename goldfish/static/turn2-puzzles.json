@@ -28,108 +28,53 @@
    "why": "Free: it exiles a blue card from its hand and pays 1 life to counter any spell. Tapping out changes nothing."
   },
   {
-   "id": "pierce",
-   "name": "Spell Pierce",
-   "kind": "tax",
+   "id": "hard-oracle",
+   "name": "Force of Will + Swords + Bojuka Bog",
+   "kind": "hard",
    "hand": [
-    "Spell Pierce"
-   ],
-   "lands": 1,
-   "why": "One blue mana: counters a noncreature spell unless you pay {2}."
-  },
-  {
-   "id": "fluster",
-   "name": "Flusterstorm",
-   "kind": "tax",
-   "hand": [
-    "Flusterstorm"
-   ],
-   "lands": 1,
-   "why": "One blue mana: counters an instant or sorcery unless you pay {1} (more after other spells). It cannot touch a permanent."
-  },
-  {
-   "id": "counterspell",
-   "name": "Counterspell",
-   "kind": "counter",
-   "hand": [
-    "Counterspell"
-   ],
-   "lands": 2,
-   "why": "Two blue mana: counters any spell. A hard counter, so only a different spell can soak it up."
-  },
-  {
-   "id": "daze",
-   "name": "Daze",
-   "kind": "tax",
-   "hand": [
-    "Daze"
-   ],
-   "lands": 1,
-   "why": "Free (it returns an Island to its hand): counters a spell unless you pay {1}."
-  },
-  {
-   "id": "fierce",
-   "name": "Fierce Guardianship",
-   "kind": "counter",
-   "hand": [
-    "Fierce Guardianship"
-   ],
-   "lands": 0,
-   "commander": "Serra Angel",
-   "why": "Free while it controls a commander: counters a noncreature spell. Creature spells are safe."
-  },
-  {
-   "id": "fon",
-   "name": "Force of Negation",
-   "kind": "counter",
-   "hand": [
-    "Force of Negation",
+    "Force of Will",
     "Brainstorm",
-    "Ponder"
-   ],
-   "lands": 0,
-   "why": "Free on your turn: it exiles a blue card to counter a noncreature spell. Creature spells are safe."
-  },
-  {
-   "id": "tithe",
-   "name": "Mana Tithe",
-   "kind": "tax",
-   "hand": [
-    "Mana Tithe"
+    "Ponder",
+    "Swords to Plowshares",
+    "Bojuka Bog"
    ],
    "lands": 1,
    "landName": "Plains",
-   "why": "One white mana: counters a spell unless you pay {1}."
+   "why": "Force of Will (free counter), Swords to Plowshares (exiles your first creature), and Bojuka Bog as its land drop (exiles your graveyard before turn 2)."
   },
   {
-   "id": "drain",
-   "name": "Mana Drain",
-   "kind": "counter",
+   "id": "hard-breach",
+   "name": "Force of Will + Swords + Rest in Peace",
+   "kind": "hard",
    "hand": [
-    "Mana Drain"
+    "Force of Will",
+    "Brainstorm",
+    "Ponder",
+    "Swords to Plowshares"
    ],
-   "lands": 2,
-   "why": "Two blue mana: counters any spell, and its controller gets that much mana next turn. A hard counter."
-  },
-  {
-   "id": "rip",
-   "name": "Rest in Peace",
-   "kind": "lock",
    "battlefield": [
     "Rest in Peace"
    ],
-   "lands": 0,
-   "why": "Already in play: every card that would go to a graveyard is exiled instead. Underworld Breach needs the graveyard."
+   "lands": 1,
+   "landName": "Plains",
+   "why": "Force of Will (free counter), Swords to Plowshares, and Rest in Peace already in play: your graveyard is gone, and Underworld Breach needs it."
   },
   {
-   "id": "magistrate",
-   "name": "Drannith Magistrate",
-   "kind": "lock",
+   "id": "hard-monolith",
+   "name": "Force of Will + Swords + Drannith Magistrate",
+   "kind": "hard",
+   "hand": [
+    "Force of Will",
+    "Brainstorm",
+    "Ponder",
+    "Swords to Plowshares"
+   ],
    "battlefield": [
     "Drannith Magistrate"
    ],
-   "lands": 0,
-   "why": "Already in play: you can only cast spells from your hand. A commander is cast from the command zone."
+   "lands": 1,
+   "landName": "Plains",
+   "why": "Force of Will (free counter), Swords to Plowshares, and Drannith Magistrate already in play: a commander cannot be cast from the command zone."
   }
  ],
  "puzzles": [
@@ -171,8 +116,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -184,8 +138,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -193,103 +147,10 @@
      "space": 780,
      "stopped": {
       "spell": "Lotus Petal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "the-king-s-gambit-draw-10430100",
@@ -329,8 +190,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -354,35 +224,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": true,
      "solution": [
@@ -402,109 +245,10 @@
      "space": 910,
      "stopped": {
       "spell": "Noble Hierarch",
-      "by": "Mana Tithe"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [],
-      [
-       {
-        "do": "land",
-        "card": "Scalding Tarn"
-       },
-       {
-        "do": "land",
-        "card": "Marsh Flats"
-       }
-      ]
-     ],
-     "searched": 44,
-     "space": 910,
-     "stopped": {
-      "spell": "Noble Hierarch",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [],
-      [
-       {
-        "do": "land",
-        "card": "Scalding Tarn"
-       },
-       {
-        "do": "land",
-        "card": "Marsh Flats"
-       }
-      ]
-     ],
-     "searched": 44,
-     "space": 910,
-     "stopped": {
-      "spell": "Noble Hierarch",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [],
-      [
-       {
-        "do": "land",
-        "card": "Scalding Tarn"
-       },
-       {
-        "do": "land",
-        "card": "Marsh Flats"
-       }
-      ]
-     ],
-     "searched": 44,
-     "space": 910,
-     "stopped": {
-      "spell": "Noble Hierarch",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-2661561",
@@ -542,8 +286,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -563,8 +316,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": true,
      "solution": [
@@ -580,144 +333,10 @@
      "space": 370,
      "stopped": {
       "spell": "Demonic Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mental Misstep"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mental Misstep"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mental Misstep"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mental Misstep"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 370,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-4649230",
@@ -757,8 +376,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -778,8 +406,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": true,
      "solution": [
@@ -795,135 +423,10 @@
      "space": 650,
      "stopped": {
       "spell": "Vampiric Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 9,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-4736339",
@@ -963,8 +466,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -976,8 +488,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -985,120 +497,10 @@
      "space": 1312,
      "stopped": {
       "spell": "Gamble",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1312,
-     "space": 1312,
-     "stopped": {
-      "spell": "Gamble",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Lion's Eye Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 13,
-     "space": 1312,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1312,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-5306507",
@@ -1140,8 +542,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": true,
      "solvable": true,
@@ -1150,89 +561,8 @@
      "space": 780,
      "stopped": null
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": true,
      "solvable": true,
      "solution": null,
@@ -1240,7 +570,7 @@
      "space": 780,
      "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-7135796",
@@ -1280,8 +610,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -1301,8 +640,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": true,
      "solution": [
@@ -1318,160 +657,10 @@
      "space": 600,
      "stopped": {
       "spell": "Lotus Petal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 11,
-     "space": 600,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 600,
-     "space": 600,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 11,
-     "space": 600,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 11,
-     "space": 600,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 11,
-     "space": 600,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 11,
-     "space": 600,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 11,
-     "space": 600,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 600,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 600,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-7880182",
@@ -1511,8 +700,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -1524,8 +722,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -1533,112 +731,10 @@
      "space": 845,
      "stopped": {
       "spell": "Enlightened Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-draw-9923284",
@@ -1681,8 +777,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -1694,8 +799,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -1703,112 +808,10 @@
      "space": 845,
      "stopped": {
       "spell": "Mana Vault",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "tidewoven-draw-2661561",
@@ -1849,8 +852,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -1862,35 +874,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -1898,73 +883,10 @@
      "space": 370,
      "stopped": {
       "spell": "Birds of Paradise",
-      "by": "Mana Tithe"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Birds of Paradise",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Birds of Paradise",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Birds of Paradise",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-draw-1584577",
@@ -2003,8 +925,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -2016,8 +947,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -2025,112 +956,10 @@
      "space": 650,
      "stopped": {
       "spell": "Vampiric Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-draw-4538364",
@@ -2169,8 +998,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": true,
      "solvable": true,
@@ -2179,89 +1017,8 @@
      "space": 1394,
      "stopped": null
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1394,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": true,
      "solvable": true,
      "solution": null,
@@ -2269,7 +1026,7 @@
      "space": 1394,
      "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-draw-4688825",
@@ -2310,8 +1067,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -2323,8 +1089,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -2332,120 +1098,10 @@
      "space": 845,
      "stopped": {
       "spell": "Imperial Seal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 16,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Imperial Seal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-draw-6050893",
@@ -2484,8 +1140,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": true,
      "solvable": true,
@@ -2494,89 +1159,8 @@
      "space": 845,
      "stopped": null
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": true,
      "solvable": true,
      "solution": null,
@@ -2584,7 +1168,7 @@
      "space": 845,
      "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-draw-8236537",
@@ -2623,8 +1207,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": true,
      "solvable": true,
@@ -2633,89 +1226,8 @@
      "space": 975,
      "stopped": null
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 975,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": true,
      "solvable": true,
      "solution": null,
@@ -2723,7 +1235,7 @@
      "space": 975,
      "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-draw-11111134",
@@ -2763,8 +1275,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -2776,8 +1297,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -2785,109 +1306,10 @@
      "space": 845,
      "stopped": {
       "spell": "Lotus Petal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "dead-sea-draw-4728420",
@@ -2930,8 +1352,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Rings of Brighthearth) into Thrasios, Triton Hero: draws the library and finds Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -2943,8 +1374,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -2952,109 +1383,10 @@
      "space": 1148,
      "stopped": {
       "spell": "Mana Vault",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1148,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1148,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-draw-3968196",
@@ -3097,8 +1429,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -3110,8 +1451,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -3119,109 +1460,10 @@
      "space": 780,
      "stopped": {
       "spell": "Mox Amber",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-draw-9551091",
@@ -3265,8 +1507,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -3286,174 +1537,19 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Force of Negation"
-     }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1230,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Opal"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1230,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
      "searched": 1230,
      "space": 1230,
-     "stopped": null
+     "stopped": {
+      "spell": "Mox Amber",
+      "by": "Force of Will"
+     }
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-draw-9685714",
@@ -3498,8 +1594,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -3519,174 +1624,19 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Force of Negation"
-     }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1148,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [
-       {
-        "do": "cast",
-        "card": "Mox Diamond"
-       }
-      ],
-      []
-     ],
-     "searched": 17,
-     "space": 1148,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1148,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
      "searched": 1148,
      "space": 1148,
-     "stopped": null
+     "stopped": {
+      "spell": "Sol Ring",
+      "by": "Force of Will"
+     }
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-draw-10509290",
@@ -3730,8 +1680,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -3743,8 +1702,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -3752,109 +1711,10 @@
      "space": 780,
      "stopped": {
       "spell": "Mox Opal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "captain-s-lockdown-play-6240949",
@@ -3894,8 +1754,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -3907,8 +1776,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -3916,103 +1785,10 @@
      "space": 780,
      "stopped": {
       "spell": "Lotus Petal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Lotus Petal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "the-king-s-gambit-play-103724",
@@ -4051,8 +1827,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -4064,8 +1849,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -4073,112 +1858,10 @@
      "space": 1230,
      "stopped": {
       "spell": "Mystical Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mystical Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1230,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1230,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "the-king-s-gambit-play-10430100",
@@ -4218,8 +1901,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": true,
@@ -4243,35 +1935,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": true,
      "solution": [
@@ -4291,109 +1956,10 @@
      "space": 910,
      "stopped": {
       "spell": "Noble Hierarch",
-      "by": "Mana Tithe"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [],
-      [
-       {
-        "do": "land",
-        "card": "Marsh Flats"
-       },
-       {
-        "do": "land",
-        "card": "Scalding Tarn"
-       }
-      ]
-     ],
-     "searched": 57,
-     "space": 910,
-     "stopped": {
-      "spell": "Noble Hierarch",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [],
-      [
-       {
-        "do": "land",
-        "card": "Marsh Flats"
-       },
-       {
-        "do": "land",
-        "card": "Scalding Tarn"
-       }
-      ]
-     ],
-     "searched": 57,
-     "space": 910,
-     "stopped": {
-      "spell": "Noble Hierarch",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": true,
-     "solution": [
-      [],
-      [
-       {
-        "do": "land",
-        "card": "Marsh Flats"
-       },
-       {
-        "do": "land",
-        "card": "Scalding Tarn"
-       }
-      ]
-     ],
-     "searched": 57,
-     "space": 910,
-     "stopped": {
-      "spell": "Noble Hierarch",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 910,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-play-7880182",
@@ -4433,8 +1999,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -4446,8 +2021,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -4455,112 +2030,10 @@
      "space": 845,
      "stopped": {
       "spell": "Enlightened Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Enlightened Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "fine-print-fatal-clause-play-9923284",
@@ -4603,8 +2076,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -4616,8 +2098,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -4625,112 +2107,10 @@
      "space": 845,
      "stopped": {
       "spell": "Mana Vault",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Demonic Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "tidewoven-play-2661561",
@@ -4771,8 +2151,17 @@
    ],
    "how": "Demonic Consultation exiles the library, then Thassa's Oracle wins",
    "line": "oracle",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -4784,35 +2173,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
+    "hard": {
+     "pkg": "hard-oracle",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -4820,73 +2182,10 @@
      "space": 370,
      "stopped": {
       "spell": "Birds of Paradise",
-      "by": "Mana Tithe"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Birds of Paradise",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Birds of Paradise",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 370,
-     "space": 370,
-     "stopped": {
-      "spell": "Birds of Paradise",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 370,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-play-1584577",
@@ -4925,8 +2224,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -4938,8 +2246,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -4947,112 +2255,10 @@
      "space": 650,
      "stopped": {
       "spell": "Vampiric Tutor",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Flusterstorm"
-     }
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 650,
-     "space": 650,
-     "stopped": {
-      "spell": "Vampiric Tutor",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 650,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "court-of-ruin-play-6050893",
@@ -5091,8 +2297,17 @@
    ],
    "how": "Underworld Breach + Lion's Eye Diamond + Brain Freeze: each recast mills more, until every library is empty",
    "line": "breach",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": true,
      "solvable": true,
@@ -5101,89 +2316,8 @@
      "space": 550,
      "stopped": null
     },
-    {
-     "pkg": "fon",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 550,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
+    "hard": {
+     "pkg": "hard-breach",
      "naiveWins": true,
      "solvable": true,
      "solution": null,
@@ -5191,7 +2325,7 @@
      "space": 550,
      "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "dead-sea-play-4728420",
@@ -5234,8 +2368,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Rings of Brighthearth) into Thrasios, Triton Hero: draws the library and finds Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -5247,8 +2390,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -5256,109 +2399,10 @@
      "space": 1148,
      "stopped": {
       "spell": "Mana Vault",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1148,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": {
-      "spell": "Mana Vault",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1148,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1148,
-     "space": 1148,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-play-3968196",
@@ -5401,8 +2445,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -5414,8 +2467,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -5423,109 +2476,10 @@
      "space": 780,
      "stopped": {
       "spell": "Mox Amber",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-play-9551091",
@@ -5569,8 +2523,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -5582,8 +2545,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -5591,109 +2554,10 @@
      "space": 1230,
      "stopped": {
       "spell": "Mox Amber",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1230,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": {
-      "spell": "Mox Amber",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 1230,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 1230,
-     "space": 1230,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-play-9685714",
@@ -5737,8 +2601,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -5750,8 +2623,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -5759,109 +2632,10 @@
      "space": 845,
      "stopped": {
       "spell": "Sol Ring",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": {
-      "spell": "Sol Ring",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 845,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 845,
-     "space": 845,
-     "stopped": null
     }
-   ]
+   }
   },
   {
    "id": "permafrost-prodigy-play-10509290",
@@ -5905,8 +2679,17 @@
    ],
    "how": "infinite mana (Basalt Monolith + Kinnan) into Walking Ballista",
    "line": "monolith",
-   "scenarios": [
-    {
+   "levels": {
+    "easy": {
+     "pkg": null,
+     "naiveWins": true,
+     "solvable": true,
+     "solution": null,
+     "searched": 1,
+     "space": 1,
+     "stopped": null
+    },
+    "medium": {
      "pkg": "fow",
      "naiveWins": false,
      "solvable": false,
@@ -5918,8 +2701,8 @@
       "by": "Force of Will"
      }
     },
-    {
-     "pkg": "fon",
+    "hard": {
+     "pkg": "hard-monolith",
      "naiveWins": false,
      "solvable": false,
      "solution": null,
@@ -5927,109 +2710,10 @@
      "space": 780,
      "stopped": {
       "spell": "Mox Opal",
-      "by": "Force of Negation"
+      "by": "Force of Will"
      }
-    },
-    {
-     "pkg": "pierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Spell Pierce"
-     }
-    },
-    {
-     "pkg": "fluster",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "tithe",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Mana Tithe"
-     }
-    },
-    {
-     "pkg": "daze",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Daze"
-     }
-    },
-    {
-     "pkg": "counterspell",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Counterspell"
-     }
-    },
-    {
-     "pkg": "drain",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Mana Drain"
-     }
-    },
-    {
-     "pkg": "fierce",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": {
-      "spell": "Mox Opal",
-      "by": "Fierce Guardianship"
-     }
-    },
-    {
-     "pkg": "rip",
-     "naiveWins": true,
-     "solvable": true,
-     "solution": null,
-     "searched": 1,
-     "space": 780,
-     "stopped": null
-    },
-    {
-     "pkg": "magistrate",
-     "naiveWins": false,
-     "solvable": false,
-     "solution": null,
-     "searched": 780,
-     "space": 780,
-     "stopped": null
     }
-   ]
+   }
   }
  ]
 }

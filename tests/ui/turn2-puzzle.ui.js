@@ -8,7 +8,7 @@ const CACHE = path.join(os.tmpdir(), 'isf-scryfall-cache');                     
 try { fs.mkdirSync(CACHE, { recursive: true }); } catch (e) { /* read-only */ }
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
-const ID = 'fine-print-fatal-clause-draw-4649230', PKG = 'fow', KEY = 'isf_puzzle';
+const ID = 'fine-print-fatal-clause-draw-4649230', LEVEL = 'medium', KEY = 'isf_puzzle';
 (async () => {
   const b = await chromium.launch();
   const mk = async (w, h, mobile) => {
@@ -30,28 +30,24 @@ const ID = 'fine-print-fatal-clause-draw-4649230', PKG = 'fow', KEY = 'isf_puzzl
     await p.goto('http://127.0.0.1:8800/'); await p.waitForFunction(() => window.ISFPuzzle && window.__isfApi && window.__isfChoices, null, { timeout: 90000 });
     return { ctx, p, errs };
   };
+  // ---- desktop: the tab, the picker, a solved and a failed puzzle, the score
   const data = await (await fetch('http://127.0.0.1:8800/turn2-puzzles.json')).json();
-  const pz = data.puzzles.find(x => x.id === ID), sc = pz.scenarios.find(s => s.pkg === PKG);
-
-  // ---- desktop: the ? menu, the picker, a solved and a failed puzzle
+  const pz = data.puzzles.find(x => x.id === ID), sc = pz.levels[LEVEL];
   const { ctx, p, errs } = await mk(1180, 860);
-  await p.click('.top-help'); await p.waitForSelector('.tut-m-puzzle', { timeout: 5000 });
-  check('the ? menu has "Turn-2 puzzle"', /Turn-2 puzzle/.test(await p.$eval('.tut-m-puzzle', e => e.textContent)));
-  await p.click('.tut-m-puzzle'); await p.waitForSelector('.pz-line', { timeout: 15000 });
+  const tabs = await p.$$eval('.tab', ts => ts.map(t => t.textContent.trim()));
+  check('the tab bar ends with a one-word "Puzzle" tab', tabs[tabs.length - 1] === 'Puzzle' && tabs.length === 8, tabs.join(' '));
+  await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-line', { timeout: 15000 });
+  check('the Puzzle tab is the active panel', await p.evaluate(() => document.body.dataset.view === 'puzzle' && document.getElementById('tab-puzzle').classList.contains('active')));
   const lines = await p.$$eval('.pz-line', xs => xs.map(x => x.dataset.line));
   check('the picker groups by line: Oracle, Breach, Monolith', lines.join() === 'oracle,breach,monolith', lines.join());
   const decks = await p.$$eval('.pz-deck', xs => [...new Set(xs.map(x => x.dataset.deck))]);
   check('every deck with a turn-2 win is listed (all seven)', decks.length === 7 && ['Captain\'s Lockdown', 'The King\'s Gambit', 'Fine Print, Fatal Clause', 'Tidewoven', 'Court of Ruin', 'Dead Sea', 'Permafrost Prodigy'].every(n => decks.includes(n)), decks.join(' | '));
-  const puzzles = await p.$$eval('.pz-chip', xs => xs.length);
-  check('Puzzles lists the winnable scenarios, from the data', puzzles === data.puzzles.reduce((n, x) => n + x.scenarios.filter(s => !s.naiveWins && s.solvable).length, 0), String(puzzles));
-  await p.click('.pz-mode[data-mode=lessons]');
-  const lessons = await p.$$eval('.pz-chip', xs => xs.length);
-  check('Lessons lists the ones that cannot be won, said honestly', lessons === data.puzzles.reduce((n, x) => n + x.scenarios.filter(s => !s.naiveWins && !s.solvable).length, 0) && lessons > 0, String(lessons));
-  await p.click('.pz-mode[data-mode=puzzles]');
-  check('a deck folds to its hands: the hand, the side and the opponents to beat are listed', await p.evaluate(() => { const d = document.querySelector('.pz-deck'); d.open = true; return !!d.querySelector('.pz-cards') || !!d.querySelector('.pz-none'); }));
+  const chips = await p.$$eval('.pz-chip', xs => xs.length), nowin = await p.$$eval('.pz-chip.nowin', xs => xs.length);
+  check('every hand has Easy, Medium and Hard, from the data', chips === data.puzzles.length * 3, String(chips));
+  check('levels the engine cannot win are marked honestly (∅)', nowin === data.puzzles.reduce((n, x) => n + ['easy', 'medium', 'hard'].filter(l => !x.levels[l].solvable).length, 0) && nowin > 0, String(nowin));
+  check('the score shows solved, streak, best streak, no-hint solves and hints used', /0 of \d+ solved/.test(await p.$eval('.pz-score', e => e.textContent)) && /Streak/.test(await p.$eval('.pz-score', e => e.textContent)) && /Best streak/.test(await p.$eval('.pz-score', e => e.textContent)) && /No hint/.test(await p.$eval('.pz-score', e => e.textContent)) && /Hints used/.test(await p.$eval('.pz-score', e => e.textContent)), await p.$eval('.pz-score', e => e.textContent));
 
-  // the puzzle: the opponent's hand is shown, the kept hand is the recorded one
-  const open = async (id, pkg) => { await p.evaluate(([id, pkg]) => { const l = document.querySelector('.pz-chip[data-id="' + id + '"][data-pkg="' + pkg + '"]'); if (l) { const d = l.closest('details.pz-deck'); d.open = true; d.closest('details.pz-line').open = true; } }, [id, pkg]); await p.click('.pz-chip[data-id="' + id + '"][data-pkg="' + pkg + '"]'); await p.waitForSelector('.pz-card', { timeout: 60000 }); };
+  const open = async (id, lv) => { await p.evaluate(([id, lv]) => { const l = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="' + lv + '"]'); if (l) { const d = l.closest('details.pz-deck'); d.open = true; d.closest('details.pz-line').open = true; } }, [id, lv]); await p.click('.pz-chip[data-id="' + id + '"][data-level="' + lv + '"]'); await p.waitForSelector('.pz-card', { timeout: 60000 }); };
   const settle = async () => {                                     // answer any question the engine asks the person, then wait until the table is idle again
     for (let i = 0; i < 40; i++) {
       await p.waitForTimeout(250);
@@ -60,69 +56,76 @@ const ID = 'fine-print-fatal-clause-draw-4649230', PKG = 'fow', KEY = 'isf_puzzl
       if (!busy) return;
     }
   };
-  await open(ID, PKG);
-  const st = await p.evaluate(() => { const s = window.ISFPuzzle.state(); return { hand: s.hand0, fine: s.fine, phase: s.phase, turn: s.turn }; });
-  check('the kept hand is the recorded one (same seed, same shuffle)', st.fine === true && JSON.stringify(st.hand) === JSON.stringify(pz.hand), st.hand.join(', '));
-  check('the opponent\'s hand is shown face up: Force of Will, with what it holds', await p.$$eval('.pz-opp-t', xs => xs.length) === 3 && /Force of Will/.test(await p.$eval('.pz-opp', e => e.textContent)));
-  check('the puzzle opens on your turn 1 with the hand to play from', st.phase === 'me' && st.turn === 1 && await p.$$eval('.pz-card', xs => xs.length) >= 5);
-  await p.click('.pz-info'); check('the explanation sits behind the ⓘ toggle', await p.$eval('.pz-fold', e => !e.hidden) && /Force of Will|counters/.test(await p.$eval('.pz-fold', e => e.textContent)));
-  await p.click('.pz-hint'); check('the hint is one line', /first spell|afford to lose/.test(await p.$eval('.pz-hinttext', e => e.textContent)));
-
-  // the intended line: bait first (the data's solution), then the autopilot goes off
-  if (process.env.PZ_DEBUG) await p.evaluate(() => { const a = window.__isfChoices.ask; window.__asked = []; window.__isfChoices.ask = function (q) { window.__asked.push(q.kind + ':' + q.seat); return a.apply(this, arguments); }; });
-  const dbg = async l => { if (process.env.PZ_DEBUG) console.log('  ..', l, JSON.stringify(await p.evaluate(() => { const s = window.ISFPuzzle.state(); return { phase: s.phase, turn: s.turn, busy: s.busy, log: s.log.slice(-5), asked: window.__asked, sheet: (document.querySelector('.ch-sheet') || {}).innerText }; }))); };
   const play = async moves => {
     for (let t = 0; t < 2; t++) {
       for (const mv of moves[t] || []) {
         if (mv.do === 'pass') continue;
-        await p.click('.pz-card[data-name="' + mv.card + '"]'); await p.click('.pz-do'); await settle(); await dbg('after ' + mv.card);
+        await p.click('.pz-card[data-name="' + mv.card + '"]'); await p.click('.pz-do'); await settle();
       }
       if (await p.$('.pz-banner')) break;
-      await p.click((moves[t] || []).some(m => m.do === 'pass') ? '.pz-pass' : '.pz-go'); await settle(); await dbg('after turn ' + (t + 1));
+      await p.click((moves[t] || []).some(m => m.do === 'pass') ? '.pz-pass' : '.pz-go'); await settle();
       if (await p.$('.pz-banner')) break;
     }
   };
+  const score = () => p.$eval('.pz-score', e => e.textContent);
+
+  // easy: nothing in the way, the autopilot wins
+  await open(ID, 'easy');
+  check('easy: the opponent holds nothing that matters', /nothing that matters/.test(await p.$eval('.pz-opp', e => e.textContent)) && await p.$$eval('.pz-opp-t', xs => xs.length) === 0);
+  await p.click('.pz-go'); await settle(); if (!(await p.$('.pz-banner'))) { await p.click('.pz-go'); await settle(); }
+  await p.waitForSelector('.pz-banner', { timeout: 30000 });
+  check('easy: the autopilot wins on turn 2 (Solved, streak 1, no hint)', await p.$eval('.pz-banner', e => e.classList.contains('win') && /Solved/.test(e.textContent) && /Streak 1/.test(e.textContent) && /no hint/.test(e.textContent)), await p.$eval('.pz-banner', e => e.textContent));
+
+  // medium: Force of Will; the opponent's hand is shown, the kept hand is the recorded one
+  await p.click('.pz-list'); await open(ID, LEVEL);
+  const st = await p.evaluate(() => { const s = window.ISFPuzzle.state(); return { hand: s.hand0, fine: s.fine, phase: s.phase, turn: s.turn }; });
+  check('the kept hand is the recorded one (same seed, same shuffle)', st.fine === true && JSON.stringify(st.hand) === JSON.stringify(pz.hand), st.hand.join(', '));
+  check('medium: the opponent\'s hand is shown face up (Force of Will and what it pitches)', await p.$$eval('.pz-opp-t', xs => xs.length) === 3 && /Force of Will/.test(await p.$eval('.pz-opp', e => e.textContent)));
+  check('the puzzle opens on your turn 1 with the hand to play from', st.phase === 'me' && st.turn === 1 && await p.$$eval('.pz-card', xs => xs.length) >= 5);
+  await p.click('.pz-info'); check('the explanation sits behind the ⓘ toggle', await p.$eval('.pz-fold', e => !e.hidden) && /Force of Will|counters/.test(await p.$eval('.pz-fold', e => e.textContent)));
+  await p.click('.pz-hint'); check('the hint is one line', /first spell|afford to lose/.test(await p.$eval('.pz-hinttext', e => e.textContent)));
   await play(sc.solution);
   await p.waitForSelector('.pz-banner', { timeout: 30000 });
-  check('the intended line wins on turn 2 (Solved)', await p.$eval('.pz-banner', e => e.classList.contains('win') && /Solved/.test(e.textContent)), await p.$eval('.pz-banner', e => e.textContent));
+  check('the intended line wins on turn 2 (Solved), and says a hint was used', await p.$eval('.pz-banner', e => e.classList.contains('win') && /Solved/.test(e.textContent) && /Streak 2/.test(e.textContent) && /1 hint used/.test(e.textContent)), await p.$eval('.pz-banner', e => e.textContent));
   check('the log shows the opponent\'s counterspell being spent on the bait', /Force of Will/.test(await p.$eval('.pz-log', e => e.textContent)));
-  check('the key decision is shown after the win', /cast Mox Diamond|goes first/.test(await p.$eval('.pz-sol', e => e.textContent)), await p.$eval('.pz-sol', e => e.textContent).then(t => t.slice(0, 120)));
+  check('the key decision is shown after the win', /cast Mox Diamond|goes first/.test(await p.$eval('.pz-sol', e => e.textContent)));
   const saved = await p.evaluate(k => JSON.parse(localStorage.getItem(k)), KEY);
-  check('solved is saved in localStorage', !!(saved && saved.solved && saved.solved[ID + '/' + PKG]), JSON.stringify(saved && saved.solved));
+  check('solved, streak, best streak and hints are saved in localStorage', !!(saved && saved.solved && saved.solved[ID + '/medium'] && saved.solved[ID + '/medium'].hints === 1 && saved.solved[ID + '/easy'].hints === 0 && saved.streak === 2 && saved.best === 2 && saved.hintsUsed === 1), JSON.stringify(saved));
 
-  // the naive line: let the autopilot play both turns: Force of Will counters its first spell and the win is gone
+  // the naive line: let the autopilot play both turns: Force of Will counters its first spell and the win is gone; the streak goes back to 0
   await p.click('.pz-again'); await p.waitForSelector('.pz-card', { timeout: 60000 }); await settle();
   await p.click('.pz-go'); await settle();
   if (!(await p.$('.pz-banner'))) { await p.click('.pz-go'); await settle(); }
   await p.waitForSelector('.pz-banner', { timeout: 30000 });
-  check('the naive line (autopilot both turns) fails: Not this time', await p.$eval('.pz-banner', e => e.classList.contains('lose')), await p.$eval('.pz-banner', e => e.textContent));
+  check('the naive line (autopilot both turns) fails: Not this time, streak back to 0', await p.$eval('.pz-banner', e => e.classList.contains('lose') && /Streak back to 0/.test(e.textContent)), await p.$eval('.pz-banner', e => e.textContent));
   check('...and shows the line that works', /A line that works/.test(await p.$eval('.pz-sol', e => e.textContent)));
-  check('...the earlier solve is not lost', await p.evaluate(([k, id]) => !!(JSON.parse(localStorage.getItem(k)).solved || {})[id], [KEY, ID + '/' + PKG]));
+  const after = await p.evaluate(k => JSON.parse(localStorage.getItem(k)), KEY);
+  check('...the earlier solve and the best streak are kept, the streak is 0', after.streak === 0 && after.best === 2 && !!after.solved[ID + '/medium'], JSON.stringify(after));
 
-  // a lesson says honestly that it cannot be won
-  await p.click('.pz-list'); await p.click('.pz-mode[data-mode=lessons]');
-  const L1 = await p.$eval('.pz-chip[data-id^="fine-print"][data-pkg="fow"]', e => ({ id: e.dataset.id, pkg: e.dataset.pkg }));          // the deck and opponent already loaded: no new Scryfall requests
-  await open(L1.id, L1.pkg).catch(async e => { console.log('  .. lesson did not open:', L1.id, L1.pkg, (await p.$eval('.pz', x => x.innerText.slice(0, 200)))); throw e; }); await settle();
-  check('a lesson says up front that it cannot be won', /cannot|no way to win|Lesson/.test(await p.$eval('.pz-lessonnote', e => e.textContent)));
+  // a lesson (a level the engine cannot win) says so up front and does not touch the streak
+  await p.click('.pz-list');
+  const les = data.puzzles.flatMap(x => ['medium', 'hard'].map(l => [x, l])).find(([x, l]) => x.deck === pz.deck && !x.levels[l].solvable);
+  await open(les[0].id, les[1]);
+  check('a lesson says up front that it cannot be won', /Lesson|no way to win/.test(await p.$eval('.pz-lessonnote', e => e.textContent)));
   await p.click('.pz-giveup');
-  check('showing the answer on a lesson says "cannot be won" with the lesson, without faking a line', /cannot be won/.test(await p.$eval('.pz-sol', e => e.textContent)) && !/A line that works/.test(await p.$eval('.pz-sol', e => e.textContent)));
+  check('showing the answer on a lesson says "cannot be won" with the lesson, without faking a line', /cannot be won/.test(await p.$eval('.pz-sol', e => e.textContent)) && !/A line that works/.test(await p.$eval('.pz-sol', e => e.textContent)) && /streak is not touched/.test(await p.$eval('.pz-banner', e => e.textContent)));
   check('no page errors (desktop)', errs.length === 0, errs.join(' | '));
 
   // a reload: the solved puzzle is still ticked
   await p.reload(); await p.waitForFunction(() => window.ISFPuzzle, null, { timeout: 60000 });
-  await p.evaluate(() => window.ISFPuzzle.open()); await p.waitForSelector('.pz-line');
-  check('after a reload the solved puzzle is still ticked', await p.evaluate(([id, pkg]) => { const c = document.querySelector('.pz-chip[data-id="' + id + '"][data-pkg="' + pkg + '"]'); return !!c && c.classList.contains('solved') && /1 of \d+ solved/.test(document.querySelector('.pz-score').textContent); }, [ID, PKG]), await p.$eval('.pz-score', e => e.textContent));
+  await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-line');
+  check('after a reload the solved puzzles are still ticked, the best streak is kept', await p.evaluate(([id]) => { const c = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="medium"]'), e = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="easy"]'); return !!c && c.classList.contains('solved') && e.classList.contains('solved') && /2 of \d+ solved/.test(document.querySelector('.pz-score').textContent) && /Best streak 2/.test(document.querySelector('.pz-score').textContent); }, [ID]), await p.$eval('.pz-score', e => e.textContent));
   await ctx.close();
 
   // ---- iPhone and iPad: the picker and a puzzle fit the screen, the buttons are reachable
   for (const [name, w, h] of [['iPhone', 390, 844], ['iPhone sideways', 844, 390], ['iPad', 820, 1180]]) {
     const m = await mk(w, h, true), q = m.p;
-    await q.evaluate(() => window.ISFPuzzle.open()); await q.waitForSelector('.pz-line', { timeout: 15000 });
-    const fit1 = await q.evaluate(() => ({ sw: document.querySelector('.pz').scrollWidth, cw: document.querySelector('.pz').clientWidth }));
+    await q.click('[data-tab=puzzle]'); await q.waitForSelector('.pz-line', { timeout: 15000 });
+    const fit1 = await q.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, tabs: [...document.querySelectorAll('.tab')].every(t => { const r = t.getBoundingClientRect(); return r.width > 0; }) }));
     check(`${name}: the picker fits the width`, fit1.sw <= fit1.cw + 1, JSON.stringify(fit1));
-    await q.evaluate(([id, pkg]) => { const l = document.querySelector('.pz-chip[data-id="' + id + '"][data-pkg="' + pkg + '"]'); const d = l.closest('details.pz-deck'); d.open = true; d.closest('details.pz-line').open = true; }, [ID, PKG]);
-    await q.click('.pz-chip[data-id="' + ID + '"][data-pkg="' + PKG + '"]'); await q.waitForSelector('.pz-card', { timeout: 60000 });
-    const fit2 = await q.evaluate(() => { const r = document.querySelector('.pz'), go = document.querySelector('.pz-go').getBoundingClientRect(), vh = innerHeight; return { sw: r.scrollWidth, cw: r.clientWidth, goTop: Math.round(go.top), goBottom: Math.round(go.bottom), vh, goW: Math.round(go.width), goH: Math.round(go.height) }; });
+    await q.evaluate(([id, lv]) => { const l = document.querySelector('.pz-chip[data-id="' + id + '"][data-level="' + lv + '"]'); const d = l.closest('details.pz-deck'); d.open = true; d.closest('details.pz-line').open = true; }, [ID, LEVEL]);
+    await q.click('.pz-chip[data-id="' + ID + '"][data-level="' + LEVEL + '"]'); await q.waitForSelector('.pz-card', { timeout: 60000 });
+    const fit2 = await q.evaluate(() => { const r = document.documentElement, go = document.querySelector('.pz-go').getBoundingClientRect(), vh = innerHeight; return { sw: r.scrollWidth, cw: r.clientWidth, goTop: Math.round(go.top), goBottom: Math.round(go.bottom), vh, goW: Math.round(go.width), goH: Math.round(go.height) }; });
     check(`${name}: a puzzle fits the width`, fit2.sw <= fit2.cw + 1, JSON.stringify(fit2));
     check(`${name}: the Autopilot button is on screen and big enough to tap`, fit2.goBottom <= fit2.vh + 1 && fit2.goTop >= 0 && fit2.goH >= 36 && fit2.goW >= 80, JSON.stringify(fit2));
     const tiles = await q.$$eval('.pz-card', xs => xs.map(x => Math.round(x.getBoundingClientRect().width)));

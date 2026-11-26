@@ -11,7 +11,9 @@ const T = require('./lib/turn2.js');
 const OUT = path.join(T.ROOT, 'goldfish', 'static', 'turn2-puzzles.json');
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 const SHORT = process.argv.includes('--short');
-const PUZZLE_PKGS = ['fow', 'fon', 'pierce', 'fluster', 'tithe', 'daze', 'counterspell', 'drain', 'fierce', 'rip', 'magistrate'];
+// the three levels (the user's): easy = nothing, medium = one counterspell (Force of Will), hard = a counterspell + removal + what stops that line
+const LEVEL_PKG = line => ({ medium: 'fow', hard: 'hard-' + line });
+const PUZZLE_PKGS = ['fow', 'hard-oracle', 'hard-breach', 'hard-monolith'];
 
 if (!isMainThread) {
   const L = T.load();
@@ -30,7 +32,7 @@ const LINES = {
 };
 (async () => {
   const L = T.load(), hands = T.allHands(), JOBS = +arg('jobs', Math.max(1, Math.min(4, os.cpus().length)));
-  const jobs = []; for (const h of hands) for (const id of PUZZLE_PKGS) jobs.push({ hand: h, pkg: id });
+  const jobs = []; for (const h of hands) for (const lv of ['medium', 'hard']) jobs.push({ hand: h, pkg: LEVEL_PKG(T.lineOf(h))[lv] });
   const res = new Map(); let next = 0, done = 0;
   await new Promise(resolve => {
     let live = 0;
@@ -45,20 +47,23 @@ const LINES = {
   const puzzles = [];
   for (const h of hands) {
     const d = L.decks.get(h.deck), meta = index.find(x => x.name.replace(/ \(.*$/, '') === h.deck) || {};
-    const scenarios = PUZZLE_PKGS.map(id => {
+    const level = (lv, id) => {
+      if (!id) return { pkg: null, naiveWins: true, solvable: true, solution: null, searched: 1, space: 1, stopped: null };
       const r = res.get(h.deck + '|' + h.side + '|' + h.seed + '|' + id) || {};
       if (r.error) throw new Error(h.deck + ' ' + h.seed + ' ' + id + ': ' + r.error);
       let stopped = null;
       if (!r.naive) { const pkgDef = T.PACKAGES.find(p => p.id === id), n = T.simulate(L, h.deck, h, h.onPlay, pkgDef, null), mt = n.log.map(x => x.match(/^An opponent casts (.+?): does it resolve\? -> (.+)$/)).find(x => x && x[2] !== 'no response'); if (mt) stopped = { spell: mt[1], by: mt[2] }; }
       return { pkg: id, naiveWins: !!r.naive, solvable: !!r.naive || !!r.line, solution: r.line ? r.line.moves : null, searched: r.tried, space: r.space, stopped };
-    });
+    };
+    const line = T.lineOf(h), lv = LEVEL_PKG(line);
+    const levels = { easy: level('easy', null), medium: level('medium', lv.medium), hard: level('hard', lv.hard) };
     puzzles.push({ id: (h.deck.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')) + '-' + h.side + '-' + h.seed, deck: h.deck, file: meta.file || d.file, commanders: meta.commanders || d.commanders, colors: meta.colors || d.colors, bracket: meta.bracket || null,
       opts: { turns: d.opts.turns, minLands: d.opts.minLands, maxLands: d.opts.maxLands, freeMulligan: d.opts.freeMulligan, minHandSize: d.opts.minHandSize, oppLife: d.opts.oppLife, prioritizeCommander: true, idealLandRatio: d.opts.idealLandRatio },
-      side: h.side, seed: h.seed, mull: h.mull, hand: h.hand, table: h.table, how: h.how, line: T.lineOf(h), scenarios });
+      side: h.side, seed: h.seed, mull: h.mull, hand: h.hand, table: h.table, how: h.how, line, levels });
   }
   const pk = T.PACKAGES.filter(p => PUZZLE_PKGS.includes(p.id));
   fs.writeFileSync(OUT, JSON.stringify({ about: 'Built by tools/build-turn2-puzzles.js from docs/agents/turn2-hands.json (T-096). The hands are real goldfish games: G.newGame(deck, opts + onPlay, seed) then G.mulligan. Opponent habit: it uses its counterspell on the first spell it legally can.',
     lines: LINES, packages: pk, puzzles }, null, 1) + '\n');
-  const n = puzzles.reduce((s, p) => s + p.scenarios.filter(x => !x.naiveWins).length, 0), solv = puzzles.reduce((s, p) => s + p.scenarios.filter(x => !x.naiveWins && x.solvable).length, 0);
-  console.log(`wrote ${path.relative(T.ROOT, OUT)}: ${puzzles.length} hands, ${n} scenarios where the naive line fails, ${solv} of them solvable, ${n - solv} unwinnable`);
+  const all = puzzles.flatMap(p => ['medium', 'hard'].map(k => p.levels[k])), n = all.filter(x => !x.naiveWins).length, solv = all.filter(x => !x.naiveWins && x.solvable).length;
+  console.log(`wrote ${path.relative(T.ROOT, OUT)}: ${puzzles.length} hands x 3 levels; medium/hard: ${all.filter(x => x.naiveWins).length} survive the autopilot line, ${solv} need a line a person finds, ${n - solv} cannot be won`);
 })().catch(e => { console.error(e); process.exit(1); });

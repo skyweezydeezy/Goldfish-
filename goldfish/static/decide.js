@@ -140,6 +140,7 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    redirect: ['choose the new target', 'Change the target of the spell to another legal target: the spell then does what it says to that permanent.'],
     strive: ['choose the creatures to copy', 'Choose any number of creatures you control: each gets a token copy with haste, exiled at the beginning of the next end step. Each target beyond the first costs {2}{R} more.'],
     untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
     demandCost: ['sacrifice an artifact or discard a card', 'Choose what you give up as an additional cost to cast it: an artifact you control, or a card from your hand.'],

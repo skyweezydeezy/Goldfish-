@@ -298,6 +298,8 @@
     if (/look at the top three cards of your library\. put one of them into your hand, put one of them on the bottom of your library, and exile one of them/i.test(text)) approx = true;
     if (/draw (\w+) cards?, then discard (\w+) cards?/i.test(text)) { const dm = text.match(/draw (\w+) cards?, then discard (\w+) cards?/i); fx.push({ type: 'discardSelf', n: num(dm[2]) }); }          // Frantic Search
     if ((m = text.match(/put (\w+) cards? from your hand on top of your library/i))) fx.push({ type: 'putBack', n: num(m[1]) });                  // Brainstorm
+    if (/^look at the top card of your library\. if it's a land card, you may reveal it and put it into your hand\. if you don't put the card into your hand, you may put it into your graveyard\.?$/i.test(text.trim())) fx.push({ type: 'lookTopLand' });          // T-100: Sarinth Steelseeker
+    if ((m = text.match(/^untap up to (\w+) target permanents\.?$/i))) fx.push({ type: 'untapPerms', n: num(m[1]) });          // T-100: Teferi, Temporal Archmage's -1
     if ((m = text.match(/untap up to (\w+) lands/i))) fx.push({ type: 'untapLands', n: num(m[1]) });                                              // Frantic Search
     if (/untap all nonland permanents you control/i.test(text)) fx.push({ type: 'untapAll', what: 'nonland' });                                    // Dramatic Reversal
     if (/target instant or sorcery card in your graveyard gains flashback until end of turn/i.test(text)) fx.push({ type: 'flashbackBest' });       // Snapcaster Mage
@@ -1287,6 +1289,8 @@
         if ((bm = line.match(/^(wizard|elf|goblin|sliver|zombie|dragon|knight|merfolk|soldier|warrior|cleric|rogue|shaman|halfling)cycling ((?:\{[^}]+\})+)$/i))) { a.creatureCycle = { cost: parseCost(bm[2]), type: bm[1].toLowerCase() }; rec.status = 'ok'; continue; }          // wizardcycling and the like
         if (/^untap all green and\/or blue creatures you control during each other player's untap step\.?$/i.test(line)) { a.statics.otherUntap = 'gucreatures'; rec.status = 'ok'; continue; }          // Murkfiend Liege
         if (/^tap two untapped tokens you control: add one mana of any color\.?$/i.test(line)) { a.baylenMana = true; rec.status = 'ok'; continue; }          // Baylen, the Haymaker
+        { const us = line.match(/^((?:\{[^}]+\})+), \{t\}: untap another target permanent\.?$/i); if (us) { a.activated.push({ cost: parseCost(us[1]), tap: true, gate: 'untapNet', fx: [{ type: 'untapPerms', n: 1, other: true }], text: raw }); rec.status = 'ok'; continue; } }          // T-100: Formidable Speaker: {1} to untap a source that makes two or more mana
+        if (/^as an additional cost to cast ~, sacrifice an artifact or discard a card\.?$/i.test(line)) { a.sacOrDiscard = true; rec.status = 'ok'; continue; }          // T-100: Demand Answers (castCard)
         { const fm = line.match(/^(\{t\}, )?tap an untapped (creature|artifact|permanent) you control: add (one mana of any color|(?:\{[wubrgc]\})+)\.?$/i);          // T-097: Springleaf Drum, Survivors' Encampment, Jaspera Sentinel, Relic of Legends, Urza, Gene Pollinator...: the permanent tapped is part of the cost
           if (fm) { const any = /any color/i.test(fm[3]), cs = any ? null : [...fm[3].matchAll(/\{([wubrgc])\}/gi)].map(x => x[1].toUpperCase()); a.fodderMana = { tap: !!fm[1], filter: fm[2].toLowerCase(), colors: cs ? new Set(cs) : null, amount: cs ? cs.length : 1 }; if (!fm[1]) a.noTapMana = true; rec.status = 'ok'; continue; }
         }          // Relic of Legends and Grand Architect have rules of their own (statics.legendMana, statics.blueTap)
@@ -2882,6 +2886,7 @@
         const pwt = m[3];
         const r = /^gain control of target (creature|permanent)|^gain control of all nonland permanents until end of turn\. untap them|^~ deals damage to target creature equal to the number of \w+ you control\.?$|^until your next turn, up to one target creature gains reach and vigilance\.?$/i.test(pwt) ? { fx: [], neutral: true }          // rules batch 52-53: Dihada's -11 (the opponents' permanents), Koth's -3 (an opponent's creature), Vivien's +1
           : /^untap two target lands\.?$/i.test(pwt) ? { fx: [{ type: 'untapLands', n: 2 }] }          // Garruk Wildspeaker
+          : /^untap up to four target permanents\.?$/i.test(pwt) ? { fx: [{ type: 'untapPerms', n: 4 }] }          // T-100: Teferi, Temporal Archmage
           : /^put all creature cards from all graveyards onto the battlefield under your control\.?$/i.test(pwt) ? { fx: [{ type: 'massReanimate' }] }
           : /^you get an emblem with "ninjas you control get \+1\/\+1\."$/i.test(pwt) ? { fx: [{ type: 'emblem', p: 1, t: 1, keywords: [], filter: 'ninja' }] }          // rules batch 55: Kaito, Bane of Nightmares's +1
           : /^until end of turn, if one or more tokens would be created under your control, twice that many of those tokens are created instead\.?$/i.test(pwt) ? { fx: [{ type: 'tokenDoubleEot' }] }          // rules batch 55: Kaya, Geist Hunter's -2          // rules batch 54: Liliana Vess's -8
@@ -7264,6 +7269,19 @@
         case 'tempReduce': (g.tempReduce = (g.tempReduce || []).filter(x => x.turn === g.turn)).push({ turn: g.turn, filter: f.filter, n: f.n }); break;
         case 'psycheDamage': if (g.battlefield.filter(q => artOn(g, q)).length >= 3) { const d = g.opp ? (g.opp.drawnTurnN || 0) : (g.oppDrawnTurn || 0); if (d > 0) { ev.push({ type: 'note', text: `Metalcraft: ${d} damage for the cards drawn this turn`, source }); damageOpp(g, d, ev, source); } } break;
         case 'stealAllCreatures': if (g.opp) for (const t of g.opp.battlefield.filter(isCreaturePerm)) stealPerm(g, t, ev, false); break;
+        case 'untapPerms': {                                                                                   // T-100: Teferi, Temporal Archmage (up to four), Formidable Speaker (another one): the tapped sources of the most mana first
+          const worth = q => (q.produce ? q.produce.amount : 0) + (isCreaturePerm(q) && q.attackedThisTurn ? 0.5 : 0), pool = g.battlefield.filter(q => q.tapped && !q.phased && q !== (f.other ? source : null));
+          let ps = pool.filter(q => worth(q) >= 1).sort((x, y) => worth(y) - worth(x)).slice(0, f.n);
+          if (g.ask && !g.dry && pool.length) { const pk = decide(g, { kind: 'target', what: 'untapMany', multi: true, pick: f.n, upTo: true, min: 0, options: pool, def: ps, source }); if (Array.isArray(pk)) ps = pk.slice(0, f.n); }          // a person chooses (up to the number, none is allowed)
+          ps.forEach(q => { q.tapped = false; }); touch(g);
+          if (ps.length) ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}untapped ${ps.map(q => q.card.name).join(', ')}`, source });
+          break;
+        }
+        case 'lookTopLand': {                                                                                  // T-100: Sarinth Steelseeker: a land on top goes to your hand (the autopilot always takes it), otherwise the card stays
+          const c = g.library[0]; if (!c || g.dry) break;
+          if (c.card.a.isLand && askUse(g, `put ${c.card.name} into your hand`, source ? source.card.name : 'Sarinth Steelseeker', source, null)) { g.library.shift(); g.hand.push(c); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${c.card.name} is revealed and put into your hand`, source }); }
+          break;
+        }
         case 'untapArtifacts': { const as = g.battlefield.filter(q => q.tapped && q.card.a.isArtifact).sort((x, y) => (y.produce ? y.produce.amount : 0) - (x.produce ? x.produce.amount : 0)).slice(0, f.n); as.forEach(q => { q.tapped = false; }); touch(g); if (as.length) ev.push({ type: 'note', text: `Untapped ${as.map(q => q.card.name).join(' and ')}`, source }); break; }
         case 'pumpDrakes': { const X = g.hand.length; for (const q of g.battlefield) if (isCreaturePerm(q) && (q === source || matchesFilter(q.card, 'drake'))) { q.eotP = (q.eotP || 0) + X; q.eotT = (q.eotT || 0) + X; } ev.push({ type: 'note', text: `Fifth card this turn: +${X}/+${X}`, source }); break; }
         case 'returnPermanent': { const c = g.graveyard.filter(i => i.card.a.isPermanent && (i.card.a.mv || 0) <= f.maxMv && !i.card.commander && !entryBlocked(g, i.card, 'gy')).sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (c) { g.graveyard.splice(g.graveyard.indexOf(c), 1); enterWithTriggers(g, c, {}, ev); ev.push({ type: 'note', text: `${c.card.name} returns to the battlefield`, source }); } break; }
@@ -9340,6 +9358,13 @@
     let victim = null;
     if (inst.card.a.discardCost) { const dn = inst.card.a.discardCost === true ? 1 : inst.card.a.discardCost; let ds = g.hand.filter(h => h !== inst).sort((x, y) => discardValue(g, x) - discardValue(g, y)).slice(0, dn); if (ds.length < dn && !force) return null; if (g.ask && ds.length === dn) ds = decide(g, { kind: 'discard', options: g.hand.filter(h => h !== inst), def: ds, multi: true, pick: dn, cost: true, source: inst }); for (const d of ds) { g.hand.splice(g.hand.indexOf(d), 1); g.graveyard.push(d); if (d.card.a.isLand) landToYard(g, [], false); madness(g, d, []); } }
     if (inst.card.a.sacArtifactCost) { victim = pickArtifactFodder(g); if (!victim && !force) return null; }
+    if (inst.card.a.sacOrDiscard) {          // T-100: Demand Answers: "sacrifice an artifact or discard a card": a spare artifact first, else the card the hand misses least; a person chooses which
+      const others = g.hand.filter(h => h !== inst), arts = g.battlefield.filter(q => q.card.a.isArtifact && !q.asLand && !q.card.commander), fod = pickArtifactFodder(g);
+      let give = fod || others.slice().sort((x, y) => discardValue(g, x) - discardValue(g, y))[0] || null;
+      if (g.ask && !g.dry && !force && (arts.length || others.length)) give = decide(g, { kind: 'target', what: 'demandCost', options: arts.concat(others), def: give, source: inst }) || give;
+      if (!give && !force) return null;
+      if (give && g.battlefield.includes(give)) victim = give; else if (give) { g.hand.splice(g.hand.indexOf(give), 1); g.graveyard.push(give); if (give.card.a.isLand) landToYard(g, [], false); madness(g, give, []); }
+    }
     if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g, inst.card.a); if (g.ask && !force) { const vs = g.battlefield.filter(q => isCreaturePerm(q) || (inst.card.a.sacArtifactAlso && q.card.a.isArtifact && !q.asLand)); if (vs.length) victim = decide(g, { kind: 'sacrifice', options: vs, def: victim, cost: true, source: inst }); } if (!victim && !force) return null; }
     if (g.ask && !g.dry && !force && inst.card.a.squad && !inst.freeCast) { const was = inst.squads || 0; let top = 0; for (let k = 1; k <= 4; k++) { inst.squads = k; if (canPay(effectiveCost(g, inst), allUnits(g))) top = k; else break; }          // T-036: squad, a person chooses how many times (the autopilot's number is the default)
       inst.squads = Math.min(was, top); if (top > 0) { const opts = []; for (let k = 0; k <= top; k++) opts.push(k); const pk = decide(g, { kind: 'x', what: 'squad', options: opts, def: inst.squads, source: inst }); if (typeof pk === 'number') inst.squads = pk; } }
@@ -9786,6 +9811,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (f.type === 'kindredSummons') { const tr = g.deck.tribe || curTribe; v += tr ? 3 * g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, tr)).length : 0; }
       if (f.type === 'karnMinus' && (g.silver || []).length) v += 1.5;
       if (f.type === 'flickerOne') v += g.battlefield.some(q => isCreaturePerm(q) && !q.token && q.card.a.triggers.some(t => t.kinds.includes('etb'))) ? 2.5 : 0;
+      if (f.type === 'untapPerms') v += 1.2 * g.battlefield.filter(q => q.tapped && !q.phased && q.produce).map(q => q.produce.amount).sort((x, y) => y - x).slice(0, f.n).reduce((t, x) => t + x, 0);
+      if (f.type === 'lookTopLand') v += 0.6;
       if (f.type === 'untapArtifacts') v += 1.5 * Math.min(f.n, g.battlefield.filter(q => q.tapped && q.card.a.isArtifact && q.produce).reduce((t, q) => t + q.produce.amount, 0));
       if (f.type === 'animateArtifacts' && !g.combatDone) { const k = g.battlefield.filter(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.asLand && !q.tapped && !q.sick).length; v += k >= 2 ? k * 4 : 0; }
       if (f.type === 'revealToBf') v += 5;
@@ -10792,6 +10819,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   function abilityGate(g, p, ab) {
     if (ab.gate === 'landAttack') return !g.combatDone && g.activeTurn !== false && !(g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped)) && g.battlefield.some(q => q.asLand && !q.animated && !q.tapped && !q.card.a.isCreature) && g.battlefield.filter(q => q.asLand && !q.tapped).length >= 2;          // Llanowar Loamspeaker: an untapped land (haste) and no blockers; the other land pays for what the turn needs
+    if (ab.gate === 'untapNet') return !g.dry && g.battlefield.some(q => q !== p && q.tapped && !q.phased && q.produce && q.produce.amount >= 2);          // Formidable Speaker: the {1} must come back with more
     if (ab.gate === 'legendPump') return !g.dry && !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => isCreaturePerm(q) && q.card.a.isLegendary && canAttack(g, q));          // Okina: a legendary creature that can attack gets the +1/+1 first
     if (ab.gate === 'domeWorth') return !g.dry && g.activeTurn !== false && !!domePick(g, p);          // Chrome Dome: only for a copy worth {5}
     if (ab.gate === 'artisan') return !g.dry && !g.combatDone && g.activeTurn !== false && !!artisanPick(g, p, Math.max(0, allUnits(g).length - 1));          // rules batch 78: Fiend Artisan, sorcery speed, with all the spare mana as X

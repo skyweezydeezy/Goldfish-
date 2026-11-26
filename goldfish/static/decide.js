@@ -141,6 +141,8 @@
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
     strive: ['choose the creatures to copy', 'Choose any number of creatures you control: each gets a token copy with haste, exiled at the beginning of the next end step. Each target beyond the first costs {2}{R} more.'],
+    untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
+    demandCost: ['sacrifice an artifact or discard a card', 'Choose what you give up as an additional cost to cast it: an artifact you control, or a card from your hand.'],
     tapCost: ['tap which permanent?', 'Choose the untapped permanent you tap as part of the cost of this mana ability.'],
     return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],

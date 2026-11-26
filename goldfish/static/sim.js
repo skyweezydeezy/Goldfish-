@@ -9175,7 +9175,7 @@
       inst.extraX = was;
       if (top >= 0) {
         const xs = []; for (let x = 1; x <= top + 1; x++) xs.push(x);
-        const def = Math.min(top + 1, 1 + (was == null ? top : was));
+        const def = Math.min(top + 1, 1 + (was == null ? 0 : was));          // the autopilot's X: the one its spell scoring chose; a cast with none (an instant at the end step) is X = 1, so a person on defaults plays the same game
         inst.extraX = decide(g, { kind: 'x', options: xs, def, source: inst, less: g.xCastTurn !== g.turn && bfInfo(g).xDiscount ? bfInfo(g).xDiscount.reduce((t, z) => t + Math.max(0, z.counters || 0), 0) : 0 }) - 1;
       }
     }

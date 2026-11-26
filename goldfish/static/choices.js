@@ -63,6 +63,7 @@
         for (const it of q.stack) { const b = h('div', 'ch-stack-item'); if (it.card) b.appendChild(A.cardEl(it.card, {})); b.appendChild(h('small', '', `${esc(it.who)} · ${KIND[it.kind] || it.kind}`)); if (it.text) b.title = it.text; $('.ch-stack-list').appendChild(b); }
       }
       if (q.spell) { const c = A.cardEl(q.spell, { eager: true }); $('.ch-spell').append(c, h('small', '', esc(q.spellNote || 'being cast'))); } else $('.ch-spell').remove();
+      if (q.targets && q.targets.length) { const tb = h('div', 'ch-targets'); for (const t of q.targets) { const b = h('div', 'ch-target'); if (t.card) b.appendChild(A.cardEl(t.card, {})); b.appendChild(h('small', '', esc('target: ' + t.name))); tb.appendChild(b); } const sp = $('.ch-spell'); if (sp) sp.appendChild(tb); }          // T-072: what the spell targets
       for (const t of ts) {
         const b = h('button', 'ch-opt' + (t.def ? ' def' : '') + (t.o.card ? '' : ' text') + (t.o.disabled ? ' off' : ''));
         if (t.o.disabled) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }          // shown, with the reason in its note, but it cannot be picked

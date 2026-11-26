@@ -6123,9 +6123,9 @@
   }
 
   function applyEffects(g, fx, source, ev, subject) {
-    if (fx && fx.length && !g.dry && tableHas(g, 'crimeTrig') && fx.some(f => f.crime)) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('crime')) fire(g, t, q, ev, null);          // T-025: you commit a crime (Gisa, Kaervek)
+    if (fx && fx.length && !g.dry && !lockRec && tableHas(g, 'crimeTrig') && fx.some(f => f.crime)) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('crime')) fire(g, t, q, ev, null);          // T-025: you commit a crime (Gisa, Kaervek)
     for (const f of fx) {
-      if (f.cond && !condMet(g, f.cond, source)) { if (f.cond.kind === 'secondCast' && !g.dry) g.winSpellCasts = (g.winSpellCasts || 0) + 1; continue; }             // e.g. Frodo's draw only while he is the Ring-bearer; Approach of the Second Sun remembers its first cast
+      if (f.cond && !condMet(g, f.cond, source)) { if (f.cond.kind === 'secondCast' && !g.dry && !lockRec) g.winSpellCasts = (g.winSpellCasts || 0) + 1; continue; }             // e.g. Frodo's draw only while he is the Ring-bearer; Approach of the Second Sun remembers its first cast
       let n = f.n;
       if (f.thatMany && g.thatMuch > 0) n = g.thatMuch;
       else if (f.mult) n = (n === 'X' ? 1 : n) * countFor(g, f.count, source);
@@ -6202,7 +6202,13 @@
             }
             if (bk.k) { bk.ts.forEach(q => leavePerm(g.opp, q, ev)); flushLeaves(g.opp, ev); ev.push({ type: 'note', text: `Comet Storm kicked ${bk.k}×: ${bk.ts.map(q => q.card.name).join(', ')} die`, source }); damageOpp(g, bk.x, ev, source); break; }
           }
-          if (g.opp && f.any) { const t = burnPick(g, n, false, source); if (t) { against(g, t, () => burnHit(g, t, n, source, ev)); break; } }
+          if (g.opp && f.any) {
+            const L = lockRec ? null : tgtLock(g, f);
+            if (L && L.t && !lockLegal(g, L.t, f)) { ev.push({ type: 'note', text: `${L.t.card.name} is no longer a legal target: the spell does nothing`, source }); break; }          // CR 608.2b
+            const t = L ? L.t : burnPick(g, n, false, source);
+            if (lockRec) { lockRec.map.set(f, t ? { t } : bfInfo(g.opp).playerHex ? { none: true } : { face: true }); if (t) lockRec.taken.add(t); break; }
+            if (t) { against(g, t, () => burnHit(g, t, n, source, ev)); break; }
+          }
           if (g.opp && f.any && bfInfo(g.opp).playerHex) { ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}the other player has hexproof and no creature worth hitting: no target`, source }); break; }          // Shalai, Leyline of Sanctity
           { const cols = source && source.card ? source.card.colors : (g.lastCast && g.lastCast.card.colors);
             if (!g.dry && (cols || []).includes('R')) {
@@ -6215,7 +6221,12 @@
         case 'deadbridge': { if (!g.graveyard.length) break; const i = g.graveyard[Math.floor(g.rnd() * g.graveyard.length)]; g.graveyard.splice(g.graveyard.indexOf(i), 1); if (i.card.a.isCreature) { const perm = enterWithTriggers(g, i, {}, ev); ev.push({ type: 'rampLand', inst: i, perm, source }); } else { g.hand.push(i); ev.push({ type: 'note', text: `${i.card.name} returns to your hand (chosen at random)`, source }); } break; }          // Deadbridge Chant
         case 'ordealSac': { const host = source && source.attachedTo != null ? g.battlefield.find(q => q.iid === source.attachedTo) : null; if (host && (host.counters || 0) >= 3 && g.battlefield.includes(source)) { ev.push({ type: 'note', text: `${source.card.name} is sacrificed (three +1/+1 counters)`, source }); leavePerm(g, source, ev); flushLeaves(g, ev); } break; }          // the Ordeals
         case 'astarionPick': { const lost = g.oppLostTurn || 0, gained = g.lifeGainedThisTurn || 0; if (lost > 0 && g.killTurn == null && !matchOver(g)) damageOpp(g, lost, ev, source, false, true); else if (gained > 0) applyEffects(g, [{ type: 'gainLife', n: gained }], source, ev, null); break; }          // Astarion: Feed (they lose what they lost this turn) while it helps, else Friends          // life loss, not damage (protection does not stop it)
-        case 'burnCreature': { const t = g.opp && burnPick(g, n + plusBonus(g, source && source.card ? source : g.lastCast), true, source); if (t) against(g, t, () => burnHit(g, t, n, source, ev)); break; }
+        case 'burnCreature': {
+          const L = lockRec ? null : tgtLock(g, f);
+          if (L && !(L.t && lockLegal(g, L.t, f))) { ev.push({ type: 'note', text: `${L.t ? L.t.card.name + ' is no longer a legal target' : 'No target'}: the spell does nothing`, source }); break; }          // CR 608.2b
+          const t = L ? L.t : g.opp && burnPick(g, n + plusBonus(g, source && source.card ? source : g.lastCast), true, source);
+          if (lockRec) { if (t) { lockRec.map.set(f, { t }); lockRec.taken.add(t); } break; }
+          if (t) against(g, t, () => burnHit(g, t, n, source, ev)); break; }
         case 'removal': if (g.opp) doRemoval(g, f, source, ev); break;
         case 'bounce': if (g.opp) doBounce(g, f, source, ev); break;
         case 'edict': if (f.each || (f.n || 1) > 1) { for (const o of (f.each ? otherPlayers(g) : g.opp ? [g.opp] : [])) for (let k = 0; k < (f.n || 1); k++) { const v = edictPool(g, o, f)[0]; if (!v) break; ev.push({ type: 'note', text: `The other player sacrifices ${v.card.name}`, source }); sacEvent(o, v, ev); leavePerm(o, v, ev); flushLeaves(o, ev); } break; }          // Portal to Phyrexia: three, from each opponent
@@ -6835,6 +6846,18 @@
           ev.push({ type: 'note', text: 'Untapped ' + f.what, source });
           break;
         case 'threaten': if (g.opp && !g.combatDone) {
+          if (!f.each) {          // a spell that targets one creature: chosen as it is cast (T-072), checked again on resolution
+            const o = g.opp, L = lockRec ? null : tgtLock(g, f); let best = null, bv = -Infinity;
+            if (L) { best = L.t; if (!(best && o.battlefield.includes(best) && isCreaturePerm(best) && targetable(o, best))) { ev.push({ type: 'note', text: `${best ? best.card.name + ' is no longer a legal target' : 'No target'}: the spell does nothing`, source }); break; } }          // CR 608.2b
+            else {
+              for (const q of o.battlefield) if (isCreaturePerm(q) && !q.card.commander && targetable(o, q) && !(lockRec && lockRec.taken.has(q))) { const v = creatureValue(o, q); if (v > bv) { bv = v; best = q; } }
+              if (best && g.ask && !g.dry) best = decide(g, { kind: 'target', what: 'threaten', options: o.battlefield.filter(q => isCreaturePerm(q) && !q.card.commander && targetable(o, q)), def: best, source }) || best;          // a person picks the creature
+            }
+            if (lockRec) { if (best) { lockRec.map.set(f, { t: best }); lockRec.taken.add(best); } break; }
+            if (!best) break;
+            stealPerm(g, best, ev, true, o); if (f.kw) best.eotKw = new Set([...(best.eotKw || []), ...f.kw]); if (f.annihilator) best.eotAnnihilator = f.annihilator;
+            break;
+          }
           for (const o of f.each ? otherPlayers(g) : [g.opp]) {          // Hideous Taskmaster: one from each opponent, with trample, haste and annihilator 1
             let best = null, bv = -Infinity; for (const q of o.battlefield) if (isCreaturePerm(q) && !q.card.commander && (!f.each || targetable(o, q))) { const v = creatureValue(o, q); if (v > bv) { bv = v; best = q; } }
             if (!best) continue; if (!f.each && g.ask && !g.dry) best = decide(g, { kind: 'target', what: 'threaten', options: o.battlefield.filter(q => isCreaturePerm(q) && !q.card.commander), def: best, source }) || best;          // a person picks the creature
@@ -7121,8 +7144,11 @@
           break;
         }
         case 'tapOpp': if (g.opp && !g.dry) {          // Cryptic Command, Dispatch, Ice: tap their blockers before an attack (or their best land)
-          const d = g.opp, ups = d.battlefield.filter(q => isCreaturePerm(q) && !q.tapped).sort((x, y) => threat(d, g, y) - threat(d, g, x));
-          const ts = f.what === 'all' ? ups : ups.slice(0, 1).concat(ups.length ? [] : d.battlefield.filter(q => q.asLand && !q.tapped).sort((x, y) => (y.produce ? y.produce.amount : 0) - (x.produce ? x.produce.amount : 0)).slice(0, 1));
+          const d = g.opp, single = f.what !== 'all', L = single && !lockRec ? tgtLock(g, f) : null;
+          if (L && !(L.t && d.battlefield.includes(L.t) && targetable(d, L.t))) { ev.push({ type: 'note', text: `${L.t ? L.t.card.name + ' is no longer a legal target' : 'No target'}: the spell does nothing`, source }); break; }          // CR 608.2b
+          const ups = d.battlefield.filter(q => isCreaturePerm(q) && !q.tapped && (!single || targetable(d, q))).sort((x, y) => threat(d, g, y) - threat(d, g, x));
+          const ts = L ? [L.t] : f.what === 'all' ? ups : ups.slice(0, 1).concat(ups.length ? [] : d.battlefield.filter(q => q.asLand && !q.tapped && targetable(d, q)).sort((x, y) => (y.produce ? y.produce.amount : 0) - (x.produce ? x.produce.amount : 0)).slice(0, 1));
+          if (lockRec) { if (ts[0]) { lockRec.map.set(f, { t: ts[0] }); lockRec.taken.add(ts[0]); } break; }
           ts.forEach(q => { q.tapped = true; }); if (ts.length) ev.push({ type: 'note', text: `Tapped ${ts.map(q => q.card.name).join(', ')}`, source });
         } break;
         case 'skrelv': {                                                                                  // Skrelv: toxic for the best other attacker; in a match the color its likely blockers share
@@ -7483,9 +7509,15 @@
           break;
         }
         case 'mastery': for (let k = 0; k < (f.all ? 20 : 1); k++) { const t = masteryTarget(g); if (!t) break; g.graveyard.splice(g.graveyard.indexOf(t), 1); g.exile.push(t); ev.push({ type: 'note', text: `Copy of ${t.card.name} cast for free` }); copySpell(g, t, ev, 1); } break;          // overloaded: every one
-        case 'divideDamage': if (g.opp) {                                                                    // Pyrokinesis: 4 damage divided among creatures
-          let left = f.n; const cands = g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q) && threat(g.opp, g, q) > 2.2).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x));
-          for (const q of cands) { const need = Math.max(1, toughnessOf(g.opp, q) - (q.dmg || 0)); if (need <= left) { left -= need; ev.push({ type: 'note', text: `Divided damage kills ${q.card.name}`, source }); leavePerm(g.opp, q, ev); } }
+        case 'divideDamage': if (g.opp) {                                                                    // Pyrokinesis: 4 damage divided among creatures (the division is chosen as it is cast, T-072)
+          const L = lockRec ? null : tgtLock(g, f), hit = [];
+          if (L) { for (const x of L.ts) { if (g.opp.battlefield.includes(x.q) && targetable(g.opp, x.q) && Math.max(1, toughnessOf(g.opp, x.q) - (x.q.dmg || 0)) <= x.need) hit.push(x); else ev.push({ type: 'note', text: `${x.q.card.name} is no longer a legal target, or is no longer killed by its share`, source }); } }          // CR 608.2b
+          else {
+            let left = f.n; const cands = g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q) && threat(g.opp, g, q) > 2.2 && !(lockRec && lockRec.taken.has(q))).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x));
+            for (const q of cands) { const need = Math.max(1, toughnessOf(g.opp, q) - (q.dmg || 0)); if (need <= left) { left -= need; hit.push({ q, need }); } }
+          }
+          if (lockRec) { if (hit.length) { lockRec.map.set(f, { ts: hit }); hit.forEach(x => lockRec.taken.add(x.q)); } break; }
+          for (const x of hit) { ev.push({ type: 'note', text: `Divided damage kills ${x.q.card.name}`, source }); leavePerm(g.opp, x.q, ev); }
           flushLeaves(g.opp, ev);
         } break;
         case 'thassa': {                                                                                    // Thassa's Oracle: win if devotion to blue is at least the cards left in the library
@@ -8443,12 +8475,13 @@
       if (!land) { ev.push({ type: 'note', text: `${inst.card.name} is countered: no land to sacrifice` }); g.graveyard.push(inst); return; }
       ev.push({ type: 'note', text: `${inst.card.name}: sacrificed ${land.card.name}` }); leavePerm(g, land, ev); flushLeaves(g, ev);
     }
-    if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
-    if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
     if (g.ask && !g.dry && a.isInstantSorcery && isPod(g) && !g._oppWas && (/\btarget opponent\b/i.test(inst.card.oracle_text || '') || (/\btarget player\b/i.test(inst.card.oracle_text || '') && (a.spellFx || []).some(f => HOSTILE_FX.has(f.type))))) {          // or "target player" when it is done to an opponent (Traumatize)          // in a pod a person chooses the opponent ("target opponent")
       const os = podAlive(g);
       if (os.length > 1 && os.includes(g.opp)) { const o = decide(g, { kind: 'player', options: os, def: g.opp, source: { card: inst.card } }); if (o && o !== g.opp) { g._oppWas = g.opp; g.opp = o; } }
     }
+    { const lk = lockTargets(g, inst); if (lk) PENDING.set(inst, lk); }          // T-072: targets are chosen as the spell is cast, before anyone can respond
+    if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
+    if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
     if (g.ask && !g.dry && a.isInstantSorcery && !inst.card.tribeBase) { const was = inst.card; chooseTribeOnEnter(g, inst, true); if (inst.card !== was) { a = inst.card.a; g._castTribe = inst.card.chosenType; } }          // Kindred Summons: a person names the creature type as it resolves
     g.spellsCast = (g.spellsCast || 0) + 1;                                                    // Lotho: "a player casts their second spell each turn"
     if (g.spellsCast === 2) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('secondSpell')) fire(g, t, q, ev, null);
@@ -8543,7 +8576,7 @@
         else { flipLost = true; ev.push({ type: 'note', text: `${kr.card.name}: flip lost, ${inst.card.name} returns to your hand`, source: kr }); }
       }
       if (flipLost) inst.buybackPaid = true; else
-      applyEffects(g, inst.overloaded ? a.overload.fx : willModes(g, inst) || a.spellFx, null, ev, null);
+      { const lk = PENDING.get(inst), was = LOCKS.get(g); if (lk) { PENDING.delete(inst); LOCKS.set(g, lk); } try { applyEffects(g, inst.overloaded ? a.overload.fx : willModes(g, inst) || a.spellFx, null, ev, null); } finally { if (lk) { if (was) LOCKS.set(g, was); else LOCKS.delete(g); } } }
       const seventh = !g.dry && !inst.exileInstead && !inst.foreign && g.killTurn == null && !matchOver(g) && a.spellFx.some(f => f.cond && f.cond.kind === 'secondCast');          // Approach of the Second Sun, first cast: it goes into the library seventh from the top
       if (inst.buybackPaid && !seventh) { inst.buybackPaid = false; g.hand.push(inst); } else          // buyback: back to your hand
       if (seventh) g.library.splice(Math.min(6, g.library.length), 0, inst); else (inst.exileInstead || a.selfExile ? g.exile : inst.foreign && g.opp ? g.opp.graveyard : g.graveyard).push(inst);
@@ -13143,13 +13176,50 @@ g.actSeq = (g.actSeq || 0) + 1;
   const removalBar = g => { const v = pol(g, 'removalBar'); return v === 'default' ? MIN_THREAT : +v; };        // the Policy lab can lower or raise it
   function pickRemovalTarget(g, f) {
     let best = null, bs = removalBar(g);
-    for (const p of removalTargets(g, f)) { const sc = threat(g.opp, g, p); if (sc > bs) { bs = sc; best = p; } }
+    for (const p of removalTargets(g, f)) { if (lockRec && lockRec.taken.has(p)) continue; const sc = threat(g.opp, g, p); if (sc > bs) { bs = sc; best = p; } }
     return best;
+  }
+  // ---------- T-072: targets are chosen as a spell is cast and locked (CR 601.2c) ----------
+  // lockTargets runs the targeted effects of a spell in a "lock mode" (lockRec set): each picker (the autopilot's choice, or the person's 'target'
+  // question) records its target on the stack object instead of acting. The counter / response questions then name it, and on resolution the
+  // handlers use the stored target (lockOf) and check it is still legal (CR 608.2b) instead of picking again.
+  let lockRec = null;                                          // { map: effect -> { t, face, none }, taken: Set } while targets are being chosen
+  const LOCKS = new WeakMap(), PENDING = new WeakMap();        // game -> locks in force while its spell resolves; spell instance -> locks (for the counter question)
+  const tgtLock = (g, f) => { const m = LOCKS.get(g); if (!m || !m.map.has(f)) return undefined; const L = m.map.get(f); m.map.delete(f); return L; };          // used once
+  const lockable = f => f.type === 'removal' ? !f.noTarget : f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'divideDamage' || (f.type === 'threaten' && !f.each) || (f.type === 'tapOpp' && f.what !== 'all') || (f.type === 'damage' && !!f.any && !f.multi);
+  const holderOf = (g, t) => (isPod(g) ? g.match.players : [g, g.opp]).find(x => x && x.battlefield.includes(t));
+  // CR 608.2b: the target must still be on the battlefield, of the right kind and not hexproof / shroud / protected now
+  function lockLegal(g, t, f) {
+    const o = holderOf(g, t);
+    return !!o && (f.noTarget || o === g || targetable(o, t)) && (f.what !== 'creature' || isCreaturePerm(t));
+  }
+  function lockTargets(g, inst) {
+    const a = inst.card.a, fxs = inst.overloaded ? (a.overload && a.overload.fx) : a.spellFx;
+    if (g.dry || !g.opp || !a.isInstantSorcery || !fxs || !fxs.length || a.jeska || lockRec || !fxs.some(lockable)) return null;
+    const rec = { map: new Map(), taken: new Set() }, xv = g.xValue;
+    lockRec = rec;
+    try { applyEffects(g, fxs.filter(lockable), null, [], null); } finally { lockRec = null; g.xValue = xv; }
+    return rec.map.size ? rec : null;
+  }
+  // what the question shows: each locked target as a card (or a player), plus "target opponent" players
+  function targetView(g, inst) {
+    const rec = PENDING.get(inst), out = [], a = inst.card.a;
+    if (rec) for (const L of rec.map.values()) {
+      if (L.ts) { for (const x of L.ts) { const o = holderOf(g, x.q); out.push({ kind: 'perm', card: x.q.card, iid: x.q.iid, name: x.q.card.name, owner: o ? o.pid : null }); } continue; }
+      if (L.t) { const o = holderOf(g, L.t); out.push({ kind: 'perm', card: L.t.card, iid: L.t.iid, name: L.t.card.name, owner: o ? o.pid : null }); }
+      else if (L.face && g.opp && !out.some(x => x.kind === 'player')) out.push({ kind: 'player', pid: g.opp.pid });
+    }
+    if (g.opp && !out.some(x => x.kind === 'player') && a.isInstantSorcery && /\btarget (opponent|player)\b/i.test(inst.card.oracle_text || '') && (a.spellFx || []).some(f => HOSTILE_FX.has(f.type) || f.type === 'drain' || (f.type === 'damage' && !f.any))) out.push({ kind: 'player', pid: g.opp.pid });
+    return out;
   }
   function doRemoval(g, f, source, ev) {
     if (f.metal && g.battlefield.filter(q => artOn(g, q)).length < 3) return;          // Dispatch: metalcraft
-    let t = pickRemovalTarget(g, f);
-    if (g.ask) { t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source }); if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
+    const L = lockRec ? null : tgtLock(g, f);
+    let t = L ? L.t : pickRemovalTarget(g, f);
+    if (L && !(t && lockLegal(g, t, f))) { ev.push({ type: 'note', text: `${t ? t.card.name + ' is no longer a legal target' : 'No target'}: ${source ? 'the ability' : 'the spell'} does nothing`, source }); return; }          // CR 608.2b
+    if (g.ask && !L) t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source });
+    if (lockRec) { if (t) { lockRec.map.set(f, { t }); lockRec.taken.add(t); } return; }
+    if (g.ask) { if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
     if (t && (f.noTarget || !answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' || f.how === 'warp' ? 'exile' : 'destroy', source, ev))) removalOf(g, f, source, ev, t);
   }
   // the other player answers a targeted effect: true when nothing more happens (the target is protected, regenerated or indestructible)
@@ -13196,13 +13266,16 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (f.give) createTokens(d, f.give, Math.min(f.give.n === 'X' ? 1 : f.give.n, 10), ev, null);               // Beast Within, Pongify: its controller gets a token
   }
   function doBounce(g, f, source, ev) {
-    const d = g.opp;
+    const d = g.opp, L = lockRec ? null : tgtLock(g, f);
     let best = null, bs = removalBar(g);
+    if (L) { if (!(L.t && lockLegal(g, L.t, f))) { ev.push({ type: 'note', text: `${L.t ? L.t.card.name + ' is no longer a legal target' : 'No target'}: the spell does nothing`, source }); return; } return against(g, L.t, () => bounceOf(g, L.t, source, ev)); }          // CR 608.2b
     for (const p of d.battlefield) {
       if (!(f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) || !targetable(d, p)) continue;
+      if (lockRec && lockRec.taken.has(p)) continue;
       const sc = threat(d, g, p) + (p.token ? 1.5 : 0) - (p.card.a.castMv <= 1 ? 1 : 0);
       if (sc > bs) { bs = sc; best = p; }
     }
+    if (lockRec) { if (g.ask) best = decide(g, { kind: 'target', what: 'bounce', options: eachFoe(g, () => g.opp.battlefield.filter(p => (f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) && targetable(g.opp, p))), def: best, f, source }); if (best) { lockRec.map.set(f, { t: best }); lockRec.taken.add(best); } return; }
     if (g.ask) { best = decide(g, { kind: 'target', what: 'bounce', options: eachFoe(g, () => g.opp.battlefield.filter(p => (f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) && targetable(g.opp, p))), def: best, f, source }); if (best) return against(g, best, () => bounceOf(g, best, source, ev)); }
     if (best) bounceOf(g, best, source, ev);
   }
@@ -13222,7 +13295,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!d || (!creatureOnly && d.life <= n)) return null;
     let best = null, bs = pol(g, 'removalBar') === 'default' ? 2.5 : +pol(g, 'removalBar');
     for (const p of d.battlefield) {
-      if (!isCreaturePerm(p) || !targetable(d, p)) continue;
+      if (!isCreaturePerm(p) || !targetable(d, p) || (lockRec && lockRec.taken.has(p))) continue;
       if (toughnessOf(d, p) - (p.dmg || 0) > n) continue;
       const sc = threat(d, g, p);
       if (sc > bs) { bs = sc; best = p; }
@@ -13753,7 +13826,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   function ownPriority(g, inst, ev) {
     for (let k = 0; k < 4 && !g.dead && !matchOver(g); k++) {
-      const pick = decide(g, { kind: 'resolve', options: responseCards(g, inst).concat(responseAbilities(g)), def: null, optional: true, always: true, spell: inst });
+      const pick = decide(g, { kind: 'resolve', options: responseCards(g, inst).concat(responseAbilities(g)), def: null, optional: true, always: true, spell: inst, targets: targetView(g, inst) });
       if (!pick || !(pick.ability ? respondAbility(g, pick, ev, inst) : respondWith(g, pick, ev, inst))) break;
     }
   }
@@ -13842,7 +13915,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function personAnswer(g, d, inst, ev, ways, def) {
     for (let k = 0; k < 4 && !d.dead && !matchOver(d); k++) {
       const resp = responseCards(d, null).map(c => ({ c, how: 'respond' })).concat(responseAbilities(d));
-      const pick = decide(d, { kind: 'counter', options: ways.concat(resp), def: k ? null : def, optional: true, always: true, spell: inst, caster: g, unc: !ways.length && uncounterable(g, inst) });
+      const pick = decide(d, { kind: 'counter', options: ways.concat(resp), def: k ? null : def, optional: true, always: true, spell: inst, caster: g, targets: targetView(g, inst), unc: !ways.length && uncounterable(g, inst) });
       if (!pick || (pick.how !== 'respond' && pick.how !== 'ability')) return pick || null;
       if (!(pick.ability ? respondAbility(d, pick, ev, inst) : respondWith(d, pick.c, ev, inst))) return null;
       ways = ways.filter(w => d.hand.includes(w.c) && (w.how !== 'mana' || canPay(w.cost, manaUnits(d))) && (w.how !== 'cleave' || canPay(w.c.card.a.cleave, manaUnits(d))));

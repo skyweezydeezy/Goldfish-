@@ -35,13 +35,14 @@
         <div class="row wrap">${opp}
           <label>Your seat <select class="vs-you"><option value="human">I play my deck</option><option value="auto">Autopilot plays my deck</option></select></label>
           <label title="Searches, targets, modes, discards, sacrifices, counterspells and the end of the other players' turns">My choices <select class="vs-ask"><option value="ask">Ask me</option><option value="auto">Autopilot decides</option></select></label>
+          <label title="When you pay a cost, choose which lands, mana creatures, Treasures and floating mana pay, and the colour each makes. Off: the autopilot taps for you."><input type="checkbox" class="vs-pay"> Choose how I pay mana</label>
           <label>Max rounds <input class="vs-rounds" type="number" min="5" max="40" value="25"></label>
           <label class="check" title="Loop: with every seat on the autopilot (Your seat: Autopilot plays my deck), each game plays itself at the speed of the slider and the next one starts after a short pause, with the same decks and settings. Untick to stop after the game being played."><input class="vs-loop" type="checkbox"> 🔁 Loop</label>
           <button class="primary vs-new">New game</button>
         </div>
         <details class="vs-what hint"><summary>What you are asked when you play, and what the autopilot still decides</summary>
           <p><b>Asked:</b> library searches (which card); the target of removal, bounce and burn, in a pod at any opponent; which of your creatures gets counters, a pump or an Aura; the modes of "choose one" spells; which card to discard; which creature to sacrifice; whether to counter a spell an opponent casts; your blocks; and, at the end of each opponent's turn, instants, cards with flash and abilities. The autopilot's pick is marked ★ and "Let the autopilot decide" is always there.</p>
-          <p><b>Not offered yet (the autopilot decides):</b> this is not a stack: you cannot respond to abilities or triggers, or to a spell with anything but a counterspell, and nobody answers your spells with instants. Which abilities to use and when, land searches (fetch lands, ramp), cards returning from a graveyard, divided damage, theft and clone targets, the order of triggers and how mana is paid are the autopilot's. Burn only offers creatures it kills, and a single legal option is taken without asking.</p>
+          <p><b>Not offered yet (the autopilot decides):</b> this is not a stack: you cannot respond to abilities or triggers, or to a spell with anything but a counterspell, and nobody answers your spells with instants. Which abilities to use and when, land searches (fetch lands, ramp), cards returning from a graveyard, divided damage, theft and clone targets, the order of triggers are the autopilot's. How mana is paid is the autopilot's too, unless you tick "Choose how I pay mana". Burn only offers creatures it kills, and a single legal option is taken without asking.</p>
         </details>
         <div class="vs-info hint"></div>
       </div>
@@ -297,6 +298,7 @@
     return r;
   }
   async function choose(mode, gm, q, view) {
+    if (q.kind === 'pay' && !(V[mode].q('.vs-pay') || {}).checked) return 'auto';          // T-089: the payment sheet is opt-in; the autopilot's payment otherwise
     if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
     gm.preview = view; gm.choice = q; q.noAuto = gm.remote != null; render(mode);          // the table shows the game as it stands at the moment of the question
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }

@@ -178,7 +178,11 @@
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
-      if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
+      if (d.kind === 'pay') {                                                                             // T-089: one (source, role) pair of a payment
+        const u = d.units[o.u], same = d.units.filter((x, i) => i < o.u && x.src === u.src && x.src).length, sn2 = u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating mana' : 'Mana');
+        item.name = sn2 + (same ? ' #' + (same + 1) : '') + ' → ' + (o.role === 'generic' ? 'generic' : (G.COLOR_NAME[o.role] || (o.role === 'C' ? 'colorless' : o.role))); item.iid = u.src && u.src.iid != null ? u.src.iid : null; item.card = u.src && u.src.card ? u.src.card : null;
+        item.note = d.side(u).join(' · '); item.u = o.u; item.role = o.role;
+      } else if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
       else if (d.kind === 'mode' && o.text) { item.name = o.text; }
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
@@ -304,6 +308,14 @@
       q.title = `Combo assembled: ${cb.name}${cb.cards && cb.cards.length ? ' (' + cb.cards.join(' + ') + ')' : ''}`;
       q.text = { mana: 'It makes mana without end. Say how much you want: ∞ is as much as you like.', mill: 'It can mill a whole library.', draw: 'It draws your whole library.', tokens: 'It makes as many hasty attackers as you like.', damage: 'It deals damage or drains every opponent as often as you like.' }[cb.outcome] + (opts.some(o => o.id === 'win') ? ' ★ is the autopilot\'s pick: play it out to the win.' : '');
       q.combo = { name: cb.name, cards: cb.cards || [], outcome: cb.outcome };
+    } else if (d.kind === 'pay') {                                                                        // T-089: pay a cost with the sources you choose
+      const c = d.cost, sym = x => (/^[WUBRGC]$/.test(x) ? x : '?'), ctext = (c.generic ? '{' + c.generic + '}' : '') + c.pips.map(p => '{' + p.map(sym).join('/') + '}').join('');
+      q.title = `${sn ? sn + ': pay ' : 'Pay '}${ctext || 'nothing'}`;
+      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is what the autopilot would tap.';
+      if (src && src.type_line) { q.spell = src; q.spellNote = 'being paid for'; }
+      q.pay = { cost: { generic: c.generic, pips: c.pips.map(p => p.slice()) }, n: c.generic + c.pips.length, text: ctext, units: d.units.map((u, i) => ({ u: i, name: u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating' : 'Mana'), card: u.src && u.src.card ? u.src.card : null, colors: [...u.colors].filter(x => d.options.some(o => o.u === i && o.role === x)), side: d.side(u), floating: !!u.floating, used: d.options.some(o => o.u === i) })).filter(x => x.used),
+        // sel: [{ u, force }]: the option numbers of a payment that pays exactly, or null
+        solve: sel => { const roles = G.payAssign(d.cost, d.units, sel.map(x => ({ i: x.u, force: x.force || null }))); if (!roles) return null; const ks = sel.map((x, j) => d.options.findIndex(o => o.u === x.u && o.role === roles[j])); return ks.some(k => k < 0) ? null : ks.sort((x, y) => x - y); } };
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
       q.text = `As it enters, you may pay ${d.life} life. If you don't, it enters tapped.`;
@@ -334,7 +346,9 @@
     if (a.pick === 'auto' || a.pick == null) return d.def;
     if (q.multi) {
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
-      return ks.length >= q.min && ks.length <= q.max ? ks.map(k => d.options[k]) : d.def;
+      if (!(ks.length >= q.min && ks.length <= q.max)) return d.def;
+      const list = ks.map(k => d.options[k]);
+      return d.valid && !d.valid(list) ? d.def : list;          // a payment (T-089) must pay the cost exactly
     }
     if (d.kind === 'combo' && a.pick && typeof a.pick === 'object' && Number.isInteger(a.pick.mana) && a.pick.mana > 0 && d.options.some(o => o.id === 'mana:inf')) { const n = a.pick.mana; return n > 99 ? d.options.find(o => o.id === 'mana:inf') : { id: 'mana:' + n, label: `${n} mana`, note: '' }; }          // "[number] mana": any amount typed
     if (a.pick === 'none') return q.optional ? null : d.def;

@@ -1,12 +1,13 @@
 // T-098: every mana source in the 50 built-in decks makes mana. A land, rock or dork is put on the battlefield untapped and unsick in a bare game beside some fodder (creatures,
 // artifacts, basic lands); allUnits must see mana from it and pay() must tap it. Treasures and rituals too. Sources that make mana through another path (sacrifice, hand,
-// imprint, restricted mana) are listed with the reason and checked to be read ('ok'); sources no rule builds (NO_MANA below) are checked to be honestly 'ignored'.
-// The list of those is the work for Card teaching: a card that gains a mana ability must leave NO_MANA (this test fails until it does).
+// imprint, restricted mana) are listed with the reason and checked to be read ('ok'). NO_MANA is the ledger of FALSE 'ok' lines found by T-098: cards whose mana line reads 'ok' although no
+// rule gives them mana (Springleaf Drum and its tap-a-creature family, Three Tree Mascot; the Signets were built by T-098). The test asserts they still make none, so it fails the day a card is
+// fixed and the card must leave the ledger. The Signets are checked below.
 const L = require('../../tools/engine/lib.js'), G = L.engine();
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
 const by = n => L.db().byName.get(n);
-const NO_MANA = ['Azorius Signet', 'Dimir Signet', 'Orzhov Signet', 'Simic Signet', 'Izzet Signet', 'Selesnya Signet', 'Springleaf Drum', 'Gene Pollinator', 'Citanul Stalwart', 'Jaspera Sentinel', 'Loam Dryad', 'Saruli Caretaker', 'Three Tree Mascot'];
+const NO_MANA = ['Springleaf Drum', 'Gene Pollinator', 'Citanul Stalwart', 'Jaspera Sentinel', 'Loam Dryad', 'Saruli Caretaker', 'Three Tree Mascot'];
 const OTHER = { 'Krark-Clan Ironworks': 'sacrifice', 'Phyrexian Altar': 'sacrifice', "Ashnod's Altar": 'sacrifice', 'Skirk Prospector': 'sacrifice', 'Elvish Spirit Guide': 'from hand', 'Simian Spirit Guide': 'from hand', "Lion's Eye Diamond": 'discard', 'Chrome Mox': 'imprint', 'Vivi Ornitier': 'X mana', 'Gilded Goose': 'Food', 'Pili-Pala': 'untap cost', 'Grand Architect': 'restricted', 'Gyre Sage': 'counters', 'The Cabbage Merchant': 'Foods', 'Mox Opal': 'metalcraft', 'Mishra\'s Workshop': 'restricted', 'Giada, Font of Hope': 'restricted', 'Gwenna, Eyes of Gaea': 'restricted', 'Bag End Banquet': 'per Food' };
 const MANA = /^[^:"]*:\s*add\b/im, seen = new Map();
 for (const d of L.index().decks) for (const c of L.loadDeck(d)) if (!seen.has(c.name)) seen.set(c.name, c);
@@ -45,11 +46,19 @@ for (const name of ['Sol Ring', 'Llanowar Elves', 'Arcane Signet', 'Mind Stone',
   const t = g.battlefield.find(q => q.card.name === 'Treasure');
   check('a Treasure token makes one mana', !!t && G.allUnits(g).some(u => u.src === t));
   const r = G.pay(g, { generic: 1, pips: [], x: 0 }); check('...and paying with it sacrifices it', r != null && !g.battlefield.includes(t)); }
-// the honest ledger
+// the ledger of false 'ok' lines: the line reads 'ok' (a generic matcher), but the card still makes no mana
 for (const name of NO_MANA) { const c = by(name); if (!c) { check(name + ' is in the database', false); continue; }
-  const a = G.analyze(Object.assign({ qty: 1 }, c), ['W', 'U', 'B', 'R', 'G']), aa = a.a || a;
-  const line = aa.coverage.find(r => MANA.test(r.text));
-  check(`${name}: no mana ability yet, and its mana line is honestly 'ignored' (when it gains one, remove it from NO_MANA)`, !aa.produce && line && line.status === 'ignored', line && line.status); }
+  const { g, put } = bare(c); for (const [f, k] of FOD) for (let i = 0; i < k; i++) put(f); G.flushLeaves(g, []); G.touch(g);
+  const base = G.allUnits(g).length, p = put(name); G.flushLeaves(g, []); G.touch(g);
+  check(`${name}: KNOWN FALSE 'ok': still makes no mana (when a rule builds it, remove it from NO_MANA)`, G.allUnits(g).length === base && !G.allUnits(g).some(u => u.src === p), G.allUnits(g).length + ' vs ' + base); }
+// the Signets: {1}, {T}: Add two colors. One more mana than they use, so alone they make none; paying with one taps another source for the {1}
+for (const [name, cols] of [['Azorius Signet', 'WU'], ['Dimir Signet', 'UB'], ['Orzhov Signet', 'WB'], ['Simic Signet', 'GU'], ['Izzet Signet', 'UR'], ['Selesnya Signet', 'GW']]) {
+  const c = by(name), mk = n => bare(c); let { g, put } = mk(); put('Swamp'); put(name); G.flushLeaves(g, []); G.touch(g);
+  const u = G.allUnits(g), sig = u.find(x => x.src && x.src.signetOf);
+  check(`${name}: with a Swamp it makes two mana, the Signet's of ${cols}`, u.length === 2 && sig && cols.split('').every(x => sig.colors.has(x)), u.length);
+  const r = G.pay(g, { generic: 0, pips: [[cols[0]]], x: 0 });
+  check(`${name}: paying {${cols[0]}} taps the Signet and the Swamp that paid its {1}`, r != null && g.battlefield.every(q => q.tapped), g.battlefield.map(q => q.card.name + (q.tapped ? 'T' : '-')).join(','));
+  ({ g, put } = mk()); put(name); G.flushLeaves(g, []); G.touch(g); check(`${name}: alone it makes nothing (it has no {1} to pay)`, G.allUnits(g).length === 0); }
 for (const [name, why] of Object.entries(OTHER)) { const c = by(name); if (!c) { check(name + ' is in the database', false); continue; }
   const a = G.analyze(Object.assign({ qty: 1 }, c), ['W', 'U', 'B', 'R', 'G']), aa = a.a || a; const line = aa.coverage.find(r => MANA.test(r.text));
   check(`${name} (${why}): its mana line is read, not ignored`, !!line && line.status !== 'ignored', line && line.status); }

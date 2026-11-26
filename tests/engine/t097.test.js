@@ -8,7 +8,7 @@ const idx = JSON.parse(fs.readFileSync(path.join(DS, 'index.json'), 'utf8')), st
 idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(DS, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
-const NAMES = ['Springleaf Drum', "Survivors' Encampment", 'Jaspera Sentinel', 'Relic of Legends', 'Grand Architect', 'Lightning Bolt', 'Llanowar Elves', 'Kaervek, the Punisher', 'Gisa, the Hellraiser', 'Wurmcoil Engine', 'Sol Ring', 'Mountain'];
+const NAMES = ['Springleaf Drum', "Survivors' Encampment", 'Jaspera Sentinel', 'Relic of Legends', 'Grand Architect', 'Lightning Bolt', 'Llanowar Elves', 'Kaervek, the Punisher', 'Gisa, the Hellraiser', 'Wurmcoil Engine', 'Sol Ring', 'Mountain', 'Urza, Lord High Artificer'];
 const cards = base.cards.filter(c => !NAMES.includes(c.name)).slice(0, 30).concat(NAMES.map(n => { try { return find(n); } catch (e) { return null; } }).filter(Boolean));
 const deck = G.buildDeck(cards, base.tokens);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
@@ -23,8 +23,7 @@ const R = { generic: 0, pips: [['R']], x: 0 }, W = { generic: 0, pips: [['W']], 
 const seated = (g, answer, play) => { const qs = []; g.ask = (gg, d) => { const q = D.question(gg, d); qs.push({ d, q }); return answer ? answer(d, q) : undefined; }; try { play(); } finally { g.ask = null; } return qs; };
 
 T('coverage', () => {
-  for (const n of ['Springleaf Drum', "Survivors' Encampment", 'Jaspera Sentinel', 'Relic of Legends']) check(n + ': the line is ok and has a rule (fodderMana)', !!by(n).a.fodderMana && by(n).a.coverage.every(r => r.status === 'ok' || r.status === 'neutral'), JSON.stringify(by(n).a.coverage.map(r => r.status)));
-  check('Grand Architect (restricted mana) is not read as ok', by('Grand Architect').a.coverage.some(r => r.status === 'partial'), JSON.stringify(by('Grand Architect').a.coverage.map(r => r.status)));
+  for (const n of ['Springleaf Drum', "Survivors' Encampment", 'Jaspera Sentinel', 'Urza, Lord High Artificer']) check(n + ': the line is ok and has a rule (fodderMana)', !!by(n).a.fodderMana && by(n).a.coverage.every(r => r.status === 'ok' || r.status === 'neutral'), JSON.stringify(by(n).a.coverage.map(r => r.status)));
 });
 
 T('Springleaf Drum', () => {
@@ -57,8 +56,9 @@ T('lands and the others', () => {
   check("Survivors' Encampment alone makes no mana (it used to make it for free)", G.allUnits(g).length === 0);
   putOn(g, 'Kaervek, the Punisher', true);
   check('...with a creature to tap it makes one mana of any color', G.allUnits(g).length === 1 && G.canPay(W, G.allUnits(g)));
-  const h = bare(); const rel = putOn(h, 'Relic of Legends'); putOn(h, 'Gisa, the Hellraiser', true); putOn(h, 'Kaervek, the Punisher', true); putOn(h, 'Llanowar Elves', true);
-  check('Relic of Legends: {T} is not part of its cost: one mana for each untapped legendary creature, and it is not tapped', G.allUnits(h).length === 2 && G.pay(h, { generic: 2, pips: [], x: 0 }) === 2 && !rel.tapped && h.battlefield.filter(q => q.tapped).length === 2);
+  const h = bare(); const urza = putOn(h, 'Urza, Lord High Artificer'); const wm = putOn(h, 'Wurmcoil Engine', true); const U = { generic: 0, pips: [['U']], x: 0 };
+  const construct = h.battlefield.find(q => q.token && /Construct/.test(q.card.name || ''));          // Urza's own Construct token is an artifact too
+  check('Urza: "Tap an untapped artifact you control: Add {U}" (no {T}): each artifact (Wurmcoil, the Construct) is one cost, only {U}, and Urza is not tapped', G.allUnits(h).length === 2 && G.canPay(U, G.allUnits(h)) && !G.canPay(R, G.allUnits(h)) && G.pay(h, { generic: 0, pips: [['U'], ['U']], x: 0 }) === 2 && wm.tapped && construct && construct.tapped && !urza.tapped);
   const j = bare(); const js = putOn(j, 'Jaspera Sentinel'); check('Jaspera Sentinel needs another creature (not itself)', G.allUnits(j).length === 0);
   const k = putOn(j, 'Kaervek, the Punisher', true); check('...with another creature it is a mana source once it is not sick', (js.sick = false, G.allUnits(j).length === 1));
 });

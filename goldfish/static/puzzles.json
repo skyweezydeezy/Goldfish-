@@ -309,10 +309,9 @@
    "type": "fast",
    "level": "medium",
    "title": "Feed the counterspell",
-   "mechanic": "Baiting a counterspell",
-   "premise": "You are on the play. The opponent is at 40 life with an empty board and holds cards you cannot see, one of them a piece of interaction. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 2.",
+   "mechanic": "Baiting a counterspell and ordering a combo",
+   "premise": "You are on the play. The opponent is at 40 life with an empty board and holds cards you cannot see, one of them a piece of interaction. Your library has only five cards left. Win by the end of your turn 2.",
    "onPlay": true,
-   "combo": true,
    "seed": 13,
    "deadline": 2,
    "me": {
@@ -327,6 +326,14 @@
      "Demonic Consultation",
      "Thassa's Oracle",
      "Blossoming Defense"
+    ],
+    "exactLibrary": true,
+    "library": [
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus"
     ]
    },
    "opp": {
@@ -359,22 +366,52 @@
       "card": "Lotus Petal"
      },
      {
-      "do": "combo"
+      "do": "cast",
+      "card": "Demonic Consultation"
+     },
+     {
+      "do": "cast",
+      "card": "Thassa's Oracle"
      }
     ]
    ],
    "wrong": [
     {
-     "name": "Mana first",
+     "name": "Mana first, no bait",
      "moves": [
       [
        {
         "do": "land",
         "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
        },
        {
         "do": "cast",
         "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Demonic Consultation"
+       },
+       {
+        "do": "cast",
+        "card": "Thassa's Oracle"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Oracle before Consultation",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
        }
       ],
       [
@@ -387,11 +424,139 @@
         "card": "Ornithopter"
        },
        {
-        "do": "combo"
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Thassa's Oracle"
+       },
+       {
+        "do": "cast",
+        "card": "Demonic Consultation"
        }
       ]
      ]
     },
+    {
+     "name": "Consultation first",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Demonic Consultation"
+       },
+       {
+        "do": "cast",
+        "card": "Ornithopter"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Thassa's Oracle"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Count the mana you need on turn 2 and what supplies it. Ask what could happen to the spell that supplies it.",
+    "The opponent has no lands, yet something of theirs can still be cast. Which of your spells can you afford to lose to it, and when?",
+    "Thassa's Oracle looks at the top cards of your library when it enters. What has to be true of your library at that moment, and which card makes it true?"
+   ],
+   "lesson": {
+    "mechanic": "Baiting a counterspell and ordering a combo",
+    "rules": "Thassa's Oracle wins when it enters if the number of cards it looks at (your devotion to blue) is at least the cards left in your library; Demonic Consultation exiles the library, so it has to resolve first. A counterspell answers one spell: an opponent who always counters the first spell it can (as this one does) spends Force of Will, which is free by exiling a blue card and paying 1 life, on a cheap bait if the bait comes first."
+   }
+  },
+  {
+   "id": "fast-4",
+   "type": "fast",
+   "level": "medium",
+   "title": "Nothing left to draw",
+   "mechanic": "Winning by drawing from an empty library",
+   "premise": "You are on the draw. The opponent is at 40 life with an empty board and holds cards you cannot see, one of them a piece of interaction. Your library has only two cards left. Win by the end of your turn 2.",
+   "onPlay": false,
+   "seed": 14,
+   "deadline": 2,
+   "me": {
+    "life": 20,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Island",
+     "Sol Ring",
+     "Lotus Petal",
+     "Jace, Wielder of Mysteries",
+     "Ornithopter",
+     "Blossoming Defense"
+    ],
+    "exactLibrary": true,
+    "library": [
+     "Blightsteel Colossus",
+     "Blightsteel Colossus"
+    ]
+   },
+   "opp": {
+    "life": 40,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Island",
+     "Counterspell"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Island"
+     },
+     {
+      "do": "cast",
+      "card": "Sol Ring"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Island"
+     },
+     {
+      "do": "cast",
+      "card": "Ornithopter"
+     },
+     {
+      "do": "cast",
+      "card": "Lotus Petal"
+     },
+     {
+      "do": "cast",
+      "card": "Jace, Wielder of Mysteries"
+     },
+     {
+      "do": "loyalty",
+      "card": "Jace, Wielder of Mysteries",
+      "i": 0
+     }
+    ]
+   ],
+   "wrong": [
     {
      "name": "No bait",
      "moves": [
@@ -399,119 +564,16 @@
        {
         "do": "land",
         "card": "Island"
-       }
-      ],
-      [
-       {
-        "do": "land",
-        "card": "Swamp"
        },
        {
         "do": "cast",
-        "card": "Lotus Petal"
-       },
-       {
-        "do": "combo"
-       }
-      ]
-     ]
-    }
-   ],
-   "hints": [
-    "You need three mana on turn 2 and you have two lands. Which card in your hand makes the third?",
-    "The opponent kept a blue card and has no lands, yet something of theirs can still be cast. What kind of spell works with no mana?",
-    "A counterspell stops the first spell it can. Which of your spells can you afford to lose, and when should it be cast?"
-   ],
-   "lesson": {
-    "mechanic": "Baiting a counterspell",
-    "rules": "A counterspell answers one spell. If you cast a cheap, unimportant spell first, an opponent who always counters the first spell it can (as the one in this puzzle does) spends it on the bait. Force of Will can be cast for free by exiling another blue card and paying 1 life, so it is live even when the opponent has no lands. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
-   }
-  },
-  {
-   "id": "fast-4",
-   "type": "fast",
-   "level": "medium",
-   "title": "Protect the mana",
-   "mechanic": "Spells that cannot be countered",
-   "premise": "You are on the play. The opponent is at 40 life with an empty board and holds cards you cannot see, one of them a piece of interaction. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 3.",
-   "onPlay": true,
-   "combo": true,
-   "seed": 14,
-   "deadline": 3,
-   "me": {
-    "life": 20,
-    "land": "Island",
-    "lands": 0,
-    "hand": [
-     "Forest",
-     "Island",
-     "Swamp",
-     "Lotus Petal",
-     "Veil of Summer",
-     "Demonic Consultation",
-     "Thassa's Oracle"
-    ]
-   },
-   "opp": {
-    "life": 40,
-    "land": "Island",
-    "lands": 0,
-    "hand": [
-     "Force of Will",
-     "Dig Through Time"
-    ]
-   },
-   "solution": [
-    [
-     {
-      "do": "land",
-      "card": "Forest"
-     }
-    ],
-    [
-     {
-      "do": "land",
-      "card": "Island"
-     }
-    ],
-    [
-     {
-      "do": "land",
-      "card": "Swamp"
-     },
-     {
-      "do": "cast",
-      "card": "Veil of Summer"
-     },
-     {
-      "do": "cast",
-      "card": "Lotus Petal"
-     },
-     {
-      "do": "combo"
-     }
-    ]
-   ],
-   "wrong": [
-    {
-     "name": "Mana first",
-     "moves": [
-      [
-       {
-        "do": "land",
-        "card": "Forest"
+        "card": "Sol Ring"
        }
       ],
       [
        {
         "do": "land",
         "card": "Island"
-       }
-      ],
-      [
-       {
-        "do": "land",
-        "card": "Swamp"
        },
        {
         "do": "cast",
@@ -519,23 +581,19 @@
        },
        {
         "do": "cast",
-        "card": "Veil of Summer"
+        "card": "Jace, Wielder of Mysteries"
        },
        {
-        "do": "combo"
+        "do": "loyalty",
+        "card": "Jace, Wielder of Mysteries",
+        "i": 0
        }
       ]
      ]
     },
     {
-     "name": "No protection",
+     "name": "Jace with no mana",
      "moves": [
-      [
-       {
-        "do": "land",
-        "card": "Forest"
-       }
-      ],
       [
        {
         "do": "land",
@@ -545,38 +603,47 @@
       [
        {
         "do": "land",
-        "card": "Swamp"
+        "card": "Island"
+       },
+       {
+        "do": "cast",
+        "card": "Ornithopter"
        },
        {
         "do": "cast",
         "card": "Lotus Petal"
        },
        {
-        "do": "combo"
+        "do": "cast",
+        "card": "Jace, Wielder of Mysteries"
+       },
+       {
+        "do": "loyalty",
+        "card": "Jace, Wielder of Mysteries",
+        "i": 0
        }
       ]
      ]
     }
    ],
    "hints": [
-    "You have three lands by turn 3 and the combo needs more mana than that. Which spell supplies it, and what can happen to that spell?",
-    "The opponent has a free answer available every turn. When is a spell of yours safe from it?",
-    "One card in your hand says something about countering. Read it, and think about what has to be on the table before the spell it protects."
+    "You have one big spell. Count how much mana it takes and what you must cast on turn 1 to afford it on turn 2.",
+    "You are on the draw, so the opponent has two lands on your turn 2. What does a blue deck do with two open Islands?",
+    "Read Jace's plus ability, and your library. What does the second half of it do when there is nothing left to draw?"
    ],
    "lesson": {
-    "mechanic": "Spells that cannot be countered",
-    "rules": "Veil of Summer says spells you control cannot be countered this turn, but only from the moment it resolves, so it goes first: either it protects the spells after it, or the opponent spends the counterspell on Veil itself. Either way the Lotus Petal that pays for the combo resolves. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
+    "mechanic": "Winning by drawing from an empty library",
+    "rules": "Jace, Wielder of Mysteries says that if you would draw a card while your library has no cards, you win instead. Its +1 mills two cards and then draws one, so with two or fewer cards left in your library it empties the library and the draw wins. Being on the draw gives the opponent an extra land by your turn 2, which turns on a Counterspell, so the Ornithopter goes first as bait."
    }
   },
   {
    "id": "fast-5",
    "type": "fast",
    "level": "hard",
-   "title": "Two counters, two baits",
-   "mechanic": "Baiting more than one answer",
-   "premise": "You are on the draw. The opponent is at 40 life with an empty board and five cards you cannot see. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 2.",
-   "onPlay": false,
-   "combo": true,
+   "title": "Draw from nothing",
+   "mechanic": "Replacement effects and the order of the pieces",
+   "premise": "You are on the play. The opponent is at 40 life with an empty board and five cards you cannot see. Your library has only seven cards left. Win by the end of your turn 2.",
+   "onPlay": true,
    "seed": 15,
    "deadline": 2,
    "me": {
@@ -584,151 +651,23 @@
     "land": "Island",
     "lands": 0,
     "hand": [
-     "Island",
      "Swamp",
+     "Island",
+     "Sol Ring",
      "Lotus Petal",
-     "Ornithopter",
-     "Chrome Mox",
+     "Laboratory Maniac",
      "Demonic Consultation",
-     "Thassa's Oracle"
-    ]
-   },
-   "opp": {
-    "life": 40,
-    "land": "Island",
-    "lands": 0,
-    "hand": [
-     "Island",
-     "Island",
-     "Force of Will",
-     "Counterspell",
-     "Dig Through Time"
-    ]
-   },
-   "solution": [
-    [
-     {
-      "do": "land",
-      "card": "Island"
-     }
+     "Brainstorm"
     ],
-    [
-     {
-      "do": "land",
-      "card": "Swamp"
-     },
-     {
-      "do": "cast",
-      "card": "Ornithopter"
-     },
-     {
-      "do": "cast",
-      "card": "Chrome Mox"
-     },
-     {
-      "do": "cast",
-      "card": "Lotus Petal"
-     },
-     {
-      "do": "combo"
-     }
-    ]
-   ],
-   "wrong": [
-    {
-     "name": "One bait only",
-     "moves": [
-      [
-       {
-        "do": "land",
-        "card": "Island"
-       }
-      ],
-      [
-       {
-        "do": "land",
-        "card": "Swamp"
-       },
-       {
-        "do": "cast",
-        "card": "Ornithopter"
-       },
-       {
-        "do": "cast",
-        "card": "Lotus Petal"
-       },
-       {
-        "do": "combo"
-       }
-      ]
-     ]
-    },
-    {
-     "name": "Mana first",
-     "moves": [
-      [
-       {
-        "do": "land",
-        "card": "Island"
-       }
-      ],
-      [
-       {
-        "do": "land",
-        "card": "Swamp"
-       },
-       {
-        "do": "cast",
-        "card": "Lotus Petal"
-       },
-       {
-        "do": "cast",
-        "card": "Ornithopter"
-       },
-       {
-        "do": "cast",
-        "card": "Chrome Mox"
-       },
-       {
-        "do": "combo"
-       }
-      ]
-     ]
-    }
-   ],
-   "hints": [
-    "The opponent has five cards and will have two lands on your turn 2. Count the answers it could have, not only the first one.",
-    "A free answer works from the start; a mana answer needs lands. Do your baits have to be the same card?",
-    "You hold two spells that cost nothing and do nothing for the combo. How many of them does it take?"
-   ],
-   "lesson": {
-    "mechanic": "Baiting more than one answer",
-    "rules": "When the opponent has several answers, count them and make each one trade with something less important. A free counter like Force of Will is live from the start, while a Counterspell needs two untapped Islands, which the opponent has by your second turn. Keep spells that do not matter for exactly this. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
-   }
-  },
-  {
-   "id": "fast-6",
-   "type": "fast",
-   "level": "hard",
-   "title": "Beat their mana",
-   "mechanic": "Counting the opponent's mana",
-   "premise": "You are on the draw. The opponent is at 40 life with an empty board and five cards you cannot see. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 2.",
-   "onPlay": false,
-   "combo": true,
-   "seed": 16,
-   "deadline": 2,
-   "me": {
-    "life": 20,
-    "land": "Island",
-    "lands": 0,
-    "hand": [
-     "Island",
-     "Swamp",
-     "Lotus Petal",
-     "Ornithopter",
-     "Demonic Consultation",
-     "Thassa's Oracle",
-     "Blossoming Defense"
+    "exactLibrary": true,
+    "library": [
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus",
+     "Blightsteel Colossus"
     ]
    },
    "opp": {
@@ -747,11 +686,200 @@
     [
      {
       "do": "land",
+      "card": "Swamp"
+     },
+     {
+      "do": "cast",
+      "card": "Sol Ring"
+     }
+    ],
+    [
+     {
+      "do": "land",
       "card": "Island"
      },
      {
       "do": "cast",
+      "card": "Demonic Consultation"
+     },
+     {
+      "do": "cast",
+      "card": "Laboratory Maniac"
+     },
+     {
+      "do": "cast",
       "card": "Lotus Petal"
+     },
+     {
+      "do": "cast",
+      "card": "Brainstorm"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Draw before the Maniac",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Brainstorm"
+       },
+       {
+        "do": "cast",
+        "card": "Demonic Consultation"
+       },
+       {
+        "do": "cast",
+        "card": "Laboratory Maniac"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Draw before the Consultation",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       },
+       {
+        "do": "cast",
+        "card": "Laboratory Maniac"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Brainstorm"
+       },
+       {
+        "do": "cast",
+        "card": "Demonic Consultation"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "The Maniac on turn 1",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
+       },
+       {
+        "do": "cast",
+        "card": "Demonic Consultation"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Brainstorm"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Count the mana the three spells and the rock cost, and what has to be on the table on turn 2 for that mana to exist.",
+    "The opponent has two lands only on your second turn at best. What does that tell you about when your spells are safe?",
+    "Some of your cards must already be in play before the last one is cast. Which card changes what a draw does, and what has to have happened to your library before it?"
+   ],
+   "lesson": {
+    "mechanic": "Replacement effects and the order of the pieces",
+    "rules": "Laboratory Maniac says that if you would draw while your library is empty you win instead: a replacement effect, so it only works on draws that happen while the Maniac is on the battlefield and the library is already empty. Demonic Consultation empties the library first, the Maniac comes down second, and the draw (Brainstorm) comes last; in any other order the draw happens too early and nothing is replaced. You also win before the opponent has two lands for its counterspells."
+   }
+  },
+  {
+   "id": "fast-6",
+   "type": "fast",
+   "level": "hard",
+   "title": "The loop",
+   "mechanic": "Triggers and their order",
+   "premise": "You are on the play. The opponent is at 40 life with an empty board and five cards you cannot see. Win by the end of your turn 3.",
+   "onPlay": true,
+   "seed": 16,
+   "deadline": 3,
+   "me": {
+    "life": 20,
+    "land": "Swamp",
+    "lands": 0,
+    "hand": [
+     "Swamp",
+     "Swamp",
+     "Sol Ring",
+     "Dark Ritual",
+     "Vito, Thorn of the Dusk Rose",
+     "Bloodthirsty Conqueror",
+     "Cauldron Familiar"
+    ]
+   },
+   "opp": {
+    "life": 40,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Island",
+     "Brainstorm",
+     "Ponder",
+     "Dig Through Time"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Swamp"
+     },
+     {
+      "do": "cast",
+      "card": "Sol Ring"
      }
     ],
     [
@@ -760,18 +888,37 @@
       "card": "Swamp"
      },
      {
-      "do": "combo"
+      "do": "cast",
+      "card": "Vito, Thorn of the Dusk Rose"
+     }
+    ],
+    [
+     {
+      "do": "cast",
+      "card": "Dark Ritual"
+     },
+     {
+      "do": "cast",
+      "card": "Bloodthirsty Conqueror"
+     },
+     {
+      "do": "cast",
+      "card": "Cauldron Familiar"
      }
     ]
    ],
    "wrong": [
     {
-     "name": "Everything on turn 2",
+     "name": "The spark first",
      "moves": [
       [
        {
         "do": "land",
-        "card": "Island"
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
        }
       ],
       [
@@ -781,17 +928,38 @@
        },
        {
         "do": "cast",
-        "card": "Lotus Petal"
+        "card": "Cauldron Familiar"
+       }
+      ],
+      [
+       {
+        "do": "cast",
+        "card": "Dark Ritual"
        },
        {
-        "do": "combo"
+        "do": "cast",
+        "card": "Vito, Thorn of the Dusk Rose"
+       },
+       {
+        "do": "cast",
+        "card": "Bloodthirsty Conqueror"
        }
       ]
      ]
     },
     {
-     "name": "The wrong land first",
+     "name": "Everything on the last turn",
      "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
+       }
+      ],
       [
        {
         "do": "land",
@@ -800,28 +968,33 @@
       ],
       [
        {
-        "do": "land",
-        "card": "Island"
+        "do": "cast",
+        "card": "Dark Ritual"
        },
        {
         "do": "cast",
-        "card": "Lotus Petal"
+        "card": "Vito, Thorn of the Dusk Rose"
        },
        {
-        "do": "combo"
+        "do": "cast",
+        "card": "Bloodthirsty Conqueror"
+       },
+       {
+        "do": "cast",
+        "card": "Cauldron Familiar"
        }
       ]
      ]
     }
    ],
    "hints": [
-    "Both of their counterspells need blue mana. Count how much blue mana the opponent can have on each of your turns.",
-    "The opponent is on the play, so it has played one land when your first turn starts. What does that land let it cast?",
-    "A card you cast when the opponent cannot answer it does not need a bait. Which card is that?"
+    "Forty life is a lot. Which of your cards do something every time life changes, and which one makes life change?",
+    "A trigger only sees events that happen while its permanent is on the battlefield. Which of your cards is the event, and which are the watchers?",
+    "Count your mana for each turn. What does Dark Ritual let you do on the last one, and what did you have to do earlier to afford it?"
    ],
    "lesson": {
-    "mechanic": "Counting the opponent's mana",
-    "rules": "Counterspell and Mana Drain each cost two blue mana, and the opponent only has one land on your first turn, so a spell cast then cannot be countered by either. Counting their mana tells you when their answers are live: here, the mana rock goes down on turn 1, and turn 2 is only the combo. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
+    "mechanic": "Triggers and their order",
+    "rules": "Vito, Thorn of the Dusk Rose makes the opponent lose life whenever you gain life, and Bloodthirsty Conqueror gains you life whenever an opponent loses life, so each feeds the other without end; Cauldron Familiar's enter trigger is the spark. A trigger only sees events that happen while its permanent is on the battlefield, so the spark comes last, after both watchers. Dark Ritual's mana has to be spent in the same phase."
    }
   },
   {

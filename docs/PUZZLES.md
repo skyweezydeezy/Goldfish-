@@ -26,10 +26,10 @@ A wrong play plays out. The game ends when the deadline turn is over, when you a
 |---|---|---|---|---|
 | fast-1 | fast / easy | Rocks before the dragon | mana sequencing | Sol Ring, Chrome Mox (imprint the right card), Goldspan Dragon's Treasure for a Bolt after combat |
 | fast-2 | fast / easy | Dorks and colours | summoning sickness, coloured mana | Llanowar Elves, Elvish Mystic, Goldspan Dragon |
-| fast-3 | fast / medium | Feed the counterspell | baiting a counterspell | Demonic Consultation + Thassa's Oracle (opponent at 40), hidden Force of Will, Ornithopter as the bait |
-| fast-4 | fast / medium | Protect the mana | spells that cannot be countered | the Oracle combo, hidden Force of Will, Veil of Summer before the Lotus Petal |
-| fast-5 | fast / hard | Two counters, two baits | baiting more than one answer | on the draw, hidden Force of Will + Counterspell, Ornithopter and Chrome Mox as baits |
-| fast-6 | fast / hard | Beat their mana | counting the opponent's mana | on the draw, hidden Counterspell + Mana Drain: the Lotus Petal goes down on turn 1, before they have two lands |
+| fast-3 | fast / medium | Feed the counterspell | baiting a counterspell, ordering a combo | Demonic Consultation then Thassa's Oracle (library of 5), hidden Force of Will, Ornithopter as the bait |
+| fast-4 | fast / medium | Nothing left to draw | winning by drawing from an empty library | Jace, Wielder of Mysteries +1 with 2 cards left, on the draw, hidden Counterspell, Ornithopter as the bait |
+| fast-5 | fast / hard | Draw from nothing | replacement effects, order of the pieces | Demonic Consultation, then Laboratory Maniac, then Brainstorm (library of 7), hidden hand with Counterspell and Mana Drain |
+| fast-6 | fast / hard | The loop | triggers and their order | Vito + Bloodthirsty Conqueror, then Cauldron Familiar as the spark; Sol Ring and Dark Ritual for the mana |
 | end-1 | endgame / easy | Through the deathtouch | trample and deathtouch | Wurmcoil Engine, Kenrith's {R}: trample |
 | end-2 | endgame / easy | Dragons in pairs | double strike | Atarka, World Render, hasty Goldspan Dragon |
 | end-3 | endgame / medium | Pump the hydra | spell order against a counterspell | Kalonian Hydra, Berserk, hidden Counterspell |
@@ -37,7 +37,7 @@ A wrong play plays out. The game ends when the deadline turn is over, when you a
 | end-5 | endgame / hard | Count their counters | baiting two counterspells with limited mana | four mana, two cheap baits, Berserk |
 | end-6 | endgame / hard | On the stack | responding on the stack | Berserk on the stack, Vines of Vastwood and Blossoming Defense against two removal spells |
 
-**Opponent life (user's "mix both", 2026-11-26):** the easy fast wins keep a low starting life (7 and 4, shown on screen). The medium and hard fast wins start the opponent at 40 and win by the Thassa's Oracle combo (the **Go off** button: the autopilot plays the main phase and the combo; its finish is one step the opponent cannot answer, so the puzzle is in what you cast before it). Endgames are unchanged.
+**Opponent life (user's "mix both", 2026-11-26):** the easy fast wins keep a low starting life (7 and 4, shown on screen); the medium and hard fast wins start the opponent at 40 and end four different ways (T-117). **There is no Go off button**: the person casts every piece, so the order of the pieces is part of the puzzle, and wrong orders are among the wrong lines the tests prove lose. The small libraries (5, 2, 7 cards, `exactLibrary` in the data) are stated in each premise: the engine names the card for Demonic Consultation itself, so the library has to be small for it to empty it. Endgames are unchanged.
 
 Every card is `full` in the engine's coverage (the test checks it) and almost all come from the built-in decks.
 

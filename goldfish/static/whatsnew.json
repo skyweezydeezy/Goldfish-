@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 216,
+      "lines": [
+        "Puzzles: the Medium and Hard fast wins now end four different ways (Thassa's Oracle, Jace, Laboratory Maniac, a Vito drain), and you cast every piece yourself; the order matters."
+      ]
+    },
+    {
       "v": 215,
       "lines": [
         "New deck: Winota (Winota, Joiner of Forces), Bracket 4.",

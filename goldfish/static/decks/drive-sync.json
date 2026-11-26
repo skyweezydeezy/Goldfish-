@@ -456,7 +456,9 @@
    "bracket": 3,
    "id": "1qFQyBZONZCI4xHI9wqF92uVLkhHmHmQG",
    "modifiedTime": "2026-11-26T13:08:59.639Z",
-   "importedAt": "2026-11-26T16:09:56.099Z"
+   "importedAt": "2026-11-26T16:09:56.099Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-26"
   },
   "Landslide Victory [B4] (Bumi, Unleashed).txt": {
    "deck": "landslide-victory.txt",

@@ -251,7 +251,19 @@
    ],
    "colors": "WRG",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "checkedMedian": 8,
+   "by5": 0.7,
+   "by7": 27.8,
+   "earliestKill": 4,
+   "by2": 0,
+   "by3": 0,
+   "by4": 0,
+   "medianKill": 8,
+   "fieldWin": 37.5,
+   "floor": 3,
+   "speedBracket": 2,
+   "checkedAt": "2026-11-26"
   },
   {
    "file": "nights-curfew.txt",

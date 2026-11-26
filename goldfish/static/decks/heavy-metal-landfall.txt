@@ -1,5 +1,6 @@
 // Heavy Metal Landfall (Toph, the First Metalbender)
 // Bracket 3
+// Checked by ICEYfish (v211, 20,000 games): median kill T8, 0.7% by T5, 27.8% by T7; fastest T4: 0% by T2, 0% by T3, 0% by T4; field win 37.5%; 3 Game Changers; B3 confirmed
 // COMMANDER
 1 Toph, the First Metalbender
 // MAINBOARD

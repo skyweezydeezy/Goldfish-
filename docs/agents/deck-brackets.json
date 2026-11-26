@@ -1438,6 +1438,81 @@
    "reason": "speed says B2 (median kill T8); card rules say at least B4 (3 Game Changers (B1-B2 allow none); mass land denial: Vorinclex, Voice of Hunger; 2 cheap two-card infinite combos (e.g. Heliod, Sun-Crowned + Walking Ballista, 3 mana))"
   },
   {
+   "file": "heavy-metal-landfall.txt",
+   "name": "Heavy Metal Landfall (Toph, the First Metalbender)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by2": 0,
+    "by3": 0,
+    "by4": 0,
+    "by5": 0.7,
+    "by6": 6.9,
+    "by7": 27.8,
+    "by8": 60.9,
+    "byT": 94.8,
+    "earliestKill": 4,
+    "killHist": [
+     0,
+     0,
+     0,
+     0.04,
+     0.665,
+     6.23,
+     20.83,
+     33.165,
+     23.91,
+     9.965,
+     5.195
+    ],
+    "cmdrMedian": 4,
+    "mana4": 5.25,
+    "winBy": {
+     "damage": 93.4,
+     "commander": 1.1,
+     "combo": 0.3
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Ashaya, Soul of the Wild + Goblin Bombardment + Toph, the Blind Bandit (Commander Spellbook): infinite creature ltb; infinite creature etb",
+     "share": 0.0024,
+     "avgTurn": 7.5
+    }
+   },
+   "field": {
+    "games": 20043,
+    "wins": 7525,
+    "losses": 12485,
+    "none": 33,
+    "errors": 0,
+    "winRate": 37.5,
+    "opponents": "51 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Ancient Tomb",
+     "Field of the Dead"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none))",
+   "version": 211,
+   "date": "2026-11-26"
+  },
+  {
    "file": "ice-age-engine.txt",
    "name": "Ice Age Engine (Urza, Lord High Artificer)",
    "stated": 4,
@@ -4046,6 +4121,19 @@
    "matchTurns": 25,
    "seed": 20261123,
    "seconds": 79,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "heavy-metal-landfall.txt"
+   ],
+   "version": 211,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 393,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 380,
    "jobs": 4
   }
  ]

@@ -9,6 +9,7 @@ const A = fx('zul-ashur'), B = fx('death-tax'), C = fx('mermaids'), D = fx('soul
 const O = { turns: 12, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
 (async () => {
   const b = await chromium.launch(), ctx = await b.newContext({ serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   // before the page's scripts: a Worker whose k-th instance (in creation order) fails as modes[k] says: 'error' (an error event on its first message) or 'silent' (it swallows its parts)
   await ctx.addInitScript(() => {
     const Real = window.Worker; window.__modes = []; window.__made = 0;

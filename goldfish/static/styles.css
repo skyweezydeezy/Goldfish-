@@ -1480,3 +1480,4 @@ body[data-view=table]:not(.tfocus) .topbar .fs-btn { display: none; }     /* the
 }
 /* a long question in your panel (blocks: one menu per attacker) scrolls inside the panel, and its buttons stay in view at the bottom of it */
 body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child { position: sticky; bottom: 0; z-index: 3; background: rgba(4, 12, 20, .94); padding: 4px 0 2px; margin-bottom: 0; }
+.mana-warn { color: #b45309; font-size: 12px; font-weight: 600; margin-left: 6px; white-space: nowrap; }          /* T-099: floating mana that the end of the turn empties */

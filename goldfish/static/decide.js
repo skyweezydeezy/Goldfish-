@@ -184,7 +184,7 @@
     const src = srcOf(d, g), sn = src ? src.name : null, owner = p => (m && m.players ? m.players.find(x => x.battlefield.includes(p)) : null) || g;
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
-      const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
+      const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o), smart: !!(d.smart && d.smart.includes(o)) };
       if (d.kind === 'pay') {                                                                             // T-089: one (source, role) pair of a payment
         const u = d.units[o.u], same = d.units.filter((x, i) => i < o.u && x.src === u.src && x.src).length, sn2 = u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating mana' : 'Mana');
         item.name = sn2 + (same ? ' #' + (same + 1) : '') + ' → ' + (o.role === 'generic' ? 'generic' : (G.COLOR_NAME[o.role] || (o.role === 'C' ? 'colorless' : o.role))); item.iid = u.src && u.src.iid != null ? u.src.iid : null; item.card = u.src && u.src.card ? u.src.card : null;
@@ -335,10 +335,13 @@
     } else if (d.kind === 'pay') {                                                                        // T-089: pay a cost with the sources you choose
       const c = d.cost, sym = x => (/^[WUBRGC]$/.test(x) ? x : '?'), ctext = (c.generic ? '{' + c.generic + '}' : '') + c.pips.map(p => '{' + p.map(sym).join('/') + '}').join('');
       q.title = `${sn ? sn + ': pay ' : 'Pay '}${ctext || 'nothing'}`;
-      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is what the autopilot would tap.';
+      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is the payment that wastes no mana.';
       if (src && src.type_line) { q.spell = src; q.spellNote = 'being paid for'; }
       q.pay = { cost: { generic: c.generic, pips: c.pips.map(p => p.slice()) }, n: c.generic + c.pips.length, text: ctext, units: d.units.map((u, i) => ({ u: i, name: u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating' : 'Mana'), card: u.src && u.src.card ? u.src.card : null, colors: [...u.colors].filter(x => d.options.some(o => o.u === i && o.role === x)), side: d.side(u), floating: !!u.floating, used: d.options.some(o => o.u === i) })).filter(x => x.used),
         // sel: [{ u, force }]: the option numbers of a payment that pays exactly, or null
+        smart: d.smart ? d.smart.map(o => d.options.indexOf(o)).filter(k => k >= 0) : null,
+        // T-099: what a selection (unit numbers) leaves floating: [{ name, made, left }]
+        waste: sel => G.payWaste(d.units, new Set(sel)).map(w => ({ name: w.name, made: w.made, left: w.left })),
         solve: sel => { const roles = G.payAssign(d.cost, d.units, sel.map(x => ({ i: x.u, force: x.force || null }))); if (!roles) return null; const ks = sel.map((x, j) => d.options.findIndex(o => o.u === x.u && o.role === roles[j])); return ks.some(k => k < 0) ? null : ks.sort((x, y) => x - y); } };
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
@@ -368,6 +371,7 @@
   function take(d, q, a, c) {
     if (!a || a.sig !== q.sig) { c.mismatch = (c.mismatch || 0) + 1; return d.def; }          // not the question that was answered: the autopilot's pick
     if (a.pick === 'auto' || a.pick == null) return d.def;
+    if (a.pick === 'smart') return d.smart || d.def;          // T-099: a person's "Pay automatically": the payment that wastes no mana
     if (q.multi) {
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
       if (!(ks.length >= q.min && ks.length <= q.max)) return d.def;

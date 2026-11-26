@@ -12,6 +12,7 @@ const URL0 = 'http://127.0.0.1:8800/';
   const b = await chromium.launch();
   const fresh = async () => {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block', acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write'] });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { try { if (!localStorage.getItem('isf_sound')) localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); } catch (e) {} });
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], not_found: [] }) }));          // card data is not needed here
     return ctx;
@@ -72,6 +73,7 @@ const URL0 = 'http://127.0.0.1:8800/';
 
   // ---- "Save every deck I load": a pasted list is saved when it loads (real card data), once; built-in decks are not; off means off
   { const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { try { if (!localStorage.getItem('isf_sound')) localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); } catch (e) {} });
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const q = route.request(), c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

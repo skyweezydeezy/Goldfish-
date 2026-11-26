@@ -175,7 +175,7 @@
     };
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
     if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
-    if (d.payChoose) $('#dispPayChoose').checked = true;
+    $('#dispPayChoose').checked = d.payChoose !== false;          // T-099: on unless the person switched it off
     apply();
     for (const id of ['#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
       apply();
@@ -1212,7 +1212,9 @@
     return Promise.resolve();
   }
   async function nextTurn() {
-    const g = S.game; snap();
+    const g = S.game;
+    { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; }          // T-099
+    snap();
     if (!g.turnDone) { await doCombat(true); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
@@ -1952,6 +1954,8 @@
       g2.appendChild(pip); mp.appendChild(g2);
     });
     if (!units.length && !inf) mp.innerHTML = '<span class="hint">none</span>';
+    { const fl = G.floatingLoss(g);          // T-099: floating mana is shown, and the warning says what the end of the turn empties
+      if (fl.n && !inf) { const w = h('span', 'mana-warn', `⚠ ${fl.n} floating`); w.title = `${fl.n} mana ${fl.n === 1 ? 'is' : 'are'} floating and will be lost at ${fl.when}. Spend ${fl.n === 1 ? 'it' : 'them'} on a spell or ability first.`; w.setAttribute('role', 'status'); mp.appendChild(w); } }
 
     if (first) return;
     const dur = ($('#tFast').checked ? 200 : 420) * slow();

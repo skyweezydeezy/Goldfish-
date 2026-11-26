@@ -4985,6 +4985,51 @@
   const payKey = (u, role) => (u.src && u.src.card ? u.src.card.name : u.floating ? 'floating' : '?') + '|' + [...u.colors].sort().join('') + '|' + role;
   // The payments a person can make: every (source, role) pair that can help. Gives { options, defOpts, ask } where ask says whether
   // there is more than one payment that is really different (otherwise nothing is asked, the payment is forced).
+  // T-099: mana left over by a payment. Every unit of a source that is not paid with floats (a Sol Ring makes {C}{C}; a {1} cost leaves one). Gives
+  // [{ src, name, made, left }] for the sources that would leave some. `used` is the set of unit indices the payment takes.
+  function payWaste(units, used) {
+    const by = new Map(), out = [];
+    units.forEach((u, i) => { if (!u.src || u.floating || u.druid) return; const e = by.get(u.src) || { src: u.src, name: u.src.card ? u.src.card.name : 'Mana', made: 0, taken: 0 }; e.made++; if (used.has(i)) e.taken++; by.set(u.src, e); });
+    for (const e of by.values()) if (e.taken > 0 && e.taken < e.made) out.push({ src: e.src, name: e.name, made: e.made, left: e.made - e.taken });
+    return out;
+  }
+  // T-099: the payment a PERSON starts from ("Pay automatically"). It wastes no mana when a payment that wastes none exists: a source that makes two is not tapped for
+  // one, floating mana is spent before a land is tapped, and a colour a pip needs is left for that pip. Then fewest side effects (damage, sacrifice), then fewest
+  // sources tapped, then the least flexible sources (so the flexible ones stay untapped). Only for a seated person: the autopilot's own payment (canPay) is
+  // untouched, and a person who answers 'auto' still gets the autopilot's. Hill climb by one swap and two swaps from the autopilot's payment (deterministic).
+  function paySmart(g, cost, units, idx) {
+    const total = idx.length, n = units.length;
+    if (!total || total >= n || n > 40) return idx;
+    const ok = S => !!payAssign(cost, units, S.map(i => ({ i, force: null })));
+    const side = new Map(), sideOf = u => { if (u.floating || !u.src) return 0; let v = side.get(u.src); if (v === undefined) side.set(u.src, v = paySide(g, u).length); return v; };
+    const score = S => {
+      const used = new Set(S), srcs = new Set();
+      let waste = 0, fl = 0, sd = 0, fx = 0;
+      units.forEach((u, i) => { if (u.floating && !used.has(i)) fl++; });
+      for (const i of S) { const u = units[i]; fx += u.colors.size + (u.src && u.src.sacMana ? 10 : 0) + (u.led ? 20 : 0); if (!u.floating && u.src && !srcs.has(u.src)) { srcs.add(u.src); sd += sideOf(u); } }
+      for (const w of payWaste(units, used)) waste += w.left;
+      return [waste, fl, sd, srcs.size, fx];
+    };
+    const better = (a, b) => { for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) return a[k] < b[k]; return false; };
+    let cur = idx.slice().sort((x, y) => x - y), best = score(cur), budget = 4000;
+    for (let round = 0; round < 12; round++) {
+      let move = null, ms = best;
+      const inS = new Set(cur), out = []; for (let i = 0; i < n; i++) if (!inS.has(i)) out.push(i);
+      for (const a of cur) for (const b of out) {                               // one swap
+        if (budget-- <= 0) break;
+        const T = cur.filter(x => x !== a).concat(b); if (!ok(T)) continue;
+        const sc = score(T); if (better(sc, ms)) { ms = sc; move = T; }
+      }
+      if (!move && budget > 0) for (let x = 0; x < cur.length; x++) for (let y = x + 1; y < cur.length; y++) for (let p = 0; p < out.length; p++) for (let q = p + 1; q < out.length; q++) {          // two swaps
+        if (budget-- <= 0) break;
+        const T = cur.filter((v, k) => k !== x && k !== y).concat(out[p], out[q]); if (!ok(T)) continue;
+        const sc = score(T); if (better(sc, ms)) { ms = sc; move = T; }
+      }
+      if (!move) break;
+      cur = move.slice().sort((x, y) => x - y); best = ms;
+    }
+    return cur;
+  }
   function payPick(g, cost, units, idx) {
     const total = cost.generic + cost.pips.length;
     if (!total) return idx;
@@ -5006,10 +5051,20 @@
     if (found.size < 2 && budget > 0) return idx;
     const defOpts = idx.map((i, k) => options.find(o => o.u === i && o.role === defRoles[k])).filter(Boolean);
     if (defOpts.length !== idx.length) return idx;
+    let smartOpts = defOpts;          // T-099: the person's own starting payment
+    { const si = paySmart(g, cost, units, idx), sr = payAssign(cost, units, si.map(i => ({ i, force: null })));
+      const so = sr ? si.map((i, k) => options.find(o => o.u === i && o.role === sr[k])).filter(Boolean) : []; if (so.length === si.length) smartOpts = so; }
     const valid = list => Array.isArray(list) && list.length === total && new Set(list.map(o => o.u)).size === total && list.every(o => options.includes(o)) && !!payAssign(cost, units, list.map(o => ({ i: o.u, force: o.role })));
-    const src = g._payFor && g._payFor.abilityOf || g._casting || null;
-    const got = decide(g, { kind: 'pay', multi: true, pick: total, options, def: defOpts, cost, units, valid, side: u => paySide(g, u), source: src });
+    const src = g._taxFor || g._payFor && g._payFor.abilityOf || g._casting || null;          // T-099: a tax is titled after the card that taxes
+    const got = decide(g, { kind: 'pay', multi: true, pick: total, options, def: defOpts, smart: smartOpts, cost, units, valid, side: u => paySide(g, u), source: src });
     return valid(got) ? got.map(o => o.u).sort((x, y) => x - y) : idx;
+  }
+  // T-099: the mana in the pool that empties when the turn ends (the engine keeps it for the whole turn: CR 106.4 empties it at the end of each step, so this is the
+  // most that can be lost). { n, colors: { W: 1, C: 2 } }
+  function floatingLoss(g) {
+    const colors = {}; let n = 0;
+    for (const u of (g.floating || [])) { n++; const cs = [...u.colors]; const k = cs.length > 1 ? 'any' : cs[0]; colors[k] = (colors[k] || 0) + 1; }
+    return { n, colors, when: 'the end of the turn' };          // `when`: what empties the pool (the rules engine will say 'the end of the step' once mana empties each step)
   }
   function pay(g, cost) {
     if (cost && cost.phy && cost.phy.length) {          // an ability cost with Phyrexian mana (Birthing Pod): paid by the same rule as a spell's
@@ -14181,7 +14236,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     const dflt = taxSpare(g, n) ? 'pay' : 'allow';          // T-092: the autopilot (and a person on defaults) pays only with SPARE mana
     if (g.ask && !g.dry) { if (decide(g, { kind: 'tax', options: ['pay', 'allow'], def: dflt, cost: n, then, why, owner: owner || g.opp, source: q }) !== 'pay') return false; }
     else if (dflt !== 'pay') return false;
-    pay(g, c); return true;
+    g._taxFor = q || null; try { pay(g, c); } finally { g._taxFor = null; }
+    return true;
   }
   // T-092: is {n} spare, i.e. is the mana left after paying it still enough for what the payer's best plan needs? On its own turn the plan is the most mana it can
   // spend on spells in hand it could cast now (most expensive first); on another player's turn it is the same over its instant-speed / flash cards (free ones cost 0).
@@ -14703,7 +14759,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function hyperAtLeast(N, K, n, k) { let p = 0; for (let i = k; i <= Math.min(n, K); i++) p += hyperPmf(N, K, n, i); return Math.min(1, p); }
 
   const api = {
-    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign,
+    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign, payWaste, floatingLoss,
     traceCoverage: on => { TRACING = !!on; }, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,

@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 192,
+      "lines": [
+        "Isochron Scepter: the Vitalize combo with creatures that untap the Scepter now works, and split cards like Fire // Ice can't go under it (their mana value is the total).",
+        "Transmute fetches the missing combo piece, can find lands (Tolaria West), only works when you could cast a sorcery, and is used instead of casting the card when that gets to a combo sooner. All 14 transmute cards are in."
+      ]
+    },
+    {
       "v": 191,
       "lines": [
         "Table fixes: 540-px-high sideways screens get the side-by-side table, Confirm blocks stays in view on short screens, and crowded Pod opponents no longer run off the edge."

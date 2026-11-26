@@ -161,11 +161,11 @@
 .vs-t { color: var(--muted); margin-right: 4px; }
 
 /* ---------- tablets and phones ---------- */
-@media (max-width: 900px) {
+@media (max-width: 900px) , (horizontal-viewport-segments: 2) {
   .vs-arena.pod .vs-opps .vs-seat { --vc: clamp(28px, 4.4vw, 44px); padding: 5px 6px; }
   .vs-plbl .lw { display: none; } .vs-plbl .ls { display: inline; }
 }
-@media (max-width: 600px) {
+@media (max-width: 600px) , (horizontal-viewport-segments: 2) {
   .vs-arena { --vc: clamp(36px, 11.2vw, 52px); --hc: clamp(56px, 17.5vw, 82px); --pc: 30px; padding: 6px; gap: 6px; }
   .vs-arena.pod .vs-opps { grid-template-columns: minmax(0, 1fr); }
   .vs-arena.pod .vs-opps .vs-seat { --vc: 36px; --pc: 26px; }
@@ -186,8 +186,8 @@
   .vs-blocks { grid-template-columns: minmax(0, 1fr); }
 }
 
-@media (max-width: 600px) { .vs-mid { padding-bottom: 0; border-bottom: 4px solid transparent; } }   /* clip exactly at two lines: no sliver of a third */
-@media (max-width: 600px) { .vs-set { display: none; } .vs-plate { padding-left: 8px; } }
+@media (max-width: 600px), (horizontal-viewport-segments: 2) { .vs-mid { padding-bottom: 0; border-bottom: 4px solid transparent; } }   /* clip exactly at two lines: no sliver of a third */
+@media (max-width: 600px), (horizontal-viewport-segments: 2) { .vs-set { display: none; } .vs-plate { padding-left: 8px; } }
 /* text that sits straight on a playmat stays readable */
 .vs-plbl, .vs-none { text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,.8); }
 .vs-none { color: rgba(238,247,253,.55); }
@@ -212,7 +212,7 @@
 .vs-foot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .vs-stack { min-width: calc(var(--vc) * .16); }   /* a crowded row squeezes its cards together rather than pushing any out of sight */
 @media (min-width: 1000px) { .vs-top > .vs-bar { flex-wrap: nowrap; white-space: nowrap; } }
-@media (max-width: 600px) {
+@media (max-width: 600px) , (horizontal-viewport-segments: 2) {
   .vs-game .vs-bar { margin-bottom: 0; }
   .vs-game .wide { display: none; }
   .vs-top { gap: 5px 8px; }
@@ -251,7 +251,7 @@
     .vs-foot > .vs-hand { flex: 1 1 0; }
   }
   /* a pod on a tablet or phone: the three opponents side by side, each with a strip of small piles under their cards */
-  @media (max-width: 1000px) {
+  @media (max-width: 1000px) , (horizontal-viewport-segments: 2) {
     .vs-arena.pod .vs-opps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
     .vs-arena.pod .vs-opps .vs-seat { padding: 4px 5px; gap: 4px; }
     .vs-arena.pod .vs-opps .vs-board { display: flex; flex-direction: column; gap: 4px; }
@@ -271,7 +271,7 @@
     .vs-arena.pod .vs-opps .vs-row { padding-left: 3px; padding-right: 3px; gap: 3px; }
     .vs-arena.pod .vs-opps .vs-none { font-size: 10px; padding: 0 2px; }
   }
-  @media (max-width: 600px) {
+  @media (max-width: 600px) , (horizontal-viewport-segments: 2) {
     .vs-screen { gap: 5px; height: calc(100dvh - var(--topbar-h, 64px) - 6px); }
     .vs-screen > .vs-arena { padding: 5px; gap: 5px; }
     .vs-seat { gap: 4px; padding: 4px 5px; }
@@ -286,14 +286,14 @@
   }
 }
 /* small cards get small badges */
-@media (max-width: 1000px) {
+@media (max-width: 1000px) , (horizontal-viewport-segments: 2) {
   .vs-arena.pod .vs-opps .mtg .pt { font-size: 9px; padding: 0 3px; right: 1px; bottom: 1px; border-radius: 4px; }
   .vs-arena.pod .vs-opps .mtg .ctr { font-size: 8px; padding: 0 3px; top: 10px; left: 1px; }
   .vs-arena.pod .vs-opps .vs-cnt { font-size: 9px; padding: 0 4px; right: -2px; top: -4px; }
   .vs-arena.pod .vs-opps .mtg.sick::after { font-size: 8px; left: 1px; top: 1px; }
   .vs-arena.pod .vs-opps .vs-imp .tag { display: none; }
 }
-@media (max-width: 600px) {
+@media (max-width: 600px) , (horizontal-viewport-segments: 2) {
   .vs-hand .mtg::after { width: 18px; height: 18px; font-size: 9px; top: 2px; left: 2px; opacity: .8; }
   .vs-arena .mtg .pt { font-size: 10.5px; padding: 0 4px; }
   .vs-cnt { font-size: 10px; padding: 0 5px; }

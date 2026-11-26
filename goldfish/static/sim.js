@@ -877,6 +877,8 @@
         if (/^target artifact or creature gains hexproof and indestructible until end of turn\. scry 1\.?$/i.test(line)) { a.spellFx.push({ type: 'pumpOne', self: false, p: 0, t: 0, keywords: ['hexproof', 'indestructible'] }, { type: 'scry', n: 1 }); rec.status = 'ok'; continue; }          // Loran's Escape (a creature of yours)
         if (/^exile target creature you control, then return it to the battlefield under its owner's control\. if that creature is a bird, frog, otter, or rat, draw a card\.?$/i.test(line)) { a.spellFx.push({ type: 'flickerOne', anyOwn: true, drawIf: 'bird|frog|otter|rat' }); rec.status = 'ok'; continue; }          // Splash Portal
       }
+      { const sv = /^strive — /i.test(raw) && line.match(/^~ costs ((?:\{[^}]+\})+) more to cast for each target beyond the first\.?$/i); if (sv) { a.strive = parseCost(sv[1]); rec.status = 'ok'; continue; } }          // T-100: Strive (Twinflame): every target beyond the first adds this cost (striveChoice)
+      if (/^choose any number of target creatures you control\. for each of them, create a token that's a copy of that creature, except it has haste\. exile those tokens at the beginning of the next end step\.?$/i.test(line)) { a.spellFx.push({ type: 'striveCopy' }); rec.status = 'ok'; continue; }          // Twinflame: a hasty token copy of each target
       { const sq = line.match(/^squad ((?:\{[^}]+\})+)\.?$/i); if (sq) { a.squad = parseCost(sq[1]); rec.status = 'ok'; continue; } }          // T-036: squad (paid N times on casting: squadChoice; N token copies on entering)
       // ---- rules batch 56: the top-5000 pool (one card each)
       { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
@@ -5181,6 +5183,7 @@
     generic = Math.max(0, generic - red) + (inst.extraX || 0) * (a.cost.x || 0) + (a.multikick ? (inst.kicks || 1) * a.multikick : 0);           // X: every extra mana chosen for X
     if (a.delve) { inst._delve = Math.min(generic, delveFodder(g, inst).length); generic -= inst._delve; }          // delve: graveyard cards pay generic mana
     let pips = a.cost.pips;
+    if (a.strive && inst.strives > 0) { generic += inst.strives * a.strive.generic; for (let k = 0; k < inst.strives; k++) pips = pips.concat(a.strive.pips); }          // T-100: Strive, paid once for each target beyond the first
     if (a.squad && inst.squads > 0) { generic += inst.squads * a.squad.generic; for (let k = 0; k < inst.squads; k++) pips = pips.concat(a.squad.pips); }          // T-036: squad, paid inst.squads times
     if (a.convoke || (info0.exileConvoke && g.exile.includes(inst) && !(info0.exileConvoke === 'noncreature' && a.isCreature)) || (info0.creatureConvoke && a.isCreature)) {          // convoke: a creature that will not attack pays a mana of its color, or a generic one
       const cv = convokers(g), used = []; pips = pips.slice();
@@ -6357,6 +6360,19 @@
           if (cp && g.battlefield.length < 250) {
             const np = enterWithTriggers(g, { iid: g.nextIid++, card: cp.card }, { token: true }, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.sacEnd = true;
             ev.push({ type: 'token', perm: np, inst: np.inst, source }); ev.push({ type: 'note', text: `${source.card.name}: a hasty token copy of ${cp.card.name}, sacrificed at the end step`, source });
+          }
+          break;
+        }
+        case 'striveCopy': {                                                                                   // Twinflame: "choose any number of target creatures you control": a hasty token copy of each, exiled at the next end step
+          let ts = g._striveTargets;
+          if (lockRec) { ts = (ts || autoStrive(g, 1, null)).filter(q => g.battlefield.includes(q)); lockRec.map.set(f, { ts: ts.map(q => ({ q })) }); ts.forEach(q => lockRec.taken.add(q)); break; }          // the targets are chosen as the spell is cast (T-072): the counter question shows them
+          if (!ts) { ts = autoStrive(g, 1, null); if (g.ask && !g.dry && ts.length) { const o = decide(g, { kind: 'target', what: 'copy', options: g.battlefield.filter(q => isCreaturePerm(q) && !q.phased), def: ts[0], source }); ts = [o || ts[0]]; } }          // a copy of the spell (Dualcaster Mage): new targets, none to pay for
+          const legal = ts.filter(q => g.battlefield.includes(q) && isCreaturePerm(q) && !q.phased);
+          if (ts.length && !legal.length) { ev.push({ type: 'note', text: `${source ? source.card.name : 'The spell'}: every target is gone, so it does nothing`, source }); break; }          // CR 608.2b
+          for (const q of legal) {
+            if (g.battlefield.length >= 250) break;
+            const np = enterWithTriggers(g, { iid: g.nextIid++, card: q.card }, { token: true }, ev); np.token = true; np.sick = false; np.eotKw = new Set([...(np.eotKw || []), 'haste']); np.exileEnd = true;
+            ev.push({ type: 'token', perm: np, inst: np.inst, source }); ev.push({ type: 'note', text: `A token copy of ${q.card.name} with haste, exiled at the end step`, source });
           }
           break;
         }
@@ -8698,7 +8714,7 @@
         if (a.isPermanent) for (let k = 0; k < n && g.battlefield.length < 250; k++) { const np = enterWithTriggers(g, { iid: g.nextIid++, card: inst.card }, { token: true }, ev); np.token = true; ev.push({ type: 'note', text: `A token copy of ${inst.card.name} enters` }); }
         else copySpell(g, inst, ev, n);
       }
-    } finally { g.xValue = null; if (g._oppWas) { const o0 = g._oppWas; g._oppWas = null; g.opp = !o0.dead ? o0 : (pickTarget(g) || o0); } if (g._castTribe) { g._castTribe = null; if (inst.card.tribeBase) inst.card = inst.card.tribeBase; } if (!g.dry && ripOn(g)) ripSweep(g); }          // the spell's chosen type ends with it
+    } finally { g.xValue = null; g._striveTargets = null; if (g._oppWas) { const o0 = g._oppWas; g._oppWas = null; g.opp = !o0.dead ? o0 : (pickTarget(g) || o0); } if (g._castTribe) { g._castTribe = null; if (inst.card.tribeBase) inst.card = inst.card.tribeBase; } if (!g.dry && ripOn(g)) ripSweep(g); }          // the spell's chosen type ends with it
   }
   function resolveSpellInner(g, inst, ev, a) {
     if (g.castTurn[inst.card.uid] == null) g.castTurn[inst.card.uid] = g.turn;
@@ -8721,6 +8737,7 @@
       const os = podAlive(g);
       if (os.length > 1 && os.includes(g.opp)) { const o = decide(g, { kind: 'player', options: os, def: g.opp, source: { card: inst.card } }); if (o && o !== g.opp) { g._oppWas = g.opp; g.opp = o; } }
     }
+    g._striveTargets = inst.card.a.strive ? (inst.striveTargets || []) : null;
     { const lk = lockTargets(g, inst); if (lk) PENDING.set(inst, lk);          // T-072: targets are chosen as the spell is cast, before anyone can respond
       inst.crimed = false; if (!g.dry && a.isInstantSorcery && tableHas(g, 'crimeTrig') && crimeCommitted(g, inst.overloaded ? (a.overload && a.overload.fx) || [] : a.spellFx, lk)) { inst.crimed = true; fireCrimes(g, ev); } }          // T-094: a crime is committed as the spell is cast (even if it is then countered)
     if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
@@ -9326,6 +9343,7 @@
     if (inst.card.a.sacCreatureCost) { victim = pickSacrifice(g, inst.card.a); if (g.ask && !force) { const vs = g.battlefield.filter(q => isCreaturePerm(q) || (inst.card.a.sacArtifactAlso && q.card.a.isArtifact && !q.asLand)); if (vs.length) victim = decide(g, { kind: 'sacrifice', options: vs, def: victim, cost: true, source: inst }); } if (!victim && !force) return null; }
     if (g.ask && !g.dry && !force && inst.card.a.squad && !inst.freeCast) { const was = inst.squads || 0; let top = 0; for (let k = 1; k <= 4; k++) { inst.squads = k; if (canPay(effectiveCost(g, inst), allUnits(g))) top = k; else break; }          // T-036: squad, a person chooses how many times (the autopilot's number is the default)
       inst.squads = Math.min(was, top); if (top > 0) { const opts = []; for (let k = 0; k <= top; k++) opts.push(k); const pk = decide(g, { kind: 'x', what: 'squad', options: opts, def: inst.squads, source: inst }); if (typeof pk === 'number') inst.squads = pk; } }
+    if (inst.card.a.strive) { if (!inst.striveTargets || force || inst.freeCast) striveChoice(g, inst, allUnits(g), force); striveAsk(g, inst); }          // T-100: Strive, the targets are chosen (and paid for) as the spell is cast
     // X: a person chooses it (the autopilot puts all its spare mana into X). The most that can be paid counts every reduction, Zimone's included.
     if (g.ask && !g.dry && !force && inst.card.a.cost.x && !inst.freeCast) {
       const was = inst.extraX; let top = -1;
@@ -9626,6 +9644,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!lockWorth(g, c)) continue;
       if (c.card.a.multikick) c.kicks = Math.max(1, Math.min(3, Math.floor(units.length / c.card.a.multikick)));
       if (c.card.a.squad) c.squads = squadChoice(g, c, units);          // T-036
+      if (c.card.a.strive) { striveChoice(g, c, units, false); if (!c.striveTargets.length) continue; }          // T-100: Twinflame with nothing worth copying is not cast
       if (c.card.a.cost.x) c.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (c.card.a.cost.generic + c.card.a.cost.pips.length) - (g.opp ? holdSize(g) : 0) + xDiscountNow(g)) / (c.card.a.cost.x || 1))));      // X spells: put all spare mana into X (Zimone's discount pays for X too)
       if (c.card.a.cost.x && 1 + (c.extraX || 0) < (+pol(g, 'xMin') || 1)) continue;          // the Policy lab: wait until X is big enough
       c.fromTop = g.library[0] === c; c.viaCitadel = c.fromTop && citadelOk(g) && !(topCastOk(g) && canPay(effectiveCost(g, c), units)); c.retracing = !!(g.graveyard.includes(c) && retraceOk(g, c) && !(c.card.a.yardCastIfZombie || c.zulCast === g.turn || c.card.a.escape || (g.wrennEmblem && c.card.a.isPermanent)));
@@ -9756,6 +9775,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     let v = 0;
     for (const f of fx) {
       const n = f.n === 'GYCREATURES' ? g.graveyard.filter(i => i.card.a.isCreature).length : f.n === 'LIFEGAINED' ? (g.lifeGainedThisTurn || 0) : f.n === 'X' ? (f.count && f.type === 'token' ? Math.max(1, countFor(g, f.count, null)) : 2) : (f.mult ? (f.n || 1) * Math.max(1, countFor(g, f.count, null)) : (f.n || 1));
+      if (f.type === 'striveCopy') { const vs = g.battlefield.filter(q => isCreaturePerm(q) && !q.phased).map(q => striveValue(g, q)).sort((x, y) => y - x); v += vs[0] >= 2 ? vs[0] : 0; }          // Twinflame: the best creature to copy
       if (f.type === 'token') v += n * (f.creature ? 1 + (+f.p || 0) : 0.8);
       if (f.type === 'draw') v += 1.5 * n;
       if (f.type === 'doubleLife') v += Math.min(3, Math.max(0, g.life) / 20);
@@ -13453,7 +13473,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   let lockRec = null;                                          // { map: effect -> { t, face, none }, taken: Set } while targets are being chosen
   const LOCKS = new WeakMap(), PENDING = new WeakMap();        // game -> locks in force while its spell resolves; spell instance -> locks (for the counter question)
   const tgtLock = (g, f) => { const m = LOCKS.get(g); if (!m || !m.map.has(f)) return undefined; const L = m.map.get(f); m.map.delete(f); return L; };          // used once
-  const lockable = f => f.type === 'removal' ? !f.noTarget : f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'divideDamage' || (f.type === 'threaten' && !f.each) || (f.type === 'tapOpp' && f.what !== 'all') || (f.type === 'damage' && !!f.any && !f.multi);
+  const lockable = f => f.type === 'striveCopy' || (f.type === 'removal' ? !f.noTarget : f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'divideDamage' || (f.type === 'threaten' && !f.each) || (f.type === 'tapOpp' && f.what !== 'all') || (f.type === 'damage' && !!f.any && !f.multi));
   const holderOf = (g, t) => (isPod(g) ? g.match.players : [g, g.opp]).find(x => x && x.battlefield.includes(t));
   // CR 608.2b: the target must still be on the battlefield, of the right kind and not hexproof / shroud / protected now
   function lockLegal(g, t, f) {
@@ -14431,6 +14451,39 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   // Squad (T-036): how many times the squad cost is paid. The autopilot pays as often as the mana allows (at most 4) after the spell itself;
   // a person is asked at casting (castCard, next to X: decide kind 'x', what 'squad'; 0 is a choice), with the autopilot's number as the default.
+  // Strive (T-100, Twinflame): the creatures to copy. A creature is worth copying for the damage its hasty token deals and the enters-the-battlefield triggers it brings; the first
+  // target is free, each one after costs the strive cost. The autopilot takes the best creature worth 2, then more while each is worth 3 and the mana allows; a person chooses
+  // the targets (any number, up to what they can pay for). inst.strives is the number beyond the first, inst.striveTargets the creatures.
+  function striveValue(g, q) {
+    let v = hasKw(g, q, 'defender') ? 0 : Math.max(0, powerOf(g, q));
+    for (const t of q.card.a.triggers) if (t.kinds.includes('etb') && (!t.who || t.who === '~')) v += Math.max(0, fxValue(g, t.fx));
+    return v;
+  }
+  function autoStrive(g, max, inst, units) {
+    const cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.phased).map(q => ({ q, v: striveValue(g, q) })).sort((x, y) => y.v - x.v);
+    const out = [];
+    for (const c of cs) {
+      if (out.length >= max) break;
+      if (out.length === 0 ? c.v < 2 : c.v < 3) break;
+      if (inst && out.length >= 1) { inst.strives = out.length; if (!canPay(effectiveCost(g, inst), units || allUnits(g))) break; }
+      out.push(c.q);
+    }
+    if (inst) inst.strives = Math.max(0, out.length - 1);
+    return out;
+  }
+  function striveChoice(g, inst, units, force) {
+    if (!inst.card.a.strive) return;
+    if (force || inst.freeCast) { inst.striveTargets = autoStrive(g, 6, null); inst.strives = 0; return; }
+    inst.striveTargets = autoStrive(g, 6, inst, units);
+  }
+  function striveAsk(g, inst) {
+    if (!g.ask || g.dry || !inst.card.a.strive || inst.freeCast) return;
+    const own = g.battlefield.filter(q => isCreaturePerm(q) && !q.phased); if (!own.length) { inst.striveTargets = []; inst.strives = 0; return; }
+    let top = 0; for (let k = 1; k <= own.length; k++) { inst.strives = k - 1; if (canPay(effectiveCost(g, inst), allUnits(g))) top = k; else break; }
+    const def = (inst.striveTargets || []).slice(0, top);
+    const pk = decide(g, { kind: 'target', what: 'strive', multi: true, pick: top, upTo: true, min: 0, options: own, def, source: inst });
+    const ts = Array.isArray(pk) ? pk.slice(0, top) : def; inst.striveTargets = ts; inst.strives = Math.max(0, ts.length - 1);
+  }
   function squadChoice(g, inst, units) {
     const sq = inst.card.a.squad; if (!sq) return 0;
     let n = 0; inst.squads = 0; if (!canPay(effectiveCost(g, inst), units)) return 0;

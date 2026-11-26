@@ -455,7 +455,7 @@
   // ---------- the log ----------
   // What happened, as short lines: the engine's own summary plus what a person chose or had done to them (searches, targets, discards,
   // sacrifices, counterspells). A card another player searched for and did not show stays unnamed.
-  const EXTRA = /^(Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
+  const EXTRA = /^(Proliferate: |Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
   function summary(g, ev, viewer) {
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {

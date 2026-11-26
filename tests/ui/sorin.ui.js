@@ -55,7 +55,8 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('...and no stale creature face is left on the table', stale === 0, stale);
   await p.click('#tUndo'); await p.waitForTimeout(500);
   const undone = await p.evaluate(() => { const g = window.__isf.game; return g.battlefield.some(q => q.transformed); });
-  check('Undo takes the transform back (Sorin is a creature again)', !undone);
+  const toast = await p.evaluate(() => (document.querySelector('.toast') || {}).innerText || '');
+  check('Undo is refused after the turn drew a card (T-102), so the transform stays', undone && /Can't undo/.test(toast), toast);
   await p.screenshot({ path: require('path').join(require('os').tmpdir(), 'sorin-ui.png') });
   console.log('errors:', errs);
   check('no page errors', errs.length === 0);

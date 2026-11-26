@@ -13,7 +13,7 @@ const RUNS = [
   ['iPad upright', { ...devices['iPad (gen 7)'], deviceScaleFactor: 1 }, true], ['iPad sideways', { ...devices['iPad (gen 7) landscape'], deviceScaleFactor: 1 }, true],
   ['desktop mouse', { viewport: { width: 1360, height: 900 }, deviceScaleFactor: 1 }, false],
 ];
-const ONLY = process.env.PHONE_TAP_ONLY ? new RegExp(process.env.PHONE_TAP_ONLY) : null;
+const ONLY = new RegExp(process.env.PHONE_TAP_ONLY || '^phone');          // the phones; ipad-card-tap.ui.js runs the iPads and the desktop mouse
 const SHOTS = process.env.PHONE_TAP_SHOTS;                                  // a folder: save the selected-card screenshots there
 
 (async () => {

@@ -167,7 +167,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   check('twelve turns bring casts, attacks and new-turn chimes', (seen.has('card') || [...seen].some(x => /^card:/.test(x))) && seen.has('turn') && (seen.has('attack') || seen.has('declare')), [...seen].join(','));
   check('the Practice table also hands every cast to the on-screen card effects', (await A(() => window.__fxCasts)) > 0, (await A(() => window.__fxCasts)) + ' casts');
   n = await count(); await p.click('#tUndo');
-  check('undo has its own sound', (await since(n)).includes('undo'));
+  check('a refused undo (the last turn drew a card) plays the error sound', (await since(n)).includes('error'));
 
   // ---- 1v1, every seat on autopilot ----
   await p.click('[data-tab=duel]');

@@ -5,6 +5,11 @@
 //   node tools/verify-brackets.js --matches-only                                   the round robin only (field win %), added to the goldfish results already in docs/agents/deck-brackets.json
 //   node tools/verify-brackets.js --apply                                         write the verified bracket and a check line into each deck
 //   node tools/verify-brackets.js --report                                        the table in docs/agents/DECK-BRACKETS.md
+// Weekly ranking, split over helper sessions (T-113; the steps are in docs/agents/RANKING-RUN.md):
+//   node tools/verify-brackets.js --weekly --shard=3/10 --ckpt-dir=docs/agents/ranking-shards    helper 3 of 10 runs its share only (0-based), results in a shard .jsonl
+//   node tools/verify-brackets.js --merge <shard files…> [--no-apply]                            check all shards, write deck-brackets.json, then --apply
+//   --weekly = 2,000 goldfish games per deck (round robin matches per pair come out as a tenth: ceil(games / 41)); --games= still overrides.
+//   --decks=a.txt,b.txt limits the field to those deck files (tests, dry runs); --seed=N; ISF_OUT=<file> writes the results somewhere else.
 // Offline: the cards come from the set data (goldfish/static/data/sets), the combos from data/combos.json.
 //
 // For each deck:
@@ -18,7 +23,7 @@
 const fs = require('fs'), path = require('path'), os = require('os');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const ROOT = path.join(__dirname, '..'), STATIC = path.join(ROOT, 'goldfish', 'static'), DECKS = path.join(STATIC, 'decks');
-const OUT = path.join(ROOT, 'docs', 'agents', 'deck-brackets.json');
+const OUT = process.env.ISF_OUT || path.join(ROOT, 'docs', 'agents', 'deck-brackets.json');
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // RULES: the official Commander Brackets (beta), as Wizards of the Coast wrote them, and the speed thresholds. Written once, used for all.
@@ -69,15 +74,20 @@ const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized'
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
-const GAMES = +arg('games', 20000), JOBS = +arg('jobs', os.cpus().length), ONLY = arg('only', ''), SEED = 20261123;
-const GF_ONLY = process.argv.includes('--goldfish-only'), MATCH_ONLY = process.argv.includes('--matches-only'), CHUNK = 2500, MATCH_TURNS = 25;
+const WEEKLY = process.argv.includes('--weekly');
+let GAMES = +arg('games', WEEKLY ? 2000 : 20000), SEED = +arg('seed', 20261123), LIMIT = arg('decks', '') ? arg('decks', '').split(',') : null;
+const JOBS = +arg('jobs', os.cpus().length), ONLY = arg('only', '');
+let GF_ONLY = process.argv.includes('--goldfish-only'), MATCH_ONLY = process.argv.includes('--matches-only');
+const CHUNK = 2500, MATCH_TURNS = 25;
+const SHARD = (m => m ? { i: +m[1], of: +m[2] } : null)((arg('shard', '').match(/^(\d+)\/(\d+)$/)));
+if (arg('shard', '') && (!SHARD || SHARD.i >= SHARD.of || SHARD.of < 1)) { console.error('--shard=i/N needs 0 <= i < N, for example --shard=3/10'); process.exit(2); }
 
 function loadAll() {
   const G = require(path.join(STATIC, 'sim.js')), Source = require(path.join(STATIC, 'source.js')), Combos = require(path.join(STATIC, 'combos.js'));
   const D = path.join(STATIC, 'data', 'sets'), idx = JSON.parse(fs.readFileSync(path.join(D, 'index.json'), 'utf8')), byName = new Map();
   idx.sets.forEach(s => { for (const c of JSON.parse(fs.readFileSync(path.join(D, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')).cards) if (!c.ref) { byName.set(c.name, c); const f = c.name.split(' // ')[0]; if (!byName.has(f)) byName.set(f, c); } });
   const db = JSON.parse(fs.readFileSync(path.join(STATIC, 'data', 'combos.json'), 'utf8'));
-  const index = JSON.parse(fs.readFileSync(path.join(DECKS, 'index.json'), 'utf8')).decks;
+  const index = JSON.parse(fs.readFileSync(path.join(DECKS, 'index.json'), 'utf8')).decks.filter(d => !LIMIT || LIMIT.includes(d.file));
   const decks = index.map(d => {
     const text = fs.readFileSync(path.join(DECKS, d.file), 'utf8'), cards = [];
     for (const e of Source.parseDecklist(text)) {
@@ -164,43 +174,46 @@ function reason(v) {
   return parts.join('; ');
 }
 
+// ---------- jobs: one canonical list, the same for a single run, for every shard and for --merge ----------
+// A goldfish job belongs to a shard by its deck's index (u = deck index); a round-robin job by its position in the pair list (u = pair index, the mirror
+// matches of non-Commander decks counted after the pairs). Shard i of N runs the jobs with u % N === i.
+function buildJobs(decks, pick) {
+  const cmd = decks.map((L, i) => i).filter(i => decks[i].cmdr), perPair = Math.ceil(GAMES / Math.max(1, cmd.length - 1)), jobs = []; let m = 0;
+  if (!MATCH_ONLY) for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0, u: i }); }
+  if (!GF_ONLY) {
+    for (let x = 0; x < cmd.length; x++) for (let y = x + 1; y < cmd.length; y++) if (pick.includes(cmd[x]) || pick.includes(cmd[y])) jobs.push({ kind: 'match', i: cmd[x], j: cmd[y], n: perPair, seed: (SEED + 1000003 * (x * 64 + y)) >>> 0, u: m++ });
+    for (const i of pick) if (!decks[i].cmdr) for (let k = 0; k * CHUNK < GAMES; k++) jobs.push({ kind: 'match', i, j: i, n: Math.min(CHUNK, GAMES - k * CHUNK), seed: (SEED + 77 + k * CHUNK * 7919) >>> 0, u: m++ });
+  }
+  return { jobs, perPair };
+}
+const jobKey = (decks, j) => [j.kind, decks[j.i].d.file, j.j != null ? decks[j.j].d.file : '', j.n, j.seed].join('|');
+const sha = parts => { const h = require('crypto').createHash('sha1'); for (const x of parts) h.update(x); return h.digest('hex').slice(0, 12); };
+const versionNow = () => +(fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+const modeName = () => (MATCH_ONLY ? 'match' : GF_ONLY ? 'gf' : 'full');
+// What a result depends on: the engine, every deck file and the options. A shard file carries it in its first line; --merge refuses a mix.
+function fingerprint() {
+  // the decks as the simulation sees them: each file without its "//" comment lines (--apply rewrites those), and each index entry's file, commanders and policy
+  const idx = JSON.parse(fs.readFileSync(path.join(DECKS, 'index.json'), 'utf8')).decks.filter(d => !LIMIT || LIMIT.includes(d.file));
+  const parts = idx.map(d => d.file + '\n' + fs.readFileSync(path.join(DECKS, d.file), 'utf8').split(/\r?\n/).filter(l => !/^\/\//.test(l)).join('\n') + JSON.stringify([d.commanders || null, d.policy || null]));
+  return { version: versionNow(), engine: sha([fs.readFileSync(path.join(STATIC, 'sim.js'))]), decksHash: sha(parts), seed: SEED, games: GAMES, mode: modeName(), decks: LIMIT };
+}
+const readLines = file => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean);   // a half-written last line is ignored
+
 async function simulate() {
   const t0 = Date.now(), { decks } = loadAll();
   const pick = decks.map((L, i) => i).filter(i => !ONLY || decks[i].d.file.includes(ONLY));
-  const cmd = decks.map((L, i) => i).filter(i => decks[i].cmdr), perPair = Math.ceil(GAMES / Math.max(1, cmd.length - 1));
-  const jobs = [];
-  if (!MATCH_ONLY) for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0 }); }
-  if (!GF_ONLY) {
-  for (let x = 0; x < cmd.length; x++) for (let y = x + 1; y < cmd.length; y++) if (pick.includes(cmd[x]) || pick.includes(cmd[y])) jobs.push({ kind: 'match', i: cmd[x], j: cmd[y], n: perPair, seed: (SEED + 1000003 * (x * 64 + y)) >>> 0 });
-  for (const i of pick) if (!decks[i].cmdr) for (let k = 0; k * CHUNK < GAMES; k++) jobs.push({ kind: 'match', i, j: i, n: Math.min(CHUNK, GAMES - k * CHUNK), seed: (SEED + 77 + k * CHUNK * 7919) >>> 0 });
-  }
-  jobs.sort((a, b) => (b.kind === 'match' ? b.n * 2.5 : b.n) - (a.kind === 'match' ? a.n * 2.5 : a.n));
-  const gf = new Map(), field = new Map(), total = jobs.length; let done = 0, next = 0;
-  const addField = (i, w, l, none, errors, n, opp) => { const f = field.get(i) || { n: 0, w: 0, l: 0, none: 0, errors: 0, opps: new Set() }; f.n += n; f.w += w; f.l += l; f.none += none; f.errors += errors; f.opps.add(opp); field.set(i, f); };
+  if (SHARD && ONLY) { console.error('--shard and --only do not go together'); process.exit(2); }
+  const { jobs } = buildJobs(decks, pick), mine = SHARD ? jobs.filter(j => j.u % SHARD.of === SHARD.i) : jobs, total = mine.length;
   // Checkpoint: every finished job is appended to a file, so a run that is killed (this container is restarted while idle) resumes where it stopped.
-  // The file is named by mode, games, engine version and seed; a different engine version starts afresh.
-  const verNow = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
-  const CK_DIR = process.env.ISF_CKPT_DIR || path.join(os.tmpdir(), 'isf-verify'), CK = path.join(CK_DIR, `${MATCH_ONLY ? 'match' : GF_ONLY ? 'gf' : 'full'}-${GAMES}-v${verNow}-s${SEED}${ONLY ? '-' + ONLY : ''}.jsonl`);
+  // The file is named by mode, games, engine version and seed (and shard); a different engine version starts afresh.
+  const fp = fingerprint(), CK_DIR = arg('ckpt-dir', process.env.ISF_CKPT_DIR || path.join(os.tmpdir(), 'isf-verify'));
+  const CK = path.join(CK_DIR, SHARD ? `shard-${SHARD.i}of${SHARD.of}-${fp.mode}-${GAMES}-v${fp.version}-s${SEED}.jsonl` : `${fp.mode}-${GAMES}-v${fp.version}-s${SEED}${ONLY ? '-' + ONLY : ''}.jsonl`);
   fs.mkdirSync(CK_DIR, { recursive: true });
-  const keyOf = j => [j.kind, decks[j.i].d.file, j.j != null ? decks[j.j].d.file : '', j.n, j.seed].join('|'), finished = new Set();
-  const absorb = r => {
-    const j = r.job;
-    if (j.kind === 'goldfish') {
-      const g = gf.get(j.i) || { n: 0, errors: 0, kill: null, cmdr: null, mana4: 0, winBy: {}, winLines: [] }, ok = r.n - r.errors;
-      const mix = (a, b) => (a ? a.map((v, t) => v + b[t] * ok) : b.map(v => v * ok));
-      g.kill = mix(g.kill, r.kill); g.cmdr = mix(g.cmdr, r.cmdr); g.mana4 += r.mana4 * r.n; g.n += r.n; g.errors += r.errors;
-      for (const [k, v] of Object.entries(r.winBy)) g.winBy[k] = (g.winBy[k] || 0) + v * ok;
-      if (!g.winLines.length) g.winLines = r.winLines;
-      gf.set(j.i, g);
-    } else if (j.i === j.j) addField(j.i, r.a + r.b, 0, r.none, r.errors, r.n, 'mirror');
-    else { addField(j.i, r.a, r.b, r.none, r.errors, r.n, decks[j.j].d.file); addField(j.j, r.b, r.a, r.none, r.errors, r.n, decks[j.i].d.file); }
-  };
-  if (fs.existsSync(CK)) for (const line of fs.readFileSync(CK, 'utf8').split('\n')) {
-    if (!line) continue; let r; try { r = JSON.parse(line); } catch (e) { continue; }                  // a half-written last line is ignored
-    const k = keyOf(r.job); if (!finished.has(k) && jobs.some(x => keyOf(x) === k)) { finished.add(k); absorb(r); done++; }
-  }
+  const results = new Map(), want = new Set(mine.map(j => jobKey(decks, j))); let done = 0;
+  if (fs.existsSync(CK)) for (const r of readLines(CK)) { if (!r.job) continue; const k = jobKey(decks, r.job); if (want.has(k) && !results.has(k)) { results.set(k, r); done++; } }
+  if (SHARD && !(fs.existsSync(CK) && readLines(CK).some(r => r.header))) fs.appendFileSync(CK, JSON.stringify({ header: Object.assign({ shard: SHARD.i, of: SHARD.of }, fp) }) + '\n');
   if (done) console.log(`  resuming: ${done} of ${total} jobs already done (${CK})`);
-  const todo = jobs.filter(j => !finished.has(keyOf(j)));
+  const todo = mine.filter(j => !results.has(jobKey(decks, j))).sort((a, b) => (b.kind === 'match' ? b.n * 2.5 : b.n) - (a.kind === 'match' ? a.n * 2.5 : a.n));
   await new Promise((resolve, reject) => {
     let live = 0, nx = 0;
     if (!todo.length) return resolve();
@@ -210,7 +223,7 @@ async function simulate() {
       wk.on('message', r => {
         const j = r.job;
         if (r.errors && r.firstError) console.warn('  engine error in', j.kind, decks[j.i].d.file, j.j != null ? 'vs ' + decks[j.j].d.file : '', String(r.firstError).split('\n')[0]);
-        absorb(r); fs.appendFileSync(CK, JSON.stringify(r) + '\n');
+        results.set(jobKey(decks, j), r); fs.appendFileSync(CK, JSON.stringify(r) + '\n');
         if (++done % 5 === 0 || done === total) console.log(`  ${done}/${total} jobs, ${Math.round((Date.now() - t0) / 1000)} s`);
         feed();
       });
@@ -219,36 +232,91 @@ async function simulate() {
     }
   });
   console.log('');
+  const seconds = Math.round((Date.now() - t0) / 1000);
+  if (SHARD) {
+    fs.appendFileSync(CK, JSON.stringify({ footer: { shard: SHARD.i, jobs: total, seconds, threads: JOBS } }) + '\n');
+    console.log(`shard ${SHARD.i}/${SHARD.of}: ${total} jobs (${mine.filter(j => j.kind === 'goldfish').length} goldfish, ${mine.filter(j => j.kind === 'match').length} match), ${seconds} s on ${JOBS} threads. Wrote ${CK}`); return;
+  }
+  finish(decks, pick, jobs, results, { seconds, jobsThreads: JOBS, version: fp.version });
+}
+
+// Turns the finished jobs into deck-brackets.json. The jobs are added up in canonical order, never in the order they finished, so a single run, a
+// resumed run and a merge of shards all give the same numbers.
+function finish(decks, pick, jobs, results, meta) {
+  const perPair = Math.ceil(GAMES / Math.max(1, decks.filter(L => L.cmdr).length - 1)), version = meta.version, seconds = meta.seconds;
+  const gf = new Map(), field = new Map();
+  const addField = (i, w, l, none, errors, n, opp) => { const f = field.get(i) || { n: 0, w: 0, l: 0, none: 0, errors: 0, opps: new Set() }; f.n += n; f.w += w; f.l += l; f.none += none; f.errors += errors; f.opps.add(opp); field.set(i, f); };
+  for (const j of jobs) {
+    const r = results.get(jobKey(decks, j));
+    if (j.kind === 'goldfish') {
+      const g = gf.get(j.i) || { n: 0, errors: 0, kill: null, cmdr: null, mana4: 0, winBy: {}, winLines: [] }, ok = r.n - r.errors;
+      const mix = (a, b) => (a ? a.map((v, t) => v + b[t] * ok) : b.map(v => v * ok));
+      g.kill = mix(g.kill, r.kill); g.cmdr = mix(g.cmdr, r.cmdr); g.mana4 += r.mana4 * r.n; g.n += r.n; g.errors += r.errors;
+      for (const [k, v] of Object.entries(r.winBy)) g.winBy[k] = (g.winBy[k] || 0) + v * ok;
+      if (!g.winLines.length) g.winLines = r.winLines;
+      gf.set(j.i, g);
+    } else if (j.i === j.j) addField(j.i, r.a + r.b, 0, r.none, r.errors, r.n, 'mirror');
+    else { addField(j.i, r.a, r.b, r.none, r.errors, r.n, decks[j.j].d.file); addField(j.j, r.b, r.a, r.none, r.errors, r.n, decks[j.i].d.file); }
+  }
   if (MATCH_ONLY) {            // the goldfish results stay as they are; each deck gets its field win % (same fields as verdict() writes)
-    const old = JSON.parse(fs.readFileSync(OUT, 'utf8')), version = +(fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+    const old = JSON.parse(fs.readFileSync(OUT, 'utf8'));
     for (const i of pick) {
       const v = old.decks.find(x => x.file === decks[i].d.file), f = field.get(i); if (!v || !f) throw new Error('no goldfish result or no matches for ' + decks[i].d.file);
       v.field = { games: f.n, wins: f.w, losses: f.l, none: f.none, errors: f.errors, winRate: pct(f.w / Math.max(1, f.n - f.errors)), opponents: f.opps.has('mirror') ? 'its own mirror' : f.opps.size + ' other Commander decks' };
     }
-    old.roundRobin = { version, date: new Date().toISOString().slice(0, 10), matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds: Math.round((Date.now() - t0) / 1000), jobs: JOBS, decks: pick.length };
+    old.roundRobin = { version, date: new Date().toISOString().slice(0, 10), matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds, jobs: meta.jobsThreads, decks: pick.length };
     fs.writeFileSync(OUT, JSON.stringify(old, null, 1) + '\n');
-    console.log(`round robin: ${pick.length} decks, ${perPair} matches per pair; ${old.roundRobin.seconds} s on ${JOBS} threads. Wrote ${path.relative(ROOT, OUT)}`); return;
+    console.log(`round robin: ${pick.length} decks, ${perPair} matches per pair; ${seconds} s on ${meta.jobsThreads} threads. Wrote ${path.relative(ROOT, OUT)}`); return;
   }
-  const results = pick.map(i => {
+  const out = pick.map(i => {
     const g = gf.get(i), ok = Math.max(1, g.n - g.errors);
     g.kill = g.kill.map(v => v / ok); g.cmdr = g.cmdr.map(v => v / ok); g.mana4 /= g.n; for (const k in g.winBy) g.winBy[k] /= ok;
     const f = field.get(i); if (f) f.opps = f.opps.has('mirror') ? 'its own mirror' : f.opps.size + ' other Commander decks';
     const v = verdict(decks[i], g, f); v.reason = reason(v); return v;
   });
   let old = {}; try { old = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) { /* first run */ }
-  const keep = (old.decks || []).filter(o => !results.some(r => r.file === o.file));
-  const version = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+  const keep = (old.decks || []).filter(o => !out.some(r => r.file === o.file));
   const doc = { about: 'Bracket check of the built-in decks. Re-run: node tools/verify-brackets.js; then --apply. Method: docs/agents/DECK-BRACKETS.md',
-    version: +version, date: new Date().toISOString().slice(0, 10), gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED,
-    seconds: Math.round((Date.now() - t0) / 1000), jobs: JOBS, rules: RULES, decks: keep.concat(results).sort((a, b) => a.file.localeCompare(b.file)) };
+    version, date: new Date().toISOString().slice(0, 10), gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED,
+    seconds, jobs: meta.jobsThreads, rules: RULES, decks: keep.concat(out).sort((a, b) => a.file.localeCompare(b.file)) };
+  if (meta.shards) doc.shards = meta.shards;
   if (ONLY && old.decks) {          // a run for some decks only: the full run's details stay at the top, this run is listed under "runs"
-    const run = { only: results.map(r => r.file), version: doc.version, date: doc.date, gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds: doc.seconds, jobs: JOBS };
-    results.forEach(r => { r.version = doc.version; r.date = doc.date; });
+    const run = { only: out.map(r => r.file), version: doc.version, date: doc.date, gamesPerDeck: GAMES, matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds: doc.seconds, jobs: meta.jobsThreads };
+    out.forEach(r => { r.version = doc.version; r.date = doc.date; });
     Object.assign(doc, { version: old.version, date: old.date, gamesPerDeck: old.gamesPerDeck, matchesPerPair: old.matchesPerPair, seconds: old.seconds, jobs: old.jobs, runs: (old.runs || []).concat([run]) });
   }
   fs.writeFileSync(OUT, JSON.stringify(doc, null, 1) + '\n');
-  for (const v of results) console.log(`${(v.stated ? 'B' + v.stated : '--')} -> ${v.verified ? 'B' + v.verified : '--'}  ${v.name.slice(0, 48).padEnd(48)} med T${v.goldfish.medianKill} by5 ${v.goldfish.by5}% GC ${v.rules.gameChangers.length} field ${v.field ? v.field.winRate + '%' : '-'}`);
-  console.log(`${results.length} decks, ${GAMES} goldfish games each, ${perPair} matches per pair; ${doc.seconds} s on ${JOBS} threads. Wrote ${path.relative(ROOT, OUT)}`);
+  for (const v of out) console.log(`${(v.stated ? 'B' + v.stated : '--')} -> ${v.verified ? 'B' + v.verified : '--'}  ${v.name.slice(0, 48).padEnd(48)} med T${v.goldfish.medianKill} by5 ${v.goldfish.by5}% GC ${v.rules.gameChangers.length} field ${v.field ? v.field.winRate + '%' : '-'}`);
+  console.log(`${out.length} decks, ${GAMES} goldfish games each, ${perPair} matches per pair; ${seconds} s on ${meta.jobsThreads} threads. Wrote ${path.relative(ROOT, OUT)}`);
+}
+
+// ---------- --merge: the shard files of one weekly run -> deck-brackets.json -> --apply ----------
+// Refuses: a file with no header, a mix of version, engine, deck files, seed, games, mode or deck list, a missing or repeated shard, a job that is
+// missing, present twice, or not part of the run, and (without --force) an engine that is not the one the shards ran on.
+function merge(files) {
+  const die = m => { console.error('merge refused: ' + m); process.exit(1); };
+  if (!files.length) die('name the shard files: --merge <file>…');
+  const per = files.map(f => { if (!fs.existsSync(f)) die('no such file: ' + f); const L = readLines(f), h = L.find(r => r.header); if (!h) die(f + ' has no header line (not a shard file)'); return { f, h: h.header, lines: L.filter(r => r.job), seconds: (L.find(r => r.footer) || { footer: {} }).footer.seconds || 0 }; });
+  const h0 = per[0].h, same = ['version', 'engine', 'decksHash', 'seed', 'games', 'mode', 'of'];
+  for (const p of per) for (const k of same.concat(['decks'])) if (JSON.stringify(p.h[k]) !== JSON.stringify(h0[k])) die(`${path.basename(p.f)} differs from ${path.basename(per[0].f)} in ${k}: ${JSON.stringify(p.h[k])} vs ${JSON.stringify(h0[k])} (a mixed ${k})`);
+  const seen = new Map(); for (const p of per) { if (seen.has(p.h.shard)) die(`shard ${p.h.shard} given twice (${path.basename(seen.get(p.h.shard))} and ${path.basename(p.f)})`); seen.set(p.h.shard, p.f); }
+  const lost = []; for (let i = 0; i < h0.of; i++) if (!seen.has(i)) lost.push(i); if (lost.length) die(`shard${lost.length > 1 ? 's' : ''} ${lost.join(', ')} of ${h0.of} missing`);
+  GAMES = h0.games; SEED = h0.seed; LIMIT = h0.decks; GF_ONLY = h0.mode === 'gf'; MATCH_ONLY = h0.mode === 'match';
+  const now = fingerprint();
+  if (now.engine !== h0.engine && !process.argv.includes('--force')) die(`sim.js is not the engine the shards ran on (${now.engine} now, ${h0.engine} then); merge on the same sim.js, or pass --force`);
+  if (now.decksHash !== h0.decksHash && !process.argv.includes('--force')) die('the deck files changed since the shards ran; merge on the same decks, or pass --force');
+  const { decks } = loadAll(), pick = decks.map((L, i) => i), { jobs } = buildJobs(decks, pick), results = new Map(), want = new Set(jobs.map(j => jobKey(decks, j)));
+  for (const p of per) for (const r of p.lines) {
+    const k = jobKey(decks, r.job);
+    if (!want.has(k)) die(`${path.basename(p.f)} has a job that is not part of this run: ${k}`);
+    if (results.has(k)) die(`job present twice: ${k}`);
+    results.set(k, r);
+  }
+  const missing = jobs.filter(j => !results.has(jobKey(decks, j)));
+  if (missing.length) die(`${missing.length} of ${jobs.length} jobs missing, e.g. ${jobKey(decks, missing[0])} (shard ${missing[0].u % h0.of})`);
+  console.log(`merge: ${per.length} shards, ${jobs.length} jobs, each present exactly once; v${h0.version}, seed ${h0.seed}, ${h0.games} games per deck`);
+  finish(decks, pick, jobs, results, { seconds: Math.max(...per.map(p => p.seconds)), jobsThreads: h0.of, version: h0.version, shards: { of: h0.of, secondsPerShard: per.map(p => p.seconds) } });
+  if (!process.argv.includes('--no-apply')) apply(); else console.log('--no-apply: the deck files are not touched; run --apply when ready');
 }
 
 // ---------- --apply: the bracket line and one check line in each deck file ----------
@@ -303,4 +371,5 @@ function report() {
 }
 
 if (require.main !== module) module.exports = { RULES, GAME_CHANGERS, BRACKET_NAME, cardRules, speedBracket, medianTurn, loadAll, OUT };
+else if (process.argv.includes('--merge')) merge(process.argv.slice(2).filter(a => !a.startsWith('--')));
 else if (process.argv.includes('--apply')) apply(); else if (process.argv.includes('--report')) report(); else simulate().catch(e => { console.error(e); process.exit(1); });

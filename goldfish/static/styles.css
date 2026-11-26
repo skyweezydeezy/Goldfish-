@@ -1493,3 +1493,6 @@ body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child 
   button, select, input[type=number] { min-height: 44px; }
   .table-controls button, .vs-top button { min-height: 44px; }
 }
+
+.deck-speed { margin: 6px 0 0; font-size: .85rem; color: var(--muted, #8a93a6); }
+.deck-speed .hint { margin: 4px 0 0; }

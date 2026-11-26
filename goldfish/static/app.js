@@ -302,6 +302,17 @@
     const same = t => lf(t) === lf(S.deckText);
     selLoaded = trust || (loadingBuiltin && v) || (v && d[v] != null && same(d[v])) || (v && builtinLoaded && builtinByValue(v) && same(builtinLoaded)) ? v : (Object.keys(d).find(n => same(d[n])) || '');
     builtinLoaded = loadingBuiltin ? $('#deckText').value : (builtinLoaded && selLoaded === v && builtinByValue(v) ? builtinLoaded : '');
+    showSpeed(selLoaded && builtinByValue(selLoaded));
+  }
+  // "Fastest possible" for a built-in deck that was checked: the earliest win turn seen and the share of games won by turns 2, 3 and 4 (T-093).
+  // One compact line; what it means is behind the ⓘ.
+  const pctS = x => (x < 1 && x > 0 ? x.toFixed(1) : Math.round(x * 10) / 10) + '%';
+  { const t = $('#deckSpeed .info-tog'); if (t) t.addEventListener('click', () => { const p = $('#deckSpeed .hint'), open = p.classList.toggle('folded') === false; t.setAttribute('aria-expanded', String(open)); t.classList.toggle('on', open); }); }
+  function showSpeed(d) {
+    const el = $('#deckSpeed'); if (!el) return;
+    if (!d || d.by2 == null) { el.hidden = true; return; }
+    el.querySelector('.ds-line').textContent = `Fastest win ${d.earliestKill ? 'T' + d.earliestKill : 'after T4'} · ${pctS(d.by2)} by T2 · ${pctS(d.by3)} by T3 · ${pctS(d.by4)} by T4`;
+    el.hidden = false;
   }
   const lf = t => String(t || '').replace(/\r\n?/g, '\n');          // a saved deck with Windows line ends is the same deck
   let builtinLoaded = '';          // the text of the built-in deck that is loaded: Load deck on it again keeps the menu on it

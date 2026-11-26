@@ -7332,7 +7332,7 @@
             pick = cands[0] && imprintValue(g, cands[0]) <= 5 ? cands[0] : null;
             if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); source.produce = { colors: new Set(pick.card.colors), amount: 1 }; touch(g); ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} (Chrome Mox makes ${pick.card.colors.join('/')})`, source }); }
           } else {
-            const cands = hand.filter(i => /\bInstant\b/.test(i.card.type_line || '') && i.card.a.castMv <= 2 && !i.card.a.counter && i.card.a.spellFx.length).sort((x, y) => (comboNeed(g, y) - comboNeed(g, x)) || (fxValue(g, y.card.a.spellFx) - fxValue(g, x.card.a.spellFx)));
+            const cands = hand.filter(i => scepterFodder(i.card) && !i.card.a.counter && i.card.a.spellFx.length).sort((x, y) => (comboNeed(g, y) - comboNeed(g, x)) || (fxValue(g, y.card.a.spellFx) - fxValue(g, x.card.a.spellFx)));
             pick = cands[0] || null;
             if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); source.imprinted = pick; ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} under Isochron Scepter`, source }); }
           }
@@ -8172,6 +8172,14 @@
   }
 
   // how little do I mind losing this card from my hand (Chrome Mox imprint)? lower is cheaper
+  // Isochron Scepter: "exile an instant card with mana value 2 or less from your hand". In a hand an Adventure or modal card is only its front face
+  // (Brazen Borrower is a creature), a split card is both halves with their mana values added (Fire // Ice is 4), and X is 0.
+  const instantCard = c => /\bInstant\b/.test(c.layout === 'split' ? (c.type_line || '') : String(c.type_line || '').split(' // ')[0]);
+  const scepterFodder = c => instantCard(c) && (c.a.mv || 0) <= 2;
+  // Isochron Scepter with "untap all creatures you control" (Vitalize): a creature that untaps another permanent for {T} (Kiora's Follower, Vizier of
+  // Tumbling Sands, Ioreth, Kelpie Guide, Aphetto Alchemist) untaps the Scepter, the copy untaps every creature, and the creatures that make mana pay for it.
+  const untapCreaturesCard = c => instantCard(c) && c.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'creatures');
+  const untapsScepter = c => c.a.isCreature && (!!c.a.kioraUntap || /\{T\}: Untap (?:another )?target (?:permanent|artifact or creature|artifact)\b/i.test(c.oracle_text || ''));
   function imprintValue(g, i) { const a = i.card.a; return a.castMv * 0.6 + (a.spellFx.length ? 1.5 : 0) + (a.draw ? 1 : 0) + (a.counter ? 0 : 0.5) + (a.triggers.length ? 1 : 0); }
   function masteryTarget(g) {
     let best = null, bs = 0;
@@ -8404,7 +8412,8 @@
     emptier: c => comboKind(c).emptier,
     winner: c => comboKind(c).oracleWin || comboKind(c).drawWin,
     scepter: c => c.a.imprint === 'scepter',
-    untapAll: c => /\bInstant\b/.test(c.type_line || '') && c.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'),
+    untapCreatures: c => untapCreaturesCard(c), creatureUntapper: c => untapsScepter(c),
+    untapAll: c => instantCard(c) && c.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'),
     rock: c => comboKind(c).untapCost != null,
     enabler: c => comboKind(c).powerArtifact || comboKind(c).rings || !!c.a.statics.nonlandDouble || comboKind(c).monument || comboKind(c).tripler,
     outlet: c => comboKind(c).ballista || comboKind(c).xBurn || comboKind(c).drawEngine || comboKind(c).manaPing,
@@ -8456,7 +8465,7 @@
   const COMBO_LINES = [['emptier', 'winner'], ['scepter', 'untapAll', 'outlet'], ['rock', 'enabler', 'outlet'], ['blood', 'bond'], ['architect', 'pilipala', 'outlet'],
     ['lifeCounter', 'pinger'], ['copier', 'untapEnter'], ['twin', 'untapOnly'], ['copyMage', 'copySpell'], ['undyingLord', 'trisk'], ['niv', 'curiosity'],
     ['blinker', 'landUntap', 'outlet'], ['druid', 'vizier', 'outlet'], ['auraUntap', 'blueDork', 'outlet'],
-    ['scepter', 'untapAll', 'castPing'], ['keyUntap', 'rings', 'bigRock', 'outlet'], ['copyAb', 'tezz', 'bigRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'castPing'],
+    ['scepter', 'untapCreatures', 'creatureUntapper', 'outlet'], ['scepter', 'untapCreatures', 'creatureUntapper', 'castPing'], ['scepter', 'untapAll', 'castPing'], ['keyUntap', 'rings', 'bigRock', 'outlet'], ['copyAb', 'tezz', 'bigRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'outlet'], ['bouncer', 'plusRock', 'freeRock', 'castPing'],
     ['recur', 'sacPays', 'deathDrain'], ['recur', 'deathTreasure', 'sacAny', 'deathDrain'], ['thune', 'pinger'], ['persistGain', 'sacAny', 'lifeCounterAny', 'deathDrain'], ['solemnity', 'persistCreature', 'sacAny', 'deathDrain'], ['solemnity', 'persistCreature', 'station'],
     ['breach', 'stormMill', 'ritualRock'], ['breach', 'led', 'wheel', 'finisher'], ['approach', 'anyTutor'], ['approach', 'rack'], ['peer', 'drawPunish'],
     ['reservoir', 'blood'], ['top', 'citadel', 'reservoir'], ['top', 'forge', 'fleshraker'], ['top', 'forge', 'artReducer', 'finisher'],
@@ -8469,6 +8478,8 @@
   // what the Build tab calls each line and each slot
   const LINE_INFO = {
     'emptier+winner': ['Empty-library win', 'Exile your whole library, then win the game with it empty.'],
+    'scepter+untapCreatures+creatureUntapper+outlet': ['Scepter creature loop', 'A creature untaps the copy artifact, the copy of the untap-all-creatures instant untaps every creature, and the mana creatures pay for it every time: infinite mana, spent on the outlet.'],
+    'scepter+untapCreatures+creatureUntapper+castPing': ['Scepter creature storm', 'The copy artifact casts the untap-all-creatures instant again and again, and every cast hurts each opponent.'],
     'scepter+untapAll+outlet': ['Scepter loop', 'The untap-all instant on the copy artifact untaps your mana rocks every time: infinite mana, spent on the outlet.'],
     'rock+enabler+outlet': ['Self-untapping rock', 'A rock that untaps itself for less than it makes: infinite mana, spent on the outlet.'],
     'blood+bond': ['Life loop', 'Each life you gain drains the table, and each drain gains you life, until nobody else is left.'],
@@ -8512,7 +8523,7 @@
     'poisonNine+counterTwice': ['Nine poison, doubled', 'The planeswalker enters with twice its loyalty and uses its last ability at once; the nine poison counters are doubled.'],
     'auraUntap+blueDork+outlet': ['Untap Aura', 'The Aura untaps a creature that makes more mana than the untap costs: infinite mana, spent on the outlet.'],
   };
-  const SLOT_INFO = { emptier: 'Empties the library', winner: 'Wins with an empty library', scepter: 'Copy artifact', untapAll: 'Untap-all instant', rock: 'Self-untapping rock', enabler: 'Makes the untap pay', outlet: 'Wins with infinite mana',
+  const SLOT_INFO = { emptier: 'Empties the library', winner: 'Wins with an empty library', scepter: 'Copy artifact', untapAll: 'Untap-all instant', untapCreatures: 'Untap-all-creatures instant', creatureUntapper: 'Creature that untaps the copy artifact', rock: 'Self-untapping rock', enabler: 'Makes the untap pay', outlet: 'Wins with infinite mana',
     blood: 'Gains when they lose life', bond: 'Drains when you gain life', lifeCounter: 'Counter for each life gained', pinger: 'Removes a counter to deal 1', copier: 'Copies a creature', untapEnter: 'Untaps or blinks as it enters', twin: 'Copy Aura', untapOnly: 'Untaps as it enters',
     copyMage: 'Copies a spell as it enters', copySpell: 'Token-copy spell', undyingLord: 'Gives undying', trisk: 'Pinger with counters', niv: 'Damage for each card drawn', curiosity: 'Card for each damage dealt', blinker: 'Blinks a creature',
     castPing: 'Hurts for each spell cast', keyUntap: 'Untaps an artifact', rings: 'Copies the ability', bigRock: 'Rock that makes three or more', copyAb: 'Copies the ability', tezz: 'Untaps two artifacts',
@@ -8575,8 +8586,8 @@
   function comboNeed(g, inst) {
     const k = comboKind(inst.card), ia = inst.card.a;
     const winner = x => x.oracleWin || x.drawWin;
-    const untapAll = ia.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland') && /\bInstant\b/.test(inst.card.type_line || '');
-    if (!k.emptier && !winner(k) && !untapAll && ia.imprint !== 'scepter' && !k.ballista && !k.xBurn && !k.drawEngine && !k.powerArtifact && !k.rings && !ia.statics.nonlandDouble && k.untapCost == null) return Math.max(0, comboPlan(g, inst));          // not a piece of any of the combos below
+    const untapAll = ia.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland') && instantCard(inst.card);
+    if (!k.emptier && !winner(k) && !untapAll && ia.imprint !== 'scepter' && !k.ballista && !k.xBurn && !k.drawEngine && !k.powerArtifact && !k.rings && !ia.statics.nonlandDouble && k.untapCost == null && !untapCreaturesCard(inst.card) && !untapsScepter(inst.card)) return Math.max(0, comboPlan(g, inst));          // not a piece of any of the combos below
     const have = g.hand.concat(g.battlefield, g.command), kinds = have.map(x => comboKind(x.card));
     const any = f => kinds.some(f);
     let s = 0;
@@ -8586,6 +8597,10 @@
     const scepterHere = have.some(x => x.card.a.imprint === 'scepter' && !(x.imprinted && x.imprinted.card.a.spellFx.some(f => f.type === 'untapAll')));
     if (untapAll && scepterHere) s += 900;
     if (inst.card.a.imprint === 'scepter' && have.some(x => x.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'))) s += 900;
+    { const hasUt = have.some(x => untapsScepter(x.card)), hasUc = have.some(x => untapCreaturesCard(x.card));          // Scepter + "untap all creatures" + a creature that untaps the Scepter
+      if (untapCreaturesCard(inst.card) && scepterHere && hasUt) s += 900;
+      if (untapsScepter(inst.card) && scepterHere && hasUc) s += 900;
+      if (inst.card.a.imprint === 'scepter' && hasUc && hasUt) s += 900; }
     if (infiniteMana(g) && (k.ballista || k.xBurn || k.drawEngine)) s += 1500;
     const mono = any(x => x.untapCost != null), enabler = any(x => x.powerArtifact || x.rings) || have.some(p => p.card.a.statics.nonlandDouble);
     if (mono && !enabler && (k.powerArtifact || k.rings || inst.card.a.statics.nonlandDouble)) s += 700;
@@ -8613,11 +8628,11 @@
     madness(g, cy, ev);
     return ev;
   }
-  function transmuteTargets(g, i) { return g.library.filter(c => (c.card.a.mv || 0) === (i.card.a.mv || 0) && !c.card.a.isLand); }
+  function transmuteTargets(g, i) { return g.library.filter(c => (c.card.a.mv || 0) === (i.card.a.mv || 0)); }          // any card with the same mana value: a land has mana value 0 (Tolaria West)
   function transmuteTarget(g, i) { const ctx = tutorContext(g); return transmuteTargets(g, i).sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx))[0] || null; }
   function transmuteCard(g, i, ev) {
     const tm = i.card.a.transmute;
-    if (!tm || !g.hand.includes(i) || !canPay(tm.cost, allUnits(g))) return null;
+    if (!tm || !g.hand.includes(i) || g.activeTurn === false || !canPay(tm.cost, allUnits(g))) return null;          // sorcery speed: your own turn
     const pool = transmuteTargets(g, i);
     let t = transmuteTarget(g, i);
     if (g.ask && !g.dry && pool.length) t = decide(g, { kind: 'search', options: pool, def: t, optional: true, f: { dest: 'hand', transmute: i.card.a.mv || 0 }, source: i });
@@ -9035,8 +9050,9 @@
     if (a.cloneOf && !g.battlefield.some(q => !q.asLand && (isCreaturePerm(q) || (/artifact|permanent|enchantment/.test(a.cloneOf) && (q.card.a.isArtifact || q.card.a.isEnchantment || a.cloneOf === 'nonland permanent')))) && !(g.opp && g.opp.battlefield.some(isCreaturePerm))) return -1;
     if (g.opp && a.spellFx.some(f => f.type === 'loseLife' && g.life <= (+f.n || 0) + 3)) return -1;          // never pay life you cannot afford against a real opponent
     if (a.copyOne) return -1;
+    if (a.transmute && !g.dry && g.activeTurn !== false && g.hand.includes(c) && canPay(a.transmute.cost, allUnits(g)) && comboNeed(g, c) < 700) { const t = transmuteTarget(g, c); if (t && comboNeed(g, t) >= 700) return -1; }          // a card with transmute that finds a piece of a combo is traded in, not cast
     if (a.imprint === 'mox' && !g.hand.some(i => i !== c && !i.card.a.isLand && !i.card.commander && !i.card.a.comboRole && !i.card.a.isArtifact && (i.card.colors || []).length && imprintValue(g, i) <= 5)) return -1;
-    if (a.imprint === 'scepter' && !g.hand.some(i => i !== c && /\bInstant\b/.test(i.card.type_line || '') && i.card.a.castMv <= 2 && !i.card.a.counter && i.card.a.spellFx.length)) return -1;
+    if (a.imprint === 'scepter' && !g.hand.some(i => i !== c && scepterFodder(i.card) && !i.card.a.counter && i.card.a.spellFx.length)) return -1;
     if (a.spellFx.some(f => f.type === 'mastery') && !masteryTarget(g)) return -1;
     if (a.spellFx.some(f => f.type === 'jeskaMana') && !g.battlefield.some(q => q.card.commander) && g.hand.length > 5) return -1;                                  // Expansion is cast in response to your own spell (copyHook)
     const ua = a.spellFx.find(f => f.type === 'untapAll' && f.what === 'nonland');
@@ -10208,7 +10224,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (a.forgeExile && !p.tapped && g.library[0] && g.life > lifeFloor(g, 12) && !topCastOk(g) && !g.library[0].card.a.isLand) { p.tapped = true; g.life -= 1; g.exile.push(g.library.shift()); ev.push({ type: 'note', text: `${p.card.name}: exiled the top card`, source: p }); return; }          // Mystic Forge: dig to a castable card
     }
     for (const i of g.hand.slice()) {                                                                    // Transmute: trade the card for one with the same mana value
-      const tm = i.card.a.transmute; if (!tm || g.dry || !canPay(tm.cost, allUnits(g))) continue;
+      const tm = i.card.a.transmute; if (!tm || g.dry || g.activeTurn === false || !canPay(tm.cost, allUnits(g))) continue;
       const t = transmuteTarget(g, i);
       if (t && tutorScore(g, t, tutorContext(g)) > 100) { transmuteCard(g, i, ev); return; }
     }
@@ -12039,6 +12055,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     // B1: Isochron Scepter holding an untap-all-nonland instant
     const scep = bf.find(q => q.imprinted && !q.tapped && q.imprinted.card.a.spellFx.some(f => f.type === 'untapAll' && f.what === 'nonland'));
     if (scep && nonland.filter(q => q !== scep).reduce((s, q) => s + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${scep.card.name} + ${scep.imprinted.card.name}`, colors: new Set(nonland.flatMap(q => [...(q.produce.colors || [])])), casts: true };
+    // B1b: Isochron Scepter holding "untap all creatures you control": a creature untaps the Scepter, the copy untaps every creature, and the other creatures' mana (3 or more) pays for it
+    { const sc2 = bf.find(q => q.imprinted && q.card.a.scepter && untapCreaturesCard(q.imprinted.card));
+      const ut = sc2 && bf.filter(q => q !== sc2 && untapsScepter(q.card) && isCreaturePerm(q) && !(q.sick && !hasKw(g, q, 'haste')) && (!q.tapped || !sc2.tapped)).sort((x, y) => (x.produce ? 1 : 0) - (y.produce ? 1 : 0))[0];
+      if (ut && (!sc2.tapped || !ut.tapped) && nonland.filter(q => isCreaturePerm(q) && q !== ut).reduce((n, q) => n + amount(q), 0) >= 3 && canPay({ generic: 2, pips: [], x: 0 }, allUnits(g))) return { how: `${sc2.card.name} + ${sc2.imprinted.card.name} + ${ut.card.name}`, colors: new Set(nonland.filter(q => isCreaturePerm(q) && q !== ut).flatMap(q => [...(q.produce.colors || [])])), casts: true }; }
     // Voltaic Construct ({2}: untap target artifact creature) with an artifact creature that taps for three or more: Metalworker with two artifact cards in hand
     if (tableHas(g, 'constructUntap') && bf.some(q => q.card.a.constructUntap)) {
       const okc = q => isCreaturePerm(q) && q.card.a.isArtifact && !(q.sick && !hasKw(g, q, 'haste'));
@@ -12295,8 +12315,13 @@ g.actSeq = (g.actSeq || 0) + 1;
   function bookReady(g, b) {
     if (!(b.c.needs || []).every(n => BOOK_NEEDS[n] && BOOK_NEEDS[n](g))) return null;
     const cast = []; let cost = b.cost;
+    // Isochron Scepter copies the card exiled with it as it entered: the instant of the combo has to be imprinted on a Scepter on the battlefield (in hand, a Scepter has nothing to copy yet)
+    const scepterCard = b.cards.find(c => c.a.imprint === 'scepter' && c.a.scepter), instants = scepterCard ? b.cards.filter(c => c !== scepterCard && c.a.isInstantSorcery) : [];
+    let imprinted = null;
+    if (instants.length === 1) { const sp = g.battlefield.find(p => p.card.name === scepterCard.name && p.imprinted && p.imprinted.card.name === instants[0].name); if (!sp) return null; imprinted = instants[0]; }
     for (let i = 0; i < b.cards.length; i++) {
       const card = b.cards[i], z = b.c.zones[i] || 'B', is = x => x.card === card || x.card.name === card.name;
+      if (card === imprinted) continue;
       if (/c/.test(z) && !card.commander) return null;
       const perm = g.battlefield.find(p => is(p) && !p.token), inHand = g.hand.find(is);
       if (/B/.test(z) && perm && !(/s/.test(z) && isCreaturePerm(perm) && perm.sick && !hasKw(g, perm, 'haste'))) continue;

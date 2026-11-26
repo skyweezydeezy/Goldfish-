@@ -286,6 +286,8 @@
     else if (/deals damage equal to the amount of life you gained this turn to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'LIFEGAINED' });     // Sorin, Ravenous Neonate
     else if (/deals damage equal to [^.]* to (any target|each opponent|target player|target opponent)/i.test(text)) fx.push({ type: 'damage', n: 'X' });
     if (/loses life equal to the number of creature cards in your graveyard/i.test(text)) fx.push({ type: 'drain', n: 'GYCREATURES' });                              // Grist -5
+    if (/\bmanifest the top card of your library\b(?! and attach)/i.test(text)) fx.push({ type: 'manifest', from: 'top' });          // rules batch 78: Ugin's Mastery
+    if (/\bmanifest a card from your hand\b/i.test(text)) fx.push({ type: 'manifest', from: 'hand' });          // rules batch 78: Scroll of Fate
     if ((m = text.match(/\bthen mill (a|one|two|three|\d+) cards?/i))) fx.push({ type: 'mill', n: num(m[1]), insect: /if an insect card was milled this way/i.test(text) });   // Grist +1
     if ((m = text.match(/\bscry (\d+)/i)) && !/sacrifice a creature: scry|shares a creature type/i.test(text)) fx.push({ type: 'scry', n: +m[1] });
     if ((m = text.match(/\bsurveil (\d+)/i)) && !/surveil 1\. if you put a card with mana value/i.test(text)) fx.push({ type: 'surveil', n: +m[1] });
@@ -816,6 +818,9 @@
       }
       // ---- rules batch 77: life lost this turn (lifeLostNow), opponents' end steps, a draw from an empty library
       { let bm;
+        if (/^whenever you attack with creatures with total power 6 or greater, you may turn a face-down creature you control face up\.?$/i.test(line)) { a.triggers.push({ kinds: ['attackAny'], once: true, minTotalPower: 6, fx: [{ type: 'faceUpOne' }], text: raw }); rec.status = 'ok'; continue; }          // Ugin's Mastery
+        if (/^\{x\}, \{t\}: untap x target lands\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{X}'), tap: true, gate: 'personOnly', fx: [{ type: 'untapLandsX' }], text: raw }); rec.status = 'ok'; continue; }          // Magus of the Candelabra
+        if (/^\{x\}\{b\/g\}, \{t\}, sacrifice another creature: search your library for a creature card with mana value x or less, put it onto the battlefield, then shuffle\. activate only as a sorcery\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{X}{B/G}'), tap: true, gate: 'artisan', fx: [{ type: 'sacTutorX' }], text: raw }); rec.status = 'ok'; continue; }          // Fiend Artisan
         if (/^as long as you've lost life this turn, ~ has flying and vigilance\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'selfLost', p: 0, t: 0, keywords: ['flying', 'vigilance'] }); rec.status = 'ok'; continue; }          // Essence Channeler
         if (/^when ~ dies, put its counters on target creature you control\.?$/i.test(line)) { a.channeler = true; rec.status = 'ok'; continue; }          // Essence Channeler (fireDies: its +1/+1 counters)
         if (/^at the beginning of each opponent's end step, if you didn't lose life this turn, you may put a quest counter on ~\.?$/i.test(line)) { a.oppEndTrig = true; a.triggers.push({ kinds: ['oppEnd'], fx: [{ type: 'counters', kind: 'quest', n: 1, scope: 'self' }], cond: { kind: 'noLifeLost' }, text: raw }); rec.status = 'ok'; continue; }          // Luminarch Ascension
@@ -6186,6 +6191,24 @@
           for (let j = 0; j < k; j++) g.floating.push({ src: null, colors: new Set(['C']), floating: true }); if (k) ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: adds ${k} {C} (${k} creature${k > 1 ? 's' : ''} sharing a type with ${subject.card.name})`, source }); break; }          // rules batch 72: Mana Echoes
         case 'skirmisher': { const blockers = g.opp ? g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped) : false; const kw = blockers ? 'first strike' : 'lifelink'; applyEffects(g, [{ type: 'pumpAll', p: 0, t: 0, keywords: [kw] }], source, ev, null); ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: chooses ${kw}`, source }); break; }          // rules batch 74: Angelic Skirmisher (first strike against blockers, otherwise lifelink)
         case 'rad': { const nn = n || 1; if (f.who !== 'opp') addRad(g, nn, ev, source); if (f.who !== 'you') for (const o of otherPlayers(g)) addRad(o, nn, ev, source); break; }          // rules batch 76: rad counters (each player / target opponent / you; a goldfish's opponent has no cards to mill)
+        case 'manifest': {          // rules batch 78: manifest (CR 701.40): the card goes onto the battlefield face down as a 2/2 creature; a creature card can be turned face up for its mana cost
+          let c = null;
+          if (f.from === 'hand') { c = g.hand.filter(i => !i.card.commander).sort((x, y) => discardValue(g, x) - discardValue(g, y))[0] || null; if (c) g.hand.splice(g.hand.indexOf(c), 1); }
+          else c = g.library.shift() || null;
+          if (!c) break;
+          const real = c.card, np = enterWithTriggers(g, { iid: c.iid, card: faceDownCard(g.deck) }, {}, ev); np.inst = c; np.origCard = real;
+          np.faceDown = real.a.isCreature && real.a.cost ? real.a.cost : { generic: 99, pips: [], x: 0 };          // a card that is not a creature card cannot be turned face up (an unpayable cost)
+          ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}manifest ${real.a.isCreature ? real.name : 'a card'} (a face-down 2/2)`, source }); break; }
+        case 'faceUpOne': {          // rules batch 78: turn a face-down creature you control face up (no cost): the best creature card among them
+          const fd = g.battlefield.filter(q => q.faceDown && q.origCard && q.origCard.a.isCreature).sort((x, y) => (y.origCard.a.mv || 0) - (x.origCard.a.mv || 0))[0]; if (!fd) break;
+          const real = fd.origCard; fd.card = real; know(g, fd.card); fd.origCard = null; fd.faceDown = null; touch(g);
+          if (real.a.faceUpCounters) addCounters(g, fd, '+1/+1', real.a.faceUpCounters, ev, fd);
+          ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${real.name} is turned face up`, source }); break; }
+        case 'sacTutorX': {          // rules batch 78: Fiend Artisan: sacrifice another creature, fetch a creature card with mana value X or less onto the battlefield
+          const X = g.xValue || 0, pk = artisanPick(g, source, X); if (!pk || (g.ask && !askUse(g, `sacrifice ${pk.v.card.name} for ${pk.t.card.name}`, 'Fiend Artisan', source, pk.v))) break;
+          leavePerm(g, pk.v, ev); flushLeaves(g, ev); sacEvent(g, pk.v, ev);
+          tutor(g, { filters: ['creature'], dest: 'battlefield', maxMv: X }, ev, source); break; }
+        case 'untapLandsX': { const X = g.xValue || 0; const ls = g.battlefield.filter(q => q.asLand && q.tapped).sort((x, y) => landNow(g, y) - landNow(g, x)).slice(0, X); ls.forEach(q => { q.tapped = false; }); touch(g); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}untaps ${ls.length} land${ls.length === 1 ? '' : 's'}`, source }); break; }          // rules batch 78: Magus of the Candelabra
         case 'treeSwap': { if (!source || !g.battlefield.includes(source) || !isCreaturePerm(source)) break; const t = toughnessOf(g, source), l = g.life; source.setT = l; g.life = t; touch(g); ev.push({ type: 'note', text: `${source.card.name}: exchanges life (${l}) with toughness (${t})` }); break; }          // rules batch 72: Tree of Redemption (its base toughness becomes the old life total; counters and boosts still apply)
         case 'massShrink': for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } ev.push({ type: 'note', text: `All creatures get -${f.n}/-${f.n} until end of turn`, source }); break;          // Golgari Charm
         case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
@@ -8768,6 +8791,17 @@
   const subtypesOf = card => ((card.type_line || '').split(/\s+[—-]\s+/)[1] || '').trim().split(/\s+/).filter(Boolean);
   const hasCreatureType = (card, ty) => !!card.a.isCreature && (subtypesOf(card).includes(ty) || (card.keywords || []).includes('Changeling') || /\bchangeling\b/i.test(card.oracle_text || ''));
   // Prime Speaker Vannifar: the creature to sacrifice and the creature with 1 more mana value that it fetches; null unless that gains at least 2
+  // Fiend Artisan: the creature to sacrifice and the creature card (mana value X or less) it fetches, when that is a real upgrade
+  function artisanPick(g, src, X) {
+    let best = null;
+    for (const v of g.battlefield) {
+      if (v === src || !isCreaturePerm(v) || v.card.commander) continue;
+      const t = bestTutorTarget(g, { filters: ['creature'], dest: 'battlefield', maxMv: X }); if (!t) continue;
+      const gain = cardValue(t.inst.card) - creatureValue(g, v);
+      if (gain >= 2 && (!best || gain > best.gain)) best = { v, t: t.inst, gain };
+    }
+    return best;
+  }
   function sacUpPick(g, src) {
     let best = null;
     for (const v of g.battlefield) {
@@ -10322,6 +10356,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   const countedTokens = ab => ab.fx.some(f => f.type === 'token' && f.n === 'X' && f.count && f.creature);          // "create X tokens, where X is the number of ..." (Krenko, Mob Boss)
   function abilityGate(g, p, ab) {
     if (ab.gate === 'landAttack') return !g.combatDone && g.activeTurn !== false && !(g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped)) && g.battlefield.some(q => q.asLand && !q.animated && !q.tapped && !q.card.a.isCreature) && g.battlefield.filter(q => q.asLand && !q.tapped).length >= 2;          // Llanowar Loamspeaker: an untapped land (haste) and no blockers; the other land pays for what the turn needs
+    if (ab.gate === 'artisan') return !g.dry && !g.combatDone && g.activeTurn !== false && !!artisanPick(g, p, Math.max(0, allUnits(g).length - 1));          // rules batch 78: Fiend Artisan, sorcery speed, with all the spare mana as X
+    if (ab.gate === 'personOnly') return !!g.ask && !g.dry;          // rules batch 78: an ability the autopilot never has a use for (Magus of the Candelabra)
     if (ab.gate === 'sacUp') return !g.dry && !g.combatDone && g.activeTurn !== false && !!sacUpPick(g, p);          // Prime Speaker Vannifar: sorcery speed, only for a real upgrade
     if (ab.gate === 'riptide') return !g.dry && !!riptidePick(g, p);          // Riptide Shapeshifter: the card it finds is worth much more than it is
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
@@ -11553,6 +11589,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
         if (!t.kinds.includes('attackAny')) continue;
         if (t.minAttackers && attackers.length < t.minAttackers) continue;
+        if (t.minTotalPower && attackers.reduce((sum, p) => sum + Math.max(0, powerOf(g, p)), 0) < t.minTotalPower) continue;          // rules batch 78: Ugin's Mastery (total power of the attackers)
         for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if (!(t.notSelf && p === q) && (!t.filter || matchesFilter(p.card, t.filter)) && (!t.cmdr || p.card.commander) && !(t.maxPow != null && powerOf(g, p) > t.maxPow)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
       }
       settle(g, ev);          // attack triggers resolve before blockers and damage (tokens they make attacking join below)

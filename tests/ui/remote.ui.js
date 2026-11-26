@@ -163,7 +163,7 @@ let pages = [];          // the two devices, for the message when a step times o
   const landTurn = async seat => {
     const p = seat === 0 ? A : B;
     await until((a, c) => myMain(seat === 0 ? a : c, seat) && quiet(a) && quiet(c));
-    const played = await p.evaluate(s => { const gm = window.__isfVersus.duel.game, g = gm.games[s], l = g.hand.find(i => i.card.a.isLand); if (!l) return null; const e = document.querySelector(`#tab-duel .vs-hand .vs-card[data-iid="${l.iid}"]`);
+    const played = await p.evaluate(s => { const gm = window.__isfVersus.duel.game, g = gm.games[s], l = g.hand.find(i => i.card.a.isLand && !/return a land you control/i.test(i.card.oracle_text || '')); if (!l) return null; /* not a bounce land: Izzet Boilerworks as the only land returns itself and the wait below never ends */ const e = document.querySelector(`#tab-duel .vs-hand .vs-card[data-iid="${l.iid}"]`);
       if (!e.classList.contains('can')) console.log('LAND NOT PLAYABLE', l.card.name, JSON.stringify({ can: window.Goldfish.canPlayLand(g), landPlayed: g.landPlayed, turn: g.turn, phase: gm.phase, picking: gm.picking, choice: !!gm.choice, cls: e.className }));
       e.click(); return l.iid; }, seat);
     if (played != null) {          // on both devices the land has left that hand (a fetch land or a bounce land changes the land count otherwise)
@@ -172,7 +172,7 @@ let pages = [];          // the two devices, for the message when a step times o
     return played != null;
   };
   const endTurn = async seat => { await tap(seat === 0 ? A : B, '#tab-duel .vs-end'); await until((a, c) => a.active !== seat && c.active !== seat && quiet(a) && quiet(c) && a.phase === 'main' && c.phase === 'main', 60000); };
-  const hadLand = await (first === 0 ? A : B).evaluate(s => window.__isfVersus.duel.game.games[s].hand.some(i => i.card.a.isLand), first);
+  const hadLand = await (first === 0 ? A : B).evaluate(s => window.__isfVersus.duel.game.games[s].hand.some(i => i.card.a.isLand && !/return a land you control/i.test(i.card.oracle_text || '')), first);
   const firstLand = await landTurn(first);
   check('the first player plays a land (when the deal gave one) and it reaches the other device', firstLand === hadLand, hadLand ? 'played' : 'no land in hand');
   await same('the same table after that land');

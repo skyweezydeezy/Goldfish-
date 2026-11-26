@@ -124,6 +124,15 @@
   // the card a choice comes from. A spell's own effects carry no source in the engine: the spell being cast (g.lastCast) stands in for it.
   const srcOf = (d, g) => (d.source && d.source.card ? d.source.card : (d.kind === 'search' || d.kind === 'target' || d.kind === 'mode') && !d.source && g && g.lastCast ? g.lastCast.card : null);
   const ptOf = (o, p) => (G.isCreaturePerm(p) ? `${G.powerOf(o, p)}/${G.toughnessOf(o, p)}` : '');
+  // T-072: the targets a spell chose as it was cast (CR 601.2c), as text for the person deciding (g) and as data for the sheet (picture of a card target)
+  function targetsOf(d, g, m) {
+    const ts = (d.targets || []).map(t => {
+      const nm = pid => m && m.names && m.names[pid] != null ? m.names[pid] : 'Opponent';
+      if (t.kind === 'player') return { kind: 'player', pid: t.pid, you: t.pid === g.pid, name: t.pid === g.pid ? 'you' : nm(t.pid) };
+      return { kind: 'perm', card: t.card, iid: t.iid, owner: t.owner, you: t.owner === g.pid, name: (t.owner === g.pid ? 'your ' : (t.owner != null ? nm(t.owner) + '\'s ' : '')) + t.name };
+    });
+    return ts.length ? { list: ts, text: 'Targeting ' + ts.map(t => t.name).join(' and ') + '. ' } : null;
+  }
   const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
@@ -272,7 +281,8 @@
       const who = d.caster && m && m.names ? m.names[d.caster.pid] : 'An opponent';
       const nc = opts.filter(o => o.how !== 'respond' && o.how !== 'ability').length, nr = opts.length - nc;
       q.title = `${who} casts ${d.spell.card.name}: does it resolve?`;
-      q.text = (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant, card with flash or ability you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant, a card with flash or an ability of one of your permanents (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
+      const tg = targetsOf(d, g, m); if (tg) q.targets = tg.list;
+      q.text = (tg ? tg.text : '') + (d.unc ? 'It cannot be countered. ' : '') + (!opts.length ? 'You have no counterspell, instant, card with flash or ability you can pay for: let it resolve.' : `You may ${nc ? 'counter it' : ''}${nc && nr ? ', or ' : ''}${nr ? 'respond with an instant, a card with flash or an ability of one of your permanents (it resolves first; then you are asked again)' : ''}. Only what you can pay for is listed.`);
       q.none = 'Let it resolve';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     } else if (d.kind === 'tribe') {                                                                      // Metallic Mimic, Cavern of Souls, Kindred Discovery: "As ~ enters, choose a creature type"
@@ -305,7 +315,8 @@
       if (d.target && d.target.card) { q.spell = d.target.card; q.spellNote = 'yours'; }
     } else if (d.kind === 'resolve') {
       q.title = `You cast ${d.spell.card.name}: does it resolve?`;
-      q.text = `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant, a card with flash or an ability (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
+      const tg = targetsOf(d, g, m); if (tg) q.targets = tg.list;
+      q.text = (tg ? tg.text : '') + `It is on the stack. ${opts.length ? 'You may respond to your own spell first with an instant, a card with flash or an ability (it resolves first). ' : ''}When you pass, the other players answer: they counter it or let it resolve.`;
       q.none = 'Pass';
       q.spell = d.spell.card; q.spellNote = 'on the stack';
     }

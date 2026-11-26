@@ -34,8 +34,8 @@ const ID = 'fine-print-fatal-clause-draw-4649230', LEVEL = 'medium', KEY = 'isf_
   const data = await (await fetch('http://127.0.0.1:8800/turn2-puzzles.json')).json();
   const pz = data.puzzles.find(x => x.id === ID), sc = pz.levels[LEVEL];
   const { ctx, p, errs } = await mk(1180, 860);
-  const tabs = await p.$$eval('.tab', ts => ts.map(t => t.textContent.trim()));
-  check('the tab bar ends with a one-word "Puzzle" tab', tabs[tabs.length - 1] === 'Puzzle' && tabs.length === 8, tabs.join(' '));
+  check('the Puzzle tab is hidden while it is redesigned (T-115)', await p.evaluate(() => document.querySelector('[data-tab=puzzle]').hidden));
+  await p.evaluate(() => { document.querySelector('[data-tab=puzzle]').hidden = false; });          // the old puzzles stay testable until they are replaced
   await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-line', { timeout: 15000 });
   check('the Puzzle tab is the active panel', await p.evaluate(() => document.body.dataset.view === 'puzzle' && document.getElementById('tab-puzzle').classList.contains('active')));
   const lines = await p.$$eval('.pz-line', xs => xs.map(x => x.dataset.line));

@@ -210,7 +210,8 @@
 .vs-top > .speed-bar { flex: 1 1 240px; margin: 0; }
 .vs-bar .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vs-foot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.vs-stack { min-width: calc(var(--vc) * .16); }   /* a crowded row squeezes its cards together rather than pushing any out of sight */
+.vs-stack { min-width: calc(var(--vc) * .16); }
+.vs-row > .vs-stack:last-child { min-width: var(--vc); }          /* ...but the last one keeps its whole card, so a squeezed row never pushes a card past its edge (the screen's edge, or the hinge) */   /* a crowded row squeezes its cards together rather than pushing any out of sight */
 @media (min-width: 1000px) { .vs-top > .vs-bar { flex-wrap: nowrap; white-space: nowrap; } }
 @media (max-width: 600px) , (horizontal-viewport-segments: 2) {
   .vs-game .vs-bar { margin-bottom: 0; }
@@ -240,6 +241,8 @@
   .vs-field { container-type: size; min-height: 0; }
   .vs-row { flex: 1 1 0; min-height: 0; padding-top: 3px; padding-bottom: 3px; --vc: min(var(--vc-max), calc((50cqh - 9px) * 0.7176)); }
   .vs-piles { --pc: min(var(--pc-max), calc((50cqh - 20px) * 0.7176)); align-content: center; }
+  /* a pod's three opponents are narrow columns: the cards also size to the column's width (two groups of cards, each ending in a whole card, must fit a row) */
+  .vs-arena.pod .vs-opps .vs-row { --vc: max(24px, min(var(--vc-max), calc((50cqh - 9px) * 0.7176), calc((100cqw - 24px) / 5))); }
   .vs-screen .vs-mid { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; padding: 3px 12px; border-bottom: 0; font-size: 12.5px; }
   .vs-hand { padding: 6px 4px 0; }
   .vs-me { max-height: 30vh; overflow: auto; }

@@ -1204,9 +1204,12 @@
     return quiet(beginTurnUI(!auto).then(() => render(true)));
   }
   // person: your turn starting (upkeep choices are asked); otherwise the autopilot's
+  // The step strip in the Practice bar: the step is kept by this page alone (the engine plays the same turn either way)
+  function stepP(k) { S.step = k; const C = window.__isfChoices; if (C) C.lightStep($('#tSteps'), window.Decide, k); }
   function beginTurnUI(person) {
     const g = S.game;
-    const done = ev => { g.turnDone = false; logTurn(g.turn); describe(ev); if (g.turn > 1) sfx('turn'); };
+    stepP('untap');
+    const done = ev => { stepP('main1'); g.turnDone = false; logTurn(g.turn); describe(ev); if (g.turn > 1) sfx('turn'); };
     if (person) return yours(x => G.beginTurn(x)).then(done);
     done(G.beginTurn(g));
     return Promise.resolve();
@@ -1215,7 +1218,7 @@
     const g = S.game;
     { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; }          // T-099
     snap();
-    if (!g.turnDone) { await doCombat(true); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
+    if (!g.turnDone) { await doCombat(true); await doPostCombat(true); stepP('end'); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
   async function play(ev) {
@@ -1240,7 +1243,7 @@
   // mine: your own turn (Next turn). The beginning of combat is its own step first: its triggers resolve before attackers, with their
   // choices asked (Hakbal's Merfolk explore, even while Hakbal is summoning sick), then the attack, whose triggers ask too.
   async function doCombat(mine) {
-    const g = S.game;
+    const g = S.game; stepP('combat');
     if (mine) {
       const pre = await yours(x => (G.matchOver(x) ? { ev: [] } : G.previewAttack(x)).ev);
       if (pre.length) { log('<i>Beginning of combat</i>'); await play(pre); }
@@ -1263,12 +1266,13 @@
   // mine: your own turn (Next turn): the second main phase only resolves what happens by itself (its triggers); the autopilot's turn
   // also casts and uses what it would
   async function doPostCombat(mine) {
+    stepP('main2');
     const ev = mine ? await yours(x => G.postCombatTriggers(x)) : G.postCombat(S.game);
     if (ev.length) await play(ev);
   }
   async function autoTurn() {
     const g = S.game; snap();
-    if (g.turnDone) { describe(G.endTurn(g)); beginTurnUI(); render(); await sleep(delay()); }
+    if (g.turnDone) { stepP('end'); describe(G.endTurn(g)); beginTurnUI(); render(); await sleep(delay()); }
     if (!g.landThisTurn) {
       const le = G.landStep(g);
       if (le) await play([le, ...le.ev]);
@@ -1929,6 +1933,7 @@
     for (const k of Array.from(elCache.keys())) if (!used.has(k)) elCache.delete(k);
 
     $('#cLibrary').textContent = g.library.length;
+    stepP(S.step || null);
     $('#hTurn').textContent = g.turn;
     $('#hLife').textContent = Math.max(0, g.opts.oppLife - g.damage);
     $('#hMyLife').textContent = g.life;

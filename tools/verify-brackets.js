@@ -148,7 +148,8 @@ function verdict(L, gf, field) {
   const verified = L.cmdr ? Math.max(rules.floor, spd) : null;
   return {
     file: L.d.file, name: L.d.name, stated: L.d.bracket || null, verified, commander: L.cmdr,
-    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by2: pct(cum(2)), by3: pct(cum(3)), by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+      earliestKill: (i => i < 0 || i >= T ? null : i + 1)(gf.kill.findIndex(x => x > 0)), killHist: gf.kill.map(x => Math.round(x * 100000) / 1000),          // earliest turn a game was won (null: none by T10); killHist: % of games won on turn 1..T, then % not won by T
       cmdrMedian: L.cmdr ? (medianTurn(gf.cmdr) > T ? `>${T}` : medianTurn(gf.cmdr)) : null, mana4: Math.round(gf.mana4 * 100) / 100,
       winBy: Object.fromEntries(Object.entries(gf.winBy).map(([k, v]) => [k, pct(v)])), topLine: (gf.winLines[0] || null) },
     field: field ? { games: field.n, wins: field.w, losses: field.l, none: field.none, errors: field.errors, winRate: pct(field.w / Math.max(1, field.n - field.errors)), opponents: field.opps } : null,
@@ -257,6 +258,10 @@ function apply() {
     d.medianKill = v.goldfish.medianKill; if (v.field) d.fieldWin = v.field.winRate;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
+  }
+  for (const d of idx.decks) {            // the kill-turn ceiling: share of games won by turn 2, 3 and 4, and the earliest turn a game was won (T-077)
+    const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY)) || v.goldfish.by2 == null) continue;
+    d.by2 = v.goldfish.by2; d.by3 = v.goldfish.by3; d.by4 = v.goldfish.by4; d.earliestKill = v.goldfish.earliestKill;
   }
   fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)

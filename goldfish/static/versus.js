@@ -41,7 +41,7 @@
         </div>
         <details class="vs-what hint"><summary>What you are asked when you play, and what the autopilot still decides</summary>
           <p><b>Asked:</b> library searches (which card); the target of removal, bounce and burn, in a pod at any opponent; which of your creatures gets counters, a pump or an Aura; the modes of "choose one" spells; which card to discard; which creature to sacrifice; whether to counter a spell an opponent casts; your blocks; and, at the end of each opponent's turn, instants, cards with flash and abilities. The autopilot's pick is marked ★ and "Let the autopilot decide" is always there.</p>
-          <p><b>Not offered yet (the autopilot decides):</b> this is not a stack: you cannot respond to abilities or triggers, or to a spell with anything but a counterspell, and nobody answers your spells with instants. Which abilities to use and when, land searches (fetch lands, ramp), cards returning from a graveyard, divided damage, theft and clone targets, the order of triggers and how mana is paid are the autopilot's. Burn only offers creatures it kills, and a single legal option is taken without asking.</p>
+          <p><b>Not offered yet (the autopilot decides):</b> this is not a stack: you cannot respond to abilities or triggers, or to a spell with anything but a counterspell, and nobody answers your spells with instants. Which abilities to use and when, land searches (fetch lands, ramp), cards returning from a graveyard, divided damage, theft and clone targets, the order of triggers are the autopilot's. How mana is paid is the autopilot's too, unless you turn on "Choose how I pay mana" in Settings (Display). Burn only offers creatures it kills, and a single legal option is taken without asking.</p>
         </details>
         <div class="vs-info hint"></div>
       </div>
@@ -61,6 +61,7 @@
     st.q = q; st.root = root; st.mode = mode;
     st.nodes = new Map(); st.backs = new Map(); st.life = {};
     q('.vs-top').appendChild(A.speedBar());                       // the same 🐢…🐇 speed setting as the Goldfish Table
+    st.clockEl = h('span', 'vs-clock'); st.clockEl.hidden = true; st.clockEl.setAttribute('role', 'timer'); q('.vs-top').appendChild(st.clockEl);          // the turn clock (see "the turn clock")
     q('.vs-new').addEventListener('click', () => { V[mode].loopStats = null; newGame(mode).catch(e => info(mode, 'Could not start: ' + (e.message || e))); });
     q('.vs-loop').addEventListener('change', e => { if (e.target.checked && q('.vs-you').value === 'human') info(mode, 'Loop plays games by themselves: set Your seat to "Autopilot plays my deck", then press New game.'); });
     q('.vs-run').addEventListener('click', () => runSeries(mode).catch(e => { q('.vs-sinfo').textContent = 'Could not run: ' + (e.message || e); q('.vs-run').disabled = false; }));
@@ -157,21 +158,26 @@
     const box = h('div', 'vs-dice'); box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite');
     const seat = pid => SEAT[pid] || 'a', label = pid => names[pid] === 'You' ? 'You' : names[pid];
     // each player's die is the 3D d20 of dice.js (Dice.rollInto), tinted in their seat colour; the number it lands on shows under it too
-    const n3d = !!(window.Dice && window.Dice.rollInto), size = roll.rounds[0].length > 2 ? 34 : 42;
+    const n3d = !!(window.Dice && window.Dice.rollInto) && !(window.CSS && CSS.supports && !(CSS.supports('transform-style', 'preserve-3d') || CSS.supports('-webkit-transform-style', 'preserve-3d'))), size = roll.rounds[0].length > 2 ? 34 : 42;
     const die = pid => `<div class="vs-die ${seat(pid)}${n3d ? ' d3' : ''}" data-pid="${pid}"><div class="dice-stage"></div><b>&nbsp;</b><span>${esc(label(pid))}</span></div>`;
     box.innerHTML = `<div class="vs-dice-card"><div class="vs-dice-title">Roll for first</div><div class="vs-dice-row">${roll.rounds[0].map(x => die(x.pid)).join('')}</div><div class="vs-dice-say"></div></div>`;
-    (V[mode].root || document.body).appendChild(box);
+    box.dataset.mode = mode;
+    document.body.appendChild(box);                       // on the body, not in the tab: the tab fades in with an opacity animation that would trap the dice (and flatten their 3D) on Safari
     const say = t => { box.querySelector('.vs-dice-say').textContent = t; };
     const D = pid => box.querySelector(`.vs-die[data-pid="${pid}"]`);
     const wait = ms => new Promise(r => setTimeout(r, ms));
+    const shown = () => { const r = V[mode].root; return !r || r.getClientRects().length > 0; };
+    // no 3D to tumble: a flat die shows numbers ticking over until it lands
+    const flat = (stage, v, ms) => new Promise(res => { stage.textContent = ''; const f = h('div', 'vs-flat'); stage.appendChild(f); const t0 = Date.now(), tick = setInterval(() => { const done = Date.now() - t0 >= ms || !box.isConnected; f.textContent = done ? v : 1 + Math.floor(Math.random() * 20); if (done) { clearInterval(tick); res(); } }, 80); });
     return (async () => {
       for (let i = 0; i < roll.rounds.length; i++) {
         if (!box.isConnected) return;                         // skipped
+        if (!shown()) { box.remove(); return; }              // the tab went away
         const r = roll.rounds[i];
         box.querySelectorAll('.vs-die').forEach(d => d.classList.toggle('out', !r.some(x => x.pid === +d.dataset.pid)));
         if (!reduce) sfx('dice');
         r.forEach(x => { D(x.pid).querySelector('b').innerHTML = '&nbsp;'; });
-        if (n3d) await Promise.all(r.map(x => window.Dice.rollInto(D(x.pid).querySelector('.dice-stage'), x.v, { size, ms: 1300 + Math.random() * 300 })));
+        { const ms = 1300 + Math.random() * 300; await Promise.all(r.map(x => { const st = D(x.pid).querySelector('.dice-stage'); return n3d ? Promise.resolve().then(() => window.Dice.rollInto(st, x.v, { size, ms })).catch(() => flat(st, x.v, ms)) : flat(st, x.v, ms); })); }
         r.forEach(x => { D(x.pid).querySelector('b').textContent = x.v; });
         const top = Math.max(...r.map(x => x.v)), tied = r.filter(x => x.v === top);
         if (tied.length > 1 && i < roll.rounds.length - 1) { say(`Tie on ${top}! ${tied.map(x => label(x.pid)).join(' and ')} roll again.`); await wait(reduce ? 900 : 1100); }
@@ -198,7 +204,7 @@
       const pod = G.newPod(decks, optsList, seed, ps.map(p => p.name), first, human ? [0] : null);
       pod.match.round = 1;
       if (human) D.seat(pod.games[0]);                        // your seat can be asked; every other seat is the autopilot's
-      st.game = { games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, remote: null, phase: human ? 'mull' : null, mulling: human ? { 0: true } : {}, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
+      st.game = { turnTimer: o.turnTimer !== false, games: pod.games, match: pod.match, idx: 0, human: human ? 0 : null, remote: null, phase: human ? 'mull' : null, mulling: human ? { 0: true } : {}, bottom: new Set(), block: null, rounds: o.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
         step: null, preview: null, choice: null, respond: null, acting: false, noStop: false };
       st.nodes = new Map(); st.backs = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
       st.game.looks = dealLooks(ps.length);                   // every player gets a random playmat-and-sleeves set
@@ -216,7 +222,7 @@
       if (!human) { if (q('.vs-loop').checked) advance(mode, 9999, true); else advance(mode); }          // Loop: the game plays itself at the slider's speed
       if (dice) {                                      // the dice on screen (not between the games of a Loop). They never hold the game up:
         let told = false;                                     // the table tells who goes first when they land, or at once if a turn is played first
-        const tell = () => { if (told) return; told = true; gm.onRoll = null; const d = st.root.querySelector('.vs-dice'); if (d) d.remove(); if (st.game === gm) { announce(); render(mode); } };
+        const tell = () => { if (told) return; told = true; gm.onRoll = null; document.querySelectorAll(`.vs-dice[data-mode="${mode}"]`).forEach(d => d.remove()); if (st.game === gm) { announce(); render(mode); } };
         gm.onRoll = tell;
         showRoll(mode, roll, pod.match.names).then(tell, tell);
       }
@@ -234,7 +240,7 @@
     pod.match.round = 1;
     pod.games.forEach(g => D.seat(g));
     const me = setup.local, them = 1 - me;
-    st.game = { games: pod.games, match: pod.match, idx: 0, human: me, remote: them, io, phase: 'mull', mulling: { 0: true, 1: true }, bottom: new Set(), block: null, rounds: setup.opts.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
+    st.game = { turnTimer: setup.opts.turnTimer !== false, games: pod.games, match: pod.match, idx: 0, human: me, remote: them, io, phase: 'mull', mulling: { 0: true, 1: true }, bottom: new Set(), block: null, rounds: setup.opts.turns, over: null, busy: false, token: {}, pick: new Set(), target: null, playing: false,
       step: null, preview: null, choice: null, respond: null, acting: false, noStop: false, noStops: new Set(), inputs: { 0: [], 1: [] }, picks: { 0: [], 1: [] }, pickWait: {}, moves: 0, waiting: null };
     st.nodes = new Map(); st.backs = new Map(); st.drawn = false; st.last = null; st.life = {}; st.note = '';
     st.game.looks = dealLooks(2, me);
@@ -623,7 +629,14 @@
     let attackers, pre = [];
     if (iids) attackers = iids.map(id => g.battlefield.find(p => p.iid === id)).filter(p => p && G.canAttack(g, p));
     else { const pv = await act(mode, gs => D.turn.declare(gs[g.pid]), auto); attackers = pv ? pv.attackers : []; pre = pv ? pv.ev : []; }
-    const def = g.opp, blocks = def && !finished(gm) ? await blocksOf(mode, gm, g, attackers, def) : {};
+    const def = g.opp;
+    gm.attackNow = def && g.pid === gm.human && attackers.length ? { iids: attackers.map(p => p.iid), def: def.pid } : null; if (gm.attackNow) render(mode);
+    const blocks = def && !finished(gm) ? await blocksOf(mode, gm, g, attackers, def) : {};
+    gm.attackNow = null;
+    if (def && attackers.length && !finished(gm)) {          // the blocks are declared: what gets through, on both devices
+      const bm = {}; for (const [aid, ids] of Object.entries(blocks)) bm[aid] = ids.map(id => def.battlefield.find(b => b.iid === id)).filter(Boolean);
+      say(mode, g, dmgText('through', A.attackSum(g, attackers, def, bm)), 'combat');
+    }
     const ev = finished(gm) ? [] : await act(mode, gs => D.turn.combat(gs[g.pid], { attackers: attackers.map(p => p.iid), blocks }), auto);
     return pre.concat(ev);
   }
@@ -815,7 +828,19 @@
   // The card exiled with a permanent by imprint (Isochron Scepter, Chrome Mox, Ugin's Labyrinth) is drawn tucked behind that
   // permanent, labelled, and opens like any card. app.js knows which card it is (imprintOf) and reads the engine's notes (noteImprints).
   const { imprintOf, noteImprints } = A;
-  const sum = (g, ev, viewer) => { noteImprints(g, ev); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
+  // CR 701.44a: an explorer reveals the top card to every player: the other players see it on the table for a moment
+  const revealedSeen = new WeakSet();
+  function flashReveals(g, ev, viewer) {
+    if (viewer == null) return;
+    for (const e of ev) {
+      if (e.type !== 'reveal' || !e.inst || revealedSeen.has(e)) continue;
+      revealedSeen.add(e); if (g.pid === viewer) continue;          // the explorer has it on their own question
+      const box = h('div', 'vs-reveal', ''), cap = h('div', 'vs-reveal-cap', `${esc((e.source && e.source.card.name) || 'A creature')} explores: reveals ${esc(e.inst.card.name)}`);
+      box.append(A.cardEl(e.inst.card, { eager: true }), cap); document.body.appendChild(box); setTimeout(() => box.remove(), 2800);
+    }
+  }
+  V.flashReveals = flashReveals;          // (the tests call it with an explore event)
+  const sum = (g, ev, viewer) => { noteImprints(g, ev); flashReveals(g, ev, viewer); return D.summary(g, ev, viewer || 0); };          // viewer: whose secrets the log may name
   // identical lands and tokens in the same state share a stack (up to three pictures and a ×N count)
   function stacks(st, gm, g, perms) {
     const picking = !!gm.picking && gm.human === g.pid && myMain(gm), groups = new Map();
@@ -868,7 +893,8 @@
       p.dataset.pid = g.pid; p.appendChild(inner || h('div', 'vs-empty')); box.appendChild(p);
       return p;
     };
-    pile('lib', 'Library', 'Lib', g.library.length, g.library.length ? backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid) : null);
+    const tv = G.topCardView(g), shown = tv === 'all' || (tv === 'owner' && mine);          // Mystic Forge and the like: its player sees the top card face up; the others see a card back (a revealed top card is open to everyone)
+    pile('lib' + (shown ? ' top-open' : ''), 'Library', 'Lib', g.library.length, g.library.length ? (shown ? node(st, `lt${g.pid}:${g.library[0].iid}`, g.library[0].card) : backEl(st, 'lib' + g.pid, 'card-back' + (g.library.length > 1 ? ' pile' : ''), g.pid)) : null);
     let cz = null;
     if (g.command.length) {
       cz = h('div', 'vs-czone');
@@ -918,6 +944,8 @@
     const cmd = g.deck.commanders.map(c => c.card.name.split(',')[0]).join(' + ');
     let cd = 0;                                               // the most commander damage this player has taken from one commander
     gm.games.forEach(o => Object.keys(o.cmdrDamage || {}).forEach(k => { if (String(k).endsWith('>' + g.pid)) cd = Math.max(cd, o.cmdrDamage[k]); }));
+    let ps = 0;                                               // the poison counters this player has: what the players attacking it have dealt (the engine keeps one count for each attacker, on the player it attacks)
+    gm.games.forEach(o => { if (o !== g && o.opp === g) ps = Math.max(ps, o.poisonDealt || 0); });
     const prev = st.life[g.pid]; st.life[g.pid] = g.life;
     const flash = prev == null || g.dead ? '' : g.life < prev ? ' down' : g.life > prev ? ' up' : '';
     const backs = mine ? '' : '<span class="vs-backs-slot"></span>';          // filled below with the kept fan of backs (backsEl)
@@ -926,7 +954,7 @@
     const rl = g.ring && g.ring.tempts > 0 ? Math.min(4, g.ring.tempts) : 0;
     const ring = rl ? `<span class="vs-ring" title="The Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×. ${esc(G.RING_TEXT.slice(0, rl).join(' '))}">💍 ${g.ring.tempts}</span>` : '';
     const plate = h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
-      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
+      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}${ps > 0 ? `<span class="vs-ps${ps >= 8 ? ' hot' : ''}" title="Poison counters (10 loses the game)">☠ ${ps}/10</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
     const slot = plate.querySelector('.vs-backs-slot'); if (slot) slot.replaceWith(backsEl(st, g));
     return plate;
   }
@@ -943,6 +971,20 @@
     if (cur(gm).pid === gm.human) return 'Your turn';
     return `${them}'s turn`;
   }
+  // ---------- the combat readout (T-084) ----------
+  // How much damage an attack sends, from the engine's own numbers (app.js attackSum): "Attacking for N" while you choose attackers (per
+  // defending player in a pod, with LETHAL when it reaches that player's life, ten poison or 21 commander damage), "Incoming: N" and
+  // "Getting through: N (trample M)" for the defender as blocks are assigned, and the same line in the log once blocks are declared.
+  function dmgText(kind, r) {
+    const label = kind === 'incoming' ? 'Incoming: ' : kind === 'through' ? 'Getting through: ' : 'Attacking for ';
+    return label + r.dmg + (kind === 'through' && r.trample ? ` (trample ${r.trample})` : '') + (r.poison ? ` +${r.poison} poison` : '') + r.cmdr.map(c => ` · ${c.name} ${c.after}/21`).join('') + (r.estimate ? ' (estimate)' : '') + (r.isLethal ? ' LETHAL' : '');
+  }
+  function dmgSpan(kind, r) {
+    const label = kind === 'incoming' ? 'Incoming: ' : kind === 'through' ? 'Getting through: ' : 'Attacking for ';
+    return `<span class="vs-dmg ${kind}${r.isLethal ? ' lethal' : ''}">${label}<b>${r.dmg}</b>${kind === 'through' && r.trample ? ` (trample ${r.trample})` : ''}${r.poison ? ` <span class="vs-psn">+${r.poison} poison</span>` : ''}${r.cmdr.map(c => ` <span class="vs-cmdr">${esc(c.name)} ${c.after}/21</span>`).join('')}${r.estimate ? ' <i class="vs-est" title="First strike, double strike or deathtouch are involved: this figure is an estimate">estimate</i>' : ''}${r.isLethal ? ' <b class="vs-lethal">LETHAL</b>' : ''}</span>`;
+  }
+  const blockMap = (sug) => { const m = {}; if (sug) for (const [a, bl] of sug) m[a.iid] = bl; return m; };
+
   // what you can do right now: mulligan, block, pick attackers, or the buttons of your main phase
   function ctlHtml(mode, gm) {
     const g = gm.games[gm.human], mine = myMain(gm) && !gm.over;
@@ -967,6 +1009,7 @@
       const mineB = g.battlefield.filter(b => as.some(a => G.canBlock(atk, a, g, b)));
       const pick = b => { for (const [a, bl] of gm.block.sug) if (bl.includes(b)) return a.iid; return ''; };
       return `<div class="vs-ask"><b>${esc(gm.match.names[atk.pid])} attacks you</b> <span class="hint">The attackers glow red above. You are at <b>${g.life}</b> life; unblocked, this is <b>${incoming}</b> damage. The menus start on what the autopilot would do. A creature with menace needs two blockers.</span></div>
+        <div class="vs-dmgrow vs-blockdmg"><span class="vs-in">${dmgSpan('incoming', A.attackSum(atk, as, g))}</span> <span class="vs-thru">${dmgSpan('through', A.attackSum(atk, as, g, blockMap(gm.block.sug)))}</span></div>
         <div class="vs-atkline"><span class="vs-lbl">Attackers</span>${as.map(a => `<span class="vs-perm${a.card.commander ? ' cmdr' : ''}" title="${esc((a.card.type_line || '') + '\n' + (a.card.oracle_text || ''))}">${esc(label(a))}${esc(kws(atk, a))}</span>`).join('')}</div>
         <div class="vs-blocks">${mineB.map(b => { const c0 = pick(b); return `<label class="vs-blockrow"><span><b>${esc(b.card.name)}</b> ${pt(g, b)}${esc(kws(g, b))}</span><select class="vs-blk" data-iid="${b.iid}"><option value="">Does not block</option>${as.filter(a => G.canBlock(atk, a, g, b)).map(a => `<option value="${a.iid}"${a.iid === c0 ? ' selected' : ''}>blocks ${esc(label(a))}</option>`).join('')}</select></label>`; }).join('')}</div>
         <div class="row wrap"><button class="primary vs-block-go">Confirm blocks</button><button class="vs-block-none">No blocks</button></div>`;
@@ -974,12 +1017,22 @@
     if (gm.picking && mine) {
       const can = g.battlefield.filter(p => G.canAttack(g, p));
       const opps = G.podAlive(g), def = gm.target != null && opps.some(o => o.pid === gm.target) ? gm.target : (g.opp && !g.opp.dead ? g.opp.pid : (opps[0] && opps[0].pid));
+      const sel = can.filter(p => gm.pick.has(p.iid)), dg = gm.games[def], r = dg ? A.attackSum(g, sel, dg) : null;
+      let readout = '';
+      if (r && sel.length) {
+        const chips = opps.length > 1 ? opps.map(o => { const ro = A.attackSum(g, sel, o); return `<span class="vs-chip${o.pid === def ? ' sel' : ''}${ro.isLethal ? ' lethal' : ''}">${esc(gm.match.names[o.pid])} ${o.life}${ro.isLethal ? ' <b class="vs-lethal">LETHAL</b>' : ''}</span>`; }).join('') : '';
+        let likely = '';
+        if (gm.remote == null) try { const rr = A.attackSum(g, sel, dg, blockMap(G.chooseBlocks(dg, g, sel))); if (rr.dmg !== r.dmg || rr.poison !== r.poison) likely = ` <span class="vs-likely">Likely getting through <b>${rr.dmg}</b>${rr.poison ? ` +${rr.poison} poison` : ''} <i class="vs-est" title="If ${esc(gm.match.names[dg.pid])} blocks the way the autopilot would">estimate</i></span>`; } catch (e) { /* no estimate */ }
+        readout = `<div class="vs-dmgrow">${dmgSpan('attack', r)}${likely}${chips}</div>`;
+      } else if (sel.length === 0 && can.length) readout = '<div class="vs-dmgrow"><span class="vs-dmg attack">Attacking for <b>0</b></span></div>';
       return `<div class="vs-ask"><b>Choose attackers</b> <span class="hint">${can.length ? `Beginning of combat is over. Click your creatures to send them or hold them back: <b>${[...gm.pick].filter(id => can.some(p => p.iid === id)).length}</b> of ${can.length} attacking. It starts on what the autopilot would send.` : 'No creature can attack.'} Blocks are chosen by the defending player.</span></div>
+        ${readout}
         <div class="row wrap">${opps.length > 1 ? `<label>Attack <select class="vs-target">${opps.map(o => `<option value="${o.pid}"${o.pid === def ? ' selected' : ''}>${esc(gm.match.names[o.pid])} (${o.life} life, ${o.battlefield.filter(G.isCreaturePerm).length} creatures)</option>`).join('')}</select></label>` : `<input type="hidden" class="vs-target" value="${def}">`}
           <button class="primary vs-attack-go">Attack</button><button class="ghost vs-attack-all">All</button><button class="ghost vs-attack-none">None</button><button class="vs-noattack" title="Declare no attackers: combat ends and you go to your second main phase">No attack</button></div>`;
     }
     const units = G.allUnits(g).length;
-    return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
+    const now = gm.attackNow && gm.games[gm.attackNow.def] ? A.attackSum(g, gm.attackNow.iids.map(id => g.battlefield.find(p => p.iid === id)).filter(Boolean), gm.games[gm.attackNow.def]) : null;
+    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
       ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
@@ -1013,7 +1066,7 @@
       G.isCreaturePerm(p) ? pt(g, p) : '', p.other ? JSON.stringify(p.other) : '', p.transformed ? 1 : 0, attacking(gm, g, p) ? 1 : 0, imprintOf(p) ? imprintOf(p).iid : ''];
     const top = z => z.length ? z[z.length - 1].iid : '';
     return JSON.stringify([mine ? 1 : 0, gm.over || '', cur(gm).pid, gm.phase || '', gm.picking ? 1 : 0, gm.block ? gm.block.attackers.map(a => a.iid) : '', gm.human, st.lookName[g.pid] || '',
-      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})),
+      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})), gm.games.map(o => (o.poisonDealt || 0) + ':' + (o.opp ? o.opp.pid : '')),
       g.hand.map(i => i.iid), g.command.map(i => i.iid), g.library.length, g.graveyard.length, top(g.graveyard), g.exile.length, top(g.exile), g.battlefield.map(P)]);
   }
   // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.
@@ -1066,7 +1119,7 @@
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
     { const sb = q('.speed-bar'); if (sb) sb.hidden = gm.remote != null; }          // the pace of a game against a person is fixed (slowOf)
-    endUi(mode, gm);
+    endUi(mode, gm); tickClock(mode);          // the clock follows the game at once (a turn passing to an autopilot hides it now, not at the next 250 ms tick)
     if (gm.remote != null) setTimeout(() => pump(mode));          // a move of the other player may be waiting for this moment
   }
   // In the card viewer, a card of yours shows the choices the table gives it: cast or play it, play it as a land, cycle it, the mulligan
@@ -1091,7 +1144,15 @@
   });
   function wire(mode) {
     const root = V[mode].root;
-    root.addEventListener('change', e => { const gm = V[mode].game; if (gm && e.target.classList.contains('vs-target')) gm.target = +e.target.value; });
+    root.addEventListener('change', e => {
+      const gm = V[mode].game; if (!gm) return;
+      if (e.target.classList.contains('vs-target')) { gm.target = +e.target.value; render(mode); }
+      if (e.target.classList.contains('vs-blk') && gm.block) {          // blocks assigned: what gets through, live
+        const b = gm.block, me = gm.games[gm.human], map = {};
+        root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) { const bl = me.battlefield.find(x => x.iid === +sel.dataset.iid); if (bl) (map[sel.value] = map[sel.value] || []).push(bl); } });
+        const slot = root.querySelector('.vs-blockdmg .vs-thru'); if (slot) slot.innerHTML = dmgSpan('through', A.attackSum(b.g, b.attackers, me, map));
+      }
+    });
     root.addEventListener('click', e => {
       const gm = V[mode].game, t = e.target; if (!gm) return;
       const hit = c => t.closest('.' + c);
@@ -1183,6 +1244,65 @@
     });
   }
 
+
+  // ---------- the turn clock ----------
+  // A person's turn is timed: 90 seconds on each of that player's first 5 turns, 60 after that. Autopilot seats have no clock. It runs only
+  // while that player is the one who must act, and stops while they wait for anyone else (the other player's answer, their block or
+  // response, a lost connection). When it reaches 0 the turn ends: an open question is answered "none" (or the default where there is no
+  // such answer: a required choice like the cleanup discard), and the turn ends as if the player had pressed End turn, and a sad trombone
+  // plays. Against a person on another device only the active player's device ends the turn, as an ordinary move, so both games stay the
+  // same; that device also tells the other its clock once a second (io.clock) so both show the same time. Setting: Turn timer (Build tab).
+  // window.__turnTimerScale shortens every limit for the tests.
+  const clockScale = () => (+window.__turnTimerScale > 0 ? +window.__turnTimerScale : 1);
+  const clockKey = gm => { const p = cur(gm); return p ? p.pid + ':' + gm.games[p.pid].turn : ''; };
+  const clockLimit = turn => (turn <= 5 ? 90 : 60);
+  function tickClock(mode) {
+    const st = V[mode], gm = st.game, el = st.clockEl; if (!el) return;
+    const owner = gm && !gm.over && !gm.halted && gm.human != null && gm.phase !== 'mull' ? cur(gm).pid : null;
+    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; return; }
+    const g = gm.games[owner], key = clockKey(gm), now = Date.now(), scale = clockScale(), mineTurn = owner === gm.human;
+    let c = gm.clock;
+    if (!c || c.key !== key) { const limit = clockLimit(g.turn); c = gm.clock = { key, owner, limit, left: limit * 1000 * scale, at: now, run: false, fired: false, sentAt: 0, sentRun: null }; }
+    let left = c.left, running = false;
+    if (mineTurn) {
+      const paused = gm.phase === 'block' || gm.phase === 'respond' || gm.waiting != null || (gm.io && !gm.io.up()) || (gm.choice && gm.choice.seat != null && gm.choice.seat !== owner) || (gm.phase == null && !gm.acting && !gm.choice);
+      if (c.run) c.left = Math.max(0, c.left - (now - c.at));
+      c.at = now; c.run = !paused; left = c.left; running = c.run;
+      if (gm.io && (c.sentRun !== c.run || now - c.sentAt >= 1000)) { c.sentAt = now; c.sentRun = c.run; gm.io.clock({ key, left: Math.round(c.left), run: c.run ? 1 : 0 }); }
+      if (c.left <= 0 && !c.fired) { c.fired = true; timeUp(mode); }
+    } else {                                                   // the other player's clock: their device keeps it
+      const t = gm.theirClock;
+      if (t && t.key === key) { left = Math.max(0, t.left - (t.run ? now - t.at : 0)); running = t.run && !(gm.io && !gm.io.up()); }
+    }
+    const secs = Math.ceil(left / 1000 / scale);
+    el.hidden = false;
+    el.textContent = '⏱ ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+    el.classList.toggle('low', left <= 10000 * scale);
+    el.classList.toggle('still', !running);
+    el.title = `${gm.match.names[owner]}'s turn clock: ${c.limit} seconds for each of the first 5 turns, then 60.${running ? '' : ' Stopped while ' + (mineTurn ? 'waiting for someone else' : 'the other player waits') + '.'}`;
+    el.setAttribute('aria-label', `${secs} seconds left on ${gm.match.names[owner]}'s turn`);
+  }
+  setInterval(() => { for (const m of Object.keys(MODES)) tickClock(m); }, 250);
+  function timeUp(mode) {
+    const gm = V[mode].game, c = gm.clock, me = gm.human;
+    gm.forceEnd = c.key;
+    say(mode, null, `${gm.match.names[me]} ran out of time.`); sfx('womp');
+    if (gm.io) gm.io.clock({ key: c.key, left: 0, run: 0, out: 1 });
+    const t0 = Date.now();
+    const next = () => {
+      if (V[mode].game !== gm || gm.over || gm.halted || clockKey(gm) !== c.key || Date.now() - t0 > 60000) return;
+      if (gm.choice && (gm.choice.seat == null || gm.choice.seat === me)) C.answer(gm.choice.none ? 'none' : 'auto');          // no: or, for a required choice, the default
+      else if (mainOf(gm, me) && !gm.acting && !gm.busy) input(mode, 'end', false);
+      setTimeout(next, 150);
+    };
+    next();
+  }
+  // the other device's clock (remote.js passes its "clock" messages on)
+  V.clockIn = (mode, m) => {
+    const gm = V[mode].game; if (!gm || gm.remote == null || !m || typeof m.key !== 'string' || !m.key.startsWith(gm.remote + ':')) return;
+    gm.theirClock = { key: m.key, left: Math.max(0, Math.min(90000 * 2, +m.left || 0)), run: !!m.run, at: Date.now() };
+    if (m.out && gm.timedOut !== m.key) { gm.timedOut = m.key; say(mode, null, `${gm.match.names[gm.remote]} ran out of time.`); sfx('womp'); }
+  };
 
   // ---------- the end of a game: Play again, Change deck, Leave ----------
   // When a game you sit in is over (or you are out), a small panel lies over the table; the final board and the log stay visible behind it.

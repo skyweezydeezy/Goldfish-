@@ -74,6 +74,7 @@
               <label title="The autopilot mulligans a hand it would not keep until it is down to this many cards, then keeps what it has. 7: it never mulligans.">Mulligan down to
                 <select id="optMullTo"><option value="7">7 (never)</option><option value="6">6</option><option value="5" selected>5</option><option value="4">4</option></select></label>
               <label title="Your life when the game starts. In Duel and Pod every player starts with it.">Starting life <input id="optMyLife" type="number" min="1" max="200" value="40"></label>
+              <label class="check" title="Duel, Pod and Play a friend: 90 seconds for each of your first 5 turns and 60 after that. When the time runs out the turn ends. Against a friend, the player who invites decides."><input id="optTurnTimer" type="checkbox" checked> Turn timer</label>
               <label class="check" title="Nobody discards down to seven at the end of the turn"><input id="optNoMaxHand" type="checkbox"> No maximum hand size</label>
             </div>
             <div class="row"><button id="optReset" class="ghost" type="button" title="Every rule back to its default for the chosen format">Reset rules to defaults</button></div>
@@ -86,6 +87,9 @@
               <select id="dispDensity"><option value="standard">Standard</option><option value="compact">Compact</option><option value="roomy">Roomy</option></select></label>
             <label title="How a tab appears when you switch to it">Tab switch
               <select id="dispFade"><option value="smooth">Smooth fade</option><option value="quick">Quick fade</option><option value="off">Instant</option></select></label>
+            <label title="How the built-in decks are ordered in every deck menu. Rank is the deck's win % in a round robin against the other built-in decks; the bracket is the verified one (its card rules, or its median kill turn if that is higher)">Deck order
+              <select id="dispDeckOrder"><option value="bracket-rank">Bracket, then rank</option><option value="color-bracket">Color, then bracket</option><option value="color-rank">Color, then rank</option><option value="rank">Rank only</option></select></label>
+            <label class="check" title="When you pay a cost in Practice, Duel, Pod or Play a friend, pick which lands, mana creatures, Treasures and floating mana pay, and the colour each makes. Off: one tap, the autopilot taps for you."><input id="dispPayChoose" type="checkbox"> Choose how I pay mana</label>
           </div>
         </details>
       </div>
@@ -163,7 +167,7 @@
       <button id="tAuto" title="Let the autopilot take this whole turn">▶<span class="bl"> Autopilot turn</span></button>
       <button id="tAutoTo" title="Let the autopilot play up to this turn">⏩<span class="bl"> Autopilot to turn</span> <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
       <button id="tLoop" class="ghost" aria-pressed="false" title="Loop: game after game by itself. A new game, the autopilot plays until the goldfish is dead, a short pause, then the next. Press again to stop.">🔁<span class="bl"> Loop</span></button>
-      <button id="tNext" title="Attack with everything, then untap and draw"><span class="bl">Next turn </span>⟳</button>
+      <button id="tNext" title="Attack with everything, then untap and draw"><span class="bl">Next turn </span>⟳</button><span id="tDmg" class="vs-dmg" hidden></span>
       <button id="tToken" title="Create a token">＋<span class="bl"> Token</span></button>
       <button id="tUndo" class="ghost" title="Undo">↶<span class="bl"> Undo</span></button>
       <button id="tLog" class="ghost" title="Show the game log" aria-expanded="false">📜<span class="bl"> Log</span></button>
@@ -181,11 +185,12 @@
           <div class="hud-item"><span class="lbl">Your life</span><span id="hMyLife">40</span></div>
           <div class="hud-item"><span class="lbl">The Ring</span><span id="hRing">—</span></div>
           <div class="hud-item"><span class="lbl">Commander damage</span><span id="hCmdr">0 / 21</span></div>
+          <div class="hud-item"><span class="lbl">Poison</span><span id="hPoison">0 / 10</span></div>
           <div class="hud-item"><span class="lbl">Board power</span><span id="hPower">0</span></div>
           <div class="hud-item"><span class="lbl">Mana spent</span><span id="hSpent">0</span></div>
         </div>
         <div id="ringPanel" class="ring-panel" hidden></div>
-        <div class="zone-pile" id="zLibrary"><div class="pile-label">Library <b id="cLibrary">0</b></div><div class="card-back pile"></div></div>
+        <div class="zone-pile" id="zLibrary"><div class="pile-label">Library <b id="cLibrary">0</b></div><div class="card-back pile"></div><div class="lib-top" hidden></div></div>
         <div class="zone-pile" id="zCommand"><div class="pile-label">Command zone</div><div class="pile-cards"></div></div>
         <div class="zone-pile" id="zGrave"><div class="pile-label">Graveyard <b id="cGrave">0</b></div><div class="pile-cards"></div></div>
         <div class="zone-pile" id="zExile"><div class="pile-label">Exile <b id="cExile">0</b></div><div class="pile-cards"></div></div>

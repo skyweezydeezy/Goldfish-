@@ -2,6 +2,49 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 203,
+      "lines": [
+        "Phyrexian mana costs what the card says: the colour or 2 life (Dismember, Gitaxian Probe, Mental Misstep…). Before, it was free. When you can do either, you choose."
+      ]
+    },
+    {
+      "v": 202,
+      "lines": [
+        "While you choose attackers: \"Attacking for N\" counts your damage as you go (double strike, poison, commander damage, LETHAL). Defending shows what's incoming and what gets through.",
+        "A poison counter (☠ N/10) sits next to each player's commander damage, red from 8."
+      ]
+    },
+    {
+      "v": 201,
+      "lines": [
+        "Settings has \"Choose how I pay mana\": pick which lands and sources pay, and which colour each makes. Off by default.",
+        "Sylvan Library plays out in full: draw two more, then pay 4 life or put back each of two cards. Imprint cards (Chrome Mox, Isochron Scepter…) let you choose the card.",
+        "Play a friend reconnects by itself after a phone sleeps or the network drops, codes games included.",
+        "Duel, Pod and Play a friend: a turn timer (90 seconds for your first 5 turns, 60 after). Run out and your turn ends, womp womp. Switch it off in Settings."
+      ]
+    },
+    {
+      "v": 200,
+      "lines": [
+        "Fierce Guardianship and friends can always answer a spell (free with your commander out). Rhystic Study, Smothering Tithe and similar cards ask the player to pay or not."
+      ]
+    },
+    {
+      "v": 199,
+      "lines": [
+        "Five more of your Drive decks are in the deck chooser, bracket-checked. Settings has a Deck order: bracket then rank (the default), color then bracket, or color then rank.",
+        "Duel and Pod: the roll-for-first dice now show on every screen (they could be heard but not seen on some phones).",
+        "Proliferate (Atraxa, Praetors' Voice and friends) lets you pick from every permanent with a counter, an opponent's too, and the log says what it added."
+      ]
+    },
+    {
+      "v": 198,
+      "lines": [
+        "Mystic Forge, Bolas's Citadel, Future Sight and similar cards show your top card face up (only to you). Courser of Kruphix and friends show it to everyone.",
+        "Explore shows the revealed card to every player. Urza's Saga's chapter III lets you choose the artifact, and Sagas now count up after your draw."
+      ]
+    },
+    {
       "v": 197,
       "lines": [
         "Against an opponent, a spell's target is chosen when it is cast, as the rules say. Before you decide whether to counter, you see what it targets (\"Targeting your Serra Angel\" or \"Targeting you\"). If the target is gone when it resolves, the spell does nothing to it."

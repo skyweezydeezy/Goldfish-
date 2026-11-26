@@ -127,6 +127,7 @@
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
       noMaxHand: $('#optNoMaxHand').checked,                 // no discarding down to seven in the cleanup step
+      turnTimer: $('#optTurnTimer') ? $('#optTurnTimer').checked : true,          // Duel, Pod and Play a friend: a clock on each person's turn (versus.js)
       startLife: +$('#optMyLife').value || (fmt === 'commander' ? 40 : 20),   // your life at the start (in Duel and Pod, every player's)
       minHandSize: +$('#optMullTo').value || 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
@@ -149,7 +150,7 @@
     $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
   // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
-  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5, optNoMaxHand: false });
+  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5, optNoMaxHand: false, optTurnTimer: true });
   $('#optReset').addEventListener('click', () => {
     const d = RULE_DEFAULTS($('#optFormat').value === 'commander');
     for (const [id, v] of Object.entries(d)) {
@@ -160,21 +161,27 @@
     toast('Rules back to their defaults');
   });
 
-  // Display (app-wide, kept in this browser like sound and the playmat): spacing and how a tab fades in
+  // Display (app-wide, kept in this browser like sound and the playmat): spacing, how a tab fades in, and the order of the built-in deck menus
+  const DECK_ORDERS = ['bracket-rank', 'color-bracket', 'color-rank', 'rank'];
+  let deckOrder = 'bracket-rank', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
   (() => {
     const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
     let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
     const apply = () => {
       const den = $('#dispDensity').value, fade = $('#dispFade').value;
+      const ord = $('#dispDeckOrder').value; if (ord !== deckOrder) { deckOrder = ord; if (decksListed) refillDeckMenus(); }
       document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
       document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
+      window.__isfPayChoose = $('#dispPayChoose').checked;          // T-089: read by the question sheet (choices.js)
     };
     if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
+    if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
+    if (d.payChoose) $('#dispPayChoose').checked = true;
     apply();
-    for (const id of ['#dispDensity', '#dispFade']) $(id).addEventListener('change', () => {
+    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
       apply();
-      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value })); } catch (e) { /* storage blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked })); } catch (e) { /* storage blocked */ }
     });
   })();
 
@@ -588,22 +595,41 @@
   }
   // ---- built-in decks (goldfish/static/decks, listed in decks/index.json by tools/build-deck-index.js), grouped by number of colors ----
   let BUILTIN = [];
-  const COLOR_GROUP = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
   const COLOR_ORDER = 'WUBRG';
-  const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
-  // Decks with a Commander bracket (the [B1]…[B5] of the ManaBox lists, see tools/import-decks.js) are grouped by bracket, highest first;
-  // within a bracket by number of colors, then name. Decks without a bracket keep the color grouping after them.
+  // Every built-in deck menu (Build, the mirror opponent, 1v1, Pod, the lab's opponents) is sorted by the "Deck order" setting (Display):
+  //   bracket-rank (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by rank
+  //   color-bracket: groups by color (below), inside a color by bracket (highest first), then rank
+  //   color-rank:    groups by color, inside a color by rank
+  //   rank:          one list by rank
+  // Rank = field win % (the round robin of tools/verify-brackets.js, decks/index.json "fieldWin"), highest first, then name; a deck that was
+  // never ranked comes last. Bracket = the verified one (higher of the card floor and the speed bracket, from the median kill turn).
+  // Color order (WUBRG): one color (W U B R G), two colors, three, four, five, colorless last. Inside a count the identities sort by
+  // their letters in W U B R G order: WU WB WR WG UB UR UG BR BG RG; WUB WUR WUG WBR WBG WRG UBR UBG URG BRG; four colors by the color left out.
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
-  const byColors = (a, b) => (b.colors.length - a.colors.length) || colorKey(a.colors).localeCompare(colorKey(b.colors)) || a.name.localeCompare(b.name);
-  const opt = d => `<option value="builtin:${esc(d.file)}">${esc(d.name)} · ${d.colors || 'C'}${d.bracket ? ' · B' + d.bracket + (d.bracketEst ? '?' : '') : ''}</option>`;
-  // Every deck dropdown is tiered the same way: bracket first (highest first), then number of colors (fewest first), then color order
-  // (W U B R G) and name. A dropdown cannot nest groups, so each tier is its own heading: "Bracket 4 · Optimized · Two colors".
+  const COLOR_NAME = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', WU: 'Azorius', WB: 'Orzhov', WR: 'Boros', WG: 'Selesnya', UB: 'Dimir', UR: 'Izzet', UG: 'Simic',
+    BR: 'Rakdos', BG: 'Golgari', RG: 'Gruul', WUB: 'Esper', WUR: 'Jeskai', WUG: 'Bant', WBR: 'Mardu', WBG: 'Abzan', WRG: 'Naya', UBR: 'Grixis', UBG: 'Sultai', URG: 'Temur', BRG: 'Jund',
+    UBRG: 'Four colors (no White)', WBRG: 'Four colors (no Blue)', WURG: 'Four colors (no Black)', WUBG: 'Four colors (no Red)', WUBR: 'Four colors (no Green)', WUBRG: 'Five colors', '': 'Colorless' };
+  const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
+  const colorRank = c => { const n = (c || '').length; return (n ? n : 9) + '.' + (n === 4 ? colorKey('WUBRG'.split('').filter(k => !c.includes(k)).join('')) : colorKey(c || '')); };
+  const byRank = (a, b) => ((b.fieldWin == null ? -1 : b.fieldWin) - (a.fieldWin == null ? -1 : a.fieldWin)) || a.name.localeCompare(b.name);
+  const byBracket = (a, b) => (b.bracket || 0) - (a.bracket || 0);
+  const opt = (d, noColors) => {
+    const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
+    bits.push(d.bracket ? 'B' + d.bracket + (d.bracketEst ? '?' : '') : '—');
+    bits.push(d.fieldWin != null ? Math.round(d.fieldWin) + '%' : '—');          // "—": not measured yet (the round robin has not run for this deck)
+    bits.push(d.medianKill != null ? 'T' + d.medianKill : '—');
+    return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
+  };
   function builtinOptions() {
+    const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';
+    const byColor = cmp => { const keys = [...new Set(BUILTIN.map(d => d.colors || ''))].sort((x, y) => colorRank(x).localeCompare(colorRank(y)));
+      return keys.map(k => group(COLOR_NAME[k] || k, BUILTIN.filter(d => (d.colors || '') === k).sort(cmp), true)).join(''); };
+    if (deckOrder === 'rank') return group('All decks · by field win %', BUILTIN.slice().sort(byRank));
+    if (deckOrder === 'color-rank') return byColor(byRank);
+    if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byRank(a, b));
     let html = '';
-    const tier = (ds, head) => { for (let k = 0; k <= 5; k++) { const g = ds.filter(d => (d.colors || '').length === k).sort(byColors); if (g.length) html += `<optgroup label="${head} · ${COLOR_GROUP[k]}">` + g.map(opt).join('') + '</optgroup>'; } };
-    for (let b = 5; b >= 1; b--) tier(BUILTIN.filter(d => d.bracket === b), `Bracket ${b} · ${BRACKET_NAME[b]}`);
-    tier(BUILTIN.filter(d => !d.bracket), 'No bracket');
-    return html;
+    for (let b = 5; b >= 1; b--) html += group(`Bracket ${b} · ${BRACKET_NAME[b]}`, BUILTIN.filter(d => d.bracket === b).sort(byRank));
+    return html + group('No bracket', BUILTIN.filter(d => !d.bracket).sort(byRank));
   }
   const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
   async function builtinText(d) {
@@ -625,8 +651,13 @@
       const r = await fetch('decks/index.json');
       if (!r.ok) return;
       BUILTIN = ((await r.json()).decks || []).filter(d => d && d.file && d.name);
-      refreshSaved(); fillMirror();
+      decksListed = true; refreshSaved(); fillMirror();
     } catch (e) { /* offline and never loaded: only saved decks are listed */ }
+  }
+  function refillDeckMenus() {            // the Deck order setting changed: every built-in deck menu is rebuilt, keeping what each one has selected
+    refreshSaved(); fillMirror();
+    const lab = $('#plOppList'); if (lab && lab.options.length) { const on = new Set([...lab.selectedOptions].map(o => o.value)); fillLabOpponents(); [...lab.options].forEach(o => { o.selected = on.has(o.value); }); }
+    if (window.__isfVersus && window.__isfVersus.fill) ['duel', 'pod'].forEach(m => window.__isfVersus.fill(m));
   }
   function refreshSaved() {
     const all = getDecks(), sel = $('#savedDecks'), cur = sel.value;
@@ -983,6 +1014,43 @@
     $('#keepStats').innerHTML = kv.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('');
   }
 
+
+  // ---------- how much damage an attack sends (T-084) ----------
+  // From the engine's own numbers (powerOf with anthems and pumps, hasKw, toughnessOf): double strike counts twice, infect and toxic are
+  // poison, a commander's damage is counted toward 21. g: the attacking game; list: the attackers; def: the defending game (null at the
+  // goldfish table); blocks (optional): { attackerIid: [the blockers' permanents] }, for the damage that gets through: an unblocked
+  // attacker's damage plus a trampler's excess over its blockers' toughness. first strike, double strike and deathtouch between blockers
+  // and attackers make it an estimate (estimate: true). Spells and triggers during combat are not counted.
+  function attackSum(g, list, def, blocks) {
+    const r = { dmg: 0, poison: 0, trample: 0, cmdr: [], estimate: false, lethal: { life: false, poison: false, cmdr: false } };
+    const kw = (gg, p, k) => G.hasKw(gg, p, k);
+    for (const p of list) {
+      const pw = Math.max(0, G.powerOf(g, p)), mult = kw(g, p, 'double strike') ? 2 : 1, infect = kw(g, p, 'infect');
+      let amount = pw * mult, steps = mult;
+      const bl = blocks ? (blocks[p.iid] || []) : null;
+      if (bl && bl.length) {
+        const need = kw(g, p, 'deathtouch') ? bl.length : bl.reduce((s, b) => s + Math.max(0, G.toughnessOf(def, b)), 0);
+        if (kw(g, p, 'trample')) { const first = Math.max(0, pw - need); amount = mult === 2 ? first + pw : first; r.trample += amount; } else amount = 0;
+        if (mult === 2 || kw(g, p, 'first strike') || kw(g, p, 'deathtouch') || bl.some(b => kw(def, b, 'first strike') || kw(def, b, 'double strike') || kw(def, b, 'deathtouch'))) r.estimate = true;
+        if (!amount) steps = 0;
+      }
+      if (infect) r.poison += amount; else r.dmg += amount;
+      if (!infect && amount > 0) {
+        const tx = p.card.a && p.card.a.toxic ? p.card.a.toxic : 0;
+        r.poison += (tx > 0 ? tx * steps : 0) + (p.eotToxic || 0) * steps + (tx === -1 ? amount : 0);          // toxic N once for each damage step; Etali: as many as the damage
+      }
+      if (p.card.commander && amount > 0 && !infect) {
+        const key = def ? p.iid + '>' + def.pid : String(p.iid), now = (g.cmdrDamage || {})[key] || 0;
+        r.cmdr.push({ name: p.card.name.split(',')[0], now, after: now + amount });
+      }
+    }
+    const life = def ? def.life : Math.max(0, g.opts.oppLife - g.damage);
+    r.lethal.life = r.dmg > 0 && r.dmg >= life;
+    r.lethal.poison = r.poison > 0 && (g.poisonDealt || 0) + r.poison >= 10;
+    r.lethal.cmdr = g.opts.cmdrDamage !== false && r.cmdr.some(c => c.after >= 21);
+    r.isLethal = r.lethal.life || r.lethal.poison || r.lethal.cmdr;
+    return r;
+  }
   // ======================= goldfish table =======================
   // autopilot speed: the 🐢…🐇 slider slows everything down up to 5× (🐇 = the original speed); ⚡ Fast still applies on top
   // One setting for the whole app: every 🐢…🐇 slider (Goldfish Table, 1v1, Pod) shows and changes the same speed.
@@ -1832,6 +1900,8 @@
       if (cnt) $(cnt).textContent = arr.length;
     };
     pile('#zGrave', g.graveyard, '#cGrave'); pile('#zExile', g.exile, '#cExile'); pile('#zCommand', g.command);
+    { const lt = document.querySelector('#zLibrary .lib-top'), view = G.topCardView(g), top = g.library[0];          // Mystic Forge and the like: the top card is shown face up, kept up to date
+      if (lt) { if (view && top) { const e = tableEl(top.card, top.iid, 0, used); clearState(e); lt.replaceChildren(h('div', 'pile-label', view === 'all' ? 'Top card (revealed)' : 'Top card'), e); lt.hidden = false; } else { lt.hidden = true; lt.replaceChildren(); } } }
     for (const k of Array.from(elCache.keys())) if (!used.has(k)) elCache.delete(k);
 
     $('#cLibrary').textContent = g.library.length;
@@ -1842,7 +1912,11 @@
     $('#hSpent').textContent = g.manaSpent + (g.spentThisTurn || 0);
     const cd = Object.values(g.cmdrDamage || {});
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
+    { const ps = $('#hPoison'); if (ps) { ps.textContent = (g.poisonDealt || 0) + ' / 10'; ps.classList.toggle('hot', (g.poisonDealt || 0) >= 8); ps.title = 'Poison counters on the opponent (10 loses the game)'; } }          // the engine counts them on the opponent: the goldfish table has no attacker of its own
     $('#hPower').textContent = g.battlefield.reduce((s, p) => s + Math.max(0, G.powerOf(g, p)), 0);
+    { const chip = $('#tDmg');                                       // what "Next turn" attacks for: the autopilot's attackers, from the engine's numbers
+      const sum = chip && attackSum(g, G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))), null);
+      if (chip) { chip.hidden = !sum || (!sum.dmg && !sum.poison); if (!chip.hidden) { chip.classList.toggle('lethal', sum.isLethal); chip.innerHTML = '⚔ ' + sum.dmg + (sum.poison ? ' +' + sum.poison + ' poison' : '') + (sum.cmdr.length ? ' · ' + esc(sum.cmdr[0].name) + ' ' + sum.cmdr[0].after + '/21' : '') + (sum.isLethal ? ' <b class="vs-lethal">LETHAL</b>' : ''); chip.title = 'Next turn attacks for ' + sum.dmg + (sum.poison ? ' and ' + sum.poison + ' poison' : '') + ' (the engine\'s own numbers: power with anthems and pumps, double strike twice)'; } } }
     const mp = $('#hMana'); mp.innerHTML = '';
     // one pip per kind of mana with how many: "4× W 1× U". A source of several colors is its own kind (shown as a gold pip, its colors on hover)
     const kinds = new Map();
@@ -3399,7 +3473,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

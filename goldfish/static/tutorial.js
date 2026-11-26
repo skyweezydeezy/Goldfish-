@@ -276,7 +276,7 @@
         set('.vs-opp', ''); set('.vs-you', 'human'); set('.vs-ask', 'ask');
         queued = DUEL_SEED;
       }, el: '#tab-duel .vs-new', tap: true, back: false, title: 'New game', text: 'Tap New game.' },
-    { before: () => waitFor(() => dq('.vs-dice') || (gm() && gm().phase === 'mull'), 6000), el: '#tab-duel .vs-dice', optional: true, back: false, until: () => !dq('.vs-dice'), untilDelay: 100,
+    { before: () => waitFor(() => dq('.vs-dice') || (gm() && gm().phase === 'mull'), 6000), el: '.vs-dice[data-mode=duel]', optional: true, back: false, until: () => !dq('.vs-dice'), untilDelay: 100,
       title: 'Who goes first', text: 'Each player rolls a d20. The highest goes first.' },
     { before: () => waitFor(() => dq('.vs-keep')), el: '#tab-duel .vs-keep', tap: true, back: false, title: 'Keep or mulligan',
       text: 'Four lands, a mana elf and an answer: keep it.' },

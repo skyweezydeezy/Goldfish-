@@ -54,7 +54,7 @@ async function identities(names) {
   // keep what the Policy lab learned for each deck (tools/learn-deck-policies.js writes "policy" and "learned")
   let old = {};
   try { (JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8')).decks || []).forEach(d => { old[d.file] = d; }); } catch (e) { /* first build */ }
-  index.forEach(d => { const o = old[d.file]; if (!o) return; ['policy', 'learned', 'learnedAt', 'learnedVs'].forEach(k => { if (o[k] !== undefined) d[k] = o[k]; }); if (!d.bracket && o.bracketEst) { d.bracket = o.bracket; d.bracketEst = o.bracketEst; } });          // a bracket estimated from kill speed stays until the list says its own
+  index.forEach(d => { const o = old[d.file]; if (!o) return; ['policy', 'learned', 'learnedAt', 'learnedVs', 'medianKill', 'fieldWin', 'floor', 'speedBracket', 'checkedAt'].forEach(k => { if (o[k] !== undefined) d[k] = o[k]; }); if (!d.bracket && o.bracketEst) { d.bracket = o.bracket; d.bracketEst = o.bracketEst; } });          // a bracket estimated from kill speed stays until the list says its own
   fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ about: 'Built-in decks. Rebuild with: node tools/build-deck-index.js', decks: index }, null, 1) + '\n');
   index.forEach(d => console.log(d.bracket ? 'B' + d.bracket : '--', (d.colors || 'C').padEnd(6), d.cards, d.name));
 })().catch(e => { console.error(e); process.exit(1); });

@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 191,
+      "lines": [
+        "Table fixes: 540-px-high sideways screens get the side-by-side table, Confirm blocks stays in view on short screens, and crowded Pod opponents no longer run off the edge."
+      ]
+    },
+    {
       "v": 190,
       "lines": [
         "29 more popular cards play as written, among them Zimone, Underrealm Lich, Wall of Roots, Aetherworks Marvel and Sidisi. Mill triggers and rad counters now work too."

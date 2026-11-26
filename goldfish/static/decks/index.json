@@ -11,7 +11,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": ">10",
+   "by5": 0,
+   "by7": 1.5
   },
   {
    "file": "captains-lockdown.txt",
@@ -23,7 +26,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 5.5,
+   "by7": 45.9
   },
   {
    "file": "friendship-is-magic.txt",
@@ -33,7 +39,10 @@
    ],
    "colors": "WUBRG",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "medianKill": 9,
+   "by5": 0,
+   "by7": 7.1
   },
   {
    "file": "scorched-sky.txt",
@@ -45,7 +54,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 4.8,
+   "by7": 54.7
   },
   {
    "file": "spectrum-of-extinction.txt",
@@ -59,7 +71,9 @@
    "medianKill": 9,
    "floor": 4,
    "speedBracket": 1,
-   "checkedAt": "2026-11-26"
+   "checkedAt": "2026-11-26",
+   "by5": 0,
+   "by7": 12.2
   },
   {
    "file": "the-kings-gambit.txt",
@@ -71,7 +85,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 10.3,
+   "by7": 48.1
   },
   {
    "file": "ulalek-titanstorm.txt",
@@ -97,7 +114,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 0.3,
+   "by7": 16.8
   },
   {
    "file": "unified-misery.txt",
@@ -109,7 +129,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 4.3,
+   "by7": 62.4
   },
   {
    "file": "compleat-contagion.txt",
@@ -121,7 +144,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 13.6,
+   "by7": 74.3
   },
   {
    "file": "compound-interest.txt",
@@ -133,7 +159,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 1.3,
+   "by7": 39.7
   },
   {
    "file": "fine-print-fatal-clause.txt",
@@ -148,7 +177,9 @@
    "medianKill": 8,
    "floor": 4,
    "speedBracket": 2,
-   "checkedAt": "2026-11-26"
+   "checkedAt": "2026-11-26",
+   "by5": 10.3,
+   "by7": 36.4
   },
   {
    "file": "loyalty-program.txt",
@@ -160,7 +191,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 0.8,
+   "by7": 14
   },
   {
    "file": "tidewoven.txt",
@@ -173,7 +207,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 18,
+   "by7": 47.5
   },
   {
    "file": "court-of-ruin.txt",
@@ -199,7 +236,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 10,
+   "by7": 23.7
   },
   {
    "file": "nights-curfew.txt",
@@ -211,7 +251,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 7.2,
+   "by7": 36.8
   },
   {
    "file": "odds-and-ends.txt",
@@ -237,7 +280,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 10,
+   "by5": 5.7,
+   "by7": 13.1
   },
   {
    "file": "red-rum-raiders.txt",
@@ -249,7 +295,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 1.5,
+   "by7": 74.3
   },
   {
    "file": "salt-mine.txt",
@@ -261,7 +310,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 4.8,
+   "by7": 49.9
   },
   {
    "file": "second-breakfast.txt",
@@ -274,7 +326,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 2.2,
+   "by7": 31.3
   },
   {
    "file": "black-mage-blackout.txt",
@@ -286,7 +341,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": ">10",
+   "by5": 1.4,
+   "by7": 6.9
   },
   {
    "file": "current-without-end.txt",
@@ -300,7 +358,9 @@
    "medianKill": 9,
    "floor": 4,
    "speedBracket": 1,
-   "checkedAt": "2026-11-26"
+   "checkedAt": "2026-11-26",
+   "by5": 0.3,
+   "by7": 15.3
   },
   {
    "file": "dead-ringers.txt",
@@ -310,7 +370,10 @@
    ],
    "colors": "WB",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "medianKill": 8,
+   "by5": 7.2,
+   "by7": 36.4
   },
   {
    "file": "dead-sea.txt",
@@ -336,7 +399,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 5.9,
+   "by7": 18.7
   },
   {
    "file": "death-tax.txt",
@@ -362,7 +428,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 0.4,
+   "by7": 11.9
   },
   {
    "file": "double-down.txt",
@@ -388,7 +457,10 @@
     }
    ],
    "learnedAt": "2026-11-20",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 1,
+   "by7": 32.6
   },
   {
    "file": "finale-of-the-floodborn.txt",
@@ -414,7 +486,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 3.9,
+   "by7": 76.1
   },
   {
    "file": "gnome-alone.txt",
@@ -426,7 +501,10 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 6.8,
+   "by7": 76.5
   },
   {
    "file": "hatsune-miku.txt",
@@ -452,7 +530,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 2.2,
+   "by7": 36.9
   },
   {
    "file": "mermaids.txt",
@@ -464,7 +545,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 7,
+   "by5": 10.3,
+   "by7": 80
   },
   {
    "file": "otk.txt",
@@ -476,7 +560,10 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 2.6,
+   "by7": 37.1
   },
   {
    "file": "permafrost-prodigy.txt",
@@ -488,7 +575,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 6.8,
+   "by7": 26.4
   },
   {
    "file": "short-circuit.txt",
@@ -498,7 +588,10 @@
    ],
    "colors": "UR",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "medianKill": 9,
+   "by5": 2,
+   "by7": 13.3
   },
   {
    "file": "soul-brokers.txt",
@@ -510,7 +603,10 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 0,
+   "by7": 8.8
   },
   {
    "file": "the-shoal-must-go-on.txt",
@@ -524,7 +620,9 @@
    "medianKill": 7,
    "floor": 4,
    "speedBracket": 3,
-   "checkedAt": "2026-11-26"
+   "checkedAt": "2026-11-26",
+   "by5": 3.8,
+   "by7": 64.9
   },
   {
    "file": "tidal-loop.txt",
@@ -550,7 +648,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 1,
+   "by7": 49.9
   },
   {
    "file": "tidecaller.txt",
@@ -576,7 +677,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 5,
+   "by7": 17.4
   },
   {
    "file": "zimone-infinite-analyst.txt",
@@ -602,7 +706,10 @@
     }
    ],
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 1,
+   "by7": 48
   },
   {
    "file": "counter-culture.txt",
@@ -614,7 +721,10 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 9,
+   "by5": 0.7,
+   "by7": 24.5
   },
   {
    "file": "final-heaven.txt",
@@ -624,7 +734,10 @@
    ],
    "colors": "G",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "medianKill": 7,
+   "by5": 18.9,
+   "by7": 74.4
   },
   {
    "file": "ice-age-engine.txt",
@@ -636,7 +749,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": ">10",
+   "by5": 0.1,
+   "by7": 1.9
   },
   {
    "file": "mob-storm.txt",
@@ -646,7 +762,10 @@
    ],
    "colors": "R",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "medianKill": 7,
+   "by5": 11.4,
+   "by7": 85
   },
   {
    "file": "moving-parts.txt",
@@ -656,7 +775,10 @@
    ],
    "colors": "U",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "medianKill": 9,
+   "by5": 5,
+   "by7": 27
   },
   {
    "file": "overtime-at-the-treasure-mine.txt",
@@ -666,7 +788,10 @@
    ],
    "colors": "R",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "medianKill": 7,
+   "by5": 2.7,
+   "by7": 54.9
   },
   {
    "file": "second-draw.txt",
@@ -678,7 +803,10 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 1.3,
+   "by7": 32.1
   },
   {
    "file": "sodium-seraphim.txt",
@@ -690,7 +818,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 0.4,
+   "by7": 24.3
   },
   {
    "file": "tookens.txt",
@@ -700,7 +831,10 @@
    ],
    "colors": "W",
    "cards": 100,
-   "bracket": 3
+   "bracket": 3,
+   "medianKill": 7,
+   "by5": 1.2,
+   "by7": 58.9
   },
   {
    "file": "undead-witches.txt",
@@ -712,7 +846,10 @@
    "cards": 100,
    "bracket": 3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 0.6,
+   "by7": 37.8
   },
   {
    "file": "value-meal.txt",
@@ -726,7 +863,9 @@
    "medianKill": 9,
    "floor": 3,
    "speedBracket": 1,
-   "checkedAt": "2026-11-26"
+   "checkedAt": "2026-11-26",
+   "by5": 0.2,
+   "by7": 9.8
   },
   {
    "file": "nothing-personal.txt",
@@ -736,7 +875,10 @@
    ],
    "colors": "",
    "cards": 100,
-   "bracket": 4
+   "bracket": 4,
+   "medianKill": 8,
+   "by5": 1.5,
+   "by7": 45.1
   },
   {
    "file": "void-tax.txt",
@@ -748,7 +890,10 @@
    "cards": 100,
    "bracket": 4,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "medianKill": 8,
+   "by5": 6.8,
+   "by7": 46.5
   }
  ]
 }

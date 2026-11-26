@@ -631,6 +631,71 @@
    "reason": "speed says B1 (median kill T9); card rules say at least B4 (24 Game Changers (B3 allows 3); mass land denial: Smallpox; 2 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
   },
   {
+   "file": "current-without-end.txt",
+   "name": "Current Without End (Kinnan, Bonder Prodigy)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0.3,
+    "by6": 2.9,
+    "by7": 15.3,
+    "by8": 37.3,
+    "byT": 75.6,
+    "cmdrMedian": 2,
+    "mana4": 6.28,
+    "winBy": {
+     "damage": 75.6,
+     "commander": 0
+    },
+    "topLine": null
+   },
+   "field": null,
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Crop Rotation",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gaea's Cradle",
+     "Mana Vault",
+     "Mox Diamond",
+     "Rhystic Study",
+     "Seedborn Muse",
+     "The One Ring"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Kinnan, Bonder Prodigy",
+       "Basalt Monolith"
+      ],
+      "mv": 5,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "11 Game Changers (B3 allows 3)",
+     "1 cheap two-card infinite combo (e.g. Kinnan, Bonder Prodigy + Basalt Monolith, 5 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (11 Game Changers (B3 allows 3); 1 cheap two-card infinite combo (e.g. Kinnan, Bonder Prodigy + Basalt Monolith, 5 mana))",
+   "version": 193,
+   "date": "2026-11-26"
+  },
+  {
    "file": "dead-ringers.txt",
    "name": "Dead Ringers (Ratadrabik of Urborg)",
    "stated": 3,
@@ -1078,6 +1143,95 @@
    },
    "speedBracket": 3,
    "reason": "speed says B3 (median kill T7); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
+  },
+  {
+   "file": "fine-print-fatal-clause.txt",
+   "name": "Fine Print, Fatal Clause (Kraum, Ludevic's Opus + Tymna the Weaver)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by4": 5.7,
+    "by5": 10.3,
+    "by6": 17.5,
+    "by7": 36.4,
+    "by8": 61.5,
+    "byT": 91.7,
+    "cmdrMedian": 3,
+    "mana4": 4.32,
+    "winBy": {
+     "combo": 36.8,
+     "commander": 10.1,
+     "damage": 44.8,
+     "effect": 0
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Tainted Pact exiles the library, then Thassa's Oracle wins",
+     "share": 0.176,
+     "avgTurn": 6.827272727272727
+    }
+   },
+   "field": null,
+   "rules": {
+    "gameChangers": [
+     "Ancient Tomb",
+     "Chrome Mox",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Gamble",
+     "Imperial Seal",
+     "Lion's Eye Diamond",
+     "Mana Vault",
+     "Mox Diamond",
+     "Mystical Tutor",
+     "Orcish Bowmasters",
+     "Rhystic Study",
+     "Smothering Tithe",
+     "Thassa's Oracle",
+     "Underworld Breach",
+     "Vampiric Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 2,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Demonic Consultation",
+       "Thassa's Oracle"
+      ],
+      "mv": 3,
+      "does": [
+       "Win the game"
+      ]
+     },
+     {
+      "cards": [
+       "Tainted Pact",
+       "Thassa's Oracle"
+      ],
+      "mv": 4,
+      "does": [
+       "Win the game"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "18 Game Changers (B3 allows 3)",
+     "2 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B4 (18 Game Changers (B3 allows 3); 2 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))",
+   "version": 193,
+   "date": "2026-11-26"
   },
   {
    "file": "friendship-is-magic.txt",
@@ -2704,6 +2858,92 @@
    "reason": "speed says B1 (median kill T9); card rules say at least B3 (3 Game Changers (B1-B2 allow none))"
   },
   {
+   "file": "spectrum-of-extinction.txt",
+   "name": "Spectrum of Extinction (Esika, God of the Tree // The Prismatic Bridge)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0,
+    "by6": 0.8,
+    "by7": 12.2,
+    "by8": 43.7,
+    "byT": 79.3,
+    "cmdrMedian": 5,
+    "mana4": 4.9,
+    "winBy": {
+     "damage": 77.6,
+     "effect": 2.9
+    },
+    "topLine": {
+     "kind": "effect",
+     "text": "a card",
+     "share": 0.0336,
+     "avgTurn": 8.011904761904763
+    }
+   },
+   "field": null,
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Smothering Tithe",
+     "Rhystic Study",
+     "The One Ring",
+     "Fierce Guardianship",
+     "Force of Will",
+     "Cyclonic Rift",
+     "Teferi's Protection",
+     "Vampiric Tutor",
+     "Demonic Tutor",
+     "Enlightened Tutor",
+     "Mystical Tutor",
+     "Worldly Tutor",
+     "Seedborn Muse"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [
+     "Emrakul, the Promised End"
+    ],
+    "twoCardInfinite": 5,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Dramatic Reversal",
+       "Isochron Scepter"
+      ],
+      "mv": 4,
+      "does": [
+       "Infinite mana nonland permanents you control can produce"
+      ]
+     },
+     {
+      "cards": [
+       "Rings of Brighthearth",
+       "Basalt Monolith"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colorless mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "14 Game Changers (B3 allows 3)",
+     "1 extra-turn card",
+     "2 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B4 (14 Game Changers (B3 allows 3); 1 extra-turn card; 2 cheap two-card infinite combos (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))",
+   "version": 193,
+   "date": "2026-11-26"
+  },
+  {
    "file": "the-kings-gambit.txt",
    "name": "The King's Gambit (Kenrith, the Returned King)",
    "stated": 5,
@@ -2833,6 +3073,53 @@
    },
    "speedBracket": 2,
    "reason": "speed says B2 (median kill T8); card rules say at least B4 (24 Game Changers (B3 allows 3); 9 cheap two-card infinite combos (e.g. Demonic Consultation + Thassa's Oracle, 3 mana))"
+  },
+  {
+   "file": "the-shoal-must-go-on.txt",
+   "name": "The Shoal Must Go On (Kinnan, Bonder Prodigy)",
+   "stated": 5,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by4": 0.1,
+    "by5": 3.8,
+    "by6": 26.2,
+    "by7": 64.9,
+    "by8": 88.1,
+    "byT": 97.9,
+    "cmdrMedian": 3,
+    "mana4": 9.79,
+    "winBy": {
+     "damage": 97.9
+    },
+    "topLine": null
+   },
+   "field": null,
+   "rules": {
+    "gameChangers": [
+     "Chrome Mox",
+     "Fierce Guardianship",
+     "Gaea's Cradle",
+     "Mox Diamond",
+     "Seedborn Muse",
+     "Worldly Tutor"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 4,
+    "why": [
+     "6 Game Changers (B3 allows 3)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (6 Game Changers (B3 allows 3))",
+   "version": 193,
+   "date": "2026-11-26"
   },
   {
    "file": "tidal-loop.txt",
@@ -3457,6 +3744,56 @@
    "reason": "speed says B3 (median kill T7); card rules say at least B4 (20 Game Changers (B3 allows 3); mass land denial: Vorinclex, Voice of Hunger, Hokori, Dust Drinker, Armageddon, Ravages of War, Cataclysm, Jokulhaups; 1 extra-turn card; 1 cheap two-card infinite combo (e.g. Najeela, the Blade-Blossom + Derevi, Empyrial Tactician, 6 mana))"
   },
   {
+   "file": "value-meal.txt",
+   "name": "Value Meal (The Cabbage Merchant)",
+   "stated": 4,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 9,
+    "by4": 0,
+    "by5": 0.2,
+    "by6": 1.7,
+    "by7": 9.8,
+    "by8": 33.1,
+    "byT": 85.8,
+    "cmdrMedian": 3,
+    "mana4": 4.61,
+    "winBy": {
+     "combo": 8.5,
+     "damage": 76.9,
+     "commander": 0.4
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Chrome Dome + Bag End Banquet (Commander Spellbook): infinite creature etb; infinite food tokens",
+     "share": 0.0892,
+     "avgTurn": 7.869955156950673
+    }
+   },
+   "field": null,
+   "rules": {
+    "gameChangers": [
+     "Crop Rotation"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 1,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "1 Game Changer (B1-B2 allow none)",
+     "1 two-card infinite combo (all over 6 mana)"
+    ]
+   },
+   "speedBracket": 1,
+   "reason": "speed says B1 (median kill T9); card rules say at least B3 (1 Game Changer (B1-B2 allow none); 1 two-card infinite combo (all over 6 mana))",
+   "version": 193,
+   "date": "2026-11-26"
+  },
+  {
    "file": "void-tax.txt",
    "name": "Void Tax (Zhulodok, Void Gorger)",
    "stated": 4,
@@ -3644,6 +3981,71 @@
    "matchTurns": 25,
    "seed": 20261123,
    "seconds": 545,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "current-without-end.txt"
+   ],
+   "version": 193,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 409,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 71,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "the-shoal-must-go-on.txt"
+   ],
+   "version": 193,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 409,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 95,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "value-meal.txt"
+   ],
+   "version": 193,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 409,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 73,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "spectrum-of-extinction.txt"
+   ],
+   "version": 193,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 409,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 113,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "fine-print-fatal-clause.txt"
+   ],
+   "version": 193,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 409,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 79,
    "jobs": 4
   }
  ]

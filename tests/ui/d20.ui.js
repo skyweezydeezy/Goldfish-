@@ -62,6 +62,13 @@ const shots = process.env.D20_SHOTS;
     const n = mode === 'duel' ? 2 : 4;
     check(`${mode}: a D20 for every player appears`, (await p.$$('.vs-dice .vs-die')).length === n);
     check(`${mode}: each is the 3D d20 model (twenty faces)`, await p.evaluate(() => [...document.querySelectorAll('.vs-dice .vs-die')].every(d => d.querySelectorAll('.d20-face').length === 20)));
+    const top = await p.evaluate(() => {
+      const box = document.querySelector('.vs-dice'), cs = getComputedStyle(box), die = box.querySelector('.vs-die .dice-stage').getBoundingClientRect();
+      box.style.pointerEvents = 'auto'; const at = document.elementFromPoint(die.left + die.width / 2, die.top + die.height / 2); box.style.pointerEvents = '';          // (pointer-events: none is the design: clicks pass through; lifted for this one hit test)
+      let trapped = null; for (let e = box.parentElement; e; e = e.parentElement) { const c = getComputedStyle(e); if (c.animationName !== 'none' && /opacity|modein|fade/.test(c.animationName) || +c.opacity < 1 || c.filter !== 'none' || c.transform !== 'none') { trapped = e.id || e.className || e.tagName; break; } }
+      return { parent: box.parentElement.tagName, pe: cs.pointerEvents, hit: !!(at && box.contains(at)), trapped };
+    });
+    check(`${mode}: the dice are on the body, on top at their centre, and in no animated or faded ancestor`, top.parent === 'BODY' && top.hit && !top.trapped, JSON.stringify(top));
     if (shots) { await p.waitForTimeout(300); await p.screenshot({ path: `${shots}/d20-${mode}-rolling.png` }); }
     await p.waitForSelector('.vs-die.win', { timeout: 30000 });
     const r = await p.evaluate(m => {
@@ -83,7 +90,7 @@ const shots = process.env.D20_SHOTS;
   }
   // pressing +1 turn while the dice tumble skips them
   await p.evaluate(() => { document.querySelector('[data-tab=duel]').click(); document.querySelector('#tab-duel .vs-new').click(); });
-  await p.waitForSelector('#tab-duel .vs-dice', { timeout: 30000 });
+  await p.waitForSelector('.vs-dice[data-mode=duel]', { timeout: 30000 });
   await p.evaluate(() => document.querySelector('#tab-duel .vs-next').click());
   await p.waitForTimeout(150);
   const sk = await p.evaluate(() => ({ dice: !!document.querySelector('.vs-dice'), log: [...document.querySelectorAll('#tab-duel .vs-log .vs-line')].map(e => e.textContent).join(' | ') }));

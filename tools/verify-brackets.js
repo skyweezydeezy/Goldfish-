@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Checks the Commander bracket of every built-in deck with ICEYfish's own engine (task T-035, report in docs/agents/DECK-BRACKETS.md).
 //   node tools/verify-brackets.js [--games=20000] [--jobs=4] [--only=death-tax]    simulate, write docs/agents/deck-brackets.json
+//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin (field win % stays empty)
 //   node tools/verify-brackets.js --apply                                         write the verified bracket and a check line into each deck
 //   node tools/verify-brackets.js --report                                        the table in docs/agents/DECK-BRACKETS.md
 // Offline: the cards come from the set data (goldfish/static/data/sets), the combos from data/combos.json.
@@ -68,7 +69,7 @@ const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized'
 
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 const GAMES = +arg('games', 20000), JOBS = +arg('jobs', os.cpus().length), ONLY = arg('only', ''), SEED = 20261123;
-const CHUNK = 2500, MATCH_TURNS = 25;
+const GF_ONLY = process.argv.includes('--goldfish-only'), CHUNK = 2500, MATCH_TURNS = 25;
 
 function loadAll() {
   const G = require(path.join(STATIC, 'sim.js')), Source = require(path.join(STATIC, 'source.js')), Combos = require(path.join(STATIC, 'combos.js'));
@@ -167,8 +168,10 @@ async function simulate() {
   const cmd = decks.map((L, i) => i).filter(i => decks[i].cmdr), perPair = Math.ceil(GAMES / Math.max(1, cmd.length - 1));
   const jobs = [];
   for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0 }); }
+  if (!GF_ONLY) {
   for (let x = 0; x < cmd.length; x++) for (let y = x + 1; y < cmd.length; y++) if (pick.includes(cmd[x]) || pick.includes(cmd[y])) jobs.push({ kind: 'match', i: cmd[x], j: cmd[y], n: perPair, seed: (SEED + 1000003 * (x * 64 + y)) >>> 0 });
   for (const i of pick) if (!decks[i].cmdr) for (let k = 0; k * CHUNK < GAMES; k++) jobs.push({ kind: 'match', i, j: i, n: Math.min(CHUNK, GAMES - k * CHUNK), seed: (SEED + 77 + k * CHUNK * 7919) >>> 0 });
+  }
   jobs.sort((a, b) => (b.kind === 'match' ? b.n * 2.5 : b.n) - (a.kind === 'match' ? a.n * 2.5 : a.n));
   const gf = new Map(), field = new Map(), total = jobs.length; let done = 0, next = 0;
   const addField = (i, w, l, none, errors, n, opp) => { const f = field.get(i) || { n: 0, w: 0, l: 0, none: 0, errors: 0, opps: new Set() }; f.n += n; f.w += w; f.l += l; f.none += none; f.errors += errors; f.opps.add(opp); field.set(i, f); };
@@ -224,6 +227,7 @@ async function simulate() {
 function apply() {
   const doc = JSON.parse(fs.readFileSync(OUT, 'utf8'));
   for (const v of doc.decks) {
+    if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
     let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
@@ -235,9 +239,18 @@ function apply() {
     fs.writeFileSync(file, lines.join('\n'));
     if (v.commander && v.verified !== v.stated) console.log(`B${v.stated} -> B${v.verified}  ${v.name}: ${v.reason}`);
   }
+  // index.json: the ranking fields the deck menus sort by (T-077). bracket = the verified one (the higher of floor and speedBracket).
+  const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
+  for (const d of idx.decks) {
+    const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
+    d.medianKill = v.goldfish.medianKill; if (v.field) d.fieldWin = v.field.winRate;
+    if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
+    d.checkedAt = v.date || doc.date;
+  }
+  fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)
   const SYNC = path.join(DECKS, 'drive-sync.json'), sync = JSON.parse(fs.readFileSync(SYNC, 'utf8'));
-  for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander) { rec.verified = v.verified; rec.verifiedAt = v.date || doc.date; } }
+  for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander && (!ONLY || v.file.includes(ONLY))) { rec.verified = v.verified; rec.verifiedAt = v.date || doc.date; } }
   fs.writeFileSync(SYNC, JSON.stringify(sync, null, 1) + '\n');
   console.log('Now run: node tools/build-deck-index.js');
 }

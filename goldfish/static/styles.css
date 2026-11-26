@@ -1133,14 +1133,14 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .dice-box.out { opacity: 0; transform: translateY(-10px) scale(.95); }
 @keyframes dice-in { from { opacity: 0; transform: scale(.85); } }
 .dice-stage { width: 120px; height: 120px; perspective: 520px; display: grid; place-items: center; }
-.die, .coin { position: relative; width: 0; height: 0; transform-style: preserve-3d; }
-.d20-face { position: absolute; left: 0; top: 0; transform-origin: 0 0; backface-visibility: hidden; clip-path: polygon(50% 0, 100% 100%, 0 100%);
+.die, .coin { position: relative; width: 0; height: 0; -webkit-transform-style: preserve-3d; transform-style: preserve-3d; }
+.d20-face { position: absolute; left: 0; top: 0; transform-origin: 0 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-clip-path: polygon(50% 0, 100% 100%, 0 100%); clip-path: polygon(50% 0, 100% 100%, 0 100%);
   background: linear-gradient(160deg, #6fb7ff, #2f6fd6 60%, #1c4a99); display: flex; align-items: flex-end; justify-content: center; }
 .d20-face span { font: 800 14px/1 system-ui, sans-serif; color: #fff; padding-bottom: 9px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 .d20-face span.dot { text-decoration: underline; }
-.d6-face { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; transform-origin: 50% 50%; backface-visibility: hidden; border-radius: 9px;
+.d6-face { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; transform-origin: 50% 50%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 9px;
   background: linear-gradient(150deg, #f4f7fb, #c9d3e0); color: #1b2533; font: 800 28px/60px system-ui, sans-serif; text-align: center; box-shadow: inset 0 0 0 2px rgba(0,0,0,.12); }
-.coin-face { position: absolute; left: -38px; top: -38px; width: 76px; height: 76px; border-radius: 50%; backface-visibility: hidden; display: grid; place-items: center;
+.coin-face { position: absolute; left: -38px; top: -38px; width: 76px; height: 76px; border-radius: 50%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: grid; place-items: center;
   font: 800 15px/1 system-ui, sans-serif; letter-spacing: .08em; box-shadow: inset 0 0 0 4px rgba(0,0,0,.18), inset 0 0 0 7px rgba(255,255,255,.25); }
 .coin-face.heads { background: radial-gradient(circle at 35% 30%, #ffe9a6, #e0a92a 60%, #a8740d); color: #5a3b00; transform: translateZ(3px); }
 .coin-face.tails { background: radial-gradient(circle at 35% 30%, #e6edf5, #9aa8b8 60%, #5f6c7b); color: #2a3440; transform: rotateY(180deg) translateZ(3px); }

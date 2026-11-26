@@ -1285,6 +1285,9 @@
         if ((bm = line.match(/^(wizard|elf|goblin|sliver|zombie|dragon|knight|merfolk|soldier|warrior|cleric|rogue|shaman|halfling)cycling ((?:\{[^}]+\})+)$/i))) { a.creatureCycle = { cost: parseCost(bm[2]), type: bm[1].toLowerCase() }; rec.status = 'ok'; continue; }          // wizardcycling and the like
         if (/^untap all green and\/or blue creatures you control during each other player's untap step\.?$/i.test(line)) { a.statics.otherUntap = 'gucreatures'; rec.status = 'ok'; continue; }          // Murkfiend Liege
         if (/^tap two untapped tokens you control: add one mana of any color\.?$/i.test(line)) { a.baylenMana = true; rec.status = 'ok'; continue; }          // Baylen, the Haymaker
+        { const fm = line.match(/^(\{t\}, )?tap an untapped ((?:legendary )?(?:creature|artifact|permanent)) you control: add (one mana of any color|(?:\{[wubrgc]\})+)\.?$/i);          // T-097: Springleaf Drum, Survivors' Encampment, Jaspera Sentinel, Relic of Legends, Urza, Gene Pollinator...: the permanent tapped is part of the cost
+          if (fm) { const any = /any color/i.test(fm[3]), cs = any ? null : [...fm[3].matchAll(/\{([wubrgc])\}/gi)].map(x => x[1].toUpperCase()); a.fodderMana = { tap: !!fm[1], filter: fm[2].toLowerCase(), colors: cs ? new Set(cs) : null, amount: cs ? cs.length : 1 }; if (!fm[1]) a.noTapMana = true; rec.status = 'ok'; continue; }
+          if (/^(\{t\}, )?tap (an|another|two|three|x) untapped [^:]* you control: add /i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; } }          // a restricted version (Grand Architect) is not read
         if (/^tap three untapped tokens you control: draw a card\.?$/i.test(line)) { a.baylenDraw = true; rec.status = 'ok'; continue; }
         if (/^tap four untapped tokens you control: put three \+1\/\+1 counters on ~\. it gains trample until end of turn\.?$/i.test(line)) { a.baylenGrow = true; rec.status = 'ok'; continue; }
         if (/^web-slinging ((?:\{[^}]+\})+)$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Spider-Sense: an alternative cost for a counterspell
@@ -3450,6 +3453,7 @@
       const m = text.match(/(^|\n)(?:[A-Z][a-z]+ — )?(\{T\}|\{T\}, Sacrifice ~|Sacrifice ~): Add [^\n]*/i);          // "Metalcraft — {T}: Add" (Mox Opal) too
       if (m) { const pr = parseAdd(m[0]); if (pr) { a.produce = pr; if (/sacrifice/i.test(m[0])) a.sacMana = true; if (!/\{T\}/i.test(m[0])) a.noTapMana = true; } }          // Eldrazi Spawn: no {T}, so summoning sickness does not stop it
     }
+    if (a.fodderMana) { const F = a.fodderMana; if (!a.produce || !a.isLand) a.produce = { colors: F.colors || new Set(COLORS), amount: F.amount }; else if (F.colors) a.produce = Object.assign({}, a.produce, { colors: F.colors, amount: F.amount }); }          // T-097: the mana it makes (manaUnits adds the permanent it taps)
     { const pm = text.match(/(?:^|\n)\{T\}: Add \{[WUBRGC]\} for each ([^.\n]+?)\.?(?=\n|$)/i), per = pm && manaPer(pm[1]);          // Gaea's Cradle, Elvish Archdruid, Priest of Titania, Gyre Sage
       if (per && a.produce) a.produce = Object.assign({}, a.produce, { per, floor: /(?:^|\n)\{T\}: Add (?:\{[WUBRGC]\})+\.?(?=\n|$)/i.test(text) ? 1 : 0 }); }
     { const rp = !a.fetch && restrictParse(text); if (rp) a.produce = Object.assign(rp.base ? { colors: rp.base.colors, amount: rp.base.amount } : { colors: rp.restrict.colors, amount: 0 }, { restrict: rp.restrict }); }          // Cavern of Souls, Eldrazi Temple, Mishra's Workshop, Castle Garenbrig: mana only for some spells
@@ -4259,12 +4263,24 @@
     return g.battlefield.filter(p => (!count.other || p !== self) && (w === 'land' ? p.asLand : w === 'permanent' ? true : (w === 'creature' ? isCreaturePerm(p) : matchesFilter(p.card, w)))).length;
   }
 
+  // T-097: a mana ability whose cost taps another permanent you control ("{T}, Tap an untapped creature you control: Add one mana of any color"). Summoning sickness
+  // only stops the {T} of the permanent itself, so a creature that just came in can be tapped for the cost. The permanent tapped cannot make mana of its own at the same
+  // time (it is only counted when it makes none now), and one permanent pays one cost: every unit carries the one it taps (fodder) and the others it could (pool).
+  function fodderUnits(g, p, info, taken, units) {
+    const F = p.card.a.fodderMana, cols = F.colors || ANY_COLOR;
+    const makesMana = q => q.produce && !q.tapped && !q.held && !(q.sick && isCreaturePerm(q) && !info.abilityHaste && !hasKw(g, q, 'haste') && !q.card.a.noTapMana);
+    const ok = q => q !== p && !q.tapped && !q.phased && !makesMana(q) && !q.card.a.fodderMana && (F.filter === 'permanent' || (/artifact/.test(F.filter) ? q.card.a.isArtifact : isCreaturePerm(q)) && (!/legendary/.test(F.filter) || q.card.a.isLegendary));
+    const pool = g.battlefield.filter(ok).sort((x, y) => ((y.sick ? 1 : 0) - (x.sick ? 1 : 0)) || (creatureValue(g, x) - creatureValue(g, y)) || (x.iid - y.iid));          // a creature that cannot attack yet first, then the least valuable
+    if (F.tap) { const f = pool.find(q => !taken.has(q)); if (f) { taken.add(f); units.push({ src: p, colors: cols, fodder: f, pool }); } return; }
+    for (const f of pool) if (!taken.has(f)) { taken.add(f); for (let k = 0; k < F.amount; k++) units.push({ src: { pseudo: true, fodderOf: p, produce: p.produce }, colors: cols, fodder: f, pool }); }          // no {T}: the permanent is not tapped, each cost makes mana
+  }
   function manaUnits(g) {
     const units = [];
     const info = bfInfo(g);
     const stony = (g.stonySeen || (g.opp && g.opp.stonySeen)) && (tableHas(g, 'statics.stony') && bothSides(g).some(q => q.card.a.statics.stony));
     const abilAny = info.abilStax || g.senSeq === turnSeq(g) || otherPlayers(g).some(o => bfInfo(o).abilStax);          // Karn, Linvala, Pithing Needle, Sen Triplets
     const moon = info.moonSeen || otherPlayers(g).some(o => bfInfo(o).moonSeen) ? moonOf(g) : null;          // Blood Moon
+    const fodTaken = new Set();          // T-097: the permanents already promised as the "tap an untapped ..." cost of another source
     for (const p of info.producers) {
       if (p.tapped || p.held || !p.produce) continue;          // held: kept untapped for a counterspell
       { const pl = p.card.a.produceLevel; if (pl && ((p.level || 0) < pl.min || (pl.max != null && (p.level || 0) > pl.max))) continue; }          // level up: its mana ability is not there yet (Joraga Treespeaker below level 1)
@@ -4273,6 +4289,7 @@
       if (abilAny && abilBlocked(g, p, true)) continue;          // Karn, Linvala: no mana from their artifacts and creatures
       if (moon && p.asLand && !isBasicLand(p)) { units.push({ src: p, colors: new Set([moon]) }); continue; }          // Blood Moon: a Mountain
       if (p.sick && isCreaturePerm(p) && !info.abilityHaste && !hasKw(g, p, 'haste') && !p.card.a.noTapMana) continue;
+      if (p.card.a.fodderMana) { fodderUnits(g, p, info, fodTaken, units); continue; }          // T-097: Springleaf Drum and the others: {T}, tap an untapped creature you control
       if (p.card.a.metalMana && g.battlefield.filter(q => artOn(g, q)).length < 3) continue;          // Mox Opal: metalcraft
       if (p.produce.dynamic === 'colors') { info.colors.forEach(c => units.push({ src: p, colors: new Set([c]) })); continue; }   // Faeburrow Elder
       let cols = (info.landsAnyColor && p.asLand) ? ANY_COLOR : (info.allSwamps && p.asLand && !p.produce.colors.has('B')) ? new Set([...p.produce.colors, 'B', ...(info.allForests ? ['G'] : [])]) : (info.allForests && p.asLand && !p.produce.colors.has('G')) ? new Set([...p.produce.colors, 'G']) : p.produce.colors;          // Urborg: every land also taps for {B}; Wrenn: any colour
@@ -4919,6 +4936,7 @@
     const out = [], s = u.src;
     if (u.floating || !s) return ['floating mana'];
     const a = s.card && s.card.a;
+    if (u.fodder) out.push('taps ' + u.fodder.card.name);          // T-097
     if (s.pseudo) { if (s.handCard) out.push('exiles it from your hand'); if (s.foods) out.push('taps ' + s.foods.length + ' permanents'); if (s.counterOf) out.push('removes a counter'); return out; }
     if (!a) return out;
     if (a.tapPain) out.push(a.tapPain + ' damage to you'); if (a.manaPing) out.push(a.manaPing + ' damage to the opponent');
@@ -4973,6 +4991,12 @@
     let idx = canPay(cost, units);
     if (!idx) return null;
     if (g.ask && !g.dry && !g._noPayAsk) idx = payPick(g, cost, units, idx);          // T-089: a person may choose which sources pay and which colour each makes (a game without a chooser never gets here)
+    if (g.ask && !g.dry && !g._noPayAsk && idx.some(i => units[i].pool)) {          // T-097: a person chooses which permanent a "tap an untapped creature you control" cost taps (the autopilot's pick is the default)
+      const taking = new Set(idx.map(i => units[i].fodder).filter(Boolean));
+      for (const i of idx) { const u = units[i]; if (!u.pool) continue; const alts = u.pool.filter(q => q === u.fodder || (!taking.has(q) && !q.tapped)); if (alts.length < 2) continue;
+        const pick = decide(g, { kind: 'target', what: 'tapCost', options: alts, def: u.fodder, source: u.src.pseudo ? u.src.fodderOf : u.src }); if (pick && pick !== u.fodder) { taking.delete(u.fodder); taking.add(pick); u.fodder = pick; } }
+    }
+    for (const i of idx) { const f = units[i].fodder; if (f) { f.tapped = true; touch(g); } }          // the permanent tapped as part of the cost
     const usedFloat = new Set(idx.filter(i => units[i].floating).map(i => units[i]));
     const srcs = new Set(idx.filter(i => !units[i].floating).map(i => units[i].src));
     for (const s of srcs) if (s && s.card && s.card.a.tendo && s.charge > 0 && !canPay(cost, units.map(u => u.src === s ? { src: s, colors: new Set(['C']) } : u))) s.charge--;          // Tendo Ice Bridge spent its charge counter on a color

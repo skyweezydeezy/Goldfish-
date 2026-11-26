@@ -817,6 +817,13 @@
         if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
         if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
       }
+      // ---- rules batch 82: entering from a graveyard, tokens attacking
+      { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^whenever a player casts a spell from a graveyard, draw a card\.?$/i.test(line)) { TR(['cast', 'castAnyOpp'], [{ type: 'draw', n: 1 }], { fromYardCast: true }); continue; }          // River Kelpie (it drew for every spell before)
+        if (/^whenever ~ or another permanent enters from a graveyard, draw a card\.?$/i.test(line)) { TR(['permEtb'], [{ type: 'draw', n: 1 }], { other: false, nontoken: false, filter: 'permanent', fromYard: true }, 'partial'); continue; }          // River Kelpie (approx: your own permanents)
+        if (/^whenever ~ or another creature you control enters, if it entered from your graveyard or you cast it from your graveyard, you may pay \{g\}\. if you do, exile ~, then return it to the battlefield transformed under its owner's control\.?$/i.test(line)) { TR(['permEtb'], [{ type: 'payDo', cost: { generic: 0, pips: [['G']], x: 0 }, fx: [{ type: 'transform' }] }], { other: false, nontoken: false, filter: 'creature', fromYard: true, orCast: true }); continue; }          // Grist, Voracious Larva
+        if (/^whenever one or more tokens you control attack a player, exile the top card of your library\. during any turn you attacked with a token, you may play that card\.?$/i.test(line)) { TR(['attackAny'], [{ type: 'neyali' }], { once: true, tokenAtk: true }); continue; }          // Neyali, Suns' Vanguard
+      }
       // ---- rules batch 81: finality counters
       { let bm;
         if (/^at the beginning of your end step, you may sacrifice three other nonland permanents\. if you do, return a creature card from your graveyard to the battlefield with a finality counter on it\.?$/i.test(line)) { a.triggers.push({ kinds: ['end'], fx: [{ type: 'sacThreeReturn' }], text: raw }); rec.status = 'ok'; continue; }          // Scavenger's Talent (level 3)
@@ -3724,7 +3731,7 @@
       ring: { tempts: 0, bearer: null },                      // the Ring: how many times it has tempted you, and your Ring-bearer (a permanent id)
       yardShuffleSeen: deck.unique.some(c => c.a.shuffleBack || c.a.yardShuffle),
     };
-    trackLife(g0);
+    trackLife(g0); trackYard(g0);
     return g0;
   }
   // rules batch 77: the life this player has lost this turn (CR 119.3), counted in one place: every drop of g.life (damage, a life payment, a loss) adds
@@ -3735,6 +3742,12 @@
     Object.defineProperty(g, '_lostN', { value: 0, writable: true, enumerable: false, configurable: true });
     Object.defineProperty(g, '_lostSeq', { value: -1, writable: true, enumerable: false, configurable: true });
     Object.defineProperty(g, 'life', { get() { return v; }, set(x) { if (x < v) { const sq = (g.match || g).seq || 0; if (g._lostSeq !== sq) { g._lostSeq = sq; g._lostN = 0; } g._lostN += v - x; } v = x; }, enumerable: true, configurable: true });
+  }
+  // rules batch 82: "enters from a graveyard": a card taken out of the graveyard is marked (not enumerable) with the action it left in; entering in that same action
+  // means it came from the graveyard (a spell cast from there is cast, not "entered from" it). A restored game gets the marking at its next turn.
+  function trackYard(g) {
+    const y = g.graveyard; if (!y || Object.prototype.hasOwnProperty.call(y, 'splice')) return;
+    Object.defineProperty(y, 'splice', { value: function (...args) { const out = Array.prototype.splice.apply(this, args); const mark = { seq: (g.match || g).seq || 0, act: g.actSeq || 0 }; for (const i of out) Object.defineProperty(i, '_yardOut', { value: mark, writable: true, enumerable: false, configurable: true }); return out; }, enumerable: false, writable: true, configurable: true });
   }
   const lifeLostNow = g => g._lostSeq === ((g.match || g).seq || 0) ? g._lostN : 0;          // rules batch 77: the life lost this turn (every player's turn counts)
 
@@ -5131,6 +5144,7 @@
           if (isCreaturePerm(perm) && (g.torporSeen || (g.opp && g.opp.torporSeen)) && (tableHas(g, 'statics.torpor') && bothSides(g).some(x => x.card.a.statics.torpor))) continue;          // Torpor Orb
           if (t.other && q === perm) continue;
           if (t.nontoken && perm.token) continue;
+          if (t.fromYard && !(perm.fromYard || (t.orCast && perm.castYard))) continue;          // rules batch 82: River Kelpie, Grist: it entered from a graveyard
           if (t.cmdr && !perm.card.commander) continue;                                              // Norn's Choirmaster: a commander you control
           if (t.minPower != null && powerOf(g, perm) < t.minPower) continue;                         // Garruk's Uprising, Elemental Bond
           if (t.maxPower != null && powerOf(g, perm) > t.maxPower) continue;                         // Welcoming Vampire
@@ -5176,6 +5190,7 @@
     }
     const perm = enter(g, inst, o);
     const a = inst.card.a;
+    if (!g.dry) { const yo = inst._yardOut, castYard = !!(inst.fbCast || inst.escaping || inst.retracing || inst.breaching); if (castYard) perm.castYard = true; else if (yo && yo.seq === ((g.match || g).seq || 0) && yo.act === (g.actSeq || 0)) perm.fromYard = true; }          // rules batch 82
     if (!g.dry && (a.starfield || a.marchMachines || (a.isArtifact && g.battlefield.some(q => q.card.a.marchMachines)) || (a.isEnchantment && (tableHas(g, 'starfield') && g.battlefield.some(q => q.card.a.starfield))))) starfieldSync(g);          // Starfield of Nyx
     if (!g.dry && perm.asLand && !o.tapped && /\bGate\b/.test(perm.card.type_line || '') && (tableHas(g, 'gondGate') && g.battlefield.some(q => q.card.a.gondGate))) perm.tapped = false;          // Gond Gate
     if (!g.dry && a.abilStax === 'totem') { g.needleSeen = true; if (g.opp) g.opp.needleSeen = true; }          // Cursed Totem: abilities are checked from now on
@@ -6260,6 +6275,11 @@
           if (g.ask && !g.dry && opts.length > 1) c = decide(g, { kind: 'search', options: opts, def: c, optional: true, f: { dest: 'battlefield' }, source }) || c;
           const hi = g.hand.indexOf(c); if (hi >= 0) g.hand.splice(hi, 1); else g.graveyard.splice(g.graveyard.indexOf(c), 1);
           const np = enterWithTriggers(g, c, {}, ev); addCounters(g, np, 'finality', 1, ev, source, true); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${c.card.name} enters with a finality counter`, source }); break; }
+        case 'payDo': { if (!canPay(f.cost, allUnits(g)) || pay(g, f.cost) == null) break; applyEffects(g, f.fx, source, ev, subject); break; }          // rules batch 82: "you may pay {G}. If you do, ..." (Grist)
+        case 'neyali': {          // rules batch 82: Neyali, Suns' Vanguard: exile the top card; any card exiled with it can be played during a turn you attacked with a token
+          const c = g.library.shift(); if (c) { c.neyali = true; g.exile.push(c); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${c.card.name} is exiled from the top of your library`, source }); }
+          for (const i of g.exile.slice()) if (i.neyali === true) { g.exile.splice(g.exile.indexOf(i), 1); i.neyali = 'hand'; i.temp = g.turn; g.hand.push(i); }
+          break; }
         case 'treeSwap': { if (!source || !g.battlefield.includes(source) || !isCreaturePerm(source)) break; const t = toughnessOf(g, source), l = g.life; source.setT = l; g.life = t; touch(g); ev.push({ type: 'note', text: `${source.card.name}: exchanges life (${l}) with toughness (${t})` }); break; }          // rules batch 72: Tree of Redemption (its base toughness becomes the old life total; counters and boosts still apply)
         case 'massShrink': for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } ev.push({ type: 'note', text: `All creatures get -${f.n}/-${f.n} until end of turn`, source }); break;          // Golgari Charm
         case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
@@ -8190,6 +8210,7 @@
       f = f.replace(/^an? /, '').replace(/\s+/g, ' ').trim();
     }
     if (t.fromHand && (inst.freeCast || inst.fbCast || inst.escaping || inst.retracing || inst.breaching)) return false;
+    if (t.fromYardCast && !(inst.fbCast || inst.escaping || inst.retracing || inst.yardCastTurn === g.turn)) return false;          // rules batch 82: "casts a spell from a graveyard" (River Kelpie)
     if (f === 'historic') return a.isArtifact || a.isLegendary || /\bSaga\b/.test(inst.card.type_line || '');
     const known = /noncreature|creature|instant|sorcery|artifact|enchantment|legendary|multicolored/.test(f);
     return !f || (/noncreature/.test(f) && !a.isCreature) || (/^creature/.test(f) && a.isCreature) ||
@@ -11430,7 +11451,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   function beginTurn(g) { return acting(g, () => beginTurn0(g)); }
   function beginTurn0(g) {
-    trackLife(g);          // rules batch 77: a restored game gets the life tracking now
+    trackLife(g); trackYard(g);          // rules batch 77/82: a restored game gets the life and graveyard tracking now
     g.turn++; g.turnStartLife = g.life;          // Children of Korlis: the life lost this turn is what was there at the start, plus what was gained, minus what is left
     g.activeTurn = true; for (const o of otherPlayers(g)) o.activeTurn = false;          // whose turn it is ("during your turn")
     (g.match || g).seq = ((g.match || g).seq || 0) + 1;          // every player's turn counts: Angel's Grace lasts this one
@@ -11680,6 +11701,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
         if (!t.kinds.includes('attackAny')) continue;
         if (t.minAttackers && attackers.length < t.minAttackers) continue;
+        if (t.tokenAtk && !attackers.some(p => p.token)) continue;          // rules batch 82: Neyali, Suns' Vanguard (one or more tokens attack)
         if (t.minTotalPower && attackers.reduce((sum, p) => sum + Math.max(0, powerOf(g, p)), 0) < t.minTotalPower) continue;          // rules batch 78: Ugin's Mastery (total power of the attackers)
         for (let k = 0; k < atkM; k++) { if (t.once) { if (!t.filter || attackers.some(p => matchesFilter(p.card, t.filter))) fire(g, t, q, ev, null); } else attackers.forEach(p => { if (!(t.notSelf && p === q) && (!t.filter || matchesFilter(p.card, t.filter)) && (!t.cmdr || p.card.commander) && !(t.maxPow != null && powerOf(g, p) > t.maxPow)) fire(g, t, q, ev, p); }); }          // General Kreat: once, when one or more Goblins attack
       }
@@ -11936,7 +11958,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry && g.ilhargBack && g.ilhargBack.length) for (const q of g.ilhargBack.splice(0)) if (g.battlefield.includes(q)) { leavePerm(g, q, [], 'hand'); flushLeaves(g, []); }          // Ilharg: back to your hand                                            // the monarch draws a card at the beginning of their end step
     if (g.opp) { g.opp.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotNoKw = false; }); for (const q of (tableHas(g, 'statics.admiral') ? g.battlefield.slice() : NONE)) if (q.card.a.statics.admiral && (g.pirateHits || 0) >= 3) { const bp = g.opp.battlefield.filter(x => !x.asLand && !x.card.commander).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv))[0]; if (bp) stealPerm(g, bp, [], false); break; } }          // Admiral Beckett Brass
     for (const p of g.battlefield.slice()) if (p.returnEot) sendHome(g, p);                                // control effects wear off
-    for (const i of g.hand.slice()) if (i.temp != null && i.temp <= g.turn) { g.hand.splice(g.hand.indexOf(i), 1); if (!g.opp || !i.foreign) g.exile.push(i); else g.opp.exile.push(i); }          // cards exiled by Breeches, Ragavan... that were not cast
+    for (const i of g.hand.slice()) if (i.temp != null && i.temp <= g.turn) { if (i.neyali === 'hand') i.neyali = true; g.hand.splice(g.hand.indexOf(i), 1); if (!g.opp || !i.foreign) g.exile.push(i); else g.opp.exile.push(i); }          // cards exiled by Breeches, Ragavan... that were not cast
     for (const p of g.battlefield.slice()) if (p.dash) { p.dash = false; leavePerm(g, p, [], 'hand'); }          // Whip of Erebos; dash: back to hand
     for (const p of g.battlefield.slice()) if (p.sacEnd) leavePerm(g, p, []);          // Mobilize tokens, Sneak Attack
     for (const p of g.battlefield.slice()) if (p.berserkTurn === g.turn && p.attackedTurn === g.turn && !indestructible(g, p)) leavePerm(g, p, []);          // Berserk

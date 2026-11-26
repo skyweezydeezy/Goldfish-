@@ -12,7 +12,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": ">10",
+   "checkedMedian": ">10",
    "by5": 0,
    "by7": 1.5
   },
@@ -27,7 +27,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 5.5,
    "by7": 45.9
   },
@@ -40,7 +40,7 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0,
    "by7": 7.1
   },
@@ -55,7 +55,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 4.8,
    "by7": 54.7
   },
@@ -68,10 +68,11 @@
    "colors": "WUBRG",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 9,
    "floor": 4,
    "speedBracket": 1,
    "checkedAt": "2026-11-26",
+   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0,
    "by7": 12.2
   },
@@ -86,7 +87,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 10.3,
    "by7": 48.1
   },
@@ -115,7 +116,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0.3,
    "by7": 16.8
   },
@@ -130,7 +131,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 4.3,
    "by7": 62.4
   },
@@ -145,7 +146,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 13.6,
    "by7": 74.3
   },
@@ -160,7 +161,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 1.3,
    "by7": 39.7
   },
@@ -174,10 +175,11 @@
    "colors": "WUBR",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 8,
    "floor": 4,
    "speedBracket": 2,
    "checkedAt": "2026-11-26",
+   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 10.3,
    "by7": 36.4
   },
@@ -192,7 +194,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0.8,
    "by7": 14
   },
@@ -208,7 +210,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 18,
    "by7": 47.5
   },
@@ -237,7 +239,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 10,
    "by7": 23.7
   },
@@ -252,7 +254,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 7.2,
    "by7": 36.8
   },
@@ -281,7 +283,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 10,
+   "checkedMedian": 10,
    "by5": 5.7,
    "by7": 13.1
   },
@@ -296,7 +298,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 1.5,
    "by7": 74.3
   },
@@ -311,7 +313,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 4.8,
    "by7": 49.9
   },
@@ -327,7 +329,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 2.2,
    "by7": 31.3
   },
@@ -342,7 +344,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": ">10",
+   "checkedMedian": ">10",
    "by5": 1.4,
    "by7": 6.9
   },
@@ -355,10 +357,11 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 9,
    "floor": 4,
    "speedBracket": 1,
    "checkedAt": "2026-11-26",
+   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0.3,
    "by7": 15.3
   },
@@ -371,7 +374,7 @@
    "colors": "WB",
    "cards": 100,
    "bracket": 3,
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 7.2,
    "by7": 36.4
   },
@@ -400,7 +403,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 5.9,
    "by7": 18.7
   },
@@ -429,7 +432,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0.4,
    "by7": 11.9
   },
@@ -458,7 +461,7 @@
    ],
    "learnedAt": "2026-11-20",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 1,
    "by7": 32.6
   },
@@ -487,7 +490,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 3.9,
    "by7": 76.1
   },
@@ -502,7 +505,7 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 6.8,
    "by7": 76.5
   },
@@ -531,7 +534,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 2.2,
    "by7": 36.9
   },
@@ -546,7 +549,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 10.3,
    "by7": 80
   },
@@ -561,7 +564,7 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 2.6,
    "by7": 37.1
   },
@@ -576,7 +579,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 6.8,
    "by7": 26.4
   },
@@ -589,7 +592,7 @@
    "colors": "UR",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 2,
    "by7": 13.3
   },
@@ -604,7 +607,7 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0,
    "by7": 8.8
   },
@@ -617,10 +620,11 @@
    "colors": "UG",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 7,
    "floor": 4,
    "speedBracket": 3,
    "checkedAt": "2026-11-26",
+   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 3.8,
    "by7": 64.9
   },
@@ -649,7 +653,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 1,
    "by7": 49.9
   },
@@ -678,7 +682,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 5,
    "by7": 17.4
   },
@@ -707,7 +711,7 @@
    ],
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 1,
    "by7": 48
   },
@@ -722,7 +726,7 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0.7,
    "by7": 24.5
   },
@@ -735,7 +739,7 @@
    "colors": "G",
    "cards": 100,
    "bracket": 3,
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 18.9,
    "by7": 74.4
   },
@@ -750,7 +754,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": ">10",
+   "checkedMedian": ">10",
    "by5": 0.1,
    "by7": 1.9
   },
@@ -763,7 +767,7 @@
    "colors": "R",
    "cards": 100,
    "bracket": 3,
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 11.4,
    "by7": 85
   },
@@ -776,7 +780,7 @@
    "colors": "U",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 5,
    "by7": 27
   },
@@ -789,7 +793,7 @@
    "colors": "R",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 2.7,
    "by7": 54.9
   },
@@ -804,7 +808,7 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 1.3,
    "by7": 32.1
   },
@@ -819,7 +823,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 0.4,
    "by7": 24.3
   },
@@ -832,7 +836,7 @@
    "colors": "W",
    "cards": 100,
    "bracket": 3,
-   "medianKill": 7,
+   "checkedMedian": 7,
    "by5": 1.2,
    "by7": 58.9
   },
@@ -847,7 +851,7 @@
    "bracket": 3,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 0.6,
    "by7": 37.8
   },
@@ -860,10 +864,11 @@
    "colors": "G",
    "cards": 100,
    "bracket": 3,
-   "medianKill": 9,
    "floor": 3,
    "speedBracket": 1,
    "checkedAt": "2026-11-26",
+   "medianKill": 9,
+   "checkedMedian": 9,
    "by5": 0.2,
    "by7": 9.8
   },
@@ -876,7 +881,7 @@
    "colors": "",
    "cards": 100,
    "bracket": 4,
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 1.5,
    "by7": 45.1
   },
@@ -891,7 +896,7 @@
    "bracket": 4,
    "learnedAt": "2026-11-19",
    "learnedVs": "field",
-   "medianKill": 8,
+   "checkedMedian": 8,
    "by5": 6.8,
    "by7": 46.5
   }

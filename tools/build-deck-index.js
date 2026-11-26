@@ -35,7 +35,7 @@ async function identities(names) {
     const list = Array.isArray(entries) ? entries : (entries.entries || []);
     const bracket = +((text.match(/^\/\/\s*Bracket\s*(\d)/mi) || [])[1] || 0) || null;          // "// Bracket 4" (tools/import-decks.js writes it)
     const ck = text.match(/^\/\/\s*Checked by ICEYfish[^:]*: median kill T(>?\d+), ([\d.]+)% by T5, ([\d.]+)% by T7(?:; fastest (?:T(\d+)|none[^:]*): ([\d.]+)% by T2, ([\d.]+)% by T3, ([\d.]+)% by T4)?/m);          // the speed numbers, from the last check (the tutorial "The fastest deck" ranks by them)
-    return { kill: ck ? { medianKill: ck[1].startsWith('>') ? ck[1] : +ck[1], by5: +ck[2], by7: +ck[3], ...(ck[5] != null ? { earliestKill: ck[4] ? +ck[4] : null, by2: +ck[5], by3: +ck[6], by4: +ck[7] } : {}) } : null, file, name: first || file.replace(/\.txt$/, ''), entries: list, bracket };
+    return { kill: ck ? { checkedMedian: ck[1].startsWith('>') ? ck[1] : +ck[1], by5: +ck[2], by7: +ck[3], ...(ck[5] != null ? { earliestKill: ck[4] ? +ck[4] : null, by2: +ck[5], by3: +ck[6], by4: +ck[7] } : {}) } : null, file, name: first || file.replace(/\.txt$/, ''), entries: list, bracket };
   });
   const lookup = new Set();
   decks.forEach(d => { const cm = d.entries.filter(e => e.commander); (cm.length ? cm : d.entries).forEach(e => lookup.add(e.name)); });
@@ -56,7 +56,7 @@ async function identities(names) {
   // keep what the Policy lab learned for each deck (tools/learn-deck-policies.js writes "policy" and "learned")
   let old = {};
   try { (JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8')).decks || []).forEach(d => { old[d.file] = d; }); } catch (e) { /* first build */ }
-  index.forEach(d => { const o = old[d.file]; if (!o) return; ['policy', 'learned', 'learnedAt', 'learnedVs', 'medianKill', 'by5', 'by7', 'by2', 'by3', 'by4', 'earliestKill', 'fieldWin', 'floor', 'speedBracket', 'checkedAt'].forEach(k => { if (o[k] !== undefined && d[k] === undefined) d[k] = o[k]; }); if (!d.bracket && o.bracketEst) { d.bracket = o.bracket; d.bracketEst = o.bracketEst; } });          // a bracket estimated from kill speed stays until the list says its own
+  index.forEach(d => { const o = old[d.file]; if (!o) return; ['policy', 'learned', 'learnedAt', 'learnedVs', 'medianKill', 'checkedMedian', 'by5', 'by7', 'by2', 'by3', 'by4', 'earliestKill', 'fieldWin', 'floor', 'speedBracket', 'checkedAt'].forEach(k => { if (o[k] !== undefined && d[k] === undefined) d[k] = o[k]; }); if (!d.bracket && o.bracketEst) { d.bracket = o.bracket; d.bracketEst = o.bracketEst; } });          // a bracket estimated from kill speed stays until the list says its own
   fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ about: 'Built-in decks. Rebuild with: node tools/build-deck-index.js', decks: index }, null, 1) + '\n');
   index.forEach(d => console.log(d.bracket ? 'B' + d.bracket : '--', (d.colors || 'C').padEnd(6), d.cards, d.name));
 })().catch(e => { console.error(e); process.exit(1); });

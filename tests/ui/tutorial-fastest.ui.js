@@ -49,8 +49,9 @@ async function run(p, touch) {
   }
   return { seen, spotOk, caps: [...caps] };
 }
+const med = d => d.medianKill != null ? d.medianKill : d.checkedMedian;
 const kn = k => +String(k).replace('>', '') + (String(k)[0] === '>' ? .5 : 0);
-const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != null && d.by4 != null); return c.length ? c.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || kn(a.medianKill) - kn(b.medianKill) || (b.by7 || 0) - (a.by7 || 0))[0] : decks.filter(d => d.by5 != null && d.medianKill != null).sort((a, b) => kn(a.medianKill) - kn(b.medianKill) || b.by7 - a.by7 || b.by5 - a.by5)[0]; };
+const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != null && d.by4 != null); return c.length ? c.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || kn(med(a)) - kn(med(b)) || (b.by7 || 0) - (a.by7 || 0))[0] : decks.filter(d => d.by5 != null && med(d) != null).sort((a, b) => kn(med(a)) - kn(med(b)) || b.by7 - a.by7 || b.by5 - a.by5)[0]; };
 
 (async () => {
   const b = await chromium.launch();
@@ -58,7 +59,7 @@ const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != nu
   const want = rule(idx);
   check('index.json carries the speed numbers (the Checked by ICEYfish lines) for the decks that were checked', idx.filter(d => d.by5 != null).length >= 10 && !!want, want && want.file);
   // the numbers in index.json are the ones on each list's "Checked by ICEYfish" line
-  const bad = idx.filter(d => { const t = fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', d.file), 'utf8'), m = t.match(/Checked by ICEYfish[^:]*: median kill T(>?\d+), ([\d.]+)% by T5, ([\d.]+)% by T7/); return m ? (String(d.medianKill) !== (m[1][0] === '>' ? m[1] : String(+m[1])) || d.by5 !== +m[2] || d.by7 !== +m[3]) : d.by5 != null; });
+  const bad = idx.filter(d => { const t = fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', d.file), 'utf8'), m = t.match(/Checked by ICEYfish[^:]*: median kill T(>?\d+), ([\d.]+)% by T5, ([\d.]+)% by T7/); return m ? (String(d.checkedMedian) !== (m[1][0] === '>' ? m[1] : String(+m[1])) || d.by5 !== +m[2] || d.by7 !== +m[3]) : d.by5 != null; });
   check('index.json speed numbers match the decklists\' check lines', !bad.length, bad.map(d => d.file).join(', '));
 
   for (const [label, dev, touch] of [['PC', { viewport: { width: 1280, height: 800 } }, false], ['iPhone', devices['iPhone 13'], true]]) {
@@ -75,7 +76,7 @@ const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != nu
     await (touch ? p.tap('.tut-m-fastest') : p.click('.tut-m-fastest'));
     await p.waitForFunction(() => window.ISFTutorial.active, null, { timeout: 20000 });
     const first = await p.evaluate(() => ({ title: document.querySelector('.tut-title').textContent, text: document.querySelector('.tut-text').textContent }));
-    check(label + ': the first step names the fastest deck and its numbers', first.title === 'The fastest deck' && first.text.includes(want.name.replace(/\s*\(.*\)\s*$/, '')) && (want.by2 != null ? first.text.includes('by turn 2') && first.text.includes('by turn 4') : first.text.includes(`Median turn ${want.medianKill}`)), first.text);
+    check(label + ': the first step names the fastest deck and its numbers', first.title === 'The fastest deck' && first.text.includes(want.name.replace(/\s*\(.*\)\s*$/, '')) && (want.by2 != null ? first.text.includes('by turn 2') && first.text.includes('by turn 4') : first.text.includes(`Median turn ${med(want)}`)), first.text);
     const r = await run(p, touch);
     check(label + ': the steps run to the end', !(await p.evaluate(() => window.ISFTutorial.active)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)) && !r.seen.some(t => /STUCK/.test(t)), r.seen.join(' › '));
     check(label + ': it shows the plan, draws, plays to the kill and ends on the result', ['The plan', 'Keep', 'Watch the win'].every(t => r.seen.includes(t)) && (r.seen.includes('Draw a 7') || r.seen.includes('A real winning hand')) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)), r.seen.join(' › '));

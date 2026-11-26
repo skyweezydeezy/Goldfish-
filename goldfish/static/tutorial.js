@@ -346,10 +346,11 @@
   // from each list's "Checked by ICEYfish" line), so a fresh check of the decks changes the tutorial by itself. Until a deck has the turn 2-4
   // numbers, decks without them are ranked by the older speed numbers (median, then by T7, then by T5).
   const killN = k => k == null ? Infinity : +String(k).replace('>', '') + (String(k)[0] === '>' ? 0.5 : 0);
+  const medOf = d => killN(d.medianKill != null ? d.medianKill : d.checkedMedian);          // medianKill is the measured one; checkedMedian is read from the list's check line
   const fastestOf = decks => {
     const ceil = decks.filter(d => d.by2 != null && d.by3 != null && d.by4 != null);
-    if (ceil.length) return ceil.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || killN(a.medianKill) - killN(b.medianKill) || (b.by7 || 0) - (a.by7 || 0))[0];
-    return decks.filter(d => d.by5 != null && d.medianKill != null).sort((a, b) => killN(a.medianKill) - killN(b.medianKill) || b.by7 - a.by7 || b.by5 - a.by5)[0] || null;
+    if (ceil.length) return ceil.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || medOf(a) - medOf(b) || (b.by7 || 0) - (a.by7 || 0))[0];
+    return decks.filter(d => d.by5 != null && medOf(d) !== Infinity).sort((a, b) => medOf(a) - medOf(b) || b.by7 - a.by7 || b.by5 - a.by5)[0] || null;
   };
   async function fastestDeck() { const r = await fetch('decks/index.json'); return r.ok ? fastestOf((await r.json()).decks || []) : null; }
   let fast = null;          // { deck: the index row, seed, kill: the turn the picked game kills on }
@@ -409,7 +410,7 @@
     return best || { seed: 1, kill: null };
   }
   const killTurnNow = () => { const g = S() && S().game; return g && g.killTurn != null ? g.killTurn : null; };
-  const speedLine = d => d.by2 != null ? `${pc(d.by2)} of its games are won by turn 2, ${pc(d.by3)} by turn 3, ${pc(d.by4)} by turn 4.` : `Median turn ${d.medianKill}, ${pc(d.by5)} by turn 5, ${pc(d.by7)} by turn 7.`;
+  const speedLine = d => d.by2 != null ? `${pc(d.by2)} of its games are won by turn 2, ${pc(d.by3)} by turn 3, ${pc(d.by4)} by turn 4.` : `Median turn ${d.medianKill != null ? d.medianKill : d.checkedMedian}, ${pc(d.by5)} by turn 5, ${pc(d.by7)} by turn 7.`;
   const FASTEST = [
     { title: 'The fastest deck', text: () => fast ? `${deckName(fast.deck)}${fast.deck.earliestKill ? ` can win on turn ${fast.deck.earliestKill}` : ' is the fastest built-in deck'}. ${speedLine(fast.deck)}` : '' },
     { before: async () => { await useSampleDeck(fast.deck.file); A().showTab('deck'); await sleep(350); },

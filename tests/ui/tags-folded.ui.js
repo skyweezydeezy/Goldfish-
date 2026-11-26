@@ -12,7 +12,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
     const ctx = await b.newContext({ viewport: { width: 1360, height: 900 }, serviceWorkers: 'block' });
     await ctx.addInitScript(m => {
       try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {}
-      if (m === 'isf_fold on') localStorage.setItem('isf_fold', 'on'); else Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      if (m === 'isf_fold on') localStorage.setItem('isf_fold', 'on'); else { Object.defineProperty(navigator, 'webdriver', { get: () => false }); localStorage.setItem('isf_tutorial_off', '1'); }          // (the welcome tour is off so that it does not cover the page; the tour step is tried by hand below)
     }, mode);
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const q = route.request();
@@ -49,13 +49,13 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
     // a tour step that points into the box unfolds it, and folds it back when the tour moves on
     const steps = await p.evaluate(() => { const T = window.ISFTutorial; return !!T && typeof T.start === 'function'; });
     if (steps) {
-      await p.evaluate(() => window.ISFTutorial.start('', [{ el: ['#deckTags #tagQuery'], title: 'Search by tag', text: 'x' }, { el: ['#loadDeck'], title: 'Load', text: 'y' }]));
+      await p.evaluate(() => { window.ISFTutorial.start('', [{ el: ['#deckTags #tagQuery'], title: 'Search by tag', text: 'x' }, { el: ['#loadDeck'], title: 'Load', text: 'y' }]); });
       await p.waitForTimeout(600);
       const during = await state();
       await p.evaluate(() => { const n = document.querySelector('.tut-next'); if (n) n.click(); });
       await p.waitForTimeout(500);
       const after = await state();
-      await p.evaluate(() => window.ISFTutorial.stop('skip')); await p.waitForTimeout(300);
+      await p.evaluate(() => { window.ISFTutorial.stop('skip'); }); await p.waitForTimeout(300);
       check(`${mode}: the step that points into the box opens it`, !during.closed, JSON.stringify(during));
       check(`${mode}: the next step folds it back`, after.closed && after.openGroups === 0, JSON.stringify(after));
     }

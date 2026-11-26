@@ -37,16 +37,17 @@ const q = async (p, sel) => { const e = await p.$(sel); if (e && await e.isVisib
 
 
 async function run(p, touch) {
-  const seen = []; let last = -1, same = 0, spotOk = true;
+  const seen = [], caps = new Set(); let last = -1, same = 0, spotOk = true;
   for (let k = 0; k < 900; k++) {
     const a = await state(p); if (!a) break;
     if (a.step !== last) { seen.push(a.title); last = a.step; same = 0; } else if (++same > 400) { seen.push('STUCK at ' + a.title); break; }
+    if (a.title === 'Key plays') caps.add(await p.evaluate(() => document.querySelector('.tut-text').textContent));
     if (a.busy || a.dis) { await p.waitForTimeout(150); continue; }
     if (a.tap && !a.next) { if (!a.hasT) { spotOk = false; await p.waitForTimeout(200); continue; } await tapTarget(p, touch); await p.waitForTimeout(350); continue; }
     if (a.next) { if (touch) await p.tap('.tut-next'); else await p.click('.tut-next'); await p.waitForTimeout(250); continue; }
     await p.waitForTimeout(150);
   }
-  return { seen, spotOk };
+  return { seen, spotOk, caps: [...caps] };
 }
 const kn = k => +String(k).replace('>', '') + (String(k)[0] === '>' ? .5 : 0);
 const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != null && d.by4 != null); return c.length ? c.sort((a, b) => b.by2 - a.by2 || b.by3 - a.by3 || b.by4 - a.by4 || kn(a.medianKill) - kn(b.medianKill) || (b.by7 || 0) - (a.by7 || 0))[0] : decks.filter(d => d.by5 != null && d.medianKill != null).sort((a, b) => kn(a.medianKill) - kn(b.medianKill) || b.by7 - a.by7 || b.by5 - a.by5)[0]; };
@@ -78,6 +79,7 @@ const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != nu
     const r = await run(p, touch);
     check(label + ': the steps run to the end', !(await p.evaluate(() => window.ISFTutorial.active)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)) && !r.seen.some(t => /STUCK/.test(t)), r.seen.join(' › '));
     check(label + ': it shows the plan, draws, plays to the kill and ends on the result', ['The plan', 'Draw a 7', 'Keep', 'Watch the win'].every(t => r.seen.includes(t)) && r.seen.some(t => /^Dead on turn \d+$|^Not yet$/.test(t)), r.seen.join(' › '));
+    check(label + ': the key plays get short captions (a combo, a tutor, fast mana or the kill), each under 90 characters', r.caps.some(c => /^(The combo|The kill|A tutor|Fast mana|The commander)/.test(c)) && r.caps.every(c => c.length < 90), JSON.stringify(r.caps));
     check(label + ': every tap step had its element to point at', r.spotOk);
     const after = await snap();
     check(label + ': your own deck comes back', after.cmd === before.cmd && !after.tutorial, `${before.cmd} → ${after.cmd}`);

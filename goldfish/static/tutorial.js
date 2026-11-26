@@ -238,7 +238,7 @@
     r.tutorial = true; r.tutorialFile = file;
   }
   function endSample(how) {
-    const sm = sample; sample = null; queued = null;
+    const sm = sample; sample = null; queued = null; stopCaps();
     if (!sm) return;
     if (sm.kind === 'practice' && window.__isfChoices) window.__isfChoices.close();          // a Duel goes on as a normal game, questions and all
     if (sm.ctl) for (const sel in sm.ctl) { const e = document.querySelector('#tab-duel ' + sel); if (e) { e.value = sm.ctl[sel][0]; if (sm.ctl[sel][1]) e.dataset.touched = sm.ctl[sel][1]; else delete e.dataset.touched; } }          // your own Duel settings come back for the next game
@@ -356,12 +356,37 @@
   const deckName = d => d.name.replace(/\s*\(.*\)\s*$/, '');
   const list = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0] || '';
   const pc = x => (x > 0 && x < 1 ? x.toFixed(1) : Math.round(x * 10) / 10) + '%';
+  function fastMana() {
+    const d = S().deck; let mana = [];
+    try { const T = window.Tags, ix = S().tags || T.index(d, {}); mana = [0, 1, 2].flatMap(v => T.query(ix, 'role:ramp -type:land mv:' + v).cards.map(c => c.name)); } catch (e) { /* no tags: no mana line */ }
+    return mana.filter((n, i) => mana.indexOf(n) === i);
+  }
+  // short captions on the key plays, read from the game log as the autopilot writes it (the lines the engine writes: "Played X", "Cast X",
+  // "⚡ … search …" for a tutor, "★ Combo assembled: …", "☠ Goldfish dead …"); the Watch step shows the latest one
+  let cap = '', capObs = null, capQ = [], capTimer = 0;          // each caption stays at least a moment: later ones wait in the queue
+  const trim = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;
+  function captionFor(t, mana, cmd) {
+    let m;
+    if ((m = /^★ Combo assembled: ([^(]+)/.exec(t))) return `The combo is assembled: ${trim(m[1].trim(), 60)}`;
+    if (/^☠/.test(t)) return `The kill: ${trim(t.replace(/^☠\s*/, ''), 60)}`;
+    if (/^⚡.*\bsearch/i.test(t)) return 'A tutor finds the missing pieces';
+    if ((m = /^(?:Played|Cast) (.+)$/.exec(t))) { const n = m[1].trim(); if (cmd.includes(n)) return `The commander comes down: ${n}`; if (mana.includes(n)) return `Fast mana: ${n}`; }
+    return null;
+  }
+  function startCaps() {
+    stopCaps(); cap = 'Key plays show up here as they happen.';
+    const ol = document.querySelector('#gameLog'); if (!ol) return;
+    const mana = fastMana(), cmd = S().deck ? S().deck.commanders.map(c => c.card.name) : [];
+    capObs = new MutationObserver(ms => { for (const mu of ms) for (const n of mu.addedNodes) { const c = n.textContent && captionFor(n.textContent.trim(), mana, cmd); if (c) capQ.push(c); } });
+    capObs.observe(ol, { childList: true });
+    capTimer = setInterval(() => { if (capQ.length) cap = capQ.shift(); }, 1500);
+  }
+  function stopCaps() { if (capObs) capObs.disconnect(); capObs = null; clearInterval(capTimer); capQ = []; }
   // the plan, from the loaded deck: its commander, its cheap mana, the combos the engine plays
   function planText() {
     const d = S().deck, G = window.Goldfish; if (!d) return '';
     const cm = d.commanders.map(c => c.card.name), out = [];
-    let mana = []; try { const T = window.Tags, ix = S().tags || T.index(d, {}); mana = [0, 1, 2].flatMap(v => T.query(ix, 'role:ramp -type:land mv:' + v).cards.map(c => c.name)); } catch (e) { /* no tags: no mana line */ }
-    mana = mana.filter((n, i) => mana.indexOf(n) === i);
+    const mana = fastMana();
     let combos = []; try { combos = G.deckCombos(d).filter(c => !c.open); } catch (e) { /* no combo data */ }
     if (cm.length) out.push(`Its commander, ${list(cm)}, leads the plan.`);
     if (mana.length) out.push(`Cheap mana (${list(mana.slice(0, 4))}) pays for it early.`);
@@ -392,8 +417,9 @@
     { before: async () => { await waitFor(() => S().deck); await sleep(1500); const p = pickSeed(fast.deck.earliestKill || 2); fast.seed = p.seed; fast.kill = p.kill; A().showTab('hands'); queued = fast.seed; await sleep(300); },
       el: '#drawHand', tap: true, back: false, title: 'Draw a 7', text: () => `Tap Draw a 7. This opening hand wins${fast && fast.kill ? ' on turn ' + fast.kill : ' early'}.` },
     { before: () => waitFor(() => document.querySelector('#handStage .fan .mtg')), el: '#keepHand', tap: true, back: false, title: 'Keep', text: 'Keep it. The autopilot plays the rest.' },
-    { before: async () => { await waitFor(() => document.body.dataset.view === 'table' && S().game && idle()); autoTo = fast.kill || 2; const n = document.querySelector('#tAutoToN'); if (n) n.value = String(autoTo); },
+    { before: async () => { await waitFor(() => document.body.dataset.view === 'table' && S().game && idle()); autoTo = fast.kill || 2; const n = document.querySelector('#tAutoToN'); if (n) n.value = String(autoTo); startCaps(); },
       el: '#tAutoTo', tap: true, back: false, title: 'Watch the win', text: () => `Tap Autopilot to turn ${autoTo}: it plays every turn up to the kill.` },
+    { el: ['.table-main'], live: true, back: false, hold: () => capQ.length > 0 || (killTurnNow() == null && !(S().game && S().game.turn >= autoTo && idle())), title: 'Key plays', text: () => cap },
     { before: () => sleep(600).then(() => waitFor(() => killTurnNow() != null || (S().game && S().game.turn >= autoTo && idle()), 60000)), el: ['.table-main'], back: false, title: () => killTurnNow() != null ? `Dead on turn ${killTurnNow()}` : 'Not yet',
       text: () => killTurnNow() != null ? `The goldfish is dead on turn ${killTurnNow()}. Tap Log to read each play.` + (sample && sample.prev ? ' Your own deck comes back when you tap Next.' : ' The deck stays loaded: play on.') : `No kill by turn ${S().game ? S().game.turn : autoTo} this time. Tap Autopilot to go on.` },
   ];

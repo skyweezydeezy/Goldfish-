@@ -133,7 +133,7 @@ const PAIRS = [['iPhone upright', 'iPad sideways'], ['iPad upright', 'iPhone sid
         const [a, c] = [await st(A), await st(B)];
         if (cond(a, c)) return;
         for (const [p, s] of [[A, a], [B, c]]) await p.evaluate(s => { const q = x => document.querySelector(x);
-          if (s.choice) { const x = q('.ch-sheet .ch-auto'); if (x) x.click(); } else if (s.respond === s.local) { const x = q('#tab-duel .vs-pass'); if (x) x.click(); } else if (s.block) { const x = q('#tab-duel .vs-block-go'); if (x) x.click(); } }, s);
+          if (s.choice) { const x = q('.ch-sheet .ch-ok:not([disabled])') || q('.ch-sheet .ch-none'); if (x) x.click(); } else if (s.respond === s.local) { const x = q('#tab-duel .vs-pass'); if (x) x.click(); } else if (s.block) { const x = q('#tab-duel .vs-block-go'); if (x) x.click(); } }, s);
         await A.waitForTimeout(150);
       }
       throw new Error('timed out: ' + JSON.stringify([await st(A), await st(B)]));

@@ -107,6 +107,11 @@ const tap = async (p, sel, ms) => {
   check('only the setup went through the meeting point: names, deck names, offer and answer; no deck, seed or move', bad.length === 0, bad.slice(0, 2).map(m => m.payload.slice(0, 80)).join(' | '));
   const nearlyGone = await A.evaluate(() => ({ visible: window.__isfRemote.M.visible }));
   check('a device in a game is off the Nearby list', nearlyGone.visible === false && !(await near(C)).length);
+  const noAuto = p => p.evaluate(() => ({ mullAuto: !!document.querySelector('#tab-duel .vs-mull-auto'), autoTurn: !!document.querySelector('#tab-duel .vs-autoturn'), speed: !!document.querySelector('#tab-duel .speed-bar') && document.querySelector('#tab-duel .speed-bar').getClientRects().length > 0, keep: !!document.querySelector('#tab-duel .vs-keep'),
+    ask: document.querySelector('#tab-duel .vs-ask select') && document.querySelector('#tab-duel .vs-ask select').value }));
+  const na = [await noAuto(A), await noAuto(B)];
+  check('Play a friend, opening hands: no "Let the autopilot decide" and no autopilot speed slider on either page (Keep is there)', na.every(x => !x.mullAuto && !x.speed && x.keep), JSON.stringify(na));
+  await A.evaluate(() => { document.querySelector('#tab-duel select.vs-ask').value = 'auto'; });          // "My choices: Autopilot decides" no longer reaches a game against a person
   await tap(A, '#tab-duel .vs-mull'); await A.waitForTimeout(300); await tap(A, '#tab-duel .vs-keep');
 
   // the wake lock
@@ -143,6 +148,17 @@ const tap = async (p, sel, ms) => {
   await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g.phase === 'main' && !g.acting && !g.busy; }, null, 40000)));
   const [a2, b2] = [await st(A), await st(B)];
   check('the game goes on after the automatic reconnect: both kept, the same table, no device stopped it', a2.fp === b2.fp && a2.phase === 'main');
+  const sheet = await A.evaluate(async () => {
+    const C = window.__isfChoices, mk = extra => Object.assign({ kind: 'target', title: 'Pick', text: 'Pick one', options: [{ name: 'Alpha' }, { name: 'Beta' }], def: [0], sig: 'x', seat: 0, max: 1 }, extra);
+    const out = {};
+    C.ask(mk({ noAuto: true })).catch(() => {}); out.remote = { auto: !!document.querySelector('.ch-sheet .ch-auto'), star: !!document.querySelector('.ch-sheet .ch-star'), ok: !!document.querySelector('.ch-sheet .ch-ok') };
+    C.close();
+    C.ask(mk({})).catch(() => {}); out.local = { auto: !!document.querySelector('.ch-sheet .ch-auto'), star: !!document.querySelector('.ch-sheet .ch-star') };
+    C.close(); return out;
+  });
+  check('a choice sheet in a game against a person has no "Let the autopilot decide" and no ★ autopilot mark (a local one still has the button)', sheet.remote.ok && !sheet.remote.auto && !sheet.remote.star && sheet.local.auto, JSON.stringify(sheet));
+  const na2 = [await noAuto(A), await noAuto(B)], mine = await Promise.all([A, B].map(p => p.evaluate(() => !!document.querySelector('#tab-duel .vs-end'))));
+  check('...and in the main phase the player whose turn it is has End turn but no "Autopilot the rest of my turn", on either page', mine.some(Boolean) && na2.every(x => !x.autoTurn && !x.speed), JSON.stringify(na2) + ' ' + mine);
 
   // the meeting point drops everyone, and then the channel dies: still mended (the client reconnects to the broker itself)
   broker.dropAll();
@@ -164,6 +180,48 @@ const tap = async (p, sel, ms) => {
     return { lost: !!L.lost, connected: R.connected(), same: S.link === L };
   });
   check('"disconnected" that mends within the grace time is not treated as lost: the link and the game stay as they were', !mend.lost && mend.connected && mend.same, JSON.stringify(mend));
+
+  // ---- the end of the game: rematch (declined, then accepted), change deck, leave
+  const finish = p => p.evaluate(() => { const V = window.__isfVersus, g = V.duel.game; g.over = 'Alex wins the game in round 3.'; g.phase = null; V.redraw('duel'); });
+  const gid = p => p.evaluate(() => window.__isfRemote.state.game.id);
+  await Promise.all([A, B].map(finish));
+  await Promise.all([A, B].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  check('the game is over on both devices: each shows Play again, Change deck and Leave', await A.$eval('#tab-duel .vs-endp', e => e.querySelectorAll('button').length === 3) && await B.$eval('#tab-duel .vs-endp', e => /Play again/.test(e.textContent)));
+  const idEnd = await gid(A);
+  await tap(A, '#tab-duel .vs-again');
+  await wait(B, () => /Alex wants a rematch/.test((document.querySelector('#tab-duel .vs-rmq') || {}).textContent || ''), null, 15000);
+  check('Alex asks for a rematch: Sam sees "Alex wants a rematch. Accept?", and Alex is told to wait', /Accept\?/.test(await text(B, '#tab-duel .vs-rmq')) && /Waiting for Sam/.test(await text(A, '#tab-duel .vs-endp')));
+  await tap(B, '#tab-duel .vs-rm-no');
+  await wait(A, () => /said no to a rematch/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  check('Sam declines: both stay on the panel, and Alex can ask again', (await gid(A)) === idEnd && await A.$eval('#tab-duel .vs-again', e => !e.disabled) && !(await B.$('#tab-duel .vs-rmq')));
+  await tap(A, '#tab-duel .vs-again');
+  await wait(B, () => !!document.querySelector('#tab-duel .vs-rm-yes'), null, 15000);
+  await tap(B, '#tab-duel .vs-rm-yes');
+  await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && !g.over && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
+  const [r0, r1] = [await st(A), await st(B)];
+  check('Sam accepts: both devices deal a new game on the same connection (a new game id, one seed, the same table)', (await gid(A)) !== idEnd && (await gid(A)) === (await gid(B)) && r0.fp === r1.fp && !(await A.$('#tab-duel .rm-mine')));
+  await Promise.all([A, B].map(finish));
+  await Promise.all([A, B].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await tap(B, '#tab-duel .vs-change');
+  await wait(A, () => /Sam is choosing a deck/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  check('Sam taps Change deck: his table closes and Alex sees "Sam is choosing a deck"', await B.evaluate(() => document.querySelector('#tab-duel .vs-game').hidden) && /Choose a deck/.test(await text(B, '#tab-duel .rm-sv')));
+  check('...and they stay connected', await B.evaluate(() => window.__isfRemote.connected()) && await A.evaluate(() => window.__isfRemote.connected()));
+  const label = await B.evaluate(() => window.__isfRemote.M && document.querySelector('#tab-duel .rm-rematch').textContent);
+  await tap(B, '#tab-duel .rm-rematch');
+  await wait(A, () => /Sam wants a rematch/.test((document.querySelector('#tab-duel .vs-rmq') || {}).textContent || ''), null, 15000);
+  check('Sam offers the rematch with the deck he chose: Alex sees the offer and the deck\'s name', /wants a rematch with /.test(await text(A, '#tab-duel .vs-rmq')) && /Offer a rematch/.test(label), await text(A, '#tab-duel .vs-rmq'));
+  await tap(A, '#tab-duel .vs-rm-yes');
+  await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && !g.over && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
+  check('Alex accepts: a new game starts on both devices', (await st(A)).fp === (await st(B)).fp);
+  await Promise.all([A, B].map(finish));
+  await Promise.all([A, B].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await tap(A, '#tab-duel .vs-leave');
+  await wait(B, () => /Alex left/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  const left = await A.evaluate(() => ({ view: document.body.dataset.view, game: !!window.__isfRemote.state.game, saved: localStorage.getItem('isf_remote'), mq: !!window.__isfRemote.M.mq, hidden: document.querySelector('#tab-duel .vs-game').hidden }));
+  check('Alex taps Leave: Sam sees "Alex left", and on Alex\'s side the table closes, the saved game and the meeting-point connection are gone', left.hidden && !left.game && left.saved === null && !left.mq, JSON.stringify(left));
+  check('...Sam can still leave, and then has no saved game either', await B.$eval('#tab-duel .vs-endp', e => !e.querySelector('.vs-again') || e.querySelector('.vs-again').disabled));
+  await tap(B, '#tab-duel .vs-leave');
+  check('Sam leaves too: his table closes and nothing is left saved', await B.evaluate(() => document.querySelector('#tab-duel .vs-game').hidden && !window.__isfRemote.state.game && localStorage.getItem('isf_remote') === null && !window.__isfRemote.M.mq));
   check('no page errors in pair 1', !errs.length, errs.slice(0, 3).join(' | '));
   for (const p of [A, B, C]) await p.context().close();
 
@@ -187,6 +245,15 @@ const tap = async (p, sel, ms) => {
   await Promise.all([D, E].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
   const [d0, e0] = [await st(D), await st(E)];
   check('the room game starts on both devices: Eli (who asked) is seat 0', d0.local === 1 && e0.local === 0 && d0.names.join() === 'Eli,Dana' && d0.fp === e0.fp, d0.names.join());
+  // Change deck and then a local New game: the link closes and the other player is told he left
+  await Promise.all([D, E].map(finish));
+  await Promise.all([D, E].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await tap(E, '#tab-duel .vs-change');
+  await wait(D, () => /Eli is choosing a deck/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  await E.evaluate(() => { document.querySelector('#tab-duel .vs-opp').value = ''; document.querySelector('#tab-duel .vs-new').click(); });
+  await wait(D, () => /Eli left/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  check('Change deck, then a local New game: the link closes and the other player sees "Eli left", not "choosing a deck" for ever', !/choosing/.test(await text(D, '#tab-duel .vs-endp')));
+  check('...and the player who started it has no saved game against the friend left behind', await E.evaluate(() => !window.__isfRemote.state.game && localStorage.getItem('isf_remote') === null));
   check('no page errors in pair 2', !errs.length, errs.slice(0, 3).join(' | '));
 
   // ================= neither broker reachable: say so, and show the codes =================

@@ -33,8 +33,8 @@ const status = n => by(n).a.coverage.map(r => r.status + (r.tag ? '/' + r.tag : 
 
 T('coverage', () => {
   check('Torbran: its line is simulated (it said "Needs opponent")', status('Torbran, Thane of Red Fell') === 'ok', status('Torbran, Thane of Red Fell'));
-  check("Gideon's +1 is marked approximate (a goldfish takes the 5; in a match he stays a planeswalker)", by('Gideon, Ally of Zendikar').a.coverage[0].status === 'partial' && by('Gideon, Ally of Zendikar').a.pwAbilities.some(ab => ab.fx.some(f => f.type === 'pwSwing')));
-  for (const n of ['Gisa, the Hellraiser', 'Kaervek, the Punisher']) { const v = by(n).a.coverage.find(r => /commit a crime/.test(r.text)); check(`${n}: the crime trigger is read (marked approximate)`, v && v.status === 'partial' && v.tag === 'approx' && by(n).a.triggers.some(t => t.kinds.includes('crime'))); }
+  check("Gideon's +1 is read exactly (T-094: a real 5/5 indestructible creature until end of turn)", by('Gideon, Ally of Zendikar').a.coverage[0].status === 'ok' && by('Gideon, Ally of Zendikar').a.pwAbilities.some(ab => ab.fx.some(f => f.type === 'pwAnimate')));
+  for (const n of ['Gisa, the Hellraiser', 'Kaervek, the Punisher']) { const v = by(n).a.coverage.find(r => /commit a crime/.test(r.text)); check(`${n}: the crime trigger is read (T-094: exact crimes)`, v && v.status === 'ok' && by(n).a.triggers.some(t => t.kinds.includes('crime'))); }
   const bolt = by('Lightning Bolt').a.spellFx[0], witch = by('Tempting Witch').a.activated[0].fx[0], sib = by('Sign in Blood').a.spellFx[0];
   check('crimes: Lightning Bolt (any target) and Tempting Witch (target player loses 3) are crimes, Sign in Blood (you draw) is not', bolt.crime === true && witch.crime === true && !sib.crime);
 });
@@ -56,11 +56,11 @@ T('torbran', () => {
 T('gideon', () => {
   const g = bare(7); const gd = putOn(g, 'Gideon, Ally of Zendikar'); gd.loyalty = 4; const best = G.autoLoyalty(g, gd);
   check('Gideon, here since an earlier turn: the autopilot picks +1', best && best.cost === 1, best && best.text.slice(0, 20));
-  const d0 = g.damage; G.activateLoyalty(g, gd, best, []); check('...the goldfish takes 5 and Gideon goes to 5 loyalty', g.damage - d0 === 5 && gd.loyalty === 5, `${g.damage - d0} damage, loyalty ${gd.loyalty}`);
+  const d0 = g.damage; G.activateLoyalty(g, gd, best, []); check('...he becomes a 5/5 creature that attacks in combat (no damage as he is activated) and goes to 5 loyalty', g.damage - d0 === 0 && gd.loyalty === 5 && G.isCreaturePerm(gd) && G.powerOf(g, gd) === 5 && G.canAttack(g, gd), `${g.damage - d0} damage, loyalty ${gd.loyalty}`);
   const n = bare(8); const ng = putOn(n, 'Gideon, Ally of Zendikar'); ng.enteredTurn = n.turn; ng.loyalty = 4; const b2 = G.autoLoyalty(n, ng);
   check('...a Gideon that arrived this turn makes a Knight instead (it could not attack)', b2 && b2.cost === 0, b2 && b2.text.slice(0, 20));
   const { g: m } = mirror(); const mg = putOn(m, 'Gideon, Ally of Zendikar'); mg.loyalty = 4; const b3 = G.autoLoyalty(m, mg);
-  check('...in a match he does not swing (he stays a planeswalker there)', b3 && b3.cost !== 1, b3 && b3.text.slice(0, 20));
+  check('...in a match he swings too (an indestructible attacker nothing can damage): +1', b3 && b3.cost === 1, b3 && b3.text.slice(0, 20));
 });
 
 T('gisa', () => {
@@ -72,10 +72,10 @@ T('gisa', () => {
 });
 
 T('kaervek', () => {
-  const g = bare(11); putOn(g, 'Kaervek, the Punisher'); const ns = inst(g, 'Homebrew Night Study'); g.graveyard.push(ns); const h = g.hand.length, life = g.life;
+  const g = bare(11); putOn(g, 'Kaervek, the Punisher'); const ns = inst(g, 'Homebrew Night Study'); g.graveyard.push(ns); const h = g.hand.length, life = g.life; for (let k = 0; k < 6; k++) g.floating.push({ src: null, colors: new Set(['B', 'R']), floating: true });          // the copy is cast by paying its mana cost
   G.applyEffects(g, by('Lightning Bolt').a.spellFx, null, [], null);
-  check('Kaervek: a crime exiles the black sorcery from the graveyard and casts a copy: two cards, 2 life', g.exile.includes(ns) && g.hand.length === h + 2 && g.life === life - 2, `exile ${g.exile.includes(ns)}, hand ${h}->${g.hand.length}, life ${life}->${g.life}`);
-  const p = bare(12); putOn(p, 'Kaervek, the Punisher'); const wi = inst(p, 'Tempting Witch'); p.graveyard.push(wi); G.applyEffects(p, by('Lightning Bolt').a.spellFx, null, [], null);
+  check('Kaervek: a crime exiles the black sorcery from the graveyard and casts a copy (mana paid): two cards, 2 life', g.exile.includes(ns) && g.hand.length === h + 2 && g.life === life - 2, `exile ${g.exile.includes(ns)}, hand ${h}->${g.hand.length}, life ${life}->${g.life}`);
+  const p = bare(12); putOn(p, 'Kaervek, the Punisher'); for (let k = 0; k < 6; k++) p.floating.push({ src: null, colors: new Set(['B', 'R']), floating: true }); const wi = inst(p, 'Tempting Witch'); p.graveyard.push(wi); G.applyEffects(p, by('Lightning Bolt').a.spellFx, null, [], null);
   check('...a black creature card comes back as a token copy', p.battlefield.some(q => q.token && q.card.name === 'Tempting Witch') && p.exile.includes(wi));
   const l = bare(13); putOn(l, 'Kaervek, the Punisher'); l.life = 6; const n2 = inst(l, 'Homebrew Night Study'); l.graveyard.push(n2); G.applyEffects(l, by('Lightning Bolt').a.spellFx, null, [], null);
   check('...at 6 life it is not worth 2 life: nothing happens', l.graveyard.includes(n2) && l.life === 6);

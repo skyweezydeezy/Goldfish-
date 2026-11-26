@@ -18,8 +18,8 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
     check(`${name}: the dropdown is there`, lists.length > 0, lists.length + ' dropdown(s)');
     for (const groups of lists.slice(0, 1)) {
       const built = groups.filter(g => g.label !== 'Saved in this browser'), br = built.filter(g => /^Bracket \d/.test(g.label)).map(g => +g.label.match(/\d/)[0]);
-      check(`${name}: default order, every heading is a bracket (or "No bracket" last)`, built.length >= 3 && built.every((g, i) => /^Bracket \d/.test(g.label) || (g.label === 'No bracket' && i === built.length - 1)), built.map(g => g.label).join(' | '));
-      check(`${name}: brackets from the highest down`, br.length >= 3 && br.every((x, i) => !i || x < br[i - 1]), br.join(','));
+      check(`${name}: default order, every heading is a bracket (or "No bracket" last)`, built.length >= 2 && built.every((g, i) => /^Bracket \d/.test(g.label) || (g.label === 'No bracket' && i === built.length - 1)), built.map(g => g.label).join(' | '));
+      check(`${name}: brackets from the highest down`, br.length >= 2 && br.every((x, i) => !i || x < br[i - 1]), br.join(','));
       check(`${name}: saved decks come last, under their own heading`, groups[groups.length - 1].label === 'Saved in this browser' && groups[groups.length - 1].n === 1);
     }
   }

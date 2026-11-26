@@ -394,7 +394,7 @@
       { el: () => { const e = $('#tab-pod .vs-run'); return e && e.closest('.card-box'); }, title: 'Play many games', text: 'See how often each deck wins the pod.' },
     ],
   };
-  const NAMES = { deck: 'Build', hands: 'Mulligan', table: 'Practice', sim: 'Simulate', odds: 'Odds', duel: 'Duel', pod: 'Pod' };
+  const NAMES = { deck: 'Build', hands: 'Mulligan', table: 'Practice', sim: 'Simulate', odds: 'Odds', duel: 'Duel', pod: 'Pod', puzzle: 'Puzzle' };
   const view = () => document.body.dataset.view || 'deck';
   const blocked = () => !!document.querySelector('.modal.show, .lightbox.show, .ch-sheet');          // another sheet is open: wait
 

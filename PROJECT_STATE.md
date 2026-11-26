@@ -50,7 +50,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 ## 2. Architecture and accepted decisions
 
 - [V] Daily Drive deck check (the user, 11:18 UTC: "make sure all commander decks in my Google Drive match what's available in ICEYfish... an agent to maintain that list"): scheduled task trig_016tifZVGBHxQJMUbcgPv4Mj, 12:43 UTC daily, fires into MAIN (the org does not allow connectors on fresh-session tasks). 11:17 UTC check: all 50 Drive decks match drive-sync.json and index.json.
-- [V] The user (2026-11-26 11:15 UTC): every MAIN reply ends with the next steps as options the user can check or uncheck (AskUserQuestion, multi-select), or clarify.
+- [V] The user (2026-11-26 11:15 UTC): every MAIN reply ends with the next steps as opt-in options (AskUserQuestion, multi-select): a box the user CHECKS is a go-ahead; unchecked means don't; Other is for clarification (corrected 11:20 UTC).
 
 - [V] **A static web app** in `goldfish/static`, with no server. GitHub Pages publishes the default branch. It installs to a phone's
   Home Screen and opens offline (`sw.js`, `manifest.webmanifest`). Card data and images come from Scryfall in the browser.

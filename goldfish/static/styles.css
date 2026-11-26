@@ -1496,3 +1496,8 @@ body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child 
 .sel-preview { position: fixed; left: 0; right: 0; top: calc(8px + env(safe-area-inset-top)); z-index: 300; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .sel-preview .mtg { width: var(--selw, 200px); max-width: 80vw; box-shadow: 0 0 0 3px #4db3f5, 0 10px 40px rgba(0,0,0,.7); }
 @media (pointer: coarse) { .ctx-menu.with-sel { max-height: 52vh; } }
+/* T-102: upright phones: action buttons at least 44 px tall (widths stay: ten toolbar buttons do not fit 44 px wide on 375 px) */
+@media (pointer: coarse) and (max-width: 600px) and (min-height: 560px) {
+  button, select, input[type=number] { min-height: 44px; }
+  .table-controls button, .vs-top button { min-height: 44px; }
+}

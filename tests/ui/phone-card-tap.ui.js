@@ -86,7 +86,7 @@ const SHOTS = process.env.PHONE_TAP_SHOTS;                                  // a
     await p.selectOption('#tab-duel .vs-you', 'human');
     await p.selectOption('#tab-duel .vs-ask', 'ask');
     await p.click('#tab-duel .vs-new');
-    await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 90000 });
+    await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 40000 }).catch(async e => { console.log('DBG', await p.evaluate(() => (document.querySelector('#tab-duel') || {}).innerText.slice(0, 400)), errs.join('|')); throw e; });
     await p.evaluate(() => document.querySelector('#tab-duel .vs-keep').click());
     await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && (g.phase === 'main' || g.over); }, null, { timeout: 90000 });
     const duelLand = await p.evaluate(() => {
@@ -116,6 +116,33 @@ const SHOTS = process.env.PHONE_TAP_SHOTS;                                  // a
         await p.waitForTimeout(500);
         const n1 = await p.evaluate(() => window.__isfVersus.duel.game.games[0].hand.length);
         check(`${name}: Duel: on an iPad a tap on a glowing card plays it at once, as before`, n1 === duelLand.n - 1 && !s.preview, `hand ${duelLand.n} -> ${n1}`);
+      }
+    }
+    if (isPhone) {
+      // tap targets: upright phones keep their action buttons at least 44 px tall
+      if (await p.evaluate(() => innerHeight >= 560)) {
+        const hs = await p.evaluate(() => [...document.querySelectorAll('#tab-duel .vs-ask button, #tab-duel .vs-me button')].filter(e => e.offsetWidth).map(e => Math.round(e.getBoundingClientRect().height)));
+        check(`${name}: Duel: action buttons are at least 44 px tall`, hs.length > 0 && hs.every(v => v >= 44), hs.join(','));
+      }
+      // attackers: a tap selects the creature, an option attacks with it
+      const cr = await p.evaluate(() => {
+        const G = window.Goldfish, gm = window.__isfVersus.duel.game, me = gm.games[0], c = me.deck.unique.find(x => x.a.isCreature && !x.a.isLand);
+        if (!c) return null;
+        const q = G.enterWithTriggers(me, { iid: me.nextIid++, card: c }, {}, []); q.sick = false; q.tapped = false; q.enteredTurn = 0; window.__isfVersus.redraw('duel'); return q.iid;
+      });
+      if (cr != null) {
+        await p.waitForTimeout(400);
+        await p.evaluate(() => document.querySelector('#tab-duel .vs-attack').click()); await p.waitForTimeout(600);
+        const st = p.locator('#tab-duel .vs-seat.me .vs-stack.pickable').first();
+        if (await st.count()) {
+          const before = await p.evaluate(() => window.__isfVersus.duel.game.pick.size);
+          await st.locator('.mtg').first().tap(); await p.waitForTimeout(600);
+          const s = await sheet(), mid = await p.evaluate(() => window.__isfVersus.duel.game.pick.size);
+          check(`${name}: Duel: a tap on an attacker only selects it`, s.shown && s.preview && /Attack with it|Hold it back/.test(s.primary) && mid === before, `${before} -> ${mid}, ${s.primary}`);
+          await p.locator('#ctxMenu button.primary').first().tap(); await p.waitForTimeout(500);
+          const after = await p.evaluate(() => window.__isfVersus.duel.game.pick.size);
+          check(`${name}: Duel: the option toggles the attacker`, after !== before, `${before} -> ${after}`);
+        } else check(`${name}: Duel: an attacker can be tapped`, false, 'no creature stack');
       }
     }
     check(`${name}: no page errors`, errs.length === 0, errs.slice(0, 2).join(' | '));

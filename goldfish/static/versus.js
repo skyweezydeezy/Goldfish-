@@ -1085,7 +1085,7 @@
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
     { const sb = q('.speed-bar'); if (sb) sb.hidden = gm.remote != null; }          // the pace of a game against a person is fixed (slowOf)
-    endUi(mode, gm);
+    endUi(mode, gm); tickClock(mode);          // the clock follows the game at once (a turn passing to an autopilot hides it now, not at the next 250 ms tick)
     if (gm.remote != null) setTimeout(() => pump(mode));          // a move of the other player may be waiting for this moment
   }
   // In the card viewer, a card of yours shows the choices the table gives it: cast or play it, play it as a land, cycle it, the mulligan

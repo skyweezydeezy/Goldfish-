@@ -44,7 +44,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
       if (s === 'mine') return true;
       await p.waitForTimeout(150);
     }
-    throw new Error('never reached my main phase');
+    throw new Error('never reached my main phase: ' + JSON.stringify(await p.evaluate(() => { const g = window.__isfVersus.duel.game; return g && { phase: g.phase, owner: g.match.order[g.idx].pid, acting: g.acting, busy: g.busy, choice: g.choice && g.choice.kind, over: g.over, step: g.step, bar: document.querySelector('#tab-duel .vs-bar').textContent.slice(0, 120) }; })));
   };
   const newGame = async () => { await p.evaluate(() => document.querySelector('#tab-duel .vs-new').click()); await p.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 60000, polling: 200 }); };
   const played = () => p.evaluate(() => window.__isfAudio.played.slice());
@@ -110,7 +110,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   await p.evaluate(() => document.querySelector('#tab-pod .vs-new').click());
   await p.waitForFunction(() => { const g = window.__isfVersus.pod.game; return g && g.phase === 'mull'; }, null, { timeout: 60000, polling: 200 });
   const podClock = await p.evaluate(async () => {
-    const out = { mine: false, others: false }, V = window.__isfVersus.pod;
+    const out = { mine: false, others: false }, V = window.__isfVersus.pod; let cand = 0;
     document.querySelector('#tab-pod .vs-keep').click();
     const t0 = Date.now();
     while (Date.now() - t0 < 60000) {
@@ -119,7 +119,7 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
       if (g.choice) { const x = document.querySelector('.ch-sheet .ch-auto'); if (x) x.click(); }
       if (g.phase === 'block') { const x = document.querySelector('#tab-pod .vs-block-go'); if (x) x.click(); }
       if (g.phase === 'main' && owner === 0 && vis) out.mine = true;
-      if (owner !== 0 && g.phase !== 'mull' && vis) out.others = true;
+      if (owner !== 0 && g.phase !== 'mull' && vis) { cand = cand || Date.now(); if (Date.now() - cand > 600) out.others = true; } else cand = 0;          // shown for more than 0.6 s on an autopilot's turn
       if (out.mine) { const end = document.querySelector('#tab-pod .vs-end'); if (end) end.click(); }
       if (out.mine && owner !== 0) { await new Promise(r => setTimeout(r, 1500)); break; }
       await new Promise(r => setTimeout(r, 120));

@@ -1438,6 +1438,81 @@
    "reason": "speed says B2 (median kill T8); card rules say at least B4 (3 Game Changers (B1-B2 allow none); mass land denial: Vorinclex, Voice of Hunger; 2 cheap two-card infinite combos (e.g. Heliod, Sun-Crowned + Walking Ballista, 3 mana))"
   },
   {
+   "file": "heavy-metal-landfall.txt",
+   "name": "Heavy Metal Landfall (Toph, the First Metalbender)",
+   "stated": 3,
+   "verified": 3,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 8,
+    "by2": 0,
+    "by3": 0,
+    "by4": 0,
+    "by5": 0.7,
+    "by6": 6.9,
+    "by7": 27.8,
+    "by8": 60.9,
+    "byT": 94.8,
+    "earliestKill": 4,
+    "killHist": [
+     0,
+     0,
+     0,
+     0.04,
+     0.665,
+     6.23,
+     20.83,
+     33.165,
+     23.91,
+     9.965,
+     5.195
+    ],
+    "cmdrMedian": 4,
+    "mana4": 5.25,
+    "winBy": {
+     "damage": 93.4,
+     "commander": 1.1,
+     "combo": 0.3
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Ashaya, Soul of the Wild + Goblin Bombardment + Toph, the Blind Bandit (Commander Spellbook): infinite creature ltb; infinite creature etb",
+     "share": 0.0024,
+     "avgTurn": 7.5
+    }
+   },
+   "field": {
+    "games": 20043,
+    "wins": 7525,
+    "losses": 12485,
+    "none": 33,
+    "errors": 0,
+    "winRate": 37.5,
+    "opponents": "51 other Commander decks"
+   },
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Ancient Tomb",
+     "Field of the Dead"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 0,
+    "cheapTwoCard": [],
+    "floor": 3,
+    "why": [
+     "3 Game Changers (B1-B2 allow none)"
+    ]
+   },
+   "speedBracket": 2,
+   "reason": "speed says B2 (median kill T8); card rules say at least B3 (3 Game Changers (B1-B2 allow none))",
+   "version": 211,
+   "date": "2026-11-26"
+  },
+  {
    "file": "ice-age-engine.txt",
    "name": "Ice Age Engine (Urza, Lord High Artificer)",
    "stated": 4,
@@ -1526,6 +1601,104 @@
    },
    "speedBracket": 1,
    "reason": "speed says B1 (median kill T>10); card rules say at least B4 (15 Game Changers (B3 allows 3); mass land denial: Back to Basics, Rising Waters, Stasis, Static Orb, Sunder, Winter Moon, Winter Orb; 1 cheap two-card infinite combo (e.g. Dramatic Reversal + Isochron Scepter, 4 mana))"
+  },
+  {
+   "file": "landslide-victory.txt",
+   "name": "Landslide Victory (Bumi, Unleashed)",
+   "stated": 4,
+   "verified": 4,
+   "commander": true,
+   "goldfish": {
+    "games": 20000,
+    "errors": 0,
+    "medianKill": 7,
+    "by2": 0,
+    "by3": 0,
+    "by4": 0.1,
+    "by5": 3.1,
+    "by6": 21.4,
+    "by7": 57.4,
+    "by8": 83.9,
+    "byT": 97.6,
+    "earliestKill": 4,
+    "killHist": [
+     0,
+     0,
+     0,
+     0.05,
+     3.005,
+     18.305,
+     36.075,
+     26.5,
+     10.355,
+     3.275,
+     2.435
+    ],
+    "cmdrMedian": 4,
+    "mana4": 5.66,
+    "winBy": {
+     "damage": 84.9,
+     "commander": 6.1,
+     "combo": 6.5
+    },
+    "topLine": {
+     "kind": "combo",
+     "text": "Kiki-Jiki, Mirror Breaker copies Zealous Conscripts, and each copy untaps Kiki-Jiki, Mirror Breaker: endless hasty attackers",
+     "share": 0.0344,
+     "avgTurn": 7.244186046511628
+    }
+   },
+   "field": null,
+   "rules": {
+    "gameChangers": [
+     "Mana Vault",
+     "Chrome Mox",
+     "Mox Diamond",
+     "Jeska's Will",
+     "Worldly Tutor",
+     "Natural Order",
+     "Survival of the Fittest",
+     "Crop Rotation",
+     "Gaea's Cradle",
+     "Ancient Tomb"
+    ],
+    "massLandDenial": [],
+    "extraTurns": [],
+    "twoCardInfinite": 6,
+    "cheapTwoCard": [
+     {
+      "cards": [
+       "Aggravated Assault",
+       "Selvala, Heart of the Wilds"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite colored mana",
+       "Infinite combat phases"
+      ]
+     },
+     {
+      "cards": [
+       "Sword of the Paruns",
+       "Priest of Titania"
+      ],
+      "mv": 6,
+      "does": [
+       "Infinite mana creatures you control can produce",
+       "Infinite green mana"
+      ]
+     }
+    ],
+    "floor": 4,
+    "why": [
+     "10 Game Changers (B3 allows 3)",
+     "2 cheap two-card infinite combos (e.g. Aggravated Assault + Selvala, Heart of the Wilds, 6 mana)"
+    ]
+   },
+   "speedBracket": 3,
+   "reason": "speed says B3 (median kill T7); card rules say at least B4 (10 Game Changers (B3 allows 3); 2 cheap two-card infinite combos (e.g. Aggravated Assault + Selvala, Heart of the Wilds, 6 mana))",
+   "version": 211,
+   "date": "2026-11-26"
   },
   {
    "file": "loyalty-program.txt",
@@ -4046,6 +4219,32 @@
    "matchTurns": 25,
    "seed": 20261123,
    "seconds": 79,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "heavy-metal-landfall.txt"
+   ],
+   "version": 211,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 393,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 380,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "landslide-victory.txt"
+   ],
+   "version": 211,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 393,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 150,
    "jobs": 4
   }
  ]

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Checks the Commander bracket of every built-in deck with ICEYfish's own engine (task T-035, report in docs/agents/DECK-BRACKETS.md).
 //   node tools/verify-brackets.js [--games=20000] [--jobs=4] [--only=death-tax]    simulate, write docs/agents/deck-brackets.json
-//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin (field win % stays empty)
-//   node tools/verify-brackets.js --matches-only                                   the round robin only (field win %), added to the goldfish results already in docs/agents/deck-brackets.json
+//   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin 
+//   node tools/verify-brackets.js --matches-only                                   the round robin only (no longer used: there is no internal ranking for now, the user 2026-11-26), added to the goldfish results already in docs/agents/deck-brackets.json
 //   node tools/verify-brackets.js --apply                                         write the verified bracket and a check line into each deck
 //   node tools/verify-brackets.js --report                                        the table in docs/agents/DECK-BRACKETS.md
 // Offline: the cards come from the set data (goldfish/static/data/sets), the combos from data/combos.json.
@@ -177,24 +177,41 @@ async function simulate() {
   jobs.sort((a, b) => (b.kind === 'match' ? b.n * 2.5 : b.n) - (a.kind === 'match' ? a.n * 2.5 : a.n));
   const gf = new Map(), field = new Map(), total = jobs.length; let done = 0, next = 0;
   const addField = (i, w, l, none, errors, n, opp) => { const f = field.get(i) || { n: 0, w: 0, l: 0, none: 0, errors: 0, opps: new Set() }; f.n += n; f.w += w; f.l += l; f.none += none; f.errors += errors; f.opps.add(opp); field.set(i, f); };
+  // Checkpoint: every finished job is appended to a file, so a run that is killed (this container is restarted while idle) resumes where it stopped.
+  // The file is named by mode, games, engine version and seed; a different engine version starts afresh.
+  const verNow = (fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+  const CK_DIR = process.env.ISF_CKPT_DIR || path.join(os.tmpdir(), 'isf-verify'), CK = path.join(CK_DIR, `${MATCH_ONLY ? 'match' : GF_ONLY ? 'gf' : 'full'}-${GAMES}-v${verNow}-s${SEED}${ONLY ? '-' + ONLY : ''}.jsonl`);
+  fs.mkdirSync(CK_DIR, { recursive: true });
+  const keyOf = j => [j.kind, decks[j.i].d.file, j.j != null ? decks[j.j].d.file : '', j.n, j.seed].join('|'), finished = new Set();
+  const absorb = r => {
+    const j = r.job;
+    if (j.kind === 'goldfish') {
+      const g = gf.get(j.i) || { n: 0, errors: 0, kill: null, cmdr: null, mana4: 0, winBy: {}, winLines: [] }, ok = r.n - r.errors;
+      const mix = (a, b) => (a ? a.map((v, t) => v + b[t] * ok) : b.map(v => v * ok));
+      g.kill = mix(g.kill, r.kill); g.cmdr = mix(g.cmdr, r.cmdr); g.mana4 += r.mana4 * r.n; g.n += r.n; g.errors += r.errors;
+      for (const [k, v] of Object.entries(r.winBy)) g.winBy[k] = (g.winBy[k] || 0) + v * ok;
+      if (!g.winLines.length) g.winLines = r.winLines;
+      gf.set(j.i, g);
+    } else if (j.i === j.j) addField(j.i, r.a + r.b, 0, r.none, r.errors, r.n, 'mirror');
+    else { addField(j.i, r.a, r.b, r.none, r.errors, r.n, decks[j.j].d.file); addField(j.j, r.b, r.a, r.none, r.errors, r.n, decks[j.i].d.file); }
+  };
+  if (fs.existsSync(CK)) for (const line of fs.readFileSync(CK, 'utf8').split('\n')) {
+    if (!line) continue; let r; try { r = JSON.parse(line); } catch (e) { continue; }                  // a half-written last line is ignored
+    const k = keyOf(r.job); if (!finished.has(k) && jobs.some(x => keyOf(x) === k)) { finished.add(k); absorb(r); done++; }
+  }
+  if (done) console.log(`  resuming: ${done} of ${total} jobs already done (${CK})`);
+  const todo = jobs.filter(j => !finished.has(keyOf(j)));
   await new Promise((resolve, reject) => {
-    let live = 0;
-    for (let w = 0; w < Math.min(JOBS, jobs.length); w++) {
+    let live = 0, nx = 0;
+    if (!todo.length) return resolve();
+    for (let w = 0; w < Math.min(JOBS, todo.length); w++) {
       const wk = new Worker(__filename, { argv: process.argv.slice(2) }); live++;
-      const feed = () => { if (next < jobs.length) wk.postMessage(jobs[next++]); else { wk.terminate(); if (--live === 0) resolve(); } };
+      const feed = () => { if (nx < todo.length) wk.postMessage(todo[nx++]); else { wk.terminate(); if (--live === 0) resolve(); } };
       wk.on('message', r => {
         const j = r.job;
         if (r.errors && r.firstError) console.warn('  engine error in', j.kind, decks[j.i].d.file, j.j != null ? 'vs ' + decks[j.j].d.file : '', String(r.firstError).split('\n')[0]);
-        if (j.kind === 'goldfish') {
-          const g = gf.get(j.i) || { n: 0, errors: 0, kill: null, cmdr: null, mana4: 0, winBy: {}, winLines: [] }, ok = r.n - r.errors;
-          const mix = (a, b) => (a ? a.map((v, t) => v + b[t] * ok) : b.map(v => v * ok));
-          g.kill = mix(g.kill, r.kill); g.cmdr = mix(g.cmdr, r.cmdr); g.mana4 += r.mana4 * r.n; g.n += r.n; g.errors += r.errors;
-          for (const [k, v] of Object.entries(r.winBy)) g.winBy[k] = (g.winBy[k] || 0) + v * ok;
-          if (!g.winLines.length) g.winLines = r.winLines;
-          gf.set(j.i, g);
-        } else if (j.i === j.j) addField(j.i, r.a + r.b, 0, r.none, r.errors, r.n, 'mirror');
-        else { addField(j.i, r.a, r.b, r.none, r.errors, r.n, decks[j.j].d.file); addField(j.j, r.b, r.a, r.none, r.errors, r.n, decks[j.i].d.file); }
-        if (++done % 25 === 0 || done === total) process.stdout.write(`\r  ${done}/${total} jobs, ${Math.round((Date.now() - t0) / 1000)} s   `);
+        absorb(r); fs.appendFileSync(CK, JSON.stringify(r) + '\n');
+        if (++done % 5 === 0 || done === total) console.log(`  ${done}/${total} jobs, ${Math.round((Date.now() - t0) / 1000)} s`);
         feed();
       });
       wk.on('error', reject);
@@ -242,7 +259,7 @@ function apply() {
     if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
-    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
+    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; ${v.rules.gameChangers.length} Game Changers`;
     if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
@@ -255,7 +272,7 @@ function apply() {
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) {
     const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
-    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7; if (v.field) d.fieldWin = v.field.winRate;
+    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
   }

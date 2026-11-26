@@ -1,6 +1,6 @@
 // Night's Curfew (Y'shtola, Night's Blessed)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T8, 7.2% by T5, 36.8% by T7; field win 62.1%; 30 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 7.2% by T5, 36.8% by T7; 30 Game Changers; B4 confirmed
 // COMMANDER
 1 Y'shtola, Night's Blessed (FIC) 215
 // DECK

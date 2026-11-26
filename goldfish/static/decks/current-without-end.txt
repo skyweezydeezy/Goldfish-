@@ -1,6 +1,6 @@
 // Current Without End (Kinnan, Bonder Prodigy)
 // Bracket 4
-// Checked by ICEYfish (v193, 20,000 games): median kill T9, 0.3% by T5, 15.3% by T7; field win -%; 11 Game Changers; was B5 -> B4: card rules B4, speed B1; B5 needs a median kill before T4
+// Checked by ICEYfish (v193, 20,000 games): median kill T9, 0.3% by T5, 15.3% by T7; 11 Game Changers; was B5 -> B4: card rules B4, speed B1; B5 needs a median kill before T4
 // COMMANDER
 1 Kinnan, Bonder Prodigy
 

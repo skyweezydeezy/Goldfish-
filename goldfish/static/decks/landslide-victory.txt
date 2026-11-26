@@ -1,0 +1,89 @@
+// Landslide Victory (Bumi, Unleashed)
+// Bracket 4
+// Checked by ICEYfish (v211, 20,000 games): median kill T7, 3.1% by T5, 57.4% by T7; fastest T4: 0% by T2, 0% by T3, 0.1% by T4; 10 Game Changers; B4 confirmed
+// COMMANDER
+1 Bumi, Unleashed
+// MAINBOARD
+1 Sol Ring
+1 Fellwar Stone
+1 Mana Vault
+1 Chrome Mox
+1 Mox Diamond
+1 Lotus Petal
+1 Arcane Signet
+1 Talisman of Impulse
+1 Gruul Signet
+1 Mind Stone
+1 Jeska's Will
+1 Llanowar Elves
+1 Elvish Mystic
+1 Fyndhorn Elves
+1 Birds of Paradise
+1 Arbor Elf
+1 Priest of Titania
+1 Lotus Cobra
+1 Nature's Lore
+1 Three Visits
+1 Cultivate
+1 Exploration
+1 Worldly Tutor
+1 Green Sun's Zenith
+1 Natural Order
+1 Survival of the Fittest
+1 Crop Rotation
+1 Chord of Calling
+1 Ashaya, Soul of the Wild
+1 Craterhoof Behemoth
+1 Toph, Greatest Earthbender
+1 Avatar Kyoshi, Earthbender
+1 Badgermole
+1 Bumi, Eclectic Earthbender
+1 Kiki-Jiki, Mirror Breaker
+1 Zealous Conscripts
+1 Tireless Tracker
+1 Eternal Witness
+1 Oracle of Mul Daya
+1 Selvala, Heart of the Wilds
+1 Avenger of Zendikar
+1 Omnath, Locus of Rage
+1 Rampaging Baloths
+1 Earthbender Ascension
+1 Rockalanche
+1 Savage Ventmaw
+1 Temur Battle Rage
+1 Overwhelming Stampede
+1 Doubling Season
+1 Hardened Scales
+1 Solid Ground
+1 Aggravated Assault
+1 Lightning Greaves
+1 Swiftfoot Boots
+1 Heroic Intervention
+1 Veil of Summer
+1 Beast Within
+1 Chaos Warp
+1 Lightning Bolt
+1 Sword of the Paruns
+1 Sylvan Library
+1 Harmonize
+1 Rishkar's Expertise
+1 Gaea's Cradle
+1 Ancient Tomb
+1 Taiga
+1 Stomping Ground
+1 Rootbound Crag
+1 Copperline Gorge
+1 Cinder Glade
+1 Karplusan Forest
+1 Wooded Foothills
+1 Command Tower
+1 Exotic Orchard
+1 Ba Sing Se
+1 Treetop Village
+1 Raging Ravine
+1 Mutavault
+1 Kessig Wolf Run
+1 Hanweir Battlements
+1 Evolving Wilds
+10 Forest
+8 Mountain

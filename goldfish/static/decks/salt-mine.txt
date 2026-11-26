@@ -1,6 +1,6 @@
 // Salt Mine (Nekusar, the Mindrazer)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T8, 4.8% by T5, 49.9% by T7; field win 46%; 9 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 4.8% by T5, 49.9% by T7; 9 Game Changers; B4 confirmed
 // COMMANDER
 1 Nekusar, the Mindrazer (SLD) 1301
 // DECK

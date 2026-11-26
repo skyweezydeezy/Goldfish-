@@ -162,8 +162,8 @@
   });
 
   // Display (app-wide, kept in this browser like sound and the playmat): how a tab fades in, and the order of the built-in deck menus
-  const DECK_ORDERS = ['bracket-rank', 'color-bracket', 'color-rank', 'rank'];
-  let deckOrder = 'bracket-rank', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
+  const DECK_ORDERS = ['bracket', 'color-bracket', 'color'], LEGACY_ORDER = { 'bracket-rank': 'bracket', 'color-rank': 'color', rank: 'bracket' };          // the old rank orders are gone
+  let deckOrder = 'bracket', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
   (() => {
     const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
     let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
@@ -174,7 +174,7 @@
       window.__isfPayChoose = $('#dispPayChoose').checked;          // T-089: read by the question sheet (choices.js)
     };
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
-    if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
+    { const o = LEGACY_ORDER[d.deckOrder] || d.deckOrder; if (o && DECK_ORDERS.includes(o)) $('#dispDeckOrder').value = o; }
     $('#dispPayChoose').checked = d.payChoose !== false;          // T-099: on unless the person switched it off
     apply();
     for (const id of ['#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
@@ -692,13 +692,12 @@
   // ---- built-in decks (goldfish/static/decks, listed in decks/index.json by tools/build-deck-index.js), grouped by number of colors ----
   let BUILTIN = [];
   const COLOR_ORDER = 'WUBRG';
-  // Every built-in deck menu (Build, the mirror opponent, 1v1, Pod, the lab's opponents) is sorted by the "Deck order" setting (Display):
-  //   bracket-rank (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by rank
-  //   color-bracket: groups by color (below), inside a color by bracket (highest first), then rank
-  //   color-rank:    groups by color, inside a color by rank
-  //   rank:          one list by rank
-  // Rank = field win % (the round robin of tools/verify-brackets.js, decks/index.json "fieldWin"), highest first, then name; a deck that was
-  // never ranked comes last. Bracket = the verified one (higher of the card floor and the speed bracket, from the median kill turn).
+  // Every built-in deck menu (Build, the mirror opponent, 1v1, Pod, the lab's opponents) follows the "Deck order" setting (Display):
+  //   bracket (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by name
+  //   color-bracket:     groups by color (below), inside a color by bracket (highest first), then name
+  //   color:             groups by color, inside a color by name
+  // The bracket is the one filed on each deck (Wizards of the Coast's Commander Brackets, checked by ICEYfish: the card rules first). There is no
+  // internal strength ranking for now (the user, 2026-11-26): no win %, no kill turn, no rank in the menus until that system is rebuilt.
   // Color order (WUBRG): one color (W U B R G), two colors, three, four, five, colorless last. Inside a count the identities sort by
   // their letters in W U B R G order: WU WB WR WG UB UR UG BR BG RG; WUB WUR WUG WBR WBG WRG UBR UBG URG BRG; four colors by the color left out.
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
@@ -707,25 +706,22 @@
     UBRG: 'Four colors (no White)', WBRG: 'Four colors (no Blue)', WURG: 'Four colors (no Black)', WUBG: 'Four colors (no Red)', WUBR: 'Four colors (no Green)', WUBRG: 'Five colors', '': 'Colorless' };
   const colorKey = c => c.split('').map(k => COLOR_ORDER.indexOf(k)).join('');
   const colorRank = c => { const n = (c || '').length; return (n ? n : 9) + '.' + (n === 4 ? colorKey('WUBRG'.split('').filter(k => !c.includes(k)).join('')) : colorKey(c || '')); };
-  const byRank = (a, b) => ((b.fieldWin == null ? -1 : b.fieldWin) - (a.fieldWin == null ? -1 : a.fieldWin)) || a.name.localeCompare(b.name);
+  const byName = (a, b) => a.name.localeCompare(b.name);
   const byBracket = (a, b) => (b.bracket || 0) - (a.bracket || 0);
   const opt = (d, noColors) => {
     const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
-    bits.push(d.bracket ? 'B' + d.bracket + (d.bracketEst ? '?' : '') : '—');
-    bits.push(d.fieldWin != null ? Math.round(d.fieldWin) + '%' : '—');          // "—": not measured yet (the round robin has not run for this deck)
-    bits.push(d.medianKill != null ? 'T' + d.medianKill : '—');
+    if (d.bracket) bits.push('B' + d.bracket + (d.bracketEst ? '?' : ''));
     return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
   };
   function builtinOptions() {
     const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';
     const byColor = cmp => { const keys = [...new Set(BUILTIN.map(d => d.colors || ''))].sort((x, y) => colorRank(x).localeCompare(colorRank(y)));
       return keys.map(k => group(COLOR_NAME[k] || k, BUILTIN.filter(d => (d.colors || '') === k).sort(cmp), true)).join(''); };
-    if (deckOrder === 'rank') return group('All decks · by field win %', BUILTIN.slice().sort(byRank));
-    if (deckOrder === 'color-rank') return byColor(byRank);
-    if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byRank(a, b));
+    if (deckOrder === 'color') return byColor(byName);
+    if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byName(a, b));
     let html = '';
-    for (let b = 5; b >= 1; b--) html += group(`Bracket ${b} · ${BRACKET_NAME[b]}`, BUILTIN.filter(d => d.bracket === b).sort(byRank));
-    return html + group('No bracket', BUILTIN.filter(d => !d.bracket).sort(byRank));
+    for (let b = 5; b >= 1; b--) html += group(`Bracket ${b} · ${BRACKET_NAME[b]}`, BUILTIN.filter(d => d.bracket === b).sort(byName));
+    return html + group('No bracket', BUILTIN.filter(d => !d.bracket).sort(byName));
   }
   const builtinByValue = v => BUILTIN.find(d => 'builtin:' + d.file === v);
   async function builtinText(d) {

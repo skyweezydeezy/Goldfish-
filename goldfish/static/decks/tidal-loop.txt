@@ -1,6 +1,6 @@
 // Tidal Loop (Hakbal of the Surging Soul)
 // Bracket 4
-// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1% by T5, 49.9% by T7; field win 49.8%; 12 Game Changers; B4 confirmed
+// Checked by ICEYfish (v151, 20,000 games): median kill T8, 1% by T5, 49.9% by T7; 12 Game Changers; B4 confirmed
 // COMMANDER
 1 Hakbal of the Surging Soul (LCC) 19
 // DECK

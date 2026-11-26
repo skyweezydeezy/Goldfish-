@@ -450,7 +450,25 @@
    "importedAt": "2026-11-26T04:41:44.377Z",
    "verified": 3,
    "verifiedAt": "2026-11-26"
+  },
+  "Heavy Metal Landfall [B3] (Toph, the First Metalbender).txt": {
+   "deck": "heavy-metal-landfall.txt",
+   "bracket": 3,
+   "id": "1qFQyBZONZCI4xHI9wqF92uVLkhHmHmQG",
+   "modifiedTime": "2026-11-26T13:08:59.639Z",
+   "importedAt": "2026-11-26T16:09:56.099Z",
+   "verified": 3,
+   "verifiedAt": "2026-11-26"
+  },
+  "Landslide Victory [B4] (Bumi, Unleashed).txt": {
+   "deck": "landslide-victory.txt",
+   "bracket": 4,
+   "id": "12jq5FdyY76yowV-IC0YwM3mGiVo-Poub",
+   "modifiedTime": "2026-11-26T13:09:00.858Z",
+   "importedAt": "2026-11-26T16:09:56.110Z",
+   "verified": 4,
+   "verifiedAt": "2026-11-26"
   }
  },
- "checkedAt": "2026-11-26T04:41:44.377Z"
+ "checkedAt": "2026-11-26T16:09:56.110Z"
 }

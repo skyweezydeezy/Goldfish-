@@ -188,6 +188,7 @@
     q('.vs-new').disabled = true;
     try {
       if (st.game && st.game.io) st.game.io.close();       // a game against a person on another device ends here
+      else if (window.__isfRemote && window.__isfRemote.dropIdle) window.__isfRemote.dropIdle();          // a rematch being arranged (Change deck) ends here: the other player is told
       const ps = await players(mode, t => info(mode, t), again && st.lastVals), o = gameOpts(mode);
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));

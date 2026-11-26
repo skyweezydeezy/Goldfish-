@@ -245,6 +245,15 @@ const tap = async (p, sel, ms) => {
   await Promise.all([D, E].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
   const [d0, e0] = [await st(D), await st(E)];
   check('the room game starts on both devices: Eli (who asked) is seat 0', d0.local === 1 && e0.local === 0 && d0.names.join() === 'Eli,Dana' && d0.fp === e0.fp, d0.names.join());
+  // Change deck and then a local New game: the link closes and the other player is told he left
+  await Promise.all([D, E].map(finish));
+  await Promise.all([D, E].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await tap(E, '#tab-duel .vs-change');
+  await wait(D, () => /Eli is choosing a deck/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  await E.evaluate(() => { document.querySelector('#tab-duel .vs-opp').value = ''; document.querySelector('#tab-duel .vs-new').click(); });
+  await wait(D, () => /Eli left/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  check('Change deck, then a local New game: the link closes and the other player sees "Eli left", not "choosing a deck" for ever', !/choosing/.test(await text(D, '#tab-duel .vs-endp')));
+  check('...and the player who started it has no saved game against the friend left behind', await E.evaluate(() => !window.__isfRemote.state.game && localStorage.getItem('isf_remote') === null));
   check('no page errors in pair 2', !errs.length, errs.slice(0, 3).join(' | '));
 
   // ================= neither broker reachable: say so, and show the codes =================

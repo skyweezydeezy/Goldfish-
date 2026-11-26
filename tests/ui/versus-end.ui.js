@@ -3,7 +3,7 @@
 // opponent is the same deck it turned out to be); Change deck goes back to the setup with the opponents kept; Leave closes the table,
 // brings the top bar and tabs back and shows the tab the player came from. In a pod, being out while the others play shows a small
 // "You're out" bar with Watch and Leave. (Play a friend's rematch is in remote-nearby.ui.js.) Needs playwright, the :8800 server and Scryfall.
-const { chromium } = require('playwright');
+const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 const UA = 'goldfish-calc-test/0.1';
 let pass = 0, fail = 0;
@@ -95,6 +95,39 @@ const deckText = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.t
   await p.waitForSelector('#tab-pod .vs-endp');
   await p.click('#tab-pod .vs-leave');
   check('Leave from a pod goes back to the tab it came from (Odds)', (await view()) === 'odds');
+  await p.context().close();
+
+  // ---- the panel on phones, in table focus: an iPhone upright (390x844) and a 6.9" phone sideways (956x440). The worst case is shown: a
+  // rematch request, the other player choosing a deck, a note, and long names, as in a game against a person on another device.
+  for (const [label, w, h] of [['iPhone 390x844', 390, 844], ['6.9" sideways 956x440', 956, 440]]) {
+    const c2 = await b.newContext({ ...devices['iPhone 13'], viewport: { width: w, height: h }, serviceWorkers: 'block' });
+    await c2.addInitScript(() => { localStorage.setItem('isf_dice', '0'); localStorage.setItem('isf_focus', 'on'); try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false, sfx: false, music: false })); } catch (e) {} });
+    await c2.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
+      const r = route.request(), cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+      if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      try { const res = await fetch(r.url(), { method: r.method(), headers: { 'User-Agent': UA, 'Accept': 'application/json;q=0.9,*/*;q=0.8', ...(r.method() === 'POST' ? { 'Content-Type': 'application/json' } : {}) }, body: r.method() === 'POST' ? r.postData() : undefined });
+        route.fulfill({ status: res.status, headers: { ...cors, 'content-type': res.headers.get('content-type') || 'application/octet-stream' }, body: Buffer.from(await res.arrayBuffer()) }); } catch (e) { route.abort(); }
+    });
+    const q = await c2.newPage();
+    q.on('pageerror', e => errs.push(label + ': ' + e.message));
+    await q.goto('http://127.0.0.1:8800/');
+    await q.fill('#deckText', deckText); await q.click('#loadDeck');
+    await q.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
+    await q.evaluate(() => document.querySelector('[data-tab=duel]').click());
+    await q.evaluate(() => document.querySelector('#tab-duel .vs-new').click());
+    await q.waitForFunction(() => { const g = window.__isfVersus.duel.game; return g && g.phase === 'mull'; }, null, { timeout: 60000, polling: 200 });
+    await q.evaluate(() => { const V = window.__isfVersus, g = V.duel.game; g.over = 'Samantha Longname wins the game in round 11.'; g.phase = null;
+      g.io = { connected: () => true, end: { asked: 0, incoming: { name: 'Samantha Longname', deck: 'Some Very Long Commander Deck Name' }, note: 'Samantha Longname said no to a rematch.', peerChoosing: true, left: false } }; V.redraw('duel'); });
+    await q.waitForSelector('#tab-duel .vs-endp', { timeout: 5000 });
+    const m = await q.evaluate(() => {
+      const el = document.querySelector('#tab-duel .vs-endp'), r = el.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+      const bad = [...el.querySelectorAll('button')].filter(b => { const x = b.getBoundingClientRect(), t = document.elementFromPoint(x.left + x.width / 2, x.top + x.height / 2); return x.height < 40 || x.left < 0 || x.right > vw || x.bottom > vh || !(t === b || b.contains(t)); }).map(b => b.textContent.trim());
+      return { focus: document.body.classList.contains('tfocus'), r: r.toJSON(), vw, vh, bad, scroll: el.scrollHeight > el.clientHeight + 1 };
+    });
+    check(`${label}: table focus is on and the end panel (with a request, notes and long names) fits the screen: ${Math.round(m.r.width)}x${Math.round(m.r.height)} of ${m.vw}x${m.vh}`, m.focus && m.r.left >= 0 && m.r.right <= m.vw && m.r.top >= 0 && m.r.bottom <= m.vh && !m.scroll, JSON.stringify(m.r));
+    check(`${label}: every button in it is at least 40px high, on the screen and not covered`, m.bad.length === 0, m.bad.join(', '));
+    await c2.close();
+  }
   check('no page errors', !errs.length, errs.slice(0, 3).join(' | '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

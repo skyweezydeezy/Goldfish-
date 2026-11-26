@@ -629,6 +629,8 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
     raw({ t: 'choosing', on: 1 });
     setTimeout(() => { show(); if (box) box.scrollIntoView({ block: 'start' }); });          // after versus.js has closed the table
   }
+  // a local New game after Change deck: the link that was kept for the rematch is closed, and the other player is told ("<name> left")
+  function dropIdle() { const g = S.game; if (g && g.end && doneGame(g) && !V[MODE].game && open()) leaveGame(g); }
   // leave: the other player is told ("<name> left"), the connection closes, and the saved game and the meeting-point subscription go
   function leaveGame(g) {
     if (!g || S.game !== g) return;
@@ -876,5 +878,5 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
 
   build(); fromLink();
   window.__isfRemote = { DISCLOSURE, DISCLOSURE_VERSION, DISCLOSURE_TAGLINE, fingerprint, fp, pack, unpack, kinds, state: S, connected,
-    NO_DIRECT, BROKERS, M, set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set address(v) { S.addr = v; }, get address() { return S.addr; }, roomKey, syncWake };
+    NO_DIRECT, BROKERS, M, set ice(v) { S.ice = v; }, get ice() { return S.ice; }, set address(v) { S.addr = v; }, get address() { return S.addr; }, roomKey, syncWake, dropIdle };
 })();

@@ -1,3 +1,5 @@
+> **T-115 (2026-11-26):** the Puzzle tab no longer plays these turn-2 puzzles; it plays the hand-built set described in `docs/PUZZLES.md`. This note is kept for the analysis tool (`tools/turn2-vs-interaction.js`, results below) and for what the engine can and cannot do against interaction. `turn2-puzzles.json` and `tools/build-turn2-puzzles.js` are gone.
+
 # Turn-2 puzzle (T-096)
 
 The **Puzzle** tab (one word, after Pod; the user's choice). The brief: *"Make it a mini game. The goal is to preserve the turn 2 win. Like a puzzle.

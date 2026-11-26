@@ -1,0 +1,116 @@
+// T-115: the Puzzle tab (puzzle.js, puzzles.json). The tab is in the bar; the picker lists the 12 hand-built puzzles by type and difficulty; one puzzle is played
+// through the page and won (the intended line), one is lost with hints after it (never the answer) and the lesson behind an ⓘ; a fast win plays across turns;
+// progress and the streak are kept; the page fits an iPhone and an iPad. Needs playwright and a static server on :8800 (node tests/run.js --ui puzzles).
+const { chromium } = require('playwright');
+const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
+const CACHE = path.join(os.tmpdir(), 'isf-scryfall-cache');                     // answers kept between runs: a rerun does not hit Scryfall's rate limit
+try { fs.mkdirSync(CACHE, { recursive: true }); } catch (e) { /* read-only */ }
+let pass = 0, fail = 0;
+const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
+const KEY = 'isf_puzzle2';
+(async () => {
+  const b = await chromium.launch();
+  const mk = async (w, h, mobile) => {
+    const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block', hasTouch: !!mobile, isMobile: !!mobile, deviceScaleFactor: 1 });
+    await ctx.addInitScript(() => { try { if (!sessionStorage.getItem('t')) { sessionStorage.setItem('t', '1'); localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); localStorage.setItem('isf_tutorial', '{"seen":{"deck":1,"hands":1,"table":1,"duel":1,"pod":1,"sim":1,"odds":1,"compare":1,"tune":1},"welcome":1}'); } } catch (e) {} });
+    await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
+      const q = route.request(), c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+      if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: c });
+      const f = path.join(CACHE, crypto.createHash('sha1').update(q.method() + q.url() + (q.postData() || '')).digest('hex'));
+      try { if (fs.existsSync(f)) return route.fulfill({ status: 200, headers: { ...c, 'content-type': 'application/json' }, body: fs.readFileSync(f) }); } catch (e) { /* no cache */ }
+      try {
+        const res = await fetch(q.url(), { method: q.method(), headers: { 'User-Agent': 'goldfish-calc-test/0.1', 'Accept': 'application/json;q=0.9,*/*;q=0.8', ...(q.method() === 'POST' ? { 'Content-Type': 'application/json' } : {}) }, body: q.method() === 'POST' ? q.postData() : undefined });
+        const body = Buffer.from(await res.arrayBuffer());
+        if (res.status === 200) { try { fs.writeFileSync(f, body); } catch (e) { /* read-only */ } }
+        route.fulfill({ status: res.status, headers: { ...c, 'content-type': res.headers.get('content-type') || '' }, body });
+      } catch (e) { route.abort(); }
+    });
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    await p.goto('http://127.0.0.1:8800/'); await p.waitForFunction(() => window.ISFPuzzle && window.__isfApi && window.__isfChoices, null, { timeout: 90000 });
+    return { ctx, p, errs };
+  };
+
+  const data = await (await fetch('http://127.0.0.1:8800/puzzles.json')).json();
+  const { ctx, p, errs } = await mk(1180, 860);
+  check('the Puzzle tab is in the bar and not hidden', await p.evaluate(() => { const t = document.querySelector('[data-tab=puzzle]'); return !!t && !t.hidden && t.getBoundingClientRect().width > 0; }));
+  await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-pick', { timeout: 20000 });
+  check('the Puzzle tab is the active panel', await p.evaluate(() => document.body.dataset.view === 'puzzle' && document.getElementById('tab-puzzle').classList.contains('active')));
+  check('the picker lists the 12 puzzles, two types of three levels, two each', await p.$$eval('.pz-pick', xs => xs.length) === 12 && await p.$$eval('.pz-type', xs => xs.map(x => x.dataset.type).join()) === 'fast,endgame' && await p.$$eval('.pz-type[data-type=fast] .pz-level[data-level=hard] .pz-pick', xs => xs.length) === 2);
+  check('the score shows solved, streak, best streak, no-hint solves and hints used', /0 of 12 solved/.test(await p.$eval('.pz-score', e => e.textContent)) && /Streak/.test(await p.$eval('.pz-score', e => e.textContent)) && /Hints used/.test(await p.$eval('.pz-score', e => e.textContent)));
+  const settle = async () => {                                     // answer any question the engine asks the person, then wait until the table is idle again
+    for (let i = 0; i < 40; i++) {
+      await p.waitForTimeout(250);
+      if (await p.$('.ch-sheet')) { const ok = await p.$('.ch-sheet .ch-ok:not([disabled])'); const auto = await p.$('.ch-sheet .ch-auto'); if (auto) await auto.click(); else if (ok) await ok.click(); else await p.evaluate(() => { const c = document.querySelector('.ch-sheet .ch-opt, .ch-sheet button'); if (c) c.click(); }); continue; }
+      const busy = await p.evaluate(() => { const s = window.ISFPuzzle.state(); return !s || s.busy || s.phase === 'setup'; });
+      if (!busy) return;
+    }
+  };
+  const open = async id => { await p.click('.pz-pick[data-id="' + id + '"]'); await p.waitForSelector('.pz-card', { timeout: 60000 }); await settle(); };
+  const cast = async name => { await p.click('.pz-card[data-name="' + name + '"]'); await p.click('.pz-do'); await settle(); };
+  const attackAll = async () => { await p.click('.pz-atk'); await p.click('.pz-all'); await settle(); };
+
+  // ---- a loss: the endgame "Dragons in pairs", attacking with Atarka alone
+  await open('end-2');
+  const t0 = await p.$eval('.pz-body', e => e.textContent);
+  check('a puzzle shows its premise, the goal, the opponent\'s life and a hidden hand count, never its cards', /Turn 10/.test(t0) && /Win this turn/.test(t0) && await p.$eval('[data-life=opp]', e => /15 life/.test(e.textContent)) && /no cards in hand/.test(t0));
+  await attackAll(); await p.click('.pz-pass'); await settle();
+  await p.waitForSelector('.pz-banner', { timeout: 30000 });
+  check('a wrong play plays out and ends as a loss (streak stays 0)', await p.$eval('.pz-banner', e => e.classList.contains('lose')) && /Streak 0/.test(await p.$eval('.pz-banner', e => e.textContent)));
+  const lossText = await p.$eval('#tab-puzzle', e => e.textContent);
+  check('after the loss no solution is shown (no line, no "Goldspan" move list)', !/A line that works|The answer|solution/i.test(lossText) && await p.$('.pz-sol') === null);
+  check('hints are offered after the loss, one at a time', await p.$eval('.pz-hints', e => !e.hidden) && await p.$$eval('.pz-hintlist li', xs => xs.length) === 0);
+  await p.click('.pz-hint');
+  const h1 = await p.$$eval('.pz-hintlist li', xs => xs.map(x => x.textContent));
+  check('a hint says what to look at, and is not the line', h1.length === 1 && h1[0] === data.puzzles.find(x => x.id === 'end-2').hints[0] && !/cast Goldspan Dragon (before|then)/i.test(h1[0]));
+  await p.click('.pz-hint'); await p.click('.pz-hint');
+  check('three hints in all; then no more', await p.$$eval('.pz-hintlist li', xs => xs.length) === 3 && await p.$eval('.pz-hint', e => e.hidden));
+  check('the lesson sits behind an ⓘ, closed at first', await p.$eval('.pz-lbody', e => e.hidden) && /ⓘ/.test(await p.$eval('.pz-lbtn', e => e.textContent)));
+  await p.click('.pz-lbtn');
+  check('opening it names the mechanic and explains the rule', await p.$eval('.pz-lbody', e => !e.hidden && /Double strike/.test(e.textContent) && /deals combat damage twice/.test(e.textContent)));
+
+  // ---- a win: try again and play the intended line (cast the haste dragon, then attack)
+  await p.click('.pz-again'); await p.waitForSelector('.pz-card', { timeout: 60000 }); await settle();
+  await cast('Goldspan Dragon'); await attackAll();
+  await p.waitForSelector('.pz-banner', { timeout: 30000 });
+  check('the intended line wins (Solved, streak 1)', await p.$eval('.pz-banner', e => e.classList.contains('win') && /Solved/.test(e.textContent) && /Streak 1/.test(e.textContent)));
+  check('a win offers the lesson too (behind its ⓘ), and no hints', await p.$eval('.pz-lbtn', e => !!e) && await p.$eval('.pz-hints', e => e.hidden));
+  await p.click('.pz-list'); await p.waitForSelector('.pz-pick');
+  check('the picker ticks the solved puzzle and counts it', await p.$eval('.pz-pick[data-id="end-2"]', e => e.classList.contains('solved')) && /1 of 12 solved/.test(await p.$eval('.pz-score', e => e.textContent)) && /Streak\s*1/.test(await p.$eval('.pz-score', e => e.textContent)));
+
+  // ---- a fast win across three turns: Dorks and colours
+  await open('fast-2');
+  check('a fast win starts at turn 1 with a seven-card hand and the premise', await p.$$eval('.pz-card', xs => xs.length) === 7 && /turn 1/i.test(await p.$eval('.pz-goal', e => e.textContent)));
+  const turn = async (...names) => { for (const n of names) await cast(n); await p.click('.pz-pass'); await settle(); };
+  await cast('Forest'); await cast('Llanowar Elves'); await p.click('.pz-pass'); await settle();
+  check('the opponent\'s turn is played and it is your turn 2', await p.$eval('.pz-goal', e => /your turn 2 of 3/.test(e.textContent)));
+  await cast('Mountain'); await cast('Elvish Mystic'); await p.click('.pz-pass'); await settle();
+  await cast('Mountain'); await cast('Goldspan Dragon'); await attackAll();
+  await p.waitForSelector('.pz-banner', { timeout: 30000 });
+  check('the three-turn line wins on turn 3', await p.$eval('.pz-banner', e => e.classList.contains('win')));
+  check('the best streak and progress are kept in localStorage', await p.evaluate(k => { const s = JSON.parse(localStorage.getItem(k)); return s && s.solved['end-2'] && s.solved['fast-2'] && s.best >= 2; }, KEY));
+  check('no page errors on the desktop', errs.length === 0, errs.join(' | '));
+  await p.reload(); await p.waitForFunction(() => window.ISFPuzzle, null, { timeout: 60000 });
+  await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-pick');
+  check('after a reload the solved puzzles are still ticked', await p.$$eval('.pz-pick.solved', xs => xs.length) === 2);
+  await ctx.close();
+
+  // ---- iPhone and iPad: the picker and a puzzle fit the screen, the buttons are reachable
+  for (const [name, w, h] of [['iPhone', 390, 844], ['iPhone sideways', 844, 390], ['iPad', 820, 1180]]) {
+    const m = await mk(w, h, true), q = m.p;
+    await q.click('[data-tab=puzzle]'); await q.waitForSelector('.pz-pick', { timeout: 20000 });
+    const fit1 = await q.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+    check(`${name}: the picker fits the width`, fit1.sw <= fit1.cw + 1, JSON.stringify(fit1));
+    await q.click('.pz-pick[data-id="end-3"]'); await q.waitForSelector('.pz-card', { timeout: 60000 });
+    await q.waitForFunction(() => { const s = window.ISFPuzzle.state(); return s && !s.busy && s.phase === 'me'; }, null, { timeout: 30000 });
+    const fit2 = await q.evaluate(() => { const r = document.documentElement, e = document.querySelector('.pz-pass').getBoundingClientRect(); return { sw: r.scrollWidth, cw: r.clientWidth, w: Math.round(e.width), hgt: Math.round(e.height) }; });
+    check(`${name}: a puzzle fits the width`, fit2.sw <= fit2.cw + 1, JSON.stringify(fit2));
+    check(`${name}: the buttons are big enough to tap`, fit2.hgt >= 36 && fit2.w >= 70, JSON.stringify(fit2));
+    const tiles = await q.$$eval('.pz-card', xs => xs.map(x => Math.round(x.getBoundingClientRect().width)));
+    check(`${name}: the hand's cards are tappable (wide enough)`, tiles.length === 3 && tiles.every(w => w >= 40), tiles.join(','));
+    check(`${name}: no page errors`, m.errs.length === 0, m.errs.join(' | '));
+    await m.ctx.close();
+  }
+  await b.close();
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})().catch(e => { console.log('FAIL  threw: ' + (e && e.stack || e)); process.exit(1); });

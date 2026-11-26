@@ -1,4 +1,4 @@
-// Shared by tools/turn2-vs-interaction.js, tools/build-turn2-puzzles.js and tests/engine/turn2-puzzles.test.js (T-096):
+// Shared by tools/turn2-vs-interaction.js (T-096): the T-096 puzzle builder and its data are gone (T-115, docs/PUZZLES.md); the tool still uses the packages and the search below.
 // loads the built-in decks like tools/verify-brackets.js, replays a real turn-2 hand from docs/agents/turn2-hands.json, and sets up an
 // opponent seat that holds a given interaction package. No engine changes: everything goes through sim.js's exports.
 const fs = require('fs'), path = require('path');

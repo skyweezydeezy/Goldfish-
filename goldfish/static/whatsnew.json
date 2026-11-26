@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 214,
+      "lines": [
+        "The Puzzle tab is back with 12 new puzzles: win by turn 2–3 from your opening hand, or find the one line that finishes a late game. Easy, Medium and Hard; the opponent's hand stays hidden.",
+        "A wrong play plays out; afterwards you get hints (never the answer), and every puzzle ends with the mechanic it teaches."
+      ]
+    },
+    {
       "v": 213,
       "lines": [
         "More cards answer spells as they're cast: Return the Favor, Wandering Archaic, Ricochet Trap, Hydroelectric Specimen, Disrupting Shoal, Orim's Chant, Autumn's Veil, Royal Treatment and Legolas's Quick Reflexes. Boromir counters spells cast without mana.",

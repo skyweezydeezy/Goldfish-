@@ -1,81 +1,35 @@
-/* ICEYfish - Turn-2 puzzle (T-096): keep a real turn-2 win alive against an opponent who holds interaction (a counterspell, a removal spell,
-   a graveyard lock). The hands are real goldfish games (turn2-puzzles.json, built by tools/build-turn2-puzzles.js from the turn-2 wins MAIN
-   found); the opponent's hand is revealed, so it is a puzzle. The rules are the engine's own (puzzle-core.js: the counter windows, T-072
-   targets, T-080 free counters, "unless you pay" taxes). The "Puzzle" tab. Every hand has three levels (the user's): easy = no interaction, medium = one counterspell, hard = a counterspell + removal +
-   whatever stops that line. Solved puzzles, the streak and the hints used are kept in localStorage "isf_puzzle". Pure rules live in puzzle-core.js so the tools and tests play exactly this game. */
+/* ICEYfish - Puzzle (T-115): hand-built puzzles that teach how cards work. Two types: a fast win (a real game from turn 1, the right sequence wins on turn
+   2 or 3) and an endgame (a late board on both sides, one flow of plays wins). Difficulty is how hard the sequence is to see: easy (the opponent only blocks),
+   medium (one hidden piece of interaction), hard (a full hidden hand that plays back). A wrong play plays out; hints after a loss say what to look at, never
+   the line; after every puzzle, won or lost, the lesson sits behind an ⓘ. The data is puzzles.json (hand-built, engine-checked by tests/engine/puzzles.test.js);
+   the rules are puzzle-core.js (a real engine seat holds the hidden hand). Progress, the streak and the hints used are kept in localStorage "isf_puzzle2". */
 (function () {
   'use strict';
   const G = window.Goldfish, A = window.__isfApi, D = window.Decide, C = window.__isfChoices, Core = window.PuzzleCore;
   if (!G || !A || !D || !Core) return;
   const { h, esc } = A;
-  const KEY = 'isf_puzzle';
+  const KEY = 'isf_puzzle2';
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
   const save = p => { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) { /* blocked */ } };
-  const sid = (pz, lv) => pz.id + '/' + lv;
   const LV = ['easy', 'medium', 'hard'], LVN = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+  const TYPES = { fast: { name: 'Fast win', text: 'A real game from turn 1. Your hand holds the cards for a win on turn 2 or 3, and only the right sequence wins.' }, endgame: { name: 'Endgame', text: 'A late-game position with a board on both sides. One flow of plays wins this turn.' } };
+  const OPP = { easy: 'It only blocks. Its hand is empty.', medium: 'It holds one hidden piece of interaction.', hard: 'It holds a full hand you cannot see, and plays it back.' };
   let DATA = null, root = null, P = null;
-  const data = () => DATA || (DATA = fetch('turn2-puzzles.json').then(r => { if (!r.ok) throw new Error('turn2-puzzles.json: ' + r.status); return r.json(); }));
-  const caches = { decks: new Map(), opp: new Map(), combos: null };
+  const data = () => DATA || (DATA = fetch('puzzles.json').then(r => { if (!r.ok) throw new Error('puzzles.json: ' + r.status); return r.json(); }));
+  const cache = new Map();
+  const tabEl = () => document.getElementById('tab-puzzle');
 
-  // ---- the words ---------------------------------------------------------------------------------------------------------------------
-  const KINDS = {
-    counter: { head: 'A hard counterspell', hint: 'It counters the first spell it legally can. Which spell can you afford to lose first, so that it is spent before the ones that matter?' },
-    tax: { head: 'A counterspell with a tax', hint: 'It counters unless you pay. What could you play first so that you have mana to spare when it matters?' },
-    lock: { head: 'A permanent that shuts a card off', hint: 'Which piece of your line does it turn off? Is there anything in this hand that gets around it?' },
-    removal: { head: 'A removal spell', hint: 'It removes the first creature it can. What if that creature is not the one you need?' },
-    hard: { head: 'A counterspell, removal and a lock', hint: 'Three answers at once. Which of them can you bait, and which do you have to play around? The first spell you cast meets the counterspell.' },
-    hate: { head: 'Graveyard hate', hint: 'It exiles your graveyard before your next turn. Does your line need anything in the graveyard before turn 2?' },
-  };
-  const side = pz => (pz.side === 'play' ? 'on the play' : 'on the draw');
-  const list = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
-  function movesText(moves) {
-    return (moves || []).map((t, i) => {
-      const acts = (t || []).filter(m => m.do !== 'pass').map(m => (m.do === 'land' ? 'play ' : 'cast ') + m.card), pass = (t || []).some(m => m.do === 'pass');
-      return `Turn ${i + 1}: ` + (acts.length ? list(acts) + (pass ? ', then pass' : ', then let the autopilot play the rest') : pass ? 'pass' : 'let the autopilot play it');
-    }).join('. ') + '.';
-  }
-  function explain(pz, sc, pkg, L) {
-    if (!pkg) return { lose: 'Nothing to stop you: the autopilot wins this hand on turn 2 by itself.', key: null, why: 'Nothing is held back: play the hand and go off.', lesson: '' };
-    const hasOwnCounter = pz.hand.filter(n => /Force of Will|Spell Pierce|Mental Misstep|Permission Denied|Fierce Guardianship|Counterspell|Flusterstorm|Daze/.test(n));
-    const lose = sc.stopped ? `The autopilot's line casts ${sc.stopped.spell} and ${pkg.name} counters it, so a piece of the combo never arrives.` : (pkg.kind === 'lock' || pkg.kind === 'hard') ? `${pkg.name} switches a piece of the combo off, and the autopilot's line has no way around it.` : `${pkg.name} breaks the autopilot's line.`;
-    const key = sc.solution ? movesText(sc.solution) : null;
-    let why = '';
-    if (sc.solution) {
-      const first = [].concat(...sc.solution).find(m => m.do === 'cast');
-      if (pkg.kind === 'counter' && first) why = `${first.card} goes first: ${pkg.name} counters the first spell it can, so it is spent on ${first.card} and the cards that matter resolve.`;
-      else if (pkg.kind === 'tax') why = `${pkg.name} counters unless you pay. Playing this way leaves the mana to pay, so the tax changes nothing.`;
-      else why = 'The order matters: this is the only way through that the engine finds.';
-    }
-    const lesson = (pkg.kind === 'lock' || pkg.kind === 'hard') ? `${pkg.name} turns off a card this line needs, and nothing in this hand answers it. The lesson: ask what the opponent's board does to your line, not only what is in their hand.`
-      : `This line cannot beat ${pkg.name}: every order the engine tried leaves a needed piece countered.` + (hasOwnCounter.length ? ` ${list(hasOwnCounter)} in your hand cannot help: in ICEYfish your own counterspell cannot answer theirs yet.` : '') + ' The lesson: with only one way to win and nothing to bait or protect it, a held counterspell is an answer.';
-    return { lose, key, why, lesson };
-  }
-
-  // ---- loading a puzzle's deck and the opponent ---------------------------------------------------------------------------------------
-  async function loadComboDb() { return caches.combos || (caches.combos = fetch('data/combos.json').then(r => r.ok ? r.json() : null).catch(() => null)); }
-  async function deckOf(pz) {
-    if (caches.decks.has(pz.file)) return caches.decks.get(pz.file);
+  // ---- loading a puzzle's cards ------------------------------------------------------------------------------------------------------
+  async function cardsFor(pz) {
+    if (cache.has(pz.id)) return cache.get(pz.id);
     await window.Source.init();
-    const b = A.builtinByValue('builtin:' + pz.file); if (!b) throw new Error('deck not found: ' + pz.file);
-    const r = await window.Source.loadDeck(await A.builtinText(b));
-    const cards = A.markCommander(r.cards), deck = G.buildDeck(cards, r.tokens || [], b.policy && b.policy.tribe);
-    const cmdr = cards.some(c => c.commander), db = await loadComboDb();
-    let bookCombos = [];
-    if (db && window.Combos) { const id = cmdr ? [...new Set(cards.filter(c => c.commander).flatMap(c => c.color_identity || []))] : null; bookCombos = window.Combos.goldfished(window.Combos.find(db, deck.unique.map(c => c.name), id), G.deckCombos(deck)); }
-    const out = { deck, opts: Object.assign({}, pz.opts, { policy: (b.policy || {}), bookCombos }) };
-    caches.decks.set(pz.file, out); return out;
-  }
-  async function oppCards(pkg) {
-    if (caches.opp.has(pkg.id)) return caches.opp.get(pkg.id);
-    const land = pkg.landName || 'Island', names = [...new Set([].concat(pkg.hand || [], pkg.battlefield || [], pkg.commander ? [pkg.commander] : [], [land, 'Wastes']))];
-    const r = await window.Source.loadDeck(names.map(n => '1 ' + n).join('\n'));
+    const r = await window.Source.loadDeck(Core.namesOf(pz).map(n => '1 ' + n).join('\n'));
     const by = new Map(r.cards.map(c => [c.name, c]));
     const cardOf = n => by.get(n) || r.cards.find(c => c.name.split(' // ')[0] === n);
-    caches.opp.set(pkg.id, cardOf); return cardOf;
+    cache.set(pz.id, cardOf); return cardOf;
   }
 
   // ---- the tab -----------------------------------------------------------------------------------------------------------------------
-  const tabEl = () => document.getElementById('tab-puzzle');
   function mount() {
     root = tabEl(); if (!root) return false;
     if (!root.dataset.pz) { root.dataset.pz = '1'; root.classList.add('pz'); root.innerHTML = '<div class="pz-body"><p class="hint">Loading the puzzles…</p></div>'; data().then(d => { if (!P) picker(d); }).catch(e => { root.innerHTML = `<div class="pz-body"><p class="pz-err">Could not load the puzzles: ${esc(e.message)}</p></div>`; }); }
@@ -83,187 +37,184 @@
   }
   function open() { A.showTab('puzzle'); }
   function leave() { if (C && P && P.phase !== 'over') { try { C.close(); } catch (e) { /* none open */ } } }
-  const mark = (prog, pz, lv) => (prog.solved || {})[sid(pz, lv)] ? 'solved' : '';
-  const winnable = (pz, lv) => !!pz.levels[lv].solvable;
-  // score: solved puzzles (a lesson cannot be solved: it is not counted), the streak, the best streak, solves without a hint, hints used
+  const solvedOf = (prog, id) => (prog.solved || {})[id];
   function score(d, prog) {
-    let total = 0, done = 0, clean = 0, hints = 0;
-    for (const pz of d.puzzles) for (const lv of LV) if (winnable(pz, lv)) { total++; const r = (prog.solved || {})[sid(pz, lv)]; if (r) { done++; hints += r.hints || 0; if (!r.hints) clean++; } }
-    return { total, done, clean, hints, streak: prog.streak || 0, best: prog.best || 0, usedHints: prog.hintsUsed || 0 };
+    let done = 0, clean = 0;
+    for (const pz of d.puzzles) { const r = solvedOf(prog, pz.id); if (r) { done++; if (!r.hints) clean++; } }
+    return { total: d.puzzles.length, done, clean, streak: prog.streak || 0, best: prog.best || 0, hints: prog.hintsUsed || 0 };
   }
   function picker(d) {
     P = null; mount();
-    const prog = load(), pkgs = new Map(d.packages.map(p => [p.id, p])), sc = score(d, prog);
-    const lines = ['oracle', 'breach', 'monolith'];
-    const chip = (p, lv) => { const ok = winnable(p, lv), pk = pkgs.get(p.levels[lv].pkg), m = mark(prog, p, lv);
-      return `<button type="button" class="pz-chip ${m}${ok ? '' : ' nowin'}" data-id="${esc(p.id)}" data-level="${lv}" title="${esc(pk ? pk.name : 'No interaction')}${ok ? '' : ': the engine found no way to win this one (a lesson)'}"><span class="pz-tick">${m ? '✓' : ok ? '○' : '∅'}</span> ${LVN[lv]}</button>`; };
-    const sec = ln => {
-      const mine = d.puzzles.filter(p => p.line === ln), n = mine.reduce((a, p) => a + LV.filter(l => winnable(p, l)).length, 0), s = mine.reduce((a, p) => a + LV.filter(l => winnable(p, l) && mark(prog, p, l)).length, 0);
-      const decks = [...new Set(mine.map(p => p.deck))].map(name => {
-        const hs = mine.filter(p => p.deck === name), meta = hs[0], sn = hs.reduce((a, p) => a + LV.filter(l => winnable(p, l) && mark(prog, p, l)).length, 0), tn = hs.reduce((a, p) => a + LV.filter(l => winnable(p, l)).length, 0);
-        return `<details class="pz-deck" data-deck="${esc(name)}"><summary><b>${esc(name)}</b> <span class="pz-sub">${esc((meta.commanders || []).join(' · '))}</span><span class="pz-n">${sn}/${tn}</span></summary>
-          ${hs.map(p => `<div class="pz-hand"><div class="pz-when">${p.side === 'play' ? 'On the play' : 'On the draw'}${p.mull ? ` · ${p.mull} mulligan${p.mull > 1 ? 's' : ''}` : ''}</div>
-            <div class="pz-cards">${p.hand.map(c => `<span>${esc(c.split(' // ')[0])}</span>`).join('')}</div>
-            <div class="pz-chips">${LV.map(l => chip(p, l)).join('')}</div></div>`).join('')}</details>`;
-      }).join('');
-      return `<details class="pz-line" data-line="${ln}"><summary><b>${esc(d.lines[ln].name)}</b><span class="pz-n">${s}/${n}</span></summary><p class="hint pz-linetext">${esc(d.lines[ln].text)}</p>${decks}</details>`;
-    };
+    const prog = load(), sc = score(d, prog);
+    const row = pz => { const r = solvedOf(prog, pz.id);
+      return `<button type="button" class="pz-pick${r ? ' solved' : ''}" data-id="${esc(pz.id)}" data-level="${pz.level}"><span class="pz-tick">${r ? '✓' : '○'}</span><span class="pz-pt">${esc(pz.title)}</span><span class="pz-lv">${LVN[pz.level]}</span></button>`; };
+    const sec = t => { const mine = d.puzzles.filter(p => p.type === t), n = mine.filter(p => solvedOf(prog, p.id)).length;
+      return `<details class="pz-type" data-type="${t}" open><summary><b>${TYPES[t].name}</b><span class="pz-n">${n}/${mine.length}</span></summary><p class="hint pz-typetext">${esc(TYPES[t].text)}</p>${LV.map(l => `<div class="pz-level" data-level="${l}"><div class="pz-lh">${LVN[l]}</div><div class="pz-rows">${mine.filter(p => p.level === l).map(row).join('')}</div></div>`).join('')}</details>`; };
     root.innerHTML = `<div class="pz-body">
-      <div class="pz-head"><h2>Puzzle: keep the turn-2 win</h2><button type="button" class="ghost pz-info" aria-expanded="false" title="What is this?">ⓘ</button></div>
-      <p class="hint pz-intro" hidden>Seven built-in decks can win on turn 2. Each puzzle is one of those real hands, dealt the same way every time, against an opponent whose hand you can see. Easy: nothing in the way. Medium: one counterspell (Force of Will). Hard: a counterspell, removal and whatever stops that line. Win on turn 2 anyway: bait the counter, play the order that works. The opponent uses its counterspell on the first spell it legally can. ∅ marks a level the engine found no way to win: the lesson is in what stops it. In ICEYfish the finish of a combo is one step the opponent cannot answer, so they can only stop the cards that set it up.</p>
-      <div class="pz-score" role="status"><span><b>${sc.done}</b> of ${sc.total} solved</span><span>Streak <b>${sc.streak}</b></span><span>Best streak <b>${sc.best}</b></span><span>No hint: <b>${sc.clean}</b></span><span>Hints used: <b>${sc.usedHints}</b></span></div>
-      <p class="pz-goal">Pick a hand, then a level.</p>
-      ${lines.map(sec).join('')}
+      <div class="pz-head"><h2>Puzzle</h2><button type="button" class="ghost pz-info" aria-expanded="false" title="What is this?">ⓘ</button></div>
+      <p class="hint pz-intro" hidden>Each puzzle is a real position you play with the real cards. You never see the opponent's hand. Easy: the opponent only blocks. Medium: it holds one hidden piece of interaction. Hard: a full hidden hand that plays back. A wrong play plays out until it can no longer be won; then you get hints (never the answer) and the lesson. The opponent plays like the engine's autopilot: it blocks, it counters or answers the first thing it can, and it uses removal at the end of your turn.</p>
+      <div class="pz-score" role="status"><span><b>${sc.done}</b> of ${sc.total} solved</span><span>Streak <b>${sc.streak}</b></span><span>Best streak <b>${sc.best}</b></span><span>No hint: <b>${sc.clean}</b></span><span>Hints used: <b>${sc.hints}</b></span></div>
+      ${['fast', 'endgame'].map(sec).join('')}
     </div>`;
     const info = root.querySelector('.pz-info'), intro = root.querySelector('.pz-intro');
     info.onclick = () => { intro.hidden = !intro.hidden; info.setAttribute('aria-expanded', String(!intro.hidden)); };
-    root.querySelectorAll('.pz-chip').forEach(b => { b.onclick = () => start(d, b.dataset.id, b.dataset.level); });
-    if (picker.openLine) { const ln = root.querySelector(`[data-line="${picker.openLine}"]`); if (ln) ln.open = true; }
-    if (picker.openDeck) { const dk = [...root.querySelectorAll('[data-deck]')].find(x => x.dataset.deck === picker.openDeck); if (dk) dk.open = true; }
+    root.querySelectorAll('.pz-pick').forEach(b => { b.onclick = () => start(d, b.dataset.id); });
   }
   function back() { try { C && C.close(); } catch (e) { /* none */ } const d = DATA; P = null; if (d) d.then(picker); }
 
   // ---- one puzzle ---------------------------------------------------------------------------------------------------------------------
-  async function start(d, id, level) {
-    const base = d.puzzles.find(p => p.id === id); if (!base) return;
-    const sc = base.levels[level], pkg = sc.pkg ? d.packages.find(p => p.id === sc.pkg) : null;
+  async function start(d, id) {
+    const pz = d.puzzles.find(p => p.id === id); if (!pz) return;
     mount(); root.innerHTML = '<div class="pz-body"><p class="hint">Setting up the table…</p></div>';
-    const token = P = { base, level, pkg, sc, d, log: [], sel: null, busy: true, phase: 'setup', turn: 0, hints: 0 };
-    picker.openLine = base.line; picker.openDeck = base.deck;
+    const tok = P = { d, pz, log: [], sel: null, atk: false, atkSel: new Set(), busy: true, phase: 'setup', hintsShown: 0, over: null };
     try {
-      const dk = await deckOf(base), cardOf = pkg ? await oppCards(pkg) : null;
-      if (P !== token) return;
-      const opp = pkg ? Core.makeOpp(cardOf, pkg, base.side === 'play', base.seed) : null;
-      P.m = Core.newMatch(dk.deck, dk.opts, base, opp);
-      P.hand0 = P.m.g.hand.map(i => i.card.name);
-      P.fine = JSON.stringify(P.hand0) === JSON.stringify(base.hand);
-      P.explain = explain(base, sc, pkg, d.lines);
-      const prog = load(); prog.tried = prog.tried || {}; prog.tried[sid(base, level)] = (prog.tried[sid(base, level)] || 0) + 1; save(prog);
+      const cardOf = await cardsFor(pz); if (P !== tok) return;
+      P.sc = Core.newScenario(cardOf, pz);
+      const prog = load(); prog.tried = prog.tried || {}; prog.tried[pz.id] = (prog.tried[pz.id] || 0) + 1; save(prog);
       await nextTurn();
-    } catch (e) { if (P === token && root) { root.innerHTML = `<div class="pz-body"><p class="pz-err">Could not set up the puzzle: ${esc(e.message || e)}</p><button class="ghost pz-back">‹ Puzzles</button></div>`; root.querySelector('.pz-back').onclick = back; } }
+    } catch (e) { if (P === tok && root) { root.innerHTML = `<div class="pz-body"><p class="pz-err">Could not set up the puzzle: ${esc(e.message || e)}</p><button class="ghost pz-back">‹ Puzzles</button></div>`; root.querySelector('.pz-back').onclick = back; } }
   }
   const texts = ev => (Array.isArray(ev) ? ev : []).flatMap(e => (e && e.text ? [e.text] : []));
-  function say(t) { if (t) P.log.push(t); }
-  function tell(ev) { for (const t of texts(ev)) say(t); }
-  // the answer to a question the engine asks: the opponent's from its habit, yours from a sheet (the autopilot's pick for payments and small things)
-  const AUTO = new Set(['pay', 'resolve']);
+  const say = t => { if (t) P.log.push(t); };
+  const tell = ev => { for (const t of texts(ev)) say(t); };
+  // the engine's questions: the opponent's from its habit (counter or answer at the first chance), yours from the page (a response, a target, a choice)
   function answer(q) {
-    if (q.seat === 1) { const p = Core.greedy(q); const w = p === 'none' ? null : q.options[p]; say(w ? `Opponent: ${w.name} in response to ${q.spell ? q.spell.name : 'your spell'}.` : null); return p; }
-    if (AUTO.has(q.kind)) return q.kind === 'resolve' ? 'none' : 'auto';
+    if (q.seat === 1) { const p = Core.greedy(q), w = p === 'none' ? null : q.options[p]; say(w ? `Opponent: ${w.name}${q.spell ? ' in response to ' + q.spell.name : ''}.` : null); return p; }
+    if (q.kind === 'resolve' || q.kind === 'instant') return 'none';
+    if (q.kind === 'pay') return 'auto';
+    if (q.kind === 'tax') return Math.max(0, q.options.findIndex(o => /pay/i.test(o.name)));
+    if (q.kind === 'counter' && !(q.options && q.options.length)) return 'none';
     return C ? C.ask(q) : 'auto';
   }
+  const quit = e => (C && e === C.CANCELLED) || !P;
   async function nextTurn() {
-    const m = P.m, tok = P;
-    if (Core.advance(m) === 'over') return finish();
-    tell(await Core.runAsync(m, gs => G.beginTurn(gs[0]), answer)); if (P !== tok) return;
-    P.turn = m.turnsDone + 1; P.phase = 'me'; P.busy = false; P.sel = null;
-    if (Core.won(m.g)) return finish();
-    render();
+    const tok = P, sc = P.sc;
+    P.busy = true; render();
+    const v = await Core.toMyTurnA(sc, answer); if (P !== tok) return;
+    P.sel = null; P.atk = false; P.atkSel = new Set(); P.busy = false;
+    if (v) return finish(v);
+    P.phase = 'me'; render();
   }
-  async function act(mv) {
-    if (!P || P.busy || P.phase !== 'me') return;
-    const tok = P, m = P.m; P.busy = true; render();
+  async function run(fn) {
+    if (!P || P.busy || P.phase === 'over') return;
+    const tok = P, sc = P.sc; P.busy = true; render();
     try {
-      const ev = await Core.runAsync(m, Core.callOf(mv), answer);
-      if (P !== tok) return;
-      if (!ev) say(`${mv.card} could not be ${mv.do === 'land' ? 'played' : 'cast'}.`); else tell(ev);
-      P.sel = null; P.busy = false;
-      if (Core.won(m.g)) return finish();
+      const ev = await Core.runAsync(sc, fn, answer); if (P !== tok) return;
+      tell(ev); P.sel = null; P.atk = false; P.atkSel = new Set(); P.busy = false;
+      const v = Core.verdict(sc); if (v) { sc.over = v; return finish(v); }
       render();
-    } catch (e) { if ((C && e === C.CANCELLED) || P !== tok) return; P.busy = false; say('Something went wrong: ' + (e.message || e)); render(); }
+    } catch (e) { if (quit(e) || P !== tok) return; P.busy = false; say('Something went wrong: ' + (e.message || e)); render(); }
   }
-  async function endTurn(how) {
+  async function endTurn() {
     if (!P || P.busy || P.phase !== 'me') return;
-    const tok = P, m = P.m; P.busy = true; render();
+    const tok = P, sc = P.sc; P.busy = true; render();
     try {
-      if (how === 'auto' && !Core.won(m.g)) tell(await Core.runAsync(m, gs => D.turn.main1(gs[0]), answer));
-      if (P !== tok) return;
-      if (!Core.won(m.g)) tell(await Core.runAsync(m, gs => G.endTurn(gs[0]), answer));
-      if (P !== tok) return;
-      m.pos++; m.turnsDone++;
-      if (Core.won(m.g) || m.turnsDone >= 2) return finish();
+      const v = await Core.endMineA(sc, answer); if (P !== tok) return;
+      if (v) return finish(v);
       await nextTurn();
-    } catch (e) { if ((C && e === C.CANCELLED) || P !== tok) return; P.busy = false; say('Something went wrong: ' + (e.message || e)); render(); }
+    } catch (e) { if (quit(e) || P !== tok) return; P.busy = false; say('Something went wrong: ' + (e.message || e)); render(); }
   }
-  // the end: a turn-2 win is solved (kept with the hints it took); any other end of a winnable puzzle breaks the streak (a lesson cannot be won, so it does not)
-  function finish(gaveUp) {
-    const m = P.m, won = !gaveUp && Core.winsOnTurn2(m.g), late = !gaveUp && Core.won(m.g) && !won;
-    P.phase = 'over'; P.busy = false; P.won = won; P.late = late; P.gaveUp = !!gaveUp;
-    const prog = load(), key = sid(P.base, P.level);
-    if (P.hints) prog.hintsUsed = (prog.hintsUsed || 0) + P.hints;
-    if (won) { prog.solved = prog.solved || {}; const old = prog.solved[key]; prog.solved[key] = { hints: old ? Math.min(old.hints || 0, P.hints) : P.hints }; prog.streak = (prog.streak || 0) + 1; prog.best = Math.max(prog.best || 0, prog.streak); }
-    else if (P.sc.solvable) prog.streak = 0;
-    save(prog); P.streakNow = prog.streak || 0;
+  function finish(v, gaveUp) {
+    P.phase = 'over'; P.busy = false; P.over = gaveUp ? 'lose' : v; P.gaveUp = !!gaveUp;
+    const prog = load(), id = P.pz.id;
+    if (P.over === 'win') { prog.solved = prog.solved || {}; const old = prog.solved[id]; prog.solved[id] = { hints: old ? Math.min(old.hints || 0, P.hintsShown) : P.hintsShown }; prog.streak = (prog.streak || 0) + 1; prog.best = Math.max(prog.best || 0, prog.streak); }
+    else prog.streak = 0;
+    if (P.hintsShown) prog.hintsUsed = (prog.hintsUsed || 0) + P.hintsShown;
+    save(prog); P.hintsShown = 0; P.streakNow = prog.streak || 0;
     render();
   }
 
   // ---- drawing it ----------------------------------------------------------------------------------------------------------------------
-  const tile = (inst, cls, o) => { const e = A.cardEl(inst.card, { iid: inst.iid, eager: true }); e.classList.add('pz-t'); if (cls) cls.split(' ').forEach(c => c && e.classList.add(c)); if (o && o.title) e.title = o.title; return e; };
+  const tile = (inst, cls, title) => { const e = A.cardEl(inst.card, { iid: inst.iid, eager: true }); e.classList.add('pz-t'); if (cls) cls.split(' ').forEach(c => c && e.classList.add(c)); if (title) e.title = title; return e; };
   const castable = (g, i) => G.canPay(G.effectiveCost(g, i), G.allUnits(g)) || G.canCastBack(g, i);
+  const landsLine = g => { const ls = g.battlefield.filter(p => p.asLand), open = ls.filter(l => !l.tapped).length; return ls.length ? `${open} of ${ls.length} lands untapped` : 'no lands'; };
+  const graveLine = g => g.graveyard.length ? 'Graveyard: ' + g.graveyard.slice(-6).map(i => i.card.name.split(' // ')[0]).join(', ') : 'Graveyard: empty';
   function render() {
     if (!P || !root) return;
-    const { base, pkg, m, sc } = P, g = m.g, b = m.b, over = P.phase === 'over';
-    const me = P.phase === 'me' && !P.busy, E = P.explain;
-    const handInsts = g.hand.concat(g.command || []);
-    const oppBf = b ? b.battlefield.filter(p => !p.asLand).map(p => p.card.name) : [], oppLands = b ? b.battlefield.filter(p => p.asLand) : [], oppOpen = oppLands.filter(l => !l.tapped).length;
-    root.innerHTML = `<div class="pz-body" data-phase="${P.phase}" data-level="${P.level}">
-      <div class="pz-head"><button type="button" class="ghost pz-back">‹ Puzzles</button><h2 class="pz-title">${esc(base.deck)}</h2><button type="button" class="ghost pz-info" aria-expanded="false" title="About this puzzle">ⓘ</button></div>
-      <p class="pz-sub">${esc((base.commanders || []).join(' · '))} · ${side(base)} · <b>${LVN[P.level]}</b> · ${esc(P.d.lines[base.line].name.split(' + ')[0])} line</p>
-      <div class="pz-fold" hidden><p class="hint">${esc(P.d.lines[base.line].text)}</p><p class="hint">${esc(E.lose)}</p>${P.fine ? '' : '<p class="pz-err">This hand differs from the one recorded for this seed: the deck list has changed since the puzzle was built.</p>'}</div>
-      <div class="pz-opp"><div class="pz-oh"><b>Opponent holds</b> <span>${pkg ? esc(KINDS[pkg.kind].head + ': ' + pkg.name) : 'nothing that matters'}</span></div>
-        ${b && b.hand.length ? '<div class="pz-tiles pz-opptiles"></div>' : ''}
-        <p class="pz-why">${esc(pkg ? pkg.why : 'No counterspell, no removal, no lock: just you and the hand.')}</p>
-        ${pkg ? `<p class="pz-meta">${oppLands.length ? `${oppOpen} untapped ${esc(oppLands[0].card.name)}${oppOpen === 1 ? '' : 's'}` : 'No untapped lands'}${oppBf.length ? ' · in play: ' + esc(oppBf.join(', ')) : ''} · habit: it uses its first chance.</p>` : ''}</div>
-      ${sc.solvable ? '' : '<p class="pz-lessonnote"><b>Lesson:</b> the engine found no way to win this level. Play it to see what stops it.</p>'}
-      <div class="pz-goal">Win this turn or next: <b>${over ? (P.won ? '✓ turn-2 win' : 'turn 2 is over') : `your turn ${P.turn} of 2`}</b></div>
+    const { pz, sc } = P, g = sc.g, b = sc.b, over = P.phase === 'over', me = P.phase === 'me' && !P.busy;
+    const hand = g.hand.concat(g.command || []);
+    const goal = pz.deadline > 1 ? `Win by the end of your turn ${pz.deadline}` : 'Win this turn';
+    root.innerHTML = `<div class="pz-body" data-phase="${P.phase}" data-type="${pz.type}" data-level="${pz.level}">
+      <div class="pz-head"><button type="button" class="ghost pz-back">‹ Puzzles</button><h2 class="pz-title">${esc(pz.title)}</h2><button type="button" class="ghost pz-info" aria-expanded="false" title="How the opponent plays">ⓘ</button></div>
+      <p class="pz-sub">${TYPES[pz.type].name} · <b>${LVN[pz.level]}</b></p>
+      <div class="pz-fold" hidden><p class="hint">${esc(OPP[pz.level])} It plays like the engine's autopilot: it blocks, it counters or answers the first thing it can, and it uses removal at the end of your turn. You never see its hand.</p></div>
+      <p class="pz-premise">${esc(pz.premise)}</p>
+      <div class="pz-goal">${esc(goal)}: <b>${over ? (P.over === 'win' ? '✓ done' : 'not this time') : `turn ${g.turn || 1}${pz.deadline > 1 ? ' (your turn ' + Math.max(1, sc.mine) + ' of ' + pz.deadline + ')' : ''}`}</b></div>
+      <div class="pz-opp"><div class="pz-oh"><b>Opponent</b> <span class="pz-life" data-life="opp">${b.life} life</span> <span class="pz-sub2">${landsLine(b)} · ${b.hand.length ? `<span class="pz-hid" data-n="${b.hand.length}">${b.hand.length} card${b.hand.length === 1 ? '' : 's'} in hand (hidden)</span>` : 'no cards in hand'}</span></div>
+        <div class="pz-tiles pz-oppbf">${b.battlefield.some(p => !p.asLand) ? '' : '<i class="hint">no permanents</i>'}</div><p class="pz-meta">${esc(graveLine(b))}</p></div>
       <div class="pz-table">
-        <div class="pz-zone"><span class="pz-zh">In play</span><div class="pz-tiles pz-bf">${g.battlefield.length ? '' : '<i class="hint">nothing yet</i>'}</div></div>
-        <div class="pz-zone"><span class="pz-zh">Your hand${g.command && g.command.length ? ' and command zone' : ''}</span><div class="pz-tiles pz-hand-tiles"></div></div>
-        <p class="pz-meta">Graveyard ${g.graveyard.length}${g.graveyard.length ? ': ' + esc(g.graveyard.slice(-6).map(i => i.card.name.split(' // ')[0]).join(', ')) : ''} · Library ${g.library.length}</p>
+        <div class="pz-zone"><span class="pz-zh">You · <span class="pz-life" data-life="me">${g.life} life</span> · ${esc(landsLine(g))}</span><div class="pz-tiles pz-bf">${g.battlefield.some(p => !p.asLand) ? '' : '<i class="hint">no permanents</i>'}</div></div>
+        <div class="pz-zone"><span class="pz-zh">Your hand${g.command && g.command.length ? ' and command zone' : ''}</span><div class="pz-tiles pz-hand-tiles">${hand.length ? '' : '<i class="hint">empty</i>'}</div></div>
+        <p class="pz-meta">${esc(graveLine(g))}</p>
       </div>
       <div class="pz-bar"></div>
       <div class="pz-result"></div>
       <details class="pz-log"><summary>Log (${P.log.length})</summary><ol>${P.log.slice(-40).map(t => `<li>${esc(t)}</li>`).join('')}</ol></details>
     </div>`;
-    if (b && b.hand.length) root.querySelector('.pz-opptiles').replaceChildren(...b.hand.map(i => tile(i, 'pz-opp-t')));
-    const bf = root.querySelector('.pz-bf'); if (g.battlefield.length) bf.replaceChildren(...g.battlefield.map(p => tile(p, 'pz-bf-t' + (p.tapped ? ' tapped' : ''), { title: p.card.name + (p.tapped ? ' (tapped)' : '') })));
-    root.querySelector('.pz-hand-tiles').replaceChildren(...handInsts.map(i => {
+    root.querySelector('.pz-oppbf').append(...b.battlefield.filter(p => !p.asLand).map(p => tile(p, 'pz-opp-t' + (p.tapped ? ' tapped' : ''), p.card.name)));
+    const bf = root.querySelector('.pz-bf');
+    bf.append(...g.battlefield.filter(p => !p.asLand).map(p => {
+      const can = me && P.atk && G.canAttack(g, p), picked = P.atkSel.has(p.iid);
+      const btn = h('button', 'pz-perm' + (P.sel === 'p' + p.iid ? ' sel' : '') + (can ? ' can' : '') + (picked ? ' picked' : '') + (p.tapped ? ' tapped' : ''));
+      btn.type = 'button'; btn.dataset.iid = p.iid; btn.dataset.name = p.card.name; btn.disabled = !me; btn.title = p.card.name + (p.tapped ? ' (tapped)' : '');
+      btn.appendChild(tile(p, 'pz-bf-t'));
+      btn.onclick = e => { e.stopPropagation(); if (P.atk) { if (G.canAttack(g, p)) { if (P.atkSel.has(p.iid)) P.atkSel.delete(p.iid); else P.atkSel.add(p.iid); render(); } } else { P.sel = P.sel === 'p' + p.iid ? null : 'p' + p.iid; render(); } };
+      return btn;
+    }));
+    root.querySelector('.pz-hand-tiles').append(...hand.map(i => {
       const isLand = !!i.card.a.isLand, can = me && (isLand ? G.canPlayLand(g) : castable(g, i));
-      const btn = h('button', 'pz-card' + (P.sel === i.iid ? ' sel' : '') + (can ? ' can' : ''));
-      btn.type = 'button'; btn.dataset.iid = i.iid; btn.dataset.name = i.card.name; btn.disabled = !me; btn.setAttribute('aria-pressed', String(P.sel === i.iid));
-      btn.setAttribute('aria-label', i.card.name); btn.title = i.card.name; btn.appendChild(tile(i, ''));
-      btn.onclick = e => { e.stopPropagation(); P.sel = P.sel === i.iid ? null : i.iid; render(); };          // a tap selects (the app's card viewer opens on any other card tap; here: long-press or right-click)
+      const btn = h('button', 'pz-card' + (P.sel === 'c' + i.iid ? ' sel' : '') + (can ? ' can' : ''));
+      btn.type = 'button'; btn.dataset.iid = i.iid; btn.dataset.name = i.card.name; btn.disabled = !me; btn.setAttribute('aria-pressed', String(P.sel === 'c' + i.iid)); btn.setAttribute('aria-label', i.card.name); btn.title = i.card.name;
+      btn.appendChild(tile(i, ''));
+      btn.onclick = e => { e.stopPropagation(); P.atk = false; P.atkSel = new Set(); P.sel = P.sel === 'c' + i.iid ? null : 'c' + i.iid; render(); };
       return btn;
     }));
     const bar = root.querySelector('.pz-bar');
     if (!over) {
-      const sel = handInsts.find(i => i.iid === P.sel), items = [];
-      if (sel) { const isLand = !!sel.card.a.isLand, nm = sel.card.name.split(' // ')[0]; items.push(`<button type="button" class="primary pz-do" ${me && (isLand ? G.canPlayLand(g) : castable(g, sel)) ? '' : 'disabled'}>${isLand ? 'Play ' + esc(nm) : 'Cast ' + esc(nm)}</button>`); }
-      items.push(`<button type="button" class="pz-go" ${me ? '' : 'disabled'} title="The autopilot plays the rest of this turn: its lands, its spells, and the combo when it is assembled.">Autopilot: finish this turn</button>`);
-      items.push(`<button type="button" class="ghost pz-pass" ${me ? '' : 'disabled'} title="End the turn and play nothing more.">End turn</button>`);
-      items.push(`<button type="button" class="ghost pz-hint" aria-expanded="${!!P.hintOn}" title="One line. It counts against your no-hint score.">Hint</button>`);
-      items.push(`<button type="button" class="ghost pz-giveup">Show the answer</button>`);
-      bar.innerHTML = items.join('') + (P.hintOn ? `<p class="pz-hinttext">${esc(pkg ? KINDS[pkg.kind].hint : 'Nothing is in your way: let the autopilot play it.')}</p>` : '') + (P.busy ? '<p class="hint pz-busy">Working…</p>' : '');
-      if (sel) bar.querySelector('.pz-do').onclick = () => act({ do: sel.card.a.isLand ? 'land' : 'cast', card: sel.card.name });
-      bar.querySelector('.pz-go').onclick = () => endTurn('auto');
-      bar.querySelector('.pz-pass').onclick = () => endTurn('pass');
-      bar.querySelector('.pz-hint').onclick = () => { if (!P.hintOn && !P.hints) P.hints = 1; P.hintOn = !P.hintOn; render(); };
-      bar.querySelector('.pz-giveup').onclick = () => { try { C && C.close(); } catch (e) { /* none */ } finish(true); };
+      const items = [];
+      const selHand = hand.find(i => P.sel === 'c' + i.iid), selPerm = g.battlefield.find(p => P.sel === 'p' + p.iid);
+      if (selHand) { const isLand = !!selHand.card.a.isLand, nm = selHand.card.name.split(' // ')[0]; items.push(`<button type="button" class="primary pz-do" ${me && (isLand ? G.canPlayLand(g) : castable(g, selHand)) ? '' : 'disabled'}>${isLand ? 'Play ' + esc(nm) : 'Cast ' + esc(nm)}</button>`); }
+      let menu = []; if (selPerm) { try { menu = G.abilityMenu(g, selPerm); } catch (e) { menu = []; } menu.forEach((m, i) => items.push(`<button type="button" class="pz-ab" data-i="${i}" ${me && m.ok ? '' : 'disabled'} title="${esc(m.why || '')}">${esc((m.label || 'Ability').slice(0, 60))}${m.cost ? ' · ' + esc(m.cost) : ''}</button>`)); if (!menu.length) items.push('<span class="pz-hint2">No abilities.</span>'); }
+      const attackers = g.battlefield.filter(p => G.canAttack(g, p));
+      if (P.atk) {
+        items.push(`<button type="button" class="primary pz-decl" ${me && P.atkSel.size ? '' : 'disabled'}>Declare attack (${P.atkSel.size})</button>`, `<button type="button" class="ghost pz-all" ${me && attackers.length ? '' : 'disabled'}>Attack with all</button>`, '<button type="button" class="ghost pz-cancel">Cancel</button>');
+      } else {
+        if (pz.combo) items.push(`<button type="button" class="pz-combo" ${me ? '' : 'disabled'} title="The autopilot plays the rest of your main phase, and the combo when it is ready">Go off</button>`);
+        items.push(`<button type="button" class="pz-atk" ${me && attackers.length ? '' : 'disabled'} title="Choose which creatures attack">Attack…</button>`);
+        items.push(`<button type="button" class="ghost pz-pass" ${me ? '' : 'disabled'}>End turn</button>`);
+        items.push('<button type="button" class="ghost pz-giveup">Give up</button>');
+      }
+      bar.innerHTML = items.join('') + (P.busy ? '<p class="hint pz-busy">Working…</p>' : '');
+      if (selHand) bar.querySelector('.pz-do').onclick = () => run(selHand.card.a.isLand ? (gs => G.playLandCard(gs[0], gs[0].hand.find(x => x.iid === selHand.iid))) : (gs => G.castCard(gs[0], pool(gs[0]).find(x => x.iid === selHand.iid))));
+      bar.querySelectorAll('.pz-ab').forEach(bt => { bt.onclick = () => { const i = +bt.dataset.i, iid = selPerm.iid; run(gs => { const p = gs[0].battlefield.find(x => x.iid === iid); return p ? G.useAbility(gs[0], p, i) : null; }); }; });
+      const atk = bar.querySelector('.pz-atk'); if (atk) atk.onclick = () => { P.atk = true; P.atkSel = new Set(); P.sel = null; render(); };
+      const decl = bar.querySelector('.pz-decl'); if (decl) decl.onclick = () => { const ids = [...P.atkSel]; run(gs => D.turn.combat(gs[0], { attackers: ids })); };
+      const all = bar.querySelector('.pz-all'); if (all) all.onclick = () => { const ids = attackers.map(p => p.iid); run(gs => D.turn.combat(gs[0], { attackers: ids })); };
+      const cn = bar.querySelector('.pz-cancel'); if (cn) cn.onclick = () => { P.atk = false; P.atkSel = new Set(); render(); };
+      const cb = bar.querySelector('.pz-combo'); if (cb) cb.onclick = () => run(gs => D.turn.main1(gs[0]));
+      const ps = bar.querySelector('.pz-pass'); if (ps) ps.onclick = endTurn;
+      const gv = bar.querySelector('.pz-giveup'); if (gv) gv.onclick = () => { try { C && C.close(); } catch (e) { /* none */ } finish('lose', true); };
     } else {
-      const R = root.querySelector('.pz-result'), solved = P.won, line = sc.solution;
-      const winText = Core.won(g) && g.winBy ? (g.winBy.text || '') : '';
-      R.innerHTML = `<div class="pz-banner ${solved ? 'win' : 'lose'}" role="status"><b>${solved ? '✓ Solved: the turn-2 win survives.' : P.late ? 'You won, but not on turn 2.' : P.gaveUp ? 'The answer' : 'Not this time: turn 2 ended without the win.'}</b>${winText && solved ? `<span>${esc(winText)}</span>` : ''}<span class="pz-streak">${solved ? `Streak ${P.streakNow}${P.hints ? ` · ${P.hints} hint used` : ' · no hint'}` : sc.solvable ? 'Streak back to 0' : 'A lesson: the streak is not touched'}</span></div>
-        <div class="pz-sol">${!sc.solvable ? `<p><b>This level cannot be won.</b> ${esc(E.lesson)}</p><p class="hint">The engine tried ${sc.searched} lines: every one of them ends with the combo short of a piece.</p>`
-          : line ? `<p><b>A line that works:</b> ${esc(movesText(line))}</p><p>${esc(E.why)}</p>` : `<p><b>The line:</b> ${esc(E.why)}</p>`}</div>
-        <div class="pz-after"><button type="button" class="primary pz-again">Try again</button><button type="button" class="ghost pz-next">Next level</button><button type="button" class="ghost pz-list">Puzzles</button></div>`;
-      R.querySelector('.pz-again').onclick = () => start(P.d, base.id, P.level);
-      R.querySelector('.pz-next').onclick = () => { const all = P.d.puzzles.flatMap(p => LV.map(l => [p.id, l])), i = all.findIndex(x => x[0] === base.id && x[1] === P.level), n = all[(i + 1) % all.length]; start(P.d, n[0], n[1]); };
+      const R = root.querySelector('.pz-result'), won = P.over === 'win', L = pz.lesson;
+      R.innerHTML = `<div class="pz-banner ${won ? 'win' : 'lose'}" role="status"><b>${won ? '✓ Solved.' : P.gaveUp ? 'You gave up.' : sc.g.life <= 0 ? 'You are out of life.' : 'Not this time: it can no longer be won.'}</b><span>Streak ${P.streakNow}${won ? '' : ' (reset)'}</span></div>
+        <div class="pz-hints"${won ? ' hidden' : ''}><button type="button" class="ghost pz-hint">Show a hint</button><ol class="pz-hintlist"></ol></div>
+        <div class="pz-lesson"><button type="button" class="ghost pz-lbtn" aria-expanded="false">ⓘ What this taught</button><div class="pz-lbody" hidden><p><b>${esc(L.mechanic)}</b></p><p>${esc(L.rules)}</p></div></div>
+        <div class="pz-after"><button type="button" class="primary pz-again">Try again</button><button type="button" class="ghost pz-next">Next puzzle</button><button type="button" class="ghost pz-list">Puzzles</button></div>`;
+      const hl = R.querySelector('.pz-hintlist'), hb = R.querySelector('.pz-hint');
+      const drawHints = () => { hl.innerHTML = pz.hints.slice(0, P.hintsShown).map(t => `<li>${esc(t)}</li>`).join(''); hb.hidden = P.hintsShown >= pz.hints.length; hb.textContent = `Show ${P.hintsShown ? 'another' : 'a'} hint (${P.hintsShown} of ${pz.hints.length})`; };
+      hb.onclick = () => { P.hintsShown++; const prog = load(); prog.hintsUsed = (prog.hintsUsed || 0) + 1; save(prog); drawHints(); };
+      drawHints();
+      const lb = R.querySelector('.pz-lbtn'), lbody = R.querySelector('.pz-lbody');
+      lb.onclick = () => { lbody.hidden = !lbody.hidden; lb.setAttribute('aria-expanded', String(!lbody.hidden)); };
+      R.querySelector('.pz-again').onclick = () => start(P.d, pz.id);
+      R.querySelector('.pz-next').onclick = () => { const all = P.d.puzzles, i = all.findIndex(x => x.id === pz.id); start(P.d, all[(i + 1) % all.length].id); };
       R.querySelector('.pz-list').onclick = back;
     }
     root.querySelector('.pz-back').onclick = back;
     const info = root.querySelector('.pz-info'), fold = root.querySelector('.pz-fold');
     info.onclick = () => { fold.hidden = !fold.hidden; info.setAttribute('aria-expanded', String(!fold.hidden)); };
   }
+  const pool = x => x.hand.concat(x.command || []);
 
   // the tab: its picker is made when it is first shown; leaving it closes an open question; Escape goes back to the picker
   new MutationObserver(() => { if (document.body.dataset.view === 'puzzle') mount(); else leave(); }).observe(document.body, { attributes: true, attributeFilter: ['data-view'] });

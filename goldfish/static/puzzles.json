@@ -1,0 +1,1442 @@
+{
+ "version": 1,
+ "puzzles": [
+  {
+   "id": "fast-1",
+   "type": "fast",
+   "level": "easy",
+   "title": "Rocks before the dragon",
+   "mechanic": "Mana sequencing",
+   "premise": "You are on the play. The opponent is at 7 life with an empty board and no cards in hand. Win by the end of your turn 2.",
+   "onPlay": true,
+   "seed": 11,
+   "deadline": 2,
+   "me": {
+    "life": 20,
+    "land": "Mountain",
+    "lands": 0,
+    "hand": [
+     "Mountain",
+     "Mountain",
+     "Sol Ring",
+     "Chrome Mox",
+     "Goldspan Dragon",
+     "Lightning Bolt",
+     "Blossoming Defense"
+    ]
+   },
+   "opp": {
+    "life": 7,
+    "land": "Island",
+    "lands": 0,
+    "hand": []
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Mountain"
+     },
+     {
+      "do": "cast",
+      "card": "Sol Ring"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Mountain"
+     },
+     {
+      "do": "cast",
+      "card": "Chrome Mox",
+      "picks": [
+       "Blossoming Defense"
+      ]
+     },
+     {
+      "do": "cast",
+      "card": "Goldspan Dragon"
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     },
+     {
+      "do": "cast",
+      "card": "Lightning Bolt"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Chrome Mox eats the Bolt",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       },
+       {
+        "do": "cast",
+        "card": "Chrome Mox",
+        "picks": [
+         "Lightning Bolt"
+        ]
+       },
+       {
+        "do": "cast",
+        "card": "Goldspan Dragon"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "No Sol Ring on turn 1",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       },
+       {
+        "do": "cast",
+        "card": "Chrome Mox",
+        "picks": [
+         "Blossoming Defense"
+        ]
+       },
+       {
+        "do": "cast",
+        "card": "Sol Ring"
+       },
+       {
+        "do": "cast",
+        "card": "Goldspan Dragon"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Count the mana you will have on turn 2, and when each source has to come down to be ready.",
+    "Goldspan Dragon costs five. What else can you afford on turn 1, and what does your turn-1 mana pay for?",
+    "Look again at what Goldspan does when it attacks, and at which card in hand the Chrome Mox could swallow without hurting you."
+   ],
+   "lesson": {
+    "mechanic": "Mana sequencing",
+    "rules": "Mana rocks and Moxen are worth the most when they come down early: a permanent cast on turn 1 taps for mana on turn 2, while one cast on turn 2 only helps the spells after it. Chrome Mox exiles a card from your hand as it enters (imprint), so pick one you will not cast. Goldspan Dragon has haste, and its Treasure (which taps for two mana while Goldspan is in play) pays for a spell after combat."
+   }
+  },
+  {
+   "id": "fast-2",
+   "type": "fast",
+   "level": "easy",
+   "title": "Dorks and colours",
+   "mechanic": "Summoning sickness and coloured mana",
+   "premise": "You are on the play. The opponent is at 4 life with an empty board and no cards in hand. Win by the end of your turn 3.",
+   "onPlay": true,
+   "seed": 12,
+   "deadline": 3,
+   "me": {
+    "life": 20,
+    "land": "Mountain",
+    "lands": 0,
+    "hand": [
+     "Forest",
+     "Mountain",
+     "Mountain",
+     "Llanowar Elves",
+     "Elvish Mystic",
+     "Goldspan Dragon",
+     "Harmonize"
+    ]
+   },
+   "opp": {
+    "life": 4,
+    "land": "Island",
+    "lands": 0,
+    "hand": []
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Forest"
+     },
+     {
+      "do": "cast",
+      "card": "Llanowar Elves"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Mountain"
+     },
+     {
+      "do": "cast",
+      "card": "Elvish Mystic"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Mountain"
+     },
+     {
+      "do": "cast",
+      "card": "Goldspan Dragon"
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Mountain first, no turn-1 creature",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Forest"
+       },
+       {
+        "do": "cast",
+        "card": "Llanowar Elves"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       },
+       {
+        "do": "cast",
+        "card": "Elvish Mystic"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Draw cards on turn 3",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Forest"
+       },
+       {
+        "do": "cast",
+        "card": "Llanowar Elves"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       },
+       {
+        "do": "cast",
+        "card": "Elvish Mystic"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Mountain"
+       },
+       {
+        "do": "cast",
+        "card": "Harmonize"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Your Elves and Mystic make green mana. Which land lets you cast them, and which turn do they start working?",
+    "A creature you cast this turn cannot tap for mana this turn. Count how many mana sources you will have on turn 3.",
+    "Goldspan needs two red mana. Where does your red come from, and which land is therefore best kept for later?"
+   ],
+   "lesson": {
+    "mechanic": "Summoning sickness and coloured mana",
+    "rules": "A creature cannot use a {T} ability (such as a mana ability) on the turn it comes under your control, so mana creatures want to be cast a turn early. Coloured costs must be paid with that colour: Llanowar Elves and Elvish Mystic only make green, so the first land has to be a Forest, and your red for Goldspan Dragon must come from Mountains."
+   }
+  },
+  {
+   "id": "fast-3",
+   "type": "fast",
+   "level": "medium",
+   "title": "Feed the counterspell",
+   "mechanic": "Baiting a counterspell",
+   "premise": "You are on the play. The opponent is at 40 life with an empty board and holds cards you cannot see, one of them a piece of interaction. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 2.",
+   "onPlay": true,
+   "combo": true,
+   "seed": 13,
+   "deadline": 2,
+   "me": {
+    "life": 20,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Swamp",
+     "Lotus Petal",
+     "Ornithopter",
+     "Demonic Consultation",
+     "Thassa's Oracle",
+     "Blossoming Defense"
+    ]
+   },
+   "opp": {
+    "life": 40,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Force of Will",
+     "Dig Through Time"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Island"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Swamp"
+     },
+     {
+      "do": "cast",
+      "card": "Ornithopter"
+     },
+     {
+      "do": "cast",
+      "card": "Lotus Petal"
+     },
+     {
+      "do": "combo"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Mana first",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Ornithopter"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "No bait",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "You need three mana on turn 2 and you have two lands. Which card in your hand makes the third?",
+    "The opponent kept a blue card and has no lands, yet something of theirs can still be cast. What kind of spell works with no mana?",
+    "A counterspell stops the first spell it can. Which of your spells can you afford to lose, and when should it be cast?"
+   ],
+   "lesson": {
+    "mechanic": "Baiting a counterspell",
+    "rules": "A counterspell answers one spell. If you cast a cheap, unimportant spell first, an opponent who always counters the first spell it can (as the one in this puzzle does) spends it on the bait. Force of Will can be cast for free by exiling another blue card and paying 1 life, so it is live even when the opponent has no lands. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
+   }
+  },
+  {
+   "id": "fast-4",
+   "type": "fast",
+   "level": "medium",
+   "title": "Protect the mana",
+   "mechanic": "Spells that cannot be countered",
+   "premise": "You are on the play. The opponent is at 40 life with an empty board and holds cards you cannot see, one of them a piece of interaction. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 3.",
+   "onPlay": true,
+   "combo": true,
+   "seed": 14,
+   "deadline": 3,
+   "me": {
+    "life": 20,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Forest",
+     "Island",
+     "Swamp",
+     "Lotus Petal",
+     "Veil of Summer",
+     "Demonic Consultation",
+     "Thassa's Oracle"
+    ]
+   },
+   "opp": {
+    "life": 40,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Force of Will",
+     "Dig Through Time"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Forest"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Island"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Swamp"
+     },
+     {
+      "do": "cast",
+      "card": "Veil of Summer"
+     },
+     {
+      "do": "cast",
+      "card": "Lotus Petal"
+     },
+     {
+      "do": "combo"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Mana first",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Forest"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Veil of Summer"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "No protection",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Forest"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "You have three lands by turn 3 and the combo needs more mana than that. Which spell supplies it, and what can happen to that spell?",
+    "The opponent has a free answer available every turn. When is a spell of yours safe from it?",
+    "One card in your hand says something about countering. Read it, and think about what has to be on the table before the spell it protects."
+   ],
+   "lesson": {
+    "mechanic": "Spells that cannot be countered",
+    "rules": "Veil of Summer says spells you control cannot be countered this turn, but only from the moment it resolves, so it goes first: either it protects the spells after it, or the opponent spends the counterspell on Veil itself. Either way the Lotus Petal that pays for the combo resolves. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
+   }
+  },
+  {
+   "id": "fast-5",
+   "type": "fast",
+   "level": "hard",
+   "title": "Two counters, two baits",
+   "mechanic": "Baiting more than one answer",
+   "premise": "You are on the draw. The opponent is at 40 life with an empty board and five cards you cannot see. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 2.",
+   "onPlay": false,
+   "combo": true,
+   "seed": 15,
+   "deadline": 2,
+   "me": {
+    "life": 20,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Swamp",
+     "Lotus Petal",
+     "Ornithopter",
+     "Chrome Mox",
+     "Demonic Consultation",
+     "Thassa's Oracle"
+    ]
+   },
+   "opp": {
+    "life": 40,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Island",
+     "Force of Will",
+     "Counterspell",
+     "Dig Through Time"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Island"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Swamp"
+     },
+     {
+      "do": "cast",
+      "card": "Ornithopter"
+     },
+     {
+      "do": "cast",
+      "card": "Chrome Mox"
+     },
+     {
+      "do": "cast",
+      "card": "Lotus Petal"
+     },
+     {
+      "do": "combo"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "One bait only",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Ornithopter"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Mana first",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "cast",
+        "card": "Ornithopter"
+       },
+       {
+        "do": "cast",
+        "card": "Chrome Mox"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "The opponent has five cards and will have two lands on your turn 2. Count the answers it could have, not only the first one.",
+    "A free answer works from the start; a mana answer needs lands. Do your baits have to be the same card?",
+    "You hold two spells that cost nothing and do nothing for the combo. How many of them does it take?"
+   ],
+   "lesson": {
+    "mechanic": "Baiting more than one answer",
+    "rules": "When the opponent has several answers, count them and make each one trade with something less important. A free counter like Force of Will is live from the start, while a Counterspell needs two untapped Islands, which the opponent has by your second turn. Keep spells that do not matter for exactly this. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
+   }
+  },
+  {
+   "id": "fast-6",
+   "type": "fast",
+   "level": "hard",
+   "title": "Beat their mana",
+   "mechanic": "Counting the opponent's mana",
+   "premise": "You are on the draw. The opponent is at 40 life with an empty board and five cards you cannot see. Your hand holds a two-card combo, Demonic Consultation and Thassa's Oracle, that wins the game on the spot once you have the mana; press Go off and the autopilot plays it. Win by the end of your turn 2.",
+   "onPlay": false,
+   "combo": true,
+   "seed": 16,
+   "deadline": 2,
+   "me": {
+    "life": 20,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Swamp",
+     "Lotus Petal",
+     "Ornithopter",
+     "Demonic Consultation",
+     "Thassa's Oracle",
+     "Blossoming Defense"
+    ]
+   },
+   "opp": {
+    "life": 40,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Island",
+     "Island",
+     "Counterspell",
+     "Mana Drain",
+     "Dig Through Time"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "land",
+      "card": "Island"
+     },
+     {
+      "do": "cast",
+      "card": "Lotus Petal"
+     }
+    ],
+    [
+     {
+      "do": "land",
+      "card": "Swamp"
+     },
+     {
+      "do": "combo"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Everything on turn 2",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "The wrong land first",
+     "moves": [
+      [
+       {
+        "do": "land",
+        "card": "Swamp"
+       }
+      ],
+      [
+       {
+        "do": "land",
+        "card": "Island"
+       },
+       {
+        "do": "cast",
+        "card": "Lotus Petal"
+       },
+       {
+        "do": "combo"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Both of their counterspells need blue mana. Count how much blue mana the opponent can have on each of your turns.",
+    "The opponent is on the play, so it has played one land when your first turn starts. What does that land let it cast?",
+    "A card you cast when the opponent cannot answer it does not need a bait. Which card is that?"
+   ],
+   "lesson": {
+    "mechanic": "Counting the opponent's mana",
+    "rules": "Counterspell and Mana Drain each cost two blue mana, and the opponent only has one land on your first turn, so a spell cast then cannot be countered by either. Counting their mana tells you when their answers are live: here, the mana rock goes down on turn 1, and turn 2 is only the combo. The combo itself: Demonic Consultation names a card that is not in your library and exiles the whole library, then Thassa's Oracle enters with an empty library and wins. It finishes in one step, so the opponent can only stop the cards you cast before it."
+   }
+  },
+  {
+   "id": "end-1",
+   "type": "endgame",
+   "level": "easy",
+   "title": "Through the deathtouch",
+   "mechanic": "Trample and deathtouch",
+   "premise": "Turn 10, your main phase. You are at 20 life; the opponent is at 8 with three untapped blockers and no cards in hand. Win this turn.",
+   "onPlay": true,
+   "seed": 21,
+   "deadline": 1,
+   "me": {
+    "life": 20,
+    "turn": 9,
+    "land": "Mountain",
+    "lands": [
+     "Mountain",
+     "Mountain",
+     "Forest",
+     "Forest",
+     "Plains"
+    ],
+    "battlefield": [
+     "Wurmcoil Engine",
+     "Kenrith, the Returned King"
+    ],
+    "hand": []
+   },
+   "opp": {
+    "life": 8,
+    "turn": 9,
+    "land": "Island",
+    "lands": 3,
+    "battlefield": [
+     "Merfolk Mistbinder",
+     "Kiora's Follower",
+     "Elvish Mystic"
+    ],
+    "hand": []
+   },
+   "solution": [
+    [
+     {
+      "do": "ability",
+      "card": "Kenrith, the Returned King",
+      "i": 3
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Attack as you are",
+     "moves": [
+      [
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Ability that is not trample",
+     "moves": [
+      [
+       {
+        "do": "ability",
+        "card": "Kenrith, the Returned King",
+        "i": 0,
+        "picks": [
+         "Wurmcoil"
+        ]
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Count the damage that gets through if every blocker takes one attacker each. Is it enough?",
+    "Look at what each of Kenrith's abilities does, and when it has to happen so that blockers cannot simply absorb the damage.",
+    "Wurmcoil Engine has deathtouch. How much damage does an attacker with deathtouch need to put on each blocker to kill it?"
+   ],
+   "lesson": {
+    "mechanic": "Trample and deathtouch",
+    "rules": "A blocked creature without trample deals all its damage to the blockers. With trample, the attacker assigns lethal damage to each blocker and the rest to the player. Lethal damage for a deathtouch creature is just 1 per blocker, so Wurmcoil Engine with trample (from Kenrith) kills three chump blockers with 3 damage and tramples over for the other 3."
+   }
+  },
+  {
+   "id": "end-2",
+   "type": "endgame",
+   "level": "easy",
+   "title": "Dragons in pairs",
+   "mechanic": "Double strike",
+   "premise": "Turn 10, your main phase. You are at 12 life; the opponent is at 15 with one flying blocker and no cards in hand. Win this turn.",
+   "onPlay": true,
+   "seed": 22,
+   "deadline": 1,
+   "me": {
+    "life": 12,
+    "turn": 9,
+    "land": "Mountain",
+    "lands": [
+     "Mountain",
+     "Mountain",
+     "Forest",
+     "Forest",
+     "Mountain"
+    ],
+    "battlefield": [
+     "Atarka, World Render"
+    ],
+    "hand": [
+     "Goldspan Dragon",
+     "Blossoming Defense"
+    ]
+   },
+   "opp": {
+    "life": 15,
+    "turn": 9,
+    "land": "Island",
+    "lands": 3,
+    "battlefield": [
+     "Ornithopter"
+    ],
+    "hand": []
+   },
+   "solution": [
+    [
+     {
+      "do": "cast",
+      "card": "Goldspan Dragon"
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Attack with Atarka alone",
+     "moves": [
+      [
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Pump instead of a second dragon",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Blossoming Defense",
+        "picks": [
+         "Atarka"
+        ]
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Atarka alone is not enough. What in your hand can add damage this turn, and can it attack?",
+    "Read Atarka's ability: which creatures does it affect, and when?",
+    "A creature with double strike deals its damage twice. Which of your creatures would count?"
+   ],
+   "lesson": {
+    "mechanic": "Double strike",
+    "rules": "Atarka says whenever a Dragon you control attacks, it gains double strike until end of turn. Double strike means a creature deals combat damage twice (once in the first-strike step, once in the regular step), so Atarka deals 12 and a hasty Goldspan Dragon deals 8. Cast the haste Dragon before attacking so that it is attacking when the trigger happens."
+   }
+  },
+  {
+   "id": "end-3",
+   "type": "endgame",
+   "level": "medium",
+   "title": "Pump the hydra",
+   "mechanic": "Spell order against a counterspell",
+   "premise": "Turn 10, your main phase. You are at 12 life; the opponent is at 11 with a deathtouch blocker and two untapped Islands, and holds one card you cannot see. Win this turn.",
+   "onPlay": true,
+   "seed": 23,
+   "deadline": 1,
+   "me": {
+    "life": 12,
+    "turn": 9,
+    "land": "Forest",
+    "lands": 5,
+    "battlefield": [
+     "Kalonian Hydra"
+    ],
+    "hand": [
+     "Berserk",
+     "Blossoming Defense"
+    ]
+   },
+   "opp": {
+    "life": 11,
+    "turn": 9,
+    "land": "Island",
+    "lands": 2,
+    "hand": [
+     "Counterspell"
+    ],
+    "battlefield": [
+     "Bilious Skulldweller"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "cast",
+      "card": "Blossoming Defense",
+      "picks": [
+       "Kalonian Hydra"
+      ]
+     },
+     {
+      "do": "cast",
+      "card": "Berserk"
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Berserk first",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Berserk"
+       },
+       {
+        "do": "cast",
+        "card": "Blossoming Defense",
+        "picks": [
+         "Kalonian Hydra"
+        ]
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "No pump",
+     "moves": [
+      [
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "Work out how much damage the Hydra deals without help, and whether the blocker matters.",
+    "The opponent has two Islands open and one unseen card. What does a blue deck do with two open Islands?",
+    "You hold two spells. Does the order you cast them in matter?"
+   ],
+   "lesson": {
+    "mechanic": "Spell order against a counterspell",
+    "rules": "Kalonian Hydra doubles its +1/+1 counters when it attacks, and Berserk adds its power again and gives trample, so it tramples over the deathtouch blocker for lethal. The opponent's counterspell will answer the first spell it can, so lead with the spell you can afford to lose and keep Berserk for second."
+   }
+  },
+  {
+   "id": "end-4",
+   "type": "endgame",
+   "level": "medium",
+   "title": "Clear the way",
+   "mechanic": "Removing a blocker before combat",
+   "premise": "Turn 10, your main phase. You are at 12 life; the opponent is at 5 with one flying blocker, and holds two cards you cannot see, one of them a piece of interaction. Win this turn.",
+   "onPlay": true,
+   "seed": 24,
+   "deadline": 1,
+   "me": {
+    "life": 12,
+    "turn": 9,
+    "land": "Mountain",
+    "lands": [
+     "Mountain",
+     "Mountain",
+     "Plains"
+    ],
+    "battlefield": [
+     "Goldspan Dragon"
+    ],
+    "hand": [
+     "Lightning Bolt",
+     "Swords to Plowshares"
+    ]
+   },
+   "opp": {
+    "life": 5,
+    "turn": 9,
+    "land": "Island",
+    "lands": 0,
+    "hand": [
+     "Force of Will",
+     "Dig Through Time"
+    ],
+    "battlefield": [
+     "Ornithopter"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "cast",
+      "card": "Lightning Bolt",
+      "picks": [
+       "Ornithopter"
+      ]
+     },
+     {
+      "do": "cast",
+      "card": "Swords to Plowshares",
+      "picks": [
+       "Ornithopter"
+      ]
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Just attack",
+     "moves": [
+      [
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "One removal spell",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Lightning Bolt",
+        "picks": [
+         "Ornithopter"
+        ]
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "The Dragon's damage is lethal if nothing blocks it. What can block it?",
+    "You have removal for the blocker. What could happen to a spell you cast on it?",
+    "You do not know what the opponent holds, but you hold two answers. What does a second answer do for you?"
+   ],
+   "lesson": {
+    "mechanic": "Removing a blocker before combat",
+    "rules": "Blockers are chosen after attackers, so a blocker has to be removed in the main phase before attacking. A creature with flying can only be blocked by a creature with flying or reach, which is why the Ornithopter matters. Holding two answers means a single counterspell cannot stop both: the first is countered, the second resolves."
+   }
+  },
+  {
+   "id": "end-5",
+   "type": "endgame",
+   "level": "hard",
+   "title": "Count their counters",
+   "mechanic": "Baiting two counterspells with limited mana",
+   "premise": "Turn 10, your main phase. You are at 12 life; the opponent is at 11 with a deathtouch blocker and two untapped Islands, and holds four cards you cannot see. Win this turn.",
+   "onPlay": true,
+   "seed": 25,
+   "deadline": 1,
+   "me": {
+    "life": 12,
+    "turn": 9,
+    "land": "Forest",
+    "lands": 4,
+    "battlefield": [
+     "Kalonian Hydra"
+    ],
+    "hand": [
+     "Berserk",
+     "Blossoming Defense",
+     "Worldly Tutor",
+     "Harmonize"
+    ]
+   },
+   "opp": {
+    "life": 11,
+    "turn": 9,
+    "land": "Island",
+    "lands": 2,
+    "hand": [
+     "Force of Will",
+     "Dig Through Time",
+     "Counterspell",
+     "Island"
+    ],
+    "battlefield": [
+     "Bilious Skulldweller"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "cast",
+      "card": "Blossoming Defense",
+      "picks": [
+       "Kalonian Hydra"
+      ]
+     },
+     {
+      "do": "cast",
+      "card": "Worldly Tutor"
+     },
+     {
+      "do": "cast",
+      "card": "Berserk"
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "One bait only",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Blossoming Defense",
+        "picks": [
+         "Kalonian Hydra"
+        ]
+       },
+       {
+        "do": "cast",
+        "card": "Berserk"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "An expensive bait",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Harmonize"
+       },
+       {
+        "do": "cast",
+        "card": "Berserk"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "The opponent has four cards and two open Islands. How many of them could stop a spell right now?",
+    "You have four mana. Add up what your baits and your key spell cost.",
+    "Harmonize draws cards, but this turn the question is how few mana a bait can cost."
+   ],
+   "lesson": {
+    "mechanic": "Baiting two counterspells with limited mana",
+    "rules": "Force of Will (free, by exiling a blue card and paying 1 life) and Counterspell (UU) each answer one spell, so two counters need two baits before the spell that matters. With only four mana, the baits have to be your cheapest spells: Blossoming Defense and Worldly Tutor cost one each, leaving one for Berserk."
+   }
+  },
+  {
+   "id": "end-6",
+   "type": "endgame",
+   "level": "hard",
+   "title": "On the stack",
+   "mechanic": "Responding on the stack",
+   "premise": "Turn 10, your main phase. You are at 12 life; the opponent is at 11 with a deathtouch blocker and two untapped Plains, and holds four cards you cannot see. Win this turn.",
+   "onPlay": true,
+   "seed": 26,
+   "deadline": 1,
+   "me": {
+    "life": 12,
+    "turn": 9,
+    "land": "Forest",
+    "lands": 5,
+    "battlefield": [
+     "Kalonian Hydra"
+    ],
+    "hand": [
+     "Berserk",
+     "Blossoming Defense",
+     "Vines of Vastwood"
+    ]
+   },
+   "opp": {
+    "life": 11,
+    "turn": 9,
+    "land": "Plains",
+    "lands": 2,
+    "hand": [
+     "Swords to Plowshares",
+     "Path to Exile",
+     "Plains",
+     "Dig Through Time"
+    ],
+    "battlefield": [
+     "Bilious Skulldweller"
+    ]
+   },
+   "solution": [
+    [
+     {
+      "do": "cast",
+      "card": "Berserk",
+      "picks": [
+       "Kalonian Hydra"
+      ],
+      "resp": [
+       "Vines of Vastwood",
+       "Blossoming Defense"
+      ]
+     },
+     {
+      "do": "attack",
+      "who": "all"
+     }
+    ]
+   ],
+   "wrong": [
+    {
+     "name": "Protection first, pump second",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Blossoming Defense",
+        "picks": [
+         "Kalonian Hydra"
+        ]
+       },
+       {
+        "do": "cast",
+        "card": "Berserk"
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    },
+    {
+     "name": "Pump with no answer",
+     "moves": [
+      [
+       {
+        "do": "cast",
+        "card": "Berserk",
+        "picks": [
+         "Kalonian Hydra"
+        ]
+       },
+       {
+        "do": "attack",
+        "who": "all"
+       }
+      ]
+     ]
+    }
+   ],
+   "hints": [
+    "The Hydra is your whole turn. What are two open white mana for?",
+    "Spells resolve last in, first out. If the opponent answers your spell, can you answer their answer?",
+    "You hold two cards that make a creature untargetable. Do you need them before or after the opponent acts?"
+   ],
+   "lesson": {
+    "mechanic": "Responding on the stack",
+    "rules": "Spells and abilities go on the stack and resolve last in, first out, and either player can respond while one is waiting. When the opponent targets the Hydra with Swords to Plowshares in response to Berserk, a spell that gives hexproof resolves first, so Swords has no legal target and does nothing. Protecting in advance, before the opponent has acted, only draws the removal at the protection spell and leaves you with nothing to respond with."
+   }
+  }
+ ]
+}

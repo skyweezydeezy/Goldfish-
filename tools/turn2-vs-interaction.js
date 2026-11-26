@@ -4,7 +4,7 @@
 // interaction package of tools/lib/turn2.js, with the autopilot playing the combo, and counts the wins that are still turn-2 wins.
 //   node tools/turn2-vs-interaction.js            the table (markdown), naive autopilot line
 //   node tools/turn2-vs-interaction.js --best     adds "with best play": the share a person can still win, from goldfish/static/turn2-puzzles.json
-//                                                 (built by tools/build-turn2-puzzles.js, which searches the person's choices)
+//                                                 (removed in T-115: without that file the option prints a note)
 //   node tools/turn2-vs-interaction.js --json     the numbers as JSON
 // The opponent's package is revealed and it has one habit: it uses its counterspell or removal on the first spell or creature it legally can.
 // The opponent's own two turns are played by the engine's autopilot (it draws Wastes and plays them), so what it holds never changes.

@@ -729,6 +729,15 @@
    "learnedVs": "field"
   },
   {
+   "file": "winota.txt",
+   "name": "Winota (Winota, Joiner of Forces)",
+   "commanders": [
+    "Winota, Joiner of Forces"
+   ],
+   "colors": "WR",
+   "cards": 100
+  },
+  {
    "file": "zimone-infinite-analyst.txt",
    "name": "Zimone, Infinite Analyst",
    "commanders": [

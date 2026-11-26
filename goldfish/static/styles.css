@@ -1274,17 +1274,6 @@ details.fold > summary:hover b { color: var(--ice-2, #d6f1ff); }
 .settings-more .row { margin: 10px 0 0; }
 
 /* Display → Spacing (app.js): Compact fits more on a screen; Roomy has bigger text and more air */
-body.dense-compact { font-size: 13px; }
-body.dense-compact main { padding-top: 10px; }
-body.dense-compact .card-box { padding: 10px 12px; margin-bottom: 10px; }
-body.dense-compact .tiles, body.dense-compact .two-col { gap: 10px; }
-body.dense-compact .tile .val { font-size: 22px; }
-body.dense-compact .topbar { padding-top: 6px; padding-bottom: 6px; }
-body.dense-roomy { font-size: 15.5px; }
-body.dense-roomy h2 { font-size: 17px; }
-body.dense-roomy h3, body.dense-roomy .hint, body.dense-roomy label { font-size: 14px; }
-body.dense-roomy .card-box { padding: 18px 20px; margin-bottom: 18px; }
-body.dense-roomy .tiles, body.dense-roomy .two-col { gap: 18px; }
 
 /* ---- the battle scene under a progress bar while games run (battle.js): flavour only, transforms only ---- */
 .battle { position: relative; width: 100%; max-width: 360px; height: 42px; margin: 2px 0 8px; border-radius: 8px; overflow: hidden; pointer-events: none;

@@ -369,3 +369,9 @@
 .vs-outbar button { min-height: 40px; }
 
 .speed-bar[hidden] { display: none !important; }          /* a game against a person has a fixed pace (versus.js slowOf) */
+
+/* the turn clock in the game's top bar (versus.js tickClock) */
+.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; }
+.vs-clock.still { opacity: .6; }
+.vs-clock.low { background: #c0392b; color: #fff; opacity: 1; }
+.vs-clock[hidden] { display: none; }

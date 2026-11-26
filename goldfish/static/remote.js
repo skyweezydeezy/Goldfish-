@@ -195,6 +195,7 @@
   function cleanSetup(s) {
     if (!s || !Array.isArray(s.decks) || s.decks.length !== 2 || !Array.isArray(s.names) || s.names.length !== 2) throw new Error('the game it sent is not a 1v1');
     const o = s.opts && typeof s.opts === 'object' ? JSON.parse(JSON.stringify(s.opts)) : {};
+    o.turnTimer = o.turnTimer !== false;                     // the inviter's Turn timer setting is the game's
     o.turns = Math.max(5, Math.min(40, +o.turns || 25)); o.onPlay = false;
     return { seed: (+s.seed >>> 0), first: s.first === 1 ? 1 : 0, names: s.names.map(cleanName), decks: s.decks.map(cleanDeck), opts: o };
   }
@@ -513,6 +514,7 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       else status(m.why ? 'The other device ended the connection: ' + str(m.why, 300) : 'The other device left.');
       try { S.link.pc.close(); } catch (e) {} return;
     }
+    if (m.t === 'clock') { if (S.game && !S.game.ended && V.clockIn) V.clockIn(MODE, m); return; }
     if (m.t === 'rematch') return onRematch(m);
     if (m.t === 'rematch-yes') return onRematchYes(m);
     if (m.t === 'rematch-no') return onRematchNo();
@@ -663,7 +665,7 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       connected: () => (S.shownOn = connected()),
     };
     g.end = { asked: 0, askDeck: null, incoming: null, note: '', peerChoosing: false, choosing: false, left: false, yes: 0 };
-    Object.assign(io, { end: g.end, rematch: () => offerRematch(g), answerRematch: y => answerRematch(g, y), choose: () => chooseDeck(g), leave: () => leaveGame(g) });
+    Object.assign(io, { clock: m => raw(Object.assign({ t: 'clock' }, m)), end: g.end, rematch: () => offerRematch(g), answerRematch: y => answerRematch(g, y), choose: () => chooseDeck(g), leave: () => leaveGame(g) });
     g.io = io;
     document.querySelector('[data-tab=duel]').click();
     const gm = V.startRemote(MODE, Object.assign({}, setup, { local }), io);

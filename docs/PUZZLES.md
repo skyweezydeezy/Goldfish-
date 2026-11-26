@@ -26,16 +26,18 @@ A wrong play plays out. The game ends when the deadline turn is over, when you a
 |---|---|---|---|---|
 | fast-1 | fast / easy | Rocks before the dragon | mana sequencing | Sol Ring, Chrome Mox (imprint the right card), Goldspan Dragon's Treasure for a Bolt after combat |
 | fast-2 | fast / easy | Dorks and colours | summoning sickness, coloured mana | Llanowar Elves, Elvish Mystic, Goldspan Dragon |
-| fast-3 | fast / medium | Feed the counterspell | baiting a counterspell | hidden Force of Will, Ornithopter as the bait |
-| fast-4 | fast / medium | Protect the dragon | spells that cannot be countered | hidden Counterspell, Veil of Summer |
-| fast-5 | fast / hard | Two counters, two baits | baiting more than one answer | hidden Force of Will + Counterspell, Ornithopter and Lotus Petal as baits |
-| fast-6 | fast / hard | Out of reach | shroud against removal | hidden Swords to Plowshares, Lightning Greaves on Bloated Contaminator |
+| fast-3 | fast / medium | Feed the counterspell | baiting a counterspell | Demonic Consultation + Thassa's Oracle (opponent at 40), hidden Force of Will, Ornithopter as the bait |
+| fast-4 | fast / medium | Protect the mana | spells that cannot be countered | the Oracle combo, hidden Force of Will, Veil of Summer before the Lotus Petal |
+| fast-5 | fast / hard | Two counters, two baits | baiting more than one answer | on the draw, hidden Force of Will + Counterspell, Ornithopter and Chrome Mox as baits |
+| fast-6 | fast / hard | Beat their mana | counting the opponent's mana | on the draw, hidden Counterspell + Mana Drain: the Lotus Petal goes down on turn 1, before they have two lands |
 | end-1 | endgame / easy | Through the deathtouch | trample and deathtouch | Wurmcoil Engine, Kenrith's {R}: trample |
 | end-2 | endgame / easy | Dragons in pairs | double strike | Atarka, World Render, hasty Goldspan Dragon |
 | end-3 | endgame / medium | Pump the hydra | spell order against a counterspell | Kalonian Hydra, Berserk, hidden Counterspell |
 | end-4 | endgame / medium | Clear the way | removing a blocker before combat | Lightning Bolt + Swords vs a hidden Force of Will |
 | end-5 | endgame / hard | Count their counters | baiting two counterspells with limited mana | four mana, two cheap baits, Berserk |
 | end-6 | endgame / hard | On the stack | responding on the stack | Berserk on the stack, Vines of Vastwood and Blossoming Defense against two removal spells |
+
+**Opponent life (user's "mix both", 2026-11-26):** the easy fast wins keep a low starting life (7 and 4, shown on screen). The medium and hard fast wins start the opponent at 40 and win by the Thassa's Oracle combo (the **Go off** button: the autopilot plays the main phase and the combo; its finish is one step the opponent cannot answer, so the puzzle is in what you cast before it). Endgames are unchanged.
 
 Every card is `full` in the engine's coverage (the test checks it) and almost all come from the built-in decks.
 
@@ -50,6 +52,6 @@ Every card is `full` in the engine's coverage (the test checks it) and almost al
 
 1. **Combat is atomic.** `D.turn.combat` declares attackers and blocks and deals damage in one call, so a person cannot cast a trick after blockers. The puzzles therefore use what happens before combat (removal, protection, evasion, haste, trample). "Pump after blocks" is not a puzzle yet.
 2. **Removal in response to a creature spell is wasted by the engine's opponent**: with Swords to Plowshares in hand it casts it in response to the creature spell (no target yet), where a real player would wait. It uses removal properly at the end of your turn (see fast-6) and in response to a spell that targets a creature (end-6).
-3. **A tax counter (Mana Tithe) looked unreliable**: after I paid, it was still in the opponent's hand in the run I tried, so tax counters are not used as the hidden piece (worth a look by the engine session).
+3. **Mana Tithe (sim.js, not changed):** when the person can pay the {1}, the opponent's Tithe is neither cast nor spent: it stays in its hand and its Plains stays untapped (a one-spell run: Sol Ring with a spare land). So tax counters are not used as the hidden piece.
 4. Blightsteel Colossus (twelve mana) fills the libraries, so draws are dead cards and never change a puzzle.
 5. Multi-turn endgames are chaotic (the opponent steals a lifelinker with Hellkite Tyrant and so on); the endgames here are one turn.

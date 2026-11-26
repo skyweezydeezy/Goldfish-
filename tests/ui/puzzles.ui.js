@@ -87,11 +87,18 @@ const KEY = 'isf_puzzle2';
   await cast('Mountain'); await cast('Goldspan Dragon'); await attackAll();
   await p.waitForSelector('.pz-banner', { timeout: 30000 });
   check('the three-turn line wins on turn 3', await p.$eval('.pz-banner', e => e.classList.contains('win')));
-  check('the best streak and progress are kept in localStorage', await p.evaluate(k => { const s = JSON.parse(localStorage.getItem(k)); return s && s.solved['end-2'] && s.solved['fast-2'] && s.best >= 2; }, KEY));
+  // ---- a medium fast win from the 40-life set: the combo, a bait and Go off
+  await p.click('.pz-list'); await p.waitForSelector('.pz-pick'); await open('fast-3');
+  check('a medium fast win starts the opponent at 40 and offers Go off', await p.$eval('[data-life=opp]', e => /40 life/.test(e.textContent)) && await p.$('.pz-combo') !== null);
+  await cast('Island'); await p.click('.pz-pass'); await settle();
+  await cast('Swamp'); await cast('Ornithopter'); await cast('Lotus Petal'); await p.click('.pz-combo'); await settle();
+  await p.waitForSelector('.pz-banner', { timeout: 30000 });
+  check('bait, rock, Go off: the combo wins against the hidden Force of Will', await p.$eval('.pz-banner', e => e.classList.contains('win')));
+  check('the best streak and progress are kept in localStorage', await p.evaluate(k => { const s = JSON.parse(localStorage.getItem(k)); return s && s.solved['end-2'] && s.solved['fast-2'] && s.solved['fast-3'] && s.best >= 3; }, KEY));
   check('no page errors on the desktop', errs.length === 0, errs.join(' | '));
   await p.reload(); await p.waitForFunction(() => window.ISFPuzzle, null, { timeout: 60000 });
   await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-pick');
-  check('after a reload the solved puzzles are still ticked', await p.$$eval('.pz-pick.solved', xs => xs.length) === 2);
+  check('after a reload the solved puzzles are still ticked', await p.$$eval('.pz-pick.solved', xs => xs.length) === 3);
   await ctx.close();
 
   // ---- iPhone and iPad: the picker and a puzzle fit the screen, the buttons are reachable

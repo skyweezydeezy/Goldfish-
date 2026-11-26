@@ -179,6 +179,7 @@
       if (P.atk) {
         items.push(`<button type="button" class="primary pz-decl" ${me && P.atkSel.size ? '' : 'disabled'}>Declare attack (${P.atkSel.size})</button>`, `<button type="button" class="ghost pz-all" ${me && attackers.length ? '' : 'disabled'}>Attack with all</button>`, '<button type="button" class="ghost pz-cancel">Cancel</button>');
       } else {
+        if (pz.combo) items.push(`<button type="button" class="pz-combo" ${me ? '' : 'disabled'} title="The autopilot plays the rest of your main phase, and the combo when it is ready">Go off</button>`);
         items.push(`<button type="button" class="pz-atk" ${me && attackers.length ? '' : 'disabled'} title="Choose which creatures attack">Attack…</button>`);
         items.push(`<button type="button" class="ghost pz-pass" ${me ? '' : 'disabled'}>End turn</button>`);
         items.push('<button type="button" class="ghost pz-giveup">Give up</button>');
@@ -190,6 +191,7 @@
       const decl = bar.querySelector('.pz-decl'); if (decl) decl.onclick = () => { const ids = [...P.atkSel]; run(gs => D.turn.combat(gs[0], { attackers: ids })); };
       const all = bar.querySelector('.pz-all'); if (all) all.onclick = () => { const ids = attackers.map(p => p.iid); run(gs => D.turn.combat(gs[0], { attackers: ids })); };
       const cn = bar.querySelector('.pz-cancel'); if (cn) cn.onclick = () => { P.atk = false; P.atkSel = new Set(); render(); };
+      const cb = bar.querySelector('.pz-combo'); if (cb) cb.onclick = () => run(gs => D.turn.main1(gs[0]));
       const ps = bar.querySelector('.pz-pass'); if (ps) ps.onclick = endTurn;
       const gv = bar.querySelector('.pz-giveup'); if (gv) gv.onclick = () => { try { C && C.close(); } catch (e) { /* none */ } finish('lose', true); };
     } else {

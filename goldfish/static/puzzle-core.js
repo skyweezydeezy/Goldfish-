@@ -192,6 +192,7 @@
         mv._used = null;
         return who.length ? D.turn.combat(g, { attackers: who.map(p => p.iid) }) : null;
       };
+      case 'combo': return gs => D.turn.main1(gs[0]);          // the autopilot plays the rest of the main phase: its lands, its spells and the combo when it is assembled (the finish is one step)
       default: return null;
     }
   }

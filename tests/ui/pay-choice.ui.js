@@ -75,6 +75,32 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.click('.ch-sheet.pay .ch-ok');
   const t = await done();
   check('the Treasure is gone, the Island is still untapped', !/Treasure/.test(t) && /\|Island$/.test(t), t);
+  // 4. T-099: the Rhystic Study tax ("unless that player pays {1}"): paying it opens the pay sheet for the {1}; the sheet starts on the payment that wastes nothing
+  await p.evaluate(() => {
+    const G = window.Goldfish, D = window.Decide; let uid = 100;
+    const mk = (name, type, cost, text, extra) => Object.assign({ uid: 'c' + (uid++), name, mana_cost: cost, cmc: (cost.match(/\{[^}]+\}/g) || []).length, type_line: type, oracle_text: text, power: null, toughness: null, colors: [], color_identity: [], keywords: [], images: [], remote_images: [], faces: [], qty: 1 }, extra || {});
+    const CARDS = [mk('Plains', 'Basic Land — Plains', '', '{T}: Add {W}.', { produced_mana: ['W'] }), mk('Island', 'Basic Land — Island', '', '{T}: Add {U}.', { produced_mana: ['U'] }),
+      mk('Test Pebble', 'Artifact', '{1}', ''),
+      mk('Rhystic Study', 'Enchantment', '{2}{U}', 'Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.', { colors: ['U'] })];
+    for (let i = 0; i < 40; i++) CARDS.push(mk('Island' + i, 'Basic Land — Island', '', '{T}: Add {U}.', { produced_mana: ['U'] }));
+    const O = { turns: 25, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40 };
+    const pod = G.newPod([G.buildDeck(CARDS, []), G.buildDeck(CARDS, [])], [O, O], 5, ['a', 'b'], 0), g = pod.games[0], b2 = pod.games[1];
+    pod.games.forEach(x => { x.turn = 6; x.hand = []; x.battlefield = []; x.command = []; x.floating = []; }); D.seat(g);
+    const put = (gg, n) => { const q = G.enterWithTriggers(gg, { iid: gg.nextIid++, card: gg.deck.unique.find(c => c.name === n) }, {}, []); q.sick = false; q.tapped = false; q.enteredTurn = 1; return q; };
+    put(g, 'Plains'); put(g, 'Plains'); put(g, 'Island'); put(g, 'Island'); put(b2, 'Rhystic Study');
+    const sp = { iid: g.nextIid++, card: g.deck.unique.find(c => c.name === 'Test Pebble') }; g.hand.push(sp);
+    window.__asked = []; window.__done = null; window.__g = g;
+    window.__r = D.resolve(pod.games, 0, gs => G.castCard(gs[0], gs[0].hand.find(i => i.iid === sp.iid)), q => { window.__asked.push(q.kind + (q.pay ? ':' + q.pay.text : '')); return q.kind === 'resolve' ? 'none' : window.__isfChoices.ask(q); }).then(() => { window.__done = g.battlefield.filter(x => x.tapped).length; });
+  });
+  await sheet(); await p.click('.ch-sheet.pay .ch-auto');                                                  // the {1} of the Pebble
+  await p.waitForSelector('.ch-sheet.tax', { timeout: 10000 }).catch(async e => { console.log('ASKED', await p.evaluate(() => window.__asked.join(',')), await p.evaluate(() => [...document.querySelectorAll('.ch-sheet')].map(x => x.className).join('|'))); throw e; });
+  check('the Rhystic Study tax is asked: Pay {1} or not', /Rhystic Study: pay \{1\}/.test(await p.textContent('.ch-sheet.tax .ch-title')), await p.textContent('.ch-sheet.tax .ch-title'));
+  await p.click('.ch-sheet.tax .ch-opt:has-text("Pay {1}")'); await p.click('.ch-sheet.tax .ch-ok');
+  await sheet();
+  check('paying the tax opens the pay sheet for the {1}', /pay \{1\}/i.test(await p.textContent('.ch-sheet.pay .ch-title')) && (await p.$$('.ch-paychip')).length >= 2, await p.textContent('.ch-sheet.pay .ch-title'));
+  await p.click('.ch-sheet.pay .ch-auto');
+  await p.waitForFunction(() => window.__done !== null, null, { timeout: 10000 });
+  check('the tax was paid: two lands are tapped (one for the Pebble, one for the tax)', (await p.evaluate(() => window.__done)) === 2, await p.evaluate(() => window.__asked.join(',')));
   check('no page errors', errs.length === 0, errs.slice(0, 3).join(' || '));
   await b.close();
   console.log('\n' + pass + ' passed, ' + fail + ' failed');

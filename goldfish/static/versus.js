@@ -1032,7 +1032,7 @@
     }
     const units = G.allUnits(g).length;
     const now = gm.attackNow && gm.games[gm.attackNow.def] ? A.attackSum(g, gm.attackNow.iids.map(id => g.battlefield.find(p => p.iid === id)).filter(Boolean), gm.games[gm.attackNow.def]) : null;
-    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
+    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>${(() => { const fl = G.floatingLoss(g).n; return fl ? ` <span class="mana-warn" role="status" title="Floating mana is lost when the turn ends">⚠ ${fl} floating: lost at the end of the turn</span>` : ''; })()}. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
       ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
@@ -1239,7 +1239,7 @@
         gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
         return render(mode);
       }
-      if (hit('vs-end')) return input(mode, 'end', false);
+      if (hit('vs-end')) { const fl = G.floatingLoss(g).n; if (fl && window.__isfPayChoose !== false && !confirm(`${fl} floating mana will be lost when the turn ends. End the turn anyway?`)) return; return input(mode, 'end', false); }          // T-099
       if (hit('vs-autoturn') && gm.remote == null) return input(mode, 'end', true);
     });
   }

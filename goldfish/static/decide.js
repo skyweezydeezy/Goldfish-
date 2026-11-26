@@ -135,7 +135,7 @@
   }
   // T-080: "<spell> ... unless that player pays {N}" (Rhystic Study, Smothering Tithe, Mystic Remora, Esper Sentinel, Mana Leak): what happens when you do not pay
   const taxThen = (d, g, m) => String(d.then || 'it takes effect').replace('{who}', d.owner && m && m.names ? m.names[d.owner.pid] : 'The opponent');
-  const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
+  const HOW = { mana: 'counter it: pay its mana cost', free: 'counter it: free', daze: 'counter it: return an Island to your hand', pitch: 'counter it: exile a card from your hand', pitchX: 'counter it: exile a blue card with that mana value', cleave: 'counter it: cleaved', respond: 'in response: it resolves first' };
   // What the engine is about to choose, as plain data the page can show: the options (with the card to draw for each), the autopilot's
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
@@ -206,7 +206,7 @@
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
       else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
-      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : (HOW[o.how] || '') + (o.free && o.how === 'respond' ? ' (free: you control a commander)' : ''); }
+      else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitchX' ? `counter it (X is its mana value): exile ${o.pitch.card.name}` : o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : (HOW[o.how] || '') + (o.free && o.how === 'respond' ? ' (free: you control a commander)' : ''); }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
       else if (d.kind === 'combo') { item.name = o.label; item.note = o.note || ''; item.id = o.id; }

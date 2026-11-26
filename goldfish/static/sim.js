@@ -803,9 +803,12 @@
       }
       // ---- rules batch 74: the top-5000 pool (one card each)
       if (a.isInstantSorcery) {
+        if (/^each creature gets twice -x\/-x until end of turn\. each player gets x rad counters\.?$/i.test(line)) { a.spellFx.push({ type: 'xShrink', mult: 2 }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Nuclear Fallout (approx: creatures that survive are not shrunk, and rad counters are not kept)
         if (/^look at the top x cards of your library, where x is the number of lands you control\. put one of those cards into your hand\. if (?:this spell|~) was kicked, put two of those cards into your hand instead\. put the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.spellFx.push({ type: 'kickSwap', base: [{ type: 'lookTake', look: 'LANDS', take: 1 }], kick: [{ type: 'lookTake', look: 'LANDS', take: 2 }] }); rec.status = 'ok'; continue; }          // Consult the Star Charts
       }
       { let bm;
+        if (/^whenever a permanent you control is put into a graveyard, you get \{e\}\s*\.?$/i.test(line)) { a.marvelE = true; rec.status = 'ok'; continue; }          // Aetherworks Marvel
+        if (/^whenever another permanent you control is put into a graveyard from the battlefield, if it had one or more counters on it, you may put that number of \+1\/\+1 counters on target creature\.?$/i.test(line)) { a.yunaCounters = true; rec.status = 'ok'; continue; }          // Yuna, Grand Summoner
         if (/^at the beginning of each combat, choose first strike, vigilance, or lifelink\. creatures you control gain that ability until end of turn\.?$/i.test(line)) { a.triggers.push({ kinds: ['combat'], fx: [{ type: 'skirmisher' }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Angelic Skirmisher (approx: your combat only; vigilance is never chosen)
         if (/^escalate—tap an untapped creature you control\.?$/i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Collective Effort (approx: the spell is played with its one best mode)
         if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
@@ -4388,6 +4391,8 @@
         for (const q of (tableHas(g, 'enchDiesDraw') ? g.battlefield : NONE)) if (q.card.a.enchDiesDraw && q.attachedTo === p.iid && g.library.length) draw(g, 1, ev || []);          // Sticky Fingers
       }          // Unstoppable Slasher
     }
+    if (!g.dry && dest == null && tableHas(g, 'marvelE')) for (const q of g.battlefield.slice()) if (q.card.a.marvelE && !q.phased) applyEffects(g, [{ type: 'energy', n: 1 }], q, ev || [], null);          // rules batch 75: Aetherworks Marvel (a permanent you control is put into a graveyard: {E})
+    if (!g.dry && dest == null && tableHas(g, 'yunaCounters')) { const nc = Math.abs(p.counters || 0) + Object.values(p.other || {}).reduce((t, v) => t + (v > 0 ? v : 0), 0) + (p.loyalty > 0 ? p.loyalty : 0); if (nc > 0) for (const q of g.battlefield.slice()) if (q.card.a.yunaCounters && q !== p && !q.phased) { const t = counterTarget(g, {}, null); if (t) addCounters(g, t, '+1/+1', nc, ev || [], q); } }          // rules batch 75: Yuna, Grand Summoner (another permanent with counters goes to a graveyard: that many +1/+1 counters on your best creature)
     if (!g.dry && dest == null && enchOn(g, p)) for (const q of (tableHas(g, 'enchGrave') ? g.battlefield : NONE)) if (q.card.a.enchGrave && q !== p) addCounters(g, q, '+1/+1', 1, ev || [], q);          // Starfield Mystic
     if (!g.dry && isCreaturePerm(p) && g.killTurn == null) for (const os of g.battlefield) if (os.siegeMode === 'dragons') damageOpp(g, 1, ev || [], os);          // Outpost Siege (Dragons): any creature of yours leaving
     if (!g.dry && dest == null && isCreaturePerm(p)) {
@@ -7465,7 +7470,7 @@
           ev.push({ type: 'note', text: `Their creatures get -${sk}/-${sk}: ${dead.length} die`, source });
         } break;
         case 'xShrink': {                                                                                      // The Meathook Massacre: each creature gets -X/-X
-          const X = g.xValue || 1;
+          const X = (g.xValue || 1) * (f.mult || 1);          // rules batch 75: Nuclear Fallout (twice -X/-X)
           const mine = g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= X), theirs = g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g.opp, q) <= X) : [];
           theirs.forEach(q => leavePerm(g.opp, q, ev)); mine.forEach(q => leavePerm(g, q, ev)); if (g.opp) flushLeaves(g.opp, ev);
           ev.push({ type: 'note', text: `Each creature gets -${X}/-${X}: ${mine.length} of yours and ${theirs.length} of theirs die`, source });

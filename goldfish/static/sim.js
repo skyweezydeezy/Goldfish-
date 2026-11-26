@@ -816,6 +816,19 @@
         if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
         if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
       }
+      // ---- rules batch 79: dice (rollDice) and result tables
+      { let bm;
+        if (/^if you would roll one or more dice, instead roll that many dice plus one and ignore the lowest roll\.?$/i.test(line)) { a.rollPlus = true; rec.status = 'ok'; continue; }          // Wyll, Blade of Frontiers; Barbarian Class (level 1)
+        if (/^whenever you roll one or more dice, put a \+1\/\+1 counter on ~\.?$/i.test(line)) { a.rollTrig = true; a.triggers.push({ kinds: ['rolled'], fx: [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'self' }], text: raw }); rec.status = 'ok'; continue; }          // Wyll
+        if (/^whenever you roll one or more dice, target creature you control gets \+2\/\+0 and gains menace until end of turn\.?$/i.test(line)) { a.rollTrig = true; a.triggers.push({ kinds: ['rolled'], fx: [{ type: 'pumpOne', self: false, p: 2, t: 0, keywords: ['menace'] }], text: raw }); rec.status = 'ok'; continue; }          // Barbarian Class (level 2: the card is read stage by stage, so this line works from level 2)
+        if (/^whenever you roll one or more dice, put a number of charge counters on ~ equal to the result\.?$/i.test(line)) { a.rollTrig = true; a.triggers.push({ kinds: ['rolled'], fx: [{ type: 'counters', kind: 'charge', n: 'ROLL', scope: 'self' }], text: raw }); rec.status = 'ok'; continue; }          // Vexing Puzzlebox
+        if (/^\{t\}: add one mana of any color\. roll a d20\.?$/i.test(line)) a.tapRoll = true;          // Vexing Puzzlebox (the mana is read further down)
+        { const rowFx = t => /^search your library for a card\. if it's an artifact card, you may put it onto the battlefield\. otherwise, put (?:it|that card) into your hand/i.test(t) ? [{ type: 'chestTutor' }] : parseEffects(t.replace(/^[^.!]*! — /, '')).fx;          // Treasure Chest's 20: the best card, onto the battlefield if it is an artifact, else into the hand
+          const tb = () => { const rows = []; let bad = false; for (const l of (text.split('\n'))) { const mm = l.replace(/\([^)]*\)/g, '').trim().match(/^(\d+)(?:\s*[—–-]\s*(\d+))? \| (.+)$/); if (!mm) continue; const fx = rowFx(mm[3]); if (!fx.length) bad = true; rows.push([+(mm[2] || mm[1]), fx]); } return { rows, bad }; };
+          if (/^\{t\}: roll a d20\.?$/i.test(line)) { const T = tb(); if (T.rows.length) { a.rollRows = true; a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, tap: true, fx: [{ type: 'd20', what: 'rows', rows: T.rows }], text: raw }); rec.status = T.bad ? 'partial' : 'ok'; if (T.bad) rec.tag = 'approx'; continue; } }          // Component Pouch
+          if ((bm = line.match(/^(\{\d+\}), sacrifice ~: roll a d20\.?$/i))) { const T = tb(); if (T.rows.length) { a.rollRows = true; a.activated.push({ cost: parseCost(bm[1]), sacSelf: true, fx: [{ type: 'd20', what: 'rows', rows: T.rows }], text: raw }); rec.status = T.bad ? 'partial' : 'ok'; if (T.bad) rec.tag = 'approx'; continue; } }          // Treasure Chest
+          if (a.rollRows && /^\d+(?:\s*[—–-]\s*\d+)? \| /.test(line)) { const mm = line.match(/^\d+(?:\s*[—–-]\s*\d+)? \| (.+)$/); rec.status = rowFx(mm[1]).length ? 'ok' : 'partial'; if (rec.status === 'partial') rec.tag = 'approx'; continue; } }          // a row of the result table (read with its roll line)
+      }
       // ---- rules batch 77: life lost this turn (lifeLostNow), opponents' end steps, a draw from an empty library
       { let bm;
         if (/^whenever you attack with creatures with total power 6 or greater, you may turn a face-down creature you control face up\.?$/i.test(line)) { a.triggers.push({ kinds: ['attackAny'], once: true, minTotalPower: 6, fx: [{ type: 'faceUpOne' }], text: raw }); rec.status = 'ok'; continue; }          // Ugin's Mastery
@@ -4854,6 +4867,7 @@
       if (s.card && s.card.a && s.card.a.tapWatch && !g.dry) for (const t of s.card.a.triggers) if (t.kinds.includes('selfTapped')) fire(g, t, s, [], s);
       if (s.card && s.card.a && s.card.a.tapCounter) s.other = Object.assign({}, s.other, { [s.card.a.tapCounter]: ((s.other && s.other[s.card.a.tapCounter]) || 0) + 1 });          // Twitching Doll: a nest counter each time it taps for mana
       if (s.card && s.card.a && s.card.a.tapPain) { g.life -= s.card.a.tapPain; checkDeath(g, []); }
+      if (s.card && s.card.a && s.card.a.tapRoll && !g.dry) rollDice(g, 20, 1, [], s);          // rules batch 79: Vexing Puzzlebox rolls a d20 as it taps for mana
       if (barbs && s.asLand) { g.life -= barbs * twinMult(g); checkDeath(g, []); }          // Manabarbs          // City of Brass, Ancient Tomb, Mana Confluence
       if (s.counterOf && s.counterKind) s.counterOf.other = Object.assign({}, s.counterOf.other, { [s.counterKind]: Math.max(0, ((s.counterOf.other && s.counterOf.other[s.counterKind]) || 0) - 1) });          // rules batch 73: Pentad Prism
       else if (s.counterOf) s.counterOf.counters = Math.max(0, (s.counterOf.counters || 0) - 1);          // Crystalline Crawler
@@ -6114,6 +6128,7 @@
       else if (n === 'GREATESTOTHERPOWER') n = Math.min(20, g.battlefield.filter(q => q !== source && isCreaturePerm(q)).reduce((m, q) => Math.max(m, powerOf(g, q)), 0));          // Prime Speaker Zegana
       else if (n === 'ISTURN') n = g.isT === g.turn ? (g.isN || 0) : 0;          // Sorcerer Class: instants and sorceries cast this turn
       else if (n === 'SUBJDIFF') n = subject && isCreaturePerm(subject) ? Math.abs(powerOf(g, subject) - toughnessOf(g, subject)) : 0;          // Jaws of Defeat
+      else if (n === 'ROLL') n = g._rollResult || 0;          // rules batch 79: the result of the roll (Vexing Puzzlebox)
       else if (n === 'MILLNL') n = g._milledNL || 0;          // rules batch 76: the nonland cards milled this way (Screeching Scorchbeast)
       else if (n === 'LASTMV') n = g.lastCast && g.lastCast.card ? (g.lastCast.card.a.mv || 0) : 0;          // Secret Arcade: that spell's mana value
       else if (n === 'SELFCOUNTERS') n = source ? Math.max(0, source.counters || 0) : 0;          // Big Mother Mouser: its +1/+1 counters
@@ -6209,6 +6224,8 @@
           leavePerm(g, pk.v, ev); flushLeaves(g, ev); sacEvent(g, pk.v, ev);
           tutor(g, { filters: ['creature'], dest: 'battlefield', maxMv: X }, ev, source); break; }
         case 'untapLandsX': { const X = g.xValue || 0; const ls = g.battlefield.filter(q => q.asLand && q.tapped).sort((x, y) => landNow(g, y) - landNow(g, x)).slice(0, X); ls.forEach(q => { q.tapped = false; }); touch(g); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}untaps ${ls.length} land${ls.length === 1 ? '' : 's'}`, source }); break; }          // rules batch 78: Magus of the Candelabra
+        case 'chestTutor': { const t = bestTutorTarget(g, { filters: [] }); if (!t) { shuffle(g.library, g.rnd); break; } pickSearch(g, t, { filters: [] }, source); const i = t.inst; g.library.splice(g.library.indexOf(i), 1); shuffle(g.library, g.rnd);
+          if (i.card.a.isArtifact) { enterWithTriggers(g, i, {}, ev); ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}${i.card.name} onto the battlefield`, source }); } else { g.hand.push(i); ev.push({ type: 'tutor', inst: i, source }); } break; }          // rules batch 79: Treasure Chest (20)
         case 'treeSwap': { if (!source || !g.battlefield.includes(source) || !isCreaturePerm(source)) break; const t = toughnessOf(g, source), l = g.life; source.setT = l; g.life = t; touch(g); ev.push({ type: 'note', text: `${source.card.name}: exchanges life (${l}) with toughness (${t})` }); break; }          // rules batch 72: Tree of Redemption (its base toughness becomes the old life total; counters and boosts still apply)
         case 'massShrink': for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } ev.push({ type: 'note', text: `All creatures get -${f.n}/-${f.n} until end of turn`, source }); break;          // Golgari Charm
         case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
@@ -6361,7 +6378,7 @@
         }
         case 'earthquake': { const X = g.xValue || 0; if (!X) break; applyEffects(g, [{ type: 'sweepDamage', n: X, noFly: true, noExile: true }], source, ev, null); damageOpp(g, X, ev, source); g.life -= X * twinMult(g) * ownMult(g); checkDeath(g, ev); break; }          // Earthquake: each player too
         case 'laezel': {          // Lae'zel's Acrobatics: your nontoken creatures exiled; a d20: back at the end step, or back now (enter triggers) and again at the end step
-          const ps = g.battlefield.filter(q => isCreaturePerm(q) && !q.token && q.inst); if (!ps.length) break; const roll = 1 + Math.floor(g.rnd() * 20); const ins = [];
+          const ps = g.battlefield.filter(q => isCreaturePerm(q) && !q.token && q.inst); if (!ps.length) break; const roll = rollDice(g, 20, 1, ev, source, true); const ins = [];
           for (const q of ps) { const i = q.inst; leavePerm(g, q, ev, 'exile'); if (g.exile.includes(i)) ins.push(i); } flushLeaves(g, ev);
           if (roll >= 10) for (const i of ins.slice()) { g.exile.splice(g.exile.indexOf(i), 1); const np = enterWithTriggers(g, i, {}, ev); const j = np.inst || i; leavePerm(g, np, ev, 'exile'); flushLeaves(g, ev); if (g.exile.includes(j) && j !== i) ins[ins.indexOf(i)] = j; }
           (g.endFlicker = g.endFlicker || []).push(...ins.filter(i => g.exile.includes(i))); ev.push({ type: 'note', text: `Lae'zel's Acrobatics: rolled ${roll}, ${ins.length} creature${ins.length === 1 ? '' : 's'} back at the end step${roll >= 10 ? ' (and once now)' : ''}`, source }); break; }
@@ -6494,7 +6511,7 @@
           else createTokens(g, { type: 'token', n: 1, tapped: false, creature: true, p: X, t: X, colors: ['W'], subtypes: ['Spirit'], keywords: [], artifact: false, name: 'Spirit' }, 1, ev, source);
           break;
         }
-        case 'goldDragon': { const r = 1 + Math.floor(g.rnd() * 20); createTokens(g, Object.assign({}, { type: 'token', n: 1, tapped: false, creature: true, p: 1, t: 1, colors: ['U'], subtypes: ['Faerie', 'Dragon'], keywords: ['flying'], artifact: false, name: 'Faerie Dragon' }, { n: r }), r, ev, source); ev.push({ type: 'note', text: `Rolled ${r}: ${r} Faerie Dragon${r === 1 ? '' : 's'}`, source }); break; }          // Ancient Gold Dragon
+        case 'goldDragon': { const r = rollDice(g, 20, 1, ev, source, true); createTokens(g, Object.assign({}, { type: 'token', n: 1, tapped: false, creature: true, p: 1, t: 1, colors: ['U'], subtypes: ['Faerie', 'Dragon'], keywords: ['flying'], artifact: false, name: 'Faerie Dragon' }, { n: r }), r, ev, source); ev.push({ type: 'note', text: `Rolled ${r}: ${r} Faerie Dragon${r === 1 ? '' : 's'}`, source }); break; }          // Ancient Gold Dragon
         case 'airbendOne': if (g.opp) {          // airbend their best creature: exiled, its owner may cast it for {2}
           const t = g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q) && !q.card.commander).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0]; if (!t || threat(g.opp, g, t) < 3 || answered(g, t, 'exile', source, ev)) break;
           const i = t.inst; leavePerm(g.opp, t, ev, 'exile'); flushLeaves(g.opp, ev); if (i && g.opp.exile.includes(i)) i.airbent = true; ev.push({ type: 'note', text: `${t.card.name} is airbent (its owner may cast it for {2})`, source });
@@ -6927,7 +6944,9 @@
         case 'stitch': { const cr = () => g.graveyard.filter(i => i.card.a.isCreature); if (g.graveyard.length >= 7) { const b = bestReanimation(g, { from: 'own' }); let i = b ? b.i : null; if (g.ask && !g.dry) i = gyAsk(g, i, cr(), 'battlefield', source); if (i && g.graveyard.includes(i)) { g.graveyard.splice(g.graveyard.indexOf(i), 1); enterWithTriggers(g, i, {}, ev); } } else { let t = gyTarget(g, { filter: 'creature' }); if (g.ask && !g.dry) t = gyAsk(g, t, cr(), 'hand', source); if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); g.hand.push(t); } } break; }
         case 'aleshaEnd': if (g.attackedThisTurn && source) { const b = bestReanimation(g, { from: 'own', maxMv: Math.max(0, powerOf(g, source)) }); if (b) { b.y.splice(b.y.indexOf(b.i), 1); enterWithTriggers(g, b.i, {}, ev); ev.push({ type: 'note', text: `${source.card.name} returns ${b.i.card.name}`, source }); } } break;
         case 'skate': { const has = g.battlefield.filter(q => isCreaturePerm(q) && (q.counters || 0) > 0 || q.card.a.isPlaneswalker && q.loyalty > 0); const only = g.ask && !g.dry && has.length ? decide(g, { kind: 'target', what: 'skate', options: has, def: has.slice(), multi: true, pick: has.length, upTo: true, source }) : null; g.battlefield.forEach(q => { if (only && !only.includes(q)) return; if (isCreaturePerm(q) && (q.counters || 0) > 0) addCounters(g, q, '+1/+1', q.counters, ev, source, true); if (q.card.a.isPlaneswalker && q.loyalty > 0) q.loyalty *= 2; }); break; }          // Deepglow Skate: a person picks the permanents
-        case 'd20': { const roll = 1 + Math.floor(g.rnd() * 20); ev.push({ type: 'note', text: `Rolled a d20: ${roll}`, source });
+        case 'd20': { const roll = rollDice(g, 20, 1, ev, source);
+          if (f.what === 'rows') { const row = f.rows.find(r => roll <= r[0]); if (row) applyEffects(g, row[1], source, ev, subject); }          // rules batch 79: a result table (Component Pouch, Treasure Chest)
+          else
           if (f.what === 'treasure') createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, roll, ev, source);
           else if (f.what === 'draw') draw(g, Math.min(roll, g.library.length), ev);
           else if (f.what === 'table') { const row = f.rows.find(r => roll <= r[0]); if (row) createTokens(g, { type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }, row[1], ev, source); }          // rules batch 52: Hoarding Ogre
@@ -7244,7 +7263,7 @@
         case 'delina': if (source) {                                                                         // a copy of your best other creature attacks; on 15-20 another roll
           const t = g.battlefield.filter(q => q !== source && isCreaturePerm(q) && !q.token).sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0]; if (!t) break;
           for (let k = 0; k < 5; k++) {
-            const roll = 1 + Math.floor(g.rnd() * 20);
+            const roll = rollDice(g, 20, 1, ev, source, true);
             applyEffects(g, [{ type: 'copyToken' }], source, ev, t); const r = g.battlefield[g.battlefield.length - 1];
             if (r && r.token) { r.tapped = true; r.sick = false; r.attacking = true; r.exileEoc = true; r.attackedTurn = g.turn; (g._extraAtk = g._extraAtk || []).push(r); }
             ev.push({ type: 'note', text: `Delina rolls ${roll}: a token copy of ${t.card.name} attacks`, source });
@@ -7957,6 +7976,21 @@
   }
   // Karn, the Great Creator: a face-up artifact card of yours in exile (not foretold, suspended or held by another card)
   const karnPick = i => i.card.a.isArtifact && !i.card.a.isLand && i.foretoldTurn == null && !(i.suspendN > 0) && i.heldBy == null && !i.faceDown && !i.foreign;
+  // ---- rules batch 79: rolling dice (CR 706). Every roll goes through rollDice: replacement effects first ("roll that many dice plus one and ignore the lowest
+  // roll": Wyll, Blade of Frontiers and Barbarian Class, each one adds a die and ignores one more), the result is the sum of the dice kept, and
+  // "whenever you roll one or more dice" triggers (kind 'rolled') fire once per roll. quiet: the caller writes its own note.
+  function rollDice(g, sides, n, ev, source, quiet) {
+    let nd = n || 1, ignore = 0;
+    if (!g.dry && tableHas(g, 'rollPlus')) for (const q of g.battlefield) if (q.card.a.rollPlus && !q.phased) { nd += 1; ignore += 1; }
+    const rolls = []; for (let k = 0; k < nd; k++) rolls.push(1 + Math.floor(g.rnd() * sides));
+    const total = rolls.slice().sort((x, y) => x - y).slice(ignore).reduce((t, x) => t + x, 0);
+    if (!quiet) ev.push({ type: 'note', text: `Rolled a d${sides}: ${total}` + (nd > (n || 1) ? ` (${nd} dice: ${rolls.join(', ')}; the lowest ${ignore} ignored)` : ''), source });
+    if (!g.dry && tableHas(g, 'rollTrig')) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) {
+      if (!t.kinds.includes('rolled')) continue;
+      const r0 = g._rollResult; g._rollResult = total; try { fire(g, t, q, ev, null); } finally { g._rollResult = r0; }
+    }
+    return total;
+  }
   // ---- rules batch 76: mill triggers and rad counters (CR 701.17 mill, CR 725 radiation)
   // The cards a mill put into a graveyard, for every permanent at the table that watches a mill: triggers of kind 'milled'
   // { what: 'nonland' | 'creature' | 'any', whose: 'you' | 'any', perTurn, each (once for every card of that kind) }.

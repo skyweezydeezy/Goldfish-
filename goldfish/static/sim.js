@@ -1345,6 +1345,7 @@
         if (/^each creature you control assigns combat damage equal to its toughness rather than its power\.?$/i.test(line)) { a.statics.assault = true; rec.status = 'ok'; continue; }          // Assault Formation
         if (/^\{g\}: target creature with defender can attack this turn as though it didn't have defender\.?$/i.test(line)) { a.defenderAttack = parseCost('{G}'); rec.status = 'ok'; continue; }
         if (/^creatures you control have vigilance and "\{t\}: add one mana of any color\. spend this mana only to cast a creature spell\."\.?$/i.test(line)) { a.statics.ingaEsika = true; rec.status = 'ok'; continue; }          // Inga and Esika
+        if (/^once during each of your turns, you may cast an enchantment spell by paying life equal to its mana value rather than paying its mana cost\.?$/i.test(line)) { a.statics.lifeEnch = 1; rec.status = 'ok'; continue; }          // rules batch 83: Demon of Fate's Design
         if (/^spells you cast from your graveyard or from exile cost \{2\} less to cast\.?$/i.test(line)) { a.statics.docAurlock = 2; rec.status = 'ok'; continue; }          // Doc Aurlock
         if (/^plotting cards from your hand costs \{2\} less\.?$/i.test(line)) { a.statics.plotLess = 2; rec.status = 'ok'; continue; }
         if (/^when ~ enters?, if (?:it's|they're|it is|they are) not a token, create (?:one|two) tokens? that (?:is a copy|are copies) of (?:it|them), except (?:the|that|those) tokens? (?:isn't|aren't) legendary\.?$/i.test(line)) { a.triggers.push({ kinds: ['etb'], cond: { kind: 'nontoken' }, fx: [{ type: 'selfCopies', n: /create one\b/i.test(line) ? 1 : 2, notLegendary: true }], text: raw }); rec.status = 'ok'; continue; }          // The Notary Hobbits: two token copies that are not legendary
@@ -2205,6 +2206,7 @@
         if (/^when ~ enters, you may exile target land you control/i.test(line) && /land with the same name as the exiled card/i.test(text)) { T7(['etb'], [{ type: 'lensImprint' }]); continue; }          // Extraplanar Lens
         if (/^whenever a land with the same name as the exiled card is tapped for mana, its controller adds one mana of any type that land produced/i.test(line)) { rec.status = 'ok'; continue; }          // the Lens remembers the land it exiled (lensImprint)
         if (/^whenever you cast a red spell, if ~ has fewer than three \+1\/\+1 counters on it, put a \+1\/\+1 counter on ~/i.test(line)) { a.triggers.push({ kinds: ['cast'], filter: 'red', fx: [{ type: 'steamCounter' }], text: raw }); rec.status = 'ok'; continue; }          // Runaway Steam-Kin: never more than three
+        if (/^remove five \+1\/\+1 counters from ~: add \{w\}\{w\}\{u\}\{u\}\{b\}\{b\}\{r\}\{r\}\{g\}\{g\}\. activate only once each turn\.?$/i.test(line)) { a.ramosMana = true; rec.status = 'ok'; continue; }          // rules batch 83: Ramos, Dragon Engine
         if ((mu = line.match(/^remove three \+1\/\+1 counters from ~: add \{r\}\{r\}\{r\}/i))) { a.steamMana = true; rec.status = 'ok'; continue; }          // Runaway Steam-Kin
         if ((mu = line.match(/^((?:\{[^}]+\})+): until end of turn, each (\w+) creature you control has base power and toughness (\d+)\/(\d+) and becomes a dinosaur in addition to its other creature types/i))) { a.shepherd = { cost: parseCost(mu[1]), filter: mu[2].toLowerCase(), p: +mu[3], t: +mu[4] }; rec.status = 'ok'; continue; }          // Allosaurus Shepherd
         if (/^each nontoken creature you control gets \+1\/\+1 for each other creature you control with the same name as that creature/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'sameName' }); rec.status = 'ok'; continue; }          // Mirror Box
@@ -4022,7 +4024,7 @@
     if (st.monolith) info.monolith = true;
     if (st.allyMana) info.allyMana = true; if (a.warpedSpace && q.unlocked) info.warpedSpace = true; if (st.ownDouble) info.ownDouble = (info.ownDouble || 0) + 1;
     if (st.yardLess) info.yardLess = (info.yardLess || 0) + st.yardLess; if (st.allIslands) info.allIslands = true; if (st.virtueStrength) info.virtueStrength = true; if (a.tenLandsAnthem) info.tenLands = a.tenLandsAnthem;
-    if (st.assault) info.assault = true; if (st.defendersAttack) info.defendersAttack = true; if (a.defenderAttack) info.defenderAttack = a.defenderAttack; if (st.ingaEsika) info.ingaEsika = true; if (st.docAurlock) info.docAurlock = (info.docAurlock || 0) + st.docAurlock; if (st.offHandLess) info.offHandLess = (info.offHandLess || 0) + st.offHandLess; if (st.splitSecond) info.splitSecond = true; if (st.plotLess) info.plotLess = (info.plotLess || 0) + st.plotLess; if (st.loadingZone) info.loadingZone = (info.loadingZone || 0) + 1; if (a.porcelain && q.unlocked) info.porcelain = true; if (a.worldOoze) info.worldOoze = true; if (a.tevalScale) (info.tevalScale = info.tevalScale || []).push(q);
+    if (st.assault) info.assault = true; if (st.defendersAttack) info.defendersAttack = true; if (a.defenderAttack) info.defenderAttack = a.defenderAttack; if (st.ingaEsika) info.ingaEsika = true; if (st.lifeEnch) info.lifeEnch = (info.lifeEnch || 0) + st.lifeEnch; if (st.docAurlock) info.docAurlock = (info.docAurlock || 0) + st.docAurlock; if (st.offHandLess) info.offHandLess = (info.offHandLess || 0) + st.offHandLess; if (st.splitSecond) info.splitSecond = true; if (st.plotLess) info.plotLess = (info.plotLess || 0) + st.plotLess; if (st.loadingZone) info.loadingZone = (info.loadingZone || 0) + 1; if (a.porcelain && q.unlocked) info.porcelain = true; if (a.worldOoze) info.worldOoze = true; if (a.tevalScale) (info.tevalScale = info.tevalScale || []).push(q);
     if (st.lute) info.lute = true; if (st.behemoth) info.behemoth = (info.behemoth || 0) + st.behemoth; if (st.manaFlare) info.manaFlare = (info.manaFlare || 0) + st.manaFlare; if (a.landAnyColor) info.landAnyAura = true; if (a.halvar) info.halvar = true;
     if (a.perEquip) info.perEquip = { p: (info.perEquip ? info.perEquip.p : 0) + a.perEquip.p, t: (info.perEquip ? info.perEquip.t : 0) + a.perEquip.t };          // Bruenor Battlehammer
     if (st.millLands) info.millLands = true;
@@ -5112,10 +5114,16 @@
     if (tot >= 3 || !(tableHas(g, 'trini') && bothSides(g).some(q => q.card.a.trini && !q.tapped))) return c;                         // Trinisphere: nothing costs less than three
     return Object.assign({}, c, { generic: c.generic + 3 - tot });
   }
+  const lifeEnchLeft = g => (bfInfo(g).lifeEnch || 0) - (g._leT === turnSeq(g) ? g._leN || 0 : 0);          // rules batch 83: Demon of Fate's Design casts left this turn
   function effectiveCost0(g, inst) {
     const a = inst.card.a, info0 = bfInfo(g);
     if (inst.freeCast && !a.isLand && inst.freeCmdr && g.command.includes(inst)) return { generic: cmdTax(g, inst), pips: [], x: 0 };          // Geode Golem: "without paying its mana cost" still pays the commander tax (CR 903.8)
     if (inst.freeCast && !a.isLand && g.hand.includes(inst)) return { generic: 0, pips: [], x: 0 };          // (Geode Golem: your commander from the command zone)          // a free cast waiting in your hand
+    inst._dl = false;
+    if (info0.lifeEnch && a.isEnchantment && !a.isLand && !inst.freeCast && g.hand.includes(inst) && lifeEnchLeft(g) > 0 && g.life > (a.mv || 0) + 15 && !g._dlGuard) {          // rules batch 83: Demon of Fate's Design, once each turn, for life equal to its mana value; the autopilot uses it only when the mana cost cannot be paid
+      g._dlGuard = true; let free; try { free = !canPay(effectiveCost0(g, inst), allUnits(g)); } finally { g._dlGuard = false; }
+      if (free) { inst._dl = true; return { generic: 0, pips: [], x: 0 }; }
+    }
     inst.altTap = false; inst._delve = 0; inst._convoke = null; inst._pitch = null;
     if (inst.airbent && g.exile.includes(inst)) return { generic: 2, pips: [], x: 0 };          // airbend: cast from exile for {2}
     if (a.mayhem && inst.mayhemTurn === g.turn && g.graveyard.includes(inst)) return a.mayhem;
@@ -9300,6 +9308,7 @@
       const ls = g.hand.filter(h => h.card.a.isLand).sort((x, y) => discardValue(g, x) - discardValue(g, y)); n = pay(g, effectiveCost(g, inst));
       if (n != null && ls[0]) { g.hand.splice(g.hand.indexOf(ls[0]), 1); g.graveyard.push(ls[0]); ev.push({ type: 'note', text: `Retrace: discarded ${ls[0].card.name} to cast ${inst.card.name} from the graveyard` }); inst.retracing = false; }
     } else if (inst.quilledCost && g.graveyard.includes(inst)) { n = pay(g, effectiveCost(g, inst)); if (n != null) { let left = inst.card.a.quilledYard; for (const q of g.battlefield.filter(isCreaturePerm).sort((x, y) => (y.counters || 0) - (x.counters || 0))) { const k = Math.min(left, q.counters || 0); q.counters -= k; left -= k; if (!left) break; } inst.quilledCost = false; ev.push({ type: 'note', text: `${inst.card.name} cast from the graveyard, six counters removed` }); } }          // Quilled Greatwurm
+    else if (g.hand.includes(inst) && (inst._dl || (effectiveCost(g, inst), inst._dl)) && lifeEnchLeft(g) > 0) { n = 0; g.life -= (inst.card.a.mv || 0); inst._dl = false; if (g._leT !== turnSeq(g)) { g._leT = turnSeq(g); g._leN = 0; } g._leN++; ev.push({ type: 'note', text: `Demon of Fate's Design: ${inst.card.name} cast for ${inst.card.a.mv || 0} life instead of its mana cost` }); }
     else if (inst.lifeCast && g.hand.includes(inst)) { n = 0; g.life -= (inst.card.a.mv || 0); inst.lifeCast = false; ev.push({ type: 'note', text: `${inst.card.name}: paid ${inst.card.a.mv || 0} life instead of its mana cost` }); }          // Nashi
     else if (inst.freeCast) { n = inst.freeCmdr && g.command.includes(inst) ? pay(g, effectiveCost(g, inst)) : 0; }          // Geode Golem: the commander tax is still paid
     else if (inst.miracleNow) { n = pay(g, inst.card.a.miracle); }
@@ -9544,7 +9553,7 @@
   function castOne(g) { return acting(g, () => castOne0(g)); }          // a spell is cast and resolves; then the stack (its triggers), state-based actions
   function castOne0(g) {
     const units = allUnits(g), units0 = units;
-    if (!units.length && !(g.library[0] && (tableHas(g, 'citadel') && g.battlefield.some(q => q.card.a.citadel))) && !(tableHas(g, 'kci') && g.battlefield.some(q => q.card.a.kci)) && !(bfInfo(g).aluren || (g.opp && bfInfo(g.opp).aluren))) return null;
+    if (!units.length && !(g.library[0] && (tableHas(g, 'citadel') && g.battlefield.some(q => q.card.a.citadel))) && !(tableHas(g, 'kci') && g.battlefield.some(q => q.card.a.kci)) && !(tableHas(g, 'ramosMana') && g.battlefield.some(q => q.card.a.ramosMana && (q.counters || 0) >= 5)) && !(bfInfo(g).aluren || (g.opp && bfInfo(g.opp).aluren))) return null;
     const isZ = p => /\bZombie\b/.test((p.card.type_line || '')) || p.zombie;
     const hasZ = g.battlefield.some(isZ);
 g.actSeq = (g.actSeq || 0) + 1;
@@ -9638,6 +9647,19 @@ g.actSeq = (g.actSeq || 0) + 1;
         for (const v of kin.slice(0, kk)) { v.counters -= 3; for (let j = 0; j < 3; j++) g.floating.push({ src: null, colors: new Set(['R']), floating: true }); pre.push({ type: 'note', text: `${v.card.name}: three +1/+1 counters for {R}{R}{R}`, source: v }); }
         touch(g); const ev2 = castCard(g, best);
         return ev2 ? pre.concat(ev2) : pre;
+      }
+    }
+    if (!best && !g.dry && tableHas(g, 'ramosMana') && g.activeTurn !== false) {            // rules batch 83: Ramos, Dragon Engine: remove five +1/+1 counters for {W}{W}{U}{U}{B}{B}{R}{R}{G}{G}, once each turn
+      const rm = g.battlefield.find(p => p.card.a.ramosMana && (p.counters || 0) >= 5 && p.ramosTurn !== turnSeq(g));
+      if (rm) {
+        const more = units.concat('WWUUBBRRGG'.split('').map(col => ({ src: null, colors: new Set([col]), floating: true })));
+        for (const c of cands) { if (!canPay(effectiveCost(g, c), more) || (c.card.a.sacCreatureCost && !pickSacrifice(g, c.card.a))) continue; const sc = spellScore(g, c); if (sc > -1 && (!best || sc > bestScore)) { best = c; bestScore = sc; } }
+        if (best) {
+          rm.counters -= 5; rm.ramosTurn = turnSeq(g); 'WWUUBBRRGG'.split('').forEach(col => g.floating.push({ src: null, colors: new Set([col]), floating: true }));
+          const pre = [{ type: 'note', text: `${rm.card.name}: five +1/+1 counters for {W}{W}{U}{U}{B}{B}{R}{R}{G}{G}`, source: rm }];
+          touch(g); const ev2 = castCard(g, best);
+          return ev2 ? pre.concat(ev2) : pre;
+        }
       }
     }
     if (!best && !g.dry && (tableHas(g, 'tribeAltar') && g.battlefield.some(p => p.card.a.tribeAltar))) {                                     // Skirk Prospector: sacrifice Goblin tokens for {R} each

@@ -297,6 +297,10 @@ label.small { font-size: 12px; }
 .odds-picker .mtg { --card-w: 84px; transition: transform .15s, opacity .15s; opacity: .55; }
 .odds-picker .mtg:hover { opacity: 1; transform: translateY(-3px); }
 .odds-picker .mtg.sel { opacity: 1; box-shadow: 0 0 0 3px var(--accent), 0 0 16px rgba(57,135,229,.7); }
+.odds-title { font-weight: 600; font-size: 14px; margin: 4px 0 6px; }
+.odds-choose, .odds-tab { margin-top: 10px; }
+.odds-choose > summary, .odds-tab > summary { cursor: pointer; color: var(--muted, #9aa); font-size: 13px; padding: 4px 0; }
+.odds-choose[open] > summary, .odds-tab[open] > summary { margin-bottom: 8px; }
 .odds-selected { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; margin-bottom: 8px; }
 .odds-selected .mtg { --card-w: 52px; }
 #oddsTable table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }

@@ -1,4 +1,4 @@
-// Deck tab, Tags panel: groups fold (Role open to start), tags sit in an even grid, long groups show 8 until "Show all",
+// Deck tab, Tags panel: groups fold (every group folded to start, T-074), tags sit in an even grid, long groups show 8 until "Show all",
 // tapping a tag searches for its cards, and the panel fits a phone. Saves screenshots when SHOTS is set.
 const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -29,7 +29,8 @@ const shot = process.env.SHOTS;
     await p.$eval('#deckTags', e => e.scrollIntoView({ block: 'start' })); await p.waitForTimeout(300);
     const groups = await p.$$eval('#tagChips details.tag-group', ds => ds.map(d => ({ name: d.querySelector('.tag-ns').textContent, open: d.open, shown: d.querySelectorAll('.tag-chip').length })));
     check(`${name}: tags are in folding groups`, groups.length >= 4, groups.map(g => g.name).join(' | '));
-    check(`${name}: only the first group (Role) starts open`, groups[0].open && groups.slice(1).every(g => !g.open));
+    check(`${name}: no group starts open (T-074)`, groups.every(g => !g.open));
+    await p.click('#tagChips details:nth-of-type(1) > summary'); await p.waitForTimeout(200);          // open Role by hand for the checks below
     check(`${name}: a long group shows at most 10 tags until you ask for more`, groups.every(g => g.shown <= 10));
     const widths = await p.$$eval('#tagChips details[open] .tag-chip', bs => [...new Set(bs.map(b => Math.round(b.getBoundingClientRect().width)))]);
     check(`${name}: the tags in a group are tiles of one width`, widths.length === 1, widths.join(', ') + ' px');

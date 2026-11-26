@@ -1,12 +1,12 @@
 # Pre-teach popular cards (T-107)
 
-Most played Commander cards, by Scryfall's EDHREC rank (data/top-cards.json). **1967 of 2000 (98.3%) of the top 2000 are fully read**; 33 cards still have an unread, partial line. Regenerate with `node tools/engine/preteach.js 2000 --md`.
+Most played Commander cards, by Scryfall's EDHREC rank (data/top-cards.json). **1970 of 2000 (98.5%) of the top 2000 are fully read**; 30 cards still have an unread, partial line. Regenerate with `node tools/engine/preteach.js 2000 --md`.
 
 Rule: each rules batch teaches from the top of this list. A batch moves the cards it teaches to "Done" below.
 
 ## Done (taught from this list)
 
-_none yet_
+- Batch 84: Noxious Gearhulk, Heliod's Intervention, Hedron Crab, Traumatize
 
 ## Left, in rank order (first 150)
 
@@ -17,7 +17,6 @@ _none yet_
 | 805 | The Fire Crystal | partial: {4}{R}{R}, {T}: Create a token that's a copy of target creature you control. Sacrifice it  |
 | 975 | Caged Sun | partial: Whenever a land's ability causes you to add one or more mana of the chosen color, add an a |
 | 984 | Inspiring Statuary | partial: Nonartifact spells you cast have improvise. |
-| 1034 | Noxious Gearhulk | partial: When ~ enters, you may destroy another target creature. If a creature is destroyed this wa |
 | 1069 | K'rrik, Son of Yawgmoth | partial: For each {B} in a cost, you may pay 2 life rather than pay that mana. |
 | 1098 | Muldrotha, the Gravetide | partial: During each of your turns, you may play a land and cast a permanent spell of each permanen |
 | 1134 | Vilis, Broker of Blood | partial: Whenever you lose life, draw that many cards. |
@@ -25,9 +24,7 @@ _none yet_
 | 1308 | Alexios, Deimos of Kosmos | partial: At the beginning of each player's upkeep, that player gains control of ~, untaps it, and p |
 | 1341 | Staff of Compleation | partial: {T}, Pay 1 life: Destroy target permanent you own. // partial: {T}, Pay 2 life: Add one mana of any color. // partial: {T}, Pay 3 life: Proliferate. |
 | 1350 | Laelia, the Blade Reforged | partial: Whenever one or more cards are put into exile from your library and/or your graveyard, put |
-| 1374 | Hedron Crab | partial: Landfall — Whenever a land you control enters, target player mills three cards. |
 | 1436 | The Eternity Elevator | partial: 20+ / {T}: Add X mana of any one color, where X is the number of charge counters on ~. |
-| 1523 | Heliod's Intervention | partial: Destroy X target artifacts and/or enchantments. |
 | 1527 | Resourceful Defense | partial: Whenever a permanent you control leaves the battlefield, if it had counters on it, put tho |
 | 1546 | Ojer Axonil, Deepest Might // Temple of Power | partial: If a red source you control would deal an amount of noncombat damage less than ~'s power t |
 | 1548 | Mazirek, Kraul Death Priest | partial: Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you c |

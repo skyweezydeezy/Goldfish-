@@ -2003,6 +2003,8 @@
       { const td = line.match(/^if a triggered ability of (?:a |another )?(\w+)(?: or another (\w+))? you control triggers, (?:it|that ability) triggers an additional time/i); if (td) { a.statics.trigDouble = [td[1], td[2]].filter(Boolean).map(w => singular(w).toLowerCase()).join('|'); rec.status = 'ok'; continue; } }          // Roaming Throne, Harmonic Prodigy
       if (/^permanents entering(?: the battlefield)? don't cause abilities of permanents your opponents control to trigger/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }
       if (/^as long as ~ is in your graveyard and you control a mountain, creatures you control have haste/i.test(line)) { a.angerHaste = true; rec.status = 'ok'; continue; }          // Anger
+      if (/^\{g\}, \{t\}: add x mana in any combination of colors, where x is the greatest power among creatures you control\.?$/i.test(line)) { a.selvalaMana = true; rec.status = 'ok'; continue; }          // Selvala, Heart of the Wilds (manaUnits: X mana less the {G})
+      if (/^whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power\.?$/i.test(line)) { a.selvalaDraw = true; rec.status = 'ok'; continue; }          // Selvala (fireEnterWatchers: either player's creature)
       if (/^\{t\}: add x mana of any one color, where x is ~'s power/i.test(line)) { a.powerMana = true; rec.status = 'ok'; continue; }          // Kami of Whispered Hopes
       { const lv = line.match(/^((?:\{[^}]+\})+): level (\d)/i); if (lv) { (a.levels = a.levels || []).push({ cost: parseCost(lv[1]), level: +lv[2] }); rec.status = 'ok'; continue; } }          // Class enchantments
       { const lw = line.match(/^when (?:this class|~) becomes level (\d), (.*)$/i); if (lw) { const r = parseEffects(lw[2]); if (r.fx.length) { (a.levelFx = a.levelFx || {})[lw[1]] = r.fx; rec.status = 'ok'; continue; } } }
@@ -4480,6 +4482,10 @@
       const land = g.battlefield.find(x => x.iid === au.attachedTo);
       if (land && !land.tapped) units.push({ src: land, colors: au.card.a.landAura.colors ? new Set(au.card.a.landAura.colors) : au.chosenColor && au.card.a.choosesColor ? new Set([au.chosenColor]) : ANY_COLOR });
     }
+    for (const q of (tableHas(g, 'selvalaMana') ? g.battlefield : NONE)) if (q.card.a.selvalaMana && !q.tapped && !(q.sick && !hasKw(g, q, 'haste')) && !(g._payFor && g._payFor.abilityOf === q)) {          // Selvala: {G}, {T}: X mana, X the greatest power among your creatures; the {G} comes from another source, so X - 1 net
+      const x = g.battlefield.reduce((m, c) => isCreaturePerm(c) ? Math.max(m, powerOf(g, c)) : m, 0);
+      if (x >= 2 && units.some(u => u.src !== q && u.colors.has('G'))) for (let k = 0; k < x - 1; k++) units.push({ src: q, colors: ANY_COLOR });
+    }
     for (const q of (tableHas(g, 'powerMana') ? g.battlefield : NONE)) if (q.card.a.powerMana && !q.tapped && !(q.sick && !hasKw(g, q, 'haste'))) { const x = Math.max(0, powerOf(g, q)); for (let k = 0; k < x; k++) units.push({ src: q, colors: ANY_COLOR }); }          // Kami of Whispered Hopes
     { const jDone = new Set(); for (const q of (tableHas(g, 'elfGrantMana') ? g.battlefield : NONE)) if (q.card.a.elfGrantMana && (q.level || 0) >= q.card.a.elfGrantMana) for (const e of g.battlefield) {          // Joraga Treespeaker (level 5+): other Elves tap for {G}{G}
       if (!isCreaturePerm(e) || e.tapped || (e.sick && !hasKw(g, e, 'haste')) || !matchesFilter(e.card, 'elf') || jDone.has(e)) continue;          // every Elf, Joraga too (its own LEVEL 1-4 ability is gone at 5+)
@@ -5477,6 +5483,10 @@
       g.graveyard.splice(g.graveyard.indexOf(i), 1); const np = enterWithTriggers(g, i, {}, ev); ev.push({ type: 'note', text: `${i.card.name} returns to the battlefield (landfall)` }); ev.push({ type: 'rampLand', inst: i, perm: np, source: null });
     }
     if (!g.dry && isCreaturePerm(perm) && matchesFilter(perm.card, 'dragon')) for (const q of (tableHas(g, 'sarkhanCopy') ? g.battlefield : NONE)) if (q !== perm && q.card.a.sarkhanCopy && !q.eotCard && (perm.card.a.power || 0) > powerOf(g, q)) { q.eotCard = q.card; q.card = copyCardOf(g, perm.card, q.card.name, null, 'sarkhan:Legendary'); know(g, q.card); touch(g); ev.push({ type: 'note', text: `${q.eotCard.name} becomes a copy of ${perm.card.name} until end of turn`, source: q }); }          // Sarkhan, Soul Aflame
+    if (!g.dry && isCreaturePerm(perm) && tableHas(g, 'selvalaDraw')) {          // Selvala, Heart of the Wilds: each one on either side draws a card for the creature's controller when it is the biggest creature there is
+      const sides = isPod(g) ? g.match.players : [g, g.opp].filter(Boolean), sel = [].concat(...sides.map(o => o.battlefield.filter(q => q !== perm && q.card.a.selvalaDraw)));
+      if (sel.length && sides.every(o => o.battlefield.every(q => q === perm || !isCreaturePerm(q) || powerOf(o, q) < powerOf(g, perm)))) for (const q of sel) { draw(g, 1, ev); ev.push({ type: 'note', text: `${q.card.name}: ${perm.card.name} is the biggest creature, so its controller draws a card`, source: q }); }
+    }
     const watchers = normEtbOn(g) ? [] : bfInfo(g).watchers.slice();                   // only permanents that care about things entering (big token boards stay fast); Elesh Norn, Mother of Machines: none
     const em = etbMult(g, perm);
     if (perm.tapped && !g.dry && bfInfo(g).amulet) perm.tapped = false;                                 // Amulet of Vigor

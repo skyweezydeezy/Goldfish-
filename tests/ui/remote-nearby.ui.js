@@ -164,6 +164,48 @@ const tap = async (p, sel, ms) => {
     return { lost: !!L.lost, connected: R.connected(), same: S.link === L };
   });
   check('"disconnected" that mends within the grace time is not treated as lost: the link and the game stay as they were', !mend.lost && mend.connected && mend.same, JSON.stringify(mend));
+
+  // ---- the end of the game: rematch (declined, then accepted), change deck, leave
+  const finish = p => p.evaluate(() => { const V = window.__isfVersus, g = V.duel.game; g.over = 'Alex wins the game in round 3.'; g.phase = null; V.redraw('duel'); });
+  const gid = p => p.evaluate(() => window.__isfRemote.state.game.id);
+  await Promise.all([A, B].map(finish));
+  await Promise.all([A, B].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  check('the game is over on both devices: each shows Play again, Change deck and Leave', await A.$eval('#tab-duel .vs-endp', e => e.querySelectorAll('button').length === 3) && await B.$eval('#tab-duel .vs-endp', e => /Play again/.test(e.textContent)));
+  const idEnd = await gid(A);
+  await tap(A, '#tab-duel .vs-again');
+  await wait(B, () => /Alex wants a rematch/.test((document.querySelector('#tab-duel .vs-rmq') || {}).textContent || ''), null, 15000);
+  check('Alex asks for a rematch: Sam sees "Alex wants a rematch. Accept?", and Alex is told to wait', /Accept\?/.test(await text(B, '#tab-duel .vs-rmq')) && /Waiting for Sam/.test(await text(A, '#tab-duel .vs-endp')));
+  await tap(B, '#tab-duel .vs-rm-no');
+  await wait(A, () => /said no to a rematch/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  check('Sam declines: both stay on the panel, and Alex can ask again', (await gid(A)) === idEnd && await A.$eval('#tab-duel .vs-again', e => !e.disabled) && !(await B.$('#tab-duel .vs-rmq')));
+  await tap(A, '#tab-duel .vs-again');
+  await wait(B, () => !!document.querySelector('#tab-duel .vs-rm-yes'), null, 15000);
+  await tap(B, '#tab-duel .vs-rm-yes');
+  await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && !g.over && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
+  const [r0, r1] = [await st(A), await st(B)];
+  check('Sam accepts: both devices deal a new game on the same connection (a new game id, one seed, the same table)', (await gid(A)) !== idEnd && (await gid(A)) === (await gid(B)) && r0.fp === r1.fp && !(await A.$('#tab-duel .rm-mine')));
+  await Promise.all([A, B].map(finish));
+  await Promise.all([A, B].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await tap(B, '#tab-duel .vs-change');
+  await wait(A, () => /Sam is choosing a deck/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  check('Sam taps Change deck: his table closes and Alex sees "Sam is choosing a deck"', await B.evaluate(() => document.querySelector('#tab-duel .vs-game').hidden) && /Choose a deck/.test(await text(B, '#tab-duel .rm-sv')));
+  check('...and they stay connected', await B.evaluate(() => window.__isfRemote.connected()) && await A.evaluate(() => window.__isfRemote.connected()));
+  const label = await B.evaluate(() => window.__isfRemote.M && document.querySelector('#tab-duel .rm-rematch').textContent);
+  await tap(B, '#tab-duel .rm-rematch');
+  await wait(A, () => /Sam wants a rematch/.test((document.querySelector('#tab-duel .vs-rmq') || {}).textContent || ''), null, 15000);
+  check('Sam offers the rematch with the deck he chose: Alex sees the offer and the deck\'s name', /wants a rematch with /.test(await text(A, '#tab-duel .vs-rmq')) && /Offer a rematch/.test(label), await text(A, '#tab-duel .vs-rmq'));
+  await tap(A, '#tab-duel .vs-rm-yes');
+  await Promise.all([A, B].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && !g.over && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
+  check('Alex accepts: a new game starts on both devices', (await st(A)).fp === (await st(B)).fp);
+  await Promise.all([A, B].map(finish));
+  await Promise.all([A, B].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await tap(A, '#tab-duel .vs-leave');
+  await wait(B, () => /Alex left/.test(document.querySelector('#tab-duel .vs-endp').textContent), null, 15000);
+  const left = await A.evaluate(() => ({ view: document.body.dataset.view, game: !!window.__isfRemote.state.game, saved: localStorage.getItem('isf_remote'), mq: !!window.__isfRemote.M.mq, hidden: document.querySelector('#tab-duel .vs-game').hidden }));
+  check('Alex taps Leave: Sam sees "Alex left", and on Alex\'s side the table closes, the saved game and the meeting-point connection are gone', left.hidden && !left.game && left.saved === null && !left.mq, JSON.stringify(left));
+  check('...Sam can still leave, and then has no saved game either', await B.$eval('#tab-duel .vs-endp', e => !e.querySelector('.vs-again') || e.querySelector('.vs-again').disabled));
+  await tap(B, '#tab-duel .vs-leave');
+  check('Sam leaves too: his table closes and nothing is left saved', await B.evaluate(() => document.querySelector('#tab-duel .vs-game').hidden && !window.__isfRemote.state.game && localStorage.getItem('isf_remote') === null && !window.__isfRemote.M.mq));
   check('no page errors in pair 1', !errs.length, errs.slice(0, 3).join(' | '));
   for (const p of [A, B, C]) await p.context().close();
 

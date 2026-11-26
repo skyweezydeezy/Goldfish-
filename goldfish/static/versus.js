@@ -88,13 +88,16 @@
       const r = await window.Source.loadDeck(text, say);
       cache.set(value, { cards: A.markCommander(r.cards), tokens: r.tokens || [] });
     }
-    return Object.assign({ name, policy: (b && b.policy) || {} }, cache.get(value));
+    return Object.assign({ name, value, policy: (b && b.policy) || {} }, cache.get(value));
   }
-  async function players(mode, say) {
+  async function players(mode, say, fixed) {
     const st = V[mode];
     if (!A.S.cards || !A.S.cards.length) throw new Error('load a deck on the Deck tab first');
     const ps = [{ cards: A.S.cards, tokens: A.S.tokens, name: 'You', policy: A.currentPolicy() }];
-    for (const sel of st.root.querySelectorAll('.vs-opp')) ps.push(await loadOpp(sel.value, say));
+    // fixed: the opponents of the game before (as they were resolved: a "random" one is the deck it turned out to be), for Play again
+    const vals = fixed || [...st.root.querySelectorAll('.vs-opp')].map(sel => sel.value);
+    for (const v of vals) ps.push(await loadOpp(v, say));
+    st.lastVals = ps.slice(1).map(p => p.value);
     const seen = {};
     ps.forEach(p => { seen[p.name] = (seen[p.name] || 0) + 1; if (seen[p.name] > 1) p = Object.assign(p, { name: p.name + ' #' + seen[p.name] }); });
     say('');
@@ -176,12 +179,12 @@
       box.classList.add('bye'); await wait(400); box.remove();
     })();
   }
-  async function newGame(mode) {
+  async function newGame(mode, again) {
     const st = V[mode], q = st.q;
     q('.vs-new').disabled = true;
     try {
       if (st.game && st.game.io) st.game.io.close();       // a game against a person on another device ends here
-      const ps = await players(mode, t => info(mode, t)), o = gameOpts(mode);
+      const ps = await players(mode, t => info(mode, t), again && st.lastVals), o = gameOpts(mode);
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));
       const tseed = window.ISFTutorial && window.ISFTutorial.takeSeed && window.ISFTutorial.takeSeed(), seed = tseed != null ? tseed >>> 0 : (Math.random() * 0x7fffffff) >>> 0, roll = rollFirst(ps.length, seed), first = roll.first;          // the tutorial's sample game asks for a fixed seed once          // a D20 each: the highest goes first
@@ -1034,7 +1037,7 @@
     const st = V[mode], gm = st.game, q = st.q; if (!gm) return;
     st.used = new Set();
     if (st.table !== gm) {                                    // a new game: lay the table once
-      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.lookArt = {}; st.bar = null;
+      st.table = gm; st.endSig = null; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.lookArt = {}; st.bar = null;
       st.seats = gm.games.map(() => h('div', 'vs-seat'));
       const opps = h('div', 'vs-opps n' + (gm.games.length - 1)), me = bottomSeat(gm);
       opps.append(...st.seats.filter((x, i) => i !== me));
@@ -1058,6 +1061,7 @@
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
+    endUi(mode, gm);
     if (gm.remote != null) setTimeout(() => pump(mode));          // a move of the other player may be waiting for this moment
   }
   // In the card viewer, a card of yours shows the choices the table gives it: cast or play it, play it as a land, cycle it, the mulligan
@@ -1094,6 +1098,12 @@
         return;
       }
       if (hit('vs-looks')) { if (window.__isfLooks) window.__isfLooks.open(); return; }
+      if (hit('vs-again')) return endChoice(mode, 'again');
+      if (hit('vs-change')) return endChoice(mode, 'change');
+      if (hit('vs-leave')) return endChoice(mode, 'leave');
+      if (hit('vs-watch')) { gm.watching = true; return render(mode); }
+      if (hit('vs-rm-yes')) return gm.io && gm.io.answerRematch(true);
+      if (hit('vs-rm-no')) return gm.io && gm.io.answerRematch(false);
       if (hit('vs-play')) {                                   // watch the game at the speed of the 🐢…🐇 slider, or pause it
         if (gm.playing) { gm.playing = false; render(mode); } else if (gm.busy) gm.playing = true; else advance(mode, 9999, true);
         return;
@@ -1166,6 +1176,57 @@
       if (hit('vs-end')) return input(mode, 'end', false);
       if (hit('vs-autoturn')) return input(mode, 'end', true);
     });
+  }
+
+
+  // ---------- the end of a game: Play again, Change deck, Leave ----------
+  // When a game you sit in is over (or you are out), a small panel lies over the table; the final board and the log stay visible behind it.
+  // In a pod where you are out and the others play on, a small bar offers Watch and Leave. Against a person on another device the three
+  // choices go through remote.js (gm.io: rematch, answerRematch, choose, leave; gm.io.end says what the other player has answered).
+  let from = null;                                            // the tab the player came from: Leave goes back to it
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.tab'); if (b && MODES[b.dataset.tab] && !MODES[document.body.dataset.view]) from = document.body.dataset.view; }, true);
+  function endUi(mode, gm) {
+    const st = V[mode], host = st.q('.vs-screen');
+    const kind = gm.human == null || st.looping ? null : gm.over ? 'over' : gm.games[gm.human].dead && !gm.watching ? 'out' : null;
+    const old = host.querySelector('.vs-endp, .vs-outbar');
+    if (!kind) { if (old) old.remove(); st.endSig = null; return; }
+    const io = gm.io, end = io && io.end, conn = io ? io.connected() : true, them = gm.remote != null ? gm.match.names[gm.remote] : '';
+    const sig = JSON.stringify([kind, gm.over || '', end || '', conn]);
+    if (old && st.endSig === sig) return;
+    st.endSig = sig;
+    let html;
+    if (kind === 'out') html = `<div class="vs-outbar" role="status"><b>You're out.</b> <span class="hint">The others play on.</span> <button class="vs-watch">Watch</button><button class="ghost vs-leave">Leave</button></div>`;
+    else {
+      const left = !!(end && end.left), off = io && (!conn || left), busy = !!(end && (end.asked || end.incoming));
+      const notes = [];
+      if (end && end.incoming) notes.push(`<div class="vs-rmq"><b>${esc(end.incoming.name)} wants a rematch${end.incoming.deck ? ' with ' + esc(end.incoming.deck) : ''}.</b> Accept? <button class="primary vs-rm-yes">Accept</button><button class="ghost vs-rm-no">Decline</button></div>`);
+      if (end && end.asked) notes.push(`<div class="hint">Waiting for ${esc(them)} to accept the rematch…</div>`);
+      if (end && end.peerChoosing && !left) notes.push(`<div class="hint">${esc(them)} is choosing a deck.</div>`);
+      if (end && end.note) notes.push(`<div class="hint">${esc(end.note)}</div>`);
+      if (io && !conn && !left) notes.push(`<div class="hint">Not connected to ${esc(them)}. The game is over; Leave works, a rematch needs the connection.</div>`);
+      html = `<div class="vs-endp" role="dialog" aria-label="Game over"><b class="vs-endt">${esc(gm.over)}</b>${gm.games[gm.human].dead ? '<span class="hint">You are out of the game.</span>' : ''}${notes.join('')}
+        <div class="row wrap"><button class="primary vs-again"${off || busy ? ' disabled' : ''}>Play again</button><button class="vs-change"${off ? ' disabled' : ''}>Change deck</button><button class="ghost vs-leave">Leave</button></div></div>`;
+    }
+    const el = h('div', 'vs-endwrap'); el.innerHTML = html;
+    if (old) old.remove();
+    host.appendChild(el.firstElementChild);
+  }
+  // back to the setup (Change deck) or out of the match (Leave: the table closes, the top bar and tabs come back, and the tab the player came from is shown)
+  function closeTable(mode, back) {
+    const st = V[mode], gm = st.game;
+    if (gm) { gm.playing = false; gm.over = gm.over || 'You left the game.'; }
+    st.game = null; st.table = null; st.endSig = null; C.close();
+    const e = st.q('.vs-endp, .vs-outbar'); if (e) e.remove();
+    st.q('.vs-game').hidden = true; document.body.classList.remove('tleft');
+    if (back && window.__isfShowTab) window.__isfShowTab(from && from !== mode ? from : 'deck');
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function endChoice(mode, what) {
+    const st = V[mode], gm = st.game; if (!gm) return;
+    if (what === 'again') { if (gm.io) return gm.io.rematch(); st.loopStats = null; return newGame(mode, true).catch(e => info(mode, 'Could not start: ' + (e.message || e))); }
+    if (what === 'change') { if (gm.io) gm.io.choose(); return closeTable(mode, false); }
+    if (gm.io) gm.io.leave();
+    closeTable(mode, true);
   }
 
   // ---------- many games ----------

@@ -357,3 +357,13 @@
 .rm-box .rm-roomrow { margin-top: 8px; align-items: flex-end; }
 .rm-box .rm-other { margin: 8px 0 4px; }
 .rm-box .rm-other summary { cursor: pointer; color: var(--accent); font-size: 13px; margin: 4px 0; }
+
+/* the end of a game: Play again / Change deck / Leave (versus.js endUi) */
+.vs-screen { position: relative; }
+.vs-endp { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 40; width: min(92%, 380px); box-sizing: border-box; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--surface, #1b1f2a) 94%, transparent); border: 1px solid var(--border, rgba(128,128,128,.4)); box-shadow: 0 8px 30px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.vs-endp .vs-endt { font-size: 17px; }
+.vs-endp .row { justify-content: center; }
+.vs-endp button { min-height: 44px; }
+.vs-endp .vs-rmq { padding: 8px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.vs-outbar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--surface, #1b1f2a) 94%, transparent); border: 1px solid var(--border, rgba(128,128,128,.4)); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.vs-outbar button { min-height: 40px; }

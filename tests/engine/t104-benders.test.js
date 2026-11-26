@@ -10,7 +10,7 @@ const find = n => { for (const f of Object.values(store)) { const c = f.cards.fi
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ['Firebending Student', 'Zuko, Exiled Prince', 'Fire Lord Azula', 'Ozai, the Phoenix King', "Sozin's Comet", 'Fire Nation Palace', 'Firebender Ascension', 'The Legend of Roku // Avatar Roku',
   'Airbender Ascension', 'Airbending Lesson', "Airbender's Reversal", 'Appa, Steadfast Guardian', 'Aang, Swift Savior // Aang and La, Ocean\'s Fury', 'Aang, Airbending Master', 'The Legend of Yangchen // Avatar Yangchen',
-  'Waterbending Lesson', 'Spirit Water Revival', 'Katara, Water Tribe\'s Hope', 'The Legend of Kuruk // Avatar Kuruk', 'Waterbender Ascension', 'The Unagi of Kyoshi Island',
+  'Waterbending Lesson', 'Spirit Water Revival', 'Katara, Water Tribe\'s Hope', 'The Legend of Kuruk // Avatar Kuruk', 'Waterbender Ascension', 'The Unagi of Kyoshi Island', 'The Rise of Sozin // Fire Lord Sozin',
   'Forest', 'Mountain', 'Island', 'Plains', 'Swamp', 'Sol Ring', 'Llanowar Elves', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Kaervek, the Punisher', 'Wurmcoil Engine', 'Counterspell', 'Lightning Bolt', 'Mind Stone', 'Sakura-Tribe Elder'];
 const cards = base.cards.filter(c => !NAMES.includes(c.name)).slice(0, 30).concat(NAMES.map(n => { try { return find(n); } catch (e) { return null; } }).filter(Boolean));
 const deck = G.buildDeck(cards, base.tokens);
@@ -135,6 +135,84 @@ T('Katara, Aang and Kuruk: waterbend abilities in the menu, with the taps', () =
   check('Aang, Swift Savior: Waterbend {8} is payable with four lands and four taps', ai >= 0 && am[ai].ok, JSON.stringify(am.map(x => [x.label, x.ok, x.why])));
   if (ai >= 0 && am[ai].ok) { G.useAbility(h, aa, ai); check('...it transforms into Aang and La, Ocean\'s Fury (reach, trample)', /Aang and La/.test(h.battlefield.find(q => q.iid === aa.iid).card.name) || /Aang and La/.test((h.battlefield.find(q => q.iid === aa.iid) || {}).card && h.battlefield.find(q => q.iid === aa.iid).card.name), h.battlefield.filter(q => !q.asLand).map(q => q.card.name).join(',')); }
   const k = bare(); const kk = putOn(k, 'The Legend of Kuruk // Avatar Kuruk'); const ev = [];
+});
+
+const backOf = (g, n, opts) => { const c = by(n).a.backCard; const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: c }, opts || {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
+const match2 = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return [g, b]; };
+
+T('Airbend: exile it, its owner may cast it for {2} (a token is gone for good); targeted when it is a spell', () => {
+  const [g, b] = match2(); lands(g, 3, 'Plains'); const big = putOn(b, 'Wurmcoil Engine'); b.hand = []; g.hand = [];
+  const les = inst(g, 'Airbending Lesson'); g.hand.push(les); const lib = g.library.length; G.castCard(g, les);
+  check('Airbending Lesson airbends the other player\'s best creature (exiled, marked: its owner may cast it for {2}) and draws a card', !b.battlefield.includes(big) && b.exile.some(i => i.card.name === 'Wurmcoil Engine' && i.airbent) && g.library.length === lib - 1, `${b.battlefield.length} ${b.exile.length} ${g.library.length}/${lib}`);
+  const [h, c] = match2(); const sold = putOn(c, 'Wurmcoil Engine'); sold.token = true; sold.inst = null; lands(h, 3, 'Plains'); const hl = inst(h, 'Airbending Lesson'); h.hand.push(hl); G.castCard(h, hl);
+  check('a token is exiled and ceases to exist (nothing to cast again)', !c.battlefield.includes(sold) && c.exile.length === 0);
+  const k = bare(); const el = putOn(k, 'Llanowar Elves'); const ev = []; G.applyEffects(k, by('Airbender Ascension').a.triggers[0].fx, null, ev, null);
+  check('"up to one target creature": with nothing worth airbending it airbends nothing', k.battlefield.includes(el) && k.exile.length === 0, notes(ev));
+});
+
+T('Aang, Airbending Master: another target creature (it must), an experience counter when a creature leaves without dying, an Ally for each counter at upkeep', () => {
+  const g = bare(); const aang = putOn(g, 'Aang, Airbending Master'); const el = putOn(g, 'Llanowar Elves'); const ev = [];
+  G.applyEffects(g, by('Aang, Airbending Master').a.triggers[0].fx, aang, ev, null);
+  check('it must airbend another creature: your own Llanowar Elves (the only one) is exiled, castable again for {2}', !g.battlefield.includes(el) && g.exile.some(i => i.card.name === 'Llanowar Elves' && i.airbent) && g.battlefield.includes(aang), notes(ev));
+  check('...and you get an experience counter (a creature left the battlefield without dying)', g.experience === 1, g.experience);
+  const h = bare(); const a2 = putOn(h, 'Aang, Airbending Master'); const w = putOn(h, 'Wurmcoil Engine'); G.leavePerm ? 0 : 0;
+  const ev2 = []; G.applyEffects(h, [{ type: 'removal', how: 'destroy', noTarget: true }], null, ev2, null);
+  check('a creature that dies gives no counter', !h.experience, h.experience);
+  const k = bare(); putOn(k, 'Aang, Airbending Master'); k.experience = 3; const n0 = k.battlefield.length; const up = by('Aang, Airbending Master').a.triggers.find(t => t.kinds.includes('upkeep'));
+  G.applyEffects(k, up.fx, null, [], null);
+  check('at the beginning of your upkeep: a 1/1 Ally for each experience counter (3)', k.battlefield.filter(q => q.token && /Ally/.test(q.card.name)).length === 3, k.battlefield.length - n0);
+});
+
+T('a person chooses what to airbend (and may choose none); Appa lets a person pick any number', () => {
+  const [g, b] = match2(); const big = putOn(b, 'Wurmcoil Engine'); const small = putOn(b, 'Llanowar Elves'); const ev = [];
+  const qs = seated(g, d => d.what === 'airbend' ? small : undefined, () => G.applyEffects(g, [{ type: 'airbend', pool: 'creature', optional: true }], null, ev, null));
+  const q0 = qs.find(x => x.d.what === 'airbend');
+  check('a person is shown every legal creature and picks the Elves (not the autopilot\'s Wurmcoil)', !!q0 && q0.d.options.includes(big) && q0.d.options.includes(small) && !b.battlefield.includes(small) && b.battlefield.includes(big), q0 ? q0.d.options.length : 'no question');
+  const [h, c] = match2(); const big2 = putOn(c, 'Wurmcoil Engine'); seated(h, d => d.what === 'airbend' ? null : undefined, () => G.applyEffects(h, [{ type: 'airbend', pool: 'creature', optional: true }], null, [], null));
+  check('"up to one": a person may choose none', c.battlefield.includes(big2) && c.exile.length === 0);
+  const k = bare(); const ap = putOn(k, 'Appa, Steadfast Guardian'); const s1 = putOn(k, 'Solemn Simulacrum'), s2 = putOn(k, 'Wurmcoil Engine'); const ev3 = [];
+  const qs3 = seated(k, d => d.what === 'airbendMany' ? [s2] : undefined, () => G.applyEffects(k, by('Appa, Steadfast Guardian').a.triggers.find(t => t.kinds.includes('etb')).fx, ap, ev3, null));
+  check('Appa: a person picks which permanents (the Wurmcoil only): it is exiled and the Solemn stays', qs3.some(x => x.d.what === 'airbendMany') && !k.battlefield.includes(s2) && k.battlefield.includes(s1) && k.exile.some(i => i.card.name === 'Wurmcoil Engine' && i.airbent), notes(ev3));
+});
+
+T('Legend of Yangchen, Airbender\'s Reversal and Aang and La', () => {
+  const ya = by('The Legend of Yangchen // Avatar Yangchen').a.backCard.a;
+  check('Avatar Yangchen: the second spell each turn airbends up to one other nonland permanent', ya.triggers.some(t => t.kinds.includes('secondSpell') && t.fx.some(f => f.type === 'airbend' && f.pool === 'nonland' && f.other && f.optional)), JSON.stringify(ya.triggers.map(t => [t.kinds, t.fx.map(f => f.type)])));
+  const rv = by("Airbender's Reversal").a;
+  check("Airbender's Reversal: a mode airbends a creature you control", JSON.stringify(rv.spellFx).includes('"ownOnly":true'), JSON.stringify(rv.spellFx).slice(0, 200));
+  const g = bare(); const al = backOf(g, "Aang, Swift Savior // Aang and La, Ocean's Fury"); const w1 = putOn(g, 'Wurmcoil Engine'), w2 = putOn(g, 'Solemn Simulacrum'); w2.tapped = true;
+  G.combat(g);
+  check('Aang and La attacks: a +1/+1 counter on each tapped creature you control (itself, the attacking Wurmcoil, the tapped Solemn)', al.counters === 1 && w1.counters === 1 && w2.counters === 1, `${al.counters} ${w1.counters} ${w2.counters}`);
+});
+
+T('Avatar Kuruk: Exhaust — Waterbend {20}: an extra turn (once)', () => {
+  const g = bare(); const ku = backOf(g, 'The Legend of Kuruk // Avatar Kuruk'); for (let i = 0; i < 20; i++) putOn(g, 'Wurmcoil Engine'); g.combatDone = true;
+  G.useAbilities(g);
+  check('with twenty creatures to tap the autopilot activates it after combat: an extra turn, and the exhaust ability is used up', g.extraTurns === 1 && ku.exhausted === true, `extra ${g.extraTurns} exhausted ${ku.exhausted}`);
+  const n = g.extraTurns; G.useAbilities(g);
+  check('...only once', g.extraTurns === n);
+  const h = bare(); const k2 = backOf(h, 'The Legend of Kuruk // Avatar Kuruk'); for (let i = 0; i < 6; i++) putOn(h, 'Wurmcoil Engine'); h.combatDone = true; G.useAbilities(h);
+  check('with too few sources it is not activated', !h.extraTurns && !k2.exhausted);
+});
+
+T('Zuko: a person is asked before the combat mana is spent (the default is the autopilot\'s choice)', () => {
+  const g = bare(); lands(g, 2); putOn(g, 'Zuko, Exiled Prince'); const top = g.library[0];
+  const qs = seated(g, null, () => G.combat(g));
+  check('the question is asked and taking the default exiles the top card (the autopilot\'s game)', qs.some(x => x.d.kind === 'protect' && /Exile the top card/.test(JSON.stringify(x.d.options))) && !g.library.includes(top), qs.map(x => x.d.kind).join(','));
+  const h = bare(); putOn(h, 'Zuko, Exiled Prince'); const t2 = h.library[0]; seated(h, d => d.kind === 'protect' ? null : undefined, () => G.combat(h));
+  check('a person who declines keeps the library as it was and the mana is lost', h.library[0] === t2 && red(h) === 0);
+});
+
+T('Fire Lord Sozin (a match): pay {X} for creature cards with total mana value X or less from their graveyard', () => {
+  const [g, b] = match2(); const so = backOf(g, 'The Rise of Sozin // Fire Lord Sozin'); b.graveyard = [inst(b, 'Wurmcoil Engine'), inst(b, 'Llanowar Elves'), inst(b, 'Solemn Simulacrum')];
+  for (let i = 0; i < 5; i++) g.floating.push({ src: null, colors: new Set(['R']), floating: true });
+  const ev = []; G.applyEffects(g, by('The Rise of Sozin // Fire Lord Sozin').a.backCard.a.triggers.find(t => t.kinds.includes('combatDamage')).fx, so, ev, null);
+  check('with five mana: the biggest cards that fit (total mana value 5 or less) enter under your control, and the mana is paid', g.battlefield.some(q => q.card.name === 'Solemn Simulacrum') && !g.battlefield.some(q => q.card.name === 'Wurmcoil Engine') && g.floating.length === 5 - g.battlefield.filter(q => /Solemn|Llanowar/.test(q.card.name)).reduce((t, q) => t + q.card.a.mv, 0), notes(ev));
+});
+
+T('Unagi: Ward—Waterbend {4} is a real ward cost the payer can tap permanents for', () => {
+  const w = by('The Unagi of Kyoshi Island').a.ward;
+  check('its ward is {4} with waterbend', w && w.n === 4 && w.wb === true, JSON.stringify(w));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

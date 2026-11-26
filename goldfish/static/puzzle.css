@@ -1,0 +1,72 @@
+/* ICEYfish - Turn-2 puzzle (puzzle.js): a full-screen sheet over the app, opened from the ? menu */
+/* z-index 230: the question sheet of choices.js (240) must lie above this page; the tutorial bubbles (1000) above both */
+body.pz-open { overflow: hidden; }
+.pz { position: fixed; inset: 0; z-index: 230; background: var(--page); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.pz-body { max-width: 980px; margin: 0 auto; padding: 12px 14px 40px; padding-top: max(12px, env(safe-area-inset-top)); }
+.pz-head { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 2; background: var(--page); padding: 4px 0 8px; }
+.pz-head h2 { margin: 0; flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-head button { min-height: 36px; padding: 4px 12px; flex: 0 0 auto; }
+.pz-score { color: var(--text-secondary); font-size: 13px; white-space: nowrap; }
+.pz-sub { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+.pz-goal { margin: 6px 0; color: var(--text-secondary); font-size: 14px; }
+.pz-err { color: var(--warning); }
+.pz-modes { display: flex; gap: 6px; margin: 4px 0 10px; }
+.pz-modes button { flex: 1; min-height: 38px; }
+.pz-modes button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pz-line, .pz-deck { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); margin: 8px 0; }
+.pz-deck { background: var(--surface-2); margin: 6px 8px; }
+.pz-line > summary, .pz-deck > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; min-height: 44px; list-style: none; }
+.pz-line > summary::-webkit-details-marker, .pz-deck > summary::-webkit-details-marker { display: none; }
+.pz-line > summary::before, .pz-deck > summary::before { content: '▸'; color: var(--muted); }
+.pz-line[open] > summary::before, .pz-deck[open] > summary::before { content: '▾'; }
+.pz-n { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.pz-linetext { margin: 0 12px 6px; }
+.pz-hand { padding: 8px 12px 10px; border-top: 1px solid var(--border); }
+.pz-when { font-size: 12px; color: var(--ice); margin-bottom: 4px; }
+.pz-cards { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.pz-cards span { font-size: 11px; padding: 1px 6px; border-radius: 99px; background: var(--surface-3); color: var(--text-secondary); }
+.pz-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pz-chip { min-height: 36px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface-3); cursor: pointer; font-size: 13px; }
+.pz-chip.solved { border-color: var(--good); }
+.pz-chip.solved .pz-tick { color: var(--good); }
+.pz-opp { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); padding: 8px 10px; margin: 6px 0; }
+.pz-oh { font-size: 13px; }
+.pz-oh span { color: var(--ice-2); }
+.pz-why { margin: 4px 0 2px; font-size: 13px; color: var(--text-secondary); }
+.pz-meta { margin: 4px 0; font-size: 12px; color: var(--muted); }
+.pz-tiles { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.pz-t { width: 64px; flex: 0 0 auto; border-radius: 5px; }
+.pz-t img { width: 100%; display: block; border-radius: 5px; }
+.pz-t .fallback { font-size: 9px; padding: 3px; }
+.pz-opp-t { width: 56px; }
+.pz-bf-t { width: 46px; }
+.pz-bf-t.tapped { transform: rotate(90deg); margin: 0 8px; opacity: .8; }
+.pz-table { border: 1px solid var(--border); border-radius: var(--radius); background: var(--felt); padding: 8px 10px; margin: 8px 0; }
+.pz-zone { margin-bottom: 8px; }
+.pz-zh { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.pz-card { padding: 0; border: 2px solid transparent; border-radius: 7px; background: none; cursor: pointer; }
+.pz-card:disabled { cursor: default; opacity: .85; }
+.pz-card.can { border-color: rgba(143,216,255,.45); }
+.pz-card.sel { border-color: var(--warning); box-shadow: 0 0 0 2px rgba(250,178,25,.35); }
+.pz-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; position: sticky; bottom: 0; background: var(--page); padding: 8px 0; z-index: 2; }
+.pz-bar button { min-height: 42px; padding: 6px 14px; }
+.pz-bar .pz-hinttext, .pz-bar .pz-busy { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--text-secondary); }
+.pz-banner { border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.pz-banner.win { background: rgba(12,163,12,.16); border: 1px solid var(--good); }
+.pz-banner.lose { background: rgba(250,178,25,.12); border: 1px solid var(--warning); }
+.pz-banner span { font-size: 12px; color: var(--text-secondary); }
+.pz-sol { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); padding: 8px 12px; font-size: 13px; }
+.pz-sol p { margin: 4px 0; }
+.pz-after { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.pz-after button { min-height: 42px; padding: 6px 16px; }
+.pz-log { margin-top: 10px; font-size: 12px; color: var(--text-secondary); }
+.pz-log ol { margin: 6px 0 0; padding-left: 20px; }
+.pz-fold { margin: 4px 0 8px; }
+@media (max-width: 520px) {
+  .pz-body { padding: 8px 10px 40px; }
+  .pz-t { width: 56px; } .pz-opp-t { width: 48px; } .pz-bf-t { width: 40px; }
+  .pz-bar button { flex: 1 1 calc(50% - 8px); padding: 6px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .pz * { transition: none !important; animation: none !important; } }
+
+.pz-lessonnote { margin: 6px 0; padding: 6px 10px; border-radius: var(--radius); background: rgba(250,178,25,.12); border: 1px solid var(--warning); font-size: 13px; }

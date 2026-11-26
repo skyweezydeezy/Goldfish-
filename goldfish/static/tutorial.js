@@ -555,6 +555,7 @@
       ['☰', 'Every feature, every tab', () => fullAll(), 'tut-m-fullall'],
       ['🐟', 'Sample game: Practice', () => sampleGame('practice'), 'tut-m-sample'],
       ['⚔', 'Sample game: Duel', () => sampleGame('duel'), 'tut-m-duel'],
+      ...(window.ISFPuzzle ? [['🧩', 'Turn-2 puzzle', () => window.ISFPuzzle.open(), 'tut-m-puzzle']] : []),
       ['✓', `First goals · ${goalCount()} of ${GOALS.length}`, () => openGoals(), 'tut-m-goals'],
       ['★', 'What\'s new', () => whatsNew(true), 'tut-m-new'],
       ['⚙', `First-visit tours: ${tourStyle() === 'full' ? 'every feature' : 'short'}`, () => toggleStyle(), 'tut-m-style'],

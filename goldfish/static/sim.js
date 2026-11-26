@@ -1038,7 +1038,13 @@
         if (/^put target artifact or creature card from a graveyard onto the battlefield under your control\. shuffle ~ into its owner's library\.?$/i.test(line)) { a.spellFx.push({ type: 'yardBack', what: 'artOrCreature', dest: 'battlefield' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Beacon of Unrest (your graveyard; it is not shuffled back)
         if (/^(?:morbid — )?(?:~|this spell) costs \{(\d+)\} less to cast if a creature died this turn\.?$/i.test(line)) { a.condReduce = { n: +line.match(/\{(\d+)\}/)[1], cond: 'died this turn' }; rec.status = 'ok'; continue; }          // Grim Reaper's Sprint
         if (/^if your life total is less than your starting life total, ~ costs \{x\} less to cast, where x is the difference\.?$/i.test(line)) { a.condReduce = { n: 0, cond: 'life below start' }; rec.status = 'ok'; continue; }          // Shadow of Mortality
-        if (/^~ costs \{\d+\} less to cast if it targets a legendary creature\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Price of Fame: their legend
+        if (/^players can cast spells only during their own turns\.?$/i.test(line)) { a.castStax = Object.assign({}, a.castStax, { ownTurnOnly: true }); rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; continue; }          // Dosan the Falling Leaf: nobody casts on another player's turn (castBlocked)
+        if (/^you control enchanted enchantment\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Steal Enchantment: it needs an enchantment of another player
+        if (/^\{5\}: exchange control of ~ and target nonland permanent\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Avarice Totem: the exchange needs another player's permanent
+        if (/^you may exile a blue card with mana value x from your hand rather than pay ~'s mana cost\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Disrupting Shoal: only to counter a spell of mana value X (its effect is marked the same)
+        if (/^as an additional cost to cast ~, discard x cards\.?$/i.test(line) || /^~ deals x damage to each of x targets\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Firestorm: X different targets: a goldfish has one, so only X = 1 (a card for 1 damage) is possible
+        { const cg = line.match(/^((?:\{[^}]+\})+), sacrifice ~: you may put an artifact card from your hand onto the battlefield\.?$/i); if (cg) { a.activated.push({ cost: parseCost(cg[1]), sacSelf: true, gate: 'gnomes', fx: [{ type: 'cheatFromHand', filter: 'artifact' }], text: raw }); rec.status = 'ok'; continue; } }          // Copper Gnomes: an artifact too big to cast
+        if (/^~ costs \{\d+\} less to cast if it targets an? (?:legendary creature|black permanent)\.?$/i.test(line)) { rec.status = 'neutral'; rec.tag = 'opp'; continue; }          // Price of Fame: their legend
       }
       // ---- rules batch 44: the top-5000 pool (one card each; spell lines are read here too)
       { const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
@@ -2865,6 +2871,7 @@
         const cost = m[2] === 'X' ? -1 : sign * +m[2];
         const pwt = m[3];
         const r = /^gain control of target (creature|permanent)|^gain control of all nonland permanents until end of turn\. untap them|^~ deals damage to target creature equal to the number of \w+ you control\.?$|^until your next turn, up to one target creature gains reach and vigilance\.?$/i.test(pwt) ? { fx: [], neutral: true }          // rules batch 52-53: Dihada's -11 (the opponents' permanents), Koth's -3 (an opponent's creature), Vivien's +1
+          : /^untap two target lands\.?$/i.test(pwt) ? { fx: [{ type: 'untapLands', n: 2 }] }          // Garruk Wildspeaker
           : /^put all creature cards from all graveyards onto the battlefield under your control\.?$/i.test(pwt) ? { fx: [{ type: 'massReanimate' }] }
           : /^you get an emblem with "ninjas you control get \+1\/\+1\."$/i.test(pwt) ? { fx: [{ type: 'emblem', p: 1, t: 1, keywords: [], filter: 'ninja' }] }          // rules batch 55: Kaito, Bane of Nightmares's +1
           : /^until end of turn, if one or more tokens would be created under your control, twice that many of those tokens are created instead\.?$/i.test(pwt) ? { fx: [{ type: 'tokenDoubleEot' }] }          // rules batch 55: Kaya, Geist Hunter's -2          // rules batch 54: Liliana Vess's -8
@@ -10511,6 +10518,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (ab.gate === 'artisan') return !g.dry && !g.combatDone && g.activeTurn !== false && !!artisanPick(g, p, Math.max(0, allUnits(g).length - 1));          // rules batch 78: Fiend Artisan, sorcery speed, with all the spare mana as X
     if (ab.gate === 'personOnly') return !!g.ask && !g.dry;          // rules batch 78: an ability the autopilot never has a use for (Magus of the Candelabra)
     if (ab.gate === 'counterMove') return !g.combatDone && !g.dry && (p.counters || 0) >= 2 && g.battlefield.some(q => q !== p && isCreaturePerm(q) && creatureValue(g, q) > creatureValue(g, p));          // Spike Feeder: only to a better creature, and never its last counter
+    if (ab.gate === 'gnomes') return !g.dry && g.hand.some(i => i.card.a.isArtifact && !i.card.a.isLand && !i.card.commander && (i.card.a.mv || 0) >= 6 && !canPay(effectiveCost(g, i), allUnits(g)));          // Copper Gnomes: an artifact worth {4} and the Gnomes that cannot be cast the normal way
     if (ab.gate === 'sacUp') return !g.dry && !g.combatDone && g.activeTurn !== false && !!sacUpPick(g, p);          // Prime Speaker Vannifar: sorcery speed, only for a real upgrade
     if (ab.gate === 'riptide') return !g.dry && !!riptidePick(g, p);          // Riptide Shapeshifter: the card it finds is worth much more than it is
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
@@ -13768,6 +13776,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (cs.oneSpell && n >= 1) return true;
       if (cs.canonist && !a.isArtifact && g.nonArtSeq === ts) return true;
       if (cs.cage && (g.graveyard.includes(inst) || g.library.includes(inst))) return true;
+      if (cs.ownTurnOnly && g.activeTurn === false) return true;          // Dosan the Falling Leaf: every player, its controller too, casts only on their own turn
       if (o === g) continue;
       if (cs.sorceryOnly && !g.activeTurn) return true;          // Teferi, Time Raveler: their spells only at sorcery speed
       if (cs.ownTurn && o.activeTurn === true) return true;          // Grand Abolisher, Dragonlord Dromoka: during their turn

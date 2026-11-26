@@ -162,9 +162,11 @@ const SHOTS = process.env.PHONE_TAP_SHOTS;                                  // a
         await p.evaluate(() => { const b = document.querySelector('#tab-duel .vs-end'); if (b) b.click(); });
         let blk = false, t0 = await p.evaluate(() => window.__isfVersus.duel.game.games[0].turn);
         for (let k = 0; k < 240 && !blk; k++) {
+          if (await p.evaluate(() => !!window.__isfVersus.duel.game.over)) break;
           if (await p.evaluate(t => { const g = window.__isfVersus.duel.game; return g.phase === 'main' && g.games[0].turn > t; }, t0)) { t0 = await p.evaluate(() => window.__isfVersus.duel.game.games[0].turn); await p.evaluate(() => { const b = document.querySelector('#tab-duel .vs-end'); if (b) b.click(); }); } blk = await p.evaluate(() => { const g = window.__isfVersus.duel.game; return g.phase === 'block' && !!g.block; }); if (!blk) { if (await p.evaluate(() => !!window.__isfVersus.duel.game.choice)) await p.locator('.ch-sheet .ch-auto').first().click().catch(() => {}); await p.waitForTimeout(500); } }
         if (!blk) console.log('DBG', await p.evaluate(() => { const g = window.__isfVersus.duel.game, o = g.games[1]; return JSON.stringify({ ph: g.phase, cur: g.cur, step: g.step, over: g.over, ch: g.choice && g.choice.kind, opp: o.battlefield.map(q => q.card.name + ':' + q.sick + ':' + q.tapped + ':p' + window.Goldfish.powerOf(o, q) + ':' + JSON.stringify(q.counters||null) + ':ca' + window.Goldfish.canAttack(o, q)), log: [...document.querySelectorAll('#tab-duel .vs-log li, #tab-duel .vs-feed li')].slice(-6).map(l => l.innerText).join(' / '), t: o.turn, my: g.games[0].turn, txt: document.querySelector('#tab-duel .vs-ask').innerText.slice(0, 200) }); }));
-        check(`${name}: Duel: the opponent's attack reaches the block question`, blk);
+        const ended = !blk && await p.evaluate(() => !!window.__isfVersus.duel.game.over);          // the autopilots finished the game first: nothing to block
+        if (!ended) check(`${name}: Duel: the opponent's attack reaches the block question`, blk);
         if (blk) {
           const mine = p.locator('#tab-duel .vs-seat.me .mtg[data-iid]').filter({ has: p.locator('xpath=self::*') });
           const iid = await p.evaluate(() => { const s = document.querySelector('#tab-duel .vs-blk'); return s ? s.dataset.iid : null; });

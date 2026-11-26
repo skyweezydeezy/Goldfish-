@@ -25,6 +25,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- off by default under a test driver ----
   {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage();
     await p.goto(URL); await p.waitForTimeout(1200);
@@ -39,6 +40,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- desktop: every tab's tour once, the spotlight on its element, Skip, keyboard, replay, restart ----
   {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 820 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); });          // past the welcome card (stage 4 tests it)
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -101,6 +103,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- a tap step: the tap reaches the app and the tour goes on ----
   {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage();
     await p.goto(URL); await p.waitForTimeout(800);
@@ -118,6 +121,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- iPhone portrait and landscape, iPad ----
   for (const [name, dev, tabs] of [['iPhone portrait', devices['iPhone 13'], ['deck', 'duel', 'table']], ['iPhone landscape', devices['iPhone 13 landscape'], ['table', 'pod']], ['iPad', devices['iPad (gen 7)'], ['deck', 'table', 'sim']]]) {
     const ctx = await b.newContext({ ...dev, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); });          // past the welcome card (stage 4 tests it)
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -147,6 +151,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- stage 4: the welcome card ----
   {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); });
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -227,6 +232,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- Play a friend: a step in the Duel tours, and a first-time tip for people who saw the Duel tour before it existed ----
   {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ welcome: 1, seen: { 'tab:deck': 1, 'tab:duel': 1 } })); });
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -259,6 +265,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- "Every feature": the long tour of a tab, of every tab, and the style for first visits ----
   for (const [name, o] of [['PC', { viewport: { width: 1280, height: 800 } }], ['iPhone', devices['iPhone 13']]]) {
     const ctx = await b.newContext({ ...o, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ welcome: 1, seen: { 'tab:deck': 1, 'tab:hands': 1, 'tab:table': 1, 'tab:sim': 1, 'tab:odds': 1, 'tab:duel': 1, 'tab:pod': 1 } })); });
     await ctx.addInitScript(quiet);
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -307,6 +314,7 @@ const bubbleIn = p => p.evaluate(() => { const b = document.querySelector('.tut-
   // ---- reduced motion: no transitions ----
   {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block', reducedMotion: 'reduce' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => { localStorage.setItem('isf_tutorial_force', '1'); if (!localStorage.getItem('isf_tutorial')) localStorage.setItem('isf_tutorial', JSON.stringify({ seen: {}, welcome: 1 })); });          // past the welcome card (stage 4 tests it)
     const p = await ctx.newPage();
     await p.goto(URL); await p.waitForSelector('.tut-bubble');

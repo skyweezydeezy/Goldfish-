@@ -31,6 +31,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const contexts = {};
   const device = async label => {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 950 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     contexts[label] = ctx;
     await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false, sfx: false, music: false })); } catch (e) {} });
     await ctx.routeWebSocket(/broker\.(hivemq\.com|emqx\.io)/, ws => broker.attach(ws, label));

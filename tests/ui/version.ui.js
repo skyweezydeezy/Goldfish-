@@ -12,6 +12,7 @@ const shot = process.env.SHOTS;
   // without a service worker (first visit, or blocked): the deployed version
   for (const [name, opts] of [['PC', { viewport: { width: 1440, height: 900 } }], ['iPad', { ...devices['iPad (gen 7) landscape'], deviceScaleFactor: 1 }], ['iPhone', { ...devices['iPhone 13'], deviceScaleFactor: 1 }]]) {
     const ctx = await b.newContext({ ...opts, serviceWorkers: 'block' }), p = await ctx.newPage();
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await p.goto('http://127.0.0.1:8800/');
     await p.waitForFunction(() => !document.querySelector('#appVersion').hidden, null, { timeout: 15000 }).catch(() => {});
     const m = await p.evaluate(() => { const v = document.querySelector('#appVersion'), s = document.querySelector('#mirrorStatus'), r = v.getBoundingClientRect(), q = s.getBoundingClientRect();
@@ -23,6 +24,7 @@ const shot = process.env.SHOTS;
   }
   // with the service worker: the running version, and an update when a newer one is deployed
   { const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } }), p = await ctx.newPage();
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await p.goto('http://127.0.0.1:8800/');
     await p.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null, { timeout: 20000 }).catch(() => {});
     await p.reload(); await p.waitForFunction(() => !document.querySelector('#appVersion').hidden, null, { timeout: 15000 }).catch(() => {});

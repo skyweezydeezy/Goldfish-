@@ -376,8 +376,8 @@
     odds: [
       { el: '#catOdds', title: 'Odds by category', text: 'The chance you have seen a land, ramp or draw.' },
       { el: '#tab-odds .cat-ctl', title: 'Cards seen', text: 'Change how many cards you have drawn.' },
-      { el: () => { const e = $('#oddsPicker'); return e && e.closest('.card-box'); }, title: 'Pick cards', text: 'Choose any cards. They count as one group.' },
-      { el: () => { const e = $('#chartOdds'); return e && e.closest('.card-box'); }, title: 'Turn by turn', text: 'The chance to see them by each turn.' },
+      { el: () => { const e = $('#chartOdds'); return e && e.closest('.card-box'); }, title: 'Turn by turn', text: 'The chance to see them by each turn. It starts with your ramp.' },
+      { el: '#oddsChoose', title: 'Choose cards', text: 'Open it to pick any cards. They count as one group.' },
     ],
     duel: [
       { el: '#tab-duel .vs-opp', title: 'Choose an opponent', text: 'A built-in deck, a saved one, or a copy of yours.' },
@@ -495,13 +495,13 @@
     odds: [
       { el: '#catOdds', title: 'Odds by category', text: 'The chance you have seen a land, ramp, draw and so on.' },
       { el: '#tab-odds .cat-ctl', title: 'Cards seen', text: 'Set how many cards you have drawn, with − and +.' },
-      { el: ['#catBody:not(:empty)'], title: 'Tap a row', text: 'It picks those cards for the turn-by-turn odds below.' },
+      { el: ['#catBody:not(:empty)'], title: 'Tap a row', text: 'It graphs those cards turn by turn, in the box below.' },
+      { el: box('#chartOdds'), title: 'By turn', text: 'The exact chance to have a group of cards by each turn: your ramp to start, as a chart and a table.' },
       { el: '#oddsTag', title: 'Select by tag', text: 'Pick cards with a tag search.' },
       { el: '#oddsGroup', title: 'Quick groups', text: 'All lands, ramp, card draw or creatures.' },
       { el: '#oddsK', title: 'At least', text: 'How many of the picked cards you need.' },
       { el: '#oddsClear', title: 'Clear', text: 'Start the pick over.' },
-      { el: box('#oddsPicker'), title: 'Pick cards', text: 'Tap any cards. They count as one group.' },
-      { el: box('#chartOdds'), title: 'By turn', text: 'The exact chance to have them by each turn, as a chart and a table.' },
+      { el: box('#oddsPicker'), title: 'Pick cards', text: 'Tap any cards. They count as one group; Clear goes back to the ramp.' },
     ],
   };
   const vsFull = m => [

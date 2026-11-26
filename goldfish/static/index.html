@@ -347,10 +347,12 @@
       <div class="box-head"><h2>Combo odds</h2><span class="hint">The chance you have drawn every piece of at least one combo in this deck: the Commander Spellbook combos that have all their cards in the list. The commander counts as always available. Natural draws only: tutors, extra card draw and mulligans are not counted, so the real odds are higher in a deck with tutors. Exact math (hypergeometric); when the combos use more than 20 different cards, 100,000 seeded shuffles, with the 95% margin shown.</span></div>
       <div id="comboOddsBody"></div>
     </div>
-    <div class="two-col">
-      <div class="card-box">
-        <h2>Draw odds (exact math)</h2>
-        <p class="hint">Pick cards. They're treated as a group: what are the odds you see at least <i>k</i> of them by each turn?</p>
+    <div class="card-box" id="oddsBox">
+      <div class="box-head"><h2>Draw odds (exact math)</h2><span class="hint">What are the odds you see at least <i>k</i> of a group of cards by each turn? It starts with your ramp (or card draw, or lands); choose other cards, a tag or a quick group below the graph.</span></div>
+      <div id="oddsTitle" class="odds-title"></div>
+      <div id="chartOdds" class="chart"></div>
+      <details class="odds-tab"><summary>Table</summary><div id="oddsTable"></div></details>
+      <details id="oddsChoose" class="odds-choose"><summary>Choose cards</summary>
         <div class="row wrap">
           <input id="oddsTag" type="text" list="tagList" autocomplete="off" spellcheck="false" placeholder="Select by tag, e.g. role:ramp -type:land" size="32">
           <button id="oddsTagGo" class="ghost">Select</button>
@@ -364,14 +366,9 @@
           <label>At least <input id="oddsK" type="number" min="1" max="20" value="1"></label>
           <button id="oddsClear" class="ghost">Clear</button>
         </div>
-        <div id="oddsPicker" class="odds-picker"></div>
-      </div>
-      <div class="card-box">
-        <div class="box-head"><h2 id="oddsTitle">Probability by turn</h2></div>
         <div id="oddsSelected" class="odds-selected"></div>
-        <div id="chartOdds" class="chart"></div>
-        <div id="oddsTable"></div>
-      </div>
+        <div id="oddsPicker" class="odds-picker"></div>
+      </details>
     </div>
   </section>
   <!-- ============ 1v1 and POD (versus.js) ============ -->

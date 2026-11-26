@@ -62,7 +62,7 @@
   tidy(document.querySelector('main'));
   // ---- T-069: every report box folds to its header (click the header; ▾ shows it). The long reference boxes start folded; on a phone so do the charts.
   const FOLD_SHUT = /^(Curve wall|Lands & mana|How the engine reads|Sample games|When each card gets played|What a keepable|Play many games|Tags|Lands in your opening|Combos and win|Mirror match|Two-faced|Policy lab|Tune|A\/B test|Swaps|Raise your combo)/i;
-  const FOLD_SHUT_PHONE = /^(Mana available|Hitting every|Commander cast|Goldfish kill|Total damage|Board power|Draw odds|Probability by turn)/i;
+  const FOLD_SHUT_PHONE = /^(Mana available|Hitting every|Commander cast|Goldfish kill|Total damage|Board power)/i;
   const foldDefault = () => { try { const f = localStorage.getItem('isf_fold'); if (f) return f === 'on'; } catch (e) {} return !navigator.webdriver; };   // scripted browsers keep every box open unless isf_fold = on
   function foldBoxes() {
     const phone = window.matchMedia('(max-width: 700px)').matches;
@@ -3095,7 +3095,7 @@
     S.deck.unique.forEach(c => { if (c.commander) return; const a = c.a; if ((role === 'land' && a.isLand) || (role === 'ramp' && a.role === 'ramp') || (role === 'draw' && a.draw) || (role === 'creature' && a.isCreature && !a.isLand)) S.oddsSel.add(c.uid); });
     e.target.value = ''; renderOdds();
   });
-  $('#oddsClear').addEventListener('click', () => { S.oddsSel.clear(); catActive = null; renderOdds(); });
+  $('#oddsClear').addEventListener('click', () => { S.oddsSel.clear(); catActive = null; $('#oddsK').value = 1; renderOdds(); });          // back to the default group, at least 1
   $('#oddsK').addEventListener('input', () => renderOdds(true));
 
   // ---- odds by category: every role tag (ramp, draw, removal...) plus lands, at least one seen after N cards ----
@@ -3357,6 +3357,12 @@
     } catch (e) { out.innerHTML = `<p class="hint">Could not simulate: ${esc(e.message || e)}</p>`; } finally { raiseProgress(null, tok); }
   }
 
+  // the group the Draw odds graph shows when nothing is picked: all ramp, else all card draw, else all lands
+  function defaultOddsGroup() {
+    const cats = categories(), by = k => cats.find(c => c.key === k);
+    const g = by('role:ramp') || by('role:draw') || by('land'); if (!g) return null;
+    return { cards: g.cards, label: { 'role:ramp': 'ramp cards', 'role:draw': 'card-draw cards', land: 'lands' }[g.key] };
+  }
   function renderOdds(skipPicker) {
     if (!S.deck) return;
     renderCatOdds();
@@ -3370,13 +3376,15 @@
         pk.appendChild(e);
       });
     }
-    const sel = S.deck.unique.filter(c => S.oddsSel.has(c.uid));
+    // T-076: nothing picked graphs a default group (all ramp, else card draw, else lands) so the chart is there as soon as the tab opens
+    const dflt = S.oddsSel.size ? null : defaultOddsGroup();
+    const sel = dflt ? dflt.cards : S.deck.unique.filter(c => S.oddsSel.has(c.uid));
     const K = sel.reduce((s, c) => s + c.qty, 0), N = S.deck.library.length, k = Math.max(1, +$('#oddsK').value || 1);
     const ss = $('#oddsSelected'); ss.innerHTML = '';
-    sel.slice(0, 40).forEach(c => ss.appendChild(cardEl(c)));
-    if (!K) { $('#oddsTitle').textContent = 'Pick cards on the left'; $('#chartOdds').innerHTML = ''; $('#oddsTable').innerHTML = ''; return; }
+    if (!dflt) sel.slice(0, 40).forEach(c => ss.appendChild(cardEl(c)));
+    if (!K) { $('#oddsTitle').textContent = 'No cards to graph yet: choose some below'; $('#chartOdds').innerHTML = ''; $('#oddsTable').innerHTML = ''; return; }
     const o = opts();
-    $('#oddsTitle').textContent = `At least ${k} of ${K} card${K > 1 ? 's' : ''} (library ${N}), ${o.onPlay ? 'on the play' : 'on the draw'}`;
+    $('#oddsTitle').textContent = `At least ${k} of ${K} ${dflt ? dflt.label : 'card' + (K > 1 ? 's' : '')} (library ${N}), ${o.onPlay ? 'on the play' : 'on the draw'}`;
     const rows = [];
     for (let t = 0; t <= o.turns; t++) {
       const n = 7 + Math.max(0, t - (o.onPlay ? 1 : 0)) + (t === 0 ? 0 : 0);

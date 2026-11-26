@@ -56,7 +56,7 @@
   // The whole state of a pod as text: two games are in the same state exactly when their dumps are equal (used by the tests).
   // skip: more keys to leave out. SCRATCH: what the engine writes while it works out what a card costs (G.effectiveCost), recomputed
   // before it is used. Looking at a card (can it be cast?) writes them, so two devices showing different cards differ only there.
-  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped']);
+  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped', '_phyLife', '_phyPick']);
   function dump(games, skip) {
     const ids = new Map();
     ownAll(games);

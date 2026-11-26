@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 213,
+      "lines": [
+        "More cards answer spells as they're cast: Return the Favor, Wandering Archaic, Ricochet Trap, Hydroelectric Specimen, Disrupting Shoal, Orim's Chant, Autumn's Veil, Royal Treatment and Legolas's Quick Reflexes. Boromir counters spells cast without mana.",
+        "Redirect Lightning can now redirect bounce and burn spells too."
+      ]
+    },
+    {
       "v": 212,
       "lines": [
         "Two new Avatar decks: Heavy Metal Landfall (Toph, the First Metalbender, Bracket 3) and Landslide Victory (Bumi, Unleashed, Bracket 4).",

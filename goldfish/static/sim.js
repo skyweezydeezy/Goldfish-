@@ -1038,6 +1038,7 @@
           if (/^you control enchanted enchantment\.?$/i.test(line)) { a.stealEnch = true; MIRX(); continue; }          // Steal Enchantment (on entering, like Treachery)
           if (/^\{5\}: exchange control of ~ and target nonland permanent\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{5}'), autoGate: 'totem', fx: [{ type: 'totemSwap' }], text: raw }); MIRX(); continue; }          // Avarice Totem
           if (/^\{1\}, sacrifice ~: ~ deals 2 damage to target creature\.?$/i.test(line) || (/^\{1\}, sacrifice ~: choose one —$/i.test(line) && false)) { a.activated.push({ cost: parseCost('{1}'), sacSelf: true, autoGate: 'crater', fx: parseEffects('~ deals 2 damage to target creature').fx, text: raw }); MIRX(); continue; }          // Goblin Cratermaker
+          if (/^\{r\}, \{t\}: target legendary creature gains first strike until end of turn\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{R}'), tap: true, autoGate: 'shinkaFs', fx: [{ type: 'pumpOne', self: false, legendary: true, p: 0, t: 0, keywords: ['first strike'] }], text: raw }); MIRX(); continue; }          // Shinka, the Bloodsoaked Keep (first strike matters against blockers)
           { const oe = line.match(/^((?:\{[^}]+\})+)(, \{q\})?: target opponent exiles the top card of their library\.(?: until end of turn, you may play that card\.| if it's a land card, you may return ~ to its owner's hand\.)$/i);
             if (oe) { const land = /land card/i.test(line); a.activated.push({ cost: parseCost(oe[1]), untapSelf: !!oe[2], autoGate: land ? 'never' : 'oppLib', fx: land ? [{ type: 'oppExileOne', landBack: true }] : [{ type: 'impulse' }], text: raw }); MIRX(); continue; } }          // Dimensional Infiltrator, Knacksaw Clique
         }
@@ -2055,6 +2056,7 @@
       { let mu;                                                                                     // untap a mana permanent for a price: Voltaic Key, Thousand-Year Elixir, Staff of Domination, Minamo
         if ((mu = line.match(/^\{(\d|u)\}, \{t\}: untap target (artifact|creature|legendary permanent)\.?$/i))) { a.untapper = { what: mu[2].split(' ')[0].toLowerCase(), cost: /u/i.test(mu[1]) ? 1 : +mu[1] }; rec.status = 'ok'; continue; }
         if ((mu = line.match(/^\{(\d)\}: untap ~\.?$/i))) { a.selfUntap = +mu[1]; rec.status = 'ok'; continue; } }          // Basalt and Grim Monolith (see infiniteMana), Staff of Domination
+      if (/^\{u\}: tap enchanted creature\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{U}'), autoGate: 'never', fx: [{ type: 'tapEnchanted' }], text: raw }); rec.status = 'ok'; continue; }          // Freed from the Real (a person's ability; Auras only go on your own creatures)
       if (/^\{u\}: untap enchanted creature\.?$/i.test(line)) { a.auraUntapU = true; rec.status = 'ok'; continue; }
       if (/^\{2\}, \{q\}: add one mana of any color\.?$/i.test(line)) { a.piliPala = true; rec.status = 'ok'; continue; }          // Pili-Pala: untaps for mana (with Grand Architect: see infiniteMana)
       if (/^\{u\}: target artifact creature becomes blue until end of turn\.?$/i.test(line)) { rec.status = 'ok'; continue; }          // Grand Architect: what makes Pili-Pala blue for the ability below
@@ -7023,6 +7025,7 @@
           let k = 0; for (const o of otherPlayers(g)) { const ts = o.battlefield.filter(q => (isCreaturePerm(q) || (q.card.a.isArtifact && !q.asLand))); ts.forEach(q => leavePerm(o, q, ev, 'exile')); flushLeaves(o, ev); k += ts.length; }
           if (source && g.battlefield.includes(source)) { leavePerm(g, source, ev, 'exile'); flushLeaves(g, ev); } ev.push({ type: 'note', text: `Ajani exiles himself and ${k} artifact${k === 1 ? '' : 's'} and creature${k === 1 ? '' : 's'} your opponents control`, source }); break;
         }
+        case 'tapEnchanted': { const h = source && source.attachedTo != null ? g.battlefield.find(q => q.iid === source.attachedTo) : null; if (h && !h.tapped) { h.tapped = true; ev.push({ type: 'note', text: `${source.card.name}: ${h.card.name} is tapped`, source }); } break; }          // Freed from the Real
         case 'goad': {                                                                                       // goad: until your next turn the creature attacks each combat if able (and a player other than you if able); Balladeer's also can't block this turn
           if (!g.opp) break;
           const cands = eachFoe(g, () => g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)));
@@ -7363,7 +7366,7 @@
             const pool = g.battlefield.filter(q => isCreaturePerm(q) && q.card.a.isLegendary && !q.phased); if (!pool.length) break;
             const def = pool.filter(q => canAttack(g, q)).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0] || pool.sort((x, y) => powerOf(g, y) - powerOf(g, x))[0];
             const tg = g.ask && !g.dry && pool.length > 1 ? decide(g, { kind: 'target', what: 'pump', options: pool, def, source }) || def : def;
-            tg.eotP = (tg.eotP || 0) + f.p; tg.eotT = (tg.eotT || 0) + f.t; ev.push({ type: 'pump', perms: [tg], p: f.p, t: f.t, source }); break;
+            tg.eotP = (tg.eotP || 0) + f.p; tg.eotT = (tg.eotT || 0) + f.t; if (f.keywords && f.keywords.length) { tg.eotKw = tg.eotKw || new Set(); f.keywords.forEach(k => tg.eotKw.add(k)); } ev.push({ type: 'pump', perms: [tg], p: f.p, t: f.t, source }); break;
           }
           const target = f.self && source && isCreaturePerm(source) ? source : ownCreature(g, (b0 => b0 && b0.card.a.sacOnTarget && !source ? g.battlefield.filter(q => isCreaturePerm(q) && !q.card.a.sacOnTarget).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0] || null : b0)(bestCreature(g)), 'pump', source);          // a spell never targets Departed Deckhand (it would be sacrificed)
           if (target) {
@@ -11323,6 +11326,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (ab.gate === 'crater') return !g.dry && !!g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && targetable(g.opp, q) && toughnessOf(g.opp, q) - (q.dmg || 0) <= 2 && threat(g.opp, g, q) >= 2.5);          // Goblin Cratermaker: a creature worth two damage
     if (ab.gate === 'exhaustEarth') return !g.dry && !p.exhausted && g.activeTurn !== false && earthbendTargets(g).length > 0;          // Bitter Work: once, on your turn
     if (ab.gate === 'untapNet') return !g.dry && g.battlefield.some(q => q !== p && q.tapped && !q.phased && q.produce && q.produce.amount >= 2);          // Formidable Speaker: the {1} must come back with more
+    if (ab.gate === 'shinkaFs') return !g.dry && !g.combatDone && g.activeTurn !== false && !!g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped) && g.battlefield.some(q => isCreaturePerm(q) && q.card.a.isLegendary && canAttack(g, q) && !hasKw(g, q, 'first strike'));          // Shinka: first strike for a legendary attacker that blockers could trade with
     if (ab.gate === 'legendPump') return !g.dry && !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => isCreaturePerm(q) && q.card.a.isLegendary && canAttack(g, q));          // Okina: a legendary creature that can attack gets the +1/+1 first
     if (ab.gate === 'domeWorth') return !g.dry && g.activeTurn !== false && !!domePick(g, p);          // Chrome Dome: only for a copy worth {5}
     if (ab.gate === 'artisan') return !g.dry && !g.combatDone && g.activeTurn !== false && !!artisanPick(g, p, Math.max(0, allUnits(g).length - 1));          // rules batch 78: Fiend Artisan, sorcery speed, with all the spare mana as X

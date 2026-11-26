@@ -7,13 +7,13 @@ const L = require('../../tools/engine/lib.js'), G = L.engine();
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
 const by = n => L.db().byName.get(n);
-const NO_MANA = ['Springleaf Drum', 'Gene Pollinator', 'Citanul Stalwart', 'Jaspera Sentinel', 'Loam Dryad', 'Saruli Caretaker', 'Three Tree Mascot'];
+const NO_MANA = ['Citanul Stalwart', 'Three Tree Mascot'];
 const OTHER = { 'Krark-Clan Ironworks': 'sacrifice', 'Phyrexian Altar': 'sacrifice', "Ashnod's Altar": 'sacrifice', 'Skirk Prospector': 'sacrifice', 'Elvish Spirit Guide': 'from hand', 'Simian Spirit Guide': 'from hand', "Lion's Eye Diamond": 'discard', 'Chrome Mox': 'imprint', 'Vivi Ornitier': 'X mana', 'Gilded Goose': 'Food', 'Pili-Pala': 'untap cost', 'Grand Architect': 'restricted', 'Gyre Sage': 'counters', 'The Cabbage Merchant': 'Foods', 'Mox Opal': 'metalcraft', 'Mishra\'s Workshop': 'restricted', 'Giada, Font of Hope': 'restricted', 'Gwenna, Eyes of Gaea': 'restricted', 'Bag End Banquet': 'per Food' };
 const MANA = /^[^:"]*:\s*add\b/im, seen = new Map();
 for (const d of L.index().decks) for (const c of L.loadDeck(d)) if (!seen.has(c.name)) seen.set(c.name, c);
 const FOD = [['Gigantosaurus', 2], ['Ornithopter', 3], ['Swamp', 3]];
-function bare(c) {
-  const deck = G.buildDeck([c].concat(FOD.map(f => by(f[0]))).map(x => Object.assign({}, x, { qty: 1 })), []);
+function bare(c, extra) {
+  const deck = G.buildDeck([c].concat(FOD.map(f => by(f[0]))).concat((extra || []).map(n => by(n))).map(x => Object.assign({}, x, { qty: 1 })), []);
   const g = G.newGame(deck, Object.assign({}, L.O), 3); g.turn = 5; g.hand = []; g.battlefield = []; g.command = []; g.graveyard.length = 0; g.exile = []; g.library = [];
   const put = nm => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: deck.unique.find(x => x.name === nm) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = g.turn - 1; return p; };
   return { g, deck, put };
@@ -59,6 +59,12 @@ for (const [name, cols] of [['Azorius Signet', 'WU'], ['Dimir Signet', 'UB'], ['
   const r = G.pay(g, { generic: 0, pips: [[cols[0]]], x: 0 });
   check(`${name}: paying {${cols[0]}} taps the Signet and the Swamp that paid its {1}`, r != null && g.battlefield.every(q => q.tapped), g.battlefield.map(q => q.card.name + (q.tapped ? 'T' : '-')).join(','));
   ({ g, put } = mk()); put(name); G.flushLeaves(g, []); G.touch(g); check(`${name}: alone it makes nothing (it has no {1} to pay)`, G.allUnits(g).length === 0); }
+// a Signet beside a T-097 fodder source (Springleaf Drum): the Signet's {1} may be paid by the Drum's mana, which taps the Drum and its creature
+{ const c = by('Azorius Signet'); const { g, put } = bare(c, ['Springleaf Drum']); put('Springleaf Drum'); put('Gigantosaurus'); put('Azorius Signet'); G.flushLeaves(g, []); G.touch(g);
+  const u0 = G.allUnits(g).length, r = G.pay(g, { generic: u0, pips: [], x: 0 });
+  check('Signet + Springleaf Drum + a creature: paying everything works and leaves no free mana', r != null && G.allUnits(g).length === 0, u0 + ' units, left ' + G.allUnits(g).length);
+  const t = g.battlefield.map(q => q.card.name + (q.tapped ? 'T' : '-')).join(',');
+  check('...the Drum, the creature and the Signet are all tapped', g.battlefield.every(q => q.tapped), t); }
 for (const [name, why] of Object.entries(OTHER)) { const c = by(name); if (!c) { check(name + ' is in the database', false); continue; }
   const a = G.analyze(Object.assign({ qty: 1 }, c), ['W', 'U', 'B', 'R', 'G']), aa = a.a || a; const line = aa.coverage.find(r => MANA.test(r.text));
   check(`${name} (${why}): its mana line is read, not ignored`, !!line && line.status !== 'ignored', line && line.status); }

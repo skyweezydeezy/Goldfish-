@@ -7,7 +7,7 @@ Generated with `node tools/engine/false-ok.js --all --json out.json` over the wh
 - **no-effect**: an ok/neutral line whose reading changed nothing in the card's analysis. 3337 lines on 2798 cards. Grouped by the sim.js line that claimed them, most are keywords/reminders (sim.js:2863 keyword line, 2870 plain "{T}: Add" whose mana is built by the later `produce` parse, 3261 "enters tapped"); the rest are listed by line in the JSON.
 
 ## Confirmed false ok (mana line "ok", card makes no mana), found by tests/engine/mana-sources.test.js in the built-in decks
-- Springleaf Drum, Gene Pollinator, Citanul Stalwart, Jaspera Sentinel, Loam Dryad, Saruli Caretaker ("{T}, Tap an untapped creature/artifact/permanent you control: Add one mana of any color"): sim.js generic matcher; Springleaf Drum is T-097 (Card teaching 6).
+- Springleaf Drum, Gene Pollinator, Jaspera Sentinel, Loam Dryad, Saruli Caretaker: built by T-097 (v206, `a.fodderMana`). Citanul Stalwart still makes no mana ("{T}, Tap an untapped creature/artifact/permanent you control: Add one mana of any color"): sim.js generic matcher; tap an untapped artifact or creature).
 - Three Tree Mascot ("{1}: Add one mana of any color. Activate only once each turn").
 - The six Signets (Azorius, Dimir, Orzhov, Simic, Izzet, Selesnya) were in this class; T-098 built them (net-mana pseudo source, `a.signet`). Boros, Golgari, Gruul, Rakdos Signets are read the same way.
 

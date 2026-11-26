@@ -4887,6 +4887,72 @@
   function counterMult(g) {
     return Math.pow(2, bfInfo(g).cm);
   }
+
+  // ---------- T-089: a person chooses how mana is paid ----------
+  // items: [{ i: unit index, force: a colour, 'generic' or null (free) }], as many as the cost has symbols. Gives the role of each item
+  // (the colour of the pip it pays, or 'generic'), or null when the items cannot pay the cost exactly. canPay finds a payment; this checks one.
+  function payAssign(cost, units, items) {
+    const n = items.length, pips = cost.pips;
+    if (n !== cost.generic + pips.length) return null;
+    const roles = new Array(n).fill(null), taken = new Array(n).fill(false);
+    let gen = cost.generic;
+    for (let k = 0; k < n; k++) if (items[k].force === 'generic') { roles[k] = 'generic'; taken[k] = true; gen--; }
+    if (gen < 0) return null;
+    const order = pips.map((p, i) => i).sort((a, b) => pips[a].length - pips[b].length);
+    const can = (k, c) => { const f = items[k].force, u = units[items[k].i]; return !!u && u.colors.has(c) && (f == null || f === c); };
+    const sig = k => { const u = units[items[k].i]; return [...u.colors].sort().join('') + '/' + (items[k].force || ''); };
+    function go(pi) {
+      if (pi === order.length) { let left = 0; for (let k = 0; k < n; k++) if (!taken[k]) { const f = items[k].force; if (f && f !== 'generic') return false; left++; } return left === gen; }
+      for (const c of pips[order[pi]]) { const tried = new Set(); for (let k = 0; k < n; k++) { if (taken[k] || !can(k, c)) continue; const sg = sig(k); if (tried.has(sg)) continue; tried.add(sg); taken[k] = true; roles[k] = c; if (go(pi + 1)) return true; taken[k] = false; roles[k] = null; } }
+      return false;
+    }
+    if (!go(0)) return null;
+    return roles.map(r => r || 'generic');
+  }
+  // what tapping a source does besides making mana, in words (shown on its chip)
+  function paySide(g, u) {
+    const out = [], s = u.src;
+    if (u.floating || !s) return ['floating mana'];
+    const a = s.card && s.card.a;
+    if (s.pseudo) { if (s.handCard) out.push('exiles it from your hand'); if (s.foods) out.push('taps ' + s.foods.length + ' permanents'); if (s.counterOf) out.push('removes a counter'); return out; }
+    if (!a) return out;
+    if (a.tapPain) out.push(a.tapPain + ' damage to you'); if (a.manaPing) out.push(a.manaPing + ' damage to the opponent');
+    if (s.sacMana) out.push('sacrificed'); if (a.led) out.push('sacrificed, discards your hand');
+    if (u.druid || a.druidUntap && u.druid) out.push('a -1/-1 counter'); if (a.tapRoll) out.push('rolls a d20');
+    if (a.deathrite) out.push('exiles a land card'); if (u.improv) out.push('improvise');
+    if (s.produce && s.produce.restrict) out.push('restricted mana');
+    if (!g.dry && tableHas(g, 'manabarbs') && s.asLand && bothSides(g).some(q => q.card.a.manabarbs)) out.push('Manabarbs: 1 damage');
+    return out;
+  }
+  const payKey = (u, role) => (u.src && u.src.card ? u.src.card.name : u.floating ? 'floating' : '?') + '|' + [...u.colors].sort().join('') + '|' + role;
+  // The payments a person can make: every (source, role) pair that can help. Gives { options, defOpts, ask } where ask says whether
+  // there is more than one payment that is really different (otherwise nothing is asked, the payment is forced).
+  function payPick(g, cost, units, idx) {
+    const total = cost.generic + cost.pips.length;
+    if (!total) return idx;
+    const defRoles = payAssign(cost, units, idx.map(i => ({ i, force: null })));
+    if (!defRoles) return idx;
+    const cols = new Set(); for (const p of cost.pips) for (const c of p) cols.add(c);
+    const options = [];
+    units.forEach((u, i) => { for (const c of cols) if (u.colors.has(c)) options.push({ u: i, role: c }); if (cost.generic > 0) options.push({ u: i, role: 'generic' }); });
+    // is there a different payment? search the choices, stopping at the second distinct one (or when the search gets long)
+    let budget = 30000, found = new Set(), cur = [];
+    const byUnit = units.map((u, i) => options.filter(o => o.u === i));
+    (function dfs(i, left) {
+      if (found.size >= 2 || budget-- <= 0) return;
+      if (left === 0) { const its = cur.map(o => ({ i: o.u, force: o.role })); if (payAssign(cost, units, its)) found.add(cur.map(o => payKey(units[o.u], o.role)).sort().join(',')); return; }
+      if (i >= units.length || units.length - i < left) return;
+      for (const o of byUnit[i]) { cur.push(o); dfs(i + 1, left - 1); cur.pop(); }
+      dfs(i + 1, left);
+    })(0, total);
+    if (found.size < 2 && budget > 0) return idx;
+    const defOpts = idx.map((i, k) => options.find(o => o.u === i && o.role === defRoles[k])).filter(Boolean);
+    if (defOpts.length !== idx.length) return idx;
+    const valid = list => Array.isArray(list) && list.length === total && new Set(list.map(o => o.u)).size === total && list.every(o => options.includes(o)) && !!payAssign(cost, units, list.map(o => ({ i: o.u, force: o.role })));
+    const src = g._payFor && g._payFor.abilityOf || g._casting || null;
+    const got = decide(g, { kind: 'pay', multi: true, pick: total, options, def: defOpts, cost, units, valid, side: u => paySide(g, u), source: src });
+    return valid(got) ? got.map(o => o.u).sort((x, y) => x - y) : idx;
+  }
   function pay(g, cost) {
     if (cost && cost.phy && cost.phy.length) {          // an ability cost with Phyrexian mana (Birthing Pod): paid by the same rule as a spell's
       const r = phyResolve(g, cost), n = pay1(g, r.cost);
@@ -4899,8 +4965,9 @@
     if (cost && cost._tez) g.tezTurn = g.turn;          // Tezzeret's discount is used up
     g._payTre = false; g._paySrcs = null;
     const units = allUnits(g);
-    const idx = canPay(cost, units);
+    let idx = canPay(cost, units);
     if (!idx) return null;
+    if (g.ask && !g.dry && !g._noPayAsk) idx = payPick(g, cost, units, idx);          // T-089: a person may choose which sources pay and which colour each makes (a game without a chooser never gets here)
     const usedFloat = new Set(idx.filter(i => units[i].floating).map(i => units[i]));
     const srcs = new Set(idx.filter(i => !units[i].floating).map(i => units[i].src));
     for (const s of srcs) if (s && s.card && s.card.a.tendo && s.charge > 0 && !canPay(cost, units.map(u => u.src === s ? { src: s, colors: new Set(['C']) } : u))) s.charge--;          // Tendo Ice Bridge spent its charge counter on a color
@@ -5250,7 +5317,8 @@
     if (a.trigCopy || a.rings || a.lithoform || a.bracers) g.copierSeen = true;
     if (a.trawler) g.trawlerSeen = true;
     if (a.labyrinth && !g.dry) {                                                                          // Ugin's Labyrinth: imprint the biggest colorless card (mana value 7 or more) from your hand
-      const c = g.hand.filter(i => !i.card.a.isLand && !(i.card.colors || []).length && (i.card.a.mv || 0) >= 7 && !i.card.commander).sort((x, y) => y.card.a.mv - x.card.a.mv)[0];
+      let c = g.hand.filter(i => !i.card.a.isLand && !(i.card.colors || []).length && (i.card.a.mv || 0) >= 7 && !i.card.commander).sort((x, y) => y.card.a.mv - x.card.a.mv)[0];
+      if (g.ask) c = askImprint(g, perm, g.hand.filter(i => !(i.card.colors || []).length && (i.card.a.mv || 0) >= 7), c || null, 'a colorless card with mana value 7 or greater');
       if (c) { g.hand.splice(g.hand.indexOf(c), 1); perm.imprinted = c; perm.produce = { colors: new Set(['C']), amount: 2 }; touch(g); (ev || []).push({ type: 'note', text: `${inst.card.name}: imprinted ${c.card.name} (taps for {C}{C})`, source: perm }); }
     }
     if (g.nextCreatureCounter === g.turn && !g.dry && isCreaturePerm(perm) && !perm.token) { g.nextCreatureCounter = null; addCounters(g, perm, '+1/+1', 1, ev, perm); }          // "the next creature spell enters with an additional counter"
@@ -7369,8 +7437,10 @@
         }
         case 'lensImprint': if (source) {                                                                    // Extraplanar Lens: exile one of four or more lands with the same name; the rest make one more mana
           const by = {}; for (const q of g.battlefield) if (q.asLand && !q.token && q.produce) (by[q.card.name] = by[q.card.name] || []).push(q);
-          const nm = Object.keys(by).sort((x, y) => by[y].length - by[x].length)[0];
-          if (nm && by[nm].length >= 4) { const l = by[nm].sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0]; leavePerm(g, l, ev, 'exile'); source.lensName = nm; touch(g); ev.push({ type: 'note', text: `${source.card.name} exiles ${nm}: each other ${nm} makes one more mana`, source }); }
+          const nm0 = Object.keys(by).sort((x, y) => by[y].length - by[x].length)[0];
+          let nm = nm0, l = nm0 && by[nm0].length >= 4 ? by[nm0].sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0))[0] : null;
+          if (g.ask && !g.dry) { l = askImprint(g, source, g.battlefield.filter(q => q.asLand && !q.token && q !== source), l, 'a land you control'); nm = l ? l.card.name : nm; }
+          if (l) { leavePerm(g, l, ev, 'exile'); source.lensName = nm; touch(g); ev.push({ type: 'note', text: `${source.card.name} exiles ${nm}: each other ${nm} makes one more mana`, source }); }
           break;
         } break;
         case 'ifKicked': if (g.lastCast && g.lastCast.kicked) applyEffects(g, f.fx, source, ev, subject); break;
@@ -7524,7 +7594,7 @@
         case 'imprint': if (f.kind === 'anvil') {          // Semblance Anvil: the nonland card whose type the rest of your spells share most, the cheapest of those
           if (!source || g.dry) break; const tys = ['creature', 'artifact', 'enchantment', 'instant', 'sorcery', 'planeswalker'], pool = g.hand.filter(i => !i.card.a.isLand && !i.card.commander);
           const score = i => tys.filter(t => cardHasType(i.card, t)).reduce((s0, t) => s0 + g.hand.concat(g.library.slice(0, 20)).filter(j => j !== i && !j.card.a.isLand && cardHasType(j.card, t)).length, 0) - (i.card.a.mv || 0) * 0.3;
-          const pick = pool.sort((x, y) => score(y) - score(x))[0]; if (!pick) break;
+          const auto = pool.slice().sort((x, y) => score(y) - score(x))[0], pick = askImprint(g, source, g.hand.filter(i => !i.card.a.isLand), auto || null, 'a nonland card'); if (!pick) break;
           g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); source.anvilTypes = tys.filter(t => cardHasType(pick.card, t)); touch(g);
           ev.push({ type: 'note', text: `${source.card.name} imprints ${pick.card.name}: ${source.anvilTypes.join(' and ')} spells cost {2} less`, source }); break;
         } else {                                                                                  // Chrome Mox / Isochron Scepter
@@ -7533,10 +7603,12 @@
           if (f.kind === 'mox') {
             const cands = hand.filter(i => !i.card.a.isArtifact && (i.card.colors || []).length).sort((x, y) => imprintValue(g, x) - imprintValue(g, y));
             pick = cands[0] && imprintValue(g, cands[0]) <= 5 ? cands[0] : null;
-            if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); source.produce = { colors: new Set(pick.card.colors), amount: 1 }; touch(g); ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} (Chrome Mox makes ${pick.card.colors.join('/')})`, source }); }
+            if (g.ask && !g.dry && source) pick = askImprint(g, source, g.hand.filter(i => !i.card.a.isLand && !i.card.a.isArtifact), pick, 'a nonartifact, nonland card');          // a person: any legal card in hand
+            if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); g.exile.push(pick); const cl = pick.card.colors || []; if (cl.length) source.produce = { colors: new Set(cl), amount: 1 }; touch(g); ev.push({ type: 'note', text: cl.length ? `Imprint: exiled ${pick.card.name} (Chrome Mox makes ${cl.join('/')})` : `Imprint: exiled ${pick.card.name} (colorless: Chrome Mox makes no mana)`, source }); }
           } else {
             const cands = hand.filter(i => scepterFodder(i.card) && !i.card.a.counter && i.card.a.spellFx.length).sort((x, y) => (comboNeed(g, y) - comboNeed(g, x)) || (fxValue(g, y.card.a.spellFx) - fxValue(g, x.card.a.spellFx)));
             pick = cands[0] || null;
+            if (g.ask && !g.dry && source) pick = askImprint(g, source, g.hand.filter(i => scepterFodder(i.card)), pick, 'an instant card with mana value 2 or less');
             if (pick && source) { g.hand.splice(g.hand.indexOf(pick), 1); source.imprinted = pick; ev.push({ type: 'note', text: `Imprint: exiled ${pick.card.name} under Isochron Scepter`, source }); }
           }
           break;
@@ -13556,7 +13628,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Mimic Vat: exile the dying card if it beats the one already there (that one goes back to its owner's graveyard)
   function vatTake(x, vat, H, i) {
     const at = H.graveyard.indexOf(i); if (at < 0) return false; const v = c => (c.card.a.power || 0) + (c.card.a.mv || 0) + (c.card.a.triggers.some(t => t.kinds.includes('etb')) ? 4 : 0);
-    if (vat.vatCard && v(vat.vatCard.i) >= v(i)) return false;
+    const want = !(vat.vatCard && v(vat.vatCard.i) >= v(i));
+    if (x.ask && !x.dry) { if (!askImprint(x, vat, [i], want ? i : null, 'the creature that died')) return false; } else if (!want) return false;
     if (vat.vatCard) { const o = vat.vatCard; const e = o.H.exile.indexOf(o.i); if (e >= 0) { o.H.exile.splice(e, 1); o.H.graveyard.push(o.i); } }
     H.graveyard.splice(at, 1); H.exile.push(i); vat.vatCard = { i, H }; return true;
   }
@@ -13586,6 +13659,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     return m; }          // Mjölnir: the creature it equips          // Collective Inferno
   // T-041 (issue #78): Magda, Brazen Outlaw sees every Dwarf that becomes tapped outside combat; the Dwarves' own abilities
   // a seated person is asked before each of these (the autopilot's choice is the default, so taking every default plays the autopilot's game)
+  // T-086: a seated person chooses the card an imprint ability exiles, from the cards the card's text allows (the caller lists them, in the zone the text names).
+  // The autopilot's choice is the default and "Don't imprint" is always offered; a person with no legal card is not asked.
+  function askImprint(g, source, options, def, what) { if (!g.ask || g.dry) return def; if (!options.length) return null; const r = decide(g, { kind: 'imprint', options, def, optional: true, what, source }); return r || null; }
   function askUse(g, what, why, source, target) { return !g.ask || decide(g, { kind: 'protect', options: [what], def: what, optional: true, why, target: target || null, source: source || null }) != null; }
   function magdaTap(g, q, ev) { if (g.dry || !q || !q.card || !tableHas(g, 'tapTreasure') || !isCreaturePerm(q)) return; for (const mg of g.battlefield.filter(x => x.card.a.tapTreasure)) if (matchesFilter(q.card, mg.card.a.tapTreasure)) createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, 1, ev || [], mg); }
   const storyCount = g => g.battlefield.filter(q => artOn(g, q) || q.card.a.isLegendary || /\bSaga\b/.test(q.card.type_line || '')).length;
@@ -14392,7 +14468,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function hyperAtLeast(N, K, n, k) { let p = 0; for (let i = k; i <= Math.min(n, K); i++) p += hyperPmf(N, K, n, i); return Math.min(1, p); }
 
   const api = {
-    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay,
+    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign,
     effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,

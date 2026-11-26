@@ -127,6 +127,7 @@
       freeMulligan: $('#optFreeMull').checked, onPlay: $('#optOnPlay').checked,
       prioritizeCommander: $('#optCmdrFirst').checked, oppLife: +$('#optLife').value || 40,
       noMaxHand: $('#optNoMaxHand').checked,                 // no discarding down to seven in the cleanup step
+      turnTimer: $('#optTurnTimer') ? $('#optTurnTimer').checked : true,          // Duel, Pod and Play a friend: a clock on each person's turn (versus.js)
       startLife: +$('#optMyLife').value || (fmt === 'commander' ? 40 : 20),   // your life at the start (in Duel and Pod, every player's)
       minHandSize: +$('#optMullTo').value || 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
@@ -149,7 +150,7 @@
     $('#optLife').value = c ? 40 : 20; $('#optMyLife').value = c ? 40 : 20; $('#optFreeMull').checked = c; $('#optMaxLands').value = c ? 5 : 4;
   });
   // "Reset rules to defaults": every goldfish rule back to its default for the chosen format (the format itself stays)
-  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5, optNoMaxHand: false });
+  const RULE_DEFAULTS = c => ({ optTurns: 10, optMinLands: 2, optMaxLands: c ? 5 : 4, optFreeMull: c, optOnPlay: false, optCmdrFirst: true, optLife: c ? 40 : 20, optMyLife: c ? 40 : 20, optN: 2000, optMullTo: 5, optNoMaxHand: false, optTurnTimer: true });
   $('#optReset').addEventListener('click', () => {
     const d = RULE_DEFAULTS($('#optFormat').value === 'commander');
     for (const [id, v] of Object.entries(d)) {
@@ -171,14 +172,16 @@
       const ord = $('#dispDeckOrder').value; if (ord !== deckOrder) { deckOrder = ord; if (decksListed) refillDeckMenus(); }
       document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
       document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
+      window.__isfPayChoose = $('#dispPayChoose').checked;          // T-089: read by the question sheet (choices.js)
     };
     if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
     if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
+    if (d.payChoose) $('#dispPayChoose').checked = true;
     apply();
-    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder']) $(id).addEventListener('change', () => {
+    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
       apply();
-      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value })); } catch (e) { /* storage blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked })); } catch (e) { /* storage blocked */ }
     });
   })();
 

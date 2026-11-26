@@ -124,3 +124,15 @@
 .ch-mana { gap: 8px; align-items: center; flex-wrap: wrap; }
 .ch-mana .ch-mana-n { width: 90px; }
 .ch-mana .ch-mana-inf { font-size: 20px; line-height: 1; padding: 2px 12px; }
+
+/* T-089: paying a cost: the cost on top, the sources as chips, a colour picker only where a source can make more than one colour */
+.ch-sheet.pay .ch-opts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ch-paycost { font-size: 15px; margin: 2px 0 8px; }
+.ch-paycost .ch-count { margin-left: 8px; font-size: 12px; opacity: .8; }
+.ch-paychip { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ch-paychip .ch-opt { width: 100%; }
+.ch-paychip .ch-mana { font-size: 16px; letter-spacing: 2px; }
+.ch-paychip .ch-took { position: static; font-size: 11px; color: #7fdc7f; }
+.ch-paycol { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.ch-col { min-width: 34px; min-height: 34px; padding: 2px 6px; border-radius: 8px; border: 1px solid rgba(143,216,255,.35); background: var(--surface-2, #172a3a); color: inherit; font-size: 14px; cursor: pointer; }
+.ch-col.on { border-color: #7fdc7f; box-shadow: 0 0 8px rgba(12,163,12,.6); }

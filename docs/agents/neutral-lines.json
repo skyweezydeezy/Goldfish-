@@ -1,0 +1,657 @@
+{
+ "opp": [
+  {
+   "card": "Forbidden Orchard",
+   "line": "Whenever you tap ~ for mana, target opponent creates a 1/1 colorless Spirit creature token.",
+   "decks": [
+    "spectrum-of-extinction.txt",
+    "the-shoal-must-go-on.txt"
+   ]
+  },
+  {
+   "card": "Oath of Druids",
+   "line": "At the beginning of each player's upkeep, that player chooses target player who controls more creatures than they do and is their opponent. The first player may reveal cards from the top of their library until they reveal a creature card. If the first player does, that player puts that card onto the battlefield and all other cards revealed this way into their graveyard.",
+   "decks": [
+    "spectrum-of-extinction.txt"
+   ]
+  },
+  {
+   "card": "Pathrazer of Ulamog",
+   "line": "~ can't be blocked except by three or more creatures.",
+   "decks": [
+    "spectrum-of-extinction.txt"
+   ]
+  },
+  {
+   "card": "Kraum, Ludevic's Opus",
+   "line": "Whenever an opponent casts their second spell each turn, draw a card.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Disrupting Shoal",
+   "line": "You may exile a blue card with mana value X from your hand rather than pay ~'s mana cost.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Firestorm",
+   "line": "As an additional cost to cast ~, discard X cards.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Firestorm",
+   "line": "~ deals X damage to each of X targets.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Gleaming Splendor",
+   "line": "Whenever an opponent draws their second card each turn, you create a Treasure token.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Mnemonic Betrayal",
+   "line": "Exile all opponents' graveyards. You may cast spells from among those cards this turn, and mana of any type can be spent to cast them. At the beginning of the next end step, if any of those cards remain exiled, return them to their owners' graveyards.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Orim's Chant",
+   "line": "Target player can't cast spells this turn. If ~ was kicked, creatures can't attack this turn.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Redirect Lightning",
+   "line": "As an additional cost to cast ~, pay 5 life or pay {2}.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Redirect Lightning",
+   "line": "Change the target of target spell or ability with a single target.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Ricochet Trap",
+   "line": "If an opponent cast a blue spell this turn, you may pay {R} rather than pay ~'s mana cost.",
+   "decks": [
+    "fine-print-fatal-clause.txt"
+   ]
+  },
+  {
+   "card": "Colossal Skyturtle",
+   "line": "Channel — {2}{G}, Discard ~: Return target card from your graveyard to your hand.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Colossal Skyturtle",
+   "line": "Channel — {1}{U}, Discard ~: Return target creature to its owner's hand.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Dimensional Infiltrator",
+   "line": "{1}{C}: Target opponent exiles the top card of their library. If it's a land card, you may return ~ to its owner's hand.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Endurance",
+   "line": "When ~ enters, up to one target player puts all the cards from their graveyard on the bottom of their library in a random order.",
+   "decks": [
+    "current-without-end.txt",
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Hullbreaker Horror",
+   "line": "Whenever you cast a spell, Return target spell you don't control to its owner's hand.",
+   "decks": [
+    "current-without-end.txt",
+    "short-circuit.txt",
+    "moving-parts.txt",
+    "second-draw.txt"
+   ]
+  },
+  {
+   "card": "Pollywog Prodigy",
+   "line": "Whenever an opponent casts a noncreature spell with mana value less than ~'s power, draw a card.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Sink into Stupor // Soporific Springs",
+   "line": "Return target spell or nonland permanent an opponent controls to its owner's hand.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Steal Enchantment",
+   "line": "You control enchanted enchantment.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Talon Gates of Madara",
+   "line": "When ~ enters, up to one target creature phases out.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "The Cabbage Merchant",
+   "line": "Whenever a creature deals combat damage to you, sacrifice a Food token.",
+   "decks": [
+    "current-without-end.txt",
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Wan Shi Tong, Librarian",
+   "line": "Whenever an opponent searches their library, put a +1/+1 counter on ~ and draw a card.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Wandering Archaic // Explore the Vastlands",
+   "line": "Whenever an opponent casts an instant or sorcery spell, they may pay {2}. If they don't, you may copy that spell. You may choose new targets for the copy.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Boromir, Warden of the Tower",
+   "line": "Whenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Teysa, Orzhov Scion",
+   "line": "Sacrifice three white creatures: Exile target creature.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Freed from the Real",
+   "line": "{U}: Tap enchanted creature.",
+   "decks": [
+    "dead-sea.txt",
+    "tidal-loop.txt",
+    "tidecaller.txt"
+   ]
+  },
+  {
+   "card": "Hydroelectric Specimen // Hydroelectric Laboratory",
+   "line": "When ~ enters, you may change the target of target instant or sorcery spell with a single target to ~.",
+   "decks": [
+    "the-shoal-must-go-on.txt"
+   ]
+  },
+  {
+   "card": "Knacksaw Clique",
+   "line": "{1}{U}, {Q}: Target opponent exiles the top card of their library. Until end of turn, you may play that card.",
+   "decks": [
+    "the-shoal-must-go-on.txt"
+   ]
+  },
+  {
+   "card": "Legolas's Quick Reflexes",
+   "line": "Untap target creature. Until end of turn, it gains reach, hexproof, and \"Whenever ~ becomes tapped, it deals damage equal to its power to up to one target creature.\"",
+   "decks": [
+    "the-shoal-must-go-on.txt"
+   ]
+  },
+  {
+   "card": "Goblin Trashmaster",
+   "line": "Sacrifice a Goblin: Destroy target artifact.",
+   "decks": [
+    "mob-storm.txt"
+   ]
+  },
+  {
+   "card": "Vandalblast",
+   "line": "Overload {4}{R}",
+   "decks": [
+    "mob-storm.txt",
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Goblin Cratermaker",
+   "line": "{1}, Sacrifice ~: ~ deals 2 damage to target creature.",
+   "decks": [
+    "mob-storm.txt"
+   ]
+  },
+  {
+   "card": "Goblin Cratermaker",
+   "line": "{1}, Sacrifice ~: Destroy target colorless nonland permanent.",
+   "decks": [
+    "mob-storm.txt"
+   ]
+  },
+  {
+   "card": "Shinka, the Bloodsoaked Keep",
+   "line": "{R}, {T}: Target legendary creature gains first strike until end of turn.",
+   "decks": [
+    "mob-storm.txt"
+   ]
+  },
+  {
+   "card": "Soul-Guide Lantern",
+   "line": "When ~ enters, exile target card from a graveyard.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Soul-Guide Lantern",
+   "line": "{T}, Sacrifice ~: Exile each opponent's graveyard.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Return the Favor",
+   "line": "+ {1} — Change the target of target spell or ability with a single target.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Glóin, Dwarf Emissary",
+   "line": "{T}, Sacrifice a Treasure: Goad target creature.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Insufferable Balladeer",
+   "line": "Vicious Mockery — When ~ enters, target creature an opponent controls can't block this turn. Goad it.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Ajani, Strength of the Pride",
+   "line": "0: If you have at least 15 life more than your starting life total, exile ~ and each artifact and creature your opponents control.",
+   "decks": [
+    "tookens.txt"
+   ]
+  },
+  {
+   "card": "Sunfall",
+   "line": "Exile all creatures. Incubate X, where X is the number of creatures exiled this way.",
+   "decks": [
+    "tookens.txt"
+   ]
+  },
+  {
+   "card": "Abstergo Entertainment",
+   "line": "{3}, {T}, Exile ~: Return up to one target historic card from your graveyard to your hand, then exile all graveyards.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Autumn's Veil",
+   "line": "Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Avarice Totem",
+   "line": "{5}: Exchange control of ~ and target nonland permanent.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Bouncer's Beatdown",
+   "line": "~ costs {2} less to cast if it targets a black permanent.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Collective Resistance",
+   "line": "Escalate {G}",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Peerless Recycling",
+   "line": "Gift a card",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Royal Treatment",
+   "line": "Target creature you control gains hexproof until end of turn. Create a Royal Role token attached to that creature.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  }
+ ],
+ "solo": [
+  {
+   "card": "Pinkie Pie",
+   "line": "Everypony's Invited — Your party consists of each creature you control, and your party is always full.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Teferi, Temporal Archmage",
+   "line": "−1: Untap up to four target permanents.",
+   "decks": [
+    "spectrum-of-extinction.txt"
+   ]
+  },
+  {
+   "card": "Teferi, Temporal Archmage",
+   "line": "−10: You get an emblem with \"You may activate loyalty abilities of planeswalkers you control on any player's turn any time you could cast an instant.\"",
+   "decks": [
+    "spectrum-of-extinction.txt"
+   ]
+  },
+  {
+   "card": "Teferi, Temporal Archmage",
+   "line": "~ can be your commander.",
+   "decks": [
+    "spectrum-of-extinction.txt"
+   ]
+  },
+  {
+   "card": "Gitaxian Probe",
+   "line": "Look at target player's hand.",
+   "decks": [
+    "the-kings-gambit.txt",
+    "tidewoven.txt",
+    "black-mage-blackout.txt",
+    "double-down.txt",
+    "short-circuit.txt",
+    "tidal-loop.txt",
+    "tidecaller.txt"
+   ]
+  },
+  {
+   "card": "Borne Upon a Wind",
+   "line": "You may cast spells this turn as though they had flash.",
+   "decks": [
+    "fine-print-fatal-clause.txt",
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Aminatou, the Fateshifter",
+   "line": "~ can be your commander.",
+   "decks": [
+    "odds-and-ends.txt"
+   ]
+  },
+  {
+   "card": "Frodo, Adventurous Hobbit",
+   "line": "Partner with Sam, Loyal Attendant",
+   "decks": [
+    "second-breakfast.txt"
+   ]
+  },
+  {
+   "card": "Sam, Loyal Attendant",
+   "line": "Partner with Frodo, Adventurous Hobbit",
+   "decks": [
+    "second-breakfast.txt"
+   ]
+  },
+  {
+   "card": "Flash Photography",
+   "line": "You may cast ~ as though it had flash if it targets a permanent you control.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Formidable Speaker",
+   "line": "{1}, {T}: Untap another target permanent.",
+   "decks": [
+    "current-without-end.txt",
+    "the-shoal-must-go-on.txt",
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Talon Gates of Madara",
+   "line": "{4}: Put ~ from your hand onto the battlefield.",
+   "decks": [
+    "current-without-end.txt"
+   ]
+  },
+  {
+   "card": "Nazgûl",
+   "line": "A deck can have up to nine cards named ~.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Altar of Dementia",
+   "line": "Sacrifice a creature: Target player mills cards equal to the sacrificed creature's power.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Mikaeus, the Unhallowed",
+   "line": "Whenever a Human deals damage to you, destroy it.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Dance of the Dead",
+   "line": "When ~ enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with ~.\" Put enchanted creature card onto the battlefield tapped under your control and attach ~ to it. When ~ leaves the battlefield, that creature's controller sacrifices it.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Nim Deathmantle",
+   "line": "Whenever a nontoken creature is put into your graveyard from the battlefield, you may pay {4}. If you do, return that card to the battlefield and attach ~ to it.",
+   "decks": [
+    "dead-ringers.txt"
+   ]
+  },
+  {
+   "card": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+   "line": "Creatures you control can boast twice during each of your turns rather than once.",
+   "decks": [
+    "short-circuit.txt"
+   ]
+  },
+  {
+   "card": "Marang River Regent // Coil and Catch",
+   "line": "When ~ enters, return up to two other target nonland permanents to their owners' hands.",
+   "decks": [
+    "the-shoal-must-go-on.txt"
+   ]
+  },
+  {
+   "card": "Liquimetal Torque",
+   "line": "{T}: Target nonland permanent becomes an artifact in addition to its other types until end of turn.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Cursed Mirror",
+   "line": "As ~ enters, you may have it become a copy of any creature on the battlefield until end of turn, except it has haste.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Demand Answers",
+   "line": "As an additional cost to cast ~, sacrifice an artifact or discard a card.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Welding Jar",
+   "line": "Sacrifice ~: Regenerate target artifact.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Barkform Harvester",
+   "line": "{2}: Put target card from your graveyard on the bottom of your library.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "High-Speed Hoverbike",
+   "line": "When ~ enters, tap up to one target creature.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Clock of Omens",
+   "line": "Tap two untapped artifacts you control: Untap target artifact.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Liquimetal Coating",
+   "line": "{T}: Target permanent becomes an artifact in addition to its other types until end of turn.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Grinding Station",
+   "line": "{T}, Sacrifice an artifact: Target player mills three cards.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Twinflame",
+   "line": "Strive — ~ costs {2}{R} more to cast for each target beyond the first.",
+   "decks": [
+    "overtime-at-the-treasure-mine.txt"
+   ]
+  },
+  {
+   "card": "Sarinth Steelseeker",
+   "line": "Whenever an artifact you control enters, look at the top card of your library. If it's a land card, you may reveal it and put it into your hand. If you don't put the card into your hand, you may put it into your graveyard.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  },
+  {
+   "card": "Turntimber Symbiosis // Turntimber, Serpentine Wood",
+   "line": "Look at the top seven cards of your library. You may put a creature card from among them onto the battlefield. If that card has mana value 3 or less, it enters with three additional +1/+1 counters on it. Put the rest on the bottom of your library in a random order.",
+   "decks": [
+    "value-meal.txt"
+   ]
+  }
+ ],
+ "unsim": [
+  {
+   "card": "Applejack",
+   "line": "Family Gathering — At the beginning of your end step, put a toy you own onto the battlefield as a 2/2 creature token with that toy's name, colors, and creature types. If the toy has wings, the token has flying. If the toy has a horn, scry 2. If it has neither, create a Food token.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Fluttershy",
+   "line": "{1}, {T}: Put a +1/+1 counter on each creature with a tail target player controls. Stare down up to one target creature until end of turn.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Pinkie Pie",
+   "line": "Whenever you cast a spell with a smile in its art, create a tapped Treasure token.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Rarity",
+   "line": "{1}, {T}, Reveal a My Little Pony® toy you own: Until end of turn, another target creature gains protection from each color in that toy's coat, mane, and outfit.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Discord, Lord of Disharmony",
+   "line": "At the beginning of your end step, choose a random nonland Magic card name. Until your next end step, you may cast a copy of a spell with that name, and mana of any type can be spent to cast it. If you cast a spell this way, copy this ability if ~ is on the battlefield.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Nightmare Moon // Princess Luna",
+   "line": "As long as it's nighttime, ~ gets +2/+2 and has menace.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Nightmare Moon // Princess Luna",
+   "line": "{6}: Transform ~. Anypony may activate this ability or help pay the cost. When they do, they become your friend.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Nightmare Moon // Princess Luna",
+   "line": "When ~ transforms into ~, choose up to six cards you own from outside the game with a moon in their art, then exile those cards. As long as those cards remain exiled, you may cast them, and your friends may cast them with your permission.",
+   "decks": [
+    "friendship-is-magic.txt"
+   ]
+  },
+  {
+   "card": "Karn Liberated",
+   "line": "−14: Restart the game, leaving in exile all non-Aura permanent cards exiled with ~. Then put those cards onto the battlefield under your control.",
+   "decks": [
+    "nothing-personal.txt",
+    "void-tax.txt"
+   ]
+  }
+ ]
+}

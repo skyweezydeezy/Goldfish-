@@ -6,6 +6,7 @@ let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
 (async () => {
   const b = await chromium.launch(), ctx = await b.newContext({ ...devices['iPhone 13'], deviceScaleFactor: 1, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.addInitScript(() => { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); });
   const p = await ctx.newPage(), errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8800/'); await p.waitForTimeout(800);

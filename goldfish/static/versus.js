@@ -1032,7 +1032,7 @@
     }
     const units = G.allUnits(g).length;
     const now = gm.attackNow && gm.games[gm.attackNow.def] ? A.attackSum(g, gm.attackNow.iids.map(id => g.battlefield.find(p => p.iid === id)).filter(Boolean), gm.games[gm.attackNow.def]) : null;
-    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
+    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>${(() => { const fl = G.floatingLoss(g).n; return fl ? ` <span class="mana-warn" role="status" title="Floating mana is lost when the turn ends">⚠ ${fl} floating: lost at the end of the turn</span>` : ''; })()}. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
       ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
@@ -1110,7 +1110,7 @@
     // the bar is rewritten only when it changes (the step of the turn is lit in place), so its buttons stay put while a game plays itself
     const bar = `<span class="vs-round">Round <b>${Math.min(gm.match.round, gm.rounds)}</b></span>` + C.stepsHtml(D) + (gm.over ? `<b>${esc(gm.over)}</b>` : gm.human == null
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
-      : `<span class="hint">${gm.choice ? 'Your choice' : gm.remote != null && !gm.over ? esc(waitText(gm)) : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
+      : `<span class="hint" data-status>${gm.choice ? 'Your choice' : gm.remote != null && !gm.over ? esc(waitText(gm)) : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
       (gm.io ? `<span class="vs-conn ${gm.io.connected() ? 'on' : 'off'}" title="${gm.io.connected() ? 'Connected to the other device' : 'Not connected: the game waits until the other device is back'}">${gm.io.connected() ? '● Connected' : '○ Not connected'}</span>` : '') +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
         `<button class="ghost open-sound" title="Music and sound effects"><span class="sound-ic">${window.__isfAudio && !(window.__isfAudio.get().sfx || window.__isfAudio.get().music) ? '🔇' : '🔊'}</span><span class="wide"> Sound</span></button>` +
@@ -1239,7 +1239,7 @@
         gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
         return render(mode);
       }
-      if (hit('vs-end')) return input(mode, 'end', false);
+      if (hit('vs-end')) { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; return input(mode, 'end', false); }          // T-099
       if (hit('vs-autoturn') && gm.remote == null) return input(mode, 'end', true);
     });
   }
@@ -1259,7 +1259,8 @@
   function tickClock(mode) {
     const st = V[mode], gm = st.game, el = st.clockEl; if (!el) return;
     const owner = gm && !gm.over && !gm.halted && gm.human != null && gm.phase !== 'mull' ? cur(gm).pid : null;
-    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; return; }
+    if (gm && gm.turnTimer) el.dataset.timed = '1'; else delete el.dataset.timed;          // a timed game keeps the clock's place all game long
+    if (!gm || !gm.turnTimer || owner == null || !(owner === gm.human || owner === gm.remote)) { el.hidden = true; if (gm && gm.turnTimer && !el.textContent) el.textContent = '⏱ 0:00'; return; }
     const g = gm.games[owner], key = clockKey(gm), now = Date.now(), scale = clockScale(), mineTurn = owner === gm.human;
     let c = gm.clock;
     if (!c || c.key !== key) { const limit = clockLimit(g.turn); c = gm.clock = { key, owner, limit, left: limit * 1000 * scale, at: now, run: false, fired: false, sentAt: 0, sentRun: null }; }

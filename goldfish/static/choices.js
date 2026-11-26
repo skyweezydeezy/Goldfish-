@@ -38,7 +38,7 @@
     close();
     return new Promise((resolve, reject) => {
       const P = q.pay, sel = new Map();                       // unit -> the colour forced on it (null: the engine picks)
-      for (const k of q.def) sel.set(q.options[k].u, null);
+      for (const k of (P.smart && P.smart.length === P.n ? P.smart : q.def)) sel.set(q.options[k].u, null);          // T-099: it starts on the payment that wastes no mana
       const el = h('div', 'ch-sheet pay');
       el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', q.title);
       el.innerHTML = `
@@ -47,7 +47,8 @@
           <div class="ch-text hint">${esc(q.text)}</div>
           <div class="ch-paycost"><b>${esc(P.text)}</b> <span class="ch-count"></span></div>
           <div class="ch-opts ch-paychips"></div>
-          <div class="row wrap ch-btns"><button class="primary ch-ok">Confirm</button><button class="ghost ch-auto" title="Tap what the autopilot would tap">Pay automatically</button></div>
+          <div class="ch-paywaste" role="status" hidden></div>
+          <div class="row wrap ch-btns"><button class="primary ch-ok">Confirm</button><button class="ghost ch-auto" title="Tap the sources that waste no mana">Pay automatically</button></div>
         </div>`;
       const $ = s => el.querySelector(s), box = $('.ch-opts');
       const picks = () => P.solve([...sel].map(([u, force]) => ({ u, force })));
@@ -69,6 +70,13 @@
           }
           box.appendChild(c);
         }
+        { // T-099: what this selection leaves floating, and the payment that wastes none
+          const wb = $('.ch-paywaste'), w = sel.size === P.n && ks ? P.waste([...sel.keys()]) : [];
+          const sw = P.smart && P.smart.length === P.n ? P.waste(P.smart.map(k => q.options[k].u)) : [];
+          const lost = x => x.reduce((t, e) => t + e.left, 0);
+          wb.hidden = !w.length;
+          if (w.length) wb.textContent = '⚠ ' + w.map(e => `${e.name} makes ${e.made}; ${e.left} ${e.left === 1 ? 'is' : 'are'} left floating`).join('; ') + (lost(sw) < lost(w) ? ' — "Pay automatically" wastes less.' : ' — it floats until the end of the turn.');
+        }
         const ok = ks !== null && sel.size === P.n; $('.ch-ok').disabled = !ok;
         $('.ch-count').textContent = `${sel.size} of ${P.n} chosen${sel.size === P.n && !ok ? ' · does not pay the cost' : ''}`;
       };
@@ -79,7 +87,7 @@
         const cb = t.closest('.ch-col'); if (cb) { sel.set(+cb.dataset.u, cb.dataset.col || null); return render(); }
         const b = t.closest('.ch-opt');
         if (b) { const u = +b.dataset.u; if (sel.has(u)) sel.delete(u); else if (sel.size < P.n) sel.set(u, null); return render(); }
-        if (t.closest('.ch-auto')) return finish('auto');
+        if (t.closest('.ch-auto')) return finish('smart');
         if (t.closest('.ch-ok') && !$('.ch-ok').disabled) return finish(picks());
       });
       open = { q, el, resolve, reject };
@@ -89,7 +97,7 @@
   }
 
   function ask(q) {
-    if (q.pay) return window.__isfPayChoose ? askPay(q) : Promise.resolve('auto');          // the Display setting "Choose how I pay mana" (off: the autopilot pays, nothing is shown)
+    if (q.pay) return window.__isfPayChoose ? askPay(q) : Promise.resolve('smart');          // the Display setting "Choose how I pay mana" (off: nothing is shown, and the payment that wastes no mana is made)
     close();
     return new Promise((resolve, reject) => {
       const ts = tiles(q), take = new Map();                  // tile -> how many of its cards are chosen
@@ -204,11 +212,11 @@
   // The steps of a turn as a strip in the bar above the table. The strip is written once and the step being played is lit in place
   // (lightStep), so the buttons beside it are not rebuilt at every step: a click on Pause always lands.
   const SHORT = { untap: 'Untap', upkeep: 'Upkeep', draw: 'Draw', main1: 'Main', combat: 'Combat', main2: 'Main 2', end: 'End' };
-  function stepsHtml(D) { return `<span class="vs-steps" hidden>${D.STEPS.map(s => `<i data-step="${s}">${SHORT[s]}</i>`).join('')}</span>`; }
+  // A static box: it is never hidden and never changes size (see choices.css). index.html writes the same seven items for Practice.
+  function stepsHtml(D) { return `<span class="vs-steps">${D.STEPS.map(s => `<i data-step="${s}" data-t="${SHORT[s]}">${SHORT[s]}</i>`).join('')}</span>`; }
   function lightStep(strip, D, step, who) {
     if (!strip) return;
-    strip.hidden = !step;
-    strip.title = step ? `${who ? who + ': ' : ''}${D.STEP_NAME[step]} step` : '';
+    strip.title = step && D ? `${who ? who + ': ' : ''}${D.STEP_NAME[step]} step` : '';
     strip.querySelectorAll('i').forEach(i => i.classList.toggle('on', i.dataset.step === step));
   }
 

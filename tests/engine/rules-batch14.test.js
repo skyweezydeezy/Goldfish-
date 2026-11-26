@@ -61,7 +61,7 @@ T('other spree cards', () => { const g = bare(); g.library = g.library.slice(0, 
 // ---------- batch 14 ----------
 T('ba sing se', () => { const g = bare(); const bs = putOn(g, 'Ba Sing Se'); putOn(g, 'Forest'); mana(g, 3, 'G'); G.useAbilities(g); const l = g.battlefield.find(p => p.earthbent);
   check('Ba Sing Se: {2}{G}, tap: earthbend 2, a land becomes a 0/0 creature with haste and two +1/+1 counters', !!l && l.counters === 2 && G.isCreaturePerm(l) && G.hasKw(g, l, 'haste') && bs.tapped, names(g));
-  const pl = lab('Fire Nation Palace', /firebending/); check('Fire Nation Palace: mana that lasts only through combat is labelled "No solo effect"', pl.tag === 'solo'); });
+  const pl = lab('Fire Nation Palace', /firebending/); check('Fire Nation Palace: firebending is a real ability now (T-104), read ok', pl.status === 'ok'); });
 T('valakut exploration', () => { const g = bare(); putOn(g, 'Valakut Exploration'); g.library = [inst(g, 'Shivan Dragon'), inst(g, 'Opt')].concat(g.library.slice(0, 5)); putOn(g, 'Forest'); const x = g.hand.find(i => i.card.name === 'Shivan Dragon');
   check('Valakut Exploration: landfall exiles the top card and you may play it', !!x && x.valakutEx === true, g.hand.map(i => i.card.name).join()); const d0 = g.damage; G.endTurn(g);
   check('...not played by your end step: it goes to the graveyard and each opponent takes 1 damage', g.graveyard.includes(x) && !g.hand.includes(x) && g.damage === d0 + 1, g.damage - d0);

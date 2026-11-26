@@ -25,7 +25,7 @@
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: radial-gradient(ellipse at 50% -10%, #12324a 0%, var(--page) 55%) fixed, var(--page); color: var(--text-primary); }
+html, body { margin: 0; background: var(--page); color: var(--text-primary); }          /* plain: no soft glow at the top of the screen (the user, 2026-11-26) */
 body { font-size: 14px; line-height: 1.4; }
 button, select, input, textarea { font: inherit; color: inherit; }
 code { background: var(--surface-3); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
@@ -35,7 +35,7 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight
 
 /* ---------- top bar ---------- */
 .topbar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 18px; padding: 10px 18px;
-  background: linear-gradient(180deg, rgba(14,36,52,0.96), rgba(8,18,26,0.94)); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(143,216,255,.08), 0 8px 24px -12px rgba(143,216,255,.25); }
+  background: linear-gradient(180deg, rgb(14,36,52), rgb(8,18,26)); border-bottom: 1px solid var(--border); }          /* solid and sharp: no blur of what scrolls under it, no glow below it (the user: "remove the soft hazy look at the top") */
 .brand { font-weight: 700; font-size: 16px; white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand .logo { display: block; width: 40px; height: 40px; filter: drop-shadow(0 0 8px rgba(143,216,255,.55)); animation: swim 5s ease-in-out infinite; will-change: transform; }
@@ -228,7 +228,7 @@ label.small { font-size: 12px; }
 .pile-cards .mtg:hover { z-index: 5; }
 #zGrave .pile-cards, #zExile .pile-cards { padding-bottom: 60px; }
 #zCommand .pile-cards .mtg { --card-w: 120px; margin: 0; }
-.table-main { background: radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%); border-radius: 14px; border: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 720px; }
+.table-main { background: linear-gradient(180deg, var(--felt) 0%, var(--felt-2) 100%); border-radius: 14px; border: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 720px; }
 .bf-row { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 150px; padding: 18px 8px 8px; border-radius: 10px; background: rgba(0,0,0,.14); }
 .bf-row .mtg { --card-w: 98px; transition: transform .25s, filter .25s; }
 .bf-row .row-spacer { flex: 1 1 0; min-width: 8px; }          /* Practice: planeswalkers sit at the far end of the creature row */
@@ -573,7 +573,7 @@ button.danger:hover { background: rgba(208,59,59,.22); }
 
 /* ---------- playmats and sleeves (looks.js) ---------- */
 .table-main, .hand-stage { background-size: var(--mat-size, auto); background-position: center; }
-.table-main { background-image: var(--mat, radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%)); }
+.table-main { background-image: var(--mat, linear-gradient(180deg, var(--felt) 0%, var(--felt-2) 100%)); }
 .hand-stage { background-image: var(--mat, radial-gradient(ellipse at 50% 120%, #1c5272, var(--felt-2) 70%)); }
 /* the sleeve edge; :where keeps it weaker than the commander, castable, glow and Ring-bearer highlights */
 :where(html.sleeved .bf-row, html.sleeved .hand-zone, html.sleeved .fan, html.sleeved .mini-hand, html.sleeved #zCommand) .mtg { box-shadow: 0 0 0 3px var(--sleeve), 0 2px 6px rgba(0,0,0,.55); }
@@ -587,7 +587,7 @@ html.sleeved .card-back.pile { box-shadow: 2px 2px 0 var(--sleeve-dark), 4px 4px
 .look-opt.on { color: var(--text-primary); font-weight: 650; }
 .look-sw { width: 100%; padding: 0; border: 2px solid transparent; border-radius: 10px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
 .look-sw.mat { aspect-ratio: 16 / 10; }
-.look-sw.mat.default-mat { background: radial-gradient(ellipse at 50% 0%, #1b4d6b 0%, var(--felt) 45%, var(--felt-2) 100%); }
+.look-sw.mat.default-mat { background: linear-gradient(180deg, var(--felt) 0%, var(--felt-2) 100%); }
 .look-sw.sleeve { width: 58px; aspect-ratio: 488 / 680; border-width: 3px; border-radius: 6px; }
 .look-sw.sleeve.bare { background: radial-gradient(ellipse at 50% 50%, #bfe9ff 0 16%, #4aa6e0 17% 30%, #12324a 31% 100%); border-color: #0a2030; }
 .look-opt.on .look-sw { outline: 2px solid var(--ice); outline-offset: 3px; }
@@ -1480,3 +1480,4 @@ body[data-view=table]:not(.tfocus) .topbar .fs-btn { display: none; }     /* the
 }
 /* a long question in your panel (blocks: one menu per attacker) scrolls inside the panel, and its buttons stay in view at the bottom of it */
 body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child { position: sticky; bottom: 0; z-index: 3; background: rgba(4, 12, 20, .94); padding: 4px 0 2px; margin-bottom: 0; }
+.mana-warn { color: #b45309; font-size: 12px; font-weight: 600; margin-left: 6px; white-space: nowrap; }          /* T-099: floating mana that the end of the turn empties */

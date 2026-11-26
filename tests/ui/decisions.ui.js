@@ -154,13 +154,13 @@ const shot = process.env.VERSUS_SHOTS;
 
   // ---- a removal target
   await clickHand('duel', 'Anguished Unmaking');
-  await passStack('duel');
-  await p.waitForSelector('.ch-sheet.target', { timeout: 10000 });
+  await p.waitForSelector('.ch-sheet.target', { timeout: 10000 });          // the target is chosen as the spell is cast (CR 601.2c), before the stack
   sh = await sheet();
   check('removal asks for its target among the opponent\'s nonland permanents', /Anguished Unmaking: choose a target/.test(sh.title) && sh.names.includes('Bloodthirsty Conqueror') && sh.names.includes('Academy Manufactor') && sh.def.length === 1, sh.names.join(', ') + ' / default ' + sh.def.join(','));
   if (shot) await p.screenshot({ path: path.join(shot, 'choice-target.png') });
   const victim = sh.names.find(n => n !== sh.def[0] && /Bloodthirsty|Academy/.test(n));
   await pickTile(victim); await p.click('.ch-sheet .ch-ok');
+  await passStack('duel');          // then it waits on the stack: "You cast Anguished Unmaking: does it resolve?"
   await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 10000 });
   const rm = await p.evaluate(() => { const o = window.__isfVersus.duel.game.games[1]; return { bf: o.battlefield.map(q => q.card.name), ex: o.exile.map(i => i.card.name) }; });
   check('the permanent you chose (not the autopilot\'s) is exiled', !rm.bf.includes(victim) && rm.ex.includes(victim) && rm.bf.includes(sh.def[0]), victim);
@@ -183,8 +183,8 @@ const shot = process.env.VERSUS_SHOTS;
     if (shot) await p.screenshot({ path: path.join(shot, 'choice-endstep.png') });
     const oppCre = await p.evaluate(() => window.__isfVersus.duel.game.games[1].battlefield.filter(q => window.Goldfish.isCreaturePerm(q)).length);
     await pickTile('Swords to Plowshares'); await p.click('.ch-sheet .ch-ok');
-    await passStack('duel');          // your instant waits on the stack first ("You cast Swords to Plowshares: does it resolve?"); its target is chosen as it resolves
-    if (oppCre > 1) { await p.waitForSelector('.ch-sheet.target', { timeout: 10000 }); await p.click('.ch-sheet .ch-ok'); }          // one legal target is not a question
+    if (oppCre > 1) { await p.waitForSelector('.ch-sheet.target', { timeout: 10000 }); await p.click('.ch-sheet .ch-ok'); }          // its target is chosen as it is cast (one legal target is not a question)
+    await passStack('duel');          // then your instant waits on the stack ("You cast Swords to Plowshares: does it resolve?")
     s = await until('duel', x => x.phase === 'main' && x.turn >= 2);
     const sw = await p.evaluate(() => { const gm = window.__isfVersus.duel.game; return { gy: gm.games[0].graveyard.map(i => i.card.name), cre: gm.games[1].battlefield.filter(q => window.Goldfish.isCreaturePerm(q)).length }; });
     check('...the instant resolves at the end step and the game goes on to your turn, with no second stop for the same instants', sw.gy.includes('Swords to Plowshares') && (oppCre === 0 || sw.cre <= oppCre - 1) && !!s && s.turn >= 2, JSON.stringify(sw));
@@ -273,14 +273,14 @@ const shot = process.env.VERSUS_SHOTS;
   await start('pod');
   await arrange('pod', { clear: true, hand: ['Anguished Unmaking'], lands: [['Swamp', 3], ['Plains', 3]], oppClear: true, opp: ['Academy Manufactor'] });
   await clickHand('pod', 'Anguished Unmaking');
-  await passStack('pod');
-  await p.waitForSelector('.ch-sheet.target', { timeout: 10000 });
+  await p.waitForSelector('.ch-sheet.target', { timeout: 10000 });          // chosen as it is cast
   sh = await sheet();
   const owners = await p.evaluate(() => { const gm = window.__isfVersus.pod.game; return { owners: [...new Set(gm.choice.options.map(o => o.owner))].sort().join(','), focus: gm.games[0].opp.pid, third: gm.choice.options.find(o => o.owner === 3).k }; });
   check('in a pod the target sheet offers the permanents of all three opponents, each under its player\'s name', owners.owners === '1,2,3' && sh.tiles === 3 && new Set(sh.notes.map(n => n.split(' · ')[0])).size === 3, sh.notes.join(' | '));
   if (shot) await p.screenshot({ path: path.join(shot, 'choice-pod-target.png') });
   await p.evaluate(k => document.querySelector('.ch-sheet .ch-opt[data-k="' + k + '"]').click(), owners.third);
   await p.click('.ch-sheet .ch-ok');
+  await passStack('pod');
   await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.pod.game.acting, null, { timeout: 10000 });
   const pr = await p.evaluate(() => { const gs = window.__isfVersus.pod.game.games; return { left: gs.slice(1).map(o => o.battlefield.length).join(','), exile: gs[3].exile.map(i => i.card.name).join(','), focus: gs[0].opp.pid }; });
   check('the chosen opponent\'s permanent is exiled, the others stay, and you still face the same player', pr.left === '1,1,0' && pr.exile === 'Academy Manufactor' && pr.focus === owners.focus, JSON.stringify(pr));

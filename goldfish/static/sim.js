@@ -7257,12 +7257,18 @@
           break;
         }
         case 'swampEmblem': g.swampEmblem = true; ev.push({ type: 'note', text: "Emblem: Swamps tap for {B}{B}{B}{B}", source }); break;
-        case 'consult': {          // Demonic Consultation: the best card left is named; the top six go, then everything above it
-          const t = bestTutorTarget(g, { type: 'tutor', filters: [] }); if (!t) break;
-          const ex = g.library.splice(0, 6); g.exile.push(...ex); const at = g.library.indexOf(t.inst);
-          if (at < 0) { ev.push({ type: 'note', text: `Demonic Consultation: ${t.inst.card.name} was among the top six, and is exiled`, source }); break; }
-          const above = g.library.splice(0, at); g.exile.push(...above); g.library.shift(); g.hand.push(t.inst);
-          ev.push({ type: 'note', text: `Demonic Consultation names ${t.inst.card.name}: ${ex.length + above.length} cards exiled on the way`, source }); break;
+        case 'consult': {          // Demonic Consultation: name a card; the top six are exiled, then cards until the first one with that name (it goes to your hand); none of that name left, and the whole library goes
+          const lib0 = g.library; g.library = lib0.slice(6); let t; try { t = bestTutorTarget(g, { type: 'tutor', filters: [] }); } finally { g.library = lib0; }          // the autopilot names the best card that is not in the top six
+          let name = t ? t.inst.card.name : null;
+          if (g.ask && !g.dry) {          // a person names any card of the deck, or a card that is not in the library at all
+            const names = [...new Set(g.deck.unique.filter(c => !c.isToken && !c.commander).map(c => c.name))].sort((x, y) => (x === name ? -1 : y === name ? 1 : 0) || x.localeCompare(y));
+            const opts = names.map(n => ({ mode: n, text: n })).concat([{ mode: '', text: 'A card that is not in your library (your whole library is exiled)' }]);
+            const o = decide(g, { kind: 'mode', options: opts, def: opts.find(x => x.mode === name) || opts[0], source }); name = o ? o.mode : name;
+          } else if (!t) break;
+          const ex = g.library.splice(0, 6); g.exile.push(...ex); const at = name ? g.library.findIndex(i => i.card.name === name) : -1;
+          if (at < 0) { const n0 = g.library.length; g.exile.push(...g.library.splice(0)); ev.push({ type: 'note', text: `Demonic Consultation names ${name || 'a card that is not in the library'}: no such card is left, the whole library (${ex.length + n0} cards) is exiled`, source }); break; }
+          const above = g.library.splice(0, at); g.exile.push(...above); const got = g.library.shift(); g.hand.push(got);
+          ev.push({ type: 'note', text: `Demonic Consultation names ${name}: ${ex.length + above.length} cards exiled on the way`, source }); break;
         }
         case 'intuition': {          // Intuition: three cards; the other player hands you the worst, the two best go to the graveyard
           const picks = []; for (let k = 0; k < 3; k++) { const t = bestTutorTarget(g, { type: 'tutor', filters: [] }); if (!t) break; g.library.splice(g.library.indexOf(t.inst), 1); picks.push(t.inst); }
@@ -10723,6 +10729,10 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.timeStopped === g.turn) return out;
     if (onBf) {
     blocked = (g.opp || g.needleSeen) && abilBlocked(g, p, false) ? 'its abilities cannot be activated' : (a.isArtifact && stonyOn(g)) ? 'Stony Silence' : null;
+    if (a.selfUntap != null && p.card.a.produce) {          // Basalt Monolith, Grim Monolith: {3}: untap it. Paid with its own mana, the untap is a loop with Kinnan, Power Artifact, Rings of Brighthearth; a person plays it by hand, and is offered the shortcut once it makes mana for good
+      const cu = { generic: a.selfUntap, pips: [], x: 0 };
+      add(`Untap ${p.card.name}`, cu, blocked || payWhy(cu), ev => { pay(g, cu); p.tapped = false; touch(g); ev.push({ type: 'activate', perm: p, text: `${costText(cu)}: Untap ${p.card.name}.` }); manualLoop(g, ev); });
+    }
     if (foodsOf(g).includes(p)) {                                                                        // a Food: {2}, {T}, sacrifice it: gain 3 life (Sam: {1})
       const c = foodCostOf(g);
       add('Gain 3 life (tap and sacrifice this Food)', c, blocked || (p.tapped ? 'it is tapped' : null) || payWhy(c), ev => {
@@ -12821,7 +12831,7 @@ g.actSeq = (g.actSeq || 0) + 1;
           if (!t.kinds.includes('combatDamage')) continue;
           if (t.who === '~' || /equipped|enchanted/.test(t.who)) {
             const who = t.who === '~' ? q : g.battlefield.find(x => x.iid === q.attachedTo);
-            if (who && hitters.includes(who)) { if (t.fx.some(f => f.type === 'breathFury' || f.type === 'convertEoc')) fireNow(g, t, q, ev, who); else fire(g, t, q, ev, who); }          // Breath of Fury: at once, so the extra combat is counted when this combat ends
+            if (who && hitters.includes(who)) { if (t.fx.some(f => f.type === 'breathFury' || f.type === 'convertEoc' || f.type === 'extraCombat')) fireNow(g, t, q, ev, who); else fire(g, t, q, ev, who); }          // Breath of Fury, Port Razer: at once, so the extra combat is counted when this combat ends
           } else if (/one or more/.test(t.who)) { if ((!t.hitFilter || hitters.some(h => matchesFilter(h.card, t.hitFilter))) && (!t.hitNot || hitters.some(h => !matchesFilter(h.card, t.hitNot))) && (!t.hitArtifact || hitters.some(h => h.card.a.isArtifact)) && (!t.pumped || hitters.some(h => powerOf(g, h) > (h.card.a.power || 0)))) fire(g, t, q, ev, null); }
           else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.minDmg || Math.max(0, powerOf(g, h)) >= t.minDmg) && (!t.tokenOnly || h.token) && (!t.nontokenOnly || !h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
         }
@@ -13607,6 +13617,13 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (left === 0) best = Math.max(best, 900);
     }
     return best;
+  }
+  // A person playing a loop card by card: once what they have done makes mana for good (infiniteMana), they are offered the shortcut: infinity, a number of mana, or to go on by hand (comboAsk, once a turn)
+  function manualLoop(g, ev) {
+    if (!g.ask || g.dry || g.killTurn != null) return;
+    const inf = infiniteMana(g); if (!inf) return;
+    const t = `infinite mana (${inf.how})`, d = comboDescribe(g, t);
+    comboAsk(g, ev, t, { name: d.name, cards: d.cards, outcome: 'mana', noWin: true, colors: inf.colors });
   }
   function comboLines(g, ev) {
     if (g.dry || g.killTurn != null || matchOver(g)) return;
@@ -15093,7 +15110,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       const c = way.c, how = way.how, pitch = way.pitch, cost = way.cost, ca = c.card.a, k = ca.counter;
       let unless = k.perSpell ? 1 + (g.spellsCast || 0) : k.unless, extraDraw = 0;
       if (k.confluence) { const spare = allUnits(g).length, times = Math.min(3, Math.floor(spare / k.unless) + 1); unless = k.unless * times; extraDraw = 3 - times; }          // Mystic Confluence: the counter mode as often as needed to beat their spare mana, the rest draws
-      if (unless && payUnless(g, unless, { card: c.card }, `${inst.card.name} is countered`, `${c.card.name} counters ${inst.card.name} unless you pay.`, d)) {                      // "unless its controller pays": a player with spare mana just pays (a person is asked, T-080)
+      const taxLate = !!unless && !k.confluence && !!(g.ask || d.ask) && !g.dry;          // a person is in it: the counterspell is cast and paid for first, then the tax is asked (Mana Tithe: cast it, they may pay {1})
+      if (!taxLate && unless && payUnless(g, unless, { card: c.card }, `${inst.card.name} is countered`, `${c.card.name} counters ${inst.card.name} unless you pay.`, d)) {                      // "unless its controller pays": a player with spare mana just pays (a person is asked, T-080)
         ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${unless} for ${c.card.name}` }); return false;
       }
       if (how === 'mana') pay(d, cost);
@@ -15106,8 +15124,13 @@ g.actSeq = (g.actSeq || 0) + 1;
       d.graveyard.push(c);
       d.spellsCast = (d.spellsCast || 0) + 1;
       if (d.castTurn[c.card.uid] == null) d.castTurn[c.card.uid] = d.turn;                                  // a counterspell cast on the other player's turn counts as cast
+      if (taxLate) {          // the spell is on the stack under the counterspell: its controller pays or not
+        ev.push({ type: 'note', text: `${c.card.name} is cast: ${inst.card.name} is countered unless its controller pays {${unless}}`, source: null }); fireCastTriggers(d, c, ev);
+        if (payUnless(g, unless, { card: c.card }, `${inst.card.name} is countered`, `${c.card.name} counters ${inst.card.name} unless you pay.`, d)) { ev.push({ type: 'note', text: `${inst.card.name}'s controller pays ${unless} for ${c.card.name}: it resolves` }); return false; }
+        ev.push({ type: 'note', text: `${c.card.name} counters ${inst.card.name}`, source: null });
+      } else {
       ev.push({ type: 'note', text: `${c.card.name} counters ${inst.card.name}${how === 'free' ? ' (free)' : ''}`, source: null });
-      fireCastTriggers(d, c, ev);
+      fireCastTriggers(d, c, ev); }
       if (extraDraw > 0) draw(d, extraDraw, ev);          // Mystic Confluence's other modes
       if (k.remand && !inst.card.commander) { g.hand.push(inst); draw(d, 1, ev); }
       else (inst.card.commander ? g.command : g.graveyard).push(inst);

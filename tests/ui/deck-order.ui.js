@@ -13,7 +13,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.click('[data-tab=duel]'); await p.waitForTimeout(400); await p.click('[data-tab=build]').catch(() => {});
   const read = sel => p.$eval(sel, el => [...el.querySelectorAll('optgroup')].filter(g => g.label !== 'Saved in this browser').map(g => ({ label: g.label, opts: [...g.children].map(o => o.textContent) })));
   const num = (t, re) => { const m = re.exec(t); return m ? +m[1] : null; };
-  const win = t => num(t, /· (\d+)%/), brk = t => num(t, /· B(\d)/), isDesc = a => a.every((x, i) => !i || x <= a[i - 1]);
+  const win = t => { const m = /· (\d+)%/.exec(t); return m ? +m[1] : -1; }, brk = t => num(t, /· B(\d)/), isDesc = a => a.every((x, i) => !i || x <= a[i - 1]);
   const MENUS = [['Build', '#savedDecks'], ['Duel opponent', '#tab-duel .vs-opp']];
   const set = async v => { await p.evaluate(() => document.querySelector('#displaySettings').open = true); await p.selectOption('#dispDeckOrder', v); await p.waitForTimeout(300); };
   const COLOR_HEAD = ['White', 'Blue', 'Black', 'Red', 'Green', 'Azorius', 'Orzhov', 'Boros', 'Selesnya', 'Dimir', 'Izzet', 'Simic', 'Rakdos', 'Golgari', 'Gruul', 'Esper', 'Jeskai', 'Bant', 'Mardu', 'Abzan', 'Naya', 'Grixis', 'Sultai', 'Temur', 'Jund'];
@@ -24,7 +24,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
     const g = await read(sel), heads = g.map(x => x.label), all = g.flatMap(x => x.opts);
     check(`${name}, default: headings are Bracket 5 down to 1`, heads.length >= 3 && heads.every(h => /^Bracket \d|^No bracket/.test(h)) && isDesc(heads.filter(h => /^Bracket/.test(h)).map(h => +h.match(/\d/)[0])), heads.join(' | '));
     check(`${name}, default: inside a bracket the field win % goes down`, g.every(x => isDesc(x.opts.map(win))), g.map(x => x.opts.map(win).join('>')).join(' / ').slice(0, 120));
-    check(`${name}: every option shows B, win % and kill turn`, all.length >= 50 && all.every(t => brk(t) && win(t) != null && /· T(\d+|>\d+)$/.test(t)), all[0]);
+    check(`${name}: every option shows bracket, win % and kill turn (— where not measured yet)`, all.length >= 50 && all.every(t => /· (B\d\??|—) · (\d+%|—) · (T\d+|T>\d+|—)$/.test(t)), all[0]);
     check(`${name}: an option's bracket is its heading's`, g.every(x => !/^Bracket/.test(x.label) || x.opts.every(t => brk(t) === +x.label.match(/\d/)[0])));
   }
   await set('color-bracket');

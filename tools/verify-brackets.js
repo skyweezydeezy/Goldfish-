@@ -227,6 +227,7 @@ async function simulate() {
 function apply() {
   const doc = JSON.parse(fs.readFileSync(OUT, 'utf8'));
   for (const v of doc.decks) {
+    if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
     let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
@@ -241,15 +242,15 @@ function apply() {
   // index.json: the ranking fields the deck menus sort by (T-077). bracket = the verified one (the higher of floor and speedBracket).
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) {
-    const v = doc.decks.find(x => x.file === d.file); if (!v) continue;
-    d.medianKill = v.goldfish.medianKill; d.fieldWin = v.field ? v.field.winRate : null;
+    const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
+    d.medianKill = v.goldfish.medianKill; if (v.field) d.fieldWin = v.field.winRate;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
   }
   fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)
   const SYNC = path.join(DECKS, 'drive-sync.json'), sync = JSON.parse(fs.readFileSync(SYNC, 'utf8'));
-  for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander) { rec.verified = v.verified; rec.verifiedAt = v.date || doc.date; } }
+  for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander && (!ONLY || v.file.includes(ONLY))) { rec.verified = v.verified; rec.verifiedAt = v.date || doc.date; } }
   fs.writeFileSync(SYNC, JSON.stringify(sync, null, 1) + '\n');
   console.log('Now run: node tools/build-deck-index.js');
 }

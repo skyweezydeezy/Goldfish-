@@ -612,7 +612,9 @@
   const byBracket = (a, b) => (b.bracket || 0) - (a.bracket || 0);
   const opt = (d, noColors) => {
     const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
-    if (d.bracket) bits.push('B' + d.bracket + (d.bracketEst ? '?' : '')); if (d.fieldWin != null) bits.push(Math.round(d.fieldWin) + '%'); if (d.medianKill != null) bits.push('T' + d.medianKill);
+    bits.push(d.bracket ? 'B' + d.bracket + (d.bracketEst ? '?' : '') : '—');
+    bits.push(d.fieldWin != null ? Math.round(d.fieldWin) + '%' : '—');          // "—": not measured yet (the round robin has not run for this deck)
+    bits.push(d.medianKill != null ? 'T' + d.medianKill : '—');
     return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
   };
   function builtinOptions() {

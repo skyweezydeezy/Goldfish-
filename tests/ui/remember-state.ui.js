@@ -29,7 +29,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 
   // settings on three tabs
   await p.fill('#optTurns', '12'); await p.uncheck('#optCmdrFirst');
-  await p.click('[data-tab=odds]'); await p.fill('#oddsK', '2');
+  await p.click('[data-tab=odds]'); await p.click('#oddsChoose > summary'); await p.fill('#oddsK', '2');          // "At least k" sits in the folded Choose cards (T-076); the value comes back into the closed box after the reload
   await p.click('[data-tab=duel]'); await p.fill('#tab-duel .vs-rounds', '31'); await p.selectOption('#tab-duel .vs-you', 'auto');
   // an opening hand after one mulligan
   await p.click('[data-tab=hands]'); await p.click('#drawHand'); await p.click('#mullHand'); await p.waitForTimeout(300);

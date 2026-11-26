@@ -29,7 +29,9 @@
   let run = null;          // the tour on screen: { id, steps, i, root, spot, bubble, blockers, raf, last, prevFocus, done }
   const visible = e => { if (!e || !e.isConnected) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   // a step may point into a folded section or at the top bar while a table has put it away (T-069): open it first
-  const reveal = e => { let b; while ((b = e.closest('.box-closed'))) b.classList.remove('box-closed'); while ((b = e.closest('details:not([open])'))) b.open = true; if (document.body.classList.contains('tfocus') && e.closest('.topbar')) document.body.classList.add('tbar-open'); };
+  let opened = [];          // what a step unfolded (T-074): folded again when the tour moves on or ends, so a tip never leaves the Tags box open
+  const unreveal = () => { for (const o of opened.reverse()) if (o.el.isConnected) { if (o.box) o.el.classList.add('box-closed'); else o.el.open = false; } opened = []; };
+  const reveal = e => { let b; while ((b = e.closest('.box-closed'))) { b.classList.remove('box-closed'); opened.push({ el: b, box: true }); } while ((b = e.closest('details:not([open])'))) { b.open = true; opened.push({ el: b }); } if (document.body.classList.contains('tfocus') && e.closest('.topbar')) document.body.classList.add('tbar-open'); };
   function findEl(step) {
     if (step.sheets) { const sh = document.querySelector('.ch-sheet'); if (sh && visible(sh)) return sh; }          // a question the game asks takes the spotlight while it is open
     if (!step.el) return null;
@@ -74,7 +76,7 @@
   }
   function stop(how) {
     if (!run) return;
-    const r = run; run = null;
+    const r = run; run = null; unreveal();
     cancelAnimationFrame(r.raf);
     document.removeEventListener('keydown', onKey, true);
     document.removeEventListener('click', onTapThrough, true);
@@ -102,7 +104,7 @@
     }
     if (i >= r.steps.length) return stop('done');
     if (i < 0) return;
-    r.i = i; const s = r.steps[i];
+    r.i = i; const s = r.steps[i]; unreveal();          // the last step's unfolded boxes shut; this step opens what it needs
     if (s.uses) markUsed(s.uses);          // the tour showed it: its first-time tip is not needed
     const el = findEl(s);
     if (el && s.scroll !== false) { const rc = el.getBoundingClientRect(); if (rc.top < 60 || rc.bottom > innerHeight - 40 || rc.left < 0 || rc.right > innerWidth) el.scrollIntoView({ block: rc.top < 60 || rc.bottom > innerHeight - 40 ? 'center' : 'nearest', inline: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }          // also sideways: a phone's toolbar scrolls

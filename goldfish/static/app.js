@@ -389,7 +389,7 @@
     if (noImg.length) add('warn', `No local image for: ${noImg.map(c => esc(c.name)).join(', ')}`);
     renderDeck();
     renderProfile();
-    buildTags(); renderTags();
+    foldTags(); buildTags(); renderTags();
     fillLabChoices();
     renderCoverage();
     $('#handStage').innerHTML = '<div class="empty-note">Draw a hand.</div>'; $('#handGrid').innerHTML = ''; H = null;
@@ -2998,7 +2998,13 @@
     else terms.push(not ? neg : pos);
     $('#tagQuery').value = terms.join(' '); renderTags();
   }
-  const tagOpen = new Set(['role']), tagAll = new Set();          // which tag groups are open / fully shown (kept while you search)
+  const tagOpen = new Set(), tagAll = new Set();          // which tag groups are open / fully shown (kept while you search; none to start: the whole box is folded until you open it)
+  // T-074: a deck that is loaded starts the Tags box folded to its header, every group inside it folded, and no search left over (a box you opened for the last deck is shut again)
+  function foldTags() {
+    tagOpen.clear(); tagAll.clear();
+    const q = $('#tagQuery'); if (q) q.value = '';
+    const box = $('#deckTags'); if (box && foldDefault()) box.classList.add('box-closed');
+  }
   function renderTags() {
     const box = $('#deckTags');
     if (!S.tags) { box.hidden = true; return; }
@@ -3077,7 +3083,7 @@
     const wrap = h('div', 'lb-tags');
     [...set].filter(t => !/^(mv|color|engine):/.test(t)).sort((a, b) => Tags.ORDER.indexOf(a.split(':')[0]) - Tags.ORDER.indexOf(b.split(':')[0]) || a.localeCompare(b)).forEach(t => {
       const b = h('button', 'tag-chip', esc(t)); b.title = 'Search the deck for this tag';
-      b.addEventListener('click', () => { lbClose(); $('#tagQuery').value = t; showTab('deck'); renderTags(); $('#deckTags').scrollIntoView({ block: 'start' }); });
+      b.addEventListener('click', () => { lbClose(); $('#tagQuery').value = t; showTab('deck'); renderTags(); $('#deckTags').classList.remove('box-closed'); $('#deckTags').scrollIntoView({ block: 'start' }); });          // you asked for those cards: the box opens
       wrap.appendChild(b);
     });
     return wrap;

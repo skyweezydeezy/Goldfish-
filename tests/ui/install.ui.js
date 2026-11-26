@@ -8,6 +8,7 @@ const URL = 'http://127.0.0.1:8800/';
 (async () => {
   const b = await chromium.launch();
   const page = async (opts, init) => { const ctx = await b.newContext({ ...opts, serviceWorkers: 'block' }); if (init) await ctx.addInitScript(init); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message)); return [ctx, p]; };
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   const sheet = p => p.evaluate(() => { const s = document.querySelector('#installSheet'); return { open: s.classList.contains('show'), text: s.innerText }; });
 
   // iPhone: the note, the link, the two taps

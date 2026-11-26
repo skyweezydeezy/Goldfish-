@@ -223,7 +223,7 @@
   body[data-view=duel] .topbar .brand, body[data-view=duel] .topbar .status-pill, body[data-view=pod] .topbar .brand, body[data-view=pod] .topbar .status-pill { display: none; }
 }
 
-/* =====================================================================
+/* ==============================================================
    One screen: every player's cards in play are always in view.
    The table fills the screen under the top bar. Each player's two rows share the height they are given and the cards
    size themselves to their row, so nothing in play is ever scrolled away; tap any card to see it full size.
@@ -373,6 +373,13 @@
 .vs-outbar button { min-height: 40px; }
 
 .speed-bar[hidden] { display: none !important; }          /* a game against a person has a fixed pace (versus.js slowOf) */
+
+/* the turn clock in the game's top bar (versus.js tickClock) */
+.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; }
+.vs-clock.still { opacity: .6; }
+.vs-clock.low { background: #c0392b; color: #fff; opacity: 1; }
+.vs-clock[hidden] { display: none; }
+
 /* an explorer reveals the top card of their library to everyone (T-079) */
 .vs-reveal { position: fixed; right: 14px; top: 28%; z-index: 80; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: vs-reveal-in .25s ease-out, vs-reveal-out .4s ease-in 2.4s forwards; }
 .vs-reveal .mtg { --card-w: 130px; box-shadow: 0 6px 24px rgba(0,0,0,.6); }

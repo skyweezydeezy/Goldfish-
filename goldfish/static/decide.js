@@ -180,7 +180,11 @@
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
       const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
-      if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
+      if (d.kind === 'pay') {                                                                             // T-089: one (source, role) pair of a payment
+        const u = d.units[o.u], same = d.units.filter((x, i) => i < o.u && x.src === u.src && x.src).length, sn2 = u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating mana' : 'Mana');
+        item.name = sn2 + (same ? ' #' + (same + 1) : '') + ' → ' + (o.role === 'generic' ? 'generic' : (G.COLOR_NAME[o.role] || (o.role === 'C' ? 'colorless' : o.role))); item.iid = u.src && u.src.iid != null ? u.src.iid : null; item.card = u.src && u.src.card ? u.src.card : null;
+        item.note = d.side(u).join(' · '); item.u = o.u; item.role = o.role;
+      } else if (d.kind === 'mode' && d.spree) { item.name = String(o.text || fxLabel(o.mode)).replace(/^\+\s*/, ''); const c = o.cost || {}, n = (c.generic || 0) + (c.pips || []).length; item.note = `costs ${n} more mana`; }
       else if (d.kind === 'mode' && o.text) { item.name = o.text; }
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
@@ -191,6 +195,7 @@
       else if (d.kind === 'combo') { item.name = o.label; item.note = o.note || ''; item.id = o.id; }
       else if (d.kind === 'shock') { item.name = o === 'pay' ? `Pay ${d.life} life` : 'Enter tapped'; item.note = o === 'pay' ? `it enters untapped · you go to ${g.life - d.life} life` : 'no life paid · it can\'t tap for mana this turn'; }
       else if (d.kind === 'tax') { item.name = o === 'pay' ? `Pay {${d.cost}}` : 'Do not pay'; item.note = o === 'pay' ? `you have ${G.allUnits(g).length} untapped mana` : taxThen(d, g, m); }          // T-080: "unless that player pays"
+      else if (d.kind === 'may') { item.name = o === 'yes' ? d.yes || 'Yes' : d.no || 'No'; }          // T-090: a plain "you may" (Sylvan Library)
       else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x' && d.what === 'squad') { item.name = o ? `Pay squad ${o === 1 ? 'once' : o + ' times'}` : 'Don\'t pay squad'; item.note = o ? `${o} token cop${o === 1 ? 'y' : 'ies'} of it as it enters` : 'just the card'; }
@@ -243,11 +248,22 @@
       q.title = `${sn || 'Effect'}: put a land onto the battlefield?`;
       q.text = 'Choose a land card from your hand to put onto the battlefield. If you do not, you draw a card.';
       q.none = 'Draw a card instead';
+    } else if (d.kind === 'may') {                                                                        // a plain yes/no: the title and text come with the question
+      q.title = d.title || `${sn || 'Choose'}?`; q.text = d.text || '';
+      if (src) { q.spell = src; q.spellNote = 'yours'; }
+    } else if (d.kind === 'discard' && d.sylvan) {                                                        // Sylvan Library: which two cards drawn this turn, and which goes on top
+      if (d.sylvan === 'choose') { q.title = `${sn}: choose ${max === 1 ? 'a card' : max + ' cards'} drawn this turn`; q.text = 'For each card you choose, pay 4 life or put it on top of your library. The cards you do not choose stay in your hand for free.'; }
+      else { q.title = `${sn}: which card goes on top?`; q.text = 'You put two cards back. The one you choose goes on top of your library, so you draw it next.'; }
     } else if (d.kind === 'discard') {
       if (d.rack) { q.title = `${sn}: which cards go on top of your library?`; q.text = 'Choose any number of cards from your hand. They go on top of your library, and you take that many cards from the top first.'; }
       else {
       q.title = d.cost ? `${sn}: discard ${max === 1 ? 'a card' : max + ' cards'} to cast it` : d.cleanup ? `End of turn: discard down to ${d.cleanup.max}` : 'Discard a card';
       q.text = d.cleanup ? `Your hand is over its maximum size of ${d.cleanup.max}. Choose a card to discard (${d.cleanup.left} to go).` : max === 1 ? 'Choose the card to discard.' : `Choose ${max} cards to discard.`; }
+    } else if (d.kind === 'imprint') {                                                                      // T-086: Chrome Mox, Isochron Scepter, Semblance Anvil, Ugin's Labyrinth, Extraplanar Lens, Mimic Vat
+      const zone = /died/.test(d.what) ? 'graveyard' : /land you control/.test(d.what) ? 'battlefield' : 'hand';
+      q.title = `${sn || 'Imprint'}: ${zone === 'graveyard' ? 'exile the creature that died?' : 'imprint which card?'}`;
+      q.text = zone === 'graveyard' ? 'You may exile the creature card that just died. If you do, the card already exiled with it returns to its owner\'s graveyard.' : `You may exile ${/^a[n]? /.test(d.what) ? d.what : 'a card'} ${zone === 'battlefield' ? '' : 'from your hand '}as it comes in. Only the cards its text allows are listed.`.replace(/ +/g, ' ');
+      q.none = 'Don\'t imprint';
     } else if (d.kind === 'sacrifice') {
       const w = d.what || 'creature';                                                                     // what: 'land' (Crop Rotation)
       q.title = d.ability ? `${d.ability}: sacrifice a ${w}` : d.cost ? `${sn}: sacrifice a ${w} to cast it` : d.by ? `${by} makes you sacrifice a ${w}` : `${sn || 'Effect'}: sacrifice a ${w}`;          // no by: your own card's effect (Roiling Regrowth)
@@ -311,6 +327,14 @@
       q.title = `${sn || 'Tax'}: pay {${d.cost}}, or ${taxThen(d, g, m)}?`;
       q.text = `${d.why || 'You may pay'} Pay {${d.cost}} and nothing happens, or do not pay and ${taxThen(d, g, m)}. You can spend ${G.allUnits(g).length} mana now. ★ is the autopilot's pick: it pays when it can.`;
       if (src) { q.spell = src; q.spellNote = 'it taxes you'; }
+    } else if (d.kind === 'pay') {                                                                        // T-089: pay a cost with the sources you choose
+      const c = d.cost, sym = x => (/^[WUBRGC]$/.test(x) ? x : '?'), ctext = (c.generic ? '{' + c.generic + '}' : '') + c.pips.map(p => '{' + p.map(sym).join('/') + '}').join('');
+      q.title = `${sn ? sn + ': pay ' : 'Pay '}${ctext || 'nothing'}`;
+      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is what the autopilot would tap.';
+      if (src && src.type_line) { q.spell = src; q.spellNote = 'being paid for'; }
+      q.pay = { cost: { generic: c.generic, pips: c.pips.map(p => p.slice()) }, n: c.generic + c.pips.length, text: ctext, units: d.units.map((u, i) => ({ u: i, name: u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating' : 'Mana'), card: u.src && u.src.card ? u.src.card : null, colors: [...u.colors].filter(x => d.options.some(o => o.u === i && o.role === x)), side: d.side(u), floating: !!u.floating, used: d.options.some(o => o.u === i) })).filter(x => x.used),
+        // sel: [{ u, force }]: the option numbers of a payment that pays exactly, or null
+        solve: sel => { const roles = G.payAssign(d.cost, d.units, sel.map(x => ({ i: x.u, force: x.force || null }))); if (!roles) return null; const ks = sel.map((x, j) => d.options.findIndex(o => o.u === x.u && o.role === roles[j])); return ks.some(k => k < 0) ? null : ks.sort((x, y) => x - y); } };
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
       q.text = `As it enters, you may pay ${d.life} life. If you don't, it enters tapped.`;
@@ -341,7 +365,9 @@
     if (a.pick === 'auto' || a.pick == null) return d.def;
     if (q.multi) {
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
-      return ks.length >= q.min && ks.length <= q.max ? ks.map(k => d.options[k]) : d.def;
+      if (!(ks.length >= q.min && ks.length <= q.max)) return d.def;
+      const list = ks.map(k => d.options[k]);
+      return d.valid && !d.valid(list) ? d.def : list;          // a payment (T-089) must pay the cost exactly
     }
     if (d.kind === 'combo' && a.pick && typeof a.pick === 'object' && Number.isInteger(a.pick.mana) && a.pick.mana > 0 && d.options.some(o => o.id === 'mana:inf')) { const n = a.pick.mana; return n > 99 ? d.options.find(o => o.id === 'mana:inf') : { id: 'mana:' + n, label: `${n} mana`, note: '' }; }          // "[number] mana": any amount typed
     if (a.pick === 'none') return q.optional ? null : d.def;
@@ -462,14 +488,14 @@
   // ---------- the log ----------
   // What happened, as short lines: the engine's own summary plus what a person chose or had done to them (searches, targets, discards,
   // sacrifices, counterspells). A card another player searched for and did not show stays unnamed.
-  const EXTRA = /^(Proliferate: |Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
+  const EXTRA = /^(Sylvan Library: |Proliferate: |Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
   function summary(g, ev, viewer) {
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {
       if (e.type === 'tutor' && e.inst) out.push(mine ? `searched for ${e.inst.card.name}` : 'searched their library for a card');
       else if (e.type === 'pw' && e.perm) out.push(`${e.perm.card.name.split(' // ')[0]} ${e.x ? '−X' : e.cost > 0 ? '+' + e.cost : e.cost < 0 ? '−' + (-e.cost) : '0'}: ${String(e.text || '').replace(/^[+−-]?(?:\d+|x|X):\s*/, '')}`);          // a loyalty ability
       else if (e.type === 'tempt') out.push(`💍 the Ring tempts ${mine ? 'you' : 'them'} (${e.n}${e.n === 1 ? 'st' : e.n === 2 ? 'nd' : e.n === 3 ? 'rd' : 'th'} time)${e.bearer ? ': ' + e.bearer.card.name + ' is the Ring-bearer' : ''}`);
-      else if (e.type === 'note' && e.text && EXTRA.test(e.text) && !base.includes(e.text)) out.push(!mine && /^Tutored .* to the top/.test(e.text) ? 'searched their library and put a card on top' : e.text);
+      else if (e.type === 'note' && e.text && EXTRA.test(e.text) && !base.includes(e.text)) out.push(!mine && e.pub ? e.pub : !mine && /^Tutored .* to the top/.test(e.text) ? 'searched their library and put a card on top' : e.text);          // e.pub: the version without card names for another player
     }
     return out;
   }

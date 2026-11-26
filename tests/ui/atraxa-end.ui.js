@@ -107,7 +107,7 @@ const shot = process.env.VERSUS_SHOTS;
   await p.waitForFunction(() => !document.querySelector('.ch-sheet') && !window.__isfVersus.duel.game.acting, null, { timeout: 15000 });
   const c1 = await cnt();
   check('confirming adds a counter to Samwise Gamgee and none to the others', c1.sam === 2 && c1.pip === 0 && c1.opp === 1, JSON.stringify(c1));
-  const endLog = await p.$$eval('#tab-duel .vs-log .vs-line[data-step=end]', ls => ls.map(l => l.textContent));
+  const endLog = await p.$$eval('#tab-duel .vs-log .vs-line[data-step=end]', ls => ls.map(l => l.textContent).filter(t => /^You\b/.test(t)));          // my end steps only: the random opponent may have gone first, and its end step can be empty
   check('the log says what was proliferated under the end step, not "nothing happens"', endLog.some(t => /Proliferate: one more of each counter on Samwise Gamgee/.test(t)) && !endLog.some(t => /nothing happens/.test(t)), endLog.join(' || '));
   await b.close();
   console.log(`\n${pass} passed, ${fail} failed`);

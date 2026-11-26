@@ -2,6 +2,15 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 201,
+      "lines": [
+        "Settings has \"Choose how I pay mana\": pick which lands and sources pay, and which colour each makes. Off by default.",
+        "Sylvan Library plays out in full: draw two more, then pay 4 life or put back each of two cards. Imprint cards (Chrome Mox, Isochron Scepter…) let you choose the card.",
+        "Play a friend reconnects by itself after a phone sleeps or the network drops, codes games included.",
+        "Duel, Pod and Play a friend: a turn timer (90 seconds for your first 5 turns, 60 after). Run out and your turn ends, womp womp. Switch it off in Settings."
+      ]
+    },
+    {
       "v": 200,
       "lines": [
         "Fierce Guardianship and friends can always answer a spell (free with your commander out). Rhystic Study, Smothering Tithe and similar cards ask the player to pay or not."

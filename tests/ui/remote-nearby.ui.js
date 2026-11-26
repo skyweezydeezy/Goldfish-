@@ -245,6 +245,59 @@ const tap = async (p, sel, ms) => {
   await Promise.all([D, E].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && g.remote != null && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
   const [d0, e0] = [await st(D), await st(E)];
   check('the room game starts on both devices: Eli (who asked) is seat 0', d0.local === 1 && e0.local === 0 && d0.names.join() === 'Eli,Dana' && d0.fp === e0.fp, d0.names.join());
+  // ---- the turn clock on Play a friend: both pages show the same clock, it stops while someone else is waited for or the link is down,
+  // and only the active player's device ends the turn at 0
+  const drive = p => p.evaluate(() => { const g = window.__isfVersus.duel.game; if (!g) return;
+    if (g.choice) { const x = document.querySelector('.ch-sheet .ch-ok:not([disabled])') || document.querySelector('.ch-sheet .ch-none'); if (x) x.click(); }
+    else if (g.phase === 'respond' && g.respond && g.respond.seat === g.human) { const x = document.querySelector('#tab-duel .vs-pass'); if (x) x.click(); } });
+  const ck = p => p.evaluate(() => { const g = window.__isfVersus.duel.game, e = document.querySelector('#tab-duel .vs-clock'), o = g.match.order[g.idx].pid;
+    return { owner: o, me: g.human, phase: g.phase, run: g.clock && g.clock.run, left: g.clock ? Math.round(g.clock.left) : null, shown: e && !e.hidden && e.getClientRects().length > 0, text: e && e.textContent, still: e && e.classList.contains('still'), timer: g.turnTimer, turn: g.games[o].turn, acting: g.acting, busy: g.busy }; });
+  await Promise.all([D, E].map(p => tap(p, '#tab-duel .vs-keep')));
+  const bothMain = async () => { for (let i = 0; i < 200; i++) { await Promise.all([D, E].map(drive)); const [x, y] = [await ck(D), await ck(E)]; if (x.phase === 'main' && y.phase === 'main' && !x.acting && !y.acting && x.owner === y.owner) return; await D.waitForTimeout(200); } throw new Error('no main phase'); };
+  await bothMain();
+  const first = await ck(D), X = first.owner === first.me ? D : E, Y = X === D ? E : D;
+  await X.waitForTimeout(1600);
+  const [cx, cy] = [await ck(X), await ck(Y)], secs = t => { const m = /(\d+):(\d\d)/.exec(t); return m ? +m[1] * 60 + +m[2] : -1; };
+  check('Play a friend: both pages show a clock on the active player\'s turn, the same time to within 2 s', cx.shown && cy.shown && Math.abs(secs(cx.text) - secs(cy.text)) <= 2 && secs(cx.text) <= 90, cx.text + ' / ' + cy.text);
+  check('...only the active player has the End turn button; the other device shows the clock and nothing to press', await X.$('#tab-duel .vs-end') !== null && await Y.$('#tab-duel .vs-end') === null && cx.run === true);
+  await X.evaluate(() => { window.__isfVersus.duel.game.waiting = 1; });          // as if waiting for the other player's answer
+  await X.waitForTimeout(1500);
+  const q1 = await ck(X), q2 = (await X.waitForTimeout(1000), await ck(X)), qy = await ck(Y);
+  check('while the active player waits for someone else the clock stops (on both pages), then goes on', q1.run === false && Math.abs(q1.left - q2.left) < 100 && qy.still === true);
+  await X.evaluate(() => { window.__isfVersus.duel.game.waiting = null; });
+  await X.waitForTimeout(800);
+  check('...it runs again when the wait is over', (await ck(X)).run === true);
+  await X.evaluate(() => window.__isfRemote.state.link.ch.close());
+  await wait(X, () => !window.__isfRemote.connected(), null, 20000);
+  await wait(X, () => window.__isfVersus.duel.game.clock && !window.__isfVersus.duel.game.clock.run, null, 5000);
+  const d1 = await ck(X); await X.waitForTimeout(1500); const d2 = await ck(X);
+  check('while the connection is down the clock stands still', d1.run === false && Math.abs(d1.left - d2.left) < 600, d1.left + ' → ' + d2.left);
+  await Promise.all([D, E].map(p => wait(p, () => window.__isfRemote.connected(), null, 90000)));
+  await X.waitForTimeout(800);
+  check('...and runs again once the two devices have connected again', (await ck(X)).run === true && (await ck(X)).left < d2.left + 100);
+  // a time-out: shorten the limits, X ends its turn, and Y\'s clock (4.5 s) runs out on Y\'s device only
+  await Promise.all([D, E].map(p => p.evaluate(() => { window.__turnTimerScale = 0.05; })));
+  await tap(X, '#tab-duel .vs-end');
+  const outs = p => p.evaluate(() => ({ ends: window.__isfRemote.state.game.out.filter(m => m.t === 'act' && m.name === 'end').map(m => m.seat), inbox: window.__isfRemote.state.game.inbox.filter(m => m.t === 'act' && m.name === 'end').map(m => m.seat), womp: window.__isfAudio.played.filter(x => x === 'womp').length, log: document.querySelector('#tab-duel .vs-log').textContent }));
+  let ox, oy;
+  for (let i = 0; i < 150; i++) { await Promise.all([D, E].map(drive)); [ox, oy] = [await outs(X), await outs(Y)]; if (oy.ends.length && /ran out of time/.test(ox.log) && /ran out of time/.test(oy.log)) break; await X.waitForTimeout(200); }
+  const yseat = (await ck(Y)).me;
+  check('the other player\'s clock runs out: their device ends the turn (an ordinary "end" move in its log, which the first device receives)', oy.ends.length === 1 && oy.ends[0] === yseat && ox.inbox.includes(yseat), JSON.stringify([ox.ends, ox.inbox, oy.ends]));
+  check('...the first device never ends the other player\'s turn: its own log holds only its own end move', ox.ends.length === 1 && ox.ends[0] !== yseat, JSON.stringify(ox.ends));
+  check('...both devices log "ran out of time" with the right name and play the womp sound', /Eli ran out of time|Dana ran out of time/.test(ox.log) && /Eli ran out of time|Dana ran out of time/.test(oy.log) && ox.womp >= 1 && oy.womp >= 1 && (/Dana ran out/.test(ox.log) === /Dana ran out/.test(oy.log)));
+  check('...and the two games are still the same game', (await st(D)).fp === (await st(E)).fp);
+  // the inviter's setting (Turn timer off) is the game's: both devices carry it, and no clock shows
+  await Promise.all([D, E].map(finish));
+  await Promise.all([D, E].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));
+  await E.evaluate(() => { const c = document.querySelector('#optTurnTimer'); c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); });
+  await tap(E, '#tab-duel .vs-again');
+  await wait(D, () => !!document.querySelector('#tab-duel .vs-rm-yes'), null, 15000);
+  await tap(D, '#tab-duel .vs-rm-yes');
+  await Promise.all([D, E].map(p => wait(p, () => { const g = window.__isfVersus.duel.game; return g && !g.over && g.phase === 'mull' && window.__isfRemote.connected(); }, null, 40000)));
+  await Promise.all([D, E].map(p => tap(p, '#tab-duel .vs-keep')));
+  await bothMain(); await D.waitForTimeout(800);
+  const [o1, o2] = [await ck(D), await ck(E)];
+  check('Turn timer off on the inviter\'s side: both devices play without a clock (the setting travels in the setup)', o1.timer === false && o2.timer === false && !o1.shown && !o2.shown, JSON.stringify([o1.timer, o2.timer, o1.shown, o2.shown]));
   // Change deck and then a local New game: the link closes and the other player is told he left
   await Promise.all([D, E].map(finish));
   await Promise.all([D, E].map(p => p.waitForSelector('#tab-duel .vs-endp', { timeout: 10000 })));

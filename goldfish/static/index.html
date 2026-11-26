@@ -167,7 +167,7 @@
       <button id="tAuto" title="Let the autopilot take this whole turn">▶<span class="bl"> Autopilot turn</span></button>
       <button id="tAutoTo" title="Let the autopilot play up to this turn">⏩<span class="bl"> Autopilot to turn</span> <input id="tAutoToN" type="number" min="1" max="20" value="6"></button>
       <button id="tLoop" class="ghost" aria-pressed="false" title="Loop: game after game by itself. A new game, the autopilot plays until the goldfish is dead, a short pause, then the next. Press again to stop.">🔁<span class="bl"> Loop</span></button>
-      <button id="tNext" title="Attack with everything, then untap and draw"><span class="bl">Next turn </span>⟳</button>
+      <button id="tNext" title="Attack with everything, then untap and draw"><span class="bl">Next turn </span>⟳</button><span id="tDmg" class="vs-dmg" hidden></span>
       <button id="tToken" title="Create a token">＋<span class="bl"> Token</span></button>
       <button id="tUndo" class="ghost" title="Undo">↶<span class="bl"> Undo</span></button>
       <button id="tLog" class="ghost" title="Show the game log" aria-expanded="false">📜<span class="bl"> Log</span></button>
@@ -185,6 +185,7 @@
           <div class="hud-item"><span class="lbl">Your life</span><span id="hMyLife">40</span></div>
           <div class="hud-item"><span class="lbl">The Ring</span><span id="hRing">—</span></div>
           <div class="hud-item"><span class="lbl">Commander damage</span><span id="hCmdr">0 / 21</span></div>
+          <div class="hud-item"><span class="lbl">Poison</span><span id="hPoison">0 / 10</span></div>
           <div class="hud-item"><span class="lbl">Board power</span><span id="hPower">0</span></div>
           <div class="hud-item"><span class="lbl">Mana spent</span><span id="hSpent">0</span></div>
         </div>

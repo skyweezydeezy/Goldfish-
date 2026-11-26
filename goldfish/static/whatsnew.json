@@ -2,6 +2,19 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 203,
+      "lines": [
+        "Phyrexian mana costs what the card says: the colour or 2 life (Dismember, Gitaxian Probe, Mental Misstep…). Before, it was free. When you can do either, you choose."
+      ]
+    },
+    {
+      "v": 202,
+      "lines": [
+        "While you choose attackers: \"Attacking for N\" counts your damage as you go (double strike, poison, commander damage, LETHAL). Defending shows what's incoming and what gets through.",
+        "A poison counter (☠ N/10) sits next to each player's commander damage, red from 8."
+      ]
+    },
+    {
       "v": 201,
       "lines": [
         "Settings has \"Choose how I pay mana\": pick which lands and sources pay, and which colour each makes. Off by default.",

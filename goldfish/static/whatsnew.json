@@ -2,6 +2,41 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 210,
+      "lines": [
+        "More cards read exactly: Noxious Gearhulk gains life equal to the destroyed creature's toughness, Heliod's Intervention destroys X targets, Demon of Fate's Design casts enchantments for life, Ramos makes mana, River Kelpie and Neyali (graveyards and attacking tokens)."
+      ]
+    },
+    {
+      "v": 209,
+      "lines": [
+        "You choose which lands and sources pay (on by default, in Settings), with no wasted mana and a warning before floating mana is lost. Rhystic Study and Smothering Tithe taxes use the same sheet.",
+        "The top bar is sharp, the step strip stays still on every phone, and Practice shows the steps too. The default table felt has no glow.",
+        "Firebending, Waterbend and Airbend work as written."
+      ]
+    },
+    {
+      "v": 208,
+      "lines": [
+        "Signets make mana now (pay {1}, get two colours). They were doing nothing before, so the 11 decks that play them get faster.",
+        "A deck you paste that has cards ICEYfish doesn't fully read gets a \"Save to Drive for teaching\" button: save it in your ManaBox folder and its cards are taught within the hour."
+      ]
+    },
+    {
+      "v": 207,
+      "lines": [
+        "Earthbend works as written: any land you control (stack counters on one already earthbent), chosen as it's cast, and it comes back tapped once. Toph, the First Metalbender turns artifacts into lands.",
+        "Twinflame copies as many of your creatures as you pay Strive for. Teferi, Temporal Archmage's \u22121 untaps four permanents.",
+        "Settings: the Spacing choice is gone; everyone gets Standard."
+      ]
+    },
+    {
+      "v": 206,
+      "lines": [
+        "Springleaf Drum works: tap it and an untapped creature (even one that just arrived) for one mana of any colour. Survivors' Encampment and similar lands now need that creature too."
+      ]
+    },
+    {
       "v": 205,
       "lines": [
         "Every card in the built-in decks is now fully understood: Gisa and Kaervek's crimes count when a spell is cast, Gideon's +1 makes a real 5/5, plus Chrome Dome, Okina and Multiversal Passage."

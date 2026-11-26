@@ -8,6 +8,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.addInitScript(() => { try { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); localStorage.setItem('isf_autosave', '0'); localStorage.setItem('isf_tutorial_off', '1'); } catch (e) {} });
   await ctx.addInitScript(() => { try { const t = sessionStorage.getItem('fakeDeck'); if (t) { sessionStorage.removeItem('fakeDeck'); const ui = JSON.parse(localStorage.getItem('isf_state')); ui.deck = t; localStorage.setItem('isf_state', JSON.stringify(ui)); } } catch (e) {} });
   await ctx.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => new MutationObserver(() => { if (document.querySelector('.cmdr-rule')) window.__ruleSeen = true; }).observe(document.body, { childList: true, subtree: true })); });

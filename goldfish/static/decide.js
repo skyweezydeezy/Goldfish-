@@ -56,7 +56,7 @@
   // The whole state of a pod as text: two games are in the same state exactly when their dumps are equal (used by the tests).
   // skip: more keys to leave out. SCRATCH: what the engine writes while it works out what a card costs (G.effectiveCost), recomputed
   // before it is used. Looking at a card (can it be cast?) writes them, so two devices showing different cards differ only there.
-  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped', '_phyLife', '_phyPick']);
+  const SCRATCH = new Set(['_delve', '_convoke', '_pitch', 'altTap', '_krrik', '_defiler', '_spree', '_af', '_mono', '_warped', '_phyLife', '_phyPick', '_dl']);
   function dump(games, skip) {
     const ids = new Map();
     ownAll(games);
@@ -140,6 +140,14 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    strive: ['choose the creatures to copy', 'Choose any number of creatures you control: each gets a token copy with haste, exiled at the beginning of the next end step. Each target beyond the first costs {2}{R} more.'],
+    untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
+    demandCost: ['sacrifice an artifact or discard a card', 'Choose what you give up as an additional cost to cast it: an artifact you control, or a card from your hand.'],
+    lookBf: ['put a creature onto the battlefield?', 'Choose a creature card from the cards you looked at: it enters the battlefield, and the rest go to the bottom of your library in a random order.'],
+    sozin: ['put which creature cards onto the battlefield?', 'Choose creature cards from that player\'s graveyard with total mana value up to what you can pay for {X}: each enters the battlefield under your control.'],
+    airbendMany: ['airbend which permanents?', 'Choose any number of other nonland permanents you control (none is allowed): each is exiled, and while it is exiled you may cast it for {2} rather than its mana cost.'],
+    airbend: ['airbend which permanent?', 'Choose the permanent to exile. While it is exiled, its owner may cast it for {2} rather than its mana cost (a token is gone for good).'],
+    firebend: ['give firebending to which creature?', 'Choose the creature that gains firebending until end of turn: when it attacks it adds red mana that lasts until end of combat.'],
     tapCost: ['tap which permanent?', 'Choose the untapped permanent you tap as part of the cost of this mana ability.'],
     return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],
@@ -180,7 +188,7 @@
     const src = srcOf(d, g), sn = src ? src.name : null, owner = p => (m && m.players ? m.players.find(x => x.battlefield.includes(p)) : null) || g;
     const q = { kind: d.kind, what: d.what || null, seat: g.pid, multi, min, max, optional, source: src, none: null, title: '', text: '', options: [], def: [] };
     opts.forEach((o, k) => {
-      const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o) };
+      const item = { k, name: '', card: null, iid: null, note: '', owner: null, def: defs.includes(o), smart: !!(d.smart && d.smart.includes(o)) };
       if (d.kind === 'pay') {                                                                             // T-089: one (source, role) pair of a payment
         const u = d.units[o.u], same = d.units.filter((x, i) => i < o.u && x.src === u.src && x.src).length, sn2 = u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating mana' : 'Mana');
         item.name = sn2 + (same ? ' #' + (same + 1) : '') + ' → ' + (o.role === 'generic' ? 'generic' : (G.COLOR_NAME[o.role] || (o.role === 'C' ? 'colorless' : o.role))); item.iid = u.src && u.src.iid != null ? u.src.iid : null; item.card = u.src && u.src.card ? u.src.card : null;
@@ -233,7 +241,7 @@
       else if (d.what === 'biter' || d.what === 'fighter') { q.title = `${sn || 'Fight'}: choose your creature`; q.text = d.what === 'biter' ? 'Choose your creature: it deals damage equal to its power to a creature you choose next.' : 'Choose your creature: it fights a creature you choose next (each deals damage equal to its power to the other).'; }
       else if (d.what === 'bitten' || d.what === 'fought') { const fn = d.fighter ? d.fighter.card.name : 'your creature'; q.title = `${sn || 'Fight'}: choose what ${fn} ${d.what === 'bitten' ? 'damages' : 'fights'}`; q.text = d.what === 'bitten' ? `${fn} deals damage equal to its power to the creature you choose.` : `${fn} and the creature you choose each deal damage equal to their power to the other.`; }
       else if (d.what === 'pumpAttacker') { const f = d.f || {}; q.title = `${sn || 'Attack'}: choose an attacking creature`; q.text = `Choose the attacking creature that gets +${f.p || 0}/+${f.t || 0}${(f.kw || []).length ? ' and gains ' + f.kw.join(', ') : ''} until end of turn.`; }
-      else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; }          // the activated abilities' targets (G.abilityMenu)
+      else if (TARGET_WORDS[d.what]) { const [t, x] = TARGET_WORDS[d.what]; q.title = `${sn || 'Ability'}: ${t}`; q.text = x; if (d.what === 'lookBf') q.none = 'Put none of them onto the battlefield'; }          // the activated abilities' targets (G.abilityMenu)
       else { q.title = `${sn || 'Effect'}: choose a creature`; q.text = 'Choose the creature that gets the bonus.'; }
     } else if (d.kind === 'mode' && d.spree) {                                                            // spree: a mode is paid for as the spell is cast, more may be added
       q.title = d.spree === 'first' ? `${sn || 'Spree'}: choose a mode to cast it with` : `${sn || 'Spree'}: add another mode?`;
@@ -331,10 +339,13 @@
     } else if (d.kind === 'pay') {                                                                        // T-089: pay a cost with the sources you choose
       const c = d.cost, sym = x => (/^[WUBRGC]$/.test(x) ? x : '?'), ctext = (c.generic ? '{' + c.generic + '}' : '') + c.pips.map(p => '{' + p.map(sym).join('/') + '}').join('');
       q.title = `${sn ? sn + ': pay ' : 'Pay '}${ctext || 'nothing'}`;
-      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is what the autopilot would tap.';
+      q.text = 'Choose the sources that pay, and the colour a many-coloured source makes. Confirm is on once the choice pays the cost exactly; "Pay automatically" is the payment that wastes no mana.';
       if (src && src.type_line) { q.spell = src; q.spellNote = 'being paid for'; }
       q.pay = { cost: { generic: c.generic, pips: c.pips.map(p => p.slice()) }, n: c.generic + c.pips.length, text: ctext, units: d.units.map((u, i) => ({ u: i, name: u.src && u.src.card ? u.src.card.name : (u.floating ? 'Floating' : 'Mana'), card: u.src && u.src.card ? u.src.card : null, colors: [...u.colors].filter(x => d.options.some(o => o.u === i && o.role === x)), side: d.side(u), floating: !!u.floating, used: d.options.some(o => o.u === i) })).filter(x => x.used),
         // sel: [{ u, force }]: the option numbers of a payment that pays exactly, or null
+        smart: d.smart ? d.smart.map(o => d.options.indexOf(o)).filter(k => k >= 0) : null,
+        // T-099: what a selection (unit numbers) leaves floating: [{ name, made, left }]
+        waste: sel => G.payWaste(d.units, new Set(sel)).map(w => ({ name: w.name, made: w.made, left: w.left })),
         solve: sel => { const roles = G.payAssign(d.cost, d.units, sel.map(x => ({ i: x.u, force: x.force || null }))); if (!roles) return null; const ks = sel.map((x, j) => d.options.findIndex(o => o.u === x.u && o.role === roles[j])); return ks.some(k => k < 0) ? null : ks.sort((x, y) => x - y); } };
     } else if (d.kind === 'shock') {                                                                      // shock lands: "you may pay 2 life. If you don't, it enters tapped"
       q.title = `${sn || 'Land'}: pay ${d.life} life?`;
@@ -364,6 +375,7 @@
   function take(d, q, a, c) {
     if (!a || a.sig !== q.sig) { c.mismatch = (c.mismatch || 0) + 1; return d.def; }          // not the question that was answered: the autopilot's pick
     if (a.pick === 'auto' || a.pick == null) return d.def;
+    if (a.pick === 'smart') return d.smart || d.def;          // T-099: a person's "Pay automatically": the payment that wastes no mana
     if (q.multi) {
       const ks = [...new Set([].concat(a.pick))].filter(k => Number.isInteger(k) && k >= 0 && k < d.options.length).sort((x, y) => x - y);
       if (!(ks.length >= q.min && ks.length <= q.max)) return d.def;

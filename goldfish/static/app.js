@@ -161,27 +161,25 @@
     toast('Rules back to their defaults');
   });
 
-  // Display (app-wide, kept in this browser like sound and the playmat): spacing, how a tab fades in, and the order of the built-in deck menus
+  // Display (app-wide, kept in this browser like sound and the playmat): how a tab fades in, and the order of the built-in deck menus
   const DECK_ORDERS = ['bracket-rank', 'color-bracket', 'color-rank', 'rank'];
   let deckOrder = 'bracket-rank', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
   (() => {
     const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
     let d = {}; try { d = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { d = {}; }
     const apply = () => {
-      const den = $('#dispDensity').value, fade = $('#dispFade').value;
+      const fade = $('#dispFade').value;          // one spacing for everyone: Standard (the user, 2026-11-26: Compact and Roomy removed)
       const ord = $('#dispDeckOrder').value; if (ord !== deckOrder) { deckOrder = ord; if (decksListed) refillDeckMenus(); }
-      document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
       document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
       window.__isfPayChoose = $('#dispPayChoose').checked;          // T-089: read by the question sheet (choices.js)
     };
-    if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
     if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
-    if (d.payChoose) $('#dispPayChoose').checked = true;
+    $('#dispPayChoose').checked = d.payChoose !== false;          // T-099: on unless the person switched it off
     apply();
-    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
+    for (const id of ['#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
       apply();
-      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked })); } catch (e) { /* storage blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked })); } catch (e) { /* storage blocked */ }
     });
   })();
 
@@ -321,7 +319,7 @@
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
       else {
         r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false;
-        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); }
+        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); renderTeach(); }          // again: the banner first drew before the menu named the deck (Save to Drive is for decks that are not built in)
         else { $('#savedDecks').value = selLoaded; dirty(); }          // refused: the deck menu names the deck that is still loaded again (and so does the remembered state)
       }
     } catch (err) {
@@ -541,12 +539,36 @@
     return `${TEACH_REPO}/issues/new?${q.toString()}`;
   }
   function teachButton(cards, label) { return `<a class="teach-btn" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  // ---- Save to Drive for teaching (T-109): a deck that is not built in, with unread lines, becomes a .txt in the built-in deck format. A phone's
+  // share sheet (Web Share, files) lets the person pick Google Drive and the ManaBox folder; elsewhere the file downloads. Nothing is sent by the app.
+  const isBuiltinLoaded = () => /^builtin:/.test(selLoaded || '');
+  function driveDeck() {
+    const cards = (S.cards || []).filter(c => c && c.name), cmd = cards.filter(c => c.commander), rest = cards.filter(c => !c.commander);
+    const cname = cmd.map(c => c.name).join(' + '), bm = /^\s*\/\/\s*bracket\s*([1-5])/im.exec(S.deckText || ''), br = bm ? bm[1] : '?';
+    const saved = selLoaded && !isBuiltinLoaded() ? selLoaded : '';
+    const clean = t => String(t).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = clean(saved || (cmd[0] ? cmd[0].name.split(',')[0] : 'Imported deck')) || 'Imported deck';
+    const file = `${name} [B${br}]${cname ? ' (' + clean(cname) + ')' : ''}.txt`;
+    const text = [`// ${name}${cname ? ' (' + cname + ')' : ''}`, br === '?' ? '// Bracket ?' : '// Bracket ' + br, '// COMMANDER', ...cmd.map(c => `${c.qty || 1} ${c.name}`), '// MAINBOARD', ...rest.map(c => `${c.qty || 1} ${c.name}`)].join('\n') + '\n';
+    return { file, text };
+  }
+  async function saveToDrive() {
+    const d = driveDeck(), f = new File([d.text], d.file, { type: 'text/plain' });
+    if (navigator.canShare && navigator.canShare({ files: [f] }) && navigator.share) {
+      try { await navigator.share({ files: [f], title: d.file }); return toast('Shared. Pick Google Drive and your ManaBox folder.'); }
+      catch (e) { if (e && e.name === 'AbortError') return; }          // closed the sheet: nothing happens; any other failure falls back to the download
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = d.file; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Saved ' + d.file + '. Put it in your ManaBox folder in Google Drive.');
+  }
   function renderTeach() {
     const box = $('#teachBanner'); if (!box) return;
     const cards = S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : [];
     if (!cards.length) { box.hidden = true; box.innerHTML = ''; return; }
     const names = cards.slice(0, 4).map(c => esc(c.name)).join(', ') + (cards.length > 4 ? ` and ${cards.length - 4} more` : '');
-    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}${isBuiltinLoaded() ? '' : '<button type="button" class="teach-btn teach-drive" id="driveSave">Save to Drive for teaching</button>'}${isBuiltinLoaded() ? '' : '<span class="hint teach-how teach-drive-how">Save it in your ManaBox folder in Google Drive; ICEYfish checks it within the hour and teaches its cards.</span>'}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    const ds = $('#driveSave'); if (ds) ds.addEventListener('click', saveToDrive);
     box.hidden = false;
   }
   function renderCoverage() {
@@ -1193,7 +1215,9 @@
     return Promise.resolve();
   }
   async function nextTurn() {
-    const g = S.game; snap();
+    const g = S.game;
+    { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; }          // T-099
+    snap();
     if (!g.turnDone) { await doCombat(true); await doPostCombat(true); stepP('end'); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
@@ -1935,6 +1959,8 @@
       g2.appendChild(pip); mp.appendChild(g2);
     });
     if (!units.length && !inf) mp.innerHTML = '<span class="hint">none</span>';
+    { const fl = G.floatingLoss(g);          // T-099: floating mana is shown, and the warning says what the end of the turn empties
+      if (fl.n && !inf) { const w = h('span', 'mana-warn', `⚠ ${fl.n} floating`); w.title = `${fl.n} mana ${fl.n === 1 ? 'is' : 'are'} floating and will be lost at ${fl.when}. Spend ${fl.n === 1 ? 'it' : 'them'} on a spell or ability first.`; w.setAttribute('role', 'status'); mp.appendChild(w); } }
 
     if (first) return;
     const dur = ($('#tFast').checked ? 200 : 420) * slow();

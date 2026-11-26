@@ -9,6 +9,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
 const SIZES = [['iPhone 390x844', 390, 844], ['iPhone 430x932', 430, 932], ['iPhone 375x667', 375, 667], ['iPhone 844x390 sideways', 844, 390],
   ['iPad 820x1180', 820, 1180], ['iPad 1180x820', 1180, 820], ['iPad 1024x1366', 1024, 1366], ['iPad 1366x1024', 1366, 1024]];
 const STEPS = ['untap', 'upkeep', 'draw', 'main1', 'combat', 'main2', 'end'];
+const CACHE = new Map();
 const only = process.env.STRIP_ONLY ? new RegExp(process.env.STRIP_ONLY) : null;
 const shot = process.env.STRIP_SHOTS;                                        // STRIP_SHOTS=dir: screenshots of the bars, for before/after
 
@@ -45,72 +46,89 @@ async function acrossSteps(p, label, barSel, stripSel, narrow) {
     const narrow = w <= 1000, phone = Math.min(w, h) < 600;
     const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block', hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
     await ctx.addInitScript(() => { localStorage.setItem('isf_sound', JSON.stringify({ bg: false })); });
-    await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
+    await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {          // answers are kept across the sizes: a cold cache is slow only once
       const q = route.request(), c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
       if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: c });
-      try { const res = await fetch(q.url(), { method: q.method(), headers: { 'User-Agent': 'goldfish-calc-test/0.1', 'Accept': 'application/json;q=0.9,*/*;q=0.8', ...(q.method() === 'POST' ? { 'Content-Type': 'application/json' } : {}) }, body: q.method() === 'POST' ? q.postData() : undefined });
-        route.fulfill({ status: res.status, headers: { ...c, 'content-type': res.headers.get('content-type') || '' }, body: Buffer.from(await res.arrayBuffer()) }); } catch (e) { route.abort(); }
+      const key = q.method() + ' ' + q.url() + ' ' + (q.postData() || '');
+      for (let tries = 0; tries < 4; tries++) {
+        try {
+          if (!CACHE.has(key)) { const res = await fetch(q.url(), { method: q.method(), headers: { 'User-Agent': 'goldfish-calc-test/0.1', 'Accept': 'application/json;q=0.9,*/*;q=0.8', ...(q.method() === 'POST' ? { 'Content-Type': 'application/json' } : {}) }, body: q.method() === 'POST' ? q.postData() : undefined });
+            if (res.status >= 500 || res.status === 429) throw new Error('status ' + res.status);
+            CACHE.set(key, { status: res.status, type: res.headers.get('content-type') || '', body: Buffer.from(await res.arrayBuffer()) }); }
+          const r = CACHE.get(key); return route.fulfill({ status: r.status, headers: { ...c, 'content-type': r.type }, body: r.body });
+        } catch (e) { await new Promise(r => setTimeout(r, 1500 * (tries + 1))); }
+      }
+      route.abort();
     });
     const p = await ctx.newPage(), errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto('http://127.0.0.1:8800/');
     await p.fill('#deckText', fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'frodo.txt'), 'utf8')); await p.click('#loadDeck');
-    await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 }); await p.waitForTimeout(1000);
+    await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 240000 });
     // Practice
-    await p.evaluate(() => document.querySelector('.tab[data-tab="table"]').click()); await p.waitForTimeout(500);
+    await p.evaluate(() => document.querySelector('.tab[data-tab="table"]').click()); await p.waitForSelector('#tSteps', { state: 'visible' });
     check(`${name} Practice: the strip is in the bar before a game starts`, await p.evaluate(() => { const s = document.querySelector('#tSteps'); return !!s && s.offsetWidth > 20 && s.querySelectorAll('i').length === 7 && !s.hidden; }));
     const pre = await p.evaluate(boxes('.table-controls', '#tSteps'));
-    await p.evaluate(() => document.querySelector('#tNew').click()); await p.waitForFunction(() => window.__isfApi && __isfApi.S.game, null, { timeout: 60000 }); await p.waitForTimeout(800);
+    await p.evaluate(() => document.querySelector('#tNew').click()); await p.waitForFunction(() => window.__isfApi && __isfApi.S.game, null, { timeout: 120000 });
     const post = await p.evaluate(boxes('.table-controls', '#tSteps'));
     check(`${name} Practice: the strip does not move or resize when the game starts`, JSON.stringify(pre.strip) === JSON.stringify(post.strip), JSON.stringify([pre.strip, post.strip]));
     const lit = () => p.evaluate(() => { const i = document.querySelector('#tSteps i.on'); return i ? i.dataset.step : null; });
     const l0 = await lit();
     check(`${name} Practice: a fresh game lights Main`, l0 === 'main1', l0);
     // a played turn: sample the strip and the bar while the autopilot takes it
-    const rects = new Set(), steps = new Set();
+    const rects = new Set();
+    await p.evaluate(() => { const w = window.__pSeen = { steps: new Set() }; new MutationObserver(() => { const i = document.querySelector('#tSteps i.on'); if (i) w.steps.add(i.dataset.step); }).observe(document.querySelector('#tSteps'), { subtree: true, attributes: true }); });
     await p.evaluate(() => document.querySelector('#tAuto').click());
-    for (let k = 0; k < 30; k++) { const r = await p.evaluate(boxes('.table-controls', '#tSteps', true)); rects.add(JSON.stringify(r.strip)); const s = await lit(); if (s) steps.add(s); await p.waitForTimeout(100); }
+    for (const t0 = Date.now(); Date.now() - t0 < 60000;) {          // until the turn has passed combat (or a minute)
+      const r = await p.evaluate(boxes('.table-controls', '#tSteps', true)); rects.add(JSON.stringify(r.strip));
+      if (await p.evaluate(() => ['combat', 'main2'].every(k => window.__pSeen.steps.has(k)))) break; await p.waitForTimeout(40); }
+    const steps = new Set(await p.evaluate(() => [...window.__pSeen.steps]));
     check(`${name} Practice: the strip keeps its box while the autopilot plays a turn`, rects.size === 1, [...rects].join(' | '));
-    check(`${name} Practice: the steps lit follow the turn`, steps.has('main1') && (steps.has('combat') || steps.has('main2') || steps.has('end')), [...steps].join(','));
+    check(`${name} Practice: the steps lit follow the turn`, steps.has('main1') && steps.has('combat') && steps.has('main2'), [...steps].join(','));
     await acrossSteps(p, `${name} Practice`, '.table-controls', '#tSteps', narrow);
     if (shot) { fs.mkdirSync(shot, { recursive: true }); await p.evaluate(light('combat')); await p.locator('.table-controls').screenshot({ path: path.join(shot, `practice-${w}x${h}.png`) }); }
     // Duel
-    await p.evaluate(() => document.querySelector('.tab[data-tab="duel"]').click()); await p.waitForTimeout(600);
+    await p.evaluate(() => document.querySelector('.tab[data-tab="duel"]').click()); await p.waitForSelector('#tab-duel .vs-new', { state: 'visible' });
     const you = await p.$('#tab-duel .vs-you'); if (you) await you.selectOption('auto').catch(() => {});
     const dpre = await p.evaluate(() => !!document.querySelector('#tab-duel .vs-steps'));
-    await p.evaluate(() => document.querySelector('#tab-duel .vs-new').click()); await p.waitForFunction(() => document.querySelector('#tab-duel .vs-next'), null, { timeout: 90000 });
+    await p.evaluate(() => document.querySelector('#tab-duel .vs-new').click()); await p.waitForFunction(() => document.querySelector('#tab-duel .vs-next'), null, { timeout: 180000 });
     await p.evaluate(() => { const bar = document.querySelector('#tab-duel .vs-bar'), w = window.__stripSeen = { steps: new Set(), n: 0 };
       new MutationObserver(() => { const i = bar.querySelector('.vs-steps i.on'); if (i) w.steps.add(i.dataset.step); w.n++; }).observe(bar, { subtree: true, attributes: true, childList: true }); });
     const drects = new Set(), dsib = new Set();
     await p.evaluate(() => document.querySelector('#tab-duel .vs-play').click());          // the game plays itself, a step at a time
-    for (let j = 0; j < 70; j++) { if (!(await p.$('#tab-duel .vs-play'))) break;          // the game ended: its bar is a different one
-      const r = await p.evaluate(boxes('#tab-duel .vs-bar', '#tab-duel .vs-steps', true)); drects.add(JSON.stringify(r.strip)); dsib.add(JSON.stringify(r.sibs)); await p.waitForTimeout(100); }
+    for (const t0 = Date.now(); Date.now() - t0 < 60000;) { if (!(await p.$('#tab-duel .vs-play'))) break;          // the game ended: its bar is a different one
+      const r = await p.evaluate(boxes('#tab-duel .vs-bar', '#tab-duel .vs-steps', true)); drects.add(JSON.stringify(r.strip)); dsib.add(JSON.stringify(r.sibs));
+      if (await p.evaluate(() => window.__stripSeen.steps.size >= 6)) break; await p.waitForTimeout(40); }
     const dsteps = await p.evaluate(() => [...window.__stripSeen.steps]);
     check(`${name} Duel: the strip is in the bar and keeps its box while turns play (${dsteps.join(',')} lit)`, drects.size === 1 && dsteps.length >= 2, [...drects].join(' | '));
     check(`${name} Duel: the other items in the bar do not move while turns play`, dsib.size === 1, dsib.size === 1 ? 1 : [...dsib].map(x => x.slice(0, 700)).join(' || '));
+    await p.evaluate(() => { const b = document.querySelector('#tab-duel .vs-play'); if (b && /Pause/.test(b.textContent)) b.click(); });          // stop the game, and let the step it is in settle
+    await p.waitForFunction(() => { const b = document.querySelector('#tab-duel .vs-play'); return !b || /Play/.test(b.textContent); });
+    await p.waitForFunction(() => { const i = document.querySelector('#tab-duel .vs-steps i.on'), k = i ? i.dataset.step : '', w = window.__settle || (window.__settle = { k: null, n: 0 }); w.n = w.k === k ? w.n + 1 : 0; w.k = k; return w.n >= 8; }, null, { polling: 100 });          // the lit step has not changed for 0.8 s
     await acrossSteps(p, `${name} Duel`, '#tab-duel .vs-bar', '#tab-duel .vs-steps', narrow);
     if (shot) await p.evaluate(light('combat')), await p.locator('#tab-duel .vs-bar').screenshot({ path: path.join(shot, `duel-${w}x${h}.png`) });
     if (phone) {
       // a game you play yourself, with the turn clock: the whole top of the screen (bar items, speed slider, clock) keeps every box while turns pass
       await p.evaluate(() => { const v = document.querySelector('#tab-duel .vs-you'); if (v) v.value = 'human'; });
-      await p.evaluate(() => document.querySelector('#tab-duel .vs-new').click()); await p.waitForTimeout(800);
-      const snaps = new Set(), hints = new Set(); let clockSeen = new Set();
-      for (let j = 0; j < 110; j++) {
-        const r = await p.evaluate(() => {
-          const top = document.querySelector('#tab-duel .vs-top'); if (!top) return null;
-          const t0 = top.getBoundingClientRect(), bar = top.querySelector('.vs-bar'), b0 = bar.getBoundingClientRect();
-          const rc = (e, o) => { const b = e.getBoundingClientRect(); return [(e.className || e.tagName).toString().split(' ').filter(c => !/^(still|low)$/.test(c)).join(' ').slice(0, 24), Math.round((b.x - o.x) * 10) / 10, Math.round((b.y - o.y) * 10) / 10, Math.round(b.width * 10) / 10, Math.round(b.height * 10) / 10]; };
-          const vis = e => e.offsetWidth > 0 && getComputedStyle(e).display !== 'none';
-          const h = bar.querySelector('.hint:not(.vs-note)'), ck = top.querySelector('.vs-clock');
-          return { boxes: [...top.children].filter(e => vis(e) && !e.classList.contains('vs-info') && !e.classList.contains('vs-note')).map(e => rc(e, t0)).concat([...bar.children].filter(e => vis(e) && !e.classList.contains('vs-note')).map(e => rc(e, b0))),
-            hint: h ? h.textContent : '', clock: ck && getComputedStyle(ck).visibility === 'visible' && vis(ck) ? 1 : 0, over: !bar.querySelector('.vs-play, .hint') };
-        });
-        if (!r) break; if (!r.hint) { await p.waitForTimeout(120); continue; }          // still the bar of the game before
-        if (r.over) break;
-        snaps.add(JSON.stringify(r.boxes)); if (r.hint) hints.add(r.hint); clockSeen.add(r.clock);
+      await p.evaluate(() => document.querySelector('#tab-duel .vs-new').click());
+      await p.waitForFunction(() => document.querySelector('#tab-duel .vs-keep'), null, { timeout: 180000 });          // your opening hand
+      const snaps = new Set(), hints = new Set(), clockSeen = new Set(); let n = 0;
+      const sample = () => p.evaluate(() => {
+        const top = document.querySelector('#tab-duel .vs-top'); if (!top) return null;
+        const t0 = top.getBoundingClientRect(), bar = top.querySelector('.vs-bar'), b0 = bar.getBoundingClientRect();
+        const rc = (e, o) => { const b = e.getBoundingClientRect(); return [(e.className || e.tagName).toString().split(' ').filter(c => !/^(still|low)$/.test(c)).join(' ').slice(0, 24), Math.round((b.x - o.x) * 10) / 10, Math.round((b.y - o.y) * 10) / 10, Math.round(b.width * 10) / 10, Math.round(b.height * 10) / 10]; };
+        const vis = e => e.offsetWidth > 0 && getComputedStyle(e).display !== 'none';
+        const h = bar.querySelector('.hint:not(.vs-note)'), ck = top.querySelector('.vs-clock');
+        return { boxes: [...top.children].filter(e => vis(e) && !e.classList.contains('vs-info') && !e.classList.contains('vs-note')).map(e => rc(e, t0)).concat([...bar.children].filter(e => vis(e) && !e.classList.contains('vs-note')).map(e => rc(e, b0))),
+          hint: h ? h.textContent : '', clock: ck && getComputedStyle(ck).visibility === 'visible' && vis(ck) ? 1 : 0, over: !bar.querySelector('.vs-play, .hint') }; });
+      // play on (keep, pass, no attack...) until the hint has changed a few times and the clock has been both shown and not shown, or 90 s
+      for (const t0 = Date.now(); Date.now() - t0 < 90000;) {
+        const r = await sample(); if (!r || r.over) break;
+        if (r.hint) { snaps.add(JSON.stringify(r.boxes)); hints.add(r.hint); clockSeen.add(r.clock); n++; }          // (no hint yet: still the bar of the game before)
+        if (hints.size >= 3 && clockSeen.size === 2 && n >= 12) break;
         await p.evaluate(() => { for (const c of ['.vs-keep:not([disabled])', '.vs-pass', '.vs-noattack', '.vs-attack-none', '.vs-block-none', '.vs-nostop']) { const e = document.querySelector('#tab-duel ' + c); if (e) { e.click(); break; } } });
-        await p.waitForTimeout(120);
+        await p.waitForTimeout(60);
       }
-      check(`${name} Duel (you play, turn clock): every item in the top of the screen keeps its box while the hint and clock change (${[...hints].slice(0, 4).join(' / ')}; clock ${[...clockSeen].join('/')})`, snaps.size === 1 && hints.size >= 2, snaps.size === 1 ? 1 : [...snaps].slice(0, 2).map(x => x.slice(0, 600)).join(' || '));
+      check(`${name} Duel (you play, turn clock): every item in the top of the screen keeps its box while the hint and clock change (${[...hints].slice(0, 4).join(' / ')}; clock ${[...clockSeen].join('/')})`, n >= 4 && snaps.size === 1 && hints.size >= 2, snaps.size === 1 ? 1 : [...snaps].slice(0, 2).map(x => x.slice(0, 600)).join(' || '));
     }
     check(`${name}: no page errors`, errs.length === 0, errs.slice(0, 2).join(' | '));
     await ctx.close();

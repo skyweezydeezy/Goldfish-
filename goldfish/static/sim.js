@@ -801,6 +801,16 @@
         if (/^\{t\}: exchange your life total with ~'s toughness\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, tap: true, gate: 'treeSwap', fx: [{ type: 'treeSwap' }], text: raw }); rec.status = 'ok'; continue; }          // Tree of Redemption
         if ((bm = line.match(/^whenever a creature of the chosen type dies, (.+)$/i)) && curTribe) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['dies'], r.fx, { who: 'a creature', subtype: curTribe.toLowerCase(), perTurn: false, nontoken: false }); continue; } }          // Species Specialist (any creature of the chosen type, yours or not)
       }
+      // ---- rules batch 74: the top-5000 pool (one card each)
+      if (a.isInstantSorcery) {
+        if (/^look at the top x cards of your library, where x is the number of lands you control\. put one of those cards into your hand\. if (?:this spell|~) was kicked, put two of those cards into your hand instead\. put the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.spellFx.push({ type: 'kickSwap', base: [{ type: 'lookTake', look: 'LANDS', take: 1 }], kick: [{ type: 'lookTake', look: 'LANDS', take: 2 }] }); rec.status = 'ok'; continue; }          // Consult the Star Charts
+      }
+      { let bm;
+        if (/^at the beginning of each combat, choose first strike, vigilance, or lifelink\. creatures you control gain that ability until end of turn\.?$/i.test(line)) { a.triggers.push({ kinds: ['combat'], fx: [{ type: 'skirmisher' }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Angelic Skirmisher (approx: your combat only; vigilance is never chosen)
+        if (/^escalate—tap an untapped creature you control\.?$/i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Collective Effort (approx: the spell is played with its one best mode)
+        if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
+        if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -4016,6 +4026,7 @@
       else if (d.kind === 'selfLife') on = src === p && g.life >= (g.opts.startLife || 40) + d.over;          // rules batch 61: Elenda
       else if (d.kind === 'selfOil') on = src === p && ((p.other && p.other.oil) || 0) >= d.min;          // rules batch 61: Armored Scrapgorger
       else if (d.kind === 'srcCounter') { if (stat && isCreaturePerm(p)) n += d[k] * ((src.other && src.other[d.counter]) || 0); continue; }          // rules batch 62: Boon of the Spirit Realm
+      else if (d.kind === 'myTurnHistoric') on = g.activeTurn !== false && src !== p && isCreaturePerm(p) && (p.card.a.isArtifact || p.card.a.isLegendary || /\bSaga\b/.test(p.card.type_line || ''));          // rules batch 74: Bayek of Siwa
       else if (d.kind === 'myTurnTribe') on = g.activeTurn !== false && (src === p || matchesFilter(p.card, d.filter));          // rules batch 64: Dion
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
       else if (d.kind === 'levelLord') on = src !== p && (src.level || 0) >= d.min && matchesFilter(p.card, d.filter);
@@ -6123,6 +6134,7 @@
         case 'echoMana': { if (!subject || !isCreaturePerm(subject)) break; const tw = q => ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean), st = tw(subject), cl = q => hasKw(g, q, 'changeling');
           const k = g.battlefield.filter(q => isCreaturePerm(q) && (q === subject || cl(q) || cl(subject) || tw(q).some(w => st.includes(w)))).length;
           for (let j = 0; j < k; j++) g.floating.push({ src: null, colors: new Set(['C']), floating: true }); if (k) ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: adds ${k} {C} (${k} creature${k > 1 ? 's' : ''} sharing a type with ${subject.card.name})`, source }); break; }          // rules batch 72: Mana Echoes
+        case 'skirmisher': { const blockers = g.opp ? g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped) : false; const kw = blockers ? 'first strike' : 'lifelink'; applyEffects(g, [{ type: 'pumpAll', p: 0, t: 0, keywords: [kw] }], source, ev, null); ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: chooses ${kw}`, source }); break; }          // rules batch 74: Angelic Skirmisher (first strike against blockers, otherwise lifelink)
         case 'treeSwap': { if (!source || !g.battlefield.includes(source) || !isCreaturePerm(source)) break; const t = toughnessOf(g, source), l = g.life; source.setT = l; g.life = t; touch(g); ev.push({ type: 'note', text: `${source.card.name}: exchanges life (${l}) with toughness (${t})` }); break; }          // rules batch 72: Tree of Redemption (its base toughness becomes the old life total; counters and boosts still apply)
         case 'massShrink': for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } ev.push({ type: 'note', text: `All creatures get -${f.n}/-${f.n} until end of turn`, source }); break;          // Golgari Charm
         case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
@@ -7269,7 +7281,7 @@
           break; }
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + (f.n || 1); ev.push({ type: 'note', text: 'Takes an extra turn after this one', source }); break;
         case 'lookTake': {                                                                                    // look at the top N cards, keep the best K, the rest go to the bottom
-          const top = g.library.splice(0, Math.min(f.look, g.library.length));
+          const top = g.library.splice(0, Math.min(f.look === 'LANDS' ? g.battlefield.filter(q => q.asLand).length : f.look, g.library.length));          // rules batch 74: Consult the Star Charts (X = your lands)
           const ctx = tutorContext(g);
           top.sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx));
           const keep = top.slice(0, f.take), rest = top.slice(f.take);

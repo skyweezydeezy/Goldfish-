@@ -64,8 +64,8 @@ g = fresh(true); put(g.opp, 'Sheoldred'); const lg = g.life; g.library.unshift(i
 check('Sheoldred, the Apocalypse: when the other player draws they lose 2', g.life === lg - 2, g.life);
 g = fresh(true); put(g.opp, 'Smothering Tithe'); g.library.unshift(inst(g, 'Sol Ring')); const tr0 = g.opp.battlefield.length; G.draw(g, 1, []);
 check('Smothering Tithe: with no mana to pay {2} they give you a Treasure', g.opp.battlefield.some(p => p.token && /Treasure/.test(p.card.name)));
-g = fresh(true); put(g.opp, 'Smothering Tithe'); lands(g, 2); g.library.unshift(inst(g, 'Sol Ring')); G.draw(g, 1, []);
-check('...and with spare mana they pay it instead', !g.opp.battlefield.some(p => p.token && /Treasure/.test(p.card.name)));
+g = fresh(true); put(g.opp, 'Smothering Tithe'); lands(g, 3); g.library.unshift(inst(g, 'Sol Ring')); G.draw(g, 1, []);
+check('...and with spare mana (T-092: 3 lands, the drawn Sol Ring needs 1) they pay it instead', !g.opp.battlefield.some(p => p.token && /Treasure/.test(p.card.name)));
 g = fresh(); put(g, 'Sheoldred'); const ls = g.life; G.draw(g, 1, []);
 check('your own Sheoldred gains you 2 life whenever you draw (also from effects)', g.life === ls + 2);
 

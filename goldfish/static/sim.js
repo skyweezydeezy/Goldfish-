@@ -13986,8 +13986,18 @@ g.actSeq = (g.actSeq || 0) + 1;
   function payUnless(g, n, q, then, why, owner) {
     const c = { generic: n, pips: [], x: 0 };
     if (!(n > 0) || !canPay(c, allUnits(g))) return false;
-    if (g.ask && !g.dry && decide(g, { kind: 'tax', options: ['pay', 'allow'], def: 'pay', cost: n, then, why, owner: owner || g.opp, source: q }) !== 'pay') return false;
+    const dflt = taxSpare(g, n) ? 'pay' : 'allow';          // T-092: the autopilot (and a person on defaults) pays only with SPARE mana
+    if (g.ask && !g.dry) { if (decide(g, { kind: 'tax', options: ['pay', 'allow'], def: dflt, cost: n, then, why, owner: owner || g.opp, source: q }) !== 'pay') return false; }
+    else if (dflt !== 'pay') return false;
     pay(g, c); return true;
+  }
+  // T-092: is {n} spare, i.e. is the mana left after paying it still enough for what the payer's best plan needs? On its own turn the plan is the most mana it can
+  // spend on spells in hand it could cast now (most expensive first); on another player's turn it is the same over its instant-speed / flash cards (free ones cost 0).
+  function taxSpare(g, n) {
+    const units = allUnits(g).length, own = g.activeTurn !== false;
+    const costs = peekCards(g.hand.concat(g.command || []), () => g.hand.concat(g.command || []).filter(c => c.card.a && !c.card.a.isLand && (own || instantSpeedFor(g, c.card)) && !castBlocked(g, c) && !freeNow(g, c)).map(c => { const k = effectiveCost(g, c); return k ? (k.generic || 0) + (k.pips || []).length : 0; }).filter(m => m > 0 && m <= units)).sort((a, b) => b - a);
+    let need = 0; for (const m of costs) if (need + m <= units) need += m;
+    return units - need >= n;
   }
   const taxThen = fx => { const f = (fx || [])[0] || {}; return f.type === 'draw' ? (f.n > 1 ? `draws ${f.n} cards` : 'draws a card') : f.type === 'token' ? `creates ${f.n > 1 ? f.n + ' ' : 'a '}${f.name || 'token'}${f.n > 1 ? 's' : ''}` : 'gets its effect'; };
   const freeNow = (d, c) => !!(c.card.a && c.card.a.freeIfCommander && d.battlefield.some(p => p.card.commander));

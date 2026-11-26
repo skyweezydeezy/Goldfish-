@@ -110,7 +110,7 @@
   // again) by itself, trying the brokers in turn; onState(true/false) says whether a broker is connected.
   function mqttClient(urls, onMessage, onState, onGiveUp) {
     const te = new TextEncoder(), td = new TextDecoder(), topics = new Set();
-    let ws = null, buf = new Uint8Array(0), ping = null, retry = null, closed = false, tries = 0, up = false, pid = 1, gaveUp = false;
+    let ws = null, buf = new Uint8Array(0), ping = null, watch = null, retry = null, closed = false, tries = 0, up = false, pid = 1, gaveUp = false, lastRx = 0;
     const cat = (...a) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let q = 0; a.forEach(x => { o.set(x, q); q += x.length; }); return o; };
     const utf = t => { const b = te.encode(t); return cat(Uint8Array.of(b.length >> 8, b.length & 255), b); };
     const pkt = (b0, body) => { const len = []; let n = body.length; do { const d = n % 128; n = Math.floor(n / 128); len.push(n ? d | 128 : d); } while (n); return cat(Uint8Array.of(b0, ...len), body); };
@@ -124,7 +124,7 @@
         const first = buf[0], body = buf.slice(i, i + n); buf = buf.slice(i + n);
         const type = first >> 4;
         if (type === 2) {                                           // CONNACK: accepted when the return code is 0
-          if (body[1] === 0) { up = true; tries = 0; gaveUp = false; topics.forEach(subscribeTo); clearInterval(ping); ping = setInterval(() => tx(Uint8Array.of(0xc0, 0)), 25000); onState(true); }
+          if (body[1] === 0) { up = true; tries = 0; gaveUp = false; lastRx = Date.now(); topics.forEach(subscribeTo); clearInterval(ping); ping = setInterval(() => tx(Uint8Array.of(0xc0, 0)), 15000); clearInterval(watch); watch = setInterval(() => { if (up && Date.now() - lastRx > 35000) dead(); }, 5000); onState(true); }
           else try { ws.close(); } catch (e) {}
         } else if (type === 3 && body.length >= 2) {                // PUBLISH
           const tl = (body[0] << 8) | body[1];
@@ -139,10 +139,18 @@
       let w; try { w = new WebSocket(url, 'mqtt'); } catch (e) { return again(); }
       ws = w; w.binaryType = 'arraybuffer'; buf = new Uint8Array(0);
       const t = setTimeout(() => { if (!up) try { w.close(); } catch (e) {} }, 8000);
-      w.onopen = () => tx(pkt(0x10, cat(utf('MQTT'), Uint8Array.of(4, 2, 0, 45), utf('isf-' + rid()))));
-      w.onmessage = e => { buf = cat(buf, new Uint8Array(e.data)); parse(); };
+      w.onopen = () => tx(pkt(0x10, cat(utf('MQTT'), Uint8Array.of(4, 2, 0, 40), utf('isf-' + rid()))));
+      w.onmessage = e => { lastRx = Date.now(); buf = cat(buf, new Uint8Array(e.data)); parse(); };
       w.onerror = () => {};
-      w.onclose = () => { clearTimeout(t); if (ws !== w) return; ws = null; clearInterval(ping); if (up) { up = false; onState(false); } again(); };
+      w.onclose = () => { clearTimeout(t); if (ws !== w) return; ws = null; clearInterval(ping); clearInterval(watch); if (up) { up = false; onState(false); } again(); };
+    }
+    // A connection that looks open but answers nothing (a phone that slept, a network that changed: the socket's close never comes) is
+    // dropped and made again: the broker answers every ping, so 35 s without anything from it means it is gone.
+    function dead() {
+      const w = ws; ws = null; clearInterval(ping); clearInterval(watch);
+      if (w) { w.onclose = w.onmessage = w.onerror = null; try { w.close(); } catch (e) {} }
+      if (up) { up = false; onState(false); }
+      again();
     }
     function again() {
       if (!up && !gaveUp && !closed && tries >= urls.length && onGiveUp) { gaveUp = true; onGiveUp(); }      // every broker tried once and none answered
@@ -150,10 +158,11 @@
     connect();
     return {
       get up() { return up; },
+      probe() { if (!up) return; const t0 = Date.now(); tx(Uint8Array.of(0xc0, 0)); setTimeout(() => { if (up && lastRx < t0) dead(); }, 6000); },          // is it still there? (a tab coming back, the network returning)
       sub(t) { topics.add(t); if (up) subscribeTo(t); },
       unsub(t) { topics.delete(t); if (up) tx(pkt(0xa2, cat(Uint8Array.of(pid >> 8, pid++ & 255), utf(t)))); },
       pub(t, text) { return up && tx(pkt(0x30, cat(utf(t), te.encode(text)))); },
-      close() { closed = true; clearTimeout(retry); clearInterval(ping); if (ws) { tx(Uint8Array.of(0xe0, 0)); try { ws.close(); } catch (e) {} } },
+      close() { closed = true; clearTimeout(retry); clearInterval(ping); clearInterval(watch); if (ws) { tx(Uint8Array.of(0xe0, 0)); try { ws.close(); } catch (e) {} } },
     };
   }
   // a topic is a hash of what the players share (the public address, or the room word) and the app's salt: strangers do not meet by accident
@@ -334,7 +343,9 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
   //   offer / answer {to, code}  the same codes as the manual way, passed over the topic. g (a hash of the game's id) marks a reconnect
   //   again {g}               "this device lost the connection of game g": the seat that invited sends the offer
   const M = { unreachable: false, mq: null, up: false, topic: null, room: '', id: rid(), peers: new Map(), incoming: new Map(), asked: new Map(), okd: new Map(), visible: false, recon: false, reconAt: 0, beat: null, seq: 0, note: '', failedAt: 0 };
-  const needTopic = () => !!(S.game && !S.game.ended && S.game.topic);
+  // a game still needs its link while it is being played, and for a rematch being asked, answered or chosen
+  const wantLink = g => !!g && (!g.ended || !!(g.end && (g.end.asked || g.end.incoming || g.end.choosing || (g.end.yes && Date.now() - g.end.yes < 120000))));
+  const needTopic = () => !!(S.game && wantLink(S.game) && S.game.topic);
   const v6prefix = a => { const [l, r = ''] = a.split('::'), L = l ? l.split(':') : [], R = r ? r.split(':') : []; const all = a.includes('::') ? L.concat(Array(Math.max(0, 8 - L.length - R.length)).fill('0'), R) : L; return all.slice(0, 4).map(x => x.replace(/^0+(?=.)/, '')).join(':'); };
   // this device's public address, from the STUN reply it gets anyway (IPv4 if there is one, else the first half of an IPv6 address)
   async function publicAddress() {
@@ -392,7 +403,11 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
   // the game's own topic: listen on it always, and while the connection is lost say "again" until the other device answers
   function keep() {
     const g = S.game;
-    if (!g || g.ended || !g.topic) { M.recon = false; return; }
+    if (!g || !wantLink(g)) { M.recon = false; return; }
+    if (!g.topic) {                                          // a game begun with codes has no topic yet: both devices work out the same one from the game's id (known only to them) when the link is lost
+      if (!connected() && !g.topicBusy) { g.topicBusy = true; topicOf('rejoin|' + g.id).then(t => { if (S.game === g) { g.topic = t; save(); keep(); } }); }
+      return;
+    }
     if (M.topic !== g.topic || !M.mq) { M.visible = false; M.peers.clear(); M.incoming.clear(); meetJoin(g.topic); renderNear(); }
     if (!g.gh) return;
     if (connected()) { M.recon = false; return; }
@@ -401,21 +416,21 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
   }
   function againNow() { const g = S.game; if (!g || !g.gh) return; M.reconAt = Date.now(); say({ t: 'again', g: g.gh }); }
   async function makeOffer(id, extra) {
-    const code = await invite();
-    S.link.offerTo = id; S.link.topic = M.topic;
-    say(Object.assign({ t: 'offer', to: id, code }, extra));
+    const code = await invite(), n = rid();
+    S.link.offerTo = id; S.link.topic = M.topic; S.link.nonce = n;          // an answer counts only if it carries this offer's nonce (a late answer to an earlier offer would not fit this connection)
+    say(Object.assign({ t: 'offer', to: id, code, n }, extra));
   }
   async function answerOffer(m) {
     const code = await join(m.code);
     S.link.offerTo = m.id; S.link.topic = M.topic;
-    say(Object.assign({ t: 'answer', to: m.id, code }, m.g ? { g: m.g } : {}));
+    say(Object.assign({ t: 'answer', to: m.id, code, n: m.n }, m.g ? { g: m.g } : {}));
   }
   function onMeet(topic, text) {
     if (topic !== M.topic) return;
     let m; try { m = JSON.parse(text); } catch (e) { return; }
     if (!m || typeof m !== 'object' || typeof m.id !== 'string' || m.id.length > 40 || m.id === M.id || typeof m.t !== 'string') return;
     if (m.to ? m.to !== M.id : !['here', 'gone', 'again'].includes(m.t)) return;      // ask, yes, no, offer and answer are for one device; only here, gone and again are for everyone
-    const g = S.game && !S.game.ended ? S.game : null, now = Date.now(), fail = e => status(e && e.message || String(e));
+    const g = wantLink(S.game) ? S.game : null, now = Date.now(), fail = e => status(e && e.message || String(e));
     if (m.t === 'here') {
       if (!M.visible || (!M.peers.has(m.id) && M.peers.size >= 30)) return;
       M.peers.set(m.id, { id: m.id, name: cleanName(m.name), deck: str(m.deck, 40) || '', seen: now });
@@ -443,7 +458,7 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       return answerOffer(m).catch(fail);
     }
     if (m.t === 'answer') {
-      const L = S.link; if (!L || !L.inviter || L.offerTo !== m.id || L.answered || typeof m.code !== 'string') return;
+      const L = S.link; if (!L || !L.inviter || L.offerTo !== m.id || L.answered || typeof m.code !== 'string' || !L.nonce || m.n !== L.nonce) return;
       L.answered = true; return acceptReply(m.code).catch(e => { L.answered = false; fail(e); });
     }
     if (m.t === 'again') {
@@ -529,9 +544,10 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
     if (+m.app !== APP) return refuse(`The two devices run different versions of the app (v${APP} and v${+m.app || '?'}). Reload both pages and try again.`);
     if (m.ack !== DISCLOSURE_VERSION || !accepted()) return refuse('Both players must accept the same list of what is shared before playing.');
     const g = S.game;
-    if (g && !g.ended && m.game === g.id) {                  // the same game: send what the other device is missing
+    if (g && m.game === g.id) {                              // the same game (over or not): send what the other device is missing; never deal a new one
       const got = Math.max(0, Math.min(g.out.length, +m.got || 0));
       g.out.slice(got).forEach(x => raw(x));
+      if (g.end && g.end.asked) raw({ t: 'rematch', name: myName(), deck: deckLabel() });          // a rematch request sent while the link was down
       status(''); show(); redraw();
       return;
     }
@@ -755,9 +771,7 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
           ${e.asked ? `<div class="hint">Waiting for ${who} to accept…</div>` : ''}${e.note ? `<div class="hint">${esc(e.note)}</div>` : ''}${e.peerChoosing ? `<div class="hint">${who} is choosing a deck.</div>` : ''}
           <div class="row wrap">${e.choosing ? `<button class="primary rm-rematch"${e.asked || !open() ? ' disabled' : ''}>Offer a rematch with ${esc(deckLabel() || 'this deck')}</button>` : ''}<button class="ghost rm-leave">Leave</button></div></div>`;
     } else if (playing) sc.innerHTML = `<div class="hint">Playing ${esc(g.setup.names[1 - g.local])}. The table is below.</div>`;
-    else if (live) sc.innerHTML = g.topic
-      ? `<div class="rm-lost"><b>Not connected to ${esc(g.setup.names[1 - g.local])}.</b> <span class="hint">The game waits. Both devices connect again by themselves; nothing to do. (Other ways to connect, below, also work.)</span></div>`
-      : `<div class="rm-lost"><b>Not connected to ${esc(g.setup.names[1 - g.local])}.</b> <span class="hint">The game waits. One of you invites again and the other joins: the game goes on where it was.</span></div>`;
+    else if (live) sc.innerHTML = `<div class="rm-lost"><b>Not connected to ${esc(g.setup.names[1 - g.local])}.</b> <span class="hint">The game waits. Both devices connect again by themselves; nothing to do. (Other ways to connect, below, also work: new codes go on in the same game.)</span></div>`;
     else sc.innerHTML = (sv && !sv.ended ? `<div class="rm-saved"><b>Your game against ${esc(sv.them || 'your friend')} is saved.</b> <div class="row wrap"><button class="primary rm-rejoin">Rejoin</button><button class="ghost rm-delete">Delete it</button></div></div>` : '') +
       (sv && sv.ended ? `<div class="rm-saved hint">Your last game against ${esc(sv.them || 'your friend')} is saved. <button class="ghost rm-delete">Delete it</button></div>` : '');
     renderNear(); syncNearby(); syncWake();
@@ -865,14 +879,24 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
     acceptReply(r.code).catch(e => { L.answered = false; status(e.message || String(e)); });
   }
   window.addEventListener('storage', e => { if (e.key === REPLY_KEY) takeReply(); });
+  // Back from sleep or from another network: is the meeting point still there, and is the other device still answering? If not, say so now
+  // instead of waiting for the long time-outs.
+  function probeAll() {
+    if (M.mq) M.mq.probe();
+    if (!open()) return;
+    const t0 = Date.now(), L = S.link;
+    raw({ t: 'ping', h: document.hidden ? 1 : 0 });
+    setTimeout(() => { if (S.link === L && open() && S.lastSeen < t0 && !S.peerHidden && !document.hidden) lost('stale'); }, 9000);
+  }
   // A tab coming back to the front is not a lost connection: give the other device a few seconds to be heard, ask it to say hello, and
   // take the screen lock again. Going to the background tells the other device, which then stops judging silence.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { S.grace = Date.now() + 8000; S.wlAt = 0; takeReply(); }
+    if (!document.hidden) { S.grace = Date.now() + 8000; S.wlAt = 0; takeReply(); probeAll(); }
     raw({ t: 'ping', h: document.hidden ? 1 : 0 });
     syncWake(); keep(); syncNearby();
   });
-  window.addEventListener('online', () => { keep(); syncNearby(); });
+  window.addEventListener('online', () => { probeAll(); keep(); syncNearby(); });
+  window.addEventListener('pageshow', () => probeAll());
   window.addEventListener('pagehide', () => { if (M.visible) say({ t: 'gone' }); });
   window.addEventListener('focus', takeReply);
 

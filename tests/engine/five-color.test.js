@@ -17,7 +17,7 @@ const bare = (dk = deck) => { const g = G.newGame(dk, O, 3); g.turn = 6; g.hand 
 const by = (g, n) => g._d.unique.find(c => c.name === n);
 const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(g, n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(g, n) });
-const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true }); };
+const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true, eot: true }); };
 
 for (const n of NAMES.slice(0, 5)) check(n + ': every line is read', deck.unique.find(c => c.name === n).a.coverage.every(c => c.status !== 'ignored'));
 

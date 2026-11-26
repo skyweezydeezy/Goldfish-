@@ -26,7 +26,7 @@ const bare = seed => { const g = G.newGame(deck, O, seed || 3); g.turn = 6; g.ha
 const mirror = () => { const g = bare(3), b = bare(4); G.linkMatch(g, b); return { g, b }; };
 const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
-const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true }); };
+const mana = (g, n, c) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(c ? [c] : ['W', 'U', 'B', 'R', 'G', 'C']), floating: true, eot: true }); };
 const tok = (name, p, t, colors) => ({ type: 'token', n: 1, creature: true, p, t, colors: colors || [], subtypes: [name], keywords: [], artifact: false, name });
 const T = (name, fn) => { try { fn(); } catch (e) { check(name + ' (threw)', false, String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); } };
 const lands = (g, n, name) => { for (let i = 0; i < n; i++) putOn(g, name || 'Plains'); };
@@ -89,7 +89,7 @@ T('unblock abilities', () => { const { g: a, b } = mirror(); turnOf(a, b); putOn
   check("Kumena: a summoning-sick Merfolk is tapped, Kumena can't be blocked", ev2.some(e => e.type === 'note' && /Kumena, Tyrant of Orazca can't be blocked/.test(e.text)) && ad.tapped, G.powerOf(c, ku));
   const { g: e, b: f } = mirror(); turnOf(e, f); putOn(e, 'Merfolk Sovereign'); const lo = putOn(e, 'Lord of Atlantis'); putOn(f, 'Serra Angel'); const ev3 = G.combat(e);
   check("Merfolk Sovereign: {T}, a Merfolk can't be blocked", ev3.some(x => x.type === 'note' && /can't be blocked/.test(x.text)), G.powerOf(e, lo));
-  const { g: h, b: k } = mirror(); turnOf(h, k); putOn(h, 'Endbringer'); putOn(h, 'Grave Titan'); const an = putOn(k, 'Serra Angel'); h.floating.push({ src: null, colors: new Set(['C']), floating: true }); const ev4 = G.combat(h);
+  const { g: h, b: k } = mirror(); turnOf(h, k); putOn(h, 'Endbringer'); putOn(h, 'Grave Titan'); const an = putOn(k, 'Serra Angel'); h.floating.push({ src: null, colors: new Set(['C']), floating: true, eot: true }); const ev4 = G.combat(h);
   check("Endbringer {C}, {T}: the Angel can't block this turn, and the Titan connects", ev4.some(x => x.type === 'note' && /Serra Angel can't block/.test(x.text)) && k.life <= 34, k.life); void an; });
 T('pemmin', () => { const g = bare(); const gt = putOn(g, 'Grave Titan'), pa = putOn(g, "Pemmin's Aura"); pa.attachedTo = gt.iid; G.touch(g); mana(g, 3); G.combat(g);
   check("Pemmin's Aura against a goldfish: {1} each for +1/-1, down to toughness 1 (6/6 + 3)", g.damage === 9, g.damage);

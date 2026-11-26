@@ -49,6 +49,8 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] The user (2026-11-26 14:15 UTC): "Pause on adding additional unrequested card rules until further notice." Rules batches 85+ and the T-107 pre-teach sweep are stopped; requested teaching (Teach issues, T-100) continues. Batches 82–84 shipped without waiting for five (the user: "Merge batches now").
+
 - [V] Daily Drive deck check (the user, 11:18 UTC: "make sure all commander decks in my Google Drive match what's available in ICEYfish... an agent to maintain that list"): scheduled task trig_016tifZVGBHxQJMUbcgPv4Mj, 12:43 UTC daily, fires into MAIN (the org does not allow connectors on fresh-session tasks). 11:17 UTC check: all 50 Drive decks match drive-sync.json and index.json.
 - [V] The user (2026-11-26 11:15 UTC): every MAIN reply ends with the next steps as opt-in options (AskUserQuestion, multi-select): a box the user CHECKS is a go-ahead; unchecked means don't; Other is for clarification (corrected 11:20 UTC).
 

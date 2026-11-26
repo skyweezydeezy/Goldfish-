@@ -715,9 +715,9 @@
    "reprints": 1,
    "missing": 0,
    "coverage": {
-    "full": 28,
+    "full": 29,
     "approx": 2,
-    "partial": 4,
+    "partial": 3,
     "none": 0
    }
   },
@@ -752,8 +752,8 @@
    "missing": 0,
    "coverage": {
     "full": 231,
-    "approx": 9,
-    "partial": 41,
+    "approx": 10,
+    "partial": 40,
     "none": 11
    }
   },
@@ -787,8 +787,8 @@
    "reprints": 248,
    "missing": 0,
    "coverage": {
-    "full": 289,
-    "approx": 9,
+    "full": 290,
+    "approx": 8,
     "partial": 23,
     "none": 8
    }
@@ -805,9 +805,9 @@
    "reprints": 360,
    "missing": 0,
    "coverage": {
-    "full": 441,
+    "full": 442,
     "approx": 16,
-    "partial": 50,
+    "partial": 49,
     "none": 24
    }
   },
@@ -841,9 +841,9 @@
    "reprints": 697,
    "missing": 0,
    "coverage": {
-    "full": 623,
+    "full": 624,
     "approx": 23,
-    "partial": 58,
+    "partial": 57,
     "none": 33
    }
   },
@@ -2623,8 +2623,8 @@
    "reprints": 1,
    "missing": 0,
    "coverage": {
-    "full": 6,
-    "approx": 1,
+    "full": 7,
+    "approx": 0,
     "partial": 0,
     "none": 0
    }
@@ -3433,9 +3433,9 @@
    "reprints": 53,
    "missing": 0,
    "coverage": {
-    "full": 233,
+    "full": 234,
     "approx": 8,
-    "partial": 61,
+    "partial": 60,
     "none": 7
    }
   },
@@ -3721,8 +3721,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 33,
-    "approx": 3,
+    "full": 34,
+    "approx": 2,
     "partial": 2,
     "none": 2
    }
@@ -3830,8 +3830,8 @@
    "missing": 0,
    "coverage": {
     "full": 12,
-    "approx": 1,
-    "partial": 2,
+    "approx": 2,
+    "partial": 1,
     "none": 0
    }
   },
@@ -4496,8 +4496,8 @@
    "missing": 0,
    "coverage": {
     "full": 39,
-    "approx": 1,
-    "partial": 2,
+    "approx": 2,
+    "partial": 1,
     "none": 1
    }
   },
@@ -4784,8 +4784,8 @@
    "missing": 0,
    "coverage": {
     "full": 292,
-    "approx": 11,
-    "partial": 32,
+    "approx": 12,
+    "partial": 31,
     "none": 6
    }
   },
@@ -5125,8 +5125,8 @@
    "reprints": 1,
    "missing": 0,
    "coverage": {
-    "full": 49,
-    "approx": 2,
+    "full": 50,
+    "approx": 1,
     "partial": 4,
     "none": 1
    }
@@ -5611,8 +5611,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 52,
-    "approx": 1,
+    "full": 53,
+    "approx": 0,
     "partial": 1,
     "none": 0
    }

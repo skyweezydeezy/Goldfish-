@@ -1,0 +1,87 @@
+// Value Meal [B4] (The Cabbage Merchant)
+// Variation of a user-supplied Cabbage Merchant list: cost cut, salt cut, luck cut
+
+// COMMANDER
+1 The Cabbage Merchant
+
+// DECK
+1 Abstergo Entertainment
+1 Academy Manufactor
+1 Arcane Signet
+1 Archdruid's Charm
+1 Autumn's Veil
+1 Avarice Totem
+1 Bag End Banquet
+1 Bilbo, Fellow Conspirator
+1 Birds of Paradise
+1 Bouncer's Beatdown
+1 Bridgeworks Battle // Tanglespan Bridgeworks
+1 Chord of Calling
+1 Chrome Dome
+1 Collective Resistance
+1 Copper Gnomes
+1 Courser of Kruphix
+1 Crop Rotation
+1 Crystal Vein
+1 Defend the Rider
+1 Disciple of Freyalise // Garden of Freyalise
+1 Elder Gargaroth
+1 Eldritch Evolution
+1 Elvish Mystic
+1 Elvish Spirit Guide
+1 Emergence Zone
+1 Endurance
+1 Eternal Witness
+1 Expedition Map
+1 Fauna Shaman
+20 Forest
+1 Formidable Speaker
+1 Fyndhorn Elves
+1 Garruk Wildspeaker
+1 Geier Reach Sanitarium
+1 Gilded Goose
+1 Green Sun's Zenith
+1 Heroic Intervention
+1 Hickory Woodlot
+1 Hornet Queen
+1 Jaheira, Friend of the Forest
+1 Krark-Clan Ironworks
+1 Liberator, Urza's Battlethopter
+1 Llanowar Elves
+1 Mind Stone
+1 Mirage Mirror
+1 Nature's Rhythm
+1 Noxious Revival
+1 Nuka-Cola Vending Machine
+1 Okina, Temple to the Grandfathers
+1 Peerless Recycling
+1 Peregrin Took
+1 Plaza of Heroes
+1 Reclamation Sage
+1 Regal Force
+1 Regrowth
+1 Royal Treatment
+1 Sakura-Tribe Elder
+1 Sarinth Steelseeker
+1 Sculpting Steel
+1 Second Harvest
+1 Shared Summons
+1 Shifting Woodland
+1 Snakeskin Veil
+1 Sol Ring
+1 Summoner's Pact
+1 Sylvan Library
+1 Sylvan Safekeeper
+1 Sylvan Tutor
+1 Tamiyo's Safekeeping
+1 The Mycosynth Gardens
+1 Time of Need
+1 Trail of Crumbs
+1 Treasure Vault
+1 Turntimber Symbiosis // Turntimber, Serpentine Wood
+1 Tyvar's Stand
+1 Veil of Summer
+1 Walking Ballista
+1 Wall of Roots
+1 Wayfarer's Bauble
+1 Yeva, Nature's Herald

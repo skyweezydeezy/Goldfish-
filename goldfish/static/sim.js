@@ -3782,7 +3782,7 @@
       }
       if (!g.dry && g.opp && (g.drawSeq || 0) >= 1 && narsetOn(g)) { if (ev && !out.length) ev.push({ type: 'note', text: "Narset, Parter of Veils: no more than one card each turn", source: null }); break; }          // Narset
       const c = g.library.shift();
-      g.hand.push(c); out.push(c);
+      g.hand.push(c); out.push(c); Object.defineProperty(c, '_dt', { value: turnSeq(g), writable: true, configurable: true, enumerable: false });          // drawn this turn (Sylvan Library): not enumerable, so a dump or snapshot never sees it
       g.drawSeq = (g.drawSeq || 0) + 1;                                                                     // which card of the turn this is ("your second card each turn")
       if (g.drawTurn[c.card.uid] == null) g.drawTurn[c.card.uid] = g.turn;
       if (ev && g.opp && !g.dry) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDraw') && (!t.drawNth || t.drawNth === g.drawSeq) && (!t.redPerm || g.opp.battlefield.some(x => colorsOf(g.opp, x.card).includes('R')))) {                 // Sheoldred, Smothering Tithe: the other player's draws (Faerie Mastermind: its second each turn)
@@ -8444,21 +8444,43 @@
     applyEffects(g, a.spellFx, null, ev, null);
     g.exile.push(inst);
   }
-  // Sylvan Library: look at three cards (the one you drew and the next two): keep the best one for free, and a second one for 4 life while life is plentiful
+  // Sylvan Library (T-090), exactly: "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn.
+  // For each of those cards, pay 4 life or put the card on top of your library." It happens at the beginning of the draw step, before the turn's own draw (and also on the
+  // play's first turn, which has the step but no draw). A person is asked every time; the autopilot draws when it has the cards, puts back what it values least and pays 4 life
+  // (while life is plentiful) for a card worth keeping.
   function sylvanLibrary(g, ev) {
-    if (g.dry || g.library.length < 2) return;
-    const drawn = g.hand[g.hand.length - 1]; if (!drawn) return;
-    const ctx = tutorContext(g), cand = [drawn, g.library[0], g.library[1]];
-    cand.sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx));
-    const keep = [cand[0]];
-    if (g.life >= 30 && g.hand.length < 7 && tutorScore(g, cand[1], ctx) > 40) { keep.push(cand[1]); g.life -= 4; ev.push({ type: 'note', text: 'Sylvan Library: paid 4 life to keep a second card' }); checkDeath(g, ev); }
-    g.hand.splice(g.hand.indexOf(drawn), 1);
-    g.library.splice(0, 2);
-    const back = cand.filter(i => !keep.includes(i));
-    keep.forEach(i => { if (!g.hand.includes(i)) g.hand.push(i); });
-    back.forEach(i => g.library.unshift(i));
-    ev.push({ type: 'note', text: `Sylvan Library: kept ${keep.map(i => i.card.name).join(' and ')}` });
-    if (back.length) crackHeld(g, ev, 1);
+    if (g.dry) return;
+    const cs = tableHas(g, 'sylvan') ? g.battlefield.filter(p => p.card.a.sylvan) : [];
+    for (const lib of cs) {
+      const src = lib.card, ask = !!g.ask;
+      let yes = g.library.length >= 3;          // the autopilot never draws itself out of the game
+      if (ask) yes = decide(g, { kind: 'may', options: ['yes', 'no'], def: yes ? 'yes' : 'no', title: 'Sylvan Library: draw two additional cards?', text: 'At the beginning of your draw step you may draw two additional cards. If you do, you choose two cards in your hand drawn this turn: for each, pay 4 life or put it on top of your library.', yes: 'Draw two cards', no: 'Do not draw', source: lib }) === 'yes';
+      if (!yes) continue;
+      const seq = turnSeq(g); draw(g, 2, ev);
+      const pool = () => g.hand.filter(i => i._dt === seq);
+      let chosen = pool(); if (!chosen.length) continue;
+      const ctx = tutorContext(g), val = i => tutorScore(g, i, ctx), n = Math.min(2, chosen.length);
+      if (chosen.length > n) {          // cards drawn earlier this turn count too: the two that go back or cost life are chosen among them all
+        const auto = chosen.slice().sort((x, y) => val(x) - val(y)).slice(0, n);
+        chosen = ask ? (decide(g, { kind: 'discard', options: chosen, def: auto, multi: true, pick: n, sylvan: 'choose', source: lib }) || auto) : auto;
+      }
+      const drew = chosen.map(i => i.card.name);
+      chosen.sort((x, y) => val(y) - val(x));          // the autopilot looks at the best first
+      let paid = 0; const back = [];
+      for (const c of chosen) {
+        let pay = g.life >= 30 && g.hand.length - back.length < 8 && val(c) > 40;          // worth 4 life only when life is plentiful
+        if (g.life < 4) pay = false;          // CR 119.4: life can be paid only when the total is at least the amount
+        else if (ask) pay = decide(g, { kind: 'may', options: ['yes', 'no'], def: pay ? 'yes' : 'no', title: `Sylvan Library: pay 4 life to keep ${c.card.name}?`, text: `You have ${g.life} life. Pay 4 life and ${c.card.name} stays in your hand, or put it on top of your library.`, yes: 'Pay 4 life', no: 'Put it on top', source: { card: c.card } }) === 'yes';
+        if (pay) { g.life -= 4; paid += 4; checkDeath(g, ev); if (g.dead || matchOver(g)) break; } else back.push(c);
+      }
+      let order = back;
+      if (back.length > 1) { const auto = back.slice().sort((x, y) => val(y) - val(x))[0]; order = [ask ? (decide(g, { kind: 'discard', options: back.slice(), def: auto, sylvan: 'top', source: lib }) || auto) : auto]; order.push(...back.filter(i => i !== order[0])); }
+      for (const c of back) g.hand.splice(g.hand.indexOf(c), 1);
+      for (let k = order.length - 1; k >= 0; k--) g.library.unshift(order[k]);          // order[0] ends up on top
+      const kept = chosen.filter(i => !back.includes(i)).map(i => i.card.name);
+      ev.push({ type: 'note', text: `Sylvan Library: drew ${drew.join(' and ') || 'nothing'}${paid ? `; paid ${paid} life to keep ${kept.join(' and ')}` : ''}${back.length ? `; ${back.map(i => i.card.name).join(' and ')} went back on top of the library` : ''}`, pub: `Sylvan Library: drew ${drew.length} additional card${drew.length === 1 ? '' : 's'}${paid ? `; paid ${paid} life` : ''}${back.length ? `; ${back.length} went back on top of the library` : ''}`, source: lib });
+      if (back.length) crackHeld(g, ev, 1);
+    }
   }
   // Necropotence: skip the draw step and pay life instead, at the end step, to refill the hand
   function necroDig(g, ev) {
@@ -11642,12 +11664,12 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     settle(g, ev);          // the upkeep's triggers resolve before the draw step
     marks.draw = ev.length;
+    if (!(tableHas(g, 'skipDraw') && g.battlefield.some(p => p.card.a.skipDraw)) && tableHas(g, 'sylvan') && g.battlefield.some(p => p.card.a.sylvan)) sylvanLibrary(g, ev);          // Sylvan Library: at the beginning of the draw step, before the draw (also on the play's first turn)
     if (!(g.turn === 1 && g.opts.onPlay) && !(tableHas(g, 'skipDraw') && g.battlefield.some(p => p.card.a.skipDraw))) {                       // Necropotence skips the draw step
       const h0 = new Set(g.hand); g._firstDraw = true; draw(g, 1, ev); g._firstDraw = false; staxDraw(g, ev, g.hand.find(i => !h0.has(i)));
       { const hm = (tableHas(g, 'statics.howling') ? g.battlefield.filter(p => p.card.a.statics.howling) : []).length + (g.opp ? (tableHas(g.opp, 'statics.howling') ? g.opp.battlefield.filter(p => p.card.a.statics.howling) : []).length : 0); if (hm && g.library.length) draw(g, hm, ev); }
       { const fm = [g].concat(otherPlayers(g)).reduce((t, x) => t + (tableHas(x, 'statics.font') ? x.battlefield.filter(p => p.card.a.statics.font) : []).length, 0); if (fm && g.library.length) draw(g, 2 * fm, ev); }
       { const xd = g.battlefield.reduce((t, p) => t + (p.card.a.statics.extraOwnDraw || 0), 0); if (xd && g.library.length) draw(g, xd, ev); }          // The Immortal Sun          // Font of Mythos          // Howling Mine: each player draws an additional card
-      if ((tableHas(g, 'sylvan') && g.battlefield.some(p => p.card.a.sylvan))) sylvanLibrary(g, ev);
     }
     for (const p of (tableHas(g, 'vaultDamage') ? g.battlefield : NONE)) if (p.card.a.vaultDamage && p.tapped) { g.life -= 1; ev.push({ type: 'note', text: `${p.card.name} deals 1 damage to you (${g.life})`, source: p }); checkDeath(g, ev); }
     marks.main = ev.length;

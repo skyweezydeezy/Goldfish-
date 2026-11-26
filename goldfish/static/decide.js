@@ -191,6 +191,7 @@
       else if (d.kind === 'combo') { item.name = o.label; item.note = o.note || ''; item.id = o.id; }
       else if (d.kind === 'shock') { item.name = o === 'pay' ? `Pay ${d.life} life` : 'Enter tapped'; item.note = o === 'pay' ? `it enters untapped · you go to ${g.life - d.life} life` : 'no life paid · it can\'t tap for mana this turn'; }
       else if (d.kind === 'tax') { item.name = o === 'pay' ? `Pay {${d.cost}}` : 'Do not pay'; item.note = o === 'pay' ? `you have ${G.allUnits(g).length} untapped mana` : taxThen(d, g, m); }          // T-080: "unless that player pays"
+      else if (d.kind === 'may') { item.name = o === 'yes' ? d.yes || 'Yes' : d.no || 'No'; }          // T-090: a plain "you may" (Sylvan Library)
       else if (d.kind === 'color') { item.name = G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x' && d.what === 'squad') { item.name = o ? `Pay squad ${o === 1 ? 'once' : o + ' times'}` : 'Don\'t pay squad'; item.note = o ? `${o} token cop${o === 1 ? 'y' : 'ies'} of it as it enters` : 'just the card'; }
@@ -243,6 +244,12 @@
       q.title = `${sn || 'Effect'}: put a land onto the battlefield?`;
       q.text = 'Choose a land card from your hand to put onto the battlefield. If you do not, you draw a card.';
       q.none = 'Draw a card instead';
+    } else if (d.kind === 'may') {                                                                        // a plain yes/no: the title and text come with the question
+      q.title = d.title || `${sn || 'Choose'}?`; q.text = d.text || '';
+      if (src) { q.spell = src; q.spellNote = 'yours'; }
+    } else if (d.kind === 'discard' && d.sylvan) {                                                        // Sylvan Library: which two cards drawn this turn, and which goes on top
+      if (d.sylvan === 'choose') { q.title = `${sn}: choose ${max === 1 ? 'a card' : max + ' cards'} drawn this turn`; q.text = 'For each card you choose, pay 4 life or put it on top of your library. The cards you do not choose stay in your hand for free.'; }
+      else { q.title = `${sn}: which card goes on top?`; q.text = 'You put two cards back. The one you choose goes on top of your library, so you draw it next.'; }
     } else if (d.kind === 'discard') {
       if (d.rack) { q.title = `${sn}: which cards go on top of your library?`; q.text = 'Choose any number of cards from your hand. They go on top of your library, and you take that many cards from the top first.'; }
       else {
@@ -462,14 +469,14 @@
   // ---------- the log ----------
   // What happened, as short lines: the engine's own summary plus what a person chose or had done to them (searches, targets, discards,
   // sacrifices, counterspells). A card another player searched for and did not show stays unnamed.
-  const EXTRA = /^(Proliferate: |Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
+  const EXTRA = /^(Sylvan Library: |Proliferate: |Tutored |Destroyed |Exiled |Returned |Discarded |Sacrificed |The opponent sacrifices |\d+ damage kills |Searched the library|Cleanup: |In response to )| counters |'s controller pays | explores: /;
   function summary(g, ev, viewer) {
     const base = G.turnSummary(g, ev), mine = viewer == null || g.pid === viewer, out = base.slice();
     for (const e of ev) {
       if (e.type === 'tutor' && e.inst) out.push(mine ? `searched for ${e.inst.card.name}` : 'searched their library for a card');
       else if (e.type === 'pw' && e.perm) out.push(`${e.perm.card.name.split(' // ')[0]} ${e.x ? '−X' : e.cost > 0 ? '+' + e.cost : e.cost < 0 ? '−' + (-e.cost) : '0'}: ${String(e.text || '').replace(/^[+−-]?(?:\d+|x|X):\s*/, '')}`);          // a loyalty ability
       else if (e.type === 'tempt') out.push(`💍 the Ring tempts ${mine ? 'you' : 'them'} (${e.n}${e.n === 1 ? 'st' : e.n === 2 ? 'nd' : e.n === 3 ? 'rd' : 'th'} time)${e.bearer ? ': ' + e.bearer.card.name + ' is the Ring-bearer' : ''}`);
-      else if (e.type === 'note' && e.text && EXTRA.test(e.text) && !base.includes(e.text)) out.push(!mine && /^Tutored .* to the top/.test(e.text) ? 'searched their library and put a card on top' : e.text);
+      else if (e.type === 'note' && e.text && EXTRA.test(e.text) && !base.includes(e.text)) out.push(!mine && e.pub ? e.pub : !mine && /^Tutored .* to the top/.test(e.text) ? 'searched their library and put a card on top' : e.text);          // e.pub: the version without card names for another player
     }
     return out;
   }

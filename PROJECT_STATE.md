@@ -105,6 +105,7 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 217** (2026-11-26 22:12 UTC): PR #186, 4/4 + Pages green: T-118 (Mana Tithe cast+tax for a person, Demonic Consultation names a card, Basalt/Grim Monolith loops by hand with the mana shortcut, Port Razer extra combat). Fingerprint moved only for the red-rum fixture (has those cards).
 - [V] **Version 216** (2026-11-26 20:34 UTC): PR #185, 4/4 + Pages green: T-117 puzzles (four finishers, no Go off).
 - [V] **Version 215** (2026-11-26 19:58 UTC): PR #184, 4/4 + Pages green: T-116 Winota (verified B4; card floor B4, speed B3) + card teaching 4589e60 (Winota lines; Signal Pest battle cry false ok fixed); brackets.test accepts [B?].
 - [V] **Version 214** (19:23 UTC): PR #183, 4/4 + Pages green: T-115 new Puzzle tab (12 puzzles).
@@ -240,7 +241,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-104 | Teach the other benders (the user): Firebending, Waterbend, Airbend exact per reminder text/CR, person choices, every line ok/neutral | Card teaching 6 | `claude/card-teaching` | After T-103 |
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
-| T-118 | Engine fixes (the user, 21:15 UTC): Mana Tithe cast/tax, a person names the Demonic Consultation card, person-played infinite loops, Port Razer extra-combat timing | Card teaching 8 (`session_01K5kL4W3kFGpFCLCxQctBCX`) | `claude/card-teaching` | Active since 21:15 UTC |
+| T-118 | Engine fixes (the user): Mana Tithe, Consultation naming, loops by hand (Monoliths), Port Razer | Card teaching 8 | `claude/card-teaching` @ 211f1b0 | [V] Verified v217 (PR #186). Other loop pieces (Rings, Pili-Pala, Scepter) still autopilot-only |
 | T-116 | New Drive deck Winota | Deck Brackets 3 | `claude/deck-brackets` | [V] Verified v215 (PR #184): B4 |
 | T-115 | Puzzle redesign | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`, idle) | `claude/t115-puzzles` | [V] v214; T-117 [V] v216 |
 | T-113 | Weekly ranking split tooling | Ranking split (archived) | `claude/ranking-split` @ 01ab77b | PARKED 16:33 UTC: ranking turned off by the user; keep the branch for when ranking returns |
@@ -324,7 +325,7 @@ Scheduled tasks [V, listed 2026-11-23 13:40 UTC]:
 
 ## 6. Known issues and blockers
 
-- [R] Engine gaps found by T-115/T-116 (not fixed): Mana Tithe stays in the opponent's hand when its tax can be paid; Demonic Consultation always names the best target (a person can't name a missing card); infinite loops are autopilot-only (comboLines), a person can't play them card by card; Port Razer's extra combat likely has Breath of Fury's queued-trigger bug.
+- [R] Engine gaps found by T-115/T-116 (not fixed): Mana Tithe stays in the opponent's hand when its tax can be paid; Demonic Consultation always names the best target (a person can't name a missing card); infinite loops are autopilot-only (comboLines), a person can't play them card by card; (Mana Tithe, Consultation, Monolith loops and Port Razer fixed in v217; other loops still autopilot-only.)
 - [V] **GitHub access:** in MAIN's cloud environment it works under the old name `skyweezydeezy/Goldfish-` (redirects to ICEYfish).
   The Claude GitHub App is not installed for it, so PR events do not reach MAIN; MAIN checks PRs directly.
 - [V] **GitHub's Tests check runs the engine tests only.** Browser tests run only when a session runs them.

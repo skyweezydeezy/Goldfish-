@@ -210,6 +210,7 @@
     const e = h('div', 'mtg');
     e.dataset.uid = card.uid;
     e._card = card;                                         // the card itself: hover preview and viewer use this, so cards of other decks (1v1, Pod) work too
+    e._o = o;                                               // how it was built, so a changed printing can redraw its picture in place (refreshArt)
     if (o.iid != null) e.dataset.iid = o.iid;
     const src = imgFor(card, o.face);
     const fb = () => { e.innerHTML = `<div class="fallback"><b>${esc(card.name)}</b><span>${esc(card.mana_cost)}</span><span>${esc(card.type_line)}</span></div>`; addExtras(); };
@@ -1648,9 +1649,57 @@
     return out;
   }
   const isRealCard = c => c && c.id && !String(c.uid).startsWith('t:') && !String(c.uid).startsWith('b:') && !String(c.uid).startsWith('preview:');
+  const isToken = c => c && String(c.uid).startsWith('t:') && !!c.name && !c.isFaceDown;
+  // T-112: a printing is the user's choice for THEIR deck, wherever its card is shown. Who owns a card on screen: a table (Duel, Pod) says
+  // true for the seat played on this device and false for the others; the loaded deck's own cards are the user's; anything else is view-only.
+  const printOwners = [], printHooks = [];
+  const ownsCard = card => {
+    for (const f of printOwners) { const r = f(card); if (r === true || r === false) return r; }
+    return isDeckCard(card);
+  };
+  const LINE_RE = /^\s*(?:(?<qty>\d+)\s*[xX]?\s+)?(?<name>.+?)(?:\s+\((?<set>[A-Za-z0-9]{2,6})\)(?:\s+(?<cn>[A-Za-z0-9\-★]+))?)?(?<tags>(?:\s+\*[^*]+\*|\s+\[[^\]]*\]|\s+#\S+)*)\s*$/;
+  // the decklist with the printing written on the card's main-deck and commander lines: "1 Sol Ring (C21) 263"
+  function pinInText(text, names, p) {
+    const lines = text.split(/\r?\n/); let changed = false;
+    const inMain = i => { const a = Source.parseDecklist(lines.slice(0, i + 1).join('\n')), b = Source.parseDecklist(lines.slice(0, i).join('\n')); return a.length > b.length; };
+    lines.forEach((ln, i) => {
+      const e = Source.parseDecklist(ln)[0]; if (!e || !names.has(nameKey(e.name)) || !inMain(i)) return;
+      const m = LINE_RE.exec(ln); if (!m) return;
+      const lead = ln.match(/^\s*(?:\d+\s*[xX]?\s+)?/)[0], out = `${lead}${m.groups.name} (${p.set.toUpperCase()}) ${p.cn}${m.groups.tags || ''}`;
+      if (out !== ln) { lines[i] = out; changed = true; }
+    });
+    return changed ? lines.join('\n') : text;
+  }
+  // The saved deck, the box and the remembered list all take the printing, so a reload (or loading the deck again) brings it back.
+  function savePrinting(card, p) {
+    const text = S.deckText || $('#deckText').value; if (!text) return;
+    const names = new Set([card.name].concat(S.cards.filter(x => x.name === card.name).map(x => x.input_name)).filter(Boolean).map(nameKey));
+    const out = pinInText(text, names, p); if (out === text) return;
+    const lfn = t => String(t || '').replace(/\r\n/g, '\n'), sel = $('#savedDecks').value, all = getDecks();
+    if (sel && all[sel] != null && lfn(all[sel]) === lfn(text)) { const meta = getMeta(); all[sel] = out; meta[sel] = Object.assign({}, meta[sel], { saved: Date.now() }); putDecks(all, meta); }
+    S.deckText = out; $('#deckText').value = out; localStorage.setItem('gf_last', out);
+  }
+  // Every copy of the card the user owns takes the printing's art: the loaded list, the game on the table, the opening hand, and (through
+  // printHooks) the games of Duel and Pod. Only pictures and the printing's name change; nothing the engine reads off the card does.
+  function retarget(c, p) {
+    c.id = p.id; c.set = p.set; c.cn = p.cn; c.images = []; c.remote_images = p.imgs;
+    const b = c.a && c.a.backCard; if (b) { b.images = []; b.remote_images = p.imgs.slice(1, 2); }
+  }
+  // redraw the pictures already on the page, in place (the elements stay, so nothing about the tables moves)
+  function refreshArt(p) {
+    document.querySelectorAll('.mtg').forEach(e => {
+      const c = cardOf(e); if (!c || c.id !== p.id || !isRealCard(c)) return;
+      const o = e._o || {}, face = e._face != null ? e._face : (e.classList.contains('flip-back') ? 1 : (o.face || 0)), src = imgFor(c, face), img = e.querySelector(':scope > img');
+      if (!src) return;
+      if (img) { img.dataset.tried = ''; img.src = src; } else { const fresh = cardEl(c, Object.assign({}, o, { face })); e.replaceChildren(...fresh.childNodes); }
+    });
+  }
   function applyPrinting(card, p) {
-    card.id = p.id; card.set = p.set; card.cn = p.cn; card.images = []; card.remote_images = p.imgs;
-    elCache.clear(); renderDeck(); if (S.game) render();
+    const same = x => x && x.name === card.name, seen = new Set();
+    [card].concat(S.cards || [], S.deck ? S.deck.unique : [], S.game && S.game.deck ? S.game.deck.unique : [], H && H.g && H.g.deck ? H.g.deck.unique : [],
+      printHooks.flatMap(f => f(card.name) || [])).filter(same).forEach(c => { if (!seen.has(c)) { seen.add(c); retarget(c, p); } });
+    savePrinting(card, p);
+    refreshArt(p);
     toast(`Now using the ${p.setName} printing`);
   }
   lbProviders.push((card, el) => { const m = el.closest && el.closest('.table') && el.dataset.iid != null ? ctxModel(el, true) : null; return m ? m.items : null; });
@@ -1713,8 +1762,10 @@
     };
     const cur = sel || null;
     paintShop(cur);
-    if (isRealCard(card)) {
-      pr.appendChild(h('div', 'lb-sec', 'Printings'));
+    if (isRealCard(card) || isToken(card)) {
+      const mine = isRealCard(card) && ownsCard(card);          // yours: one tap switches it everywhere. An opponent's card or a token: a read-only look
+      pr.classList.add(mine ? 'mine' : 'view');
+      pr.appendChild(h('div', 'lb-sec', mine ? 'Printings <small>tap one to use it in your deck</small>' : 'Printings <small>view only</small>'));
       const strip = h('div', 'lb-strip', '<span class="hint">Loading printings…</span>'); pr.appendChild(strip);
       fetchPrints(card).then(list => {
         if (lb.list[lb.i] !== card) return;
@@ -1725,16 +1776,14 @@
           const on = sel ? sel.id === p.id : idx === have;
           const b = h('button', 'lb-print' + (on ? ' on' : ''), `<img alt="" loading="lazy" src="${esc(p.thumb || p.imgs[0])}"><span>${esc(p.set.toUpperCase())} · ${esc(p.cn)}</span><small>${p.usd ? '$' + esc(p.usd) : '—'}</small>`);
           b.title = `${p.setName} (${p.date})`;
-          b.addEventListener('click', () => { lb.sel = idx === have && !sel ? null : p; const sc = lightbox.scrollTop, st = strip.scrollLeft; paintLb(); lightbox.scrollTop = sc; const s2 = lightbox.querySelector('.lb-strip'); if (s2) s2.scrollLeft = st; });
+          b.addEventListener('click', () => {
+            if (mine) { if (!on || sel) { applyPrinting(card, p); lb.sel = null; } }          // yours: switch at once (the viewer, the deck and every table follow)
+            else lb.sel = idx === have && !sel ? null : p;                                    // not yours: only look
+            const sc = lightbox.scrollTop, st = strip.scrollLeft; paintLb(); lightbox.scrollTop = sc; const s2 = lightbox.querySelector('.lb-strip'); if (s2) s2.scrollLeft = st; });
           strip.appendChild(b);
           if (on && sel) paintShop(p);
         });
         if (!sel) paintShop(have >= 0 ? list[have] : null);
-        if (sel && S.deck && S.deck.unique.includes(card) && !(card.set === sel.set && String(card.cn) === String(sel.cn))) {   // only for cards of the loaded deck
-          const use = h('button', 'primary lb-use', `Use this printing in my deck`);
-          use.addEventListener('click', () => { applyPrinting(card, sel); lb.sel = null; paintLb(); });
-          pr.appendChild(use);
-        }
         const t = strip.querySelector('.on');          // bring the chosen printing to the middle of the strip, and only the strip: the viewer behind it must not scroll off the card
         if (t) { const sr = strip.getBoundingClientRect(), tr = t.getBoundingClientRect(); strip.scrollLeft += (tr.left + tr.width / 2) - (sr.left + sr.width / 2); strip.scrollTop += (tr.top + tr.height / 2) - (sr.top + sr.height / 2); }
       });
@@ -3598,7 +3647,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, isPhoneTouch, selectCard, cardOf, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, isPhoneTouch, selectCard, cardOf, addViewerActions: f => lbProviders.push(f), addPrintOwner: f => printOwners.push(f), addPrintHook: f => printHooks.push(f), refreshArt, applyPrinting, abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

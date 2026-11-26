@@ -159,7 +159,7 @@
     (spec.graveyard || []).forEach(n => put(n, 'graveyard'));
     (spec.exile || []).forEach(n => put(n, 'exile'));
     (spec.library || []).forEach(n => put(n, 'library'));
-    for (let i = 0; i < 40; i++) put(FILLER, 'library');
+    if (!spec.exactLibrary) for (let i = 0; i < 40; i++) put(FILLER, 'library');          // exactLibrary: the library is exactly the cards named (a small library)
     b.mulligans = 0;
     for (const n of lands) { const l = G.enter(b, { iid: b.nextIid++, card: by(n) }, {}); l.tapped = false; }
     for (const e of spec.battlefield || []) {
@@ -192,16 +192,17 @@
         mv._used = null;
         return who.length ? D.turn.combat(g, { attackers: who.map(p => p.iid) }) : null;
       };
-      case 'combo': return gs => D.turn.main1(gs[0]);          // the autopilot plays the rest of the main phase: its lands, its spells and the combo when it is assembled (the finish is one step)
+      case 'loyalty': return gs => { const p = gs[0].battlefield.filter(x => x.card.name === mv.card)[mv.n || 0]; return p ? G.useLoyalty(gs[0], p, mv.i || 0, gs[0]) : null; };          // a planeswalker's loyalty ability (i: its place in the list)
       default: return null;
     }
   }
   // the answers for a person's question: from the move's picks, else the autopilot's
   function answerFor(mv) {
-    const picks = (mv.picks || []).slice(), resp = (mv.resp || []).slice();
+    const picks = (mv.picks || []).slice(), resp = (mv.resp || []).slice(), pays = (mv.pay || []).slice();
     return (q, view) => {
       if (q.seat === 1) return greedy(q);
       if (q.kind === 'resolve') return 'none';
+      if (q.kind === 'pay' && pays.length) { const t = String(pays.shift()).toLowerCase(), k = q.options.findIndex(o => (o.name || '').toLowerCase().includes(t)); if (k >= 0) return k; }          // pay: which sources pay (the first option whose name contains the text); the autopilot's choice otherwise
       if (q.kind === 'counter' && q.options && q.options.length) {          // a window to respond to the opponent's spell: resp lists, in order, the instants this move casts in response (the first option whose name contains the text); none otherwise
         const t = resp[0], k = t == null ? -1 : q.options.findIndex(o => (o.name || '').toLowerCase().includes(String(t).toLowerCase()));
         if (k >= 0) { resp.shift(); return k; }

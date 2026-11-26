@@ -342,7 +342,7 @@
   }
 
   // "The fastest deck" (T-093): the built-in deck with the best CEILING: the most wins by turn 2, then by turn 3, then by turn 4, then the
-  // earliest median kill turn. Read from decks/index.json at run time (by2/by3/by4/earliest/medianKill/by7 are copied by tools/build-deck-index.js
+  // median kill turn. Read from decks/index.json at run time (by2/by3/by4/earliestKill/medianKill/by7 are copied by tools/build-deck-index.js
   // from each list's "Checked by ICEYfish" line), so a fresh check of the decks changes the tutorial by itself. Until a deck has the turn 2-4
   // numbers, decks without them are ranked by the older speed numbers (median, then by T7, then by T5).
   const killN = k => k == null ? Infinity : +String(k).replace('>', '') + (String(k)[0] === '>' ? 0.5 : 0);
@@ -386,10 +386,10 @@
   const killTurnNow = () => { const g = S() && S().game; return g && g.killTurn != null ? g.killTurn : null; };
   const speedLine = d => d.by2 != null ? `${pc(d.by2)} of its games are won by turn 2, ${pc(d.by3)} by turn 3, ${pc(d.by4)} by turn 4.` : `Median turn ${d.medianKill}, ${pc(d.by5)} by turn 5, ${pc(d.by7)} by turn 7.`;
   const FASTEST = [
-    { title: 'The fastest deck', text: () => fast ? `${deckName(fast.deck)}${fast.deck.earliest ? ` can win on turn ${fast.deck.earliest}` : ' is the fastest built-in deck'}. ${speedLine(fast.deck)}` : '' },
+    { title: 'The fastest deck', text: () => fast ? `${deckName(fast.deck)}${fast.deck.earliestKill ? ` can win on turn ${fast.deck.earliestKill}` : ' is the fastest built-in deck'}. ${speedLine(fast.deck)}` : '' },
     { before: async () => { await useSampleDeck(fast.deck.file); A().showTab('deck'); await sleep(350); },
       el: ['#deckTiles:not(:empty)', '.deck-view', '#tab-deck'], title: 'The plan', text: () => planText() },
-    { before: async () => { await waitFor(() => S().deck); await sleep(1500); const p = pickSeed(fast.deck.earliest || 2); fast.seed = p.seed; fast.kill = p.kill; A().showTab('hands'); queued = fast.seed; await sleep(300); },
+    { before: async () => { await waitFor(() => S().deck); await sleep(1500); const p = pickSeed(fast.deck.earliestKill || 2); fast.seed = p.seed; fast.kill = p.kill; A().showTab('hands'); queued = fast.seed; await sleep(300); },
       el: '#drawHand', tap: true, back: false, title: 'Draw a 7', text: () => `Tap Draw a 7. This opening hand wins${fast && fast.kill ? ' on turn ' + fast.kill : ' early'}.` },
     { before: () => waitFor(() => document.querySelector('#handStage .fan .mtg')), el: '#keepHand', tap: true, back: false, title: 'Keep', text: 'Keep it. The autopilot plays the rest.' },
     { before: async () => { await waitFor(() => document.body.dataset.view === 'table' && S().game && idle()); autoTo = fast.kill || 2; const n = document.querySelector('#tAutoToN'); if (n) n.value = String(autoTo); },

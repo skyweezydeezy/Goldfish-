@@ -1,4 +1,4 @@
-// Tutorial "The fastest deck" (T-093, tutorial.js): the ? menu item exists; the deck it loads is the built-in deck with the earliest median kill
+// Tutorial "The fastest deck" (T-093, tutorial.js): the ? menu item exists; the deck it loads is the built-in deck with the best ceiling (or the earliest median kill
 // turn by the rule (median, then % by T7, then % by T5), read from decks/index.json; the guided game runs to the end with no page errors; the
 // person's own deck comes back and nothing is saved. PC and iPhone.
 const { chromium, devices } = require('playwright');
@@ -111,7 +111,7 @@ const rule = decks => { const c = decks.filter(d => d.by2 != null && d.by3 != nu
   // the deck's info: one line with the earliest win and the share won by T2, T3, T4 (here injected into the index), details behind the ⓘ
   {
     const ctx = await context(b, { viewport: { width: 1280, height: 800 } });
-    await ctx.route('**/decks/index.json', async route => { const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', 'index.json'), 'utf8')); const d = j.decks.find(x => x.file === 'mob-storm.txt'); Object.assign(d, { earliest: 3, by2: 0, by3: 0.6, by4: 12.5 }); route.fulfill({ contentType: 'application/json', body: JSON.stringify(j) }); });
+    await ctx.route('**/decks/index.json', async route => { const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'goldfish', 'static', 'decks', 'index.json'), 'utf8')); const d = j.decks.find(x => x.file === 'mob-storm.txt'); Object.assign(d, { earliestKill: 3, by2: 0, by3: 0.6, by4: 12.5 }); route.fulfill({ contentType: 'application/json', body: JSON.stringify(j) }); });
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); await p.goto(URL);
     check('no speed line before a checked built-in deck is loaded', await p.evaluate(() => document.querySelector('#deckSpeed').hidden));
     await p.waitForFunction(() => document.querySelector('#savedDecks option[value="builtin:mob-storm.txt"]'), null, { timeout: 30000 });

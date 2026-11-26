@@ -313,7 +313,7 @@
   function showSpeed(d) {
     const el = $('#deckSpeed'); if (!el) return;
     if (!d || d.by2 == null) { el.hidden = true; return; }
-    el.querySelector('.ds-line').textContent = `Fastest win ${d.earliest ? 'T' + d.earliest : 'after T4'} · ${pctS(d.by2)} by T2 · ${pctS(d.by3)} by T3 · ${pctS(d.by4)} by T4`;
+    el.querySelector('.ds-line').textContent = `Fastest win ${d.earliestKill ? 'T' + d.earliestKill : 'after T4'} · ${pctS(d.by2)} by T2 · ${pctS(d.by3)} by T3 · ${pctS(d.by4)} by T4`;
     el.hidden = false;
   }
   const lf = t => String(t || '').replace(/\r\n?/g, '\n');          // a saved deck with Windows line ends is the same deck

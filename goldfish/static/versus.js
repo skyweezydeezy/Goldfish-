@@ -1142,6 +1142,19 @@
     if (stk && gm.picking) { const ids = stk.dataset.iids.split(',').map(Number), all = ids.every(id => gm.pick.has(id)); out.push([all ? 'Hold it back' : 'Attack with it', fresh(`.vs-seat.me .vs-stack.pickable[data-iids="${stk.dataset.iids}"]`), 'primary']); }
     return out;
   });
+  // T-112: printings. The seat played on this device owns its cards (one tap in the viewer switches the printing); every other seat's cards
+  // are view-only. A switch redraws this table's own pictures only: nothing about it is sent to another device (the engine's card rules,
+  // and so the game's fingerprint, do not change; the other player keeps seeing the printing they were sent at the start).
+  const mineOf = mode => { const gm = V[mode] && V[mode].game; return gm && gm.human != null && gm.games ? gm : null; };
+  A.addPrintOwner(card => {
+    for (const mode of ['duel', 'pod']) {
+      const gm = mineOf(mode); if (!gm) continue;
+      const i = gm.games.findIndex(g => g.deck && g.deck.unique.includes(card));
+      if (i >= 0) return i === gm.human;
+    }
+    return undefined;
+  });
+  A.addPrintHook(name => ['duel', 'pod'].flatMap(mode => { const gm = mineOf(mode); return gm ? gm.games[gm.human].deck.unique.filter(c => c.name === name) : []; }));
   function wire(mode) {
     const root = V[mode].root;
     root.addEventListener('change', e => {

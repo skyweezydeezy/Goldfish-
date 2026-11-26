@@ -83,8 +83,8 @@
       else if (COLORS.includes(b) || b === 'C') out.pips.push([b]);
       else if (b.includes('/')) {
         const parts = b.split('/');
-        if (parts.includes('P')) continue;
-        if (/^\d+$/.test(parts[0])) { out.pips.push([parts[1]]); continue; }
+        if (parts.includes('P')) { (out.phy = out.phy || []).push(parts.filter(p => COLORS.includes(p))); continue; }          // Phyrexian (CR 107.4f): the color or 2 life, chosen when it is paid (phyResolve)
+        if (/^\d+$/.test(parts[0])) { (out.h2 = out.h2 || []).push(parts[1]); continue; }          // {2/W} (CR 107.4e): {W} or {2}, whichever can be paid (canPay)
         out.pips.push(parts.filter(p => COLORS.includes(p) || p === 'C'));
       } else if (b === 'S') out.generic += 1;
     }
@@ -3387,7 +3387,7 @@
     a.noManaCost = !a.isLand && !card.isToken && !card.isBackFace && !(card.mana_cost || '').trim();
     a.cost = parseCost(card.mana_cost);
     a.mv = a.isLand ? 0 : (card.cmc || (a.cost.generic + a.cost.pips.length));
-    a.castMv = a.cost.generic + a.cost.pips.length + a.cost.x;
+    a.castMv = a.cost.generic + a.cost.pips.length + a.cost.x + (a.cost.phy ? a.cost.phy.length : 0) + (a.cost.h2 ? 2 * a.cost.h2.length : 0);
     if (a.cost.x) a.cost = Object.assign({}, a.cost, { generic: a.cost.generic + a.cost.x });
     a.power = parseInt(card.power, 10); if (isNaN(a.power)) a.power = 0;
     a.toughness = parseInt(card.toughness, 10); if (isNaN(a.toughness)) a.toughness = 0;
@@ -3655,6 +3655,12 @@
 
   // ---------- Paying mana ----------
   function canPay(cost, units) {
+    if (cost.h2 && cost.h2.length) {          // {2/W} (CR 107.4e): {W}, or {2} when that is how it can be paid; the cheaper way first
+      const rest = cost.h2.slice(1), base = { generic: cost.generic, pips: cost.pips, x: cost.x };
+      if (rest.length) base.h2 = rest;
+      if (cost.phy) base.phy = cost.phy;
+      return canPay(Object.assign({}, base, { pips: cost.pips.concat([[cost.h2[0]]]) }), units) || canPay(Object.assign({}, base, { generic: cost.generic + 2 }), units);
+    }
     const n = units.length;
     if (cost.generic + cost.pips.length > n) return null;
     const pips = cost.pips.map((p, i) => ({ p, i })).sort((x, y) => x.p.length - y.p.length);
@@ -4882,6 +4888,14 @@
     return Math.pow(2, bfInfo(g).cm);
   }
   function pay(g, cost) {
+    if (cost && cost.phy && cost.phy.length) {          // an ability cost with Phyrexian mana (Birthing Pod): paid by the same rule as a spell's
+      const r = phyResolve(g, cost), n = pay1(g, r.cost);
+      if (n != null && r.life && !g.dry) { g.life -= r.life; checkDeath(g, []); }
+      return n;
+    }
+    return pay1(g, cost);
+  }
+  function pay1(g, cost) {
     if (cost && cost._tez) g.tezTurn = g.turn;          // Tezzeret's discount is used up
     g._payTre = false; g._paySrcs = null;
     const units = allUnits(g);
@@ -4969,11 +4983,32 @@
     for (const t of a.triggers) if (t.cond && t.cond.kind === 'kicked') v += fxValue(g, t.fx);
     return v;
   }
+  // Phyrexian mana (CR 107.4f): each symbol is paid with its color or 2 life (only with at least 2 life, CR 119.4). pick[i]: a person chose life (true) or mana (false) for symbol i. The
+  // autopilot pays life while its life is comfortable (24 in a match, 10 alone) and mana otherwise, and life when the mana cannot be had (never down to 0). Returns the cost left to pay
+  // in mana and the life to pay.
+  function phyResolve(g, cost, pick) {
+    const units = allUnits(g), floor = g.opp ? 24 : 10;
+    let c = { generic: cost.generic, pips: cost.pips.slice(), x: cost.x }, life = 0;
+    if (cost.h2) c.h2 = cost.h2;
+    cost.phy.forEach((cols, i) => {
+      const withPip = Object.assign({}, c, { pips: c.pips.concat([cols]) });
+      const manaOk = !!canPay(withPip, units), lifeOk = g.life - life >= 2;
+      const useLife = pick && pick[i] != null ? !!pick[i] && lifeOk : lifeOk && (g.life - life - 2 >= floor || (!manaOk && g.life - life - 2 >= 1));
+      if (useLife) life += 2; else c = withPip;
+    });
+    return { cost: c, life };
+  }
   function effectiveCost(g, inst) {
+    const c = effectiveCost1(g, inst);
+    inst._phyLife = 0;
+    if (!c.phy || !c.phy.length) return c;
+    const r = phyResolve(g, c, inst._phyPick); inst._phyLife = r.life; return r.cost;
+  }
+  function effectiveCost1(g, inst) {
     let c = effectiveCost0(g, inst);
     inst._krrik = 0; inst._defiler = 0; inst._spree = 0;          // _spree: the chosen mode's number, from 1 (0 = none)
     if (inst.card.a.spree) {                                                                              // spree: the base cost plus the best mode you can afford (more are added when the spell is cast)
-      const ms = spreeModes(g, inst.card.a), un = allUnits(g), plus = m => ({ generic: c.generic + m.cost.generic, pips: c.pips.concat(m.cost.pips), x: c.x });
+      const ms = spreeModes(g, inst.card.a), un = allUnits(g), plus = m => Object.assign({}, c, { generic: c.generic + m.cost.generic, pips: c.pips.concat(m.cost.pips) });
       const want = inst._spreeWant ? inst.card.a.spree[inst._spreeWant - 1] : null;          // a person chose the mode (castCard0)
       const pick = want || ms.find(m => canPay(plus(m), un)) || ms.slice().sort((x, y) => (x.cost.generic + x.cost.pips.length) - (y.cost.generic + y.cost.pips.length))[0] || inst.card.a.spree.slice().sort((x, y) => (x.cost.generic + x.cost.pips.length) - (y.cost.generic + y.cost.pips.length))[0];
       if (pick) { inst._spree = inst.card.a.spree.indexOf(pick) + 1; c = plus(pick); }
@@ -4981,21 +5016,21 @@
     { const df = bfInfo(g).defiler; if (df && inst.card.a.isPermanent && !inst.card.a.isLand && !inst.freeCast) for (const col of df) {          // the Defilers: 2 life for one pip of their color, keeping 15 life
         if (!colorsOf(g, inst.card).includes(col) || g.life - 2 * (inst._defiler + 1) < 15) continue;
         const pips = c.pips.slice(), ix = pips.findIndex(x => x.length === 1 && x[0] === col); if (ix < 0) continue;
-        pips.splice(ix, 1); inst._defiler++; c = { generic: c.generic, pips, x: c.x };
+        pips.splice(ix, 1); inst._defiler++; c = Object.assign({}, c, { generic: c.generic, pips });
       } }
-    if (bfInfo(g).krrik && !inst.card.a.isLand) { const room = Math.max(0, Math.floor((g.life - 15) / 2)), pips = c.pips.slice(); let k = 0; while (k < room) { const i = pips.findIndex(x => x.length === 1 && x[0] === 'B'); if (i < 0) break; pips.splice(i, 1); k++; } if (k) { inst._krrik = k; c = { generic: c.generic, pips, x: c.x }; } }          // K'rrik: 2 life for a {B}, keeping 15 life
-    for (const q of (tableHas(g, 'statics.pipReduce') ? g.battlefield : NONE)) { const pr = q.card.a.statics.pipReduce; if (!pr || inst.card.a.isLand || q.card === inst.card || !matchesFilter(inst.card, pr.filter)) continue; const pips = c.pips.slice(); for (const col of pr.colors) { const i = pips.findIndex(x => x.length === 1 && x[0] === col); if (i >= 0) pips.splice(i, 1); } c = { generic: c.generic, pips, x: c.x }; }          // Morophon: one less of each colored mana
+    if (bfInfo(g).krrik && !inst.card.a.isLand) { const room = Math.max(0, Math.floor((g.life - 15) / 2)), pips = c.pips.slice(); let k = 0; while (k < room) { const i = pips.findIndex(x => x.length === 1 && x[0] === 'B'); if (i < 0) break; pips.splice(i, 1); k++; } if (k) { inst._krrik = k; c = Object.assign({}, c, { generic: c.generic, pips }); } }          // K'rrik: 2 life for a {B}, keeping 15 life
+    for (const q of (tableHas(g, 'statics.pipReduce') ? g.battlefield : NONE)) { const pr = q.card.a.statics.pipReduce; if (!pr || inst.card.a.isLand || q.card === inst.card || !matchesFilter(inst.card, pr.filter)) continue; const pips = c.pips.slice(); for (const col of pr.colors) { const i = pips.findIndex(x => x.length === 1 && x[0] === col); if (i >= 0) pips.splice(i, 1); } c = Object.assign({}, c, { generic: c.generic, pips }); }          // Morophon: one less of each colored mana
     if (g.taxSeen || (g.opp && g.opp.taxSeen)) {                                                          // Sphere of Resistance, Thalia, Thorn of Amethyst: both players pay more
       let t = 0; for (const q of bothSides(g)) { const st = q.card.a.statics; if (st.taxAll) t += st.taxAll; if (st.taxNoncreature && !inst.card.a.isCreature) t += st.taxNoncreature; if (st.taxOpp && !g.battlefield.includes(q)) t += st.taxOpp; if (st.taxOffTurn && g.activeTurn === false) t += st.taxOffTurn; }          // God-Pharaoh's Statue, Defense Grid
-      if (t) c = { generic: c.generic + t, pips: c.pips, x: c.x };
+      if (t) c = Object.assign({}, c, { generic: c.generic + t, pips: c.pips });
     }
-    { const yl = bfInfo(g).yardLess; if (yl && c.generic > 0 && g.graveyard.includes(inst)) c = { generic: Math.max(0, c.generic - yl), pips: c.pips, x: c.x }; }          // Emet-Selch
-    { const da = bfInfo(g).docAurlock; if (da && c.generic > 0 && (g.graveyard.includes(inst) || g.exile.includes(inst) || inst.temp != null || inst.yardCastTurn === g.turn)) c = { generic: Math.max(0, c.generic - da), pips: c.pips, x: c.x }; }          // Doc Aurlock
-    { const oh = bfInfo(g).offHandLess; if (oh && c.generic > 0 && !g.hand.includes(inst) && (g.command.includes(inst) || g.graveyard.includes(inst) || g.exile.includes(inst) || inst.temp != null || inst.yardCastTurn === g.turn)) c = { generic: Math.max(0, c.generic - oh), pips: c.pips, x: c.x }; }          // Bilbo, Thief in the Night: cast from anywhere but your hand
+    { const yl = bfInfo(g).yardLess; if (yl && c.generic > 0 && g.graveyard.includes(inst)) c = Object.assign({}, c, { generic: Math.max(0, c.generic - yl), pips: c.pips }); }          // Emet-Selch
+    { const da = bfInfo(g).docAurlock; if (da && c.generic > 0 && (g.graveyard.includes(inst) || g.exile.includes(inst) || inst.temp != null || inst.yardCastTurn === g.turn)) c = Object.assign({}, c, { generic: Math.max(0, c.generic - da), pips: c.pips }); }          // Doc Aurlock
+    { const oh = bfInfo(g).offHandLess; if (oh && c.generic > 0 && !g.hand.includes(inst) && (g.command.includes(inst) || g.graveyard.includes(inst) || g.exile.includes(inst) || inst.temp != null || inst.yardCastTurn === g.turn)) c = Object.assign({}, c, { generic: Math.max(0, c.generic - oh), pips: c.pips }); }          // Bilbo, Thief in the Night: cast from anywhere but your hand
     if (!(g.triniSeen || (g.opp && g.opp.triniSeen))) return c;
     const tot = c.generic + c.pips.length;
     if (tot >= 3 || !(tableHas(g, 'trini') && bothSides(g).some(q => q.card.a.trini && !q.tapped))) return c;                         // Trinisphere: nothing costs less than three
-    return { generic: c.generic + 3 - tot, pips: c.pips, x: c.x };
+    return Object.assign({}, c, { generic: c.generic + 3 - tot });
   }
   function effectiveCost0(g, inst) {
     const a = inst.card.a, info0 = bfInfo(g);
@@ -5063,9 +5098,9 @@
     }
     if (a.cost.x && g.xCastTurn !== g.turn && info0.xDiscount) for (const z of info0.xDiscount) generic = Math.max(0, generic - Math.max(0, z.counters || 0));          // Zimone: the first X spell each turn
     if (bfInfo(g).omniscience && g.hand.includes(inst)) return { generic: 0, pips: [], x: 0 };          // Omniscience
-    if (inst.anyMana) return { generic: generic + pips.length, pips: [], x: a.cost.x };          // cast with mana of any type (Breeches, Hostage Taker, Dire Fleet Daredevil)
+    if (inst.anyMana) return Object.assign({ generic: generic + pips.length + (a.cost.h2 ? 2 * a.cost.h2.length : 0), pips: [], x: a.cost.x }, a.cost.phy ? { phy: a.cost.phy.map(() => []) } : null);          // cast with mana of any type (Breeches, Hostage Taker, Dire Fleet Daredevil)
     if (generic === a.cost.generic && pips === a.cost.pips) return a.cost;
-    return { generic, pips, x: a.cost.x };
+    return Object.assign({ generic, pips, x: a.cost.x }, a.cost.phy ? { phy: a.cost.phy } : null, a.cost.h2 ? { h2: a.cost.h2 } : null);          // the Phyrexian and {2/W} symbols stay
   }
 
   // ---------- Entering the battlefield & triggers ----------
@@ -9054,7 +9089,7 @@
     const mv = mistriseHold(g, inst);          // Mistrise Village is kept out of the payment of a spell it should protect
     const item = { inst, seq: stackDepth(g) };
     g.spellStack = (g.spellStack || []).concat([item]);          // on the stack while it is cast and resolves (a new list each time: a rehearsal's copy shares the old one)
-    try { const r = castCard0(g, inst, force); if (r && g._silEv) { r.unshift(...g._silEv); } return r; } finally { const left = (g.spellStack || []).filter(x => x !== item); if (left.length) g.spellStack = left; else delete g.spellStack; g._silEv = null; g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
+    try { const r = castCard0(g, inst, force); if (r && g._silEv) { r.unshift(...g._silEv); } return r; } finally { inst._phyPick = null; const left = (g.spellStack || []).filter(x => x !== item); if (left.length) g.spellStack = left; else delete g.spellStack; g._silEv = null; g._payFor = prev; if (mv && mv._hold) { mv._hold = false; mv.tapped = false; } }
   }
   function silenceFirst(g, inst) {
     if (!g.opp || g.dry || inst.card.a.silence) return;
@@ -9087,6 +9122,19 @@
     if (!g.dry && castBlocked(g, inst)) return null;          // Rule of Law, Grand Abolisher, Silence, Drannith Magistrate...
     if (inst.card.a.spree && !force) spreeAsk(g, inst);
     if (arbiterOn(g) && (g.attackedThisTurn || g.arbiterHold === g.turn) && !g.dry) return null;          // Angelic Arbiter: you attacked (or will) this turn
+    inst._phyPick = null;
+    if (g.ask && !g.dry && !force && !inst.freeCast && inst.card.a.cost.phy && g.hand.includes(inst)) {          // Phyrexian mana (CR 107.4f): a person chooses, for each symbol, its color or 2 life (life only with at least 2)
+      const base = effectiveCost1(g, inst), units = allUnits(g), pick = [], bag = []; let life = 0;
+      base.phy.forEach((cols, i) => {
+        const withPip = { generic: base.generic, pips: base.pips.concat(bag, [cols]), x: base.x }; if (base.h2) withPip.h2 = base.h2;
+        const manaOk = !!canPay(withPip, units), lifeOk = g.life - life >= 2, sym = '{' + cols.join('/') + '/P}';
+        const auto = phyResolve(g, Object.assign({}, base, { phy: base.phy.slice(0, i + 1) }), pick.concat([null])).life > life;
+        let useLife = lifeOk && !manaOk;
+        if (lifeOk && manaOk) useLife = decide(g, { kind: 'may', options: ['yes', 'no'], def: auto ? 'yes' : 'no', title: `${inst.card.name}: pay 2 life or {${cols.join('/')}} for ${sym}?`, text: `One of its mana symbols is Phyrexian: pay {${cols.join('/')}} or 2 life. You have ${g.life} life.`, yes: 'Pay 2 life', no: 'Pay {' + cols.join('/') + '}', source: { card: inst.card } }) === 'yes';
+        pick.push(useLife); if (useLife) life += 2; else bag.push(cols);
+      });
+      inst._phyPick = pick;
+    }
     inst.noCounter = false; inst.kicked = false; inst.kickX = 0; inst.alt = null; inst.overloaded = false; g._casting = inst;          // the spell being cast is not discarded by Lion's Eye Diamond
     inst._handCast = g.hand.includes(inst);                                                               // Chainer: creatures not cast from your hand
     if (inst.card.a.isAura && inst.card.a.enchantCreature && !bestCreature(g) && !force) return null;
@@ -9160,6 +9208,7 @@
     if (n != null && !g.dry && (inst.card.a.mv || 0) > n && !inst.card.a.isLand) { const cs = (tableHas(g, 'cellarspawn') ? g.battlefield.filter(x => x.card.a.cellarspawn) : []).length; if (cs) damageOpp(g, ((inst.card.a.mv || 0) - n) * cs, ev, null, false, true); }          // Ancient Cellarspawn: less mana spent than its mana value
     inst._castExile = g.exile.includes(inst);
     inst._tre = n != null && !!g._payTre; inst._paidBy = n != null ? g._paySrcs : null;
+    if (n != null && inst._phyLife && !g.dry) { g.life -= inst._phyLife; ev.push({ type: 'note', text: `Paid ${inst._phyLife} life for Phyrexian mana: ${inst.card.name}` }); inst._phyLife = 0; checkDeath(g, ev); }          // CR 107.4f
     if (n != null && inst._defiler && !g.dry) { g.life -= 2 * inst._defiler; ev.push({ type: 'note', text: `Paid ${2 * inst._defiler} life: ${inst.card.name} costs less` }); inst._defiler = 0; checkDeath(g, ev); }
     if (n != null && inst.card.a.spree) {                                                                  // spree: the mode already paid for, then any others worth it that the rest of your mana covers
       const all = inst.card.a.spree, chosen = inst._spree > 0 ? [inst._spree - 1] : [];
@@ -9672,7 +9721,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // What a permanent (or a card in the graveyard) of yours can do now, for the card menu: Foods (with Sam's discount), "{cost}: effect"
   // abilities, sacrifice outlets, Walking Ballista, Aetherflux Reservoir, Gilded Goose, Cauldron Familiar. All of them can be used any time you
   // have priority (they are not sorcery-speed), so the list is the same on your turn and in a response. Each entry: { label, cost, ok, why }.
-  const costText = c => !c ? '' : (c.generic || (!c.pips.length && !c.x) ? '{' + (c.generic || 0) + '}' : '') + (c.x ? '{X}' : '') + c.pips.map(p => '{' + p.join('/') + '}').join('');
+  const costText = c => !c ? '' : (c.generic || (!c.pips.length && !c.x) ? '{' + (c.generic || 0) + '}' : '') + (c.x ? '{X}' : '') + c.pips.map(p => '{' + p.join('/') + '}').join('') + (c.phy || []).map(p => '{' + p.join('/') + '/P}').join('') + (c.h2 || []).map(p => '{2/' + p + '}').join('');
   const sickTap = (g, p) => p.tapped ? 'it is tapped' : (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')) ? 'it has summoning sickness' : null;
   const foodCostOf = g => ({ generic: Math.max(0, 2 - bfInfo(g).foodDiscount), pips: [], x: 0 });
   // the card's activated-ability lines that are not handled by a rule of their own above, read as written; once per card

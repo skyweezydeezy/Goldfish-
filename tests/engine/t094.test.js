@@ -27,6 +27,10 @@ T('coverage: every line reads ok or neutral', () => {
   for (const n of ['Gideon, Ally of Zendikar', 'Okina, Temple to the Grandfathers', 'Chrome Dome', 'Multiversal Passage', 'Gisa, the Hellraiser', 'Kaervek, the Punisher']) check(n + ': no partial, ignored or approximated line', cov(n).length === 0, cov(n).join(' | '));
 });
 
+T('coverage: the crime lines are read as simulated (ok), not as "needs an opponent"', () => {
+  for (const n of ['Gisa, the Hellraiser', 'Kaervek, the Punisher']) { const r = by(n).a.coverage.find(x => /commit a crime/.test(x.text)); check(n + ': the crime line is ok', r && r.status === 'ok', r && r.status + '/' + r.tag); }
+});
+
 T('Gideon', () => {
   const g = bare(); const gd = putOn(g, 'Gideon, Ally of Zendikar'); gd.loyalty = 4; gd.pwTurn = null;
   const ab = gd.card.a.pwAbilities.find(a => a.cost === 1);

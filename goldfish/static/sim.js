@@ -3308,7 +3308,7 @@
       } else if (rec.status === 'partial') rec.tag = 'approx';
       if (rec.status === 'neutral' && rec.tag === 'solo' && OPP_TOO.test(t)) rec.tag = 'opp';
       if (rec.status === 'ok' && rec.tag) rec.tag = null;
-      if (rec.status === 'ok' && !rec.back && /\b(destroy|exile) (up to one )?target (?!card)|return target [a-z' ]+ to its owner's hand|deals \d+ damage to target creature|sacrifices (a|one) creature/i.test(t) && !/you control/i.test(t.replace(/you don't control/gi, '')) && !/\bdraw|create [^.]*token|gets? (?:a|an|one|two|\d+) poison counters?/i.test(t.replace(/(?:its|that [a-z]+'s) controller creates[^.]*/i, ''))) { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }
+      if (rec.status === 'ok' && !rec.back && !/^whenever you commit a crime/i.test(t) && /\b(destroy|exile) (up to one )?target (?!card)|return target [a-z' ]+ to its owner's hand|deals \d+ damage to target creature|sacrifices (a|one) creature/i.test(t) && !/you control/i.test(t.replace(/you don't control/gi, '')) && !/\bdraw|create [^.]*token|gets? (?:a|an|one|two|\d+) poison counters?/i.test(t.replace(/(?:its|that [a-z]+'s) controller creates[^.]*/i, ''))) { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; }
     }
     mergeModal();
     a.watch = a.triggers.some(t => t.kinds.some(k => k === 'landfall' || k === 'tokenEnter' || k === 'permEtb' || k === 'countersPut'));

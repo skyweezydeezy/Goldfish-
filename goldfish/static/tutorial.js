@@ -255,6 +255,7 @@
   const VS = () => window.__isfVersus && window.__isfVersus.duel;
   const gm = () => { const v = VS(); return v && v.game; };
   const dq = sel => document.querySelector('#tab-duel ' + sel);
+  const DUEL_DICE = '.vs-dice[data-mode=duel]';          // the roll for first sits on the body, not inside the tab
   const myTurn = () => { const m = gm(); return !!m && m.human != null && m.phase === 'main' && m.match.order[m.idx].pid === m.human && !m.busy && !m.acting && !m.choice; };
   const canAttack = () => { const b = dq('.vs-attack'); return myTurn() && b && !b.disabled && !gm().attacked && window.Goldfish.podAlive && gm().games[gm().human].battlefield.some(p => window.Goldfish.canAttack(gm().games[gm().human], p)); };
   // the moment the duel asks something of you: a question sheet (an instant, a target), or the block chooser
@@ -276,7 +277,7 @@
         set('.vs-opp', ''); set('.vs-you', 'human'); set('.vs-ask', 'ask');
         queued = DUEL_SEED;
       }, el: '#tab-duel .vs-new', tap: true, back: false, title: 'New game', text: 'Tap New game.' },
-    { before: () => waitFor(() => dq('.vs-dice') || (gm() && gm().phase === 'mull'), 6000), el: '.vs-dice[data-mode=duel]', optional: true, back: false, until: () => !dq('.vs-dice'), untilDelay: 100,
+    { before: () => waitFor(() => document.querySelector(DUEL_DICE) || (gm() && gm().phase === 'mull'), 6000), el: DUEL_DICE, optional: true, back: false, until: () => !document.querySelector(DUEL_DICE), untilDelay: 100,
       title: 'Who goes first', text: 'Each player rolls a d20. The highest goes first.' },
     { before: () => waitFor(() => dq('.vs-keep')), el: '#tab-duel .vs-keep', tap: true, back: false, title: 'Keep or mulligan',
       text: 'Four lands, a mana elf and an answer: keep it.' },

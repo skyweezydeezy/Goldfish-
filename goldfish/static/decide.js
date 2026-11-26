@@ -325,7 +325,7 @@
       q.combo = { name: cb.name, cards: cb.cards || [], outcome: cb.outcome };
     } else if (d.kind === 'tax') {                                                                        // "...unless that player pays {N}": the player the tax is aimed at chooses
       q.title = `${sn || 'Tax'}: pay {${d.cost}}, or ${taxThen(d, g, m)}?`;
-      q.text = `${d.why || 'You may pay'} Pay {${d.cost}} and nothing happens, or do not pay and ${taxThen(d, g, m)}. You can spend ${G.allUnits(g).length} mana now. ★ is the autopilot's pick: it pays when it can.`;
+      q.text = `${d.why || 'You may pay'} Pay {${d.cost}} and nothing happens, or do not pay and ${taxThen(d, g, m)}. You can spend ${G.allUnits(g).length} mana now. ★ is the autopilot's pick: it pays only with spare mana (what is left after its turn's plan, or after the instants it holds).`;
       if (src) { q.spell = src; q.spellNote = 'it taxes you'; }
     } else if (d.kind === 'pay') {                                                                        // T-089: pay a cost with the sources you choose
       const c = d.cost, sym = x => (/^[WUBRGC]$/.test(x) ? x : '?'), ctext = (c.generic ? '{' + c.generic + '}' : '') + c.pips.map(p => '{' + p.map(sym).join('/') + '}').join('');

@@ -1832,6 +1832,8 @@
       if (cnt) $(cnt).textContent = arr.length;
     };
     pile('#zGrave', g.graveyard, '#cGrave'); pile('#zExile', g.exile, '#cExile'); pile('#zCommand', g.command);
+    { const lt = document.querySelector('#zLibrary .lib-top'), view = G.topCardView(g), top = g.library[0];          // Mystic Forge and the like: the top card is shown face up, kept up to date
+      if (lt) { if (view && top) { const e = tableEl(top.card, top.iid, 0, used); clearState(e); lt.replaceChildren(h('div', 'pile-label', view === 'all' ? 'Top card (revealed)' : 'Top card'), e); lt.hidden = false; } else { lt.hidden = true; lt.replaceChildren(); } } }
     for (const k of Array.from(elCache.keys())) if (!used.has(k)) elCache.delete(k);
 
     $('#cLibrary').textContent = g.library.length;

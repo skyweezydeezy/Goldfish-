@@ -24,7 +24,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.click('#loadDeck');
   await p.waitForFunction(() => window.__isf && window.__isf.deck, null, { timeout: 90000 });
   await p.waitForTimeout(2500);
-  await p.tap('[data-tab=table]'); await p.check('#tFast'); await p.fill('#tAutoToN', '3'); await p.tap('#tAutoTo'); await p.waitForTimeout(8000);
+  await p.tap('[data-tab=table]'); await p.check('#tFast'); await p.fill('#tAutoToN', '3'); await p.tap('#tAutoTo', { position: { x: 12, y: 12 } }); await p.waitForTimeout(8000);
   const hand = await p.$('#zHand .mtg'); await hand.scrollIntoViewIfNeeded();
   const nHand = () => p.$$eval('#zHand .mtg', x => x.length), n0 = await nHand();
   const edge = { position: { x: 10, y: 60 } };   // hand cards overlap; tap the visible left edge

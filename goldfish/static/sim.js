@@ -12010,9 +12010,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (o === 'draw') opts.push({ id: 'draw', label: 'Draw your deck', note: 'Your whole library goes to your hand; the game goes on.' });
     opts.push({ id: 'hold', label: "Don't go off now", note: 'Keep the pieces and play on.' });
     ev.push({ type: 'combo', name: info.name, cards: info.cards, outcome: o, text });          // the banner: once, when the question is really asked
-    const pick = decide(g, { kind: 'combo', options: opts, def: opts[0], source: null, combo: { name: info.name, cards: info.cards, outcome: o, text } });
+    let def = opts[0];
+    if (info.noWin) { def = { id: 'pass', label: 'Carry on: no extra mana', note: 'Nothing to spend it on yet: the pieces stay assembled and the game goes on as it would.' }; opts.push(def); }          // the autopilot floats no mana here, so taking every default plays its game (the every-default rule); ∞ and the numbers are still offered
+    const pick = decide(g, { kind: 'combo', options: opts, def, source: null, combo: { name: info.name, cards: info.cards, outcome: o, text } });
     const id = pick && pick.id ? pick.id : 'win';
-    if (id === 'win') return 'win';
+    if (id === 'win' || id === 'pass') return 'win';
     (g.comboAsked = g.comboAsked || {})[text] = g.turn;
     if (id === 'hold') { const note = `Combo assembled: ${info.name}: not going off now`; if (g._rb) { COMBO_HOLD.note = note; COMBO_HOLD.banner = { type: 'combo', name: info.name, cards: info.cards, outcome: o, text }; throw COMBO_HOLD; } ev.push({ type: 'note', text: note, source: null }); return 'hold'; }
     if (id.startsWith('mana:')) {

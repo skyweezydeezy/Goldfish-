@@ -103,5 +103,15 @@ T('transmute: a creature with transmute is traded in, not cast, when that finds 
   check('it was transmuted for the Isochron Scepter', t.g.hand.some(i => i.card.name === 'Isochron Scepter') && /Transmute: Dimir Infiltrator for Isochron Scepter/.test(notes(r.ev)), notes(r.ev));
 });
 
+T('combo question with no outlet: the default plays the autopilot\'s game (no mana floated), the other options stay', () => {
+  const t = mk(['Isochron Scepter', 'Dramatic Reversal', 'Sol Ring', 'Arcane Signet'], [ISLAND]);
+  for (let i = 0; i < 2; i++) t.put('Island'); t.put('Sol Ring'); t.put('Arcane Signet');
+  const sc = t.put('Isochron Scepter'); sc.imprinted = { iid: 700, card: t.by('Dramatic Reversal') };
+  let asked = null; t.g.ask = (gg, d) => { if (d.kind === 'combo') asked = d; return d.def; }; t.g.floating = [];
+  G.comboLines(t.g, []);
+  check('it asks, with ∞ among the options', !!asked && asked.options.some(o => o.id === 'mana:inf'), asked && asked.options.map(o => o.id).join(','));
+  check('the default is carrying on, and no mana is floated', !!asked && asked.def.id === 'pass' && t.g.floating.length === 0, asked && asked.def.id + ' floating ' + t.g.floating.length);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

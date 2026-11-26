@@ -1,5 +1,4 @@
-// Every deck dropdown is tiered the same way: bracket first (highest first), then number of colors (fewest first), then name order
-// inside a tier. Checked on the Build tab's deck list, the mirror opponent, the 1v1 and Pod opponents and the lab's opponent list.
+// Every deck dropdown has the same layout; by default (Deck order: Bracket, then rank) one heading per bracket, highest first (the other orders: deck-order.ui.js). Checked on the Build tab's deck list, the mirror opponent, the 1v1 and Pod opponents and the lab's opponent list.
 const { chromium } = require('playwright');
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
@@ -14,16 +13,13 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   await p.evaluate(() => { const m = document.querySelector('#plMode'), o = document.querySelector('#plOpp'); if (m && o) { m.value = 'field'; m.dispatchEvent(new Event('change', { bubbles: true })); o.value = 'selected'; o.dispatchEvent(new Event('change', { bubbles: true })); } });
   await p.waitForTimeout(300);
   const read = sel => p.$$eval(sel, els => els.map(el => [...el.querySelectorAll('optgroup')].map(g => ({ label: g.label, n: g.children.length, colors: [...g.children].map(o => (o.textContent.split(' · ')[1] || '').trim()) }))));
-  const COLORS = ['Colorless', 'One color', 'Two colors', 'Three colors', 'Four colors', 'Five colors'];
-  const rank = l => { const m = /^Bracket (\d)/.exec(l), k = COLORS.findIndex(c => l.endsWith('· ' + c)); return k < 0 ? null : (m ? (5 - +m[1]) * 10 : 60) + k; };
-  for (const [name, sel] of [['Build: deck list', '#savedDecks'], ['Simulate: mirror opponent', '#mmOpp'], ['Duel: opponent', '#tab-duel .vs-opp'], ['Pod: opponents', '#tab-pod .vs-opp'], ['Lab: opponents', '#plOppList']]) {
+  for (const [name, sel] of [['Build: deck list', '#savedDecks'], ['Simulate: mirror opponent', '#mmOpp'], ['Duel: opponent', '#tab-duel .vs-opp'], ['Pod: opponents', '#tab-pod .vs-opp'], ['Lab: opponent list', '#plOppList']]) {
     const lists = await read(sel);
     check(`${name}: the dropdown is there`, lists.length > 0, lists.length + ' dropdown(s)');
     for (const groups of lists.slice(0, 1)) {
-      const built = groups.filter(g => g.label !== 'Saved in this browser'), ranks = built.map(g => rank(g.label));
-      check(`${name}: every heading names a bracket and a number of colors`, built.length > 3 && ranks.every(r => r != null), built.map(g => g.label).slice(0, 3).join(' | '));
-      check(`${name}: brackets from the highest down, and inside a bracket from the fewest colors up`, ranks.every((r, i) => !i || r > ranks[i - 1]), ranks.join(','));
-      check(`${name}: the decks under a heading have that many colors`, built.every(g => { const k = COLORS.findIndex(c => g.label.endsWith('· ' + c)); return g.colors.every(c => (c === 'C' ? 0 : c.length) === k); }));
+      const built = groups.filter(g => g.label !== 'Saved in this browser'), br = built.filter(g => /^Bracket \d/.test(g.label)).map(g => +g.label.match(/\d/)[0]);
+      check(`${name}: default order, every heading is a bracket (or "No bracket" last)`, built.length >= 3 && built.every((g, i) => /^Bracket \d/.test(g.label) || (g.label === 'No bracket' && i === built.length - 1)), built.map(g => g.label).join(' | '));
+      check(`${name}: brackets from the highest down`, br.length >= 3 && br.every((x, i) => !i || x < br[i - 1]), br.join(','));
       check(`${name}: saved decks come last, under their own heading`, groups[groups.length - 1].label === 'Saved in this browser' && groups[groups.length - 1].n === 1);
     }
   }

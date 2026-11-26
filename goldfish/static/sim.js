@@ -3693,10 +3693,17 @@
       ring: { tempts: 0, bearer: null },                      // the Ring: how many times it has tempted you, and your Ring-bearer (a permanent id)
       yardShuffleSeen: deck.unique.some(c => c.a.shuffleBack || c.a.yardShuffle),
     };
-    // rules batch 77: the life this player has lost this turn (CR 119.3), counted in one place: every drop of g.life (damage, a life payment, a loss) adds to it
-    let lifeV = g0.life;
-    Object.defineProperty(g0, 'life', { get() { return lifeV; }, set(v) { if (v < lifeV) { const sq = (g0.match || g0).seq || 0; if (g0._lostSeq !== sq) { g0._lostSeq = sq; g0._lostN = 0; } g0._lostN += lifeV - v; } lifeV = v; }, enumerable: true, configurable: true });
+    trackLife(g0);
     return g0;
+  }
+  // rules batch 77: the life this player has lost this turn (CR 119.3), counted in one place: every drop of g.life (damage, a life payment, a loss) adds
+  // to it. The totals are not enumerable (a saved and restored game, a dump or a copy never sees them); a restored game gets the setter at its next turn.
+  function trackLife(g) {
+    const d = Object.getOwnPropertyDescriptor(g, 'life'); if (d && d.get) return;
+    let v = g.life;
+    Object.defineProperty(g, '_lostN', { value: 0, writable: true, enumerable: false, configurable: true });
+    Object.defineProperty(g, '_lostSeq', { value: -1, writable: true, enumerable: false, configurable: true });
+    Object.defineProperty(g, 'life', { get() { return v; }, set(x) { if (x < v) { const sq = (g.match || g).seq || 0; if (g._lostSeq !== sq) { g._lostSeq = sq; g._lostN = 0; } g._lostN += v - x; } v = x; }, enumerable: true, configurable: true });
   }
   const lifeLostNow = g => g._lostSeq === ((g.match || g).seq || 0) ? g._lostN : 0;          // rules batch 77: the life lost this turn (every player's turn counts)
 
@@ -11296,6 +11303,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   function beginTurn(g) { return acting(g, () => beginTurn0(g)); }
   function beginTurn0(g) {
+    trackLife(g);          // rules batch 77: a restored game gets the life tracking now
     g.turn++; g.turnStartLife = g.life;          // Children of Korlis: the life lost this turn is what was there at the start, plus what was gained, minus what is left
     g.activeTurn = true; for (const o of otherPlayers(g)) o.activeTurn = false;          // whose turn it is ("during your turn")
     (g.match || g).seq = ((g.match || g).seq || 0) + 1;          // every player's turn counts: Angel's Grace lasts this one

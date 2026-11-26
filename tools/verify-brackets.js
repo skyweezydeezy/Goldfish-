@@ -235,6 +235,15 @@ function apply() {
     fs.writeFileSync(file, lines.join('\n'));
     if (v.commander && v.verified !== v.stated) console.log(`B${v.stated} -> B${v.verified}  ${v.name}: ${v.reason}`);
   }
+  // index.json: the ranking fields the deck menus sort by (T-077). bracket = the verified one (the higher of floor and speedBracket).
+  const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
+  for (const d of idx.decks) {
+    const v = doc.decks.find(x => x.file === d.file); if (!v) continue;
+    d.medianKill = v.goldfish.medianKill; d.fieldWin = v.field ? v.field.winRate : null;
+    if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
+    d.checkedAt = v.date || doc.date;
+  }
+  fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)
   const SYNC = path.join(DECKS, 'drive-sync.json'), sync = JSON.parse(fs.readFileSync(SYNC, 'utf8'));
   for (const rec of Object.values(sync.files)) { const v = doc.decks.find(x => x.file === rec.deck); if (v && v.commander) { rec.verified = v.verified; rec.verifiedAt = v.date || doc.date; } }

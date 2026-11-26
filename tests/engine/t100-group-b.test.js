@@ -7,7 +7,7 @@ const idx = JSON.parse(fs.readFileSync(path.join(DS, 'index.json'), 'utf8')), st
 idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(DS, (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s.code) ? s.code + '_' : s.code) + '.json'), 'utf8')); });
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
-const NAMES = ['Abstergo Entertainment', "Bouncer's Beatdown", 'Collective Resistance', 'Peerless Recycling', 'Sol Ring', 'Mind Stone', 'Rhystic Study', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Llanowar Elves', 'Grave Titan',
+const NAMES = ['Abstergo Entertainment', "Bouncer's Beatdown", 'Collective Resistance', 'Peerless Recycling', 'Sol Ring', 'Mind Stone', 'Phyrexian Arena', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Llanowar Elves', 'Grave Titan',
   'Mogg Fanatic', 'Goblin Instigator', 'Swamp', 'Mountain', 'Forest', 'Island', 'Plains', 'Lightning Bolt', 'Gilded Lotus', 'Arcane Signet'];
 const cards = base.cards.filter(c => !NAMES.includes(c.name)).slice(0, 30).concat(NAMES.map(n => { try { return find(n); } catch (e) { return null; } }).filter(Boolean));
 const deck = G.buildDeck(cards, base.tokens);
@@ -49,38 +49,39 @@ T('Abstergo Entertainment: a historic card back, then every graveyard is exiled'
 });
 
 T('Bouncer\'s Beatdown: X is the greatest power, a black target makes it cost {2} less, it exiles instead of dying', () => {
-  const [g, b] = match2(); putOn(g, 'Wurmcoil Engine'); lands(g, 2, 'Mountain'); lands(g, 2, 'Swamp'); const blk = putOn(b, 'Grave Titan'); g.hand = [inst(g, "Bouncer's Beatdown")];
+  const [g, b] = match2(); putOn(g, 'Wurmcoil Engine'); lands(g, 2, 'Forest'); lands(g, 2, 'Swamp'); const blk = putOn(b, 'Grave Titan'); g.hand = [inst(g, "Bouncer's Beatdown")];
   const full = by("Bouncer's Beatdown").a.cost, c0 = full.generic + full.pips.length, eff = G.effectiveCost(g, g.hand[0]);
   check('a black creature is the best target: the cost drops by {2}', eff.generic === Math.max(0, full.generic - 2) && c0 > 0, `${full.generic} -> ${eff.generic}`);
-  const [h, c] = match2(); putOn(h, 'Wurmcoil Engine'); const nb = putOn(c, 'Solemn Simulacrum'); h.hand = [inst(h, "Bouncer's Beatdown")];
+  const [h, c] = match2(); putOn(h, 'Wurmcoil Engine'); const nb = putOn(c, 'Wurmcoil Engine'); h.hand = [inst(h, "Bouncer's Beatdown")];
   check('a nonblack target: the full cost', G.effectiveCost(h, h.hand[0]).generic === full.generic, `${G.effectiveCost(h, h.hand[0]).generic}`);
-  lands(h, 6, 'Mountain'); G.castCard(h, h.hand[0]);
-  check('Wurmcoil Engine (power 6) deals 6: the Solemn Simulacrum is exiled instead of going to the graveyard', !c.battlefield.includes(nb) && c.exile.some(i => i.card.name === 'Solemn Simulacrum') && !c.graveyard.some(i => i.card.name === 'Solemn Simulacrum'), `gy ${c.graveyard.map(i => i.card.name)} ex ${c.exile.map(i => i.card.name)}`);
-  const [k, l] = match2(); const tank = putOn(l, 'Solemn Simulacrum'); k.hand = [inst(k, "Bouncer's Beatdown")]; putOn(k, 'Llanowar Elves'); lands(k, 6, 'Mountain'); G.castCard(k, k.hand[0]);
+  lands(h, 6, 'Forest'); G.castCard(h, h.hand[0]);
+  check('Wurmcoil Engine (power 6) deals 6: their Wurmcoil Engine is exiled instead of going to the graveyard', !c.battlefield.includes(nb) && c.exile.some(i => i.card.name === 'Wurmcoil Engine') && !c.graveyard.some(i => i.card.name === 'Wurmcoil Engine'), `gy ${c.graveyard.map(i => i.card.name)} ex ${c.exile.map(i => i.card.name)}`);
+  const [k, l] = match2(); const tank = putOn(l, 'Solemn Simulacrum'); k.hand = [inst(k, "Bouncer's Beatdown")]; putOn(k, 'Llanowar Elves'); lands(k, 6, 'Forest'); G.castCard(k, k.hand[0]);
   check('X is the greatest power among YOUR creatures: a 1/1 does not kill a 2/2', l.battlefield.includes(tank) && !l.exile.some(i => i.card.name === 'Solemn Simulacrum'));
-  const [m, n] = match2(); putOn(m, 'Wurmcoil Engine'); lands(m, 2, 'Mountain'); lands(m, 2, 'Swamp'); const nbk = putOn(n, 'Grave Titan'); const nsol = putOn(n, 'Solemn Simulacrum'); m.hand = [inst(m, "Bouncer's Beatdown")];
+  const [m, n] = match2(); putOn(m, 'Wurmcoil Engine'); lands(m, 2, 'Forest'); lands(m, 2, 'Swamp'); const nbk = putOn(n, 'Grave Titan'); const nsol = putOn(n, 'Solemn Simulacrum'); m.hand = [inst(m, "Bouncer's Beatdown")];
   const qs = seated(m, d => d.kind === 'protect' ? null : d.kind === 'target' ? (d.options.includes(nsol) ? nsol : undefined) : undefined, () => { const e0 = G.effectiveCost(m, m.hand[0]); m._costBefore = e0.generic; G.castCard(m, m.hand[0]); });
   check('a person is asked whether it targets a black permanent (and may say no: the full cost is paid)', qs.some(x => x.d.kind === 'protect' && /black permanent/.test(JSON.stringify(x.d))), JSON.stringify(qs.map(x => x.d.kind)));
 });
 
 T('Collective Resistance: each mode beyond the first costs {G}', () => {
-  const run = (nG) => { const [g, b] = match2(); putOn(b, 'Sol Ring'); putOn(b, 'Rhystic Study'); lands(g, 2 + nG, 'Forest'); g.hand = [inst(g, 'Collective Resistance')]; G.castCard(g, g.hand[0]); return [b.battlefield.some(q => q.card.name === 'Sol Ring'), b.battlefield.some(q => q.card.name === 'Rhystic Study')]; };
-  const a = run(0), b2 = run(1);
-  check('the base cost only: one mode (one of their two permanents is destroyed)', a.filter(x => !x).length === 1, JSON.stringify(a));
-  check('with one more {G}: two modes (both destroyed)', b2.every(x => !x), JSON.stringify(b2));
-  const c = (() => { const [g, b] = match2(); putOn(b, 'Sol Ring'); putOn(b, 'Rhystic Study'); lands(g, 2, 'Forest'); lands(g, 1, 'Mountain'); g.hand = [inst(g, 'Collective Resistance')]; G.castCard(g, g.hand[0]); return b.battlefield.filter(q => /Sol Ring|Rhystic/.test(q.card.name)).length; })();
-  check('a Mountain cannot pay the {G}: still one mode', c === 1, String(c));
+  const run = (nG, forest) => { const [g, b] = match2(); const wc = putOn(b, 'Wurmcoil Engine'), rs = putOn(b, 'Phyrexian Arena'); lands(g, 2 + nG, forest ? 'Forest' : 'Mountain'); lands(g, 0); g.hand = [inst(g, 'Collective Resistance')];
+    seated(g, d => d.kind === 'mode' ? d.options.filter(o => o.mode.some(x => x.type === 'removal')) : undefined, () => G.castCard(g, g.hand[0])); return [!b.battlefield.includes(wc), !b.battlefield.includes(rs)]; };
+  const mk = (nG, colour) => { const [g, b] = match2(); const wc = putOn(b, 'Wurmcoil Engine'), rs = putOn(b, 'Phyrexian Arena'); lands(g, 2, 'Forest'); lands(g, nG, colour); g.hand = [inst(g, 'Collective Resistance')];
+    seated(g, d => d.kind === 'mode' ? d.options.filter(o => o.mode.some(x => x.type === 'removal')) : undefined, () => G.castCard(g, g.hand[0])); return [!b.battlefield.includes(wc), !b.battlefield.includes(rs)].filter(Boolean).length; };
+  check('the base cost only ({1}{G}): a person who picks both modes gets one', mk(0, 'Forest') === 1, String(mk(0, 'Forest')));
+  check('with one more {G}: both modes', mk(1, 'Forest') === 2, String(mk(1, 'Forest')));
+  check('a Mountain cannot pay the {G}: still one mode', mk(1, 'Mountain') === 1, String(mk(1, 'Mountain')));
 });
 
 T('Peerless Recycling: the gift gives them a card, you return two', () => {
-  const [g, b] = match2(); lands(g, 2, 'Forest'); g.graveyard = [inst(g, 'Wurmcoil Engine'), inst(g, 'Solemn Simulacrum'), inst(g, 'Mountain')]; g.hand = [inst(g, 'Peerless Recycling')]; const bh = b.hand.length; G.castCard(g, g.hand[0]);
-  check('with two good cards the gift is promised: they draw, you return Wurmcoil Engine and the Solemn Simulacrum', b.hand.length === bh + 1 && g.hand.some(i => i.card.name === 'Wurmcoil Engine') && g.hand.some(i => i.card.name === 'Solemn Simulacrum') && g.graveyard.length === 1, `${b.hand.length - bh} / ${g.hand.map(i => i.card.name)}`);
+  const [g, b] = match2(); lands(g, 2, 'Forest'); g.graveyard = [inst(g, 'Wurmcoil Engine'), inst(g, 'Sol Ring'), inst(g, 'Mountain')]; g.hand = [inst(g, 'Peerless Recycling')]; const bh = b.hand.length; G.castCard(g, g.hand[0]);
+  check('with two good cards the gift is promised: they draw, you return two of the three (the best two by the engine ranking)', b.hand.length === bh + 1 && g.hand.length === 2 && g.graveyard.length === 2, `${b.hand.length - bh} / ${g.hand.map(i => i.card.name)}`);
   const [h, c] = match2(); lands(h, 2, 'Forest'); h.graveyard = [inst(h, 'Wurmcoil Engine')]; h.hand = [inst(h, 'Peerless Recycling')]; const ch = c.hand.length; G.castCard(h, h.hand[0]);
   check('with one card no gift is promised: they draw nothing and you return it', c.hand.length === ch && h.hand.some(i => i.card.name === 'Wurmcoil Engine'));
   const [i, j] = match2(); lands(i, 2, 'Forest'); i.graveyard = [inst(i, 'Mountain')]; i.hand = [inst(i, 'Peerless Recycling')]; G.castCard(i, i.hand[0]);
   check('a land is a permanent card: it can be returned', i.hand.some(x => x.card.name === 'Mountain'));
   const s = bare(); lands(s, 2, 'Forest'); s.graveyard = [inst(s, 'Wurmcoil Engine'), inst(s, 'Solemn Simulacrum')]; s.hand = [inst(s, 'Peerless Recycling')]; G.castCard(s, s.hand[0]);
-  check('goldfishing there is nobody to give a card to: one card', s.hand.length === 1 && s.graveyard.length === 1);
+  check('goldfishing there is nobody to give a card to: one card', s.hand.length === 1 && s.graveyard.length === 2);
   const [m, n] = match2(); lands(m, 2, 'Forest'); m.graveyard = [inst(m, 'Wurmcoil Engine'), inst(m, 'Solemn Simulacrum')]; m.hand = [inst(m, 'Peerless Recycling')]; const nh = n.hand.length;
   const qs = seated(m, d => d.kind === 'protect' ? null : undefined, () => G.castCard(m, m.hand[0]));
   check('a person is asked about the gift (and may decline: they draw nothing, one card returns)', qs.some(x => x.d.kind === 'protect' && /gift/i.test(JSON.stringify(x.d))) && n.hand.length === nh && m.hand.length === 1, JSON.stringify(qs.map(x => x.d.kind)));

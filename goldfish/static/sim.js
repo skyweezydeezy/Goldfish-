@@ -1038,7 +1038,7 @@
           { const oe = line.match(/^((?:\{[^}]+\})+)(, \{q\})?: target opponent exiles the top card of their library\.(?: until end of turn, you may play that card\.| if it's a land card, you may return ~ to its owner's hand\.)$/i);
             if (oe) { const land = /land card/i.test(line); a.activated.push({ cost: parseCost(oe[1]), untapSelf: !!oe[2], autoGate: land ? 'never' : 'oppLib', fx: land ? [{ type: 'oppExileOne', landBack: true }] : [{ type: 'impulse' }], text: raw }); MIRX(); continue; } }          // Dimensional Infiltrator, Knacksaw Clique
         }
-        // ---- T-100 slice 3, group B (Card teaching 10): Abstergo Entertainment, Bouncer's Beatdown, Collective Resistance, Peerless Recycling, Goblin Trashmaster
+        // ---- T-100 slice 3, group B (Card teaching 10): Abstergo Entertainment, Bouncer's Beatdown, Collective Resistance, Peerless Recycling
         { const MIRB = () => { rec.status = 'neutral'; rec.tag = 'opp'; rec.mirror = true; };
           if (/^\{3\}, \{t\}, exile ~: return up to one target historic card from your graveyard to your hand, then exile all graveyards\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{3}'), tap: true, exileSelf: true, autoGate: 'abstergoWorth', fx: [{ type: 'abstergo' }], text: raw }); rec.status = 'ok'; continue; }          // Abstergo Entertainment
           if (/^~ costs \{2\} less to cast if it targets a black permanent\.?$/i.test(line)) { a.blackReduce = 2; MIRB(); continue; }          // Bouncer's Beatdown (effectiveCost0)

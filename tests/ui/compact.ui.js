@@ -65,16 +65,21 @@ const HINGE = () => {
     if (e.hidden || e.closest('[hidden], .panel:not(.active), .table-log, .vs-game:not(.log-open) > .card-box')) return;
     const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return;
     const [x0, x1] = vert ? [r.left, r.right] : [r.top, r.bottom];
-    if (x1 > lo + 1 && x0 < hi - 1) bad.push(e.tagName + '.' + String(e.className).split(' ')[0] + ' ' + Math.round(x0) + '-' + Math.round(x1));
+    if (x1 > lo + 1 && x0 < hi - 1) { const row = e.closest('.vs-row, .vs-piles, .vs-field'), seat = e.closest('.vs-seat'), rr = row && row.getBoundingClientRect(), sr = seat && seat.getBoundingClientRect(); bad.push(e.tagName + '.' + String(e.className) + ' ' + Math.round(x0) + '-' + Math.round(x1) + ' in ' + e.parentElement.className + (rr ? ' row ' + row.className + ' ' + Math.round(rr.left) + '-' + Math.round(rr.right) : '') + (sr ? ' seat ' + seat.className + ' ' + Math.round(sr.left) + '-' + Math.round(sr.right) : '') + ' idx ' + [...e.parentElement.children].indexOf(e) + '/' + e.parentElement.children.length); }
   });
-  return { n: bad.length, ex: bad.slice(0, 3).join(' | '), lo: Math.round(lo), hi: Math.round(hi) };
+  return { n: bad.length, ex: bad.slice(0, 2).join(' | '), lo: Math.round(lo), hi: Math.round(hi) };
 };
 
+// wait until the layout has stopped moving: every card, the table and the hand have the same rect over two animation frames, twice in a row, whatever the load
+const settle = async p => { for (let k = 0; k < 2; k++) {
+  await p.waitForFunction(() => new Promise(res => { const snap = () => [...document.querySelectorAll('.vs-screen, .table-main, .bf-row, .mtg, .card-back, .vs-hand, #zHand')].map(e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round).join(','); }).join('|');
+    const a = snap(); requestAnimationFrame(() => requestAnimationFrame(() => res(snap() === a))); }), null, { timeout: 20000, polling: 'raf' });
+  await p.waitForTimeout(150); } };
 async function checkSize(p, name, w, h, spanned) {
   if (!spanned) await p.setViewportSize({ width: w, height: h }).catch(() => {});
   if (spanned) await p.cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true, displayFeature: p.feature });
   await p.waitForTimeout(500);
-  await show(p, 'table'); await p.waitForTimeout(700);
+  await show(p, 'table'); await p.waitForTimeout(700); await settle(p);
   const m = await p.evaluate(() => {
     const hand = [...document.querySelectorAll('#zHand .mtg')].map(e => e.getBoundingClientRect());
     return { focus: document.body.classList.contains('tfocus'), bar: Math.round(document.querySelector('.topbar').getBoundingClientRect().height), ovf: getComputedStyle(document.body).overflowY, page: document.documentElement.scrollHeight, vh: innerHeight, pw: document.documentElement.scrollWidth, vw: innerWidth,
@@ -86,7 +91,7 @@ async function checkSize(p, name, w, h, spanned) {
   check(`${name}: Practice rows have room and every hand card shows its name`, m.rows.every(r => r >= 48) && m.handIn === m.n, `rows ${m.rows} hand ${m.handIn}/${m.n}`);
   if (spanned) { const hg = await p.evaluate(HINGE); check(`${name}: Practice keeps everything off the hinge`, hg && hg.n === 0, hg && `${hg.lo}-${hg.hi}: ${hg.n} ${hg.ex}`); }
   for (const mode of ['duel', 'pod']) {
-    await show(p, mode); await p.waitForTimeout(700);
+    await show(p, mode); await p.waitForTimeout(700); await settle(p);
     const d = await p.evaluate(md => {
       const root = document.querySelector('#tab-' + md), scr = root.querySelector('.vs-screen').getBoundingClientRect();
       const hand = [...root.querySelectorAll('.vs-hand .mtg')].map(e => e.getBoundingClientRect()), btn = [...root.querySelectorAll('.vs-me button')].map(e => e.getBoundingClientRect());
@@ -94,10 +99,12 @@ async function checkSize(p, name, w, h, spanned) {
       return { focus: document.body.classList.contains('tfocus'), bar: Math.round(document.querySelector('.topbar').getBoundingClientRect().height), ovf: getComputedStyle(document.body).overflowY, vh: innerHeight, vw: innerWidth, pw: document.documentElement.scrollWidth,
         top: Math.round(scr.top), bottom: Math.round(scr.bottom), over: !!window.__isfVersus[md].game.over,
         handIn: hand.filter(r => r.left >= -1 && r.right <= innerWidth + 1 && r.top >= 0 && r.top + 24 <= innerHeight).length, nHand: hand.length, btnIn: btn.every(r => r.width < 2 || (r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1 && r.top >= -1)),
+        badCard: (() => { const r = [...root.querySelectorAll('.vs-stack .mtg, .vs-pile .mtg, .vs-pile .card-back')].find(e => { const q = e.getBoundingClientRect(); return !(q.width < 2 || (q.left >= -1 && q.right <= innerWidth + 1 && q.top >= -1 && q.bottom <= innerHeight + 1)); }); if (!r) return ''; const q = r.getBoundingClientRect(); const pr = r.parentElement, row = r.closest('.vs-row, .vs-piles, .vs-field'), sr = r.closest('.vs-seat').getBoundingClientRect(); return r.closest('.vs-seat').className + ' card ' + [q.left, q.top, q.right, q.bottom].map(Math.round) + ' parent ' + pr.className + ' ' + Math.round(pr.getBoundingClientRect().right) + ' row ' + (row && row.className) + ' ' + (row && Math.round(row.getBoundingClientRect().right)) + ' seat right ' + Math.round(sr.right) + ' idx ' + [...pr.children].indexOf(r) + '/' + pr.children.length + ' vp ' + innerWidth + 'x' + innerHeight; })(),
+        badBtn: (() => { const r = [...root.querySelectorAll('.vs-me button')].find(e => { const q = e.getBoundingClientRect(); return !(q.width < 2 || (q.bottom <= innerHeight + 1 && q.right <= innerWidth + 1 && q.top >= -1)); }); if (!r) return ''; const q = r.getBoundingClientRect(); return r.textContent.trim().slice(0, 20) + ' ' + [q.left, q.top, q.right, q.bottom].map(Math.round) + ' vp ' + innerWidth + 'x' + innerHeight; })(),
         cardsIn: cards.every(r => r.width < 2 || (r.left >= -1 && r.right <= innerWidth + 1 && r.top >= -1 && r.bottom <= innerHeight + 1)), cw: cards[0] ? Math.round(cards[0].width) : 0 };
     }, mode);
     check(`${name}: ${mode} hides the bar; the table covers the screen`, d.focus && d.bar === 0 && d.ovf === 'hidden' && d.pw <= d.vw + 1 && d.top >= 0 && d.top <= 10 && d.bottom >= d.vh - 14 && d.bottom <= d.vh + 1, JSON.stringify({ top: d.top, bottom: d.bottom, vh: d.vh, pw: d.pw, vw: d.vw }));
-    if (!d.over) check(`${name}: ${mode}: every card in play, your hand and your buttons are on screen`, d.cardsIn && d.btnIn && d.handIn === d.nHand, `cards ${d.cardsIn}, buttons ${d.btnIn}, hand ${d.handIn}/${d.nHand}, card ${d.cw}px`);
+    if (!d.over) check(`${name}: ${mode}: every card in play, your hand and your buttons are on screen`, d.cardsIn && d.btnIn && d.handIn === d.nHand, `cards ${d.cardsIn}, buttons ${d.btnIn}, hand ${d.handIn}/${d.nHand}, card ${d.cw}px ${d.badCard} ${d.badBtn}`);
     if (spanned) { const hg = await p.evaluate(HINGE); check(`${name}: ${mode} keeps everything off the hinge`, hg && hg.n === 0, hg && `${hg.lo}-${hg.hi}: ${hg.n} ${hg.ex}`); }
   }
 }

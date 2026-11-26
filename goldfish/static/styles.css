@@ -1428,7 +1428,7 @@ body[data-view=table]:not(.tfocus) .topbar .fs-btn { display: none; }     /* the
    queries (horizontal-viewport-segments / vertical-viewport-segments) and env(viewport-segment-*) are the Viewport Segments API.
    Practice: the battlefield and your hand on one screen; the stats, the four piles and the game log on the other.
    ===================================================================== */
-@media (max-height: 500px) and (orientation: landscape), (horizontal-viewport-segments: 2) {
+@media (max-height: 560px) and (orientation: landscape), (horizontal-viewport-segments: 2) {
   body.tfocus { --c1: minmax(0, 1fr); --c3: minmax(0, 1fr); --hinge: 8px; }
   body.tfocus .vs-screen > .vs-arena { display: grid; grid-template-columns: var(--c1) var(--hinge) var(--c3); grid-template-rows: minmax(0, 1fr) auto; gap: 0; padding: 0; overflow: hidden; }
   body.tfocus .vs-arena > .vs-opps { grid-column: 1; grid-row: 1; min-height: 0; }
@@ -1479,3 +1479,5 @@ body[data-view=table]:not(.tfocus) .topbar .fs-btn { display: none; }     /* the
   body.tfocus .vs-foot > .vs-me, body.tfocus .vs-foot > .vs-hand { flex: none; max-height: none; }
   body.tfocus[data-view=table] .table-controls { flex-wrap: wrap; overflow: visible; }
 }
+/* a long question in your panel (blocks: one menu per attacker) scrolls inside the panel, and its buttons stay in view at the bottom of it */
+body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child { position: sticky; bottom: 0; z-index: 3; background: rgba(4, 12, 20, .94); padding: 4px 0 2px; margin-bottom: 0; }

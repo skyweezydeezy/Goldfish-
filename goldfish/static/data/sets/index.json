@@ -4058,14 +4058,14 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/rav.svg?1794805200",
    "partial": true,
-   "cards": 42,
-   "originals": 42,
+   "cards": 52,
+   "originals": 52,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 36,
+    "full": 44,
     "approx": 4,
-    "partial": 0,
+    "partial": 2,
     "none": 2
    }
   },
@@ -4220,12 +4220,12 @@
    "set_type": "box",
    "icon": "https://svgs.scryfall.io/sets/phuk.svg?1794805200",
    "partial": true,
-   "cards": 7,
-   "originals": 7,
+   "cards": 8,
+   "originals": 8,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 5,
+    "full": 6,
     "approx": 1,
     "partial": 1,
     "none": 0

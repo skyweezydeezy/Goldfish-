@@ -7,11 +7,14 @@ let pass = 0, fail = 0;
 const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail !== undefined ? '   [' + detail + ']' : '')); };
 const DEVS = [['iPhone', devices['iPhone 13']], ['iPad portrait', devices['iPad (gen 7)']], ['iPad landscape', devices['iPad (gen 7) landscape']], ['iPad Pro landscape', devices['iPad Pro 11 landscape']], ['iPhone sideways', devices['iPhone 13 landscape']], ['small iPhone sideways', devices['iPhone SE landscape']]];
 const SIDEWAYS = n => /sideways/.test(n);
+// every device once as it is, and three of them again with table focus on (isf_focus = on: the top bar is put away and the table covers the screen)
+const RUNS = DEVS.map(([n, d]) => [n, d, false]).concat(DEVS.filter(([n]) => /^(iPhone|iPad landscape|iPhone sideways)$/.test(n)).map(([n, d]) => [n + ' (focus on)', d, true]));
 (async () => {
   const b = await chromium.launch();
-  for (const [name, dev] of DEVS) {
+  for (const [name, dev, focus] of RUNS) {
     const ctx = await b.newContext({ ...dev, deviceScaleFactor: 1, serviceWorkers: 'block' });
-    await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
+    await ctx.addInitScript(f => { window.__focus = f; }, focus);
+    await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} if (window.__focus) localStorage.setItem('isf_focus', 'on'); });   // the background-music question is answered: its banner stays out of the way
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const q = route.request();
       const c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

@@ -1830,6 +1830,8 @@
         if (/^discard a card with mana value x: counter target spell with mana value x/i.test(line)) { a.fieldCounter = { filter: '', unless: 0, discardMv: true }; MIRC(); continue; }          // Kozilek, the Great Distortion
         if ((cm2 = line.match(/^((?:\{[^}]+\})+), sacrifice ~: counter target spell or ability that targets you or a creature you control/i))) { a.stormtamer = parseCost(cm2[1]); MIRC(); continue; }          // Siren Stormtamer
         if (/^when you cast ~, counter it unless you sacrifice a land/i.test(line)) { a.castSacLand = true; rec.status = 'ok'; continue; }          // Mana Vortex: a land, in any game
+        if (/^if an opponent cast a blue spell this turn, you may pay \{r\} rather than pay ~'s mana cost\.?$/i.test(line)) { a.trapAlt = { generic: 0, pips: [['R']], x: 0 }; MIRC(); continue; }          // Ricochet Trap
+        if (/^change the target of target spell with a single target\.?$/i.test(line) && /pay \{r\} rather than pay/i.test(text)) { a.spellFx.push({ type: 'redirectSpell' }); a.stackOnly = true; MIRC(); continue; }          // Ricochet Trap
         if (/^change the target of target spell with a single target/i.test(line)) { a.redirect = true; MIRC(); continue; }          // Misdirection
         if (/^(?:• )?counter target activated or triggered ability\.?$/i.test(line)) { a.abilityCounter = true; MIRC(); continue; }          // Sublime Epiphany, Stifle
         if ((cm2 = line.match(/^• counter target spell unless its controller pays \{(\d+)\}\.?$/i))) { a.counter = Object.assign({ filter: '', unless: +cm2[1], perSpell: false }, /choose three\. you may choose the same mode more than once/i.test(text) ? { confluence: true } : {}); MIRC(); continue; }          // Mystic Confluence
@@ -2478,14 +2480,15 @@
         if (/^\{x\}\{x\}, \{t\}, sacrifice ~: create x treasure tokens/i.test(line)) { a.vault = true; rec.status = 'ok'; continue; }          // Treasure Vault
         if (/^sacrifice a creature: ~ deals 1 damage to any target/i.test(line)) { a.sacOutlet = true; a.bombard = true; rec.status = 'ok'; continue; }          // Goblin Bombardment
         if (/^as an additional cost to cast ~, pay 5 life or pay \{2\}/i.test(line)) { a.redirectLightning = true; a.stackOnly = true; OPP(); continue; }          // Redirect Lightning: the extra cost is paid as it resolves (stackResponses, 'redirectSpell')
-        if (/^change the target of target spell or ability with a single target\.?$/i.test(line)) { a.spellFx.push({ type: 'redirectSpell' }); a.stackOnly = true; OPP(); continue; }          // Redirect Lightning (a spell: abilities are not on the stack here)
+        if (/^whenever an opponent casts an instant or sorcery spell, they may pay \{2\}\. if they don't, you may copy that spell\. you may choose new targets for the copy\.?$/i.test(line)) { a.archaic = true; OPP(); continue; }          // Wandering Archaic (archaicTrigger, in the response window)
+        if (/^change the target of target spell or ability with a single target\.?$/i.test(line)) { a.spellFx.push({ type: 'redirectSpell', extra: true }); a.stackOnly = true; OPP(); continue; }          // Redirect Lightning (a spell: abilities are not on the stack here)
         if (/^you may pay \{b\} rather than pay ~'s mana cost if there are thirteen or more creatures on the battlefield/i.test(line)) { a.altB13 = true; rec.status = 'ok'; continue; }          // Blasphemous Edict
         if (/^discard a card: exile the top two cards of your library\. you may play those cards this turn/i.test(line)) { a.harnfel = true; rec.status = 'ok'; continue; }          // Harnfel, Horn of Bounty
-        if (/^\+ \{1\} — copy target instant spell, sorcery spell, activated ability, or triggered ability/i.test(line)) { a.respondCopy = { extra: 1 }; a.favorAbility = true; a.spellFx.push({ type: 'copyRespond' }); rec.status = 'ok'; continue; }          // Return the Favor: copies your own instant or sorcery (not abilities)
-        if (/^\+ \{1\} — change the target of target spell or ability with a single target/i.test(line)) { OPP(); continue; }
+        if (/^\+ \{1\} — copy target instant spell, sorcery spell, activated ability, or triggered ability/i.test(line)) { a.respondCopy = { extra: 1 }; a.favorAbility = true; a.spellFx.push({ type: 'copyRespond', favor: true }); rec.status = 'ok'; continue; }          // Return the Favor: copies your own instant or sorcery (not abilities)
+        if (/^\+ \{1\} — change the target of target spell or ability with a single target/i.test(line)) { a.spellFx.push({ type: 'redirectSpell', favor: true }); a.favorRedirect = true; OPP(); continue; }          // Return the Favor: the second mode, a spell with a single target (abilities are not on the stack)
         if (/^when ~(?: of ~)? enters, look at the top four cards of your library\. you may reveal a creature card from among them and put it into your hand/i.test(line)) { T3(['etb'], [{ type: 'lookFilter', look: 4, spec: 'creature' }]); continue; }          // Growing Rites of Itlimoc
         if (/^if you would draw a card except the first one you draw in each of your draw steps, draw two cards instead/i.test(line)) { a.statics.drawDouble = 1; rec.status = 'ok'; continue; }          // Teferi's Ageless Insight
-        if (/^when ~ enters, you may change the target of target instant or sorcery spell with a single target to ~/i.test(line)) { OPP(); continue; }          // Hydroelectric Specimen
+        if (/^when ~ enters, you may change the target of target instant or sorcery spell with a single target to ~/i.test(line)) { a.redirectSelf = true; a.triggers.push({ kinds: ['etb'], fx: [{ type: 'redirectToSelf' }], text: raw }); OPP(); continue; }          // Hydroelectric Specimen (the spell on the stack: pendingSpell)
         if ((mz = line.match(/^((?:\{[^}]+\})+), \{t\}: distribute two \+1\/\+1 counters among one or two target creatures you control/i))) { a.activated.push({ cost: parseCost(mz[1]), tap: true, fx: [{ type: 'distribute', n: 2, max: 2, keywords: [] }], text: raw }); rec.status = 'ok'; continue; }          // The Earth Crystal
         if (/^when the twelfth hour counter is put on ~, shuffle your hand and graveyard into your library, then draw seven cards\. exile ~/i.test(line)) { a.midnight = true; rec.status = 'ok'; continue; }          // Midnight Clock
         if (/^when ~ enters, copy target instant or sorcery spell\. you may choose new targets for the copy/i.test(line)) { a.respondCopy = { creature: true }; T3(['etb'], [{ type: 'copyRespond' }]); continue; }          // Dualcaster Mage: flashed in when you cast an instant or sorcery worth copying
@@ -5377,6 +5380,7 @@
     if (a.mayhem && inst.mayhemTurn === g.turn && g.graveyard.includes(inst)) return a.mayhem;
     if (a.foretell && inst.foretoldTurn != null && inst.foretoldTurn < g.turn && g.exile.includes(inst)) return a.foretell;          // cast from exile for its foretell cost
     if (a.freerunning && g.freerunTurn === g.turn && g.hand.includes(inst)) return a.freerunning;          // freerunning
+    if (a.trapAlt && g.hand.includes(inst) && otherPlayers(g).some(o => o.blueSeq != null && o.blueSeq === turnSeq(g))) return a.trapAlt;          // Ricochet Trap: {R} when an opponent cast a blue spell this turn
     inst._af = null; inst._mono = false; inst._warped = false;
     if (info0.warpedSpace && g.warpedTurn !== g.turn && !a.isLand && (inst.temp != null || g.exile.includes(inst)) && !(a.cost && a.cost.x) && (a.mv || 0) > 0) { inst._warped = true; return { generic: 0, pips: [], x: 0 }; }          // Warped Space
     if (info0.monolith && g.monolithTurn !== g.turn && !a.isLand && !(inst.card.colors || []).length && !(a.cost && a.cost.x) && (a.mv || 0) > 0 && g.hand.includes(inst)) { inst._mono = true; return { generic: 0, pips: [], x: 0 }; }          // Darksteel Monolith
@@ -7288,18 +7292,31 @@
           if (!t || answered(g, t, 'exile', source, ev)) { leavePerm(g, source, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `${source.card.name}: no exchange, so it is sacrificed`, source }); break; }
           stealPerm(g, t, ev, false); stealPermToOpp(g, source); ev.push({ type: 'note', text: `${source.card.name} is exchanged for ${t.card.name}`, source });
         } break;
-        case 'redirectSpell': {          // Redirect Lightning: the spell's one locked target becomes another legal target; the additional cost ({2} or 5 life) is paid now
+        case 'redirectSpell': {          // Redirect Lightning, Ricochet Trap, Return the Favor (second mode), Hydroelectric Specimen via 'redirectToSelf': the spell's one locked target becomes another legal target
           const ps = g.pendingSpell, L = ps && ps.lock && ps.lock.map.size === 1 ? [...ps.lock.map.entries()][0] : null;
-          if (!ps || ps.gone || !L || !L[1].t) { ev.push({ type: 'note', text: 'Redirect Lightning: no spell with a single target to change', source }); break; }
-          const cands = redirectCands(ps.caster, L[0], L[1].t); if (!cands.length) { ev.push({ type: 'note', text: 'Redirect Lightning: no other legal target', source }); break; }
-          const two = { generic: 2, pips: [], x: 0 }, canTwo = canPay(two, allUnits(g)), canLife = g.life > 5;
-          if (!canTwo && !canLife) { ev.push({ type: 'note', text: 'Redirect Lightning: the additional cost cannot be paid', source }); break; }
-          let useLife = !canTwo; if (canTwo && canLife && g.ask && !g.dry) useLife = decide(g, { kind: 'protect', options: ['Pay 5 life'], def: null, optional: true, why: 'Redirect Lightning: pay {2} or 5 life', source: source || null, target: null }) != null;
-          if (useLife) { g.life -= 5; checkDeath(g, ev); } else pay(g, two);
+          if (f.favor && ps && !favorMode(g, ps, ev, source, 'redirect')) break;
+          if (!ps || ps.gone || !L || !(L[1].t || L[1].face)) { ev.push({ type: 'note', text: `${source ? source.card.name : 'The spell'}: no spell with a single target to change`, source }); break; }
+          const cands = redirectCands(ps.caster, L[0], L[1].t || null); if (!cands.length) { ev.push({ type: 'note', text: `${source ? source.card.name : 'The spell'}: no other legal target`, source }); break; }
+          if (f.extra) {          // Redirect Lightning: pay 5 life or pay {2}
+            const two = { generic: 2, pips: [], x: 0 }, canTwo = canPay(two, allUnits(g)), canLife = g.life > 5;
+            if (!canTwo && !canLife) { ev.push({ type: 'note', text: 'Redirect Lightning: the additional cost cannot be paid', source }); break; }
+            let useLife = !canTwo; if (canTwo && canLife && g.ask && !g.dry) useLife = decide(g, { kind: 'protect', options: ['Pay 5 life'], def: null, optional: true, why: 'Redirect Lightning: pay {2} or 5 life', source: source || null, target: null }) != null;
+            if (useLife) { g.life -= 5; checkDeath(g, ev); } else pay(g, two);
+          }
           const mineSide = o => holderOf(ps.caster, o) === ps.caster, best = cands.slice().sort((x, y) => ((mineSide(y) ? 1 : 0) - (mineSide(x) ? 1 : 0)) || threat(holderOf(ps.caster, y), g, y) - threat(holderOf(ps.caster, x), g, x))[0];
           let nt = best; if (g.ask && !g.dry) nt = decide(g, { kind: 'target', what: 'redirect', options: cands, def: best, source }) || best;
           if (!nt) break;
-          ps.lock.map.set(L[0], Object.assign({}, L[1], { t: nt })); ev.push({ type: 'note', text: `Redirect Lightning: ${ps.inst.card.name} now targets ${nt.card.name}`, source }); break;
+          ps.lock.map.set(L[0], Object.assign({}, L[1], { t: nt, face: false })); ev.push({ type: 'note', text: `${source ? source.card.name : 'The spell'}: ${ps.inst.card.name} now targets ${nt.card.name}`, source });
+          break;
+        }
+        case 'redirectToSelf': {          // Hydroelectric Specimen: when it enters, you may change the target of target instant or sorcery spell with a single target to it
+          const ps = g.pendingSpell, L = ps && ps.lock && ps.lock.map.size === 1 ? [...ps.lock.map.entries()][0] : null;
+          if (!ps || ps.gone || !L || !source || !ps.inst.card.a.isInstantSorcery || !(L[1].t || L[1].face) || L[1].t === source) break;
+          if (!(redirectFits(L[0], source) && lockLegal(ps.caster, source, L[0]))) { ev.push({ type: 'note', text: `${source.card.name}: it is not a legal target for ${ps.inst.card.name}`, source }); break; }
+          const worth = L[1].t ? holderOf(ps.caster, L[1].t) === g && threat(g, ps.caster, L[1].t) > threat(g, ps.caster, source) + 1 : false;
+          if (!g.ask && !worth) break;
+          if (g.ask && !askUse(g, `Change the target of ${ps.inst.card.name} to ${source.card.name}`, source.card.name, source, source)) break;
+          ps.lock.map.set(L[0], Object.assign({}, L[1], { t: source, face: false })); ev.push({ type: 'note', text: `${source.card.name}: ${ps.inst.card.name} now targets it`, source }); break;
         }
         case 'horrorChoice': {          // Hullbreaker Horror: choose up to one: return target spell you don't control to its owner's hand; or return target nonland permanent to its owner's hand
           const ps = g.pendingSpell, canSpell = !!(ps && !ps.gone && ps.caster !== g && ps.inst !== (g.lastCast || null)), big = canSpell && (ps.inst.card.commander || ps.inst.card.a.comboRole || ps.inst.card.a.castMv >= 3);
@@ -7876,7 +7893,13 @@
           g.library.push(...rest); shuffle(g.library, g.rnd); hits.forEach(c => enterWithTriggers(g, c, {}, ev));
           ev.push({ type: 'note', text: `${hits.length} ${tr} creature card${hits.length === 1 ? '' : 's'} onto the battlefield (revealed ${hits.length + rest.length})`, source }); break;
         }
-        case 'copyRespond': if (g.respondTo) copyAnySpell(g, g.respondTo, ev, 1, !!f.notLegend, source); break;          // rules batch 80: a permanent spell is copied too (Double Major)
+        case 'copyRespond': {
+          const ps = g.pendingSpell, theirs = ps && !ps.gone && ps.caster !== g && ps.inst.card.a.isInstantSorcery;
+          if (f.favor && theirs && !favorMode(g, ps, ev, source, 'copy')) break;
+          if (theirs && (!f.favor || ps.favorMode === 'copy')) { ev.push({ type: 'note', text: `${source ? source.card.name : 'A copy'}: a copy of ${ps.inst.card.name} resolves for you`, source }); copySpell(g, ps.inst, ev, 1); }
+          else if (g.respondTo) copyAnySpell(g, g.respondTo, ev, 1, !!f.notLegend, source);          // rules batch 80: a permanent spell is copied too (Double Major)
+          break;
+        }          // rules batch 80: a permanent spell is copied too (Double Major)
         case 'doppel': {          // rules batch 80: Doppelgang: X target permanents (the best of yours, not legendary), X token copies of each
           const X = Math.max(0, g.xValue || 0), val = q => isCreaturePerm(q) ? creatureValue(g, q) : (q.card.a.mv || 0) * 2;
           const ts = g.battlefield.filter(q => !q.asLand && !q.card.a.isLegendary && !q.faceDown).sort((x, y) => val(y) - val(x)).slice(0, X);
@@ -8937,6 +8960,7 @@
       if (g.ajaniPoison && (a.isCreature || a.isPlaneswalker) && g.killTurn == null && !matchOver(g)) addPoison(g, g.ajaniPoison, ev, null, "Ajani's emblem");          // Ajani, Sleeper Agent: two poison counters for each creature or planeswalker spell
       g.mvCast = { turn: g.turn, n: (g.mvCast && g.mvCast.turn === g.turn ? g.mvCast.n : 0) + (a.mv || 0) };          // Call Forth the Tempest
       g.lastCast = inst;
+      if (a.trapWatch !== false && (inst.card.colors || []).includes('U')) g.blueSeq = turnSeq(g);          // Ricochet Trap: an opponent cast a blue spell this turn
       g.improviseTurn = null;
       if (a.isCreature && !g.combatDone && (a.power || 0) >= 2) { const ar = (tableHas(g, 'exertHaste') ? g.battlefield.find(q => q.card.a.exertHaste && q.exertUsed === g.turn && q.exerted !== g.turn + 1) : undefined); if (ar) { ar.exerted = g.turn + 1; inst.hasteCast = true; ev.push({ type: 'note', text: `${ar.card.name} is exerted: ${inst.card.name} has haste this turn`, source: ar }); } }          // Arena of Glory
       { const fromHand = !(inst.freeCast || inst.fbCast || inst.escaping || inst.retracing || inst.breaching), info = bfInfo(g);          // cascade: printed on the card, or given by Zhulodok / Quandrix, the Proof
@@ -14165,7 +14189,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.ask && !L) t = decide(g, { kind: 'target', what: 'removal', options: eachFoe(g, () => removalTargets(g, f)), def: t, f, source });
     if (lockRec) { if (t) { lockRec.map.set(f, { t }); lockRec.taken.add(t); } return; }
     if (g.ask) { if (t) return against(g, t, () => answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' ? 'exile' : 'destroy', source, ev) || removalOf(g, f, source, ev, t)); }
-    if (t && (f.noTarget || !answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' || f.how === 'warp' ? 'exile' : 'destroy', source, ev))) removalOf(g, f, source, ev, t);
+    if (t) against(g, t, () => { if (f.noTarget || !answered(g, t, f.how === 'exile' || f.how === 'tuck' || f.how === 'bottom' || f.how === 'warp' ? 'exile' : 'destroy', source, ev)) removalOf(g, f, source, ev, t); });
   }
   // the other player answers a targeted effect: true when nothing more happens (the target is protected, regenerated or indestructible)
   function answered(g, t, kind, source, ev) {
@@ -14841,7 +14865,23 @@ g.actSeq = (g.actSeq || 0) + 1;
   // ---------- the spell on the stack (T-100): while a spell waits for an answer (tryCounter), g.pendingSpell = { inst, caster, lock, responder } on both players ----------
   // Only the response window exists, no general stack. The answers: a counterspell (tryCounter0), Redirect Lightning (change the target the spell locked as it was cast),
   // Hullbreaker Horror (a spell cast in response returns the spell to its owner's hand). Abilities and triggers on the stack stay out of this model.
+  // is a copy of the other player's spell worth it for o: it is worth cards or mana, or it hits a creature of theirs that matters
+  const copyWorth = (o, caster, inst) => { const fx = inst.card.a.spellFx; return fxValue(o, fx) >= 3 || (fx.some(INTERACT_FX) && caster.battlefield.some(q => isCreaturePerm(q) && threat(caster, o, q) >= 2.5)); };
+  function archaicTrigger(g, inst, ev) {          // Wandering Archaic: whenever an opponent casts an instant or sorcery spell, they may pay {2}; if they don't, you may copy it (with new targets)
+    if (g.dry || !inst.card.a.isInstantSorcery || !inst.card.a.spellFx.length) return;
+    const two = { generic: 2, pips: [], x: 0 };
+    for (const o of (isPod(g) ? otherPlayers(g) : [g.opp]).filter(x => x && !x.dead && tableHas(x, 'archaic'))) {
+      const ar = o.battlefield.find(q => q.card.a.archaic && !q.phased); if (!ar) continue;
+      const can = canPay(two, allUnits(g)); let pays = can;
+      if (can && g.ask) pays = decide(g, { kind: 'protect', options: ['Pay {2}'], def: 'Pay {2}', optional: true, why: `${ar.card.name}: pay {2}, or its controller may copy ${inst.card.name}`, target: null, source: ar }) != null;
+      if (pays) { pay(g, two); ev.push({ type: 'note', text: `${ar.card.name}: ${inst.card.name}'s controller pays {2}`, source: ar }); continue; }
+      const worth = copyWorth(o, g, inst);
+      if (o.ask ? decide(o, { kind: 'protect', options: [`Copy ${inst.card.name}`], def: worth ? `Copy ${inst.card.name}` : null, optional: true, why: `${ar.card.name}: ${inst.card.name} may be copied`, target: null, source: ar }) == null : !worth) continue;
+      ev.push({ type: 'note', text: `${ar.card.name}: ${inst.card.name}'s controller does not pay, so a copy resolves for its controller`, source: ar }); copySpell(o, inst, ev, 1);
+    }
+  }
   function stackResponses(g, d, inst, ev, ps) {          // the autopilot's answers (a person's go through personAnswer: the same cards, cast with respondWith)
+    if (!ps.by) archaicTrigger(g, inst, ev);          // a trigger of the permanent on the table: for the person and the autopilot alike
     if (d.ask || d.dead || g.dry) return;
     const a = inst.card.a, big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4;
     const hz = (tableHas(d, 'horror') ? d.battlefield.find(q => q.card.a.horror) : undefined);
@@ -14850,21 +14890,44 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (c && respondWith(d, c, ev, inst) && ps.gone) return;
     }
     const L = ps.lock && ps.lock.map.size === 1 ? [...ps.lock.map.entries()][0] : null;
-    if (L && L[1].t && holderOf(g, L[1].t) === d && threat(d, g, L[1].t) >= 3) {          // Redirect Lightning: their spell aims at something of mine that matters
-      const rl = responseCards(d, null).find(x => x.card.a.redirectLightning && (canPay({ generic: effectiveCost(d, x).generic + 2, pips: effectiveCost(d, x).pips, x: 0 }, manaUnits(d)) || d.life > 12));
-      if (rl && redirectCands(g, L[0], L[1].t).some(q => holderOf(g, q) === g) && respondWith(d, rl, ev, inst)) return;
+    if (L && L[1].t && holderOf(g, L[1].t) === d && threat(d, g, L[1].t) >= 3) {          // their spell aims at something of mine that matters
+      const rcs = responseCards(d, null), plus = (c, n) => { const b = effectiveCost(d, c); return { generic: b.generic + n, pips: b.pips, x: 0 }; };
+      const rl = rcs.find(x => x.card.a.redirectLightning && (canPay(plus(x, 2), manaUnits(d)) || d.life > 12)) || rcs.find(x => x.card.a.stackOnly && !x.card.a.redirectLightning && x.card.a.spellFx.some(f => f.type === 'redirectSpell'))
+        || rcs.find(x => x.card.a.favorRedirect && canPay(plus(x, 1), manaUnits(d)));          // Redirect Lightning, Ricochet Trap, Return the Favor
+      if (rl && redirectCands(g, L[0], L[1].t).some(q => holderOf(g, q) === g)) {
+        if (rl.card.a.favorRedirect) { pay(d, { generic: 1, pips: [], x: 0 }); ps.favorPre = { mode: 'redirect' }; }
+        if (respondWith(d, rl, ev, inst)) return; ps.favorPre = null;
+      }
+      const sp = rcs.find(x => x.card.a.redirectSelf && a.isInstantSorcery);          // Hydroelectric Specimen (flash): it takes the spell
+      if (sp && respondWith(d, sp, ev, inst)) return;
+    }
+    if (a.isInstantSorcery && copyWorth(d, g, inst)) {          // Return the Favor: a copy of their spell for me
+      const c = responseCards(d, null).find(x => x.card.a.favorAbility && canPay({ generic: effectiveCost(d, x).generic + 1, pips: effectiveCost(d, x).pips, x: 0 }, manaUnits(d)));
+      if (c) { pay(d, { generic: 1, pips: [], x: 0 }); ps.favorPre = { mode: 'copy' }; if (respondWith(d, c, ev, inst)) return; ps.favorPre = null; }
     }
   }
-  const redirectFits = (f, p) => f.type === 'burnCreature' || f.type === 'damage' ? (isCreaturePerm(p) || p.card.a.isPlaneswalker) : f.what === 'permanent' ? true : f.what === 'nonland' ? !p.asLand : f.what === 'artifact' ? p.card.a.isArtifact : f.what === 'enchantment' ? p.card.a.isEnchantment : f.what === 'planeswalker' ? p.card.a.isPlaneswalker : f.what === 'creatureOrPw' ? (isCreaturePerm(p) || p.card.a.isPlaneswalker) : isCreaturePerm(p);
+  // Return the Favor (spree): the mode of this cast. The autopilot sets ps.favorMode and pays the {1} before it casts; a person chooses here, once, and the {1} is paid now
+  function favorMode(g, ps, ev, source, want) {
+    const cur = g.lastCast;
+    if (ps.favorFor !== cur) {
+      ps.favorFor = cur; const pre = ps.favorPre; ps.favorPre = null; let m = 'copy', paid = false;
+      if (pre) { m = pre.mode; paid = true; }
+      else if (g.ask && !g.dry) { const opts = [{ mode: 'copy', text: 'Copy the spell (you may choose new targets for the copy)' }, { mode: 'redirect', text: 'Change the target of a spell with a single target' }]; const o = decide(g, { kind: 'mode', options: opts, def: opts[0], optional: true, source }); m = o ? o.mode : null; }
+      if (m && !paid) { if (canPay({ generic: 1, pips: [], x: 0 }, allUnits(g))) pay(g, { generic: 1, pips: [], x: 0 }); else { ev.push({ type: 'note', text: `${source ? source.card.name : 'Return the Favor'}: the {1} for the mode cannot be paid`, source }); m = null; } }
+      ps.favorMode = m;
+    }
+    return ps.favorMode === want;
+  }
+  const redirectFits = (f, p) => f.type === 'burnCreature' || f.type === 'damage' ? (isCreaturePerm(p) || p.card.a.isPlaneswalker) : f.type === 'bounce' ? (f.what === 'creature' ? isCreaturePerm(p) : f.what === 'permanent' ? true : !p.asLand) : f.what === 'permanent' ? true : f.what === 'nonland' ? !p.asLand : f.what === 'artifact' ? p.card.a.isArtifact : f.what === 'enchantment' ? p.card.a.isEnchantment : f.what === 'planeswalker' ? p.card.a.isPlaneswalker : f.what === 'creatureOrPw' ? (isCreaturePerm(p) || p.card.a.isPlaneswalker) : isCreaturePerm(p);
   function redirectCands(gc, f, old) {          // the other legal targets for the effect (either side of the table), never the one it has
-    const out = []; if (f.type !== 'removal') return out;          // the removal spells (bounce and damage redirect is not taught yet)
+    const out = []; if (f.type !== 'removal' && f.type !== 'bounce' && f.type !== 'burnCreature' && !(f.type === 'damage' && f.any)) return out;          // the spells that lock one target
     for (const o of (isPod(gc) ? gc.match.players : [gc, gc.opp]).filter(Boolean)) for (const p of o.battlefield) if (p !== old && !p.card.commander && redirectFits(f, p) && lockLegal(gc, p, f)) out.push(p);
     return out;
   }
   function tryCounter(g, inst, ev, by) {
     const d = by || g.opp;
     if (!d || g.dry) return tryCounter0(g, inst, ev, by);
-    const ps = { inst, caster: g, responder: d, lock: PENDING.get(inst) || null, gone: false };
+    const ps = { inst, caster: g, responder: d, by: by || null, lock: PENDING.get(inst) || null, gone: false };
     const wg = g.pendingSpell, wd = d.pendingSpell; g.pendingSpell = ps; d.pendingSpell = ps;
     try {
       stackResponses(g, d, inst, ev, ps);
@@ -15224,6 +15287,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // effect then runs against the chosen permanent's controller (against); the focus goes back afterwards.
   function eachFoe(g, fn) { if (!isPod(g)) return fn(); const o0 = g.opp, out = []; try { for (const o of podAlive(g)) { g.opp = o; out.push(...fn()); } } finally { g.opp = o0; } return out; }
   function against(g, t, fn) {
+    if (t && !g.dry && g.battlefield.includes(t)) { const o0 = g.opp; g.opp = g; try { return fn(); } finally { g.opp = o0; } }          // a redirected spell aimed at its caster's own permanent
     const o = isPod(g) && t ? g.match.players.find(x => x !== g && x.battlefield.includes(t)) : null;
     if (!o || o === g.opp) return fn();
     const o0 = g.opp; g.opp = o;

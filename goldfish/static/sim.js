@@ -816,6 +816,13 @@
         if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
         if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
       }
+      // ---- rules batch 80: copying spells
+      { let bm;
+        if (/^whenever you cast a spell while ~ is attacking, copy that spell\. you may choose new targets for the copy\.?$/i.test(line)) { a.triggers.push({ kinds: ['cast'], fx: [{ type: 'copyLast' }], cond: { kind: 'selfAttacking' }, text: raw }); rec.status = 'ok'; continue; }          // Fire Lord Azula
+        if (/^(?:max speed — )?whenever you cast an artifact spell, you may pay \{1\}\. if you do, copy it\.?$/i.test(line)) { a.triggers.push({ kinds: ['cast'], filter: 'artifact', fx: [{ type: 'payCopy', cost: { generic: 1, pips: [], x: 0 } }], cond: { kind: 'maxSpeed' }, text: raw }); rec.status = 'ok'; continue; }          // Mendicant Core, Guidelight
+        if (a.isInstantSorcery && /^for each of x target permanents, create x tokens that are copies of that permanent\.?$/i.test(line)) { a.spellFx.push({ type: 'doppel' }); rec.status = 'ok'; continue; }          // Doppelgang
+        if (a.isInstantSorcery && /^copy target creature spell you control, except it isn't legendary if the spell is legendary\.?$/i.test(line)) { a.respondCopy = { creatureSpell: true }; a.spellFx.push({ type: 'copyRespond', notLegend: true }); rec.status = 'ok'; continue; }          // Double Major
+      }
       // ---- rules batch 79: dice (rollDice) and result tables
       { let bm;
         if (/^if you would roll one or more dice, instead roll that many dice plus one and ignore the lowest roll\.?$/i.test(line)) { a.rollPlus = true; rec.status = 'ok'; continue; }          // Wyll, Blade of Frontiers; Barbarian Class (level 1)
@@ -4687,6 +4694,8 @@
     switch (c.kind) {
       case 'lifeGained': return (g.lifeGainedThisTurn || 0) >= c.min;
       case 'lifeAtLeast': return g.life >= c.min;
+      case 'selfAttacking': return !!(source && source.attacking);          // rules batch 80: Fire Lord Azula
+      case 'maxSpeed': return (g.speed || 0) >= 4;          // rules batch 80: Mendicant Core (max speed)
       case 'noLifeLost': return !!g._soloOppTurn || lifeLostNow(g) === 0;          // rules batch 77: Luminarch Ascension (a goldfish's opponent's turn has no life loss for you)
       case 'discardedThisTurn': return !!(g.match || g).discardSeen;
       case 'wasCast': return !!(source && g.lastCast && g.lastCast.iid === source.iid && source.enteredTurn === g.turn);          // rules batch 59: Anti-Venom
@@ -7149,7 +7158,14 @@
           g.library.push(...rest); shuffle(g.library, g.rnd); hits.forEach(c => enterWithTriggers(g, c, {}, ev));
           ev.push({ type: 'note', text: `${hits.length} ${tr} creature card${hits.length === 1 ? '' : 's'} onto the battlefield (revealed ${hits.length + rest.length})`, source }); break;
         }
-        case 'copyRespond': if (g.respondTo) copySpell(g, g.respondTo, ev, 1); break;
+        case 'copyRespond': if (g.respondTo) copyAnySpell(g, g.respondTo, ev, 1, !!f.notLegend, source); break;          // rules batch 80: a permanent spell is copied too (Double Major)
+        case 'doppel': {          // rules batch 80: Doppelgang: X target permanents (the best of yours, not legendary), X token copies of each
+          const X = Math.max(0, g.xValue || 0), val = q => isCreaturePerm(q) ? creatureValue(g, q) : (q.card.a.mv || 0) * 2;
+          const ts = g.battlefield.filter(q => !q.asLand && !q.card.a.isLegendary && !q.faceDown).sort((x, y) => val(y) - val(x)).slice(0, X);
+          for (const t of ts) for (let k = 0; k < X; k++) applyEffects(g, [{ type: 'copyToken' }], source, ev, t);
+          ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: ${X} token cop${X === 1 ? 'y' : 'ies'} of each of ${ts.length} permanent${ts.length === 1 ? '' : 's'}`, source }); break; }
+        case 'copyLast': copyAnySpell(g, g.lastCast, ev, 1, false, source); break;          // rules batch 80: Fire Lord Azula: copy the spell you just cast
+        case 'payCopy': if (g.lastCast && canPay(f.cost, allUnits(g)) && pay(g, f.cost) != null) copyAnySpell(g, g.lastCast, ev, 1, false, source); break;          // rules batch 80: Mendicant Core: pay {1}, copy the artifact spell
         case 'springheart': {                                                                                 // Springheart Nantuko: a copy of the enchanted creature for {1}{G}, or an Insect
           const host = source && source.bestowed && g.battlefield.find(q => q.iid === source.attachedTo), c2 = { generic: 1, pips: [['G']], x: 0 };
           if (host && canPay(c2, allUnits(g)) && pay(g, c2) != null) { applyEffects(g, [{ type: 'copyToken' }], source, ev, host); ev.push({ type: 'note', text: `Landfall: a token copy of ${host.card.name}`, source }); }
@@ -8322,6 +8338,14 @@
     const cs = g.battlefield.filter(q => isCreaturePerm(q) && !q.copyOf && q.card.a.triggers.some(t => t.kinds.includes('etb') && fxValue(g, t.fx) >= 2)).sort((x, y) => Math.max(...y.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => fxValue(g, t.fx))) - Math.max(...x.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => fxValue(g, t.fx))));
     return cs[0] || null;
   }
+  // rules batch 80: a copy of a permanent spell becomes a token as it resolves (CR 707.10a); notLegend: "except it isn't legendary" (Double Major)
+  function copyPermSpell(g, inst, ev, notLegend, source) {
+    if (g.dry || g.battlefield.length >= 250) return;
+    let card = notLegend ? unlegendary(g, inst.card) : inst.card; if (card.commander) card = Object.assign({}, card, { commander: false });
+    const ci = { iid: g.nextIid++, card }, perm = enterWithTriggers(g, ci, { token: true }, ev); perm.token = true;
+    ev.push({ type: 'token', perm, inst: ci, source }); ev.push({ type: 'note', text: `A copy of ${inst.card.name} enters as a token`, source });
+  }
+  function copyAnySpell(g, inst, ev, times, notLegend, source) { if (!inst) return; if (inst.card.a.isInstantSorcery) copySpell(g, inst, ev, times); else if (inst.card.a.isPermanent) for (let k = 0; k < times; k++) copyPermSpell(g, inst, ev, notLegend, source); }
   function copySpell(g, inst, ev, times) {
     if (times > 0) times += bfInfo(g).copyPlus || 0;                                                     // Twinning Staff: one more copy
     for (let k = 0; k < Math.min(times, 12) && g.killTurn == null && !matchOver(g); k++) {
@@ -8421,6 +8445,14 @@
       inst.alt = null; const np = enterWithTriggers(g, { iid: inst.iid, card: faceDownCard(g.deck) }, {}, ev); np.inst = inst; np.origCard = inst.card; np.faceDown = a.morph;
       ev.push({ type: 'note', text: `${inst.card.name} is cast face down (morph)` }); castEv.perm = np; return;
     }
+    if (!g.dry && !g.inRespond && a.isCreature && !a.isInstantSorcery && !inst.isCopy && (a.mv || 0) >= 4) for (const c of g.hand.slice()) {          // rules batch 80: Double Major, in response to a creature spell worth copying
+      const rc = c.card.a.respondCopy; if (!rc || !rc.creatureSpell || c === inst) continue;
+      const cost = effectiveCost(g, c); if (!canPay(cost, allUnits(g)) || pay(g, cost) == null) continue;
+      ev.push({ type: 'note', text: `${c.card.name} is cast in response to copy ${inst.card.name}` });
+      g.inRespond = true; g.respondTo = inst; c.freeCast = true;
+      try { const ce = castCard(g, c, true); if (ce) ev.push(...ce); } finally { c.freeCast = false; g.inRespond = false; g.respondTo = null; }
+      break;
+    }
     if (a.isPermanent) {
       castEv.perm = enterWithTriggers(g, inst, {}, ev);
       if (!g.dry && a.isCreature) for (const q of (tableHas(g, 'statics.copyType') ? g.battlefield.slice() : NONE)) {                                  // Reflections of Littjara: copy a spell of the chosen type (a creature spell's copy is a token)
@@ -8447,7 +8479,7 @@
         ev.push({ type: 'note', text: `${st.card.name}: {7}, tap to copy ${inst.card.name}`, source: st }); copySpell(g, inst, ev, 1);
       }
       if (!g.dry && !g.inRespond && a.isInstantSorcery && a.spellFx.length && !a.counter && !a.spellFx.some(f => f.type === 'copyRespond') && fxValue(g, a.spellFx) >= 4) for (const c of g.hand.slice()) {
-        const rc = c.card.a.respondCopy; if (!rc || c === inst) continue;
+        const rc = c.card.a.respondCopy; if (!rc || rc.creatureSpell || c === inst) continue;
         const base = effectiveCost(g, c), cost = { generic: base.generic + (rc.extra || 0), pips: base.pips, x: 0 };
         if (!canPay(cost, allUnits(g)) || pay(g, cost) == null) continue;
         ev.push({ type: 'note', text: `${c.card.name} is cast in response to copy ${inst.card.name}` });

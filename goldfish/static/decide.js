@@ -146,6 +146,8 @@
     lookBf: ['put a creature onto the battlefield?', 'Choose a creature card from the cards you looked at: it enters the battlefield, and the rest go to the bottom of your library in a random order.'],
     sozin: ['put which creature cards onto the battlefield?', 'Choose creature cards from that player\'s graveyard with total mana value up to what you can pay for {X}: each enters the battlefield under your control.'],
     airbendMany: ['airbend which permanents?', 'Choose any number of other nonland permanents you control (none is allowed): each is exiled, and while it is exiled you may cast it for {2} rather than its mana cost.'],
+    yardExile: ['exile which card?', 'Choose a card from a graveyard to exile (or none).'],
+    yardBottomAll: ['whose graveyard goes to the bottom?', 'Choose up to one player: that player puts all the cards from their graveyard on the bottom of their library in a random order.'],
     bounceMany: ['return which permanents?', 'Choose up to the number of other nonland permanents the card names (none is allowed): each returns to its owner\'s hand.'],
     mirrorCopy: ['copy which creature?', 'Choose the creature on the battlefield it becomes a copy of until end of turn (it has haste), or none.'],
     becomeArtifact: ['make which permanent an artifact?', 'Choose the permanent that becomes an artifact in addition to its other types until end of turn.'],

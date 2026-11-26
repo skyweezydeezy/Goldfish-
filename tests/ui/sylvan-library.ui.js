@@ -92,7 +92,7 @@ const shot = process.env.VERSUS_SHOTS;
   const before = await snap();
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
   let q1 = null;
-  for (let k = 0; k < 80 && !q1; k++) {
+  const t1 = Date.now(); while (Date.now() - t1 < 90000 && !q1) {          // time-based: the opponent may take a long turn first
     const s = await state('duel');
     if (s.choice === 'may') { const x = await sheet(); if (/Sylvan Library/.test(x.title)) { q1 = x; break; } }
     if (s.choice) await p.click('.ch-sheet .ch-auto');

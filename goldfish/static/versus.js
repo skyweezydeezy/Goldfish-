@@ -629,7 +629,14 @@
     let attackers, pre = [];
     if (iids) attackers = iids.map(id => g.battlefield.find(p => p.iid === id)).filter(p => p && G.canAttack(g, p));
     else { const pv = await act(mode, gs => D.turn.declare(gs[g.pid]), auto); attackers = pv ? pv.attackers : []; pre = pv ? pv.ev : []; }
-    const def = g.opp, blocks = def && !finished(gm) ? await blocksOf(mode, gm, g, attackers, def) : {};
+    const def = g.opp;
+    gm.attackNow = def && g.pid === gm.human && attackers.length ? { iids: attackers.map(p => p.iid), def: def.pid } : null; if (gm.attackNow) render(mode);
+    const blocks = def && !finished(gm) ? await blocksOf(mode, gm, g, attackers, def) : {};
+    gm.attackNow = null;
+    if (def && attackers.length && !finished(gm)) {          // the blocks are declared: what gets through, on both devices
+      const bm = {}; for (const [aid, ids] of Object.entries(blocks)) bm[aid] = ids.map(id => def.battlefield.find(b => b.iid === id)).filter(Boolean);
+      say(mode, g, dmgText('through', A.attackSum(g, attackers, def, bm)), 'combat');
+    }
     const ev = finished(gm) ? [] : await act(mode, gs => D.turn.combat(gs[g.pid], { attackers: attackers.map(p => p.iid), blocks }), auto);
     return pre.concat(ev);
   }
@@ -937,6 +944,8 @@
     const cmd = g.deck.commanders.map(c => c.card.name.split(',')[0]).join(' + ');
     let cd = 0;                                               // the most commander damage this player has taken from one commander
     gm.games.forEach(o => Object.keys(o.cmdrDamage || {}).forEach(k => { if (String(k).endsWith('>' + g.pid)) cd = Math.max(cd, o.cmdrDamage[k]); }));
+    let ps = 0;                                               // the poison counters this player has: what the players attacking it have dealt (the engine keeps one count for each attacker, on the player it attacks)
+    gm.games.forEach(o => { if (o !== g && o.opp === g) ps = Math.max(ps, o.poisonDealt || 0); });
     const prev = st.life[g.pid]; st.life[g.pid] = g.life;
     const flash = prev == null || g.dead ? '' : g.life < prev ? ' down' : g.life > prev ? ' up' : '';
     const backs = mine ? '' : '<span class="vs-backs-slot"></span>';          // filled below with the kept fan of backs (backsEl)
@@ -945,7 +954,7 @@
     const rl = g.ring && g.ring.tempts > 0 ? Math.min(4, g.ring.tempts) : 0;
     const ring = rl ? `<span class="vs-ring" title="The Ring has tempted ${g.pid === gm.human ? 'you' : 'this player'} ${g.ring.tempts}×. ${esc(G.RING_TEXT.slice(0, rl).join(' '))}">💍 ${g.ring.tempts}</span>` : '';
     const plate = h('div', 'vs-plate', `<span class="vs-who"><b>${esc(m.names[g.pid])}</b>${cmd ? `<small>${esc(cmd)}</small>` : ''}</span>${turn}${g.dead ? '' : backs}${set}` +
-      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
+      `${ring}${cd ? `<span class="vs-cd" title="Most commander damage taken from one commander (21 loses the game)">⚔ ${cd}/21</span>` : ''}${ps > 0 ? `<span class="vs-ps${ps >= 8 ? ' hot' : ''}" title="Poison counters (10 loses the game)">☠ ${ps}/10</span>` : ''}<span class="vs-life${flash}" title="Life">${g.dead ? '☠' : g.life}</span>`);
     const slot = plate.querySelector('.vs-backs-slot'); if (slot) slot.replaceWith(backsEl(st, g));
     return plate;
   }
@@ -962,6 +971,20 @@
     if (cur(gm).pid === gm.human) return 'Your turn';
     return `${them}'s turn`;
   }
+  // ---------- the combat readout (T-084) ----------
+  // How much damage an attack sends, from the engine's own numbers (app.js attackSum): "Attacking for N" while you choose attackers (per
+  // defending player in a pod, with LETHAL when it reaches that player's life, ten poison or 21 commander damage), "Incoming: N" and
+  // "Getting through: N (trample M)" for the defender as blocks are assigned, and the same line in the log once blocks are declared.
+  function dmgText(kind, r) {
+    const label = kind === 'incoming' ? 'Incoming: ' : kind === 'through' ? 'Getting through: ' : 'Attacking for ';
+    return label + r.dmg + (kind === 'through' && r.trample ? ` (trample ${r.trample})` : '') + (r.poison ? ` +${r.poison} poison` : '') + r.cmdr.map(c => ` · ${c.name} ${c.after}/21`).join('') + (r.estimate ? ' (estimate)' : '') + (r.isLethal ? ' LETHAL' : '');
+  }
+  function dmgSpan(kind, r) {
+    const label = kind === 'incoming' ? 'Incoming: ' : kind === 'through' ? 'Getting through: ' : 'Attacking for ';
+    return `<span class="vs-dmg ${kind}${r.isLethal ? ' lethal' : ''}">${label}<b>${r.dmg}</b>${kind === 'through' && r.trample ? ` (trample ${r.trample})` : ''}${r.poison ? ` <span class="vs-psn">+${r.poison} poison</span>` : ''}${r.cmdr.map(c => ` <span class="vs-cmdr">${esc(c.name)} ${c.after}/21</span>`).join('')}${r.estimate ? ' <i class="vs-est" title="First strike, double strike or deathtouch are involved: this figure is an estimate">estimate</i>' : ''}${r.isLethal ? ' <b class="vs-lethal">LETHAL</b>' : ''}</span>`;
+  }
+  const blockMap = (sug) => { const m = {}; if (sug) for (const [a, bl] of sug) m[a.iid] = bl; return m; };
+
   // what you can do right now: mulligan, block, pick attackers, or the buttons of your main phase
   function ctlHtml(mode, gm) {
     const g = gm.games[gm.human], mine = myMain(gm) && !gm.over;
@@ -986,6 +1009,7 @@
       const mineB = g.battlefield.filter(b => as.some(a => G.canBlock(atk, a, g, b)));
       const pick = b => { for (const [a, bl] of gm.block.sug) if (bl.includes(b)) return a.iid; return ''; };
       return `<div class="vs-ask"><b>${esc(gm.match.names[atk.pid])} attacks you</b> <span class="hint">The attackers glow red above. You are at <b>${g.life}</b> life; unblocked, this is <b>${incoming}</b> damage. The menus start on what the autopilot would do. A creature with menace needs two blockers.</span></div>
+        <div class="vs-dmgrow vs-blockdmg"><span class="vs-in">${dmgSpan('incoming', A.attackSum(atk, as, g))}</span> <span class="vs-thru">${dmgSpan('through', A.attackSum(atk, as, g, blockMap(gm.block.sug)))}</span></div>
         <div class="vs-atkline"><span class="vs-lbl">Attackers</span>${as.map(a => `<span class="vs-perm${a.card.commander ? ' cmdr' : ''}" title="${esc((a.card.type_line || '') + '\n' + (a.card.oracle_text || ''))}">${esc(label(a))}${esc(kws(atk, a))}</span>`).join('')}</div>
         <div class="vs-blocks">${mineB.map(b => { const c0 = pick(b); return `<label class="vs-blockrow"><span><b>${esc(b.card.name)}</b> ${pt(g, b)}${esc(kws(g, b))}</span><select class="vs-blk" data-iid="${b.iid}"><option value="">Does not block</option>${as.filter(a => G.canBlock(atk, a, g, b)).map(a => `<option value="${a.iid}"${a.iid === c0 ? ' selected' : ''}>blocks ${esc(label(a))}</option>`).join('')}</select></label>`; }).join('')}</div>
         <div class="row wrap"><button class="primary vs-block-go">Confirm blocks</button><button class="vs-block-none">No blocks</button></div>`;
@@ -993,12 +1017,22 @@
     if (gm.picking && mine) {
       const can = g.battlefield.filter(p => G.canAttack(g, p));
       const opps = G.podAlive(g), def = gm.target != null && opps.some(o => o.pid === gm.target) ? gm.target : (g.opp && !g.opp.dead ? g.opp.pid : (opps[0] && opps[0].pid));
+      const sel = can.filter(p => gm.pick.has(p.iid)), dg = gm.games[def], r = dg ? A.attackSum(g, sel, dg) : null;
+      let readout = '';
+      if (r && sel.length) {
+        const chips = opps.length > 1 ? opps.map(o => { const ro = A.attackSum(g, sel, o); return `<span class="vs-chip${o.pid === def ? ' sel' : ''}${ro.isLethal ? ' lethal' : ''}">${esc(gm.match.names[o.pid])} ${o.life}${ro.isLethal ? ' <b class="vs-lethal">LETHAL</b>' : ''}</span>`; }).join('') : '';
+        let likely = '';
+        if (gm.remote == null) try { const rr = A.attackSum(g, sel, dg, blockMap(G.chooseBlocks(dg, g, sel))); if (rr.dmg !== r.dmg || rr.poison !== r.poison) likely = ` <span class="vs-likely">Likely getting through <b>${rr.dmg}</b>${rr.poison ? ` +${rr.poison} poison` : ''} <i class="vs-est" title="If ${esc(gm.match.names[dg.pid])} blocks the way the autopilot would">estimate</i></span>`; } catch (e) { /* no estimate */ }
+        readout = `<div class="vs-dmgrow">${dmgSpan('attack', r)}${likely}${chips}</div>`;
+      } else if (sel.length === 0 && can.length) readout = '<div class="vs-dmgrow"><span class="vs-dmg attack">Attacking for <b>0</b></span></div>';
       return `<div class="vs-ask"><b>Choose attackers</b> <span class="hint">${can.length ? `Beginning of combat is over. Click your creatures to send them or hold them back: <b>${[...gm.pick].filter(id => can.some(p => p.iid === id)).length}</b> of ${can.length} attacking. It starts on what the autopilot would send.` : 'No creature can attack.'} Blocks are chosen by the defending player.</span></div>
+        ${readout}
         <div class="row wrap">${opps.length > 1 ? `<label>Attack <select class="vs-target">${opps.map(o => `<option value="${o.pid}"${o.pid === def ? ' selected' : ''}>${esc(gm.match.names[o.pid])} (${o.life} life, ${o.battlefield.filter(G.isCreaturePerm).length} creatures)</option>`).join('')}</select></label>` : `<input type="hidden" class="vs-target" value="${def}">`}
           <button class="primary vs-attack-go">Attack</button><button class="ghost vs-attack-all">All</button><button class="ghost vs-attack-none">None</button><button class="vs-noattack" title="Declare no attackers: combat ends and you go to your second main phase">No attack</button></div>`;
     }
     const units = G.allUnits(g).length;
-    return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
+    const now = gm.attackNow && gm.games[gm.attackNow.def] ? A.attackSum(g, gm.attackNow.iids.map(id => g.battlefield.find(p => p.iid === id)).filter(Boolean), gm.games[gm.attackNow.def]) : null;
+    return `<div class="vs-ask main">${now ? `<div class="vs-dmgrow">${dmgSpan('attack', now)} <span class="hint">waiting for the blocks</span></div>` : ''}<span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
       ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
@@ -1032,7 +1066,7 @@
       G.isCreaturePerm(p) ? pt(g, p) : '', p.other ? JSON.stringify(p.other) : '', p.transformed ? 1 : 0, attacking(gm, g, p) ? 1 : 0, imprintOf(p) ? imprintOf(p).iid : ''];
     const top = z => z.length ? z[z.length - 1].iid : '';
     return JSON.stringify([mine ? 1 : 0, gm.over || '', cur(gm).pid, gm.phase || '', gm.picking ? 1 : 0, gm.block ? gm.block.attackers.map(a => a.iid) : '', gm.human, st.lookName[g.pid] || '',
-      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})),
+      g.dead ? 1 : 0, g.life, g.turn, g.opp ? g.opp.pid : '', g.ring ? [g.ring.tempts, g.ring.bearer] : '', JSON.stringify(gm.games.map(o => o.cmdrDamage || {})), gm.games.map(o => (o.poisonDealt || 0) + ':' + (o.opp ? o.opp.pid : '')),
       g.hand.map(i => i.iid), g.command.map(i => i.iid), g.library.length, g.graveyard.length, top(g.graveyard), g.exile.length, top(g.exile), g.battlefield.map(P)]);
   }
   // one player's seat. The seat itself is kept for the whole game (so its playmat never reloads); only what lies on it is redrawn.
@@ -1110,7 +1144,15 @@
   });
   function wire(mode) {
     const root = V[mode].root;
-    root.addEventListener('change', e => { const gm = V[mode].game; if (gm && e.target.classList.contains('vs-target')) gm.target = +e.target.value; });
+    root.addEventListener('change', e => {
+      const gm = V[mode].game; if (!gm) return;
+      if (e.target.classList.contains('vs-target')) { gm.target = +e.target.value; render(mode); }
+      if (e.target.classList.contains('vs-blk') && gm.block) {          // blocks assigned: what gets through, live
+        const b = gm.block, me = gm.games[gm.human], map = {};
+        root.querySelectorAll('.vs-blk').forEach(sel => { if (sel.value) { const bl = me.battlefield.find(x => x.iid === +sel.dataset.iid); if (bl) (map[sel.value] = map[sel.value] || []).push(bl); } });
+        const slot = root.querySelector('.vs-blockdmg .vs-thru'); if (slot) slot.innerHTML = dmgSpan('through', A.attackSum(b.g, b.attackers, me, map));
+      }
+    });
     root.addEventListener('click', e => {
       const gm = V[mode].game, t = e.target; if (!gm) return;
       const hit = c => t.closest('.' + c);

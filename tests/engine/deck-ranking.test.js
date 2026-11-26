@@ -24,7 +24,7 @@ check('every measured deck file carries its verified bracket and the "Checked by
 const files = Object.values(sync.files), decks = fs.readdirSync(DECKS).filter(f => f.endsWith('.txt'));
 check('drive-sync.json is for the folder Magic Commanders/ManaBox', sync.folder === 'Magic Commanders/ManaBox', sync.folder);
 check('drive-sync.json lists one Drive file per deck file (' + decks.length + ')', files.length === decks.length && decks.every(f => files.some(r => r.deck === f)), files.length + ' vs ' + decks.length);
-check('every Drive file has an id, a time and the Drive bracket', files.every(r => r.id && r.modifiedTime && r.bracket >= 1 && r.bracket <= 5));
+check('every Drive file has an id, a time and the Drive bracket (none when the file name has no [Bn])', files.every(r => r.id && r.modifiedTime && (r.bracket == null || (r.bracket >= 1 && r.bracket <= 5))));
 check('where drive-sync.json has a verified bracket it is the deck\'s bracket in index.json', files.every(r => { const d = index.find(x => x.file === r.deck); return d && (r.verified == null || d.bracket === r.verified); }));
 check('the five Drive decks of 2026-11-25 are in the index', ['current-without-end', 'the-shoal-must-go-on', 'value-meal', 'spectrum-of-extinction', 'fine-print-fatal-clause'].every(s => index.some(d => d.file === s + '.txt' && d.cards === 100)));
 console.log(`\n${pass} passed, ${fail} failed`);

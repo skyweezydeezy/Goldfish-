@@ -17,7 +17,7 @@ const by = n => deck.unique.find(c => c.name === n);
 const bare = () => { const g = G.newGame(deck, O, 3); g.turn = 6; g.hand = []; g.battlefield = []; g.library = g.library.slice(0, 40); return g; };
 const putOn = (g, n) => { const p = G.enterWithTriggers(g, { iid: g.nextIid++, card: by(n) }, {}, []); p.sick = false; p.tapped = false; p.enteredTurn = 1; return p; };
 const inst = (g, n) => ({ iid: g.nextIid++, card: by(n) });
-const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true }); };
+const mana = (g, n) => { for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: new Set(['W', 'U', 'B', 'R', 'G']), floating: true, eot: true }); };
 const ignored = n => by(n).a.coverage.filter(c => c.status === 'ignored').map(c => c.text.slice(0, 60));
 const tok = { type: 'token', n: 1, creature: true, p: 1, t: 1, colors: [], subtypes: ['Goblin'], keywords: [], artifact: false, name: 'Goblin' };
 

@@ -489,7 +489,7 @@
     if (/you may play an additional land this turn/i.test(text)) fx.push({ type: 'extraLand' });
 
     m = text.match(/(?:^|[.,] ?|then )add ((?:\{[WUBRGC]\})+|one mana of any color|[a-z]+ mana of any one color|[a-z]+ mana in any combination of colors)/i);
-    if (m) { const pr = parseAdd('add ' + m[1]); if (pr) fx.push({ type: 'mana', colors: pr.colors, n: pr.amount }); }
+    if (m) { const pr = parseAdd('add ' + m[1]); if (pr) fx.push({ type: 'mana', colors: pr.colors, n: pr.amount, keep: /until end of turn, you don't lose this mana as steps and phases end/i.test(text) ? 'turn' : /until end of combat, you don't lose this mana as steps(?: and phases)? end/i.test(text) ? 'combat' : undefined }); }          // T-101: Savage Ventmaw, Grand Warlord Radha
     if (/additional combat phase/i.test(text)) fx.push({ type: 'extraCombat' });
     if (/\btarget creature you control explores\b/i.test(text)) fx.push({ type: 'exploreTarget' });                       // Enter the Unknown, a Map token
     else if ((m = text.match(/(?:^|[\s,.])(it|that creature|this creature|~) explores(?: (twice))?/i))) fx.push({ type: 'exploreSelf', subj: /^(it|that creature)$/i.test(m[1]), times: m[2] ? 2 : 1 });          // "When ~ enters, it explores"
@@ -2801,6 +2801,7 @@
       if (/^when ~ enters, put any number of creature cards from your hand onto the battlefield/i.test(line)) { a.triggers.push({ kinds: ['etb'], fx: [{ type: 'creaturesFromHand' }], text: raw }); rec.status = 'ok'; continue; }          // Ghalta, Stampede Tyrant
       if (/^if a triggered ability of a legendary creature you control triggers, that ability triggers an additional time/i.test(line)) { a.statics.trigDouble = 'legendary'; a.statics.trigDoubleSelf = true; rec.status = 'ok'; continue; }          // Annie Joins Up
       { const lb = line.match(/^as long as you have (\d+) or more life, ~ gets \+(\d+)\/\+(\d+)(?: and has ([a-z ,]+))?/i); if (lb) { a.lifeBuff = { min: +lb[1], p: +lb[2], t: +lb[3], kw: kwList(lb[4]) }; rec.status = 'ok'; continue; } }          // Serra Ascendant
+      { const km = line.match(/^you don't lose unspent (white|blue|black|red|green) mana as steps and phases end\.?$/i); if (km) { a.keepMana = (a.keepMana || []).concat({ white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' }[km[1].toLowerCase()]); rec.status = 'ok'; continue; } }          // T-101: Leyline Tyrant, Omnath, Locus of Mana
       if (/^\{1\}, \{t\}: untap another target (artifact|permanent)/i.test(line) || /^you don't lose unspent red mana as steps and phases end/i.test(line) || /^\{[gu]\}\{[gu]\}, \{t\}: you may cast spells this turn as though they had flash/i.test(line)) { rec.status = 'neutral'; rec.tag = 'solo'; continue; }
       if (/^\{x\}: until end of turn, creatures you control have base power and toughness x\/x and gain all creature types/i.test(line)) { a.mirrorEntity = true; rec.status = 'ok'; continue; }          // Mirror Entity
       if (/^you may cast spells from your hand without paying their mana costs/i.test(line)) { a.statics.omniscience = true; rec.status = 'ok'; continue; }          // Omniscience
@@ -5131,8 +5132,8 @@
   // most that can be lost). { n, colors: { W: 1, C: 2 } }
   function floatingLoss(g) {
     const colors = {}; let n = 0;
-    for (const u of (g.floating || [])) { n++; const cs = [...u.colors]; const k = cs.length > 1 ? 'any' : cs[0]; colors[k] = (colors[k] || 0) + 1; }
-    return { n, colors, when: 'the end of the turn' };          // `when`: what empties the pool (the rules engine will say 'the end of the step' once mana empties each step)
+    for (const x of poolSplit(g, false)) { if (!x.lost) continue; const u = x.u; n++; const cs = [...u.colors]; const k = cs.length > 1 ? 'any' : cs[0]; colors[k] = (colors[k] || 0) + 1; }
+    return { n, colors, when: 'the end of the step' };          // T-101: unspent mana empties as each step and phase ends (CR 106.4); what a permanent lets you keep is not counted
   }
   function pay(g, cost) {
     if (cost && cost.phy && cost.phy.length) {          // an ability cost with Phyrexian mana (Birthing Pod): paid by the same rule as a spell's
@@ -7282,7 +7283,7 @@
         }
         case 'extraLand': g.extraLandsThisTurn = (g.extraLandsThisTurn || 0) + 1; break;
         case 'mana':
-          for (let i = 0; i < n; i++) g.floating.push({ src: null, colors: f.colors, floating: true });
+          for (let i = 0; i < n; i++) g.floating.push(f.keep ? { src: null, colors: f.colors, floating: true, [f.keep === 'turn' ? 'eot' : 'combat']: true } : { src: null, colors: f.colors, floating: true });          // T-101: mana that stays until end of turn / combat
           ev.push({ type: 'mana', n, source });
           break;
         case 'extraCombat': g.extraCombats++; ev.push({ type: 'note', text: 'Additional combat phase', source }); break;
@@ -12140,7 +12141,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     g.oppHand = Math.max(0, g.oppHand - 1);                                             // it plays a card
   }
 
-  function beginTurn(g) { return acting(g, () => beginTurn0(g)); }
+  function beginTurn(g) { return acting(g, () => { const ev = beginTurn0(g); emptyPool(g); return ev; }); }          // T-101: the draw step ends
   function beginTurn0(g) {
     trackLife(g); trackYard(g);          // rules batch 77/82: a restored game gets the life and graveyard tracking now
     g.turn++; g.turnStartLife = g.life;          // Children of Korlis: the life lost this turn is what was there at the start, plus what was gained, minus what is left
@@ -12148,7 +12149,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     (g.match || g).seq = ((g.match || g).seq || 0) + 1;          // every player's turn counts: Angel's Grace lasts this one
     g.protAll = false; g.lifeLock = false; if (g.phased && g.phased.length) { g.battlefield.push(...g.phased); g.phased = null; touch(g); }          // The One Ring, Teferi's Protection end; phased-out permanents phase in before the untap step
     g.pirateHits = 0; g.attackedThisTurn = false; g._extraAtk = []; g.oppLostTurn = 0;
-    emptyPool(g); g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0; g.combatDone = false; g.isCast = 0; g.pwBonus = 0;
+    emptyPool(g, true); g.spentThisTurn = 0; g.landThisTurn = null; g.landsPlayedThisTurn = 0; g.extraLandsThisTurn = 0; g.extraCombats = 0; g.nontokenCreatureEnters = 0; g.spellsCast = 0; g.lifeGainedThisTurn = 0; g.extortOwed = 0; g.combatDone = false; g.isCast = 0; g.pwBonus = 0;
     const ev = [{ type: 'untap' }];
     if (tableHas(g, 'aangLeave')) for (const x of [g].concat(otherPlayers(g))) for (const q of x.battlefield.slice()) if (q.transformNext) { q.transformNext = false; transformPerm(x, q, ev); }          // "transform Aang at the beginning of the next upkeep": any player's
     (g.match || g).discardSeen = false;                                                   // "if a player discarded a card this turn": a new turn
@@ -12209,6 +12210,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (c) { const gi = g.exile.indexOf(c); if (gi >= 0) { g.exile.splice(gi, 1); g.graveyard.push(c); } c.freeCast = true; const ce = castCard(g, c, true); if (ce) ev.push({ type: 'note', text: `Kaya's emblem: ${c.card.name} cast for free` }, ...ce); c.freeCast = false; }
     }
     settle(g, ev);          // the upkeep's triggers resolve before the draw step
+    emptyPool(g);          // T-101: the upkeep ends
     marks.draw = ev.length;
     if (!(tableHas(g, 'skipDraw') && g.battlefield.some(p => p.card.a.skipDraw)) && tableHas(g, 'sylvan') && g.battlefield.some(p => p.card.a.sylvan)) sylvanLibrary(g, ev);          // Sylvan Library: at the beginning of the draw step, before the draw (also on the play's first turn)
     if (!(g.turn === 1 && g.opts.onPlay) && !(tableHas(g, 'skipDraw') && g.battlefield.some(p => p.card.a.skipDraw))) {                       // Necropotence skips the draw step
@@ -12328,6 +12330,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // The beginning of combat on a turn with no attack: its triggers still resolve (Hakbal's Merfolk explore), but nothing is paid for or
   // crewed, since nothing will attack.
   function beginCombatOnly(g) {
+    emptyPool(g);          // T-101: the first main phase ends
     const ev = [];
     if (g.combatPre !== g.turn && !matchOver(g)) { g.combatDone = true; eachTrigger(g, 'combat', ev); g.combatPre = g.turn; }
     return ev;
@@ -12335,6 +12338,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function combat(g) { return acting(g, () => combat0(g)); }
   function combat0(g) {
     const ev = [];
+    emptyPool(g);          // T-101: the first main phase ends (or the previous combat's step)
     if (g.timeStopped === g.turn && !g.dry) return ev;          // Time Stop, Mindslaver: no combat
     if (g.combatPre === g.turn) { g.combatPre = null; g.combatDone = true; } else { combatStart(g, ev); settle(g, ev); }          // beginning of combat: its triggers resolve before attackers are declared
     let phases = 1;
@@ -12516,6 +12520,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (g.extraCombats > 0) { g.extraCombats--; phases++; }
     }
     endCombatMana(g, ev);
+    emptyPool(g);          // T-101: the combat phase ends
     return ev;
   }
   // T-104: Firebending N (CR 702.xxx, Avatar: The Last Airbender): "Whenever this creature attacks, add N {R}. This mana lasts until end of combat." Every instance it has triggers on its own: the card's own N
@@ -12537,8 +12542,23 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (red) for (let i = 0; i < lost; i++) g.floating.push({ src: null, colors: new Set(['R']), floating: true });          // Ozai: it becomes red mana that stays
     if (lost && !g.dry) ev.push({ type: 'note', text: red ? `Ozai: ${lost} unspent {R} stay in your pool` : `${lost} unspent firebending {R} is lost (end of combat)`, source: null });
   }
-  // the pool when mana would be lost (end of a phase, a turn): with Ozai, the Phoenix King it becomes red instead and stays
-  function emptyPool(g) { g.floating = g.battlefield.some(q => q.card.a.ozaiMana && !q.phased) ? g.floating.map(() => ({ src: null, colors: new Set(['R']), floating: true })) : []; }
+  // T-101: CR 106.4: the mana pool empties at the end of each step and phase. What survives: mana kept "until end of combat" (firebending) and "until end of turn" (Savage Ventmaw),
+  // a color a permanent says you don't lose (Leyline Tyrant {R}, Omnath {G}: a.keepMana), and with Ozai, the Phoenix King what would be lost becomes red and stays.
+  // `eot`: the turn is ending too, so the until-end-of-turn and until-end-of-combat mana goes as well.
+  function poolSplit(g, eot) {
+    const ozai = g.battlefield.some(q => q.card.a.ozaiMana && !q.phased), keep = new Set();
+    for (const q of g.battlefield) if (!q.phased && q.card.a.keepMana) for (const c of q.card.a.keepMana) keep.add(c);
+    return (g.floating || []).map(u => {
+      if (!eot && (u.combat || u.eot)) return { u, keep: true };
+      const cs = [...u.colors];
+      if (cs.length === 1 && keep.has(cs[0])) return { u, keep: true };
+      return ozai ? { u, red: true } : { u, lost: true };
+    });
+  }
+  function emptyPool(g, eot) {
+    if (!g.floating || !g.floating.length) { g.floating = g.floating || []; return; }
+    g.floating = poolSplit(g, eot).filter(x => !x.lost).map(x => x.red ? { src: null, colors: new Set(['R']), floating: true } : x.u);
+  }
   // abilities the autopilot pays for during combat out of the firebending mana, which would otherwise be lost (Zuko, Exiled Prince's {3})
   function combatSinks(g, ev) {
     for (const p of g.battlefield.slice()) for (const ab of (p.card.a.activated || [])) {
@@ -12658,6 +12678,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   function endTurn(g) { return acting(g, () => endTurn0(g)); }
   function endTurn0(g) {
+    emptyPool(g);          // T-101: the second main phase ends
     const iw = [];
     if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
     if (!g.dry && !matchOver(g)) dwarfEnd(g, iw);          // Vault Robber, Óin the Brave
@@ -12697,7 +12718,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const necroEv = [];
     if (g.flickering && g.flickering.length) { for (const i of g.flickering.splice(0)) { const np = enterWithTriggers(g, i, {}, necroEv); np.sick = false; } }
     if (pol(g, 'fetchHold') === 'untilEnd' || pol(g, 'fetchHold') === 'whenShuffleHelps') crackHeld(g, necroEv); necroDig(g, necroEv);
-    if (g.opp) emptyPool(g);
+    if (g.opp) emptyPool(g, true);          // T-101: the end step and the cleanup step: the turn is over
     const ev = necroEv;
     if (!g.dry) for (const q of (tableHas(g, 'caseSolve') ? g.battlefield : NONE)) { const cs = q.card.a.caseSolve; if (!cs || q.solved || !q.card.a.stages) continue;          // a Case is solved at the beginning of your end step
       if (cs.what === 'spells' ? (g.isCast || 0) >= cs.n : g.battlefield.filter(x => cs.what === 'land' ? x.asLand : cs.what === 'creature' ? isCreaturePerm(x) : cs.what === 'artifact' ? x.card.a.isArtifact : x.card.a.isEnchantment).length >= cs.n) { q.solved = true; stageSync(g, q); ev.push({ type: 'note', text: `${q.card.name} is solved`, source: q }); } }
@@ -15025,7 +15046,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function hyperAtLeast(N, K, n, k) { let p = 0; for (let i = k; i <= Math.min(n, K); i++) p += hyperPmf(N, K, n, i); return Math.min(1, p); }
 
   const api = {
-    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign, payWaste, floatingLoss,
+    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign, payWaste, floatingLoss, emptyPool,
     traceCoverage: on => { TRACING = !!on; }, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,

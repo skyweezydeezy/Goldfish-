@@ -212,5 +212,5 @@
     strip.querySelectorAll('i').forEach(i => i.classList.toggle('on', i.dataset.step === step));
   }
 
-  window.__isfChoices = { ask, close, CANCELLED, stepsHtml, lightStep, current: () => (open ? open.q : null) };
+  window.__isfChoices = { ask, close, answer: finish, CANCELLED, stepsHtml, lightStep, current: () => (open ? open.q : null) };
 })();

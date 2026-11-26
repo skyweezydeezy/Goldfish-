@@ -158,6 +158,8 @@
     out:       () => { tone({ f: 220, f2: 55, dur: 0.5, vol: 0.28, type: 'triangle' }); noise({ f: 300, kind: 'lowpass', dur: 0.3, vol: 0.16 }); },
     win:       () => { notes([523, 659, 784, 1047], { step: 0.11, each: { dur: 0.3, vol: 0.14, type: 'triangle' } }); [523, 659, 784, 1047].forEach(f => tone({ f, at: 0.48, dur: 1.1, vol: 0.08 })); },
     lose:      () => notes([392, 330, 262, 196], { step: 0.16, each: { dur: 0.4, vol: 0.13, type: 'triangle' } }),
+    // the turn timer ran out (versus.js): a sad trombone, "womp womp": two falling notes, the second longer and sagging
+    womp:      () => { tone({ f: 233, f2: 220, dur: 0.38, vol: 0.2, type: 'sawtooth', lp: 700, attack: 0.04 }); tone({ f: 196, f2: 147, at: 0.44, dur: 0.85, vol: 0.2, type: 'sawtooth', lp: 650, attack: 0.04 }); },
   };
 
   const lastAt = {};

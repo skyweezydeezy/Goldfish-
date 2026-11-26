@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 204,
+      "lines": [
+        "Computer players pay a Rhystic Study or Smothering Tithe tax only with mana they don't need this turn."
+      ]
+    },
+    {
       "v": 203,
       "lines": [
         "Phyrexian mana costs what the card says: the colour or 2 life (Dismember, Gitaxian Probe, Mental Misstep…). Before, it was free. When you can do either, you choose."

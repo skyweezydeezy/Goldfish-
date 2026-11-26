@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 210,
+      "lines": [
+        "More cards read exactly: Noxious Gearhulk gains life equal to the destroyed creature's toughness, Heliod's Intervention destroys X targets, Demon of Fate's Design casts enchantments for life, Ramos makes mana, River Kelpie and Neyali (graveyards and attacking tokens)."
+      ]
+    },
+    {
       "v": 209,
       "lines": [
         "You choose which lands and sources pay (on by default, in Settings), with no wasted mana and a warning before floating mana is lost. Rhystic Study and Smothering Tithe taxes use the same sheet.",

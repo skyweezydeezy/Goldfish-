@@ -380,6 +380,7 @@
     if (/return target card from your graveyard to your hand/i.test(text) && !/target [a-z]+ card from your graveyard/i.test(text.replace(/target card/i, ''))) fx.push({ type: 'gyReturn', filter: 'any' });          // Eternal Witness, Tamiyo
     if (/put target nonland permanent into its owner's library third from the top/i.test(text)) fx.push({ type: 'removal', how: 'tuck', what: 'nonland' });          // Teferi, Hero of Dominaria
     if (/put target noncreature permanent on the bottom of its owner's library/i.test(text)) fx.push({ type: 'removal', how: 'bottom', what: 'permanent', noncreature: true });          // Brutalizer Exarch
+    if (/target creature you control assigns combat damage equal to its toughness rather than its power/i.test(text)) fx.push({ type: 'toughDmgEot' });          // Bill the Pony (CR 510.1a variant, until end of turn)
     if (/target creature becomes a treasure artifact/i.test(text)) fx.push({ type: 'removal', how: 'destroy', what: 'creature', give: { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' } });          // Vraska, Betrayal's Sting
     if (/return up to one target artifact, creature, or enchantment to its owner's hand/i.test(text)) fx.push({ type: 'bounce', what: 'nonland' });          // Teferi, Time Raveler
     // Interaction (used in mirror matches; inert against a goldfish): removal, bounce, burn at a creature, edicts, sweepers
@@ -1534,6 +1535,7 @@
         if (/^exile a creature you control: add x mana of any one color, where x is 1 plus the exiled creature's mana value\. spend this mana only to cast creature spells\.?$/i.test(line)) { a.foodChain = true; rec.status = 'ok'; continue; }          // Food Chain
         if ((bm = line.match(/^−(\d+): target creature gets \+x\/\+x or -x\/-x until end of turn, where x is the number of swamps you control\.?$/i))) { a.pwAbilities.push({ cost: -(+bm[1]), x: false, fx: [{ type: 'lilianaX' }], text: raw }); rec.status = 'ok'; continue; }          // Liliana of the Dark Realms
         if ((bm = line.match(/^−(\d+): you get an emblem with "swamps you control have '\{t\}: add \{b\}\{b\}\{b\}\{b\}\.'"$/i))) { a.pwAbilities.push({ cost: -(+bm[1]), x: false, fx: [{ type: 'swampEmblem' }], text: raw }); rec.status = 'ok'; continue; }
+        if (/^whenever one or more halflings you control attack a player, create a food token\.?$/i.test(line)) { a.triggers.push({ kinds: ['attackAny'], once: true, filter: 'halfling', fx: [{ type: 'token', n: 1, tapped: false, creature: false, name: 'Food', artifact: true }], text: raw }); rec.status = 'ok'; continue; }          // Meriadoc Brandybuck: once a combat
         if (/^whenever one or more goblins you control attack, create a 1\/1 red goblin creature token that's tapped and attacking\.?$/i.test(line)) { a.triggers.push({ kinds: ['attackAny'], once: true, filter: 'goblin', fx: [{ type: 'attackToken', tok: { type: 'token', n: 1, tapped: true, creature: true, p: 1, t: 1, colors: ['R'], subtypes: ['Goblin'], keywords: [], artifact: false, name: 'Goblin' } }], text: raw }); rec.status = 'ok'; continue; }          // General Kreat
       }
       // ---- the rest: tutors that read like opponent cards, graveyard hate, counters, Tidebinder, Mindslaver, Worldslayer, Ugin's Binding and friends
@@ -3020,6 +3022,8 @@
         if (r.fx.length) { a.spellFx.push(...r.fx); rec.status = r.approx ? 'partial' : 'ok'; } else if (r.neutral) rec.status = 'neutral';
         continue;
       }
+      { const sm2 = line.match(/^((?:\{[^}]+\}(?:, )?)*)remove a \+1\/\+1 counter from ~: (put a \+1\/\+1 counter on target creature|you gain (\d+) life)\.?$/i);          // Spike Feeder: its own counters are the cost
+        if (sm2) { const cs = sm2[1].replace(/,\s*$/, ''), mv = /^put/i.test(sm2[2]); a.activated.push({ cost: cs ? parseCost(cs) : { generic: 0, pips: [], x: 0 }, remCounter: 1, gate: mv ? 'counterMove' : 'life', fx: mv ? [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'target', other: true, excl: true, types: [] }] : [{ type: 'gainLife', n: +sm2[3] }], text: raw }); rec.status = 'ok'; continue; } }
       // Food economy: "{cost}, Sacrifice a Food: ..." and "Sacrifice two Foods: Draw a card."
       {
         const cm = line.match(/^([^:"]+): (.*)$/);
@@ -3027,7 +3031,7 @@
         if (sm && !/sacrifice ~/i.test(cm[1])) {
           const costPart = cm[1].replace(/,?\s*sacrifice (?:a|an|one|two|three|\d+) foods?/i, '').replace(/^[,\s]+|[,\s]+$/g, '');
           const r = parseEffects(cm[2]);
-          const useful = r.fx.some(f => ['draw', 'counters', 'token', 'damage', 'drain', 'gyReturn'].includes(f.type));
+          const useful = r.fx.some(f => ['draw', 'counters', 'token', 'damage', 'drain', 'gyReturn', 'toughDmgEot'].includes(f.type));
           if (useful && !/discard|exile|pay|remove|return/i.test(costPart)) {
             a.activated.push({ cost: parseCost(costPart.replace(/\{T\},?\s*|,?\s*\{T\}/g, '')), tap: /\{T\}/.test(costPart), sacFood: num(sm[1]), fx: r.fx, text: raw });
             rec.status = 'ok'; continue;
@@ -4700,6 +4704,12 @@
     return add;
   }
   // "target Halfling or Treefolk", "target creature you control other than ~": the best matching creature gets them (the strongest, so the counters pay off)
+  // Bill the Pony: the creature that will attack and gains the most from hitting for its toughness (toughness at least 2 above its power)
+  function toughTarget(g) {
+    let best = null, bg = 1;
+    for (const q of g.battlefield) { if (!isCreaturePerm(q) || q.eotToughDmg) continue; q.eotToughDmg = true; const ok = canAttack(g, q); q.eotToughDmg = false; if (!ok) continue; const gain = toughnessOf(g, q) - powerOf(g, q); if (gain > bg) { bg = gain; best = q; } }          // (a 0-power creature can attack once the effect is on it)
+    return best;
+  }
   function counterTarget(g, f, source) {
     let best = null, bs = -Infinity;
     for (const p of g.battlefield) {
@@ -6756,6 +6766,7 @@
         case 'flashUntil': g.flashUntil = { phrases: f.phrases, until: g.turn + 1 }; ev.push({ type: 'note', text: 'Until your next turn you may cast sorcery spells as though they had flash', source }); break;
         case 'noMaxHand': if (f.source) { if (source) source.noMaxHand = true; } else g.noMaxHand = true; break;
         case 'loyalty': if (source && source.card.a.isPlaneswalker) addCounters(g, source, 'loyalty', n, ev, source); break;
+        case 'toughDmgEot': { const t = toughTarget(g); if (t) { t.eotToughDmg = true; ev.push({ type: 'note', text: `${t.card.name} assigns combat damage equal to its toughness (${toughnessOf(g, t)}) this turn`, source }); } break; }          // Bill the Pony
         case 'counters': {
           // who gets them: each matching creature / the source itself / the best matching target
           let targets = [];
@@ -9827,7 +9838,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     (a.activated || []).forEach(ab => {
       const c0 = actCost(g, p, ab.cost), xs = ab.cost.x ? Math.max(0, Math.floor((allUnits(g).filter(u => !(ab.tap && u.src === p)).length - c0.generic - c0.pips.length) / ab.cost.x)) : 0;          // {T} is part of the cost: its own mana cannot pay
       const c = ab.cost.x ? { generic: c0.generic + xs * ab.cost.x, pips: c0.pips, x: 0 } : c0;
-      const why = blocked || (ab.tap ? sickTap(g, p) : null) || (ab.sacFood && foodsOf(g).length < ab.sacFood ? `it needs ${ab.sacFood === 1 ? 'a Food' : ab.sacFood + ' Foods'}` : null) || (ab.cost.x && xs < 1 ? 'not enough mana' : null) || (ab.gate && !abilityGate(g, p, ab) ? 'not now' : null);
+      const why = blocked || (ab.tap ? sickTap(g, p) : null) || (ab.sacFood && foodsOf(g).length < ab.sacFood ? `it needs ${ab.sacFood === 1 ? 'a Food' : ab.sacFood + ' Foods'}` : null) || (ab.remCounter && (p.counters || 0) < ab.remCounter ? 'it has no +1/+1 counter to remove' : null) || (ab.cost.x && xs < 1 ? 'not enough mana' : null) || (ab.gate && !ab.remCounter && !abilityGate(g, p, ab) ? 'not now' : null);          // (a person decides for themselves when to spend a counter)
       add(ab.text.replace(/^[^:]*:\s*/, '').replace(/~/g, p.card.name), ab.text.split(':')[0], why || (ab.tap ? (() => { p.tapped = true; const r = payWhy(c); p.tapped = false; return r; })() : payWhy(c)), ev => {
         let X = xs; if (xs > 1 && g.ask) { const opts = []; for (let k = 1; k <= xs; k++) opts.push(k); X = decide(g, { kind: 'x', options: opts, def: xs, source: p }); }          // {X} in the cost: you choose X
         if (ab.tap) p.tapped = true;
@@ -9835,6 +9846,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         ev.push({ type: 'activate', perm: p, text: ab.text }); if (ab.tap) magdaTap(g, p, ev);
         if (ab.sacFood) sacrificeFoods(g, ab.sacFood, ev);
         if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }
+        if (ab.remCounter) { p.counters -= ab.remCounter; touch(g); if (toughnessOf(g, p) <= 0) { leavePerm(g, p, ev); flushLeaves(g, ev); } }          // Spike Feeder
         const xv = g.xValue; if (X) g.xValue = X;
         try { applyEffects(g, ab.fx, p, ev, null); } finally { g.xValue = xv; }
       });
@@ -10519,6 +10531,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (ab.gate === 'landAttack') return !g.combatDone && g.activeTurn !== false && !(g.opp && g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped)) && g.battlefield.some(q => q.asLand && !q.animated && !q.tapped && !q.card.a.isCreature) && g.battlefield.filter(q => q.asLand && !q.tapped).length >= 2;          // Llanowar Loamspeaker: an untapped land (haste) and no blockers; the other land pays for what the turn needs
     if (ab.gate === 'artisan') return !g.dry && !g.combatDone && g.activeTurn !== false && !!artisanPick(g, p, Math.max(0, allUnits(g).length - 1));          // rules batch 78: Fiend Artisan, sorcery speed, with all the spare mana as X
     if (ab.gate === 'personOnly') return !!g.ask && !g.dry;          // rules batch 78: an ability the autopilot never has a use for (Magus of the Candelabra)
+    if (ab.gate === 'counterMove') return !g.combatDone && !g.dry && (p.counters || 0) >= 2 && g.battlefield.some(q => q !== p && isCreaturePerm(q) && creatureValue(g, q) > creatureValue(g, p));          // Spike Feeder: only to a better creature, and never its last counter
     if (ab.gate === 'sacUp') return !g.dry && !g.combatDone && g.activeTurn !== false && !!sacUpPick(g, p);          // Prime Speaker Vannifar: sorcery speed, only for a real upgrade
     if (ab.gate === 'riptide') return !g.dry && !!riptidePick(g, p);          // Riptide Shapeshifter: the card it finds is worth much more than it is
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
@@ -10701,6 +10714,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if ((g.opp || g.needleSeen) && abilBlocked(g, p, false)) continue;          // Karn, Linvala, Pithing Needle, Grand Abolisher
         if (ab.key ? p.abUsed && p.abUsed[ab.key] === g.turn : p.actUsed === g.turn) continue;
         if (ab.late && !g.combatDone) continue;                                                    // scry and the like: with the mana left at the end of the turn
+        if (ab.remCounter && (p.counters || 0) < ab.remCounter) continue;          // Spike Feeder: a +1/+1 counter of its own is part of the cost
         if (ab.gate && !abilityGate(g, p, ab)) continue;
         if (ab.tap && (p.tapped || (p.sick && isCreaturePerm(p) && !hasKw(g, p, 'haste')))) continue;
         if (ab.tap && !g.combatDone && !g.dry && isCreaturePerm(p) && countedTokens(ab) && !(hasKw(g, p, 'haste') && !(p.card.a.kw && p.card.a.kw.has('haste')))) { p.holdTap = g.turn; continue; }          // Krenko: tap after combat, when the turn's Goblins are in (before it, only if they get haste and can attack)
@@ -10711,7 +10725,8 @@ g.actSeq = (g.actSeq || 0) + 1;
         { const prev = g._payFor; g._payFor = { abilityOf: p }; const ok = canPay(abCost, allUnits(g)) && pay(g, abCost) != null; g._payFor = prev; if (!ok) { if (ab.tap) p.tapped = false; continue; } }
         if (ab.key) p.abUsed = Object.assign({}, p.abUsed, { [ab.key]: g.turn }); else p.actUsed = g.turn;
         ev.push({ type: 'activate', perm: p, text: ab.text }); if (ab.tap) magdaTap(g, p, ev);
-        if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }                                // Magus of the Wheel: sacrificed as part of the cost
+        if (ab.sacSelf) { leavePerm(g, p, ev); flushLeaves(g, ev); }                                // Magus of the Wheel
+        if (ab.remCounter) { p.counters -= ab.remCounter; touch(g); if (toughnessOf(g, p) <= 0) { leavePerm(g, p, ev); flushLeaves(g, ev); } }          // Spike Feeder: sacrificed as part of the cost
         { const xv = g.xValue; if (xs) g.xValue = xs; try { applyEffects(g, ab.fx, p, ev, null); abilityCopy(g, ab.fx, p, ev); if (xs && bfInfo(g).xCopy) { ev.push({ type: 'note', text: `Unbound Flourishing: the ability of ${p.card.name} is copied`, source: p }); applyEffects(g, ab.fx, p, ev, null); } } finally { g.xValue = xv; } }
         if (p.card.a.pages && g.battlefield.includes(p)) { p.pageN = (p.pageN || 0) + 1; if (p.pageN >= p.card.a.pages) { removePerm(g, p); if (p.inst) g.exile.push(p.inst); gainLife(g, 4, ev, p); ev.push({ type: 'note', text: `${p.card.name}: four page counters, exiled for 4 life`, source: p }); } }
       }
@@ -10728,6 +10743,7 @@ g.actSeq = (g.actSeq || 0) + 1;
             if (extraFoods(g) < ab.sacFood || !canPay(ab.cost, allUnits(g))) break;                 // only spare Foods: some are kept to crack for the life Frodo and Sorin need
             if (kind === 'draw' && (g.hand.length >= 7 || !g.library.length)) break;                 // draw while the hand is short of seven
             if (kind === 'other' && ab.fx.every(f => f.type === 'counters') && !bestCreature(g)) break;
+            if (ab.fx.some(f => f.type === 'toughDmgEot') && (g.combatDone || g.dry || !toughTarget(g))) break;          // Bill the Pony: before combat, for a creature that hits harder by toughness
             const gyf = ab.fx.find(f => f.type === 'gyReturn');
             if (gyf && !gyTarget(g, gyf)) break;                                // Samwise: as often as the Foods allow, but only with something worth returning
             if (ab.tap) p.tapped = true;
@@ -12005,7 +12021,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!g.dry) { const th = (tableHas(g, 'throneGP') ? g.battlefield.filter(x => x.card.a.throneGP) : []).length; if (th) { const k = g.battlefield.filter(x => isCreaturePerm(x) && x.tapped).length; if (k) damageOpp(g, k * th, [], (tableHas(g, 'throneGP') ? g.battlefield.find(x => x.card.a.throneGP) : undefined), false, true); } }          // Throne of the God-Pharaoh
     if (!g.dry) for (const q of (tableHas(g, 'besiegedLoot') ? g.battlefield.filter(x => x.card.a.besiegedLoot && x.siegeMode === 'phyrexian') : [])) { if (g.library.length) draw(g, 1, []); if (g.hand.length) discardWorst(g, []); if (g.graveyard.filter(i => i.card.a.isArtifact).length >= 15) applyEffects(g, [{ type: 'win' }], q, [], null); }          // Mirrodin Besieged, Phyrexian
     if (!g.dry && g.ilhargBack && g.ilhargBack.length) for (const q of g.ilhargBack.splice(0)) if (g.battlefield.includes(q)) { leavePerm(g, q, [], 'hand'); flushLeaves(g, []); }          // Ilharg: back to your hand                                            // the monarch draws a card at the beginning of their end step
-    if (g.opp) { g.opp.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotNoKw = false; }); for (const q of (tableHas(g, 'statics.admiral') ? g.battlefield.slice() : NONE)) if (q.card.a.statics.admiral && (g.pirateHits || 0) >= 3) { const bp = g.opp.battlefield.filter(x => !x.asLand && !x.card.commander).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv))[0]; if (bp) stealPerm(g, bp, [], false); break; } }          // Admiral Beckett Brass
+    if (g.opp) { g.opp.battlefield.forEach(p => { p.eotP = 0; p.eotT = 0; p.eotKw = null; p.eotToughDmg = false; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotNoKw = false; }); for (const q of (tableHas(g, 'statics.admiral') ? g.battlefield.slice() : NONE)) if (q.card.a.statics.admiral && (g.pirateHits || 0) >= 3) { const bp = g.opp.battlefield.filter(x => !x.asLand && !x.card.commander).sort((x, y) => (isCreaturePerm(y) ? creatureValue(g.opp, y) : y.card.a.mv) - (isCreaturePerm(x) ? creatureValue(g.opp, x) : x.card.a.mv))[0]; if (bp) stealPerm(g, bp, [], false); break; } }          // Admiral Beckett Brass
     for (const p of g.battlefield.slice()) if (p.returnEot) sendHome(g, p);                                // control effects wear off
     for (const i of g.hand.slice()) if (i.temp != null && i.temp <= g.turn) { if (i.neyali === 'hand') i.neyali = true; g.hand.splice(g.hand.indexOf(i), 1); if (!g.opp || !i.foreign) g.exile.push(i); else g.opp.exile.push(i); }          // cards exiled by Breeches, Ragavan... that were not cast
     for (const p of g.battlefield.slice()) if (p.dash) { p.dash = false; leavePerm(g, p, [], 'hand'); }          // Whip of Erebos; dash: back to hand
@@ -12046,7 +12062,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       creatures: g.battlefield.filter(isCreaturePerm).length, power: g.battlefield.reduce((s, p) => s + Math.max(0, powerOf(g, p)), 0),
     });
     g.eot = { p: 0, t: 0, kw: new Set() };
-    g.battlefield.forEach(p => { if (p.eotCard) { p.card = p.eotCard; know(g, p.card); p.eotCard = null; touch(g); } p.eotNoKw = false; p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
+    g.battlefield.forEach(p => { if (p.eotCard) { p.card = p.eotCard; know(g, p.card); p.eotCard = null; touch(g); } p.eotNoKw = false; p.eotToughDmg = false; p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
     for (const x of [g].concat(otherPlayers(g))) x.battlefield.forEach(p => { p.dmg = 0; p.dt = false; });          // cleanup step: damage wears off every permanent
     sba(g, ev);
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
@@ -13455,7 +13471,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     return false;
   }
   // Assault Formation: your creatures deal combat damage equal to their toughness
-  function dmgPow(g, p) { if (bfInfo(g).assault) return toughnessOf(g, p); if (tableHas(g, 'statics.toughDmg') && g.battlefield.includes(p)) for (const q of g.battlefield) { const td = q.card.a.statics.toughDmg; if (td && (td === 'turn' ? g.activeTurn !== false : toughnessOf(g, p) > powerOf(g, p))) return toughnessOf(g, p); } return powerOf(g, p); }          // rules batch 62: Bedrock Tortoise, Baldin
+  function dmgPow(g, p) { if (p.eotToughDmg || bfInfo(g).assault) return toughnessOf(g, p); if (tableHas(g, 'statics.toughDmg') && g.battlefield.includes(p)) for (const q of g.battlefield) { const td = q.card.a.statics.toughDmg; if (td && (td === 'turn' ? g.activeTurn !== false : toughnessOf(g, p) > powerOf(g, p))) return toughnessOf(g, p); } return powerOf(g, p); }          // rules batch 62: Bedrock Tortoise, Baldin
   // Mimic Vat: exile the dying card if it beats the one already there (that one goes back to its owner's graveyard)
   function vatTake(x, vat, H, i) {
     const at = H.graveyard.indexOf(i); if (at < 0) return false; const v = c => (c.card.a.power || 0) + (c.card.a.mv || 0) + (c.card.a.triggers.some(t => t.kinds.includes('etb')) ? 4 : 0);

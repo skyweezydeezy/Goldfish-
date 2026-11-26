@@ -88,13 +88,16 @@
       const r = await window.Source.loadDeck(text, say);
       cache.set(value, { cards: A.markCommander(r.cards), tokens: r.tokens || [] });
     }
-    return Object.assign({ name, policy: (b && b.policy) || {} }, cache.get(value));
+    return Object.assign({ name, value, policy: (b && b.policy) || {} }, cache.get(value));
   }
-  async function players(mode, say) {
+  async function players(mode, say, fixed) {
     const st = V[mode];
     if (!A.S.cards || !A.S.cards.length) throw new Error('load a deck on the Deck tab first');
     const ps = [{ cards: A.S.cards, tokens: A.S.tokens, name: 'You', policy: A.currentPolicy() }];
-    for (const sel of st.root.querySelectorAll('.vs-opp')) ps.push(await loadOpp(sel.value, say));
+    // fixed: the opponents of the game before (as they were resolved: a "random" one is the deck it turned out to be), for Play again
+    const vals = fixed || [...st.root.querySelectorAll('.vs-opp')].map(sel => sel.value);
+    for (const v of vals) ps.push(await loadOpp(v, say));
+    st.lastVals = ps.slice(1).map(p => p.value);
     const seen = {};
     ps.forEach(p => { seen[p.name] = (seen[p.name] || 0) + 1; if (seen[p.name] > 1) p = Object.assign(p, { name: p.name + ' #' + seen[p.name] }); });
     say('');
@@ -106,7 +109,11 @@
   // ---------- one game ----------
   // decide.js: a person's choices (ask first, then resolve) and the turn as a list of steps. choices.js: the question sheet.
   const D = window.Decide, C = window.__isfChoices;
-  const asking = mode => { const s = V[mode].q('.vs-ask'); return !s || s.value !== 'auto'; };
+  // In a game against a person on another device every decision is that person's own: the "My choices: Autopilot decides" setting and
+  // every autopilot control are not offered, and nothing of a remote seat is ever answered for it.
+  const asking = mode => { const g = V[mode].game; if (g && g.remote != null) return true; const s = V[mode].q('.vs-ask'); return !s || s.value !== 'auto'; };
+  // the pace of the table's own pauses: the 🐢…🐇 slider sets it, except in a game against a person on another device, where it is fixed at full speed
+  const slowOf = gm => (gm && gm.remote != null ? 1 : A.slow());
   const alive = gm => gm.human != null && !gm.games[gm.human].dead;
   // Whose priority it is. gm.human is the seat played on this device; in a game against a person on another device (remote.js) that
   // person's seat is gm.remote, and their turn runs through the same functions as yours.
@@ -176,12 +183,13 @@
       box.classList.add('bye'); await wait(400); box.remove();
     })();
   }
-  async function newGame(mode) {
+  async function newGame(mode, again) {
     const st = V[mode], q = st.q;
     q('.vs-new').disabled = true;
     try {
       if (st.game && st.game.io) st.game.io.close();       // a game against a person on another device ends here
-      const ps = await players(mode, t => info(mode, t)), o = gameOpts(mode);
+      else if (window.__isfRemote && window.__isfRemote.dropIdle) window.__isfRemote.dropIdle();          // a rematch being arranged (Change deck) ends here: the other player is told
+      const ps = await players(mode, t => info(mode, t), again && st.lastVals), o = gameOpts(mode);
       const decks = ps.map(p => G.buildDeck(p.cards, p.tokens, p.policy && p.policy.tribe));
       const optsList = ps.map(p => Object.assign({}, o, { policy: p.policy || {} }));
       const tseed = window.ISFTutorial && window.ISFTutorial.takeSeed && window.ISFTutorial.takeSeed(), seed = tseed != null ? tseed >>> 0 : (Math.random() * 0x7fffffff) >>> 0, roll = rollFirst(ps.length, seed), first = roll.first;          // the tutorial's sample game asks for a fixed seed once          // a D20 each: the highest goes first
@@ -285,7 +293,7 @@
   }
   async function choose(mode, gm, q, view) {
     if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
-    gm.preview = view; gm.choice = q; render(mode);          // the table shows the game as it stands at the moment of the question
+    gm.preview = view; gm.choice = q; q.noAuto = gm.remote != null; render(mode);          // the table shows the game as it stands at the moment of the question
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }
   }
   // The answer to a question of seat q.seat. Without a remote player: ask here (local). With one: the other player's answer comes from
@@ -369,7 +377,7 @@
   // attacked and have a creature that could block, the turn waits for their blocks.
   async function computerTurn(mode, g, pace) {
     const st = V[mode], gm = st.game, slowly = gm.human != null || pace;
-    const pause = async () => { if (!slowly) return; render(mode); await sleep(60 * A.slow()); if (st.game !== gm) throw C.CANCELLED; };
+    const pause = async () => { if (!slowly) return; render(mode); await sleep(60 * slowOf(gm)); if (st.game !== gm) throw C.CANCELLED; };
     let said = 0, turns = 0, force;
     for (const it of D.turnPlan(gm.games, g.pid)) {
       if (it.step === 'begin') {
@@ -439,7 +447,6 @@
     gm.step = 'end';
     await new Promise(done => {
       gm.phase = 'respond'; gm.respond = { g, done, abil, seat }; render(mode);
-      if (remote && seat === gm.human && !asking(mode)) setTimeout(() => input(mode, 'pass', false));          // "My choices: Autopilot decides"
     });
     gm.phase = null; gm.respond = null; gm.step = null;
     if (st.game !== gm) throw C.CANCELLED;
@@ -497,7 +504,7 @@
     sfx('turn');
     const ev = await act(mode, gs => D.turn.begin(gs[g.pid]));
     const st = V[mode];
-    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * A.slow()); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
+    await walkBegin(mode, g, ev, async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * slowOf(V[mode].game)); if (st.game !== gm) throw C.CANCELLED; });          // untap, upkeep, draw: each step lit in turn
     gm.phase = 'main'; gm.step = 'main1';
     announce(mode);
   }
@@ -644,7 +651,7 @@
     } else {
       // Every step in order, each shown on the strip: beginning of combat (its triggers resolve: Hakbal explores, even while summoning
       // sick), combat with no attackers, the second main phase, then the end step and cleanup below. Nothing goes back to an earlier step.
-      const beat = async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * A.slow()); };
+      const beat = async () => { render(mode); await sleep(V[mode].game && V[mode].game.fast ? 0 : 140 * slowOf(V[mode].game)); };
       if (!gm.attacked && !finished(gm)) {
         gm.step = 'combat'; await beat();
         const pv = await act(mode, gs => D.turn.declare(gs[pid]));
@@ -950,7 +957,7 @@
       const need = G.mullCost(g), next = G.mullCost(g, true), lands = g.hand.filter(i => i.card.a.isLand).length, canMull = (g.mulligans || 0) < 6 && 7 - next >= 1;
       [...gm.bottom].forEach(id => { if (!g.hand.some(i => i.iid === id)) gm.bottom.delete(id); });
       return `<div class="vs-ask"><b>Your opening hand</b> <span class="hint">${g.hand.length} cards, ${lands} land${lands === 1 ? '' : 's'}. ${need ? `Click ${need} card${need === 1 ? '' : 's'} to put on the bottom of your library (${gm.bottom.size}/${need}), then keep.` : 'Keep this hand or take a mulligan.'}</span></div>
-        <div class="row wrap"><button class="primary vs-keep"${need && gm.bottom.size !== need ? ' disabled' : ''}>Keep${need ? ' ' + (7 - need) : ''}</button>${canMull ? `<button class="vs-mull">Mulligan (${next === need ? 'free' : 'keep ' + (7 - next)})</button>` : ''}<button class="ghost vs-mull-auto">Let the autopilot decide</button></div>`;
+        <div class="row wrap"><button class="primary vs-keep"${need && gm.bottom.size !== need ? ' disabled' : ''}>Keep${need ? ' ' + (7 - need) : ''}</button>${canMull ? `<button class="vs-mull">Mulligan (${next === need ? 'free' : 'keep ' + (7 - next)})</button>` : ''}${gm.remote != null ? '' : '<button class="ghost vs-mull-auto">Let the autopilot decide</button>'}</div>`;
     }
     if (gm.phase === 'block' && gm.block) {
       const atk = gm.block.g, as = gm.block.attackers, KW = ['flying', 'menace', 'trample', 'deathtouch', 'first strike', 'double strike', 'lifelink', 'reach', 'indestructible'];
@@ -973,7 +980,7 @@
     }
     const units = G.allUnits(g).length;
     return `<div class="vs-ask main"><span class="hint">${mine ? `Mana available: <b>${units}</b>. Click a glowing card to play it; click any other card to read it. ${gm.attacked ? 'Combat is done: play more cards or end the turn.' : ''}` : (gm.over ? esc(gm.over) : esc(waitText(gm)))}</span></div>
-      ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button><button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button></div>` : ''}`;
+      ${mine ? `<div class="row wrap"><button class="vs-abil" title="The autopilot uses your other abilities (mana, equip, sacrifice...). For a loyalty ability, click the planeswalker."><span class="wide">Use </span>abilities</button><button class="primary vs-attack"${gm.attacked ? ' disabled' : ''}>Attack…</button><button class="vs-end">End turn</button>${gm.remote != null ? '' : '<button class="ghost vs-autoturn" title="Let the autopilot finish this turn for you">Autopilot<span class="wide"> the rest of my</span> turn</button>'}</div>` : ''}`;
   }
   // your hand, face up along the bottom; playable cards glow
   function handEl(st, gm, g) {
@@ -1034,7 +1041,7 @@
     const st = V[mode], gm = st.game, q = st.q; if (!gm) return;
     st.used = new Set();
     if (st.table !== gm) {                                    // a new game: lay the table once
-      st.table = gm; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.lookArt = {}; st.bar = null;
+      st.table = gm; st.endSig = null; st.lookKey = {}; st.lookOn = {}; st.lookName = {}; st.lookArt = {}; st.bar = null;
       st.seats = gm.games.map(() => h('div', 'vs-seat'));
       const opps = h('div', 'vs-opps n' + (gm.games.length - 1)), me = bottomSeat(gm);
       opps.append(...st.seats.filter((x, i) => i !== me));
@@ -1058,6 +1065,8 @@
       `<span class="vs-note hint">${esc(st.note || '')}</span>`;
     if (st.bar !== bar) { q('.vs-bar').innerHTML = bar; st.bar = bar; }
     C.lightStep(q('.vs-steps'), D, gm.over ? null : gm.step, gm.match.names[cur(gm).pid]);
+    { const sb = q('.speed-bar'); if (sb) sb.hidden = gm.remote != null; }          // the pace of a game against a person is fixed (slowOf)
+    endUi(mode, gm);
     if (gm.remote != null) setTimeout(() => pump(mode));          // a move of the other player may be waiting for this moment
   }
   // In the card viewer, a card of yours shows the choices the table gives it: cast or play it, play it as a land, cycle it, the mulligan
@@ -1094,6 +1103,12 @@
         return;
       }
       if (hit('vs-looks')) { if (window.__isfLooks) window.__isfLooks.open(); return; }
+      if (hit('vs-again')) return endChoice(mode, 'again');
+      if (hit('vs-change')) return endChoice(mode, 'change');
+      if (hit('vs-leave')) return endChoice(mode, 'leave');
+      if (hit('vs-watch')) { gm.watching = true; return render(mode); }
+      if (hit('vs-rm-yes')) return gm.io && gm.io.answerRematch(true);
+      if (hit('vs-rm-no')) return gm.io && gm.io.answerRematch(false);
       if (hit('vs-play')) {                                   // watch the game at the speed of the 🐢…🐇 slider, or pause it
         if (gm.playing) { gm.playing = false; render(mode); } else if (gm.busy) gm.playing = true; else advance(mode, 9999, true);
         return;
@@ -1141,7 +1156,7 @@
         const need = G.mullCost(g);
         if (hit('vs-keep')) { if (gm.bottom.size === need) input(mode, 'keep', g.hand.filter(i => gm.bottom.has(i.iid)).map(i => i.iid)); return; }
         if (hit('vs-mull')) return input(mode, 'mull');
-        if (hit('vs-mull-auto')) return input(mode, 'mullAuto');
+        if (hit('vs-mull-auto') && gm.remote == null) return input(mode, 'mullAuto');
         const c = t.closest('.vs-hand .vs-card');
         if (c && need) { e.stopPropagation(); const id = +c.dataset.iid; if (gm.bottom.has(id)) gm.bottom.delete(id); else if (gm.bottom.size < need) gm.bottom.add(id); sfx('tap'); return render(mode); }
         return;
@@ -1164,8 +1179,59 @@
         return render(mode);
       }
       if (hit('vs-end')) return input(mode, 'end', false);
-      if (hit('vs-autoturn')) return input(mode, 'end', true);
+      if (hit('vs-autoturn') && gm.remote == null) return input(mode, 'end', true);
     });
+  }
+
+
+  // ---------- the end of a game: Play again, Change deck, Leave ----------
+  // When a game you sit in is over (or you are out), a small panel lies over the table; the final board and the log stay visible behind it.
+  // In a pod where you are out and the others play on, a small bar offers Watch and Leave. Against a person on another device the three
+  // choices go through remote.js (gm.io: rematch, answerRematch, choose, leave; gm.io.end says what the other player has answered).
+  let from = null;                                            // the tab the player came from: Leave goes back to it
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.tab'); if (b && MODES[b.dataset.tab] && !MODES[document.body.dataset.view]) from = document.body.dataset.view; }, true);
+  function endUi(mode, gm) {
+    const st = V[mode], host = st.q('.vs-screen');
+    const kind = gm.human == null || st.looping ? null : gm.over ? 'over' : gm.games[gm.human].dead && !gm.watching ? 'out' : null;
+    const old = host.querySelector('.vs-endp, .vs-outbar');
+    if (!kind) { if (old) old.remove(); st.endSig = null; return; }
+    const io = gm.io, end = io && io.end, conn = io ? io.connected() : true, them = gm.remote != null ? gm.match.names[gm.remote] : '';
+    const sig = JSON.stringify([kind, gm.over || '', end || '', conn]);
+    if (old && st.endSig === sig) return;
+    st.endSig = sig;
+    let html;
+    if (kind === 'out') html = `<div class="vs-outbar" role="status"><b>You're out.</b> <span class="hint">The others play on.</span> <button class="vs-watch">Watch</button><button class="ghost vs-leave">Leave</button></div>`;
+    else {
+      const left = !!(end && end.left), off = io && (!conn || left), busy = !!(end && (end.asked || end.incoming));
+      const notes = [];
+      if (end && end.incoming) notes.push(`<div class="vs-rmq"><b>${esc(end.incoming.name)} wants a rematch${end.incoming.deck ? ' with ' + esc(end.incoming.deck) : ''}.</b> Accept? <button class="primary vs-rm-yes">Accept</button><button class="ghost vs-rm-no">Decline</button></div>`);
+      if (end && end.asked) notes.push(`<div class="hint">Waiting for ${esc(them)} to accept the rematch…</div>`);
+      if (end && end.peerChoosing && !left) notes.push(`<div class="hint">${esc(them)} is choosing a deck.</div>`);
+      if (end && end.note) notes.push(`<div class="hint">${esc(end.note)}</div>`);
+      if (io && !conn && !left) notes.push(`<div class="hint">Not connected to ${esc(them)}. The game is over; Leave works, a rematch needs the connection.</div>`);
+      html = `<div class="vs-endp" role="dialog" aria-label="Game over"><b class="vs-endt">${esc(gm.over)}</b>${gm.games[gm.human].dead ? '<span class="hint">You are out of the game.</span>' : ''}${notes.join('')}
+        <div class="row wrap"><button class="primary vs-again"${off || busy ? ' disabled' : ''}>Play again</button><button class="vs-change"${off ? ' disabled' : ''}>Change deck</button><button class="ghost vs-leave">Leave</button></div></div>`;
+    }
+    const el = h('div', 'vs-endwrap'); el.innerHTML = html;
+    if (old) old.remove();
+    host.appendChild(el.firstElementChild);
+  }
+  // back to the setup (Change deck) or out of the match (Leave: the table closes, the top bar and tabs come back, and the tab the player came from is shown)
+  function closeTable(mode, back) {
+    const st = V[mode], gm = st.game;
+    if (gm) { gm.playing = false; gm.over = gm.over || 'You left the game.'; }
+    st.game = null; st.table = null; st.endSig = null; C.close();
+    const e = st.q('.vs-endp, .vs-outbar'); if (e) e.remove();
+    st.q('.vs-game').hidden = true; document.body.classList.remove('tleft');
+    if (back && window.__isfShowTab) window.__isfShowTab(from && from !== mode ? from : 'deck');
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function endChoice(mode, what) {
+    const st = V[mode], gm = st.game; if (!gm) return;
+    if (what === 'again') { if (gm.io) return gm.io.rematch(); st.loopStats = null; return newGame(mode, true).catch(e => info(mode, 'Could not start: ' + (e.message || e))); }
+    if (what === 'change') { if (gm.io) gm.io.choose(); return closeTable(mode, false); }
+    if (gm.io) gm.io.leave();
+    closeTable(mode, true);
   }
 
   // ---------- many games ----------

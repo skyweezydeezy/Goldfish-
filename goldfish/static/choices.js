@@ -54,7 +54,7 @@
           <div class="row wrap ch-btns">
             <button class="primary ch-ok"></button>
             ${q.none ? `<button class="ch-none">${esc(q.none)}</button>` : ''}
-            <button class="ghost ch-auto" title="Take what the autopilot would choose">Let the autopilot decide<small> · ${esc(defNames.length ? defNames.join(', ') : (q.none || 'nothing'))}</small></button>
+            ${q.noAuto ? '' : `<button class="ghost ch-auto" title="Take what the autopilot would choose">Let the autopilot decide<small> · ${esc(defNames.length ? defNames.join(', ') : (q.none || 'nothing'))}</small></button>`}
           </div>
         </div>`;
       const $ = s => el.querySelector(s), box = $('.ch-opts');
@@ -72,7 +72,7 @@
         if (t.o.card) { const c = A.cardEl(t.o.card, { face: t.o.face || 0 }); b.appendChild(c); const z = h('span', 'ch-zoom', '🔍'); z.title = 'Read this card'; b.appendChild(z); }
         b.appendChild(h('span', 'ch-name', esc(t.o.name) + (t.ks.length > 1 ? ` <i>×${t.ks.length}</i>` : '')));
         if (t.o.note) b.appendChild(h('small', 'ch-note', esc(t.o.note)));
-        if (t.def) b.appendChild(h('span', 'ch-star', '★ autopilot'));
+        if (t.def && !q.noAuto) b.appendChild(h('span', 'ch-star', '★ autopilot'));
         b.appendChild(h('span', 'ch-took'));
         box.appendChild(b);
       }

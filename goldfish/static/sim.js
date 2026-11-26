@@ -4881,12 +4881,79 @@
   function counterMult(g) {
     return Math.pow(2, bfInfo(g).cm);
   }
+
+  // ---------- T-089: a person chooses how mana is paid ----------
+  // items: [{ i: unit index, force: a colour, 'generic' or null (free) }], as many as the cost has symbols. Gives the role of each item
+  // (the colour of the pip it pays, or 'generic'), or null when the items cannot pay the cost exactly. canPay finds a payment; this checks one.
+  function payAssign(cost, units, items) {
+    const n = items.length, pips = cost.pips;
+    if (n !== cost.generic + pips.length) return null;
+    const roles = new Array(n).fill(null), taken = new Array(n).fill(false);
+    let gen = cost.generic;
+    for (let k = 0; k < n; k++) if (items[k].force === 'generic') { roles[k] = 'generic'; taken[k] = true; gen--; }
+    if (gen < 0) return null;
+    const order = pips.map((p, i) => i).sort((a, b) => pips[a].length - pips[b].length);
+    const can = (k, c) => { const f = items[k].force, u = units[items[k].i]; return !!u && u.colors.has(c) && (f == null || f === c); };
+    const sig = k => { const u = units[items[k].i]; return [...u.colors].sort().join('') + '/' + (items[k].force || ''); };
+    function go(pi) {
+      if (pi === order.length) { let left = 0; for (let k = 0; k < n; k++) if (!taken[k]) { const f = items[k].force; if (f && f !== 'generic') return false; left++; } return left === gen; }
+      for (const c of pips[order[pi]]) { const tried = new Set(); for (let k = 0; k < n; k++) { if (taken[k] || !can(k, c)) continue; const sg = sig(k); if (tried.has(sg)) continue; tried.add(sg); taken[k] = true; roles[k] = c; if (go(pi + 1)) return true; taken[k] = false; roles[k] = null; } }
+      return false;
+    }
+    if (!go(0)) return null;
+    return roles.map(r => r || 'generic');
+  }
+  // what tapping a source does besides making mana, in words (shown on its chip)
+  function paySide(g, u) {
+    const out = [], s = u.src;
+    if (u.floating || !s) return ['floating mana'];
+    const a = s.card && s.card.a;
+    if (s.pseudo) { if (s.handCard) out.push('exiles it from your hand'); if (s.foods) out.push('taps ' + s.foods.length + ' permanents'); if (s.counterOf) out.push('removes a counter'); return out; }
+    if (!a) return out;
+    if (a.tapPain) out.push(a.tapPain + ' damage to you'); if (a.manaPing) out.push(a.manaPing + ' damage to the opponent');
+    if (s.sacMana) out.push('sacrificed'); if (a.led) out.push('sacrificed, discards your hand');
+    if (u.druid || a.druidUntap && u.druid) out.push('a -1/-1 counter'); if (a.tapRoll) out.push('rolls a d20');
+    if (a.deathrite) out.push('exiles a land card'); if (u.improv) out.push('improvise');
+    if (s.produce && s.produce.restrict) out.push('restricted mana');
+    if (!g.dry && tableHas(g, 'manabarbs') && s.asLand && bothSides(g).some(q => q.card.a.manabarbs)) out.push('Manabarbs: 1 damage');
+    return out;
+  }
+  const payKey = (u, role) => (u.src && u.src.card ? u.src.card.name : u.floating ? 'floating' : '?') + '|' + [...u.colors].sort().join('') + '|' + role;
+  // The payments a person can make: every (source, role) pair that can help. Gives { options, defOpts, ask } where ask says whether
+  // there is more than one payment that is really different (otherwise nothing is asked, the payment is forced).
+  function payPick(g, cost, units, idx) {
+    const total = cost.generic + cost.pips.length;
+    if (!total) return idx;
+    const defRoles = payAssign(cost, units, idx.map(i => ({ i, force: null })));
+    if (!defRoles) return idx;
+    const cols = new Set(); for (const p of cost.pips) for (const c of p) cols.add(c);
+    const options = [];
+    units.forEach((u, i) => { for (const c of cols) if (u.colors.has(c)) options.push({ u: i, role: c }); if (cost.generic > 0) options.push({ u: i, role: 'generic' }); });
+    // is there a different payment? search the choices, stopping at the second distinct one (or when the search gets long)
+    let budget = 30000, found = new Set(), cur = [];
+    const byUnit = units.map((u, i) => options.filter(o => o.u === i));
+    (function dfs(i, left) {
+      if (found.size >= 2 || budget-- <= 0) return;
+      if (left === 0) { const its = cur.map(o => ({ i: o.u, force: o.role })); if (payAssign(cost, units, its)) found.add(cur.map(o => payKey(units[o.u], o.role)).sort().join(',')); return; }
+      if (i >= units.length || units.length - i < left) return;
+      for (const o of byUnit[i]) { cur.push(o); dfs(i + 1, left - 1); cur.pop(); }
+      dfs(i + 1, left);
+    })(0, total);
+    if (found.size < 2 && budget > 0) return idx;
+    const defOpts = idx.map((i, k) => options.find(o => o.u === i && o.role === defRoles[k])).filter(Boolean);
+    if (defOpts.length !== idx.length) return idx;
+    const valid = list => Array.isArray(list) && list.length === total && new Set(list.map(o => o.u)).size === total && list.every(o => options.includes(o)) && !!payAssign(cost, units, list.map(o => ({ i: o.u, force: o.role })));
+    const src = g._payFor && g._payFor.abilityOf || g._casting || null;
+    const got = decide(g, { kind: 'pay', multi: true, pick: total, options, def: defOpts, cost, units, valid, side: u => paySide(g, u), source: src });
+    return valid(got) ? got.map(o => o.u).sort((x, y) => x - y) : idx;
+  }
   function pay(g, cost) {
     if (cost && cost._tez) g.tezTurn = g.turn;          // Tezzeret's discount is used up
     g._payTre = false; g._paySrcs = null;
     const units = allUnits(g);
-    const idx = canPay(cost, units);
+    let idx = canPay(cost, units);
     if (!idx) return null;
+    if (g.ask && !g.dry && !g._noPayAsk) idx = payPick(g, cost, units, idx);          // T-089: a person may choose which sources pay and which colour each makes (a game without a chooser never gets here)
     const usedFloat = new Set(idx.filter(i => units[i].floating).map(i => units[i]));
     const srcs = new Set(idx.filter(i => !units[i].floating).map(i => units[i].src));
     for (const s of srcs) if (s && s.card && s.card.a.tendo && s.charge > 0 && !canPay(cost, units.map(u => u.src === s ? { src: s, colors: new Set(['C']) } : u))) s.charge--;          // Tendo Ice Bridge spent its charge counter on a color
@@ -14320,7 +14387,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function hyperAtLeast(N, K, n, k) { let p = 0; for (let i = k; i <= Math.min(n, K); i++) p += hyperPmf(N, K, n, i); return Math.min(1, p); }
 
   const api = {
-    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay,
+    parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign,
     effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,

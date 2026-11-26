@@ -171,14 +171,16 @@
       const ord = $('#dispDeckOrder').value; if (ord !== deckOrder) { deckOrder = ord; if (decksListed) refillDeckMenus(); }
       document.body.classList.toggle('dense-compact', den === 'compact'); document.body.classList.toggle('dense-roomy', den === 'roomy');
       document.documentElement.style.setProperty('--mode-fade', FADE[fade] || FADE.smooth);
+      window.__isfPayChoose = $('#dispPayChoose').checked;          // T-089: read by the question sheet (choices.js)
     };
     if (d.density && [...$('#dispDensity').options].some(o => o.value === d.density)) $('#dispDensity').value = d.density;
     if (d.fade && FADE[d.fade]) $('#dispFade').value = d.fade;
     if (d.deckOrder && DECK_ORDERS.includes(d.deckOrder)) $('#dispDeckOrder').value = d.deckOrder;
+    if (d.payChoose) $('#dispPayChoose').checked = true;
     apply();
-    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder']) $(id).addEventListener('change', () => {
+    for (const id of ['#dispDensity', '#dispFade', '#dispDeckOrder', '#dispPayChoose']) $(id).addEventListener('change', () => {
       apply();
-      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value })); } catch (e) { /* storage blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ density: $('#dispDensity').value, fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked })); } catch (e) { /* storage blocked */ }
     });
   })();
 

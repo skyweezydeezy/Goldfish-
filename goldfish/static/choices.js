@@ -30,7 +30,66 @@
     return out;
   }
 
+  // T-089: paying a cost. The cost on top, every source that can help as a chip showing the mana it makes, a colour picker only on a
+  // source that can make more than one of the colours the cost asks for. Confirm is on only when the choice pays the cost exactly;
+  // "Pay automatically" (the autopilot's choice) is the pre-selected default.
+  const SYM = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: '◇', generic: '①' };
+  function askPay(q) {
+    close();
+    return new Promise((resolve, reject) => {
+      const P = q.pay, sel = new Map();                       // unit -> the colour forced on it (null: the engine picks)
+      for (const k of q.def) sel.set(q.options[k].u, null);
+      const el = h('div', 'ch-sheet pay');
+      el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', q.title);
+      el.innerHTML = `
+        <div class="ch-head"><b class="ch-title">${esc(q.title)}</b><button class="ghost ch-peek" title="Fold this away to look at the table">Look at the table</button></div>
+        <div class="ch-body">
+          <div class="ch-text hint">${esc(q.text)}</div>
+          <div class="ch-paycost"><b>${esc(P.text)}</b> <span class="ch-count"></span></div>
+          <div class="ch-opts ch-paychips"></div>
+          <div class="row wrap ch-btns"><button class="primary ch-ok">Confirm</button><button class="ghost ch-auto" title="Tap what the autopilot would tap">Pay automatically</button></div>
+        </div>`;
+      const $ = s => el.querySelector(s), box = $('.ch-opts');
+      const picks = () => P.solve([...sel].map(([u, force]) => ({ u, force })));
+      const render = () => {
+        const ks = sel.size === P.n ? picks() : null, role = new Map();
+        if (ks) for (const k of ks) role.set(q.options[k].u, q.options[k].role);
+        box.replaceChildren();
+        for (const u of P.units) {
+          const on = sel.has(u.u), c = h('div', 'ch-paychip' + (on ? ' sel' : '')), b = h('button', 'ch-opt text'); b.type = 'button'; b.dataset.u = u.u; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          b.appendChild(h('span', 'ch-name', esc(u.name) + (u.floating ? '' : '')));
+          b.appendChild(h('span', 'ch-mana', u.colors.map(x => SYM[x] || x).join(' ')));
+          if (u.side.length) b.appendChild(h('small', 'ch-note', esc(u.side.join(' · '))));
+          if (on && role.has(u.u)) b.appendChild(h('span', 'ch-took', 'pays ' + (SYM[role.get(u.u)] || '') + (role.get(u.u) === 'generic' ? ' generic' : '')));
+          c.appendChild(b);
+          if (on && u.colors.length > 1) {                                 // a colour picker only where the source has a choice
+            const pk = h('span', 'ch-paycol'); pk.setAttribute('role', 'group'); pk.setAttribute('aria-label', 'Colour of ' + u.name);
+            for (const x of [null, ...u.colors]) { const cb = h('button', 'ch-col' + ((sel.get(u.u) || null) === x ? ' on' : '')); cb.type = 'button'; cb.dataset.u = u.u; cb.dataset.col = x || ''; cb.textContent = x ? SYM[x] || x : 'auto'; cb.title = x ? 'Make ' + x : 'Let the engine choose'; pk.appendChild(cb); }
+            c.appendChild(pk);
+          }
+          box.appendChild(c);
+        }
+        const ok = ks !== null && sel.size === P.n; $('.ch-ok').disabled = !ok;
+        $('.ch-count').textContent = `${sel.size} of ${P.n} chosen${sel.size === P.n && !ok ? ' · does not pay the cost' : ''}`;
+      };
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const t = e.target;
+        if (t.closest('.ch-peek')) { const f = el.classList.toggle('peek'); t.closest('.ch-peek').textContent = f ? 'Show the choice' : 'Look at the table'; return; }
+        const cb = t.closest('.ch-col'); if (cb) { sel.set(+cb.dataset.u, cb.dataset.col || null); return render(); }
+        const b = t.closest('.ch-opt');
+        if (b) { const u = +b.dataset.u; if (sel.has(u)) sel.delete(u); else if (sel.size < P.n) sel.set(u, null); return render(); }
+        if (t.closest('.ch-auto')) return finish('auto');
+        if (t.closest('.ch-ok') && !$('.ch-ok').disabled) return finish(picks());
+      });
+      open = { q, el, resolve, reject };
+      document.body.appendChild(el);
+      render();
+    });
+  }
+
   function ask(q) {
+    if (q.pay) return window.__isfPayChoose ? askPay(q) : Promise.resolve('auto');          // the Display setting "Choose how I pay mana" (off: the autopilot pays, nothing is shown)
     close();
     return new Promise((resolve, reject) => {
       const ts = tiles(q), take = new Map();                  // tile -> how many of its cards are chosen

@@ -814,6 +814,13 @@
         if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
         if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
       }
+      // ---- rules batch 77: life lost this turn (lifeLostNow), opponents' end steps, a draw from an empty library
+      { let bm;
+        if (/^as long as you've lost life this turn, ~ has flying and vigilance\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'selfLost', p: 0, t: 0, keywords: ['flying', 'vigilance'] }); rec.status = 'ok'; continue; }          // Essence Channeler
+        if (/^when ~ dies, put its counters on target creature you control\.?$/i.test(line)) { a.channeler = true; rec.status = 'ok'; continue; }          // Essence Channeler (fireDies: its +1/+1 counters)
+        if (/^at the beginning of each opponent's end step, if you didn't lose life this turn, you may put a quest counter on ~\.?$/i.test(line)) { a.oppEndTrig = true; a.triggers.push({ kinds: ['oppEnd'], fx: [{ type: 'counters', kind: 'quest', n: 1, scope: 'self' }], cond: { kind: 'noLifeLost' }, text: raw }); rec.status = 'ok'; continue; }          // Luminarch Ascension
+        if (/^if you would draw a card while your library has no cards in it, instead return a creature card from your graveyard to the battlefield\. if you can't, you lose the game\.?$/i.test(line)) { a.tombsDraw = true; rec.status = 'ok'; continue; }          // Out of the Tombs
+      }
       // ---- rules batch 76: mill triggers and rad counters
       { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
         const TOK = (p, t, colors, subtypes, n) => ({ type: 'token', n: n || 1, tapped: false, creature: true, p, t, colors, subtypes, keywords: [], artifact: false, name: subtypes.join(' ') });
@@ -3672,7 +3679,7 @@
 
   function newGame(deck, opts, seed) {
     const rnd = mulberry32(seed >>> 0);
-    return {
+    const g0 = {
       rnd, opts, seed, deck, U: deckFacts(deck),
       // every game gets its own card instances: marks a game leaves on a card (Cauldron Familiar's return this turn, cast-from-graveyard
       // flags...) must not carry into the next game played with the same deck, or the same seed could play differently
@@ -3686,7 +3693,12 @@
       ring: { tempts: 0, bearer: null },                      // the Ring: how many times it has tempted you, and your Ring-bearer (a permanent id)
       yardShuffleSeen: deck.unique.some(c => c.a.shuffleBack || c.a.yardShuffle),
     };
+    // rules batch 77: the life this player has lost this turn (CR 119.3), counted in one place: every drop of g.life (damage, a life payment, a loss) adds to it
+    let lifeV = g0.life;
+    Object.defineProperty(g0, 'life', { get() { return lifeV; }, set(v) { if (v < lifeV) { const sq = (g0.match || g0).seq || 0; if (g0._lostSeq !== sq) { g0._lostSeq = sq; g0._lostN = 0; } g0._lostN += lifeV - v; } lifeV = v; }, enumerable: true, configurable: true });
+    return g0;
   }
+  const lifeLostNow = g => g._lostSeq === ((g.match || g).seq || 0) ? g._lostN : 0;          // rules batch 77: the life lost this turn (every player's turn counts)
 
   function draw(g, n, ev) {
     if (n > 0 && !g.dry && !g.hand.length && tableHas(g, 'statics.phialDraw') && g.battlefield.some(q => q.card.a.statics.phialDraw)) n += 1;          // rules batch 63: Phial of Galadriel (the first card, drawn with no cards in hand, is two)
@@ -3719,6 +3731,15 @@
         if (t.unlessPay && canPay({ generic: t.unlessPay, pips: [], x: 0 }, allUnits(g))) { pay(g, { generic: t.unlessPay, pips: [], x: 0 }); ev.push({ type: 'note', text: `Paid ${t.unlessPay} to ${q.card.name}` }); } else fire(g.opp, t, q, ev, null);
       }
       if (ev) { ev.push({ type: 'draw', inst: c }); if (!g.dry) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('onDraw') && (!t.drawNth || t.drawNth === g.drawSeq) && g.battlefield.includes(q)) fire(g, t, q, ev, null, 1); }
+    }
+    if (out.length < n && !g.library.length && !g.dry && !lich && tableHas(g, 'tombsDraw') && g.battlefield.some(q => q.card.a.tombsDraw)) {          // rules batch 77: Out of the Tombs replaces each draw from an empty library: a creature card from your graveyard returns, or you lose the game
+      const tb = g.battlefield.find(q => q.card.a.tombsDraw);
+      for (let k = out.length; k < n && !matchOver(g) && g.killTurn == null; k++) {
+        const t = g.graveyard.filter(i => i.card.a.isCreature && !i.card.commander).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x))[0];
+        if (t) { g.graveyard.splice(g.graveyard.indexOf(t), 1); const np = enterWithTriggers(g, t, {}, ev || []); (ev || []).push({ type: 'note', text: `${tb.card.name}: the draw from an empty library returns ${t.card.name} from the graveyard instead`, source: tb }); }
+        else { (ev || []).push({ type: 'note', text: `${tb.card.name}: no creature card to return, you lose the game`, source: tb }); loseGame(g, ev || [], 'decked'); break; }
+      }
+      return out;
     }
     if (out.length < n && !g.library.length && !g.dry && !lich) {                                 // a draw from an empty library: Laboratory Maniac and Jace, Wielder of Mysteries win the game instead
       const lm = (tableHas(g, 'statics.drawWin') ? g.battlefield.find(q => q.card.a.statics.drawWin) : undefined);
@@ -4043,6 +4064,7 @@
       else if (d.kind === 'selfLife') on = src === p && g.life >= (g.opts.startLife || 40) + d.over;          // rules batch 61: Elenda
       else if (d.kind === 'selfOil') on = src === p && ((p.other && p.other.oil) || 0) >= d.min;          // rules batch 61: Armored Scrapgorger
       else if (d.kind === 'srcCounter') { if (stat && isCreaturePerm(p)) n += d[k] * ((src.other && src.other[d.counter]) || 0); continue; }          // rules batch 62: Boon of the Spirit Realm
+      else if (d.kind === 'selfLost') on = src === p && lifeLostNow(g) > 0;          // rules batch 77: Essence Channeler
       else if (d.kind === 'myTurnHistoric') on = g.activeTurn !== false && src !== p && isCreaturePerm(p) && (p.card.a.isArtifact || p.card.a.isLegendary || /\bSaga\b/.test(p.card.type_line || ''));          // rules batch 74: Bayek of Siwa
       else if (d.kind === 'myTurnTribe') on = g.activeTurn !== false && (src === p || matchesFilter(p.card, d.filter));          // rules batch 64: Dion
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
@@ -4495,7 +4517,7 @@
   function fireDies(g, p, equippers, ev) {
     if (g.killTurn != null) return;
     if (!g.dry && g.activeTurn !== false && (p.mutant || matchesFilter(p.card, 'mutant')) && !(p.owner && p.owner !== g) && tableHas(g, 'jenovaDraw')) { const k = g.battlefield.filter(q => q !== p && q.card.a.jenovaDraw).length; const pw = Math.max(0, powerOf(g, p)); if (k && pw) draw(g, Math.min(pw * k, g.library.length), ev); }          // rules batch 66: Jenova
-    if (!g.dry && (p.counters || 0) > 0 && !(p.owner && p.owner !== g) && (p.card.a.sinDies || p.card.a.roleModel || (tableHas(g, 'roleModel') && g.battlefield.some(q => q.card.a.roleModel && q !== p)))) {          // rules batch 60: Sin, Reluctant Role Model: its +1/+1 counters go to another creature
+    if (!g.dry && (p.counters || 0) > 0 && !(p.owner && p.owner !== g) && (p.card.a.sinDies || p.card.a.channeler || p.card.a.roleModel || (tableHas(g, 'roleModel') && g.battlefield.some(q => q.card.a.roleModel && q !== p)))) {          // rules batch 60: Sin, Reluctant Role Model: its +1/+1 counters go to another creature
       const cs = g.battlefield.filter(q => q !== p && isCreaturePerm(q)); const def = cs.slice().sort((x, y) => creatureValue(g, y) - creatureValue(g, x))[0];
       const t = def && g.ask ? decide(g, { kind: 'target', what: 'counters', options: cs, def, n: p.counters, source: p }) || def : def;
       if (t) { addCounters(g, t, '+1/+1', p.counters, ev, p); ev.push({ type: 'note', text: `${p.card.name}'s ${p.counters} counters go to ${t.card.name}`, source: p }); }
@@ -4640,6 +4662,7 @@
     switch (c.kind) {
       case 'lifeGained': return (g.lifeGainedThisTurn || 0) >= c.min;
       case 'lifeAtLeast': return g.life >= c.min;
+      case 'noLifeLost': return !!g._soloOppTurn || lifeLostNow(g) === 0;          // rules batch 77: Luminarch Ascension (a goldfish's opponent's turn has no life loss for you)
       case 'discardedThisTurn': return !!(g.match || g).discardSeen;
       case 'wasCast': return !!(source && g.lastCast && g.lastCast.iid === source.iid && source.enteredTurn === g.turn);          // rules batch 59: Anti-Venom
       case 'dealtBy': return !!(g.combatNames && source && g.combatNames[source.card.name]);
@@ -11257,6 +11280,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.opp || g.dry) return;
     if (g.oppHand == null) g.oppHand = 7;
     { const rv = (tableHas(g, 'roilingVortex') ? g.battlefield.filter(q => q.card.a.roilingVortex) : []); if (rv.length && g.turn > 1) damageOpp(g, rv.length, ev || [], rv[0]); }          // Roiling Vortex: the goldfish's upkeep
+    if (g.turn > 1 && tableHas(g, 'oppEndTrig')) { g._soloOppTurn = true; try { for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppEnd') && g.battlefield.includes(q)) fire(g, t, q, ev || [], null); } finally { g._soloOppTurn = false; } }          // rules batch 77: Luminarch Ascension (the goldfish's opponent's end step, no life lost by you)
     { const pc = (tableHas(g, 'constrictor') ? g.battlefield.filter(q => q.card.a.constrictor) : []); if (pc.length && g.turn > 1) damageOpp(g, pc.length, ev || [], pc[0], false, true); }          // Persistent Constrictor: the goldfish's upkeep
     { const ro = (tableHas(g, 'statics.orrery') ? g.battlefield.filter(q => q.card.a.statics.orrery) : []).length; if (ro && g.oppHand === 0 && g.turn > 1) ghostDraws(g, 3 * ro, ev || [], false); }          // Ghirapur Orrery: the goldfish's empty hand
     if (g.turn <= 1) return;                                                            // its first turn: no draw (or it has not had a turn yet)
@@ -11765,6 +11789,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!g.opp) ghostDiscards(g, 1, []);
     }
     g.extortOwed = 0;
+    if (!g.dry) for (const o of otherPlayers(g)) for (const q of (tableHas(o, 'oppEndTrig') ? o.battlefield.slice() : NONE)) for (const t of q.card.a.triggers) if (t.kinds.includes('oppEnd') && o.battlefield.includes(q)) fire(o, t, q, iw, null);          // rules batch 77: "each opponent's end step" (Luminarch Ascension): the other players' triggers
     if (g.monarch && g.library.length && !g.dry) draw(g, 1, []);
     if (!g.dry) for (const ms of (tableHas(g, 'harnessFlicker') ? g.battlefield.filter(x => x.card.a.harnessFlicker && x.harnessed) : [])) { const etbV = q => fxValue(g, [].concat(...q.card.a.triggers.filter(t => t.kinds.includes('etb')).map(t => t.fx))); const t = g.battlefield.filter(q => q !== ms && !q.asLand && !q.token && q.inst && !(q.counters > 0) && !g.battlefield.some(x => x.attachedTo === q.iid)).sort((x, y) => etbV(y) - etbV(x))[0]; if (t && etbV(t) > 0) { removePerm(g, t); const np = enterWithTriggers(g, t.inst, {}, []); np.sick = isCreaturePerm(np); } }          // The Mind Stone: a flicker each end step
     if (!g.dry) for (const q of (tableHas(g, 'angelWin') ? g.battlefield.filter(x => x.card.a.angelWin && x.attackedTurn === g.turn) : [])) if (g.life >= (g.opts.startLife || 40) + q.card.a.angelWin) applyEffects(g, [{ type: 'win' }], q, [], null);          // Angel of Destiny

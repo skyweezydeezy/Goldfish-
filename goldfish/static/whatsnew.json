@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 217,
+      "lines": [
+        "Mana Tithe now gets cast against you and asks if you'll pay {1}. Demonic Consultation lets you name the card, even one that isn't in your library.",
+        "Basalt and Grim Monolith loops can be played by hand: untap from the card menu, then pick how much mana to make. Port Razer gets its extra combat."
+      ]
+    },
+    {
       "v": 216,
       "lines": [
         "Puzzles: the Medium and Hard fast wins now end four different ways (Thassa's Oracle, Jace, Laboratory Maniac, a Vito drain), and you cast every piece yourself; the order matters."

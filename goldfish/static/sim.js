@@ -639,7 +639,7 @@
       }
       const ts = a.triggers.splice(gStart);
       const modes = ts.map(t => t.fx).filter(f => f && f.length);
-      if (modes.length) a.triggers.push(Object.assign({}, ts[0], { fx: [{ type: 'modal', modes }] }));
+      if (modes.length) a.triggers.push(Object.assign({}, ts[0], { fx: modes.length === 1 && modes[0].some(f => f.type === 'horrorChoice') ? modes[0] : [{ type: 'modal', modes }] }));          // Hullbreaker Horror makes its own choice (horrorChoice)
       curGid = null;
     };
     for (const rawIn of lines) {
@@ -1037,6 +1037,8 @@
           if (/^~ deals x damage to each of x targets\.?$/i.test(line) && a.firestorm) { a.spellFx.push({ type: 'firestorm' }); MIRX(); continue; }
           if (/^you control enchanted enchantment\.?$/i.test(line)) { a.stealEnch = true; MIRX(); continue; }          // Steal Enchantment (on entering, like Treachery)
           if (/^\{5\}: exchange control of ~ and target nonland permanent\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{5}'), autoGate: 'totem', fx: [{ type: 'totemSwap' }], text: raw }); MIRX(); continue; }          // Avarice Totem
+          if (/^whenever you cast a spell, return target spell you don't control to its owner's hand\.?$/i.test(line)) { a.horror = true; a.triggers.push({ kinds: ['cast'], fx: [{ type: 'horrorChoice' }], text: raw }); MIRX(); continue; }          // Hullbreaker Horror: the two modes are one choice
+          if (/^whenever you cast a spell, return target nonland permanent to its owner's hand\.?$/i.test(line)) { a.horror = true; MIRX(); continue; }          // (the other mode: horrorChoice)
           if (/^\{1\}, sacrifice ~: ~ deals 2 damage to target creature\.?$/i.test(line) || (/^\{1\}, sacrifice ~: choose one —$/i.test(line) && false)) { a.activated.push({ cost: parseCost('{1}'), sacSelf: true, autoGate: 'crater', fx: parseEffects('~ deals 2 damage to target creature').fx, text: raw }); MIRX(); continue; }          // Goblin Cratermaker
           if (/^\{r\}, \{t\}: target legendary creature gains first strike until end of turn\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{R}'), tap: true, autoGate: 'shinkaFs', fx: [{ type: 'pumpOne', self: false, legendary: true, p: 0, t: 0, keywords: ['first strike'] }], text: raw }); MIRX(); continue; }          // Shinka, the Bloodsoaked Keep (first strike matters against blockers)
           { const oe = line.match(/^((?:\{[^}]+\})+)(, \{q\})?: target opponent exiles the top card of their library\.(?: until end of turn, you may play that card\.| if it's a land card, you may return ~ to its owner's hand\.)$/i);
@@ -2473,7 +2475,8 @@
         if (/^whenever one or more creatures you control each with power greater than its base power deals? combat damage to a player, draw a card/i.test(line)) { T3(['combatDamage'], [{ type: 'draw', n: 1 }], { who: 'one or more creatures you control', pumped: true }); continue; }          // Kutzil
         if (/^\{x\}\{x\}, \{t\}, sacrifice ~: create x treasure tokens/i.test(line)) { a.vault = true; rec.status = 'ok'; continue; }          // Treasure Vault
         if (/^sacrifice a creature: ~ deals 1 damage to any target/i.test(line)) { a.sacOutlet = true; a.bombard = true; rec.status = 'ok'; continue; }          // Goblin Bombardment
-        if (/^as an additional cost to cast ~, pay 5 life or pay \{2\}/i.test(line)) { OPP(); continue; }          // Redirect Lightning: it only redirects another player's spell
+        if (/^as an additional cost to cast ~, pay 5 life or pay \{2\}/i.test(line)) { a.redirectLightning = true; a.stackOnly = true; OPP(); continue; }          // Redirect Lightning: the extra cost is paid as it resolves (stackResponses, 'redirectSpell')
+        if (/^change the target of target spell or ability with a single target\.?$/i.test(line)) { a.spellFx.push({ type: 'redirectSpell' }); a.stackOnly = true; OPP(); continue; }          // Redirect Lightning (a spell: abilities are not on the stack here)
         if (/^you may pay \{b\} rather than pay ~'s mana cost if there are thirteen or more creatures on the battlefield/i.test(line)) { a.altB13 = true; rec.status = 'ok'; continue; }          // Blasphemous Edict
         if (/^discard a card: exile the top two cards of your library\. you may play those cards this turn/i.test(line)) { a.harnfel = true; rec.status = 'ok'; continue; }          // Harnfel, Horn of Bounty
         if (/^\+ \{1\} — copy target instant spell, sorcery spell, activated ability, or triggered ability/i.test(line)) { a.respondCopy = { extra: 1 }; a.favorAbility = true; a.spellFx.push({ type: 'copyRespond' }); rec.status = 'ok'; continue; }          // Return the Favor: copies your own instant or sorcery (not abilities)
@@ -7275,6 +7278,29 @@
           if (!t || answered(g, t, 'exile', source, ev)) { leavePerm(g, source, ev); flushLeaves(g, ev); ev.push({ type: 'note', text: `${source.card.name}: no exchange, so it is sacrificed`, source }); break; }
           stealPerm(g, t, ev, false); stealPermToOpp(g, source); ev.push({ type: 'note', text: `${source.card.name} is exchanged for ${t.card.name}`, source });
         } break;
+        case 'redirectSpell': {          // Redirect Lightning: the spell's one locked target becomes another legal target; the additional cost ({2} or 5 life) is paid now
+          const ps = g.pendingSpell, L = ps && ps.lock && ps.lock.map.size === 1 ? [...ps.lock.map.entries()][0] : null;
+          if (!ps || ps.gone || !L || !L[1].t) { ev.push({ type: 'note', text: 'Redirect Lightning: no spell with a single target to change', source }); break; }
+          const cands = redirectCands(ps.caster, L[0], L[1].t); if (!cands.length) { ev.push({ type: 'note', text: 'Redirect Lightning: no other legal target', source }); break; }
+          const two = { generic: 2, pips: [], x: 0 }, canTwo = canPay(two, allUnits(g)), canLife = g.life > 5;
+          if (!canTwo && !canLife) { ev.push({ type: 'note', text: 'Redirect Lightning: the additional cost cannot be paid', source }); break; }
+          let useLife = !canTwo; if (canTwo && canLife && g.ask && !g.dry) useLife = decide(g, { kind: 'protect', options: ['Pay 5 life'], def: null, optional: true, why: 'Redirect Lightning: pay {2} or 5 life', source: source || null, target: null }) != null;
+          if (useLife) { g.life -= 5; checkDeath(g, ev); } else pay(g, two);
+          const mineSide = o => holderOf(ps.caster, o) === ps.caster, best = cands.slice().sort((x, y) => ((mineSide(y) ? 1 : 0) - (mineSide(x) ? 1 : 0)) || threat(holderOf(ps.caster, y), g, y) - threat(holderOf(ps.caster, x), g, x))[0];
+          let nt = best; if (g.ask && !g.dry) nt = decide(g, { kind: 'target', what: 'redirect', options: cands, def: best, source }) || best;
+          if (!nt) break;
+          ps.lock.map.set(L[0], Object.assign({}, L[1], { t: nt })); ev.push({ type: 'note', text: `Redirect Lightning: ${ps.inst.card.name} now targets ${nt.card.name}`, source }); break;
+        }
+        case 'horrorChoice': {          // Hullbreaker Horror: choose up to one: return target spell you don't control to its owner's hand; or return target nonland permanent to its owner's hand
+          const ps = g.pendingSpell, canSpell = !!(ps && !ps.gone && ps.caster !== g && ps.inst !== (g.lastCast || null)), big = canSpell && (ps.inst.card.commander || ps.inst.card.a.comboRole || ps.inst.card.a.castMv >= 3);
+          const oppBest = g.opp && !g.dry ? g.opp.battlefield.filter(q => !q.asLand && !q.card.commander && targetable(g.opp, q)).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0] : null;
+          const auto = big ? 'spell' : oppBest && threat(g.opp, g, oppBest) >= 3 ? 'perm' : null;
+          let pick = auto;
+          if (g.ask && !g.dry) { const opts = [].concat(canSpell ? [{ mode: 'spell', text: `Return ${ps.inst.card.name} to its owner's hand` }] : [], oppBest ? [{ mode: 'perm', text: 'Return target nonland permanent to its owner\'s hand' }] : []); if (opts.length) { const o = decide(g, { kind: 'mode', options: opts, def: opts.find(x => x.mode === auto) || null, optional: true, source }); pick = o ? o.mode : null; } else pick = null; }
+          if (pick === 'spell' && canSpell) { ps.gone = true; ev.push({ type: 'note', text: `${source ? source.card.name : 'Hullbreaker Horror'}: ${ps.inst.card.name} is returned to its owner's hand`, source }); }
+          else if (pick === 'perm') doBounce(g, { type: 'bounce', what: 'nonland' }, source, ev);
+          break;
+        }
         case 'paruns': { const e = source && source.attachedTo != null ? g.battlefield.find(x => x.iid === source.attachedTo && isCreaturePerm(x)) : null; if (e) { e.tapped = !!f.tap; touch(g); ev.push({ type: 'note', text: `${source.card.name}: ${e.card.name} is ${f.tap ? 'tapped' : 'untapped'}`, source }); } break; }          // Sword of the Paruns
         case 'totemSwap': if (g.opp && source && g.battlefield.includes(source)) {          // Avarice Totem: for their best nonland permanent
           let t = g.opp.battlefield.filter(q => !q.asLand && !q.card.commander && targetable(g.opp, q)).sort((x, y) => threat(g.opp, g, y) - threat(g.opp, g, x))[0];
@@ -10034,6 +10060,7 @@
     }
     if (g.opp) {                                               // mirror match: interaction needs something to hit, and counterspells wait for the other player's spells
       if (a.counter && !a.spellFx.some(f => f.type === 'removal')) return -1;
+      if (a.stackOnly && !g.inWindow) return -1;          // Redirect Lightning: only in answer to a spell
       if (!g.inWindow && !g.dry && pol(g, 'instantTiming') === 'hold' && isInstantInteraction(c.card)) return -1;     // the Policy lab: keep it for the other player's turn
       const fxs = a.spellFx.filter(f => f.type === 'removal' || f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'edict' || f.type === 'divideDamage');
       if (fxs.length && a.isInstantSorcery) {
@@ -14155,7 +14182,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     q.tapped = true; q.dmg = 0; q.attacking = false; ev.push({ type: 'note', text: `${q.card.name} regenerates`, source: q }); return true;
   }
   function removalOf(g, f, source, ev, t) {
-    const d = g.opp;
+    const d = holderOf(g, t) || g.opp;          // Redirect Lightning can aim it at the caster's own permanent
     if (t.card.a.sacOnTarget && !source) { ev.push({ type: 'note', text: `${t.card.name} became the target of a spell: its controller sacrifices it`, source }); leavePerm(d, t, ev); flushLeaves(d, ev); return; }          // Departed Deckhand
     const pw = Math.max(0, powerOf(d, t));
     if (f.how === 'warp') {          // Chaos Warp: shuffled into its owner's library; the top card is revealed, and a permanent card goes onto the battlefield
@@ -14166,7 +14193,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     }
     if (source && source.card && source.card.a.linkReturn && f.how === 'exile' && !t.token && t.inst && !t.card.commander) (source.linked = source.linked || []).push({ inst: t.inst, owner: t.owner || d, how: source.card.a.linkReturn });          // Oblivion Ring, Skyclave Apparition, Angel of Serenity: until it leaves
     if (f.thief && g._casting) g._casting.oppDrawOnLeave = true;          // Thief of Existence: when it leaves, the other player draws a card
-    ev.push({ type: 'note', text: `${f.how === 'exile' ? 'Exiled' : f.how === 'bottom' ? 'Put on the bottom of its owner\'s library:' : 'Destroyed'} the opponent's ${t.card.name}`, source });
+    ev.push({ type: 'note', text: `${f.how === 'exile' ? 'Exiled' : f.how === 'bottom' ? 'Put on the bottom of its owner\'s library:' : 'Destroyed'} ${d === g ? 'your' : "the opponent's"} ${t.card.name}`, source });
     const th = f.gainToughCaster ? Math.max(0, toughnessOf(d, t)) : 0;
     leavePerm(d, t, ev, f.how === 'exile' ? 'exile' : f.how === 'tuck' ? 'library3' : f.how === 'bottom' ? 'libraryBottom' : 'graveyard');
     flushLeaves(d, ev);
@@ -14801,7 +14828,42 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (!pick || !(pick.ability ? respondAbility(g, pick, ev, inst) : respondWith(g, pick, ev, inst))) break;
     }
   }
+  // ---------- the spell on the stack (T-100): while a spell waits for an answer (tryCounter), g.pendingSpell = { inst, caster, lock, responder } on both players ----------
+  // Only the response window exists, no general stack. The answers: a counterspell (tryCounter0), Redirect Lightning (change the target the spell locked as it was cast),
+  // Hullbreaker Horror (a spell cast in response returns the spell to its owner's hand). Abilities and triggers on the stack stay out of this model.
+  function stackResponses(g, d, inst, ev, ps) {          // the autopilot's answers (a person's go through personAnswer: the same cards, cast with respondWith)
+    if (d.ask || d.dead || g.dry) return;
+    const a = inst.card.a, big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4;
+    const hz = (tableHas(d, 'horror') ? d.battlefield.find(q => q.card.a.horror) : undefined);
+    if (hz && big && !inst.noCounter) {          // Hullbreaker Horror: any instant cast in response bounces the spell (the cheapest is the trigger)
+      const c = responseCards(d, null).filter(x => !x.card.a.stackOnly).sort((x, y) => (x.card.a.castMv || 0) - (y.card.a.castMv || 0))[0];
+      if (c && respondWith(d, c, ev, inst) && ps.gone) return;
+    }
+    const L = ps.lock && ps.lock.map.size === 1 ? [...ps.lock.map.entries()][0] : null;
+    if (L && L[1].t && holderOf(g, L[1].t) === d && threat(d, g, L[1].t) >= 3) {          // Redirect Lightning: their spell aims at something of mine that matters
+      const rl = responseCards(d, null).find(x => x.card.a.redirectLightning && (canPay({ generic: effectiveCost(d, x).generic + 2, pips: effectiveCost(d, x).pips, x: 0 }, manaUnits(d)) || d.life > 12));
+      if (rl && redirectCands(g, L[0], L[1].t).some(q => holderOf(g, q) === g) && respondWith(d, rl, ev, inst)) return;
+    }
+  }
+  const redirectFits = (f, p) => f.type === 'burnCreature' || f.type === 'damage' ? (isCreaturePerm(p) || p.card.a.isPlaneswalker) : f.what === 'permanent' ? true : f.what === 'nonland' ? !p.asLand : f.what === 'artifact' ? p.card.a.isArtifact : f.what === 'enchantment' ? p.card.a.isEnchantment : f.what === 'planeswalker' ? p.card.a.isPlaneswalker : f.what === 'creatureOrPw' ? (isCreaturePerm(p) || p.card.a.isPlaneswalker) : isCreaturePerm(p);
+  function redirectCands(gc, f, old) {          // the other legal targets for the effect (either side of the table), never the one it has
+    const out = []; if (f.type !== 'removal') return out;          // the removal spells (bounce and damage redirect is not taught yet)
+    for (const o of (isPod(gc) ? gc.match.players : [gc, gc.opp]).filter(Boolean)) for (const p of o.battlefield) if (p !== old && !p.card.commander && redirectFits(f, p) && lockLegal(gc, p, f)) out.push(p);
+    return out;
+  }
   function tryCounter(g, inst, ev, by) {
+    const d = by || g.opp;
+    if (!d || g.dry) return tryCounter0(g, inst, ev, by);
+    const ps = { inst, caster: g, responder: d, lock: PENDING.get(inst) || null, gone: false };
+    const wg = g.pendingSpell, wd = d.pendingSpell; g.pendingSpell = ps; d.pendingSpell = ps;
+    try {
+      stackResponses(g, d, inst, ev, ps);
+      const r = ps.gone ? false : tryCounter0(g, inst, ev, by);
+      if (ps.gone) { (inst.card.commander ? g.command : g.hand).push(inst); ev.push({ type: 'note', text: `${inst.card.name} returns to its owner's hand`, source: null }); return true; }
+      return r;
+    } finally { if (wg) g.pendingSpell = wg; else delete g.pendingSpell; if (wd) d.pendingSpell = wd; else delete d.pendingSpell; }
+  }
+  function tryCounter0(g, inst, ev, by) {
     const d = by || g.opp, a = inst.card.a;
     if (!d) return false;
     const unc = uncounterable(g, inst), asked = !!d.ask && !g.dry && !d.dead;          // a person is asked about every spell, one that cannot be countered too
@@ -14889,6 +14951,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const pick = decide(d, { kind: 'counter', options: ways.concat(resp), def: k ? null : def, optional: true, always: true, spell: inst, caster: g, targets: targetView(g, inst), unc: !ways.length && uncounterable(g, inst) });
       if (!pick || (pick.how !== 'respond' && pick.how !== 'ability')) return pick || null;
       if (!(pick.ability ? respondAbility(d, pick, ev, inst) : respondWith(d, pick.c, ev, inst))) return null;
+      if (d.pendingSpell && d.pendingSpell.gone) return null;          // the spell was returned to its owner's hand: nothing is left to answer
       ways = ways.filter(w => d.hand.includes(w.c) && (w.how !== 'mana' || canPay(w.cost, manaUnits(d))) && (w.how !== 'cleave' || canPay(w.c.card.a.cleave, manaUnits(d))));
     }
     return null;

@@ -25,7 +25,7 @@
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: radial-gradient(ellipse at 50% -10%, #12324a 0%, var(--page) 55%) fixed, var(--page); color: var(--text-primary); }
+html, body { margin: 0; background: var(--page); color: var(--text-primary); }          /* plain: no soft glow at the top of the screen (the user, 2026-11-26) */
 body { font-size: 14px; line-height: 1.4; }
 button, select, input, textarea { font: inherit; color: inherit; }
 code { background: var(--surface-3); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
@@ -35,7 +35,7 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight
 
 /* ---------- top bar ---------- */
 .topbar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 18px; padding: 10px 18px;
-  background: linear-gradient(180deg, rgba(14,36,52,0.96), rgba(8,18,26,0.94)); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(143,216,255,.08), 0 8px 24px -12px rgba(143,216,255,.25); }
+  background: linear-gradient(180deg, rgb(14,36,52), rgb(8,18,26)); border-bottom: 1px solid var(--border); }          /* solid and sharp: no blur of what scrolls under it, no glow below it (the user: "remove the soft hazy look at the top") */
 .brand { font-weight: 700; font-size: 16px; white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand .logo { display: block; width: 40px; height: 40px; filter: drop-shadow(0 0 8px rgba(143,216,255,.55)); animation: swim 5s ease-in-out infinite; will-change: transform; }

@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="versus.css">
 <link rel="stylesheet" href="choices.css">
 <link rel="stylesheet" href="tutorial.css">
+<link rel="stylesheet" href="puzzle.css">
 </head>
 <body data-view="deck">
 <header class="topbar">
@@ -29,6 +30,7 @@
     <button class="tab" data-tab="odds" title="The chance of drawing the cards you need, turn by turn">Odds</button>
     <button class="tab" data-tab="duel" title="Play one opponent, Arena-style">Duel</button>
     <button class="tab" data-tab="pod" title="Play a four-player Commander pod">Pod</button>
+    <button class="tab" data-tab="puzzle" title="Keep a real turn-2 win alive against interaction">Puzzle</button>
   </nav>
   <div id="mirrorStatus" class="status-pill">checking card data…</div>
   <button id="appVersion" class="status-pill app-ver" type="button" hidden title="ICEYfish version"></button>
@@ -53,6 +55,8 @@
           <select id="savedDecks" class="ghost"><option value="">Saved decks…</option></select>
           <button id="manageDecks" class="ghost" title="Rename, copy, export or delete saved decks">Manage</button>
         </div>
+        <div id="deckSpeed" class="deck-speed" hidden><span class="ds-line"></span> <button type="button" class="info-tog" title="What is this?" aria-expanded="false" aria-label="What is this?">i</button>
+          <p class="hint folded">The earliest turn this deck won in ICEYfish's goldfish games (the best case), and the share of games won by turn 2, 3 and 4. They come from the deck's last check; the median kill turn is in the deck menu.</p></div>
         <div id="deckMsgs"></div>
         <details class="settings" open>
           <summary>Goldfish rules</summary>
@@ -378,6 +382,7 @@
   <!-- ============ 1v1 and POD (versus.js) ============ -->
   <section id="tab-duel" class="panel"></section>
   <section id="tab-pod" class="panel"></section>
+  <section id="tab-puzzle" class="panel"></section>
 </main>
 
 <footer class="site-footer">
@@ -446,6 +451,8 @@
 <script src="remember.js"></script>
 <script src="install.js"></script>
 <script src="looks.js"></script>
+<script src="puzzle-core.js"></script>
+<script src="puzzle.js"></script>
 <script src="tutorial.js"></script>
 <script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>

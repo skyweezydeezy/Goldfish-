@@ -49,7 +49,7 @@ const O = { turns: 16 };
 // ---- an obviously worse version 2: cut most of the lands ----
 { let k = 0; const v2 = { cards: me.cards.filter(c => !(/^Basic Land/.test(c.type_line || '') && (k++ % 6) !== 0)), tokens: me.tokens };
   const lands = cs => cs.filter(c => /Land/.test(c.type_line || '')).reduce((s, c) => s + (c.qty || 1), 0);
-  const r = C.abTest(G, me, v2, opps, O, 150, 13);
+  const r = C.abTest(G, me, v2, opps, O, 300, 13);
   check('cutting most of the basic lands comes out "worse"', r.verdict === 'worse', `${lands(me.cards)} -> ${lands(v2.cards)} lands, ${(100 * r.both.v1).toFixed(0)}% -> ${(100 * r.both.v2).toFixed(0)}%, z ${r.both.z.toFixed(1)}`);
   check('the head-to-head says the same', r.h2h && r.h2h.v2 < 0.5, r.h2h && r.h2h.v2.toFixed(2)); }
 

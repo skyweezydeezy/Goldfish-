@@ -2,6 +2,7 @@
 // Checks the Commander bracket of every built-in deck with ICEYfish's own engine (task T-035, report in docs/agents/DECK-BRACKETS.md).
 //   node tools/verify-brackets.js [--games=20000] [--jobs=4] [--only=death-tax]    simulate, write docs/agents/deck-brackets.json
 //   node tools/verify-brackets.js --goldfish-only                                  the goldfish games and the card floor only, no round robin (field win % stays empty)
+//   node tools/verify-brackets.js --matches-only                                   the round robin only (field win %), added to the goldfish results already in docs/agents/deck-brackets.json
 //   node tools/verify-brackets.js --apply                                         write the verified bracket and a check line into each deck
 //   node tools/verify-brackets.js --report                                        the table in docs/agents/DECK-BRACKETS.md
 // Offline: the cards come from the set data (goldfish/static/data/sets), the combos from data/combos.json.
@@ -69,7 +70,7 @@ const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized'
 
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 const GAMES = +arg('games', 20000), JOBS = +arg('jobs', os.cpus().length), ONLY = arg('only', ''), SEED = 20261123;
-const GF_ONLY = process.argv.includes('--goldfish-only'), CHUNK = 2500, MATCH_TURNS = 25;
+const GF_ONLY = process.argv.includes('--goldfish-only'), MATCH_ONLY = process.argv.includes('--matches-only'), CHUNK = 2500, MATCH_TURNS = 25;
 
 function loadAll() {
   const G = require(path.join(STATIC, 'sim.js')), Source = require(path.join(STATIC, 'source.js')), Combos = require(path.join(STATIC, 'combos.js'));
@@ -147,7 +148,8 @@ function verdict(L, gf, field) {
   const verified = L.cmdr ? Math.max(rules.floor, spd) : null;
   return {
     file: L.d.file, name: L.d.name, stated: L.d.bracket || null, verified, commander: L.cmdr,
-    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+    goldfish: { games: gf.n, errors: gf.errors, medianKill: median > T ? `>${T}` : median, by2: pct(cum(2)), by3: pct(cum(3)), by4: pct(cum(4)), by5: pct(cum(5)), by6: pct(cum(6)), by7: pct(cum(7)), by8: pct(cum(8)), byT: pct(cum(T)),
+      earliestKill: (i => i < 0 || i >= T ? null : i + 1)(gf.kill.findIndex(x => x > 0)), killHist: gf.kill.map(x => Math.round(x * 100000) / 1000),          // earliest turn a game was won (null: none by T10); killHist: % of games won on turn 1..T, then % not won by T
       cmdrMedian: L.cmdr ? (medianTurn(gf.cmdr) > T ? `>${T}` : medianTurn(gf.cmdr)) : null, mana4: Math.round(gf.mana4 * 100) / 100,
       winBy: Object.fromEntries(Object.entries(gf.winBy).map(([k, v]) => [k, pct(v)])), topLine: (gf.winLines[0] || null) },
     field: field ? { games: field.n, wins: field.w, losses: field.l, none: field.none, errors: field.errors, winRate: pct(field.w / Math.max(1, field.n - field.errors)), opponents: field.opps } : null,
@@ -167,7 +169,7 @@ async function simulate() {
   const pick = decks.map((L, i) => i).filter(i => !ONLY || decks[i].d.file.includes(ONLY));
   const cmd = decks.map((L, i) => i).filter(i => decks[i].cmdr), perPair = Math.ceil(GAMES / Math.max(1, cmd.length - 1));
   const jobs = [];
-  for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0 }); }
+  if (!MATCH_ONLY) for (const i of pick) for (let k = 0; k * CHUNK < GAMES; k++) { const n = Math.min(CHUNK, GAMES - k * CHUNK); jobs.push({ kind: 'goldfish', i, n, seed: (SEED + k * CHUNK * 7919) >>> 0 }); }
   if (!GF_ONLY) {
   for (let x = 0; x < cmd.length; x++) for (let y = x + 1; y < cmd.length; y++) if (pick.includes(cmd[x]) || pick.includes(cmd[y])) jobs.push({ kind: 'match', i: cmd[x], j: cmd[y], n: perPair, seed: (SEED + 1000003 * (x * 64 + y)) >>> 0 });
   for (const i of pick) if (!decks[i].cmdr) for (let k = 0; k * CHUNK < GAMES; k++) jobs.push({ kind: 'match', i, j: i, n: Math.min(CHUNK, GAMES - k * CHUNK), seed: (SEED + 77 + k * CHUNK * 7919) >>> 0 });
@@ -200,6 +202,16 @@ async function simulate() {
     }
   });
   console.log('');
+  if (MATCH_ONLY) {            // the goldfish results stay as they are; each deck gets its field win % (same fields as verdict() writes)
+    const old = JSON.parse(fs.readFileSync(OUT, 'utf8')), version = +(fs.readFileSync(path.join(STATIC, 'version.js'), 'utf8').match(/ISF_VERSION\s*=\s*(\d+)/) || [])[1];
+    for (const i of pick) {
+      const v = old.decks.find(x => x.file === decks[i].d.file), f = field.get(i); if (!v || !f) throw new Error('no goldfish result or no matches for ' + decks[i].d.file);
+      v.field = { games: f.n, wins: f.w, losses: f.l, none: f.none, errors: f.errors, winRate: pct(f.w / Math.max(1, f.n - f.errors)), opponents: f.opps.has('mirror') ? 'its own mirror' : f.opps.size + ' other Commander decks' };
+    }
+    old.roundRobin = { version, date: new Date().toISOString().slice(0, 10), matchesPerPair: perPair, matchTurns: MATCH_TURNS, seed: SEED, seconds: Math.round((Date.now() - t0) / 1000), jobs: JOBS, decks: pick.length };
+    fs.writeFileSync(OUT, JSON.stringify(old, null, 1) + '\n');
+    console.log(`round robin: ${pick.length} decks, ${perPair} matches per pair; ${old.roundRobin.seconds} s on ${JOBS} threads. Wrote ${path.relative(ROOT, OUT)}`); return;
+  }
   const results = pick.map(i => {
     const g = gf.get(i), ok = Math.max(1, g.n - g.errors);
     g.kill = g.kill.map(v => v / ok); g.cmdr = g.cmdr.map(v => v / ok); g.mana4 /= g.n; for (const k in g.winBy) g.winBy[k] /= ok;
@@ -230,7 +242,7 @@ function apply() {
     if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
     const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
     const g = v.goldfish, f = v.field;
-    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
+    let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; field win ${f ? f.winRate : '-'}%; ${v.rules.gameChangers.length} Game Changers`;
     if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : `; was B${v.stated || '?'} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > (v.stated || 0) ? `; the rules rule out B${v.stated}` : '');
     else line += '; not a Commander deck, no bracket';
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
@@ -243,9 +255,13 @@ function apply() {
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) {
     const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY))) continue;
-    d.medianKill = v.goldfish.medianKill; if (v.field) d.fieldWin = v.field.winRate;
+    d.medianKill = v.goldfish.medianKill; d.by5 = v.goldfish.by5; d.by7 = v.goldfish.by7; if (v.field) d.fieldWin = v.field.winRate;
     if (v.commander) { d.floor = v.rules.floor; d.speedBracket = v.speedBracket; d.bracket = v.verified; }
     d.checkedAt = v.date || doc.date;
+  }
+  for (const d of idx.decks) {            // the kill-turn ceiling: share of games won by turn 2, 3 and 4, and the earliest turn a game was won (T-077)
+    const v = doc.decks.find(x => x.file === d.file); if (!v || (ONLY && !v.file.includes(ONLY)) || v.goldfish.by2 == null) continue;
+    d.by2 = v.goldfish.by2; d.by3 = v.goldfish.by3; d.by4 = v.goldfish.by4; d.earliestKill = v.goldfish.earliestKill;
   }
   fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
   // drive-sync.json: "bracket" stays what the Drive file name says (the user's claim); "verified" is ICEYfish's (tools/import-decks.js keeps it)

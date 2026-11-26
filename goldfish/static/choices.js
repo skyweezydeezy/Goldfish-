@@ -89,7 +89,7 @@
   }
 
   function ask(q) {
-    if (q.pay) return askPay(q);
+    if (q.pay) return window.__isfPayChoose ? askPay(q) : Promise.resolve('auto');          // the Display setting "Choose how I pay mana" (off: the autopilot pays, nothing is shown)
     close();
     return new Promise((resolve, reject) => {
       const ts = tiles(q), take = new Map();                  // tile -> how many of its cards are chosen

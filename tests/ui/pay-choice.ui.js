@@ -12,6 +12,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8800/');
   await p.waitForFunction(() => window.Goldfish && window.Decide && window.__isfChoices);
+  await p.evaluate(() => { window.__isfPayChoose = true; });          // the Display setting (off by default) is on
   // a table in the page: seat 0 is a person; each scenario starts a payment and keeps its promise in window.__r
   await p.evaluate(() => {
     const G = window.Goldfish, D = window.Decide; let uid = 0;

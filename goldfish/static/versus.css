@@ -223,7 +223,7 @@
   body[data-view=duel] .topbar .brand, body[data-view=duel] .topbar .status-pill, body[data-view=pod] .topbar .brand, body[data-view=pod] .topbar .status-pill { display: none; }
 }
 
-/* =====================================================================
+/* ==============================================================
    One screen: every player's cards in play are always in view.
    The table fills the screen under the top bar. Each player's two rows share the height they are given and the cards
    size themselves to their row, so nothing in play is ever scrolled away; tap any card to see it full size.
@@ -381,3 +381,25 @@
 @keyframes vs-reveal-out { to { opacity: 0; } }
 @media (max-width: 700px) { .vs-reveal { right: 6px; top: 22%; } .vs-reveal .mtg { --card-w: 92px; } }
 .vs-pile.top-open .mtg { outline: 2px solid rgba(120,200,255,.55); outline-offset: 1px; }
+
+
+/* the turn clock in the game's top bar (versus.js tickClock) */
+.vs-clock { font: 600 14px/1 ui-monospace, monospace; padding: 5px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); white-space: nowrap; }
+.vs-clock.still { opacity: .6; }
+.vs-clock.low { background: #c0392b; color: #fff; opacity: 1; }
+.vs-clock[hidden] { display: none; }
+
+/* the combat readout (versus.js dmgSpan, app.js #tDmg) */
+.vs-dmgrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0; font-size: 14px; }
+.vs-dmg { padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, transparent); white-space: nowrap; }
+.vs-dmg b { font-size: 1.15em; }
+.vs-dmg.lethal, .vs-chip.lethal { background: color-mix(in srgb, #c0392b 24%, transparent); }
+.vs-lethal { background: #c0392b; color: #fff; border-radius: 4px; padding: 0 6px; font-weight: 800; letter-spacing: .04em; }
+.vs-psn { color: #5cb85c; font-weight: 700; }
+.vs-cmdr { font-weight: 600; }
+.vs-est { font-size: 11px; opacity: .75; }
+.vs-chip { padding: 2px 8px; border-radius: 8px; border: 1px solid var(--border, rgba(128,128,128,.4)); font-size: 12px; white-space: nowrap; }
+.vs-chip.sel { border-color: var(--accent); }
+.vs-likely { font-size: 13px; }
+#tDmg { align-self: center; font-size: 13px; padding: 3px 8px; }
+#tDmg[hidden] { display: none; }

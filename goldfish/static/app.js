@@ -1011,6 +1011,43 @@
     $('#keepStats').innerHTML = kv.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('');
   }
 
+
+  // ---------- how much damage an attack sends (T-084) ----------
+  // From the engine's own numbers (powerOf with anthems and pumps, hasKw, toughnessOf): double strike counts twice, infect and toxic are
+  // poison, a commander's damage is counted toward 21. g: the attacking game; list: the attackers; def: the defending game (null at the
+  // goldfish table); blocks (optional): { attackerIid: [the blockers' permanents] }, for the damage that gets through: an unblocked
+  // attacker's damage plus a trampler's excess over its blockers' toughness. first strike, double strike and deathtouch between blockers
+  // and attackers make it an estimate (estimate: true). Spells and triggers during combat are not counted.
+  function attackSum(g, list, def, blocks) {
+    const r = { dmg: 0, poison: 0, trample: 0, cmdr: [], estimate: false, lethal: { life: false, poison: false, cmdr: false } };
+    const kw = (gg, p, k) => G.hasKw(gg, p, k);
+    for (const p of list) {
+      const pw = Math.max(0, G.powerOf(g, p)), mult = kw(g, p, 'double strike') ? 2 : 1, infect = kw(g, p, 'infect');
+      let amount = pw * mult, steps = mult;
+      const bl = blocks ? (blocks[p.iid] || []) : null;
+      if (bl && bl.length) {
+        const need = kw(g, p, 'deathtouch') ? bl.length : bl.reduce((s, b) => s + Math.max(0, G.toughnessOf(def, b)), 0);
+        if (kw(g, p, 'trample')) { const first = Math.max(0, pw - need); amount = mult === 2 ? first + pw : first; r.trample += amount; } else amount = 0;
+        if (mult === 2 || kw(g, p, 'first strike') || kw(g, p, 'deathtouch') || bl.some(b => kw(def, b, 'first strike') || kw(def, b, 'double strike') || kw(def, b, 'deathtouch'))) r.estimate = true;
+        if (!amount) steps = 0;
+      }
+      if (infect) r.poison += amount; else r.dmg += amount;
+      if (!infect && amount > 0) {
+        const tx = p.card.a && p.card.a.toxic ? p.card.a.toxic : 0;
+        r.poison += (tx > 0 ? tx * steps : 0) + (p.eotToxic || 0) * steps + (tx === -1 ? amount : 0);          // toxic N once for each damage step; Etali: as many as the damage
+      }
+      if (p.card.commander && amount > 0 && !infect) {
+        const key = def ? p.iid + '>' + def.pid : String(p.iid), now = (g.cmdrDamage || {})[key] || 0;
+        r.cmdr.push({ name: p.card.name.split(',')[0], now, after: now + amount });
+      }
+    }
+    const life = def ? def.life : Math.max(0, g.opts.oppLife - g.damage);
+    r.lethal.life = r.dmg > 0 && r.dmg >= life;
+    r.lethal.poison = r.poison > 0 && (g.poisonDealt || 0) + r.poison >= 10;
+    r.lethal.cmdr = g.opts.cmdrDamage !== false && r.cmdr.some(c => c.after >= 21);
+    r.isLethal = r.lethal.life || r.lethal.poison || r.lethal.cmdr;
+    return r;
+  }
   // ======================= goldfish table =======================
   // autopilot speed: the 🐢…🐇 slider slows everything down up to 5× (🐇 = the original speed); ⚡ Fast still applies on top
   // One setting for the whole app: every 🐢…🐇 slider (Goldfish Table, 1v1, Pod) shows and changes the same speed.
@@ -1873,6 +1910,9 @@
     const cd = Object.values(g.cmdrDamage || {});
     $('#hCmdr').textContent = cd.length ? Math.max(...cd) + ' / 21' : '0 / 21';
     $('#hPower').textContent = g.battlefield.reduce((s, p) => s + Math.max(0, G.powerOf(g, p)), 0);
+    { const chip = $('#tDmg');                                       // what "Next turn" attacks for: the autopilot's attackers, from the engine's numbers
+      const sum = chip && attackSum(g, G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))), null);
+      if (chip) { chip.hidden = !sum || (!sum.dmg && !sum.poison); if (!chip.hidden) { chip.classList.toggle('lethal', sum.isLethal); chip.innerHTML = '⚔ ' + sum.dmg + (sum.poison ? ' +' + sum.poison + ' poison' : '') + (sum.cmdr.length ? ' · ' + esc(sum.cmdr[0].name) + ' ' + sum.cmdr[0].after + '/21' : '') + (sum.isLethal ? ' <b class="vs-lethal">LETHAL</b>' : ''); chip.title = 'Next turn attacks for ' + sum.dmg + (sum.poison ? ' and ' + sum.poison + ' poison' : '') + ' (the engine\'s own numbers: power with anthems and pumps, double strike twice)'; } } }
     const mp = $('#hMana'); mp.innerHTML = '';
     // one pip per kind of mana with how many: "4× W 1× U". A source of several colors is its own kind (shown as a gold pip, its colors on hover)
     const kinds = new Map();
@@ -3429,7 +3469,7 @@
 
   window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { if (S.sim && $('#tab-sim').classList.contains('active')) renderSim(); }, 200); });
   // handle for versus.js (the 1v1 and Pod tabs): the loaded deck and the deck-list helpers
-  window.__isfApi = { noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
+  window.__isfApi = { attackSum, noteLoadedSel, startedWithLink, runningVersion, ready: builtinsListed, loadDeck, showTab, toast, resumeTable: resumeTableGame, hand: { get: () => H, set: x => { H = x; dealHand(true); } }, S, h, esc, tile, opts, imgFor, cardEl, flipCardEl, hasTwoFaces, viewCard: showLightbox, addViewerActions: f => lbProviders.push(f), abCut, slow, speedBar, imprintOf, noteImprints, getDecks, markCommander, currentPolicy, builtinOptions, builtinByValue, builtinText, builtins: () => BUILTIN ,
     // the tutorial's sample game: load a decklist without touching the decklist box, the saved decks or "Save every deck I load"; setDeck(r) puts a deck back
     useDeck: async text => { await Source.init(); const r = await Source.loadDeck(text); r.specialty = SPECIALTY_RE.test(text); if (r.cards.length) setDeck(r); return r; }, setDeck };
 })();

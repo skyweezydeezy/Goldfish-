@@ -582,6 +582,20 @@
     [/^whenever you draw (?:a|your (second)) card[^,]*,\s*/i, ['onDraw']],          // "your second card each turn" fires once a turn, on that card (see draw)
   ];
 
+  // T-098: coverage tracing (tools only; off in the app). With G.traceCoverage(true), every coverage line of a card read afterwards records, on rec.trace, the sim.js line
+  // that last set its status and whether reading the line changed the card's analysis at all. A line marked 'ok' or 'neutral' whose reading changed nothing is
+  // either a keyword or reminder the engine handles elsewhere, or a line a rule swallowed without building anything (tools/engine/false-ok.js lists them).
+  let TRACING = false;
+  const traceSig = a => { try { return JSON.stringify(a, (k, v) => k === 'coverage' || k === 'watch' ? undefined : typeof v === 'function' ? 'fn' : v instanceof RegExp ? v.source : v instanceof Set ? [...v] : v); } catch (e) { return String(Math.random()); } };
+  function traceStart(a, rec) {
+    let src = null; Object.defineProperty(rec, '_sig0', { value: traceSig(a), enumerable: false, writable: true });
+    Object.defineProperty(rec, '_st', { value: rec.status, enumerable: false, writable: true });
+    Object.defineProperty(rec, 'status', { enumerable: true, configurable: true, get() { return this._st; }, set(v) { this._st = v; const m = (new Error().stack || '').split('\n').slice(2).map(l => l.match(/sim\.js:(\d+)/)).find(Boolean); src = m ? +m[1] : null; Object.defineProperty(this, '_src', { value: src, enumerable: false, writable: true, configurable: true }); } });
+  }
+  function traceEnd(a) {
+    const own = a.coverage.filter(r => r._sig0 !== undefined), end = traceSig(a);
+    own.forEach((r, i) => { const next = i + 1 < own.length ? own[i + 1]._sig0 : end; Object.defineProperty(r, 'trace', { value: { src: r._src || null, changed: next !== r._sig0 }, enumerable: false, writable: true, configurable: true }); });
+  }
   function analyzeAbilities(card, a) {
     const text = normText(card, (card.front_oracle != null ? card.front_oracle : card.oracle_text) || '');
     const kwSet = new Set((card.keywords || []).map(k => k.toLowerCase()));
@@ -637,6 +651,7 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (TRACING) traceStart(a, rec);
       if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // draw, then a discard the generic reading dropped (only the draw was played)
       { let dm;
@@ -2872,6 +2887,7 @@
       if ((m = line.match(/^\{[^}]+\}(?:, \{T\})?: add .*shares a creature type with your commander, scry (\d+)/i))) { a.scryOnType = +m[1]; rec.status = 'ok'; continue; }          // Path of Ancestry: approximated, the mana is not tracked
       if (/^\{2\}, \{t\}: add \{b\} for each swamp you control/i.test(line)) { a.coffers = true; rec.status = 'ok'; continue; }                                                               // Cabal Coffers
       if (/^(\{T\}|\{T\}, sacrifice ~|sacrifice ~)(?:, [^:]*)?: add/i.test(line)) { rec.status = 'ok'; if (/sacrifice ~/i.test(line)) a.sacMana = true; continue; }
+      if ((m = line.match(/^\{1\}, \{T\}: add \{([wubrgc])\}\{([wubrgc])\}\.?$/i))) { a.signet = new Set([m[1].toUpperCase(), m[2].toUpperCase()]); rec.status = 'ok'; continue; }          // T-098: the Signets: {1}, {T}: add two colors
       if (/^\{[^}]+\}(?:, \{T\})?: add/i.test(line)) { rec.status = 'ok'; continue; }
       if ((m = line.match(/^(equipped|enchanted) creature gets ([+-]\d+)\/([+-]\d+)(.*)$/i))) {          // the bonus, "for each ..." (Ethereal Armor, Cranial Plating), and the keywords however they are joined (Angelic Destiny)
         const rest = m[4], pe = rest.match(/^ for each (aura and equipment attached to it|[^.,]+?)(?= and |,|\.|$)/i), kh = rest.match(/(?:^|,| and) (?:has|gains) ([a-z ,]+?)(?: \d+)?(?:,? and is |\.|$)/i);
@@ -3306,6 +3322,7 @@
     const OPP_TOO = /^return all attacking creatures|^when ~ dies, you gain control of all enchantments|can block only creatures with flying|^the owner of target permanent shuffles it|^revolt — destroy|^other \w+ creatures you control attack each combat if able|return target spell you don't control|^target player discards|target player exiles a card from their hand|^−\d+: separate all permanents target player controls|you control target player during that player's next turn|^as ~ enters, choose a (?:nonland )?card name|^~ has first strike during your turn|^as ~ enters, choose a number|gains shroud until end of turn|look at the top three cards of that player's library|return each nonland permanent you don't control|^when ~ enters, return target spell or permanent|^untap ~ during each other player's untap step|^\{u\}: tap enchanted creature|^as ~ enters, choose khans or dragons|^each player sacrifices|^each player chooses from among the permanents they control|^return all lands to their owners' hands|counter it unless you sacrifice a land|that player sacrifices a land of their choice|^when there are no lands on the battlefield, sacrifice|for each soot counter on ~|each player gains control of all nonland permanents/i;
     // lines the broad "doesn't matter solo" filter swallowed, although they change a solo game
     const REAL_SOLO_EFFECT = /reveal the top [^.]*cards of your library\. put all|gains? twice that much life|you gain life equal|create a token that's a copy|search your library for (a|an|up to [a-z]+) (?!basic land)[^.]*cards?\b|sacrifice an? [a-z ]+: add \{|\bloses? life equal\b|\btransform|\bexile ~, then return|return [^.]*from your graveyard/i;
+    if (TRACING) traceEnd(a);
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
@@ -4352,6 +4369,7 @@
     if (info.creatureManaPlus) for (const q of info.producers) if (!q.tapped && isCreaturePerm(q) && q.produce && !(q.sick && !info.abilityHaste && !hasKw(g, q, 'haste'))) units.push({ src: q, colors: new Set(['G']) });          // Badgermole Cub
     if (info.tokenCreatureMana) for (const q of g.battlefield) if (q.token && isCreaturePerm(q) && !q.tapped && !q.produce && !(q.sick && !info.abilityHaste && !hasKw(g, q, 'haste'))) units.push({ src: q, colors: ANY_COLOR });          // Insidious Roots
     if (info.tokenMana) for (const q of g.battlefield) if (q.token && !q.tapped && !q.produce && !(isCreaturePerm(q) && q.sick && !info.abilityHaste && !hasKw(g, q, 'haste'))) units.push({ src: q, colors: new Set([info.tokenMana]) });          // Jaheira
+    if (!g.dry || true) { if (units.length && tableHas(g, 'signet')) for (const q of g.battlefield) if (q.card.a.signet && !q.asLand && !q.card.a.isLand && !q.tapped && !(q.sick && isCreaturePerm(q) && !info.abilityHaste && !hasKw(g, q, 'haste'))) units.push({ src: { pseudo: true, signetOf: q, produce: { colors: q.card.a.signet, amount: 1 } }, colors: q.card.a.signet }); }          // T-098: a Signet pays {1} (one of the other mana) and makes two colors: one more mana than it uses
     for (const q of info.dynMana) {                                                                    // Nykthos, Three Tree City: {2}, {T}: mana of one color equal to devotion / your tribe (the {2} comes out of the pool)
       if (q.tapped) continue;
       let n = 0, col = null;
@@ -5034,6 +5052,7 @@
       if (barbs && s.asLand) { g.life -= barbs * twinMult(g); checkDeath(g, []); }          // Manabarbs          // City of Brass, Ancient Tomb, Mana Confluence
       if (s.counterOf && s.counterKind) s.counterOf.other = Object.assign({}, s.counterOf.other, { [s.counterKind]: Math.max(0, ((s.counterOf.other && s.counterOf.other[s.counterKind]) || 0) - 1) });          // rules batch 73: Pentad Prism
       else if (s.counterOf) s.counterOf.counters = Math.max(0, (s.counterOf.counters || 0) - 1);          // Crystalline Crawler
+      if (s.signetOf) { s.signetOf.tapped = true; const other = units.find((u, i) => !used.has(i) && !u.floating && u.src && !(u.src.card && u.src.card.a.signet) && !u.src.signetOf && (u.src.pseudo ? !!u.src.fodderOf : !u.src.tapped && !srcs.has(u.src))); if (other) { if (other.src.pseudo) { other.src.fodderOf.tapped = true; if (other.fodder) other.fodder.tapped = true; } else { other.src.tapped = true; srcs.add(other.src); } } }          // T-098: the {1} a Signet costs is paid by another source (a fodder source of T-097 taps its Drum and the creature)
       if (s.wallOf) { s.wallOf.wallTurn = g.turn; s.wallOf.other = Object.assign({}, s.wallOf.other, { '-0/-1': (((s.wallOf.other && s.wallOf.other['-0/-1']) || 0)) + 1 }); }          // rules batch 73: Wall of Roots
       if (s.discardCard) { const hi = g.hand.indexOf(s.discardCard); if (hi >= 0) { g.hand.splice(hi, 1); g.graveyard.push(s.discardCard); if (s.discardCard.card.a.isLand) landToYard(g, [], false); madness(g, s.discardCard, []); } }          // Skirge Familiar
       if (s.foods) s.foods.forEach(f => { f.tapped = true; });         // Cabbage Merchant taps the two Foods
@@ -14685,7 +14704,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   const api = {
     parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign,
-    effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
+    traceCoverage: on => { TRACING = !!on; }, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,

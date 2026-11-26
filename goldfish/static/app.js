@@ -319,7 +319,7 @@
       if (!r.cards.length) { $('#deckMsgs').innerHTML = '<div class="msg err">No cards could be found. Check the list format (one card per line, like <code>1 Sol Ring</code>).</div>'; }
       else {
         r.specialty = SPECIALTY_RE.test(text); ok = setDeck(r, !!(o && o.lenient)) !== false;
-        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); }
+        if (ok) { S.deckText = text; if (!quiet) autoSave(text); noteLoadedSel(); renderTeach(); }          // again: the banner first drew before the menu named the deck (Save to Drive is for decks that are not built in)
         else { $('#savedDecks').value = selLoaded; dirty(); }          // refused: the deck menu names the deck that is still loaded again (and so does the remembered state)
       }
     } catch (err) {
@@ -539,12 +539,36 @@
     return `${TEACH_REPO}/issues/new?${q.toString()}`;
   }
   function teachButton(cards, label) { return `<a class="teach-btn" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  // ---- Save to Drive for teaching (T-109): a deck that is not built in, with unread lines, becomes a .txt in the built-in deck format. A phone's
+  // share sheet (Web Share, files) lets the person pick Google Drive and the ManaBox folder; elsewhere the file downloads. Nothing is sent by the app.
+  const isBuiltinLoaded = () => /^builtin:/.test(selLoaded || '');
+  function driveDeck() {
+    const cards = (S.cards || []).filter(c => c && c.name), cmd = cards.filter(c => c.commander), rest = cards.filter(c => !c.commander);
+    const cname = cmd.map(c => c.name).join(' + '), bm = /^\s*\/\/\s*bracket\s*([1-5])/im.exec(S.deckText || ''), br = bm ? bm[1] : '?';
+    const saved = selLoaded && !isBuiltinLoaded() ? selLoaded : '';
+    const clean = t => String(t).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = clean(saved || (cmd[0] ? cmd[0].name.split(',')[0] : 'Imported deck')) || 'Imported deck';
+    const file = `${name} [B${br}]${cname ? ' (' + clean(cname) + ')' : ''}.txt`;
+    const text = [`// ${name}${cname ? ' (' + cname + ')' : ''}`, br === '?' ? '// Bracket ?' : '// Bracket ' + br, '// COMMANDER', ...cmd.map(c => `${c.qty || 1} ${c.name}`), '// MAINBOARD', ...rest.map(c => `${c.qty || 1} ${c.name}`)].join('\n') + '\n';
+    return { file, text };
+  }
+  async function saveToDrive() {
+    const d = driveDeck(), f = new File([d.text], d.file, { type: 'text/plain' });
+    if (navigator.canShare && navigator.canShare({ files: [f] }) && navigator.share) {
+      try { await navigator.share({ files: [f], title: d.file }); return toast('Shared. Pick Google Drive and your ManaBox folder.'); }
+      catch (e) { if (e && e.name === 'AbortError') return; }          // closed the sheet: nothing happens; any other failure falls back to the download
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = d.file; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Saved ' + d.file + '. Put it in your ManaBox folder in Google Drive.');
+  }
   function renderTeach() {
     const box = $('#teachBanner'); if (!box) return;
     const cards = S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : [];
     if (!cards.length) { box.hidden = true; box.innerHTML = ''; return; }
     const names = cards.slice(0, 4).map(c => esc(c.name)).join(', ') + (cards.length > 4 ? ` and ${cards.length - 4} more` : '');
-    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}${isBuiltinLoaded() ? '' : '<button type="button" class="teach-btn teach-drive" id="driveSave">Save to Drive for teaching</button>'}${isBuiltinLoaded() ? '' : '<span class="hint teach-how teach-drive-how">Save it in your ManaBox folder in Google Drive; ICEYfish checks it within the hour and teaches its cards.</span>'}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    const ds = $('#driveSave'); if (ds) ds.addEventListener('click', saveToDrive);
     box.hidden = false;
   }
   function renderCoverage() {

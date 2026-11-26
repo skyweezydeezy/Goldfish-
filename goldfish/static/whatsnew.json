@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 208,
+      "lines": [
+        "Signets make mana now (pay {1}, get two colours). They were doing nothing before, so the 11 decks that play them get faster.",
+        "A deck you paste that has cards ICEYfish doesn't fully read gets a \"Save to Drive for teaching\" button: save it in your ManaBox folder and its cards are taught within the hour."
+      ]
+    },
+    {
       "v": 207,
       "lines": [
         "Earthbend works as written: any land you control (stack counters on one already earthbent), chosen as it's cast, and it comes back tapped once. Toph, the First Metalbender turns artifacts into lands.",

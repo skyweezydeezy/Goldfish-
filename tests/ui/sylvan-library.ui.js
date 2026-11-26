@@ -12,6 +12,7 @@ const shot = process.env.VERSUS_SHOTS;
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 1000 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });   // the background-music question is answered: its banner stays out of the way
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
     const r = route.request();
@@ -92,7 +93,7 @@ const shot = process.env.VERSUS_SHOTS;
   const before = await snap();
   await p.evaluate(() => document.querySelector('#tab-duel .vs-end').click());
   let q1 = null;
-  for (let k = 0; k < 80 && !q1; k++) {
+  const t1 = Date.now(); while (Date.now() - t1 < 90000 && !q1) {          // time-based: the opponent may take a long turn first
     const s = await state('duel');
     if (s.choice === 'may') { const x = await sheet(); if (/Sylvan Library/.test(x.title)) { q1 = x; break; } }
     if (s.choice) await p.click('.ch-sheet .ch-auto');

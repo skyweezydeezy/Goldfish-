@@ -27,6 +27,7 @@ const tap = async (p, sel, ms) => {
   // a device: its own storage; the brokers' addresses answered by the mock; a stand-in for the screen wake lock that counts its calls
   const device = async (label, broker, down) => {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 950 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.addInitScript(() => {
       try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); s.bg = false; s.sfx = false; s.music = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } catch (e) {}
       window.__wl = { requests: 0, releases: 0, live: 0 };

@@ -12,6 +12,7 @@ const shot = process.env.SHOTS;
   const b = await chromium.launch();
   for (const [name, opts] of DEVS) {
     const ctx = await b.newContext({ ...opts, serviceWorkers: 'block' });
+    await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
     await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), async route => {
       const q = route.request();
       const c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };

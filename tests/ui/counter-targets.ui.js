@@ -31,6 +31,7 @@ function makeQuestion() {
   check('the engine builds a counter question with a target', !!q && q.kind === 'counter' && q.targets && q.targets.length === 1, q && JSON.stringify(q.targets && q.targets.map(t => t.name)));
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1360, height: 1000 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(() => { try { const d = JSON.parse(localStorage.getItem('isf_display') || '{}'); if (d.payChoose == null) { d.payChoose = false; localStorage.setItem('isf_display', JSON.stringify(d)); } } catch (e) {} });          // T-099: the pay sheet is on by default; these tests answer other questions, so the setting is off
   await ctx.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('isf_sound') || '{}'); if (s.bg == null) { s.bg = false; localStorage.setItem('isf_sound', JSON.stringify(s)); } } catch (e) {} });
   await ctx.route(u => /scryfall\.(com|io)$/.test(u.hostname), route => route.abort());          // pictures are not needed
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));

@@ -9,7 +9,7 @@ idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(DS,
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ["Kraum, Ludevic's Opus", 'Gleaming Splendor', 'Pollywog Prodigy', 'Forbidden Orchard', 'Wan Shi Tong, Librarian', 'Soul-Guide Lantern', 'Endurance', 'Sink into Stupor // Soporific Springs', 'Talon Gates of Madara', 'Sunfall',
-  'Goblin Cratermaker', 'Dimensional Infiltrator', 'Knacksaw Clique', 'Rampant Growth', 'Mind Stone', 'Sol Ring', 'Mountain', 'Forest', 'Island', 'Plains', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Llanowar Elves', 'Lightning Bolt'];
+  'Goblin Cratermaker', 'Dimensional Infiltrator', 'Knacksaw Clique', 'Rampant Growth', 'Pathrazer of Ulamog', 'High-Speed Hoverbike', 'Mnemonic Betrayal', 'Vandalblast', 'Oath of Druids', 'Swamp', 'Mind Stone', 'Sol Ring', 'Mountain', 'Forest', 'Island', 'Plains', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Llanowar Elves', 'Lightning Bolt'];
 const cards = base.cards.filter(c => !NAMES.includes(c.name)).slice(0, 30).concat(NAMES.map(n => { try { return find(n); } catch (e) { return null; } }).filter(Boolean));
 const deck = G.buildDeck(cards, base.tokens);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
@@ -84,6 +84,26 @@ T('Goblin Cratermaker, Dimensional Infiltrator, Knacksaw Clique', () => {
   check('Knacksaw Clique ({Q}: untap it): their top card is exiled and you may play it this turn, the Clique is untapped', !l.library.includes(top2) && !kc.tapped && k.hand.some(i => i === top2), `${kc.tapped}`);
   const [n, o] = match2(); const kc2 = putOn(n, 'Knacksaw Clique'); lands(n, 2, 'Island'); const top3 = o.library[0]; G.useAbilities(n);
   check('...it needs to be tapped (an untapped one does nothing)', o.library[0] === top3);
+});
+
+T('Pathrazer, Hoverbike, Mnemonic Betrayal, Vandalblast, Oath of Druids', () => {
+  const [g, b] = match2(); const big = putOn(b, 'Wurmcoil Engine'); putOn(g, 'High-Speed Hoverbike');
+  check('High-Speed Hoverbike: their best creature is tapped as it enters (no land is tapped instead)', big.tapped && !b.battlefield.some(q => q.asLand && q.tapped));
+  const [h, c] = match2(); putOn(h, 'High-Speed Hoverbike'); lands(c, 2, 'Forest');
+  check('...with no creature to tap it taps nothing', !c.battlefield.some(q => q.tapped));
+  const [p1, p2] = match2(); const pz = putOn(p1, 'Pathrazer of Ulamog'); pz.sick = false; const k1 = putOn(p2, 'Llanowar Elves'), k2 = putOn(p2, 'Solemn Simulacrum'); lands(p2, 6, 'Forest'); const life0 = p2.life; G.combat(p1);
+  check('Pathrazer of Ulamog cannot be blocked by two creatures: it connects for 9', p2.life === life0 - 9 && p2.battlefield.includes(k1), `${life0} -> ${p2.life}`);
+  const [q1, q2] = match2(); const pz2 = putOn(q1, 'Pathrazer of Ulamog'); pz2.sick = false; const m1 = putOn(q2, 'Llanowar Elves'), m2 = putOn(q2, 'Solemn Simulacrum'), m3 = putOn(q2, 'Mind Stone'); lands(q2, 6, 'Forest'); const l2 = q2.life; G.combat(q1);
+  check('...with three creatures to block it the defender may (the blockers are chosen by the same rule as menace, three)', G.powerOf(q1, pz2) === 9 && (q2.life >= l2 - 9));
+  const [m, n] = match2(); n.graveyard = [inst(n, 'Wurmcoil Engine'), inst(n, 'Lightning Bolt')]; lands(m, 1, 'Island'); lands(m, 1, 'Swamp'); lands(m, 1, 'Plains'); m.hand = [inst(m, 'Mnemonic Betrayal')]; G.castCard(m, m.hand[0]);
+  check('Mnemonic Betrayal: their graveyard is exiled and its cards are in your hand to cast this turn, with any mana', n.graveyard.length === 0 && m.hand.some(i => i.card.name === 'Wurmcoil Engine' && i.anyMana) && m.hand.some(i => i.card.name === 'Lightning Bolt'), m.hand.map(i => i.card.name).join(','));
+  G.endTurn(m);
+  check('...at the end step what is still exiled goes back to their graveyard', n.graveyard.length === 2 && !m.hand.some(i => i.card.name === 'Wurmcoil Engine'), `${n.graveyard.length}`);
+  const [v, w] = match2(); lands(v, 5, 'Mountain'); putOn(w, 'Sol Ring'); putOn(w, 'Mind Stone'); putOn(w, 'Wurmcoil Engine'); v.hand = [inst(v, 'Vandalblast')]; G.castCard(v, v.hand[0]);
+  check('Vandalblast: overloaded for {4}{R} it destroys each artifact they control (the Wurms the Wurmcoil leaves behind are made after)', !w.battlefield.some(q => /Sol Ring|Mind Stone|Wurmcoil/.test(q.card.name)) && w.battlefield.filter(q => q.token).length === 2, w.battlefield.map(q => q.card.name).join(','));
+  const [o1, o2] = match2(); putOn(o2, 'Oath of Druids'); putOn(o1, 'Llanowar Elves'); putOn(o2, 'Wurmcoil Engine'); putOn(o2, 'Solemn Simulacrum');
+  o1.library = o1.library.filter(i => !i.card.a.isCreature); o1.library.splice(3, 0, inst(o1, 'Wurmcoil Engine')); G.beginTurn(o1);
+  check('Oath of Druids: their upkeep, the other player controls more creatures: reveal until a creature, it enters (the Wurmcoil Engine), the rest go to the graveyard', o1.battlefield.some(q => q.card.name === 'Wurmcoil Engine') && o1.graveyard.length >= 3, `${o1.battlefield.map(q => q.card.name).join(',')} yard ${o1.graveyard.length}`);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

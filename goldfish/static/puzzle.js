@@ -175,11 +175,11 @@
       const selHand = hand.find(i => P.sel === 'c' + i.iid), selPerm = g.battlefield.find(p => P.sel === 'p' + p.iid);
       if (selHand) { const isLand = !!selHand.card.a.isLand, nm = selHand.card.name.split(' // ')[0]; items.push(`<button type="button" class="primary pz-do" ${me && (isLand ? G.canPlayLand(g) : castable(g, selHand)) ? '' : 'disabled'}>${isLand ? 'Play ' + esc(nm) : 'Cast ' + esc(nm)}</button>`); }
       let menu = []; if (selPerm) { try { menu = G.abilityMenu(g, selPerm); } catch (e) { menu = []; } menu.forEach((m, i) => items.push(`<button type="button" class="pz-ab" data-i="${i}" ${me && m.ok ? '' : 'disabled'} title="${esc(m.why || '')}">${esc((m.label || 'Ability').slice(0, 60))}${m.cost ? ' · ' + esc(m.cost) : ''}</button>`)); if (!menu.length) items.push('<span class="pz-hint2">No abilities.</span>'); }
+      if (selPerm && selPerm.card.a.isPlaneswalker) { let st = null; try { st = G.loyaltyState(g, selPerm, g); } catch (e) { st = null; } if (st) st.list.forEach(it => items.push(`<button type="button" class="pz-pw" data-i="${it.i}" ${me && it.ok ? '' : 'disabled'} title="${esc(it.why || '')}">${esc(it.label)}: ${esc(String(it.text).slice(0, 48))}</button>`)); }
       const attackers = g.battlefield.filter(p => G.canAttack(g, p));
       if (P.atk) {
         items.push(`<button type="button" class="primary pz-decl" ${me && P.atkSel.size ? '' : 'disabled'}>Declare attack (${P.atkSel.size})</button>`, `<button type="button" class="ghost pz-all" ${me && attackers.length ? '' : 'disabled'}>Attack with all</button>`, '<button type="button" class="ghost pz-cancel">Cancel</button>');
       } else {
-        if (pz.combo) items.push(`<button type="button" class="pz-combo" ${me ? '' : 'disabled'} title="The autopilot plays the rest of your main phase, and the combo when it is ready">Go off</button>`);
         items.push(`<button type="button" class="pz-atk" ${me && attackers.length ? '' : 'disabled'} title="Choose which creatures attack">Attack…</button>`);
         items.push(`<button type="button" class="ghost pz-pass" ${me ? '' : 'disabled'}>End turn</button>`);
         items.push('<button type="button" class="ghost pz-giveup">Give up</button>');
@@ -187,11 +187,11 @@
       bar.innerHTML = items.join('') + (P.busy ? '<p class="hint pz-busy">Working…</p>' : '');
       if (selHand) bar.querySelector('.pz-do').onclick = () => run(selHand.card.a.isLand ? (gs => G.playLandCard(gs[0], gs[0].hand.find(x => x.iid === selHand.iid))) : (gs => G.castCard(gs[0], pool(gs[0]).find(x => x.iid === selHand.iid))));
       bar.querySelectorAll('.pz-ab').forEach(bt => { bt.onclick = () => { const i = +bt.dataset.i, iid = selPerm.iid; run(gs => { const p = gs[0].battlefield.find(x => x.iid === iid); return p ? G.useAbility(gs[0], p, i) : null; }); }; });
+      bar.querySelectorAll('.pz-pw').forEach(bt => { bt.onclick = () => { const i = +bt.dataset.i, iid = selPerm.iid; run(gs => { const p = gs[0].battlefield.find(x => x.iid === iid); return p ? G.useLoyalty(gs[0], p, i, gs[0]) : null; }); }; });
       const atk = bar.querySelector('.pz-atk'); if (atk) atk.onclick = () => { P.atk = true; P.atkSel = new Set(); P.sel = null; render(); };
       const decl = bar.querySelector('.pz-decl'); if (decl) decl.onclick = () => { const ids = [...P.atkSel]; run(gs => D.turn.combat(gs[0], { attackers: ids })); };
       const all = bar.querySelector('.pz-all'); if (all) all.onclick = () => { const ids = attackers.map(p => p.iid); run(gs => D.turn.combat(gs[0], { attackers: ids })); };
       const cn = bar.querySelector('.pz-cancel'); if (cn) cn.onclick = () => { P.atk = false; P.atkSel = new Set(); render(); };
-      const cb = bar.querySelector('.pz-combo'); if (cb) cb.onclick = () => run(gs => D.turn.main1(gs[0]));
       const ps = bar.querySelector('.pz-pass'); if (ps) ps.onclick = endTurn;
       const gv = bar.querySelector('.pz-giveup'); if (gv) gv.onclick = () => { try { C && C.close(); } catch (e) { /* none */ } finish('lose', true); };
     } else {

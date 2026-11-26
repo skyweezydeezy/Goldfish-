@@ -87,18 +87,25 @@ const KEY = 'isf_puzzle2';
   await cast('Mountain'); await cast('Goldspan Dragon'); await attackAll();
   await p.waitForSelector('.pz-banner', { timeout: 30000 });
   check('the three-turn line wins on turn 3', await p.$eval('.pz-banner', e => e.classList.contains('win')));
-  // ---- a medium fast win from the 40-life set: the combo, a bait and Go off
+  // ---- a medium fast win from the 40-life set: the pieces of the combo are cast one by one, in order
   await p.click('.pz-list'); await p.waitForSelector('.pz-pick'); await open('fast-3');
-  check('a medium fast win starts the opponent at 40 and offers Go off', await p.$eval('[data-life=opp]', e => /40 life/.test(e.textContent)) && await p.$('.pz-combo') !== null);
+  check('a medium fast win starts the opponent at 40, shows only a hand count, and has no Go off button', await p.$eval('[data-life=opp]', e => /40 life/.test(e.textContent)) && await p.$('.pz-combo') === null && await p.$('.pz-hid') !== null);
   await cast('Island'); await p.click('.pz-pass'); await settle();
-  await cast('Swamp'); await cast('Ornithopter'); await cast('Lotus Petal'); await p.click('.pz-combo'); await settle();
+  await cast('Swamp'); await cast('Ornithopter'); await cast('Lotus Petal'); await cast('Demonic Consultation'); await cast("Thassa's Oracle");
   await p.waitForSelector('.pz-banner', { timeout: 30000 });
-  check('bait, rock, Go off: the combo wins against the hidden Force of Will', await p.$eval('.pz-banner', e => e.classList.contains('win')));
-  check('the best streak and progress are kept in localStorage', await p.evaluate(k => { const s = JSON.parse(localStorage.getItem(k)); return s && s.solved['end-2'] && s.solved['fast-2'] && s.solved['fast-3'] && s.best >= 3; }, KEY));
+  check('bait, rock, Consultation, then Oracle: the player casts every piece and wins against the hidden Force of Will', await p.$eval('.pz-banner', e => e.classList.contains('win')));
+  // a planeswalker: Jace's loyalty ability is a button (fast-4)
+  await p.click('.pz-list'); await p.waitForSelector('.pz-pick'); await open('fast-4');
+  await cast('Island'); await cast('Sol Ring'); await p.click('.pz-pass'); await settle();
+  await cast('Island'); await cast('Ornithopter'); await cast('Lotus Petal'); await cast('Jace, Wielder of Mysteries');
+  await p.click('.pz-perm[data-name^="Jace"]'); await p.click('.pz-pw[data-i="0"]'); await settle();
+  await p.waitForSelector('.pz-banner', { timeout: 30000 });
+  check("Jace's +1 is a button and the draw from an empty library wins", await p.$eval('.pz-banner', e => e.classList.contains('win')));
+  check('the best streak and progress are kept in localStorage', await p.evaluate(k => { const s = JSON.parse(localStorage.getItem(k)); return s && s.solved['end-2'] && s.solved['fast-2'] && s.solved['fast-3'] && s.solved['fast-4'] && s.best >= 4; }, KEY));
   check('no page errors on the desktop', errs.length === 0, errs.join(' | '));
   await p.reload(); await p.waitForFunction(() => window.ISFPuzzle, null, { timeout: 60000 });
   await p.click('[data-tab=puzzle]'); await p.waitForSelector('.pz-pick');
-  check('after a reload the solved puzzles are still ticked', await p.$$eval('.pz-pick.solved', xs => xs.length) === 3);
+  check('after a reload the solved puzzles are still ticked', await p.$$eval('.pz-pick.solved', xs => xs.length) === 4);
   await ctx.close();
 
   // ---- iPhone and iPad: the picker and a puzzle fit the screen, the buttons are reachable

@@ -38,6 +38,9 @@ for (const p of P) {
   const leak = p.hints.filter(h => solved.filter(n => h.includes(n)).length >= 2 || /\bthen\b/i.test(h) || /cast .* first/i.test(h));
   check(p.id + ': the hints do not give the line away', leak.length === 0, leak.join(' / '));
 }
+check('nobody is given the combo for free: no move plays a whole combo for you (no autopilot move)', P.every(p => p.solution.flat().every(m => ['land', 'cast', 'ability', 'attack', 'loyalty'].includes(m.do)) && p.wrong.every(w => w.moves.flat().every(m => ['land', 'cast', 'ability', 'attack', 'loyalty'].includes(m.do)))));
+check('the medium and hard fast wins start the opponent at 40 and the easy ones lower', P.filter(p => p.type === 'fast' && p.level !== 'easy').every(p => p.opp.life === 40) && P.filter(p => p.type === 'fast' && p.level === 'easy').every(p => p.opp.life < 40));
+check('the four medium and hard fast wins end four different ways (Oracle, Jace, Laboratory Maniac, a drain loop)', (() => { const f = P.filter(p => p.type === 'fast' && p.level !== 'easy').map(p => p.me.hand.find(n => /Thassa|Jace|Maniac|Vito/.test(n))); return new Set(f).size === 4; })());
 // the opponent's hand is hidden: what the puzzle shows of it is a count, never the names (the data keeps them for the engine)
 check('easy puzzles hold nothing, medium one piece of interaction, hard a fuller hand', P.filter(p => p.level === 'easy').every(p => !(p.opp.hand || []).length) && P.filter(p => p.level === 'medium').every(p => (p.opp.hand || []).length >= 1) && P.filter(p => p.level === 'hard').every(p => (p.opp.hand || []).length >= 3));
 // the search tool and the rules module agree: the searcher finds the intended line's first turn among its winning prefixes (bounded, endgames only)

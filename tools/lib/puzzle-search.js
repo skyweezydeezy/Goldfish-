@@ -4,7 +4,7 @@ const path = require('path');
 const Core = require(path.join(__dirname, '..', '..', 'goldfish', 'static', 'puzzle-core.js'));
 const key = mv => (mv.resp ? 'R' + mv.resp.join('+') : '') + mv.do + ':' + (mv.card || '') + (mv.n ? '#' + mv.n : '') + (mv.i ? '/' + mv.i : '') + (mv.who ? '>' + [].concat(mv.who).join('+') : '') + (mv.picks ? '[' + mv.picks.join(',') + ']' : '');
 const rs = m => (m.resp ? ' [responding with ' + m.resp.join(' then ') + ']' : '');
-const show = line => line.map(t => t.map(m => rs(m) && 0 || (m.do === 'land' ? 'land ' + m.card : m.do === 'cast' ? 'cast ' + m.card + (m.picks ? ' -> ' + m.picks.join(', ') : '') + rs(m) : m.do === 'ability' ? 'use ' + m.card + ' #' + (m.i || 0) + (m.picks ? ' -> ' + m.picks.join(', ') : '') : m.do === 'combo' ? 'let the autopilot go off' : m.do === 'attack' ? 'attack with ' + (m.who === 'all' ? 'everything' : [].concat(m.who).join(' + ')) : m.do)).join('; ') || '(nothing)').join('  ||  ');
+const show = line => line.map(t => t.map(m => rs(m) && 0 || (m.do === 'land' ? 'land ' + m.card : m.do === 'cast' ? 'cast ' + m.card + (m.picks ? ' -> ' + m.picks.join(', ') : '') + rs(m) : m.do === 'ability' ? 'use ' + m.card + ' #' + (m.i || 0) + (m.picks ? ' -> ' + m.picks.join(', ') : '') : m.do === 'loyalty' ? 'use ' + m.card + ' loyalty #' + (m.i || 0) : m.do === 'attack' ? 'attack with ' + (m.who === 'all' ? 'everything' : [].concat(m.who).join(' + ')) : m.do)).join('; ') || '(nothing)').join('  ||  ');
 
 // replay a prefix (turns done + the moves of the current turn) and return the scenario at the point where the next move is chosen
 function replay(cardOf, pz, line, turnMoves) {
@@ -31,7 +31,7 @@ function candidates(sc, cardOf, pz, line, turnMoves, attacked) {
     const same = bf.filter(x => x.card.name === p.card.name);
     menu.forEach((it, i) => { if (it.ok) add({ do: 'ability', card: p.card.name, i, n: same.indexOf(p) }); });
   }
-  if (pz.combo) add({ do: 'combo' });
+  for (const p of bf) if (p.card.a.isPlaneswalker) { let st = null; try { st = require(path.join(__dirname, '..', '..', 'goldfish', 'static', 'sim.js')).loyaltyState(g, p, g); } catch (e) { st = null; } if (st) st.list.forEach(it => { if (it.ok) add({ do: 'loyalty', card: p.card.name, i: it.i }); }); }
   if (!attacked) {
     const G = require(path.join(__dirname, '..', '..', 'goldfish', 'static', 'sim.js'));
     const can = bf.filter(p => G.canAttack(g, p)), names = [...new Set(can.map(p => p.card.name))];

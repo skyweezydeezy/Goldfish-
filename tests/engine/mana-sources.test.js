@@ -12,6 +12,7 @@ const OTHER = { 'Krark-Clan Ironworks': 'sacrifice', 'Phyrexian Altar': 'sacrifi
 const MANA = /^[^:"]*:\s*add\b/im, seen = new Map();
 for (const d of L.index().decks) for (const c of L.loadDeck(d)) if (!seen.has(c.name)) seen.set(c.name, c);
 const FOD = [['Gigantosaurus', 2], ['Ornithopter', 3], ['Swamp', 3]];
+const EXTRA = { 'Selvala, Heart of the Wilds': ['Forest'] };          // a mana ability that costs {G}: it needs a green source to pay it (net X - 1 mana)
 function bare(c, extra) {
   const deck = G.buildDeck([c].concat(FOD.map(f => by(f[0]))).concat((extra || []).map(n => by(n))).map(x => Object.assign({}, x, { qty: 1 })), []);
   const g = G.newGame(deck, Object.assign({}, L.O), 3); g.turn = 5; g.hand = []; g.battlefield = []; g.command = []; g.graveyard.length = 0; g.exile = []; g.library = [];
@@ -26,7 +27,7 @@ for (const [name, c] of seen) {
   if (OTHER[name] || NO_MANA.includes(name.split(' // ')[0])) continue;
   n++;
   try {
-    const { g, put } = bare(c); for (const [f, k] of FOD) for (let i = 0; i < k; i++) put(f); G.flushLeaves(g, []); G.touch(g);
+    const { g, put } = bare(c, EXTRA[name]); for (const [f, k] of FOD) for (let i = 0; i < k; i++) put(f); for (const f of EXTRA[name] || []) put(f); G.flushLeaves(g, []); G.touch(g);
     const base = G.allUnits(g).length, p = put(c.name.split(' // ')[0] === c.name ? c.name : g.battlefield[0].card.name && (c.name)); G.flushLeaves(g, []); G.touch(g);
     const now = G.allUnits(g);
     if (!(now.length > base || now.some(u => u.src === p))) bad.push(name);

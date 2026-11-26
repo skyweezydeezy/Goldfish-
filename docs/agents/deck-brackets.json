@@ -1616,36 +1616,36 @@
     "by3": 0,
     "by4": 0.1,
     "by5": 3.1,
-    "by6": 21.4,
-    "by7": 57.4,
-    "by8": 83.9,
-    "byT": 97.6,
+    "by6": 21.7,
+    "by7": 58,
+    "by8": 84.5,
+    "byT": 97.7,
     "earliestKill": 4,
     "killHist": [
      0,
      0,
      0,
-     0.05,
-     3.005,
-     18.305,
-     36.075,
-     26.5,
-     10.355,
-     3.275,
-     2.435
+     0.065,
+     3.07,
+     18.575,
+     36.26,
+     26.495,
+     10.115,
+     3.16,
+     2.26
     ],
     "cmdrMedian": 4,
-    "mana4": 5.66,
+    "mana4": 5.71,
     "winBy": {
-     "damage": 84.9,
-     "commander": 6.1,
-     "combo": 6.5
+     "damage": 85.1,
+     "commander": 6.2,
+     "combo": 6.4
     },
     "topLine": {
      "kind": "combo",
      "text": "Kiki-Jiki, Mirror Breaker copies Zealous Conscripts, and each copy untaps Kiki-Jiki, Mirror Breaker: endless hasty attackers",
-     "share": 0.0344,
-     "avgTurn": 7.244186046511628
+     "share": 0.034,
+     "avgTurn": 7.329411764705882
     }
    },
    "field": null,
@@ -4245,6 +4245,19 @@
    "matchTurns": 25,
    "seed": 20261123,
    "seconds": 150,
+   "jobs": 4
+  },
+  {
+   "only": [
+    "landslide-victory.txt"
+   ],
+   "version": 211,
+   "date": "2026-11-26",
+   "gamesPerDeck": 20000,
+   "matchesPerPair": 393,
+   "matchTurns": 25,
+   "seed": 20261123,
+   "seconds": 90,
    "jobs": 4
   }
  ]

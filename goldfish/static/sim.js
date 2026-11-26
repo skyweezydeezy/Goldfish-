@@ -783,6 +783,51 @@
         if (/^whenever ~ deals combat damage to a player, you may cast your commander from the command zone without paying its mana cost\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'freeCommander' }], { who: '~' }); continue; }          // Geode Golem (rules batch 69)
         if (/^whenever you cast a colorless spell, until end of turn, ~ gains trample and gets \+x\/\+x, where x is that spell's mana value\.?$/i.test(line)) { TR(['cast'], [{ type: 'pumpOne', self: true, p: 'X', t: 'X', count: { what: 'lastmv', zone: 'special' }, keywords: ['trample'] }], { filter: 'colorless' }); continue; }          // Skittering Cicada
       }
+      // ---- rules batch 72: the top-5000 pool (one card each)
+      { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        if (/^if you would draw a card, instead look at the top three cards of your library, then put one into your hand and the rest into your graveyard\.?$/i.test(line)) { a.lichDraw = true; rec.status = 'ok'; continue; }          // Underrealm Lich
+        if (/^\{g\}\{u\}, \{t\}: double the number of each kind of counter on up to two target creatures and\/or artifacts you control\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{G}{U}'), tap: true, gate: 'doubleTwo', fx: [{ type: 'doubleTwo', n: 2 }], text: raw }); rec.status = 'ok'; continue; }          // Zimone, Paradox Sculptor
+        if (/^whenever a nontoken creature you control deals combat damage to a player, create a token that's a copy of it, except it isn't legendary\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'copyToken', notLegendary: true }], { who: 'a creature you control', nontokenOnly: true }); continue; }          // Impostor Syndrome
+        if (/^whenever equipped creature deals combat damage, put a charge counter on ~\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'counters', kind: 'charge', n: 1, scope: 'self' }], { who: 'equipped creature' }, 'partial'); continue; }          // Lost Jitte (approx: damage dealt to a creature does not count yet)
+        if (/^whenever a creature enters, you may add an amount of \{c\} equal to the number of creatures you control that share a creature type with it\.?$/i.test(line)) { TR(['permEtb'], [{ type: 'echoMana' }], { other: false, nontoken: false, filter: 'creature' }, 'partial'); continue; }          // Mana Echoes (approx: only your own creatures entering)
+        if (/^\{u\}\{r\}: until end of turn, ~ becomes a 2\/1 blue and red elemental creature with "during your turn, ~ has first strike\." it's still a land\.?$/i.test(line)) { a.animate = { cost: parseCost('{U}{R}'), p: 2, t: 1, kw: [] }; a.fsOwnTurn = true; rec.status = 'ok'; continue; }          // Restless Spire (first strike on your turn only: hasKw reads fsOwnTurn)
+        if (/^remove a charge counter from ~: add one mana of any color\.?$/i.test(line)) { a.chargeMana = true; rec.status = 'ok'; continue; }          // Pentad Prism
+        if (/^put a -0\/-1 counter on ~: add \{g\}\. activate only once each turn\.?$/i.test(line)) { a.wallMana = true; rec.status = 'ok'; continue; }          // Wall of Roots
+        if (a.isInstantSorcery && /^copy target instant or sorcery spell you control\. if ~ was cast from a graveyard, copy that spell twice instead\./i.test(line)) { a.respondCopy = {}; a.spellFx.push({ type: 'copyRespond' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Increasing Vengeance (approx: a flashback cast does not copy twice yet)
+        if (a.isInstantSorcery && /^you may choose new targets for target instant or sorcery spell\. then copy that spell\. you may choose new targets for the copy\.?$/i.test(line)) { a.respondCopy = {}; a.spellFx.push({ type: 'copyRespond' }); rec.status = 'ok'; continue; }          // Wild Ricochet (your own spell: its targets stay)
+        if (/^non-phyrexian creatures enter tapped\.?$/i.test(line)) { a.censor = true; rec.status = 'ok'; continue; }          // Phyrexian Censor
+        if (/^mana abilities of ~ cost an additional 1 life to activate\.?$/i.test(line)) { a.tapPain = 1; rec.status = 'ok'; continue; }          // Thran Portal (paid each time it taps for mana, as City of Brass)
+        if (/^whenever a player draws their second card each turn, you draw a card\.?$/i.test(line)) { a.triggers.push({ kinds: ['onDraw'], drawNth: 2, fx: [{ type: 'draw', n: 1 }], text: raw }, { kinds: ['oppDraw'], fx: [{ type: 'draw', n: 1 }], drawNth: 2, text: raw }); rec.status = 'ok'; continue; }          // King T'Challa (your own second draw and an opponent's)
+        if (/^\{t\}: exchange your life total with ~'s toughness\.?$/i.test(line)) { a.activated.push({ cost: { generic: 0, pips: [], x: 0 }, tap: true, gate: 'treeSwap', fx: [{ type: 'treeSwap' }], text: raw }); rec.status = 'ok'; continue; }          // Tree of Redemption
+        if ((bm = line.match(/^whenever a creature of the chosen type dies, (.+)$/i)) && curTribe) { const r = parseEffects(bm[1]); if (r.fx.length) { TR(['dies'], r.fx, { who: 'a creature', subtype: curTribe.toLowerCase(), perTurn: false, nontoken: false }); continue; } }          // Species Specialist (any creature of the chosen type, yours or not)
+      }
+      // ---- rules batch 74: the top-5000 pool (one card each)
+      if (a.isInstantSorcery) {
+        if (/^each creature gets twice -x\/-x until end of turn\. each player gets x rad counters\.?$/i.test(line)) { a.spellFx.push({ type: 'xShrink', times: 2 }, { type: 'rad', n: 'X', who: 'each' }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Nuclear Fallout (approx: creatures that survive are not shrunk)
+        if (/^look at the top x cards of your library, where x is the number of lands you control\. put one of those cards into your hand\. if (?:this spell|~) was kicked, put two of those cards into your hand instead\. put the rest on the bottom of your library in a random order\.?$/i.test(line)) { a.spellFx.push({ type: 'kickSwap', base: [{ type: 'lookTake', look: 'LANDS', take: 1 }], kick: [{ type: 'lookTake', look: 'LANDS', take: 2 }] }); rec.status = 'ok'; continue; }          // Consult the Star Charts
+      }
+      { let bm;
+        if (/^whenever a permanent you control is put into a graveyard, you get \{e\}\s*\.?$/i.test(line)) { a.marvelE = true; rec.status = 'ok'; continue; }          // Aetherworks Marvel
+        if (/^whenever another permanent you control is put into a graveyard from the battlefield, if it had one or more counters on it, you may put that number of \+1\/\+1 counters on target creature\.?$/i.test(line)) { a.yunaCounters = true; rec.status = 'ok'; continue; }          // Yuna, Grand Summoner
+        if (/^at the beginning of each combat, choose first strike, vigilance, or lifelink\. creatures you control gain that ability until end of turn\.?$/i.test(line)) { a.triggers.push({ kinds: ['combat'], fx: [{ type: 'skirmisher' }], text: raw }); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Angelic Skirmisher (approx: your combat only; vigilance is never chosen)
+        if (/^escalate—tap an untapped creature you control\.?$/i.test(line)) { rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Collective Effort (approx: the spell is played with its one best mode)
+        if (/^during your turn, other historic creatures you control have double strike\.?$/i.test(line)) { (a.statics.dyn = a.statics.dyn || []).push({ kind: 'myTurnHistoric', p: 0, t: 0, keywords: ['double strike'] }); rec.status = 'ok'; continue; }          // Bayek of Siwa
+        if ((bm = line.match(/^disguise ((?:\{[^}]+\})+)/i))) { a.morph = parseCost(bm[1]); rec.status = 'partial'; rec.tag = 'approx'; continue; }          // Bayek of Siwa (cast face down as a morph; the face-down ward {2} is not kept)
+      }
+      // ---- rules batch 76: mill triggers and rad counters
+      { let bm; const TR = (kinds, fx, extra, st) => { a.triggers.push(Object.assign({ kinds, fx, text: raw }, extra || {})); rec.status = st || 'ok'; if (st === 'partial') rec.tag = 'approx'; };
+        const TOK = (p, t, colors, subtypes, n) => ({ type: 'token', n: n || 1, tapped: false, creature: true, p, t, colors, subtypes, keywords: [], artifact: false, name: subtypes.join(' ') });
+        if (/^(?:hive mind — )?whenever a player mills one or more creature cards, you create a 1\/1 black horror creature token\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [TOK(1, 1, ['B'], ['Horror'])], { what: 'creature', whose: 'any' }); continue; }          // Zellix, Sanity Flayer
+        if (/^whenever one or more nonland cards are milled, put a \+1\/\+1 counter on each of up to x target creatures, where x is the number of nonland cards milled this way\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [{ type: 'counters', kind: '+1/+1', n: 1, scope: 'upTo', upTo: 'MILLNL', other: false, excl: false, types: [] }], { what: 'nonland', whose: 'any' }); continue; }          // The Wise Mothman
+        if (/^whenever one or more nonland cards are milled, draw a card, then put a \+1\/\+1 counter on ~\. this ability triggers only once each turn\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [{ type: 'draw', n: 1 }, { type: 'counters', kind: '+1/+1', n: 1, scope: 'self' }], { what: 'nonland', whose: 'any', perTurn: true }); continue; }          // Mirelurk Queen
+        if (/^whenever one or more nonland cards are milled, you may create that many 2\/2 black zombie mutant creature tokens\. do this only once each turn\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [TOK(2, 2, ['B'], ['Zombie', 'Mutant'], 'MILLNL')], { what: 'nonland', whose: 'any', perTurn: true }); continue; }          // Screeching Scorchbeast
+        if (/^whenever a player mills a nonland card, you gain 1 life\.?$/i.test(line)) { a.milledTrig = true; TR(['milled'], [{ type: 'gainLife', n: 1 }], { what: 'nonland', whose: 'any', each: true }); continue; }          // Glowing One
+        if (/^whenever one or more creature cards are put into your graveyard from your library, create a 2\/2 black zombie creature token\.?$/i.test(line)) { a.libYardTrig = true; TR(['libToYard'], [TOK(2, 2, ['B'], ['Zombie'])]); continue; }          // Sidisi, Brood Tyrant
+        if (/^whenever ~ enters or attacks, each player gets a rad counter\.?$/i.test(line)) { TR(['etb', 'attack'], [{ type: 'rad', n: 1, who: 'each' }]); continue; }          // The Wise Mothman
+        if (/^whenever ~ attacks, each player gets two rad counters\.?$/i.test(line)) { TR(['attack'], [{ type: 'rad', n: 2, who: 'each' }]); continue; }          // Screeching Scorchbeast
+        if (/^when ~ enters, target player gets two rad counters\.?$/i.test(line)) { TR(['etb'], [{ type: 'rad', n: 2, who: 'opp' }]); continue; }          // Mirelurk Queen (an opponent)
+        if (/^whenever ~ deals combat damage to a player, they get four rad counters\.?$/i.test(line)) { TR(['combatDamage'], [{ type: 'rad', n: 4, who: 'opp' }], { who: '~' }); continue; }          // Glowing One
+      }
       // ---- T-036: targets the decision-points session asks about (spells read before as approximations)
       if (a.isInstantSorcery) {
         if (/^choose target creature you control\. whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards\.?$/i.test(line)) { a.spellFx.push({ type: 'insight' }); rec.status = 'ok'; continue; }          // Hunter's Insight
@@ -3651,8 +3696,15 @@
     if (n > 0 && !g.dry) { const sv = (tableHas(g, 'spitefulVisions') ? bothSides(g).filter(q => q.card.a.spitefulVisions) : []).length; if (sv) { g.life -= Math.min(n, g.library.length) * sv * twinMult(g); checkDeath(g, ev || []); } }          // Spiteful Visions
     if (g.opp && g.opp.thiefSeen && n > 0 && !g._firstDraw && !g.dry && (tableHas(g.opp, 'notionThief') && g.opp.battlefield.some(q => q.card.a.notionThief)) && !(tableHas(g, 'notionThief') && g.battlefield.some(q => q.card.a.notionThief))) { if (ev) ev.push({ type: 'note', text: `Notion Thief: the other player draws ${n} card${n === 1 ? '' : 's'} instead` }); draw(g.opp, n, ev); return []; }
     if (n > 0) g.drawnTurnN = (g.drawnTurnN || 0) + n;
-    const out = [];
-    for (let i = 0; i < n && g.library.length; i++) {
+    const out = []; const lich = !g.dry && tableHas(g, 'lichDraw') && g.battlefield.some(q => q.card.a.lichDraw);
+    for (let i = 0; i < n && (g.library.length || lich); i++) {
+      if (lich) {          // rules batch 72: Underrealm Lich replaces each draw: look at the top three, one to hand, the rest to the graveyard (not a draw)
+        const top = g.library.splice(0, 3); if (!top.length) continue;
+        const ctx = tutorContext(g); let pick = top[0], bs = -Infinity; for (const x of top) { const sc = tutorScore(g, x, ctx); if (sc > bs) { bs = sc; pick = x; } }
+        g.hand.push(pick); if (ev) ev.push({ type: 'tutor', inst: pick, source: null });
+        for (const x of top) if (x !== pick) { g.graveyard.push(x); if (ev) ev.push({ type: 'note', text: `Underrealm Lich: ${x.card.name} to the graveyard`, source: null }); }
+        continue;
+      }
       if (!g.dry && g._bf && g._bf.abundance) {                                                         // Abundance: a land while you need lands, otherwise a spell; the cards revealed on the way go to the bottom
         const wantLand = g.battlefield.filter(q => q.asLand).length + g.hand.filter(h => h.card.a.isLand).length < (g.opts.maxLands || 5) + 1;
         const at = g.library.findIndex(x => !!x.card.a.isLand === wantLand);
@@ -3668,7 +3720,7 @@
       }
       if (ev) { ev.push({ type: 'draw', inst: c }); if (!g.dry) for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('onDraw') && (!t.drawNth || t.drawNth === g.drawSeq) && g.battlefield.includes(q)) fire(g, t, q, ev, null, 1); }
     }
-    if (out.length < n && !g.library.length && !g.dry) {                                 // a draw from an empty library: Laboratory Maniac and Jace, Wielder of Mysteries win the game instead
+    if (out.length < n && !g.library.length && !g.dry && !lich) {                                 // a draw from an empty library: Laboratory Maniac and Jace, Wielder of Mysteries win the game instead
       const lm = (tableHas(g, 'statics.drawWin') ? g.battlefield.find(q => q.card.a.statics.drawWin) : undefined);
       if (lm) { const we = ev || []; we.push({ type: 'note', text: `${lm.card.name}: you would draw from an empty library, so you win the game`, source: lm }); applyEffects(g, [{ type: 'win' }], lm, we, null); }
       else if (g.opp && !matchOver(g)) { (ev || []).push({ type: 'note', text: 'A draw from an empty library: that player loses', source: null }); loseGame(g, ev || [], 'decked'); }
@@ -3991,6 +4043,7 @@
       else if (d.kind === 'selfLife') on = src === p && g.life >= (g.opts.startLife || 40) + d.over;          // rules batch 61: Elenda
       else if (d.kind === 'selfOil') on = src === p && ((p.other && p.other.oil) || 0) >= d.min;          // rules batch 61: Armored Scrapgorger
       else if (d.kind === 'srcCounter') { if (stat && isCreaturePerm(p)) n += d[k] * ((src.other && src.other[d.counter]) || 0); continue; }          // rules batch 62: Boon of the Spirit Realm
+      else if (d.kind === 'myTurnHistoric') on = g.activeTurn !== false && src !== p && isCreaturePerm(p) && (p.card.a.isArtifact || p.card.a.isLegendary || /\bSaga\b/.test(p.card.type_line || ''));          // rules batch 74: Bayek of Siwa
       else if (d.kind === 'myTurnTribe') on = g.activeTurn !== false && (src === p || matchesFilter(p.card, d.filter));          // rules batch 64: Dion
       else if (d.kind === 'moraug') { if (k === 'p' && p.atkTurn === g.turn) n += p.atkN || 0; continue; }
       else if (d.kind === 'levelLord') on = src !== p && (src.level || 0) >= d.min && matchesFilter(p.card, d.filter);
@@ -4073,7 +4126,7 @@
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor, spa = p.card.a.statics.selfPerArtifact;
     const cda = p.card.a.cda, lbf = p.card.a.lifeBuff, pe = p.card.a.perEach;
-    return -oppMinusOf(g, 't') + yardLandBuff(g, p, 't') + condAnthem(g, p, 't') + (pe ? pe.t * countWhat(g, pe.what, p) : 0) + (spa ? spa.t * g.battlefield.filter(q => artOn(g, q)).length : 0) + (lbf && g.life >= lbf.min ? lbf.t : 0) + coatBonus(g, p) + (cda && cda.t ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.t + (p.animated.lands ? g.battlefield.filter(q => q.asLand).length : 0) : ((g.opp && g.opp.splendorSeen && splendored(g)) || mahaOn(g) ? 1 : (p.level ? levelStat(p, 't') : (p.card.a.toughness || 0)))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) + anthemsFor(g, p).dt + (pc ? pc.t * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotT || 0) + g.eot.t;
+    return -oppMinusOf(g, 't') + yardLandBuff(g, p, 't') + condAnthem(g, p, 't') + (pe ? pe.t * countWhat(g, pe.what, p) : 0) + (spa ? spa.t * g.battlefield.filter(q => artOn(g, q)).length : 0) + (lbf && g.life >= lbf.min ? lbf.t : 0) + coatBonus(g, p) + (cda && cda.t ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.t + (p.animated.lands ? g.battlefield.filter(q => q.asLand).length : 0) : ((g.opp && g.opp.splendorSeen && splendored(g)) || mahaOn(g) ? 1 : (p.level ? levelStat(p, 't') : (p.setT != null ? p.setT : (p.card.a.toughness || 0))))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) - ((p.other && p.other['-0/-1']) || 0) + anthemsFor(g, p).dt + (pc ? pc.t * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotT || 0) + g.eot.t;
   }
   function hasKw(g, p, k) {
     if (p.eotNoKw) return false;          // Sudden Spoiling: no abilities until end of turn
@@ -4231,6 +4284,8 @@
     }
     if (!g.dry && (tableHas(g, 'baylenMana') && g.battlefield.some(q => q.card.a.baylenMana && !abilBlocked(g, q, true)))) { const toks = g.battlefield.filter(q => q.token && !q.tapped && !q.produce && !q.sacMana && !q.card.a.isLand && (!isCreaturePerm(q) || q.sick || g.combatDone));          // Baylen, the Haymaker
       for (let i = 0; i + 1 < toks.length; i += 2) units.push({ src: { pseudo: true, foods: [toks[i], toks[i + 1]], produce: { colors: ANY_COLOR, amount: 1 } }, colors: ANY_COLOR }); }
+    if (!g.dry && tableHas(g, 'chargeMana')) for (const q of g.battlefield) if (q.card.a.chargeMana && ((q.other && q.other.charge) || 0) > 0 && !abilBlocked(g, q, true)) for (let k = 0; k < q.other.charge; k++) units.push({ src: { pseudo: true, counterOf: q, counterKind: 'charge', produce: { colors: ANY_COLOR, amount: 1 } }, colors: ANY_COLOR });          // rules batch 73: Pentad Prism (remove a charge counter: one mana of any color)
+    if (!g.dry && tableHas(g, 'wallMana')) for (const q of g.battlefield) if (q.card.a.wallMana && q.wallTurn !== g.turn && toughnessOf(g, q) > 1 && !abilBlocked(g, q, true)) units.push({ src: { pseudo: true, wallOf: q, produce: { colors: new Set(['G']), amount: 1 } }, colors: new Set(['G']) });          // rules batch 73: Wall of Roots (a -0/-1 counter for {G}, once each turn; never its last point of toughness)
     if (!g.dry) for (const q of (tableHas(g, 'counterMana') ? g.battlefield : NONE)) if (q.card.a.counterMana && (q.counters || 0) > 0 && !abilBlocked(g, q, true)) for (let k = 0; k < q.counters; k++) units.push({ src: { pseudo: true, counterOf: q, produce: { colors: ANY_COLOR, amount: 1 } }, colors: ANY_COLOR });          // Crystalline Crawler
     if (!g.dry && (tableHas(g, 'discardMana') && g.battlefield.some(q => q.card.a.discardMana && !abilBlocked(g, q, true)))) { const spare = g.hand.filter(i => i.card.a.isLand && (g.landsPlayedThisTurn >= landsAllowed(g) || g.battlefield.filter(q => q.asLand).length >= 6)); for (const i of spare) units.push({ src: { pseudo: true, discardCard: i, produce: { colors: new Set(['B']), amount: 1 } }, colors: new Set(['B']) }); }          // Skirge Familiar: spare lands discarded for {B}
     return units;
@@ -4350,6 +4405,8 @@
         for (const q of (tableHas(g, 'enchDiesDraw') ? g.battlefield : NONE)) if (q.card.a.enchDiesDraw && q.attachedTo === p.iid && g.library.length) draw(g, 1, ev || []);          // Sticky Fingers
       }          // Unstoppable Slasher
     }
+    if (!g.dry && dest == null && tableHas(g, 'marvelE')) for (const q of g.battlefield.slice()) if (q.card.a.marvelE && !q.phased) applyEffects(g, [{ type: 'energy', n: 1 }], q, ev || [], null);          // rules batch 75: Aetherworks Marvel (a permanent you control is put into a graveyard: {E})
+    if (!g.dry && dest == null && tableHas(g, 'yunaCounters')) { const nc = Math.abs(p.counters || 0) + Object.values(p.other || {}).reduce((t, v) => t + (v > 0 ? v : 0), 0) + (p.loyalty > 0 ? p.loyalty : 0); if (nc > 0) for (const q of g.battlefield.slice()) if (q.card.a.yunaCounters && q !== p && !q.phased) { const t = counterTarget(g, {}, null); if (t) addCounters(g, t, '+1/+1', nc, ev || [], q); } }          // rules batch 75: Yuna, Grand Summoner (another permanent with counters goes to a graveyard: that many +1/+1 counters on your best creature)
     if (!g.dry && dest == null && enchOn(g, p)) for (const q of (tableHas(g, 'enchGrave') ? g.battlefield : NONE)) if (q.card.a.enchGrave && q !== p) addCounters(g, q, '+1/+1', 1, ev || [], q);          // Starfield Mystic
     if (!g.dry && isCreaturePerm(p) && g.killTurn == null) for (const os of g.battlefield) if (os.siegeMode === 'dragons') damageOpp(g, 1, ev || [], os);          // Outpost Siege (Dragons): any creature of yours leaving
     if (!g.dry && dest == null && isCreaturePerm(p)) {
@@ -4466,7 +4523,8 @@
       fireN(g, t, q, ev, p);
     }
     if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('oppDies')) fireN(g.opp, t, q, ev, p);
-    if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('dies') && /^(a creature|another creature|another nontoken creature|~ or another creature|one or more other creatures)$/.test(t.who) && !(t.nontoken && p.token)) { if (t.perTurn) { if (q.perTurnUsed === g.opp.turn) continue; q.perTurnUsed = g.opp.turn; } fireN(g.opp, t, q, ev, p); }
+    if (g.opp) for (const q of g.opp.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('dies') && /^(a creature|another creature|another nontoken creature|~ or another creature|one or more other creatures)$/.test(t.who) && !(t.nontoken && p.token) && !(t.subtype && !hasSubtype(p.card, [t.subtype]))) {          // rules batch 72: Species Specialist's chosen type
+ if (t.perTurn) { if (q.perTurnUsed === g.opp.turn) continue; q.perTurnUsed = g.opp.turn; } fireN(g.opp, t, q, ev, p); }
   }
   // best card in the graveyard for "return target <kind> card from your graveyard to your hand"
   // A person chooses the card in a graveyard themselves (Regrowth, Eternal Witness, Reanimate, Sun Titan, Mystic Sanctuary): every card
@@ -4547,6 +4605,11 @@
     const viz = kind === '-1/-1' && inf.vizier && isCreaturePerm(np) ? 1 : 0, more = (add - viz) - (n - viz);
     if (more > 0) np.counters = (np.counters || 0) + (kind === '-1/-1' ? -more : more);
     const placed = add - viz; if (placed > 0) countersPutAfter(g, np, kind, placed, ev, np, inf);          // Vizier of Remedies: one fewer, and none placed is no event
+  }
+  // up to n of your creatures and/or artifacts with counters on them (+1/+1 counters or any other kind), the most counters first
+  function doubleTargets(g, n) {
+    const cnt = q => Math.max(0, q.counters || 0) + Object.values(q.other || {}).reduce((t, v) => t + (v > 0 ? v : 0), 0);
+    return g.battlefield.filter(q => (isCreaturePerm(q) || q.card.a.isArtifact) && cnt(q) > 0 && !((q.counters || 0) < 0 && !Object.values(q.other || {}).some(v => v > 0))).sort((x, y) => cnt(y) - cnt(x)).slice(0, n);
   }
   function addCounters(g, p, kind, n, ev, source, noDouble) {
     const inf = bfInfo(g), add = counterAmount(g, p, kind, n, noDouble); if (!(add > 0)) return 0;
@@ -4757,7 +4820,9 @@
       if (s.card && s.card.a && s.card.a.tapCounter) s.other = Object.assign({}, s.other, { [s.card.a.tapCounter]: ((s.other && s.other[s.card.a.tapCounter]) || 0) + 1 });          // Twitching Doll: a nest counter each time it taps for mana
       if (s.card && s.card.a && s.card.a.tapPain) { g.life -= s.card.a.tapPain; checkDeath(g, []); }
       if (barbs && s.asLand) { g.life -= barbs * twinMult(g); checkDeath(g, []); }          // Manabarbs          // City of Brass, Ancient Tomb, Mana Confluence
-      if (s.counterOf) s.counterOf.counters = Math.max(0, (s.counterOf.counters || 0) - 1);          // Crystalline Crawler
+      if (s.counterOf && s.counterKind) s.counterOf.other = Object.assign({}, s.counterOf.other, { [s.counterKind]: Math.max(0, ((s.counterOf.other && s.counterOf.other[s.counterKind]) || 0) - 1) });          // rules batch 73: Pentad Prism
+      else if (s.counterOf) s.counterOf.counters = Math.max(0, (s.counterOf.counters || 0) - 1);          // Crystalline Crawler
+      if (s.wallOf) { s.wallOf.wallTurn = g.turn; s.wallOf.other = Object.assign({}, s.wallOf.other, { '-0/-1': (((s.wallOf.other && s.wallOf.other['-0/-1']) || 0)) + 1 }); }          // rules batch 73: Wall of Roots
       if (s.discardCard) { const hi = g.hand.indexOf(s.discardCard); if (hi >= 0) { g.hand.splice(hi, 1); g.graveyard.push(s.discardCard); if (s.discardCard.card.a.isLand) landToYard(g, [], false); madness(g, s.discardCard, []); } }          // Skirge Familiar
       if (s.foods) s.foods.forEach(f => { f.tapped = true; });         // Cabbage Merchant taps the two Foods
       if (s.handCard) { const hi = g.hand.indexOf(s.handCard); if (hi >= 0) { g.hand.splice(hi, 1); g.exile.push(s.handCard); } }          // Simian Spirit Guide: exiled from the hand
@@ -5038,6 +5103,7 @@
       const t = [g].concat(otherPlayers(g)).reduce((l, x) => l.concat(x.graveyard), []).filter(i => i.card.a.isLand && !i.card.a.cloneYardLand && !i.card.a.cloneLand).sort((x, y) => val(y) - val(x))[0];
       if (t && val(t) > 3) { const np = enterWithTriggers(g, { iid: inst.iid, card: t.card }, Object.assign({}, o, { tapped: true }), ev); np.inst = inst; np.copyOf = t.card.name; (ev || []).push({ type: 'note', text: `${inst.card.name} enters tapped as a copy of ${t.card.name}` }); return np; }
     }
+    if (!g.dry && !o.tapped && inst.card.a.isCreature && tableHas(g, 'censor') && bothSides(g).some(q => q.card.a.censor) && !/\bPhyrexian\b/.test(inst.card.type_line || '')) o = Object.assign({}, o, { tapped: true });          // rules batch 73: Phyrexian Censor (non-Phyrexian creatures, anyone's, enter tapped)
     if (inst.card.a.cloneLand && !g.dry) {                                                                // Vesuva: enters tapped as a copy of the best land on the battlefield
       const val = q => (q.produce ? q.produce.amount * 3 + q.produce.colors.size * 0.5 : 0) + (q.card.a.coffers || q.card.a.nykthos ? 6 : 0) + (q.card.a.labyrinth ? 1 : 0);
       const t = bothSides(g).filter(q => q.asLand && !q.card.a.cloneLand && !(q.card.a.isLegendary && g.battlefield.includes(q))).sort((x, y) => val(y) - val(x))[0];
@@ -6013,6 +6079,7 @@
       else if (n === 'GREATESTOTHERPOWER') n = Math.min(20, g.battlefield.filter(q => q !== source && isCreaturePerm(q)).reduce((m, q) => Math.max(m, powerOf(g, q)), 0));          // Prime Speaker Zegana
       else if (n === 'ISTURN') n = g.isT === g.turn ? (g.isN || 0) : 0;          // Sorcerer Class: instants and sorceries cast this turn
       else if (n === 'SUBJDIFF') n = subject && isCreaturePerm(subject) ? Math.abs(powerOf(g, subject) - toughnessOf(g, subject)) : 0;          // Jaws of Defeat
+      else if (n === 'MILLNL') n = g._milledNL || 0;          // rules batch 76: the nonland cards milled this way (Screeching Scorchbeast)
       else if (n === 'LASTMV') n = g.lastCast && g.lastCast.card ? (g.lastCast.card.a.mv || 0) : 0;          // Secret Arcade: that spell's mana value
       else if (n === 'SELFCOUNTERS') n = source ? Math.max(0, source.counters || 0) : 0;          // Big Mother Mouser: its +1/+1 counters
       else if (n === 'SRCCOUNTERS') n = source ? (source.counters || 0) + Object.values(source.other || {}).reduce((t, v) => t + (v > 0 ? v : 0), 0) : 0;          // Warden of the Grove
@@ -6083,6 +6150,13 @@
           break;
         } break;
         case 'gainLife': gainLife(g, n, ev, source); break;
+        case 'doubleTwo': { for (const q of doubleTargets(g, f.n || 2)) { const ks = []; if ((q.counters || 0) > 0) ks.push(['+1/+1', q.counters]); for (const [k, v] of Object.entries(q.other || {})) if (v > 0) ks.push([k, v]); for (const [k, v] of ks) addCounters(g, q, k, v, ev, source); ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: doubles the counters on ${q.card.name}`, source }); } break; }          // rules batch 72: Zimone, Paradox Sculptor (each kind doubles; Hardened Scales and Doubling Season apply to the counters put on)
+        case 'echoMana': { if (!subject || !isCreaturePerm(subject)) break; const tw = q => ((q.card.type_line || '').split('—')[1] || '').trim().split(/\s+/).filter(Boolean), st = tw(subject), cl = q => hasKw(g, q, 'changeling');
+          const k = g.battlefield.filter(q => isCreaturePerm(q) && (q === subject || cl(q) || cl(subject) || tw(q).some(w => st.includes(w)))).length;
+          for (let j = 0; j < k; j++) g.floating.push({ src: null, colors: new Set(['C']), floating: true }); if (k) ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: adds ${k} {C} (${k} creature${k > 1 ? 's' : ''} sharing a type with ${subject.card.name})`, source }); break; }          // rules batch 72: Mana Echoes
+        case 'skirmisher': { const blockers = g.opp ? g.opp.battlefield.some(q => isCreaturePerm(q) && !q.tapped) : false; const kw = blockers ? 'first strike' : 'lifelink'; applyEffects(g, [{ type: 'pumpAll', p: 0, t: 0, keywords: [kw] }], source, ev, null); ev.push({ type: 'note', text: `${source ? source.card.name : 'It'}: chooses ${kw}`, source }); break; }          // rules batch 74: Angelic Skirmisher (first strike against blockers, otherwise lifelink)
+        case 'rad': { const nn = n || 1; if (f.who !== 'opp') addRad(g, nn, ev, source); if (f.who !== 'you') for (const o of otherPlayers(g)) addRad(o, nn, ev, source); break; }          // rules batch 76: rad counters (each player / target opponent / you; a goldfish's opponent has no cards to mill)
+        case 'treeSwap': { if (!source || !g.battlefield.includes(source) || !isCreaturePerm(source)) break; const t = toughnessOf(g, source), l = g.life; source.setT = l; g.life = t; touch(g); ev.push({ type: 'note', text: `${source.card.name}: exchanges life (${l}) with toughness (${t})` }); break; }          // rules batch 72: Tree of Redemption (its base toughness becomes the old life total; counters and boosts still apply)
         case 'massShrink': for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q)) { q.eotP = (q.eotP || 0) - f.n; q.eotT = (q.eotT || 0) - f.n; } touch(x); } ev.push({ type: 'note', text: `All creatures get -${f.n}/-${f.n} until end of turn`, source }); break;          // Golgari Charm
         case 'ignition': { let c = g.battlefield.filter(isCreaturePerm).sort((x, y) => powerOf(g, y) - powerOf(g, x))[0]; c = ownCreature(g, c, 'pump', source); const k = c ? Math.max(0, powerOf(g, c)) : 0; if (!k) break;          // Chandra's Ignition
           const dt = hasKw(g, c, 'deathtouch'); for (const x of [g].concat(otherPlayers(g))) { for (const q of x.battlefield) if (isCreaturePerm(q) && q !== c) { q.dmg = (q.dmg || 0) + k; if (dt) q.dt = true; } touch(x); }
@@ -6196,11 +6270,11 @@
           break;
         }
         case 'mill': {
-          const milledCr = [];
+          const milledCr = [], milledAll = [];
           for (let k = 0; k < Math.min(n, 10) && g.library.length; k++) {
             const c = g.library.shift(); if (c.card.a.isCreature) milledCr.push(c);
             if (c.card.a.isLand && bfInfo(g).millLands && !g.dry) { enterWithTriggers(g, c, { tapped: true }, ev); ev.push({ type: 'note', text: `Milled ${c.card.name}: onto the battlefield tapped`, source }); continue; }          // Hedge Shredder
-            g.graveyard.push(c);
+            g.graveyard.push(c); milledAll.push(c);
             ev.push({ type: 'note', text: `Milled ${c.card.name}`, source });
             if (f.insect && source && /\bInsect\b/.test(c.card.type_line || '') && (g.millDepth || 0) < 5) {       // an Insect card milled: a loyalty counter, and repeat the whole ability
               addCounters(g, source, 'loyalty', 1, ev, source);
@@ -6208,6 +6282,7 @@
               if (ab) { g.millDepth = (g.millDepth || 0) + 1; applyEffects(g, ab.fx, source, ev, subject); g.millDepth--; }
             }
           }
+          if (milledAll.length && !g.dry) { milledEvent(g, milledAll, ev); libYardEvent(g, milledAll, ev); }          // rules batch 76
           if (milledCr.length && bfInfo(g).graveReaver && !g.dry) { const b = milledCr.filter(i => g.graveyard.includes(i)).sort((x, y) => reanimateValue(g, y) - reanimateValue(g, x))[0]; if (b) { g.graveyard.splice(g.graveyard.indexOf(b), 1); enterWithTriggers(g, b, {}, ev); ev.push({ type: 'note', text: `Colossal Grave-Reaver: ${b.card.name} is milled onto the battlefield`, source }); } }
           break;
         }
@@ -6553,7 +6628,7 @@
           if (f.scope === 'opp') { if (g.opp) { for (const p of g.opp.battlefield.filter(isCreaturePerm)) addCounters(g.opp, p, kind, n, ev, source); } break; }
           if (f.scope === 'each') targets = g.battlefield.filter(p => isCreaturePerm(p) && (!f.other || p !== source) && hasSubtype(p.card, f.types));
           else if (f.scope === 'subject') targets = subject && g.battlefield.includes(subject) && isCreaturePerm(subject) ? [subject] : [];          // the Ordeals: the creature that attacked
-          else if (f.scope === 'upTo') { const k = /^(?:stun|-1\/-1)$/.test(kind) ? 0 : f.upTo === 'X' ? (g.xValue || 0) : f.upTo; targets = g.battlefield.filter(p => isCreaturePerm(p) && !((f.other || f.excl) && p === source) && hasSubtype(p.card, f.types)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x)); const best = targets.slice(0, k); if (k && g.ask && !g.dry && targets.length) { const pk = decide(g, { kind: 'target', what: 'counters', options: targets, def: best, multi: true, pick: k, upTo: true, f, n, source }); targets = Array.isArray(pk) ? pk : best; } else targets = best; }          // the best N, as support does; a person picks up to N (stun and -1/-1 counters are for the other players' creatures)
+          else if (f.scope === 'upTo') { const k = /^(?:stun|-1\/-1)$/.test(kind) ? 0 : f.upTo === 'X' ? (g.xValue || 0) : f.upTo === 'MILLNL' ? (g._milledNL || 0) : f.upTo; targets = g.battlefield.filter(p => isCreaturePerm(p) && !((f.other || f.excl) && p === source) && hasSubtype(p.card, f.types)).sort((x, y) => creatureValue(g, y) - creatureValue(g, x)); const best = targets.slice(0, k); if (k && g.ask && !g.dry && targets.length) { const pk = decide(g, { kind: 'target', what: 'counters', options: targets, def: best, multi: true, pick: k, upTo: true, f, n, source }); targets = Array.isArray(pk) ? pk : best; } else targets = best; }          // the best N, as support does; a person picks up to N (stun and -1/-1 counters are for the other players' creatures)
           else if (f.scope === 'self') targets = source && (isCreaturePerm(source) || kind !== '+1/+1') ? [source] : [];
           else if (f.scope === 'lastToken') targets = g._lastTok && g.battlefield.includes(g._lastTok) ? [g._lastTok] : [];
           else { let b = counterTarget(g, f, source); if (b && g.ask) b = decide(g, { kind: 'target', what: 'counters', options: g.battlefield.filter(p => isCreaturePerm(p) && !(f.excl && p === source) && hasSubtype(p.card, f.types)), def: b, f, n, source }); if (b) targets = [b]; }
@@ -7228,7 +7303,7 @@
           break; }
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + (f.n || 1); ev.push({ type: 'note', text: 'Takes an extra turn after this one', source }); break;
         case 'lookTake': {                                                                                    // look at the top N cards, keep the best K, the rest go to the bottom
-          const top = g.library.splice(0, Math.min(f.look, g.library.length));
+          const top = g.library.splice(0, Math.min(f.look === 'LANDS' ? g.battlefield.filter(q => q.asLand).length : f.look, g.library.length));          // rules batch 74: Consult the Star Charts (X = your lands)
           const ctx = tutorContext(g);
           top.sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx));
           const keep = top.slice(0, f.take), rest = top.slice(f.take);
@@ -7412,7 +7487,7 @@
           ev.push({ type: 'note', text: `Their creatures get -${sk}/-${sk}: ${dead.length} die`, source });
         } break;
         case 'xShrink': {                                                                                      // The Meathook Massacre: each creature gets -X/-X
-          const X = g.xValue || 1;
+          const X = (g.xValue || 1) * (f.times || 1);          // rules batch 75: Nuclear Fallout (twice -X/-X)
           const mine = g.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g, q) <= X), theirs = g.opp ? g.opp.battlefield.filter(q => isCreaturePerm(q) && toughnessOf(g.opp, q) <= X) : [];
           theirs.forEach(q => leavePerm(g.opp, q, ev)); mine.forEach(q => leavePerm(g, q, ev)); if (g.opp) flushLeaves(g.opp, ev);
           ev.push({ type: 'note', text: `Each creature gets -${X}/-${X}: ${mine.length} of yours and ${theirs.length} of theirs die`, source });
@@ -7824,17 +7899,56 @@
     const top = g.library.splice(0, Math.min(n, g.library.length)), keep = [];
     for (const c of top) { if (wantsBottom(g, c)) { g.graveyard.push(c); ev.push({ type: 'note', text: `Surveil: ${c.card.name} into the graveyard`, source }); if (c.card.a.isLand) landToYard(g, ev, false); } else keep.push(c); }
     g.library.unshift(...keep);
+    libYardEvent(g, top.filter(c => !keep.includes(c)), ev);          // rules batch 76: Sidisi (surveil puts cards into the graveyard from the library; it is not a mill)
     if (keep.length < top.length) yardShuffle(g, ev);
   }
   // Karn, the Great Creator: a face-up artifact card of yours in exile (not foretold, suspended or held by another card)
   const karnPick = i => i.card.a.isArtifact && !i.card.a.isLand && i.foretoldTurn == null && !(i.suspendN > 0) && i.heldBy == null && !i.faceDown && !i.foreign;
+  // ---- rules batch 76: mill triggers and rad counters (CR 701.17 mill, CR 725 radiation)
+  // The cards a mill put into a graveyard, for every permanent at the table that watches a mill: triggers of kind 'milled'
+  // { what: 'nonland' | 'creature' | 'any', whose: 'you' | 'any', perTurn, each (once for every card of that kind) }.
+  // CR 603.2c: "one or more" triggers once per mill, "a ... card" once for each card.
+  function milledEvent(owner, cards, ev) {
+    if (!cards.length || owner.dry) return;
+    const nl = cards.filter(c => !c.card.a.isLand).length, cr = cards.filter(c => c.card.a.isCreature).length;
+    for (const h of [owner].concat(otherPlayers(owner))) { if (!tableHas(h, 'milledTrig')) continue; for (const q of h.battlefield.slice()) {
+      if (!q.card.a.milledTrig) continue;
+      for (const t of q.card.a.triggers) {
+        if (!t.kinds.includes('milled') || (t.whose === 'you' && h !== owner)) continue;
+        const n = t.what === 'nonland' ? nl : t.what === 'creature' ? cr : cards.length; if (!n) continue;
+        if (t.perTurn) { if (q.milledTurn === h.turn) continue; q.milledTurn = h.turn; }
+        const t0 = h._milledNL, x0 = h.xValue; h._milledNL = nl;
+        try { for (let k = 0; k < (t.each ? n : 1); k++) fire(h, t, q, ev, null); } finally { h._milledNL = t0; h.xValue = x0; }
+      }
+    } }
+  }
+  // creature cards put into your graveyard from your library by any means (Sidisi, Brood Tyrant)
+  function libYardEvent(g, cards, ev) {
+    if (g.dry || !cards.length || !tableHas(g, 'libYardTrig')) return;
+    const cr = cards.filter(c => c.card.a.isCreature).length; if (!cr) return;
+    for (const q of g.battlefield.slice()) for (const t of q.card.a.triggers) if (t.kinds.includes('libToYard')) fire(g, t, q, ev, null);
+  }
+  // Rad counters: a player's precombat main phase mills that many cards; for each nonland card milled they lose 1 life and a rad counter comes off (CR 725.2)
+  function addRad(g, n, ev, source) {
+    if (!(n > 0) || g.dry || solemnOn(g)) return;
+    g.rad = (g.rad || 0) + n; ev.push({ type: 'note', text: `${source && source.card ? source.card.name + ': ' : ''}${n} rad counter${n > 1 ? 's' : ''} (${g.rad})`, source: source && source.card ? source : null });
+  }
+  function radStep(g, ev) {
+    if (g.dry || !(g.rad > 0)) return;
+    const cs = g.library.splice(0, Math.min(g.rad, g.library.length)); g.graveyard.push(...cs);
+    const nl = cs.filter(c => !c.card.a.isLand).length;
+    ev.push({ type: 'note', text: `Rad counters: mills ${cs.length}${nl ? `, ${nl} nonland: lose ${nl} life and ${nl} rad counter${nl > 1 ? 's' : ''}` : ''}`, source: null });
+    for (const c of cs) if (c.card.a.isLand) landToYard(g, ev, false);
+    if (nl) { g.rad = Math.max(0, g.rad - nl); g.life -= nl; checkDeath(g, ev); }
+    milledEvent(g, cs, ev); libYardEvent(g, cs, ev);
+  }
   // Milling an opponent: a real opponent's library in a match; in a goldfish game the opponent's library is a count (99 cards less the opening hand
   // in Commander, 60 otherwise), and an opponent with no card left to draw loses at its next draw
   function ghostLib(g) { if (g.oppLib == null) g.oppLib = (g.opts.oppLibrary || (g.opts.oppLife >= 40 ? 99 : 60)) - 7; return g.oppLib; }
   function millOpp(g, n, ev, source) {
     if (!(n > 0)) return;
     const os = otherPlayers(g);
-    if (os.length) { for (const o of os) { const cs = o.library.splice(0, n); o.graveyard.push(...cs); yardShuffle(o, ev); } ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}each opponent mills ${n}`, source }); return; }
+    if (os.length) { for (const o of os) { const cs = o.library.splice(0, n); o.graveyard.push(...cs); yardShuffle(o, ev); milledEvent(o, cs, ev); libYardEvent(o, cs, ev); } ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}each opponent mills ${n}`, source }); return; }
     if (g.dry) return;
     g.oppLib = Math.max(0, ghostLib(g) - n);
     ev.push({ type: 'note', text: `${source ? source.card.name + ': ' : ''}the opponent mills ${n} (${g.oppLib} left in its library)`, source });
@@ -9327,6 +9441,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const pump = (g, q, dp, dt, kws, unb) => { if (dp) q.eotP = (q.eotP || 0) + dp; if (dt) q.eotT = (q.eotT || 0) + dt; if (kws.length || unb) q.eotKw = new Set([...(q.eotKw || []), ...kws, ...(unb ? ['unblockable'] : [])]); touch(g); };
     const pt = x => { const k = (x || '').match(/([+-]\d+)\/([+-]\d+)/); return k ? [+k[1], +k[2]] : [0, 0]; };
     if (/^untap ~$/i.test(t)) return (g, p) => { p.tapped = false; touch(g); };
+    if (/^double the amount of each type of unspent mana you have$/i.test(t)) return (g, p, ev) => { const pool = g.floating.slice(); for (const u of pool) g.floating.push({ src: null, colors: u.colors, floating: true }); ev.push({ type: 'note', text: `${p.card.name}: doubles the unspent mana (${pool.length} -> ${pool.length * 2})`, source: p }); };          // rules batch 73: Doubling Cube (a person's ability; each unit in the pool is copied)
     if ((m = t.match(/^untap (?:another )?target (artifact creature|creature|artifact|permanent|land)$/i))) return (g, p, ev) => {
       const w = m[1].toLowerCase(), opts = g.battlefield.filter(q => q !== p && q.tapped && (w === 'permanent' || (w === 'artifact creature' ? isCreaturePerm(q) && q.card.a.isArtifact : w === 'creature' ? isCreaturePerm(q) : w === 'land' ? q.asLand : q.card.a.isArtifact)));
       let q = opts.slice().sort((x, y) => (y.card.a.mv || 0) - (x.card.a.mv || 0))[0]; if (q && g.ask) q = decide(g, { kind: 'target', what: 'untap', options: opts, def: q, source: p }); if (q) { q.tapped = false; touch(g); ev.push({ type: 'note', text: `${p.card.name} untaps ${q.card.name}`, source: p }); } };
@@ -10181,6 +10296,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (ab.gate === 'riptide') return !g.dry && !!riptidePick(g, p);          // Riptide Shapeshifter: the card it finds is worth much more than it is
     if (ab.gate === 'animateWorth') return !g.combatDone && g.activeTurn !== false && g.battlefield.some(q => q.card.a.isArtifact && !isCreaturePerm(q) && !q.token && !q.animated && !q.tapped && q.card.a.mv >= 3 && q.enteredTurn < g.turn);          // Karn, Silver Golem: an untapped artifact that can attack this turn
     if (ab.minGy && g.graveyard.length < ab.minGy) return false;          // rules batch 58: threshold (Barbarian Ring)
+    if (ab.gate === 'treeSwap') return !g.dry && g.life >= 1 && toughnessOf(g, p) > g.life;          // rules batch 72: Tree of Redemption, only when its toughness is above your life (and it would live)
+    if (ab.gate === 'doubleTwo') return !g.dry && doubleTargets(g, 2).length > 0;          // rules batch 72: Zimone, Paradox Sculptor
     if (ab.gate === 'baseHand') return !g.combatDone && g.battlefield.filter(q => isCreaturePerm(q) && canAttack(g, q)).reduce((t, q) => t + Math.max(0, g.hand.length - powerOf(g, q)), 0) >= 4;          // rules batch 61: Jolrael, before combat when it makes the attackers bigger
     if (ab.gate === 'flickerWorth') return g.battlefield.some(q => q !== p && isCreaturePerm(q) && !q.token && q.inst && q.card.a.triggers.some(t => t.kinds.includes('etb') && fxValue(g, t.fx) > 0));          // rules batch 58: an enters ability worth a second time
     if (ab.gate === 'finishPing') return oppLifeLeft(g) <= (ab.n || 1) && g.killTurn == null;          // Mogg Fanatic: the last point of damage
@@ -11244,6 +11361,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       discardWorst(g, ev); const two = g.library.splice(0, 2), ctx = tutorContext(g); two.sort((x, y) => tutorScore(g, y, ctx) - tutorScore(g, x, ctx));
       two[0].temp = g.turn; g.hand.push(two[0]); g.exile.push(two[1]); ev.push({ type: 'note', text: `${q.card.name}: discarded, ${two[0].card.name} may be played this turn`, source: q });
     }
+    radStep(g, ev);          // rules batch 76: rad counters mill at the start of your precombat main phase
     eachTrigger(g, 'main', ev);
     settle(g, ev);          // "at the beginning of your precombat main phase" triggers resolve before anything is cast
     return ev;
@@ -11508,7 +11626,7 @@ g.actSeq = (g.actSeq || 0) + 1;
             const who = t.who === '~' ? q : g.battlefield.find(x => x.iid === q.attachedTo);
             if (who && hitters.includes(who)) fire(g, t, q, ev, who);
           } else if (/one or more/.test(t.who)) { if ((!t.hitFilter || hitters.some(h => matchesFilter(h.card, t.hitFilter))) && (!t.hitNot || hitters.some(h => !matchesFilter(h.card, t.hitNot))) && (!t.hitArtifact || hitters.some(h => h.card.a.isArtifact)) && (!t.pumped || hitters.some(h => powerOf(g, h) > (h.card.a.power || 0)))) fire(g, t, q, ev, null); }
-          else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.minDmg || Math.max(0, powerOf(g, h)) >= t.minDmg) && (!t.tokenOnly || h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
+          else if (hitters.length) { const wf = t.who.replace(/^a /, '').replace(/ you control$/, ''); hitters.filter(h => matchesFilter(h.card, wf) && (!t.minDmg || Math.max(0, powerOf(g, h)) >= t.minDmg) && (!t.tokenOnly || h.token) && (!t.nontokenOnly || !h.token) && (!t.modified || isModified(g, h))).slice(0, t.tokenOnly ? 6 : 999).forEach(h => fire(g, t, q, ev, h)); }
         }
       }
       if (vsLifelink > 0 && !matchOver(g)) gainLife(g, vsLifelink, ev, null);

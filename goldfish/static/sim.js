@@ -576,6 +576,21 @@
     [/^whenever you draw (?:a|your (second)) card[^,]*,\s*/i, ['onDraw']],          // "your second card each turn" fires once a turn, on that card (see draw)
   ];
 
+  // T-098: coverage tracing (tools only; off in the app). With G.traceCoverage(true), every coverage line of a card read afterwards records, on rec.trace, the sim.js line
+  // that last set its status and whether reading the line changed the card's analysis at all. A line marked 'ok' or 'neutral' whose reading changed nothing is
+  // either a keyword or reminder the engine handles elsewhere, or a line a rule swallowed without building anything (tools/engine/false-ok.js lists them).
+  let TRACING = false;
+  const traceSig = a => { try { return JSON.stringify(a, (k, v) => k === 'coverage' || k === 'watch' ? undefined : typeof v === 'function' ? 'fn' : v instanceof RegExp ? v.source : v instanceof Set ? [...v] : v); } catch (e) { return String(Math.random()); } };
+  function traceStart(a, rec) {
+    let src = null; Object.defineProperty(rec, '_sig0', { value: traceSig(a), enumerable: false, writable: true });
+    Object.defineProperty(rec, '_st', { value: rec.status, enumerable: false, writable: true });
+    Object.defineProperty(rec, 'status', { enumerable: true, configurable: true, get() { return this._st; }, set(v) { this._st = v; const m = (new Error().stack || '').split('\n').slice(2).map(l => l.match(/sim\.js:(\d+)/)).find(Boolean); src = m ? +m[1] : null; Object.defineProperty(this, '_src', { value: src, enumerable: false, writable: true, configurable: true }); } });
+  }
+  function traceEnd(a) {
+    const own = a.coverage.filter(r => r._sig0 !== undefined), end = traceSig(a);
+    own.forEach((r, i) => { const next = i + 1 < own.length ? own[i + 1]._sig0 : end; Object.defineProperty(r, 'trace', { value: { src: r._src || null, changed: next !== r._sig0 }, enumerable: false, writable: true, configurable: true }); });
+  }
+  const NO_MANA_RULE = new Set(['Azorius Signet', 'Dimir Signet', 'Orzhov Signet', 'Simic Signet', 'Izzet Signet', 'Selesnya Signet', 'Springleaf Drum', 'Gene Pollinator', 'Citanul Stalwart', 'Jaspera Sentinel', 'Loam Dryad', 'Saruli Caretaker', 'Three Tree Mascot']);          // T-098
   function analyzeAbilities(card, a) {
     const text = normText(card, (card.front_oracle != null ? card.front_oracle : card.oracle_text) || '');
     const kwSet = new Set((card.keywords || []).map(k => k.toLowerCase()));
@@ -631,6 +646,7 @@
       const line = raw.replace(/^[A-Z][A-Za-z' ]{2,30} — /, '');
       const rec = { text: stPre + raw, status: 'ignored' };
       a.coverage.push(rec);
+      if (TRACING) traceStart(a, rec);
       if (/^choose a creature type\. for each [^.]*, create a token that's a copy of that creature\. those tokens gain haste\. exile them at the beginning of the next end step\.?$/i.test(raw)) { a.spellFx.push({ type: 'tribeSpell', op: 'charge' }); rec.status = 'ok'; continue; }          // Kindred Charge (it was read as a copy effect that made nothing)
       // draw, then a discard the generic reading dropped (only the draw was played)
       { let dm;
@@ -3286,6 +3302,11 @@
     const OPP_TOO = /^return all attacking creatures|^when ~ dies, you gain control of all enchantments|can block only creatures with flying|^the owner of target permanent shuffles it|^revolt — destroy|^other \w+ creatures you control attack each combat if able|return target spell you don't control|^target player discards|target player exiles a card from their hand|^−\d+: separate all permanents target player controls|you control target player during that player's next turn|^as ~ enters, choose a (?:nonland )?card name|^~ has first strike during your turn|^as ~ enters, choose a number|gains shroud until end of turn|look at the top three cards of that player's library|return each nonland permanent you don't control|^when ~ enters, return target spell or permanent|^untap ~ during each other player's untap step|^\{u\}: tap enchanted creature|^as ~ enters, choose khans or dragons|^each player sacrifices|^each player chooses from among the permanents they control|^return all lands to their owners' hands|counter it unless you sacrifice a land|that player sacrifices a land of their choice|^when there are no lands on the battlefield, sacrifice|for each soot counter on ~|each player gains control of all nonland permanents/i;
     // lines the broad "doesn't matter solo" filter swallowed, although they change a solo game
     const REAL_SOLO_EFFECT = /reveal the top [^.]*cards of your library\. put all|gains? twice that much life|you gain life equal|create a token that's a copy|search your library for (a|an|up to [a-z]+) (?!basic land)[^.]*cards?\b|sacrifice an? [a-z ]+: add \{|\bloses? life equal\b|\btransform|\bexile ~, then return|return [^.]*from your graveyard/i;
+    // T-098: mana abilities no rule builds. A generic matcher (the "{T}, <extra cost>: Add ..." lines) called these 'ok' although the card has no mana ability, so the Deck tab
+    // said "understood" about cards that make no mana (the Signets, the tap-a-creature dorks: Springleaf Drum). Until a rule builds them, they are honestly unread. This list is
+    // checked by tests/engine/mana-sources.test.js; a card that gains a mana ability (a.produce) drops off it by itself.
+    if (!a.produce && NO_MANA_RULE.has(card.name.split(' // ')[0])) for (const rec of a.coverage) if (!rec.back && (rec.status === 'ok' || rec.status === 'neutral') && /^[^:"]*:\s*add\b/i.test(rec.text)) rec.status = 'ignored';
+    if (TRACING) traceEnd(a);
     for (const rec of a.coverage) {
       const t = rec.text, oppOnly = OPP_ONLY.test(t) && !HURTS_OPP.test(t);
       if (rec.status === 'ignored') {
@@ -14479,7 +14500,7 @@ g.actSeq = (g.actSeq || 0) + 1;
 
   const api = {
     parseEffects, analyze, buildDeck, tokenCard, newGame, mulligan, chooseBottom, draw, enter, enterWithTriggers, manaUnits, allUnits, canPay, payAssign,
-    effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
+    traceCoverage: on => { TRACING = !!on; }, effectiveCost, castCard, castOne, useAbilities, castPhase, playLand, playLandCard, chooseLand, canPlayLand, beginTurn, landStep, combat,
     postCombat, transformPerm, leavePerm, fodderList, endTurn, playTurn, simulate, monteCarlo, monteCarloPart, monteCarloMerge, createTokens, removePerm, applyEffects, damageOpp,
     topCardView, powerOf, toughnessOf, hasKw, isCreaturePerm, hyperPmf, hyperAtLeast, keepable, landCount, mulberry32, shuffle, pay, madness, fxValue,
     topCastable, instantWindow, isInstantInteraction, interactionHit, holdForInstant, spellScore, commanderBonus, lockOf, untapStep, lockWorth,

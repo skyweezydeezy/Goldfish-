@@ -665,7 +665,7 @@ const S = { link: null, game: null, ice: null, lastSeen: 0, parts: new Map(), pe
       connected: () => (S.shownOn = connected()),
     };
     g.end = { asked: 0, askDeck: null, incoming: null, note: '', peerChoosing: false, choosing: false, left: false, yes: 0 };
-    Object.assign(io, { clock: m => raw(Object.assign({ t: 'clock' }, m)), end: g.end, rematch: () => offerRematch(g), answerRematch: y => answerRematch(g, y), choose: () => chooseDeck(g), leave: () => leaveGame(g) });
+    Object.assign(io, { up: () => connected(), clock: m => raw(Object.assign({ t: 'clock' }, m)), end: g.end, rematch: () => offerRematch(g), answerRematch: y => answerRematch(g, y), choose: () => chooseDeck(g), leave: () => leaveGame(g) });
     g.io = io;
     document.querySelector('[data-tab=duel]').click();
     const gm = V.startRemote(MODE, Object.assign({}, setup, { local }), io);

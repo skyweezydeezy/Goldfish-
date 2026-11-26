@@ -1205,14 +1205,14 @@
     if (!c || c.key !== key) { const limit = clockLimit(g.turn); c = gm.clock = { key, owner, limit, left: limit * 1000 * scale, at: now, run: false, fired: false, sentAt: 0, sentRun: null }; }
     let left = c.left, running = false;
     if (mineTurn) {
-      const paused = gm.phase === 'block' || gm.phase === 'respond' || gm.waiting != null || (gm.io && !gm.io.connected()) || (gm.choice && gm.choice.seat != null && gm.choice.seat !== owner) || (gm.phase == null && !gm.acting && !gm.choice);
+      const paused = gm.phase === 'block' || gm.phase === 'respond' || gm.waiting != null || (gm.io && !gm.io.up()) || (gm.choice && gm.choice.seat != null && gm.choice.seat !== owner) || (gm.phase == null && !gm.acting && !gm.choice);
       if (c.run) c.left = Math.max(0, c.left - (now - c.at));
       c.at = now; c.run = !paused; left = c.left; running = c.run;
       if (gm.io && (c.sentRun !== c.run || now - c.sentAt >= 1000)) { c.sentAt = now; c.sentRun = c.run; gm.io.clock({ key, left: Math.round(c.left), run: c.run ? 1 : 0 }); }
       if (c.left <= 0 && !c.fired) { c.fired = true; timeUp(mode); }
     } else {                                                   // the other player's clock: their device keeps it
       const t = gm.theirClock;
-      if (t && t.key === key) { left = Math.max(0, t.left - (t.run ? now - t.at : 0)); running = t.run && !(gm.io && !gm.io.connected()); }
+      if (t && t.key === key) { left = Math.max(0, t.left - (t.run ? now - t.at : 0)); running = t.run && !(gm.io && !gm.io.up()); }
     }
     const secs = Math.ceil(left / 1000 / scale);
     el.hidden = false;

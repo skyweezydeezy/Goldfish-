@@ -78,5 +78,64 @@ T('Firebender Ascension: a quest counter for each triggered ability an attacker 
   check('the Soldier\'s firebending trigger put a quest counter on it (the Wurmcoil Engine, with no attack trigger, did not)', q === 1, q);
 });
 
+const untappedLands = g => g.battlefield.filter(q => q.asLand && !q.tapped).length;
+T('waterbend: artifacts and creatures tap to help pay, the ones the autopilot does not need first', () => {
+  const g = bare(); lands(g, 2, 'Island'); const s1 = putOn(g, 'Solemn Simulacrum'), s2 = putOn(g, 'Wurmcoil Engine'); s1.sick = true; s2.sick = true;
+  const c3 = { generic: 3, pips: [], x: 0, wb: true };
+  check('a waterbend {3} is payable with two lands and a tap (the same cost without the keyword is not)', !!G.canPay(c3, G.allUnits(g)) && !G.canPay({ generic: 5, pips: [], x: 0 }, G.allUnits(g)) && !!G.canPay({ generic: 4, pips: [], x: 0, wb: true }, G.allUnits(g)) && !G.canPay({ generic: 5, pips: [], x: 0, wb: true }, G.allUnits(g)));
+  G.pay(g, { generic: 2, pips: [], x: 0, wb: true });
+  check('{2} is paid by tapping the two permanents that cannot attack, the lands stay untapped', s1.tapped && s2.tapped && untappedLands(g) === 2, `${s1.tapped} ${s2.tapped} lands ${untappedLands(g)}`);
+  const h = bare(); lands(h, 2, 'Island'); const t1 = putOn(h, 'Wurmcoil Engine'); t1.sick = false;
+  G.pay(h, { generic: 2, pips: [], x: 0, wb: true });
+  check('an untapped creature that can attack is tapped last: the lands pay first', !t1.tapped && untappedLands(h) === 0);
+  const k = bare(); lands(k, 1, 'Island'); putOn(k, 'Wurmcoil Engine').sick = false;
+  check('...but with the lands gone it is tapped to help', !!G.pay(k, { generic: 2, pips: [], x: 0, wb: true }) && k.battlefield.every(q => q.tapped));
+  const m = bare(); lands(m, 1, 'Island'); const so = putOn(m, 'Sol Ring');
+  check('a mana permanent (Sol Ring) is counted for its mana, not tapped a second time', !G.canPay({ generic: 4, pips: [], x: 0, wb: true }, G.allUnits(m)) && !!G.canPay({ generic: 3, pips: [], x: 0, wb: true }, G.allUnits(m)));
+});
+
+T('Waterbending Lesson: waterbend {2} or discard a card', () => {
+  const les = () => by('Waterbending Lesson').a.spellFx;
+  const g = bare(); lands(g, 1, 'Island'); const a1 = putOn(g, 'Solemn Simulacrum'), a2 = putOn(g, 'Wurmcoil Engine'); a1.sick = a2.sick = true;
+  g.hand = [inst(g, 'Plains'), inst(g, 'Forest')]; const n0 = g.hand.length; G.applyEffects(g, les(), null, [], null);
+  check('two permanents that cannot attack are tapped: three cards drawn, none discarded', g.hand.length === n0 + 3 && a1.tapped && a2.tapped && untappedLands(g) === 1, `hand ${n0} -> ${g.hand.length}, lands ${untappedLands(g)}`);
+  const h = bare(); h.hand = [inst(h, 'Plains'), inst(h, 'Forest')]; const m0 = h.hand.length; G.applyEffects(h, les(), null, [], null);
+  check('with nothing to tap it draws three and discards a card', h.hand.length === m0 + 3 - 1, `hand ${m0} -> ${h.hand.length}`);
+  const i = bare(); lands(i, 1, 'Island'); putOn(i, 'Solemn Simulacrum').sick = true; i.hand = [inst(i, 'Plains')];
+  const qs = seated(i, null, () => G.applyEffects(i, les(), null, [], null));
+  check('a person is asked (default: pay, the autopilot\'s choice when the taps are free) and is not asked with nothing to tap', qs.some(x => x.d.kind === 'protect' && /Waterbend/.test(JSON.stringify(x.d.options))) && i.battlefield.find(q => q.card.name === 'Solemn Simulacrum').tapped, qs.map(x => x.d.kind).join(','));
+  const j = bare(); j.hand = [inst(j, 'Plains')]; const qs2 = seated(j, null, () => G.applyEffects(j, les(), null, [], null));
+  check('...no question when it cannot be paid', !qs2.some(x => x.d.kind === 'protect'));
+  const k = bare(); lands(k, 1, 'Island'); putOn(k, 'Solemn Simulacrum').sick = true; k.hand = [inst(k, 'Plains')]; const k0 = k.hand.length;
+  seated(k, d => d.kind === 'protect' ? null : undefined, () => G.applyEffects(k, les(), null, [], null));
+  check('a person who declines discards a card instead (nothing tapped)', k.hand.length === k0 + 3 - 1 && k.battlefield.filter(q => q.card.name === 'Island' || q.card.name === 'Solemn Simulacrum').every(q => !q.tapped), `hand ${k0} -> ${k.hand.length}`);
+});
+
+T('Spirit Water Revival: the optional waterbend {6} additional cost', () => {
+  const rv = (g, n) => { const i = inst(g, 'Spirit Water Revival'); g.hand.push(i); G.castCard(g, i); return i; };
+  const g = bare(); lands(g, 3, 'Island'); for (let k = 0; k < 6; k++) putOn(g, 'Wurmcoil Engine').sick = true; g.hand = []; g.graveyard = [inst(g, 'Plains'), inst(g, 'Forest')];
+  const lib0 = g.library.length; rv(g);
+  check('with six permanents to tap it is waterbended: the graveyard is shuffled in, seven cards are drawn', g.hand.length === 7 && g.graveyard.length === 0 && g.library.length === lib0 + 2 - 7 && g.exile.some(i => i.card.name === 'Spirit Water Revival'), `hand ${g.hand.length} yard ${g.graveyard.length} lib ${lib0}->${g.library.length}`);
+  check('...six permanents were tapped, plus the three lands for its {1}{U}{U}', g.battlefield.filter(q => !q.asLand && q.tapped).length === 6 && untappedLands(g) === 0);
+  const h = bare(); lands(h, 3, 'Island'); h.hand = []; h.graveyard = [inst(h, 'Plains')]; rv(h);
+  check('without them it only draws two (and the spell is exiled)', h.hand.length === 2 && h.graveyard.length === 1 && h.exile.some(i => i.card.name === 'Spirit Water Revival'), `hand ${h.hand.length}`);
+  const k = bare(); lands(k, 3, 'Island'); for (let q = 0; q < 6; q++) putOn(k, 'Wurmcoil Engine').sick = true; k.hand = [];
+  const qs = seated(k, d => d.kind === 'protect' ? null : undefined, () => rv(k));
+  check('a person can decline the additional cost: two cards only, nothing tapped but the lands', k.hand.length === 2 && k.battlefield.filter(q => !q.asLand && q.tapped).length === 0, `hand ${k.hand.length}`);
+});
+
+T('Katara, Aang and Kuruk: waterbend abilities in the menu, with the taps', () => {
+  const g = bare(); const kt = putOn(g, 'Katara, Water Tribe\'s Hope'); lands(g, 1, 'Island'); const w1 = putOn(g, 'Wurmcoil Engine'), w2 = putOn(g, 'Solemn Simulacrum'); w1.sick = w2.sick = true;
+  const m = G.abilityMenu(g, kt); const ki = m.findIndex(x => /base power/i.test(x.label || ''));
+  check('Katara lists Waterbend {X} in her menu (a person may use it any time)', ki >= 0 && m[ki].ok, JSON.stringify(m.map(x => [x.label, x.cost, x.ok, x.why])));
+  if (ki >= 0 && m[ki].ok) { const before = g.battlefield.filter(q => q.tapped).length; G.useAbility(g, kt, ki); const tapped = g.battlefield.filter(q => q.tapped).length - before;
+    check('using it: base power and toughness X/X until end of turn, X = every unit paid (land and taps), X can not be 0', g.baseEot && g.baseEot.x >= 3 && g.baseEot.x === tapped && w1.tapped && w2.tapped, JSON.stringify(g.baseEot) + ' tapped ' + tapped); }
+  const h = bare(); const aa = putOn(h, 'Aang, Swift Savior // Aang and La, Ocean\'s Fury'); lands(h, 4, 'Plains'); for (let i = 0; i < 4; i++) putOn(h, 'Wurmcoil Engine').sick = true;
+  const am = G.abilityMenu(h, aa), ai = am.findIndex(x => /Transform/i.test(x.label || ''));
+  check('Aang, Swift Savior: Waterbend {8} is payable with four lands and four taps', ai >= 0 && am[ai].ok, JSON.stringify(am.map(x => [x.label, x.ok, x.why])));
+  if (ai >= 0 && am[ai].ok) { G.useAbility(h, aa, ai); check('...it transforms into Aang and La, Ocean\'s Fury (reach, trample)', /Aang and La/.test(h.battlefield.find(q => q.iid === aa.iid).card.name) || /Aang and La/.test((h.battlefield.find(q => q.iid === aa.iid) || {}).card && h.battlefield.find(q => q.iid === aa.iid).card.name), h.battlefield.filter(q => !q.asLand).map(q => q.card.name).join(',')); }
+  const k = bare(); const kk = putOn(k, 'The Legend of Kuruk // Avatar Kuruk'); const ev = [];
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

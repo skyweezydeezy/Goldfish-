@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 193,
+      "lines": [
+        "More cards play as written: life lost this turn (Essence Channeler, Luminarch Ascension), manifest (Ugin's Mastery), Fiend Artisan, dice rolls (Wyll, Component Pouch, Treasure Chest), copy spells (Fire Lord Azula, Double Major) and finality counters (Meathook Massacre II)."
+      ]
+    },
+    {
       "v": 192,
       "lines": [
         "Isochron Scepter: the Vitalize combo with creatures that untap the Scepter now works, and split cards like Fire // Ice can't go under it (their mana value is the total).",

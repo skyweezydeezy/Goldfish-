@@ -1853,6 +1853,9 @@
         if (/^when ~ enters, if you cast it, you gain protection from everything until your next turn/i.test(line)) { a.ringProt = true; MIRP(); continue; }          // The One Ring
         if (/^(?:• )?target creature(?: you control)? gains indestructible until end of turn\.?$/i.test(line)) { a.prot = 'indOne'; MIRP(); continue; }          // Valorous Stance
         if (/^target creature you control gains protection from (?:the color of your choice|each color) until end of turn/i.test(line)) { a.prot = 'protOne'; MIRP(); continue; }          // Shelter, Sejiri Shelter, Eldritch Immunity
+        if (/^target creature you control gains hexproof until end of turn\. create a royal role token attached to that creature/i.test(line)) { a.prot = 'hexOne'; a.spellFx.push({ type: 'royalTreat' }); MIRP(); continue; }          // Royal Treatment (the Role is p.role: +1/+1 and ward {1} while the creature stays)
+        if (/^spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn\.?$/i.test(line)) { a.prot = 'veil'; a.spellFx.push({ type: 'veil' }); MIRP(); continue; }          // Autumn's Veil (d.veilSeq: tryCounter0 and protectOne)
+        if (/^untap target creature\. until end of turn, it gains reach, hexproof, and .whenever ~ becomes tapped, it deals damage equal to its power to up to one target creature/i.test(line)) { a.prot = 'reflex'; a.splitSecondSpell = true; a.spellFx.push({ type: 'legolasReflex' }); MIRP(); continue; }          // Legolas's Quick Reflexes (split second: no answer to it, see tryCounter)
         if (/^sacrifice ~: creatures you control gain indestructible until end of turn/i.test(line)) { a.selfless = true; if (/until end of turn\.?$/i.test(line)) { MIRP(); continue; } }          // Selfless Spirit (Boromir's "...The Ring tempts you" is read further down as well)
         if (/^\{t\}: target creature you control gains protection from the color of your choice until end of turn/i.test(line)) { a.mother = true; MIRP(); continue; }          // Mother of Runes
         if ((pm = line.match(/^sacrifice another ([a-z]+): ~ gains indestructible until end of turn/i))) { a.sacInd = pm[1].toLowerCase(); MIRP(); continue; }          // Yahenni, Koma
@@ -4350,13 +4353,13 @@
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor, spa = p.card.a.statics.selfPerArtifact;
     const cda = p.card.a.cda, lbf = p.card.a.lifeBuff, pe = p.card.a.perEach;
-    return -oppMinusOf(g, 'p') + yardLandBuff(g, p, 'p') + condAnthem(g, p, 'p') + (pe ? pe.p * countWhat(g, pe.what, p) : 0) + (spa ? spa.p * g.battlefield.filter(q => artOn(g, q)).length : 0) + (lbf && g.life >= lbf.min ? lbf.p : 0) + coatBonus(g, p) + (cda ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.p + (p.animated.lands ? g.battlefield.filter(q => q.asLand).length : 0) : (g.opp && g.opp.splendorSeen && splendored(g) ? 1 : (p.level ? levelStat(p, 'p') : (p.card.a.power || 0)))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotP || 0) + g.eot.p;
+    return -oppMinusOf(g, 'p') + yardLandBuff(g, p, 'p') + condAnthem(g, p, 'p') + (pe ? pe.p * countWhat(g, pe.what, p) : 0) + (spa ? spa.p * g.battlefield.filter(q => artOn(g, q)).length : 0) + (lbf && g.life >= lbf.min ? lbf.p : 0) + coatBonus(g, p) + (cda ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.p + (p.animated.lands ? g.battlefield.filter(q => q.asLand).length : 0) : (g.opp && g.opp.splendorSeen && splendored(g) ? 1 : (p.level ? levelStat(p, 'p') : (p.card.a.power || 0)))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) + anthemsFor(g, p).dp + (pc ? pc.p * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotP || 0) + (p.role ? 1 : 0) + g.eot.p;
   }
   function toughnessOf(g, p) {
     if (!isCreaturePerm(p)) return 0;
     const pc = p.card.a.statics.selfPerColor, spa = p.card.a.statics.selfPerArtifact;
     const cda = p.card.a.cda, lbf = p.card.a.lifeBuff, pe = p.card.a.perEach;
-    return -oppMinusOf(g, 't') + yardLandBuff(g, p, 't') + condAnthem(g, p, 't') + (pe ? pe.t * countWhat(g, pe.what, p) : 0) + (spa ? spa.t * g.battlefield.filter(q => artOn(g, q)).length : 0) + (lbf && g.life >= lbf.min ? lbf.t : 0) + coatBonus(g, p) + (cda && cda.t ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.t + (p.animated.lands ? g.battlefield.filter(q => q.asLand).length : 0) : ((g.opp && g.opp.splendorSeen && splendored(g)) || mahaOn(g) ? 1 : (p.level ? levelStat(p, 't') : (p.setT != null ? p.setT : (p.card.a.toughness || 0))))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) - ((p.other && p.other['-0/-1']) || 0) + anthemsFor(g, p).dt + (pc ? pc.t * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotT || 0) + g.eot.t;
+    return -oppMinusOf(g, 't') + yardLandBuff(g, p, 't') + condAnthem(g, p, 't') + (pe ? pe.t * countWhat(g, pe.what, p) : 0) + (spa ? spa.t * g.battlefield.filter(q => artOn(g, q)).length : 0) + (lbf && g.life >= lbf.min ? lbf.t : 0) + coatBonus(g, p) + (cda && cda.t ? countWhat(g, cda.what, p) : 0) + (p.animated ? p.animated.t + (p.animated.lands ? g.battlefield.filter(q => q.asLand).length : 0) : ((g.opp && g.opp.splendorSeen && splendored(g)) || mahaOn(g) ? 1 : (p.level ? levelStat(p, 't') : (p.setT != null ? p.setT : (p.card.a.toughness || 0))))) - (p.slime ? slimeOn(g, p) : 0) + (p.counters || 0) - ((p.other && p.other['-0/-1']) || 0) + anthemsFor(g, p).dt + (pc ? pc.t * (pc.legendOther ? legendColors(g, p) : bfInfo(g).colors.size) : 0) + (p.eotT || 0) + (p.role ? 1 : 0) + g.eot.t;
   }
   function hasKw(g, p, k) {
     if (p.eotNoKw) return false;
@@ -7050,6 +7053,9 @@
           if (source && g.battlefield.includes(source)) { leavePerm(g, source, ev, 'exile'); flushLeaves(g, ev); } ev.push({ type: 'note', text: `Ajani exiles himself and ${k} artifact${k === 1 ? '' : 's'} and creature${k === 1 ? '' : 's'} your opponents control`, source }); break;
         }
         case 'tapEnchanted': { const h = source && source.attachedTo != null ? g.battlefield.find(q => q.iid === source.attachedTo) : null; if (h && !h.tapped) { h.tapped = true; ev.push({ type: 'note', text: `${source.card.name}: ${h.card.name} is tapped`, source }); } break; }          // Freed from the Real
+        case 'royalTreat': { const t = ownCreature(g, bestCreature(g), 'pump', source); if (t) royalTreat(g, t, ev, source); break; }          // Royal Treatment
+        case 'veil': { g.veilSeq = turnSeq(g); ev.push({ type: 'note', text: `Autumn's Veil: your spells can't be countered by blue or black spells, and your creatures can't be targeted by them, this turn`, source }); break; }
+        case 'legolasReflex': { const def = g.battlefield.filter(isCreaturePerm).sort((x, y) => (y.tapped ? 1 : 0) - (x.tapped ? 1 : 0) || powerOf(g, y) - powerOf(g, x))[0]; const t = ownCreature(g, def, 'pump', source); if (t) legolasReflex(g, t, ev, source); break; }          // Legolas's Quick Reflexes
         case 'goad': {                                                                                       // goad: until your next turn the creature attacks each combat if able (and a player other than you if able); Balladeer's also can't block this turn
           if (!g.opp) break;
           const cands = eachFoe(g, () => g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q)));
@@ -12617,7 +12623,8 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (!attackers.length) break;
       } }
       if (g.opp && !g.dry && attackers.length > 1 && otherPlayers(g).some(o => (tableHas(o, 'mirriLimit') && o.battlefield.some(q => q.card.a.mirriLimit && q.tapped)))) attackers = attackers.slice().sort((x, y) => powerOf(g, y) - powerOf(g, x)).slice(0, 1);          // Mirri: no more than one attacker
-      attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) p.tapped = true; p.attacking = true; p.attackedTurn = g.turn; p.atkN = (p.atkTurn === g.turn ? p.atkN || 0 : 0) + 1; p.atkTurn = g.turn; });
+      attackers.forEach(p => { if (!hasKw(g, p, 'vigilance')) { if (!p.tapped && p.eotTapDmg === turnSeq(g) && !g.dry) (p._tapHit = true); p.tapped = true; } p.attacking = true; p.attackedTurn = g.turn; p.atkN = (p.atkTurn === g.turn ? p.atkN || 0 : 0) + 1; p.atkTurn = g.turn; });
+      if (g.opp && !g.dry) for (const p of attackers) if (p._tapHit) { p._tapHit = false; ev.push({ type: 'note', text: `${p.card.name} became tapped: it deals damage equal to its power to a creature`, source: p }); applyEffects(g, [{ type: 'burnCreature', n: Math.max(0, powerOf(g, p)) }], p, ev, null); }          // Legolas's Quick Reflexes
       g.maxAttackers = Math.max(g.atkCountTurn === g.turn ? g.maxAttackers || 0 : 0, attackers.length); g.atkCountTurn = g.turn;
       if (!g.dry) { const rd = (tableHas(g, 'coolGain') ? g.battlefield.filter(q => q.card.a.coolGain) : []).reduce((t, q) => t + q.card.a.coolGain, 0), kf = rd ? attackers.filter(x => hasKw(g, x, 'flying') || hasKw(g, x, 'haste')).length : 0; if (kf) { g.cool = (g.cool || 0) + rd * kf; ev.push({ type: 'note', text: `You get ${rd * kf}% cooler (${g.cool}% cool)` }); } }          // Rainbow Dash
       if (!g.dry) for (const mg of (tableHas(g, 'tapTreasure') ? g.battlefield.filter(q => q.card.a.tapTreasure) : [])) { const k2 = attackers.filter(x => x.tapped && matchesFilter(x.card, mg.card.a.tapTreasure)).length; if (k2) createTokens(g, { type: 'token', n: 1, creature: false, artifact: true, name: 'Treasure' }, k2, ev, mg); }          // Magda: Dwarves tapped to attack
@@ -13748,7 +13755,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   // Spirit, and instants from the hand (Valorous Stance, Shelter, Eldritch Immunity, Heroic Intervention, Teferi's Protection for what matters most).
   // Returns 'fizzle' (the target is no longer legal), 'saved' (it stays: indestructible, regenerated) or false. A person decides for themselves.
   function legendWard(g, p) { if (!p.card.a.isLegendary) return 0; const tw = g.battlefield.reduce((m, q) => Math.max(m, q.card.a.legendWardAll || 0), 0); if (tw) { let au = 0; for (const q of (tableHas(g, 'legendAura') ? g.battlefield : NONE)) if (q.card.a.legendAura && q.attachedTo === p.iid) au = Math.max(au, q.card.a.legendAura.ward || 0); return Math.max(tw, au); } for (const q of (tableHas(g, 'legendAura') ? g.battlefield : NONE)) if (q.card.a.legendAura && q.attachedTo === p.iid) return q.card.a.legendAura.ward || 0; return 0; }          // Combat Research
-  const wardOf = (d, p) => { let n = Math.max(p.card.a.ward ? p.card.a.ward.n : 0, legendWard(d, p)), life = p.card.a.ward ? p.card.a.ward.life : 0; for (const q of d.battlefield) for (const w of q.card.a.statics.wardGive || []) if ((!w.other || q !== p) && (w.counters ? (p.counters || 0) > 0 || (p.other && Object.values(p.other).some(v => v > 0)) : isCreaturePerm(p) && matchesFilter(p.card, w.filter))) n = Math.max(n, w.n); return n || life ? { n, life, wb: !!(p.card.a.ward && p.card.a.ward.wb && n === p.card.a.ward.n) } : null; };          // T-104: Ward—Waterbend {4}: the payer may tap artifacts and creatures to help
+  const wardOf = (d, p) => { let n = Math.max(p.card.a.ward ? p.card.a.ward.n : 0, legendWard(d, p), p.role ? 1 : 0), life = p.card.a.ward ? p.card.a.ward.life : 0; for (const q of d.battlefield) for (const w of q.card.a.statics.wardGive || []) if ((!w.other || q !== p) && (w.counters ? (p.counters || 0) > 0 || (p.other && Object.values(p.other).some(v => v > 0)) : isCreaturePerm(p) && matchesFilter(p.card, w.filter))) n = Math.max(n, w.n); return n || life ? { n, life, wb: !!(p.card.a.ward && p.card.a.ward.wb && n === p.card.a.ward.n) } : null; };          // T-104: Ward—Waterbend {4}: the payer may tap artifacts and creatures to help
   const srcColors = (g, source) => source && source.card ? colorsOf(g, source.card) : g.lastCast ? colorsOf(g, g.lastCast.card) : [];
   // A person decides for themselves: wherever the autopilot would answer, they are asked "respond?" with the autopilot's answer as the
   // default (so "Autopilot decides", and every default taken, play the autopilot's game); declining lets it happen.
@@ -13767,6 +13774,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (!d || g.dry || !d.battlefield.includes(t)) return false;
     const w = wardOf(d, t);
     if (w) { const wc = { generic: w.n, pips: [], x: 0, wb: w.wb, wbFree: w.wb && !g.ask }; if (canPay(wc, allUnits(g)) && g.life > w.life + 4) { pay(g, wc); if (w.life) g.life -= w.life; ev.push({ type: 'note', text: `Ward: paid {${w.n}}${w.life ? ' and ' + w.life + ' life' : ''} for ${t.card.name}`, source }); } else { ev.push({ type: 'note', text: `Ward: ${t.card.name}'s ward was not paid, the effect is countered`, source }); return 'fizzle'; } }
+    if (source == null && isCreaturePerm(t) && d.veilSeq === turnSeq(d) && srcColors(g, source).some(x => x === 'U' || x === 'B')) { ev.push({ type: 'note', text: `Autumn's Veil: ${t.card.name} can't be targeted by a blue or black spell`, source: null }); return 'fizzle'; }
     if (source == null && g.lastCast && g.lastCast.card.a.isInstantSorcery && bfInfo(g).splitSecond) return false;          // Samut, Tyrant of Naktamun: split second, nothing can be cast or activated in response
     const val = threat(d, g, t), cols = srcColors(g, source), lethal = kind === 'destroy' || kind === 'damage', units = () => allUnits(d);
     const ok = respondGate(d, `${t.card.name} is about to be ${kind === 'destroy' ? 'destroyed' : kind === 'exile' ? 'exiled' : kind === 'bounce' ? 'returned to its owner\'s hand' : (n || '') + ' damage'}${kind === 'damage' ? ' dealt to it' : ''}`, t, source);
@@ -13796,6 +13804,9 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (lethal && isCreaturePerm(t) && val >= 4) { const ss = (tableHas(d, 'selfless') ? d.battlefield.find(q => q.card.a.selfless) : undefined); if (ss && ok(`Sacrifice ${ss.card.name}: your creatures are indestructible`)) { leavePerm(d, ss, ev); flushLeaves(d, ev); d.battlefield.forEach(q => { if (isCreaturePerm(q)) q.eotKw = new Set([...(q.eotKw || []), 'indestructible']); }); ev.push({ type: 'note', text: `${ss.card.name} is sacrificed: creatures gain indestructible`, source: null }); return 'saved'; } }
     for (const c of d.hand.slice()) {
       const pr = c.card.a.prot; if (!pr || !canPay(effectiveCost(d, c), units())) continue;
+      if (pr === 'hexOne' && isCreaturePerm(t)) { if (castProtection(d, c, ev, ok)) { royalTreat(d, t, ev, c); return 'fizzle'; } }          // Royal Treatment
+      if (pr === 'reflex' && isCreaturePerm(t)) { if (castProtection(d, c, ev, ok)) { legolasReflex(d, t, ev, c); return 'fizzle'; } }          // Legolas's Quick Reflexes
+      if (pr === 'veil' && isCreaturePerm(t) && source == null && cols.some(x => x === 'U' || x === 'B')) { if (castProtection(d, c, ev, ok)) { d.veilSeq = turnSeq(d); return 'fizzle'; } }          // Autumn's Veil
       if (pr === 'indOne' && lethal && isCreaturePerm(t)) { if (castProtection(d, c, ev, ok)) { t.eotKw = new Set([...(t.eotKw || []), 'indestructible']); return 'saved'; } }
       if (pr === 'protOne' && isCreaturePerm(t) && cols.length) { if (castProtection(d, c, ev, ok)) { t.protColors = new Set([...(t.protColors || []), ...(/each color/i.test(c.card.oracle_text || '') ? COLORS : cols)]); if (c.card.a.spellFx.some(f => f.type === 'draw')) draw(d, 1, ev); return 'fizzle'; } }
       if (pr === 'heroic' && val >= 5) { if (castProtection(d, c, ev, ok)) { d.battlefield.forEach(q => { q.eotKw = new Set([...(q.eotKw || []), 'hexproof', 'indestructible']); }); return 'fizzle'; } }
@@ -14945,13 +14956,25 @@ g.actSeq = (g.actSeq || 0) + 1;
     (inst.card.commander ? g.command : g.graveyard).push(inst);
     return true;
   }
+  // T-100 group C: the protection spells answer on the stack through protectOne (kinds 'hexOne', 'veil', 'reflex'); these are what they do
+  function royalTreat(g, t, ev, source) { t.eotKw = new Set([...(t.eotKw || []), 'hexproof']); t.role = 'royal'; touch(g); ev.push({ type: 'note', text: `${t.card.name} gains hexproof until end of turn and a Royal Role (+1/+1, ward {1})`, source }); }
+  function legolasReflex(g, t, ev, source) { t.tapped = false; t.eotKw = new Set([...(t.eotKw || []), 'reach', 'hexproof']); t.eotTapDmg = turnSeq(g); touch(g); ev.push({ type: 'note', text: `${t.card.name} untaps and gains reach and hexproof until end of turn`, source }); }
+  // the caster's autopilot casts Autumn's Veil before a spell worth protecting when the other player has blue or black mana open and a hand
+  function casterVeil(g, d, inst, ev) {
+    if (g.ask || g.dry || g.veilSeq === turnSeq(g) || inst.card.a.prot || !tableHas(g, 'prot') || !d.hand.length) return;
+    const a = inst.card.a; if (!(inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4)) return;
+    if (manaUnits(d).filter(u => u.colors.has('U') || u.colors.has('B')).length < 2) return;
+    const v = responseCards(g, null).find(x => x.card.a.prot === 'veil'); if (v) respondWith(g, v, ev, inst);
+  }
   function tryCounter(g, inst, ev, by) {
     const d = by || g.opp;
+    if (inst.card.a.splitSecondSpell) return false;          // split second: nothing can be cast or activated in response
     if (!d || g.dry) return tryCounter0(g, inst, ev, by);
     if (boromirCounter(g, inst, ev)) return true;
     const ps = { inst, caster: g, responder: d, by: by || null, lock: PENDING.get(inst) || null, gone: false };
     const wg = g.pendingSpell, wd = d.pendingSpell; g.pendingSpell = ps; d.pendingSpell = ps;
     try {
+      casterVeil(g, d, inst, ev);
       stackResponses(g, d, inst, ev, ps);
       const r = ps.gone ? false : tryCounter0(g, inst, ev, by);
       if (ps.gone) { (inst.card.commander ? g.command : g.hand).push(inst); ev.push({ type: 'note', text: `${inst.card.name} returns to its owner's hand`, source: null }); return true; }
@@ -14982,6 +15005,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       const cleaveOk = !!(k && c.card.a.cleave && canPay(c.card.a.cleave, units));          // Wash Away, cleaved
       if (!k || (!counterMatches(k.filter, inst.card) && !cleaveOk)) continue;
       if (castBlocked(d, c)) continue;          // Grand Abolisher, Silence: no counterspell
+      if (g.veilSeq === turnSeq(g) && (c.card.colors || []).some(x => x === 'U' || x === 'B')) continue;          // Autumn's Veil: not by a blue or black spell
       const ca = c.card.a, cost = effectiveCost(d, c);
       if (k.mvX) {          // Disrupting Shoal: X is the spell's mana value; {X}{U}{U}, or exile a blue card with mana value X
         const X = a.mv || 0, sc = Object.assign({}, cost, { x: 0, generic: Math.max(0, (cost.generic || 0) - (cost.x || 0)) + X });          // effectiveCost counts {X} as 1 generic

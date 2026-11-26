@@ -140,6 +140,8 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    needle: ['name a card', 'Choose a nonland card name: activated abilities of sources with that name can\'t be activated. The permanents with an activated ability on the table are listed.'],
+    breath: ['attach Breath of Fury to which creature?', 'The enchanted creature is sacrificed: choose another creature you control to enchant. Then untap all your creatures and there is an additional combat phase.'],
     redirect: ['choose the new target', 'Change the target of the spell to another legal target: the spell then does what it says to that permanent.'],
     strive: ['choose the creatures to copy', 'Choose any number of creatures you control: each gets a token copy with haste, exiled at the beginning of the next end step. Each target beyond the first costs {2}{R} more.'],
     untapMany: ['untap which permanents?', 'Choose up to the number of permanents the ability names, none if you like: each is untapped.'],
@@ -216,6 +218,7 @@
       else if (d.kind === 'color') { item.name = d.basic ? { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' }[o] + ' (' + (G.COLOR_NAME[o] || o) + ')' : G.COLOR_NAME[o] || o; const n = (d.counts || {})[o] || 0; item.note = `${n} card${n === 1 ? '' : 's'} left in your library and hand`; }
       else if (d.kind === 'player') { item.name = m && m.names ? m.names[o.pid] : 'Opponent'; item.owner = o.pid; item.note = `${o.life} life · ${o.hand.length} card${o.hand.length === 1 ? '' : 's'} in hand · ${o.battlefield.filter(p => G.isCreaturePerm(p)).length} creatures`; }
       else if (d.kind === 'x' && d.what === 'squad') { item.name = o ? `Pay squad ${o === 1 ? 'once' : o + ' times'}` : 'Don\'t pay squad'; item.note = o ? `${o} token cop${o === 1 ? 'y' : 'ies'} of it as it enters` : 'just the card'; }
+      else if (d.kind === 'x' && d.what === 'prelate') { item.name = 'Number ' + o; item.note = 'noncreature spells with mana value ' + o + ' can\'t be cast'; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? (d.spellAsk ? 'the autopilot\'s pick · ' : 'learned · ') : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}${d.spellAsk ? ' in your graveyard' : ''}` : 'named by your cards'); }
       else {
@@ -304,6 +307,8 @@
       q.title = `${sn}: pay squad how many times?`;
       q.text = `Squad${cs ? ' ' + cs : ''}: each time you pay it, a token copy of it enters with it. Up to ${opts[opts.length - 1]} with the mana you have.`;
       q.spell = src; q.spellNote = 'being cast';
+    } else if (d.kind === 'x' && d.what === 'prelate') {
+      q.title = `${sn}: choose a number`; q.text = 'Noncreature spells with mana value equal to the chosen number can\'t be cast.';
     } else if (d.kind === 'x') {
       q.title = `${sn}: choose X`;
       q.text = `X can be up to ${opts[opts.length - 1]} with the mana you have${d.less ? ` (your first X spell this turn costs {${d.less}} less)` : ''}.`;

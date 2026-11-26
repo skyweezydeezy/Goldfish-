@@ -9,7 +9,7 @@ idx.sets.forEach(s => { store[s.code] = JSON.parse(fs.readFileSync(path.join(DS,
 const find = n => { for (const f of Object.values(store)) { const c = f.cards.find(x => x.name === n && !x.ref); if (c) return Object.assign({}, c, { qty: 1 }); } throw new Error('not in the database: ' + n); };
 const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'red-rum-raiders-loaded.json'), 'utf8'));
 const NAMES = ["Kraum, Ludevic's Opus", 'Gleaming Splendor', 'Pollywog Prodigy', 'Forbidden Orchard', 'Wan Shi Tong, Librarian', 'Soul-Guide Lantern', 'Endurance', 'Sink into Stupor // Soporific Springs', 'Talon Gates of Madara', 'Sunfall',
-  'Goblin Cratermaker', 'Dimensional Infiltrator', 'Knacksaw Clique', 'Rampant Growth', 'Pathrazer of Ulamog', 'High-Speed Hoverbike', 'Mnemonic Betrayal', 'Vandalblast', 'Oath of Druids', 'Swamp', 'Mind Stone', 'Sol Ring', 'Mountain', 'Forest', 'Island', 'Plains', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Llanowar Elves', 'Lightning Bolt'];
+  'Goblin Cratermaker', 'Dimensional Infiltrator', 'Knacksaw Clique', 'Rampant Growth', 'Pathrazer of Ulamog', 'High-Speed Hoverbike', 'Mnemonic Betrayal', 'Vandalblast', 'Oath of Druids', 'Swamp', 'The Cabbage Merchant', 'Ajani, Strength of the Pride', "Glóin, Dwarf Emissary", 'Insufferable Balladeer', 'Mind Stone', 'Sol Ring', 'Mountain', 'Forest', 'Island', 'Plains', 'Wurmcoil Engine', 'Solemn Simulacrum', 'Llanowar Elves', 'Lightning Bolt'];
 const cards = base.cards.filter(c => !NAMES.includes(c.name)).slice(0, 30).concat(NAMES.map(n => { try { return find(n); } catch (e) { return null; } }).filter(Boolean));
 const deck = G.buildDeck(cards, base.tokens);
 const O = { turns: 20, onPlay: false, minLands: 2, maxLands: 5, freeMulligan: true, minHandSize: 5, oppLife: 40, prioritizeCommander: true };
@@ -104,6 +104,30 @@ T('Pathrazer, Hoverbike, Mnemonic Betrayal, Vandalblast, Oath of Druids', () => 
   const [o1, o2] = match2(); putOn(o2, 'Oath of Druids'); putOn(o1, 'Llanowar Elves'); putOn(o2, 'Wurmcoil Engine'); putOn(o2, 'Solemn Simulacrum');
   o1.library = o1.library.filter(i => !i.card.a.isCreature); o1.library.splice(3, 0, inst(o1, 'Wurmcoil Engine')); G.beginTurn(o1);
   check('Oath of Druids: their upkeep, the other player controls more creatures: reveal until a creature, it enters (the Wurmcoil Engine), the rest go to the graveyard', o1.battlefield.some(q => q.card.name === 'Wurmcoil Engine') && o1.graveyard.length >= 3, `${o1.battlefield.map(q => q.card.name).join(',')} yard ${o1.graveyard.length}`);
+});
+
+T('Insufferable Balladeer and Glóin: goad', () => {
+  const [g, b] = match2(); const el = putOn(b, 'Llanowar Elves'); putOn(g, 'Wurmcoil Engine'); const seq0 = (g.match || g).seq || 0; const ev = [];
+  putOn(g, 'Insufferable Balladeer');
+  check('Balladeer: their only creature is goaded and cannot block this turn', el.goaded === seq0 + 1 && el.cantBlockTurn === seq0, `${el.goaded} ${el.cantBlockTurn} ${seq0}`);
+  check('...a 1/1 into a deathtouch blocker would stay home; goaded it must attack on their turn', (() => { const m = g.match || g; m.seq = seq0 + 1; el.cantBlockTurn = null; el.sick = false; el.tapped = false; const pa = G.previewAttack(b); const had = pa.attackers.includes(el); m.seq = seq0 + 2; const pb = G.previewAttack(b); return had && !pb.attackers.includes(el); })());
+  const [h, c] = match2(); const big = putOn(c, 'Wurmcoil Engine'); const gl = putOn(h, "Glóin, Dwarf Emissary"); const tr = G.createTokens ? null : null;
+  const m = G.abilityMenu(h, gl), gi = m.findIndex(x => /Goad/i.test(x.label || ''));
+  check('Glóin: the menu lists {T}, sacrifice a Treasure: goad, and says it needs a Treasure', gi >= 0 && !m[gi].ok && /Treasure/.test(m[gi].why || ''), JSON.stringify(m.map(x => [x.label, x.ok, x.why])));
+  G.applyEffects(h, [{ type: 'token', n: 1, tapped: false, creature: false, name: 'Treasure', artifact: true }], null, [], null);
+  const m2 = G.abilityMenu(h, gl), gj = m2.findIndex(x => /Goad/i.test(x.label || '')); const seq1 = (h.match || h).seq || 0;
+  if (gj >= 0 && m2[gj].ok) { G.useAbility(h, gl, gj); check('with a Treasure it is sacrificed and their creature is goaded', big.goaded === seq1 + 1 && !h.battlefield.some(q => /Treasure/.test(q.card.name)) && gl.tapped, `${big.goaded}`); } else check('with a Treasure the ability is ok', false, JSON.stringify(m2.map(x => [x.label, x.ok, x.why])));
+});
+
+T('The Cabbage Merchant and Ajani, Strength of the Pride', () => {
+  const [g, b] = match2(); const cm = putOn(b, 'The Cabbage Merchant'); G.applyEffects(b, [{ type: 'token', n: 2, tapped: false, creature: false, name: 'Food', artifact: true }], null, [], null);
+  const food0 = b.battlefield.filter(q => /Food/.test(q.card.name)).length; const w = putOn(g, 'Wurmcoil Engine'); w.sick = false; lands(b, 0); G.combat(g);
+  check('The Cabbage Merchant: a creature dealing combat damage to its controller costs it a Food token', food0 === 2 && b.battlefield.filter(q => /Food/.test(q.card.name)).length === 1, `${food0} -> ${b.battlefield.filter(q => /Food/.test(q.card.name)).length}`);
+  const [h, c] = match2(); const aj = putOn(h, 'Ajani, Strength of the Pride'); aj.loyalty = 4; putOn(c, 'Wurmcoil Engine'); putOn(c, 'Sol Ring'); lands(c, 2, 'Forest');
+  h.life = 20; const ev = []; G.applyEffects(h, [{ type: 'ajaniWipe' }], aj, ev, null);
+  check('Ajani 0 with too little life does nothing', c.battlefield.some(q => q.card.name === 'Wurmcoil Engine') && h.battlefield.includes(aj));
+  h.life = 60; G.applyEffects(h, [{ type: 'ajaniWipe' }], aj, [], null);
+  check('with 15 more life than the start (40 + 15) he exiles himself and each artifact and creature they control (the lands stay)', !h.battlefield.includes(aj) && !c.battlefield.some(q => /Wurmcoil|Sol Ring/.test(q.card.name)) && c.battlefield.filter(q => q.asLand).length === 2, c.battlefield.map(q => q.card.name).join(','));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

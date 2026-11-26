@@ -105,6 +105,7 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 216** (2026-11-26 20:34 UTC): PR #185, 4/4 + Pages green: T-117 puzzles (four finishers, no Go off).
 - [V] **Version 215** (2026-11-26 19:58 UTC): PR #184, 4/4 + Pages green: T-116 Winota (verified B4; card floor B4, speed B3) + card teaching 4589e60 (Winota lines; Signal Pest battle cry false ok fixed); brackets.test accepts [B?].
 - [V] **Version 214** (19:23 UTC): PR #183, 4/4 + Pages green: T-115 new Puzzle tab (12 puzzles).
 - [V] **Version 213** (2026-11-26 18:31 UTC): PR #182, merge 2512d8d, 4/4 checks + Pages green. Contents: T-114 stack cards (CT8 74f94be: Return the Favor, Wandering Archaic, Ricochet Trap, Hydroelectric Specimen, redirect for bounce/burn; CT10 b0567d8: Boromir, Disrupting Shoal, Orim's Chant; CT11 d7c78c1: Royal Treatment, Autumn's Veil, Legolas's Quick Reflexes). Before merge: engine 266 files passed, sweep bad 0, UI decisions/duel-floating/versus×3 passed.
@@ -239,8 +240,9 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-104 | Teach the other benders (the user): Firebending, Waterbend, Airbend exact per reminder text/CR, person choices, every line ok/neutral | Card teaching 6 | `claude/card-teaching` | After T-103 |
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
+| T-118 | Engine fixes (the user, 21:15 UTC): Mana Tithe cast/tax, a person names the Demonic Consultation card, person-played infinite loops, Port Razer extra-combat timing | Card teaching 8 (`session_01K5kL4W3kFGpFCLCxQctBCX`) | `claude/card-teaching` | Active since 21:15 UTC |
 | T-116 | New Drive deck Winota | Deck Brackets 3 | `claude/deck-brackets` | [V] Verified v215 (PR #184): B4 |
-| T-115 | Puzzle redesign | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`) | `claude/t115-puzzles` | [V] v214 (PR #183). T-117 (varied finishers, no Go off) at febdeeb in PR #185 (v216) |
+| T-115 | Puzzle redesign | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`, idle) | `claude/t115-puzzles` | [V] v214; T-117 [V] v216 |
 | T-113 | Weekly ranking split tooling | Ranking split (archived) | `claude/ranking-split` @ 01ab77b | PARKED 16:33 UTC: ranking turned off by the user; keep the branch for when ranking returns |
 | T-114 | T-100 slice 3 split over sessions | Card teaching 8, 10, 11 (idle) | — | [V] Verified v212 (groups A/B/C, batch D) and v213 (all stack cards) |
 | T-112 | Change a card's printing everywhere (the user): the card viewer's printings, one tap, on every screen (Build, Practice, Duel, Pod); a switch applies wherever the deck shows the card; other seats view-only | T-112 session (archived) | `claude/t112-printings-everywhere` @ 8c4dcff | [V] Verified v211 (PR #180) |

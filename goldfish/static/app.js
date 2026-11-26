@@ -1194,7 +1194,10 @@
     if (!g.turnDone) { await doCombat(true); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
   }
+  // T-102: an action that showed you new information (a draw, a search, a look at cards, a random result) cannot be taken back
+  const REVEALS = /draw|scry|surveil|tutor|search|shuffle|look|reveal|mill|discover|peer|explore|manifest|random|dice|coin|impulse|wheel|dig|plunder|cascade/i;
   async function play(ev) {
+    if (S.undo.length && (ev || []).some(e => e && REVEALS.test(e.type || ''))) S.undo[S.undo.length - 1].revealed = true;
     // animate a batch of events: highlight sources, float damage, then re-render
     describe(ev);
     sfxEv(ev);
@@ -1363,7 +1366,10 @@
   }
   function undo() {
     if (S.busy) return;                                                  // the table is busy (a question is open): keep the undo step for later
-    const s = S.undo.pop(); if (!s) return;
+    const top = S.undo[S.undo.length - 1]; if (!top) return;
+    const lib = S.game.library;
+    if (top.revealed || top.library.length !== lib.length || top.library.some((c, i) => c !== lib[i])) { sfx('error'); return toast("Can't undo: it showed you new cards"); }          // a draw, search or shuffle changed the library
+    const s = S.undo.pop();
     const g = S.game;
     Object.assign(g, { library: s.library, hand: s.hand, graveyard: s.graveyard, exile: s.exile, command: s.command, battlefield: s.battlefield,
       floating: s.floating, turns: s.turns, cmdrDamage: s.cmdrDamage, cmdrCasts: s.cmdrCasts, eot: s.eot, emblems: s.emblems, ring: s.ring }, s.scal);
@@ -1727,9 +1733,9 @@
   // context menu
   const ctx = $('#ctxMenu');
   const ctxBack = h('div', 'ctx-backdrop'); document.body.appendChild(ctxBack);
-  // T-102: on a phone (touch, narrow or short screen) a tap only SELECTS a card: it is lifted and glows, an enlarged copy shows above the
+  // T-102: on a touch device (phone or iPad) a tap only SELECTS a card: it is lifted and glows, an enlarged copy shows above the
   // options sheet, and nothing happens until an option is tapped. iPad and PC keep their own flow.
-  const phoneQ = matchMedia('(pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 500px)');
+  const phoneQ = matchMedia('(pointer: coarse)');          // every touch device (phone and iPad); a mouse keeps its own flow
   const isPhoneTouch = () => phoneQ.matches;
   let selEl = null, selPrev = null, selAt = 0;
   function clearSel() { if (selEl) selEl.classList.remove('sel-card'); selEl = null; if (selPrev) { selPrev.remove(); selPrev = null; } ctx.classList.remove('with-sel'); }
@@ -1739,7 +1745,7 @@
     selPrev = h('div', 'sel-preview'); selPrev.appendChild(cardEl(card, { face: 0 })); document.body.appendChild(selPrev);
     ctx.classList.add('with-sel');
     const sheet = ctx.offsetHeight, boxH = Math.max(120, innerHeight - sheet - 20);          // the card gets the room above the options, never behind them
-    selPrev.style.height = boxH + 'px'; selPrev.style.setProperty('--selw', Math.floor(Math.min(innerWidth * .8, boxH * .7176)) + 'px');
+    selPrev.style.height = boxH + 'px'; selPrev.style.setProperty('--selw', Math.floor(Math.min(innerWidth * .8, 440, boxH * .7176)) + 'px');
   }
   // select a card and offer options: items are [label, run, style]; used by Duel and Pod
   function selectCard(m, card, items) {

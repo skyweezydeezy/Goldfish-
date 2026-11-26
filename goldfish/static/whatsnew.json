@@ -2,6 +2,13 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 198,
+      "lines": [
+        "Mystic Forge, Bolas's Citadel, Future Sight and similar cards show your top card face up (only to you). Courser of Kruphix and friends show it to everyone.",
+        "Explore shows the revealed card to every player. Urza's Saga's chapter III lets you choose the artifact, and Sagas now count up after your draw."
+      ]
+    },
+    {
       "v": 197,
       "lines": [
         "Against an opponent, a spell's target is chosen when it is cast, as the rules say. Before you decide whether to counter, you see what it targets (\"Targeting your Serra Angel\" or \"Targeting you\"). If the target is gone when it resolves, the spell does nothing to it."

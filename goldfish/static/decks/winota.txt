@@ -1,4 +1,6 @@
 // Winota (Winota, Joiner of Forces)
+// Bracket 4
+// Checked by ICEYfish (v213, 20,000 games): median kill T7, 6.3% by T5, 69.8% by T7; fastest T3: 0% by T2, 0% by T3, 0.3% by T4; 6 Game Changers; was B? -> B4: card rules B4, speed B3; the rules rule out Bnull
 // COMMANDER
 1 Winota, Joiner of Forces
 // MAINBOARD

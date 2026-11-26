@@ -97,7 +97,7 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the Rhystic Study tax is asked: Pay {1} or not', /Rhystic Study: pay \{1\}/.test(await p.textContent('.ch-sheet.tax .ch-title')), await p.textContent('.ch-sheet.tax .ch-title'));
   await p.click('.ch-sheet.tax .ch-opt:has-text("Pay {1}")'); await p.click('.ch-sheet.tax .ch-ok');
   await sheet();
-  check('paying the tax opens the pay sheet for the {1}', /pay \{1\}/i.test(await p.textContent('.ch-sheet.pay .ch-title')) && (await p.$$('.ch-paychip')).length >= 2, await p.textContent('.ch-sheet.pay .ch-title'));
+  check('paying the tax opens the pay sheet for the {1}', /^Rhystic Study: pay \{1\}/.test(await p.textContent('.ch-sheet.pay .ch-title')) && (await p.$$('.ch-paychip')).length >= 2, await p.textContent('.ch-sheet.pay .ch-title'));
   await p.click('.ch-sheet.pay .ch-auto');
   await p.waitForFunction(() => window.__done !== null, null, { timeout: 10000 });
   check('the tax was paid: two lands are tapped (one for the Pebble, one for the tax)', (await p.evaluate(() => window.__done)) === 2, await p.evaluate(() => window.__asked.join(',')));

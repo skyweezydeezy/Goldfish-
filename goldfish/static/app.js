@@ -1191,7 +1191,7 @@
   }
   async function nextTurn() {
     const g = S.game;
-    { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost when the turn ends. End the turn anyway?`)) return; }          // T-099
+    { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; }          // T-099
     snap();
     if (!g.turnDone) { await doCombat(true); await doPostCombat(true); describe(await yours(x => G.endTurn(x))); }          // the cleanup step asks what to discard
     await beginTurnUI(true); render();
@@ -1933,7 +1933,7 @@
     });
     if (!units.length && !inf) mp.innerHTML = '<span class="hint">none</span>';
     { const fl = G.floatingLoss(g);          // T-099: floating mana is shown, and the warning says what the end of the turn empties
-      if (fl.n && !inf) { const w = h('span', 'mana-warn', `⚠ ${fl.n} floating`); w.title = `${fl.n} mana ${fl.n === 1 ? 'is' : 'are'} floating and will be lost when the turn ends. Spend ${fl.n === 1 ? 'it' : 'them'} on a spell or ability first.`; w.setAttribute('role', 'status'); mp.appendChild(w); } }
+      if (fl.n && !inf) { const w = h('span', 'mana-warn', `⚠ ${fl.n} floating`); w.title = `${fl.n} mana ${fl.n === 1 ? 'is' : 'are'} floating and will be lost at ${fl.when}. Spend ${fl.n === 1 ? 'it' : 'them'} on a spell or ability first.`; w.setAttribute('role', 'status'); mp.appendChild(w); } }
 
     if (first) return;
     const dur = ($('#tFast').checked ? 200 : 420) * slow();

@@ -1239,7 +1239,7 @@
         gm.pick = new Set(G.chooseAttackers(g, g.battlefield.filter(p => G.canAttack(g, p))).map(p => p.iid));
         return render(mode);
       }
-      if (hit('vs-end')) { const fl = G.floatingLoss(g).n; if (fl && window.__isfPayChoose !== false && !confirm(`${fl} floating mana will be lost when the turn ends. End the turn anyway?`)) return; return input(mode, 'end', false); }          // T-099
+      if (hit('vs-end')) { const fl = G.floatingLoss(g); if (fl.n && window.__isfPayChoose !== false && !confirm(`${fl.n} floating mana will be lost at ${fl.when}. End the turn anyway?`)) return; return input(mode, 'end', false); }          // T-099
       if (hit('vs-autoturn') && gm.remote == null) return input(mode, 'end', true);
     });
   }

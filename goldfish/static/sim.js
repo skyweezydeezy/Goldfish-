@@ -4997,7 +4997,7 @@
     { const si = paySmart(g, cost, units, idx), sr = payAssign(cost, units, si.map(i => ({ i, force: null })));
       const so = sr ? si.map((i, k) => options.find(o => o.u === i && o.role === sr[k])).filter(Boolean) : []; if (so.length === si.length) smartOpts = so; }
     const valid = list => Array.isArray(list) && list.length === total && new Set(list.map(o => o.u)).size === total && list.every(o => options.includes(o)) && !!payAssign(cost, units, list.map(o => ({ i: o.u, force: o.role })));
-    const src = g._payFor && g._payFor.abilityOf || g._casting || null;
+    const src = g._taxFor || g._payFor && g._payFor.abilityOf || g._casting || null;          // T-099: a tax is titled after the card that taxes
     const got = decide(g, { kind: 'pay', multi: true, pick: total, options, def: defOpts, smart: smartOpts, cost, units, valid, side: u => paySide(g, u), source: src });
     return valid(got) ? got.map(o => o.u).sort((x, y) => x - y) : idx;
   }
@@ -5006,7 +5006,7 @@
   function floatingLoss(g) {
     const colors = {}; let n = 0;
     for (const u of (g.floating || [])) { n++; const cs = [...u.colors]; const k = cs.length > 1 ? 'any' : cs[0]; colors[k] = (colors[k] || 0) + 1; }
-    return { n, colors };
+    return { n, colors, when: 'the end of the turn' };          // `when`: what empties the pool (the rules engine will say 'the end of the step' once mana empties each step)
   }
   function pay(g, cost) {
     if (cost && cost.phy && cost.phy.length) {          // an ability cost with Phyrexian mana (Birthing Pod): paid by the same rule as a spell's
@@ -14044,7 +14044,8 @@ g.actSeq = (g.actSeq || 0) + 1;
     const dflt = taxSpare(g, n) ? 'pay' : 'allow';          // T-092: the autopilot (and a person on defaults) pays only with SPARE mana
     if (g.ask && !g.dry) { if (decide(g, { kind: 'tax', options: ['pay', 'allow'], def: dflt, cost: n, then, why, owner: owner || g.opp, source: q }) !== 'pay') return false; }
     else if (dflt !== 'pay') return false;
-    pay(g, c); return true;
+    g._taxFor = q || null; try { pay(g, c); } finally { g._taxFor = null; }
+    return true;
   }
   // T-092: is {n} spare, i.e. is the mana left after paying it still enough for what the payer's best plan needs? On its own turn the plan is the most mana it can
   // spend on spells in hand it could cast now (most expensive first); on another player's turn it is the same over its instant-speed / flash cards (free ones cost 0).

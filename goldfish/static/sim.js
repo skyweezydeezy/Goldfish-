@@ -7436,20 +7436,28 @@
         case 'wrennEmblem': g.wrennEmblem = true; ev.push({ type: 'note', text: 'Emblem: you may play lands and cast permanents from your graveyard', source }); break;
         case 'poisonWin': { const k = 9 - (g.poisonDealt || 0); if (k > 0) addPoison(g, k, ev, source, 'Vraska: up to nine'); else ev.push({ type: 'note', text: 'Vraska: the opponent already has nine or more poison counters', source }); break; }          // nine, not ten: one more (proliferate, toxic) wins
         case 'emblem': (g.emblems = g.emblems || []).push(Object.assign({ p: f.p, t: f.t, keywords: f.keywords || [], types: f.types }, f.filter ? { filter: f.filter } : {})); touch(g); ev.push({ type: 'note', text: f.types ? `Emblem: your ${f.types.join(', ')}s have ${f.keywords.join(', ')}` : `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;          // filter: rules batch 55 (Kaito's Ninjas)
-        case 'proliferate': {                                            // one more of each kind of counter already there, the opponent's poison counters included
+        case 'proliferate': {                                            // CR 701.34: choose any permanents and/or players with a counter; each gets one more of each kind already there
+          // the permanents with a counter, yours and (a pod: every) opponent's. The autopilot takes all of its own and an opponent's only when it is shrunk by -1/-1 counters;
+          // a person chooses among them all (T-087)
+          const list = []; for (const o of [g].concat(g.opp && !g.dry ? otherPlayers(g) : [])) for (const p of o.battlefield) if ((p.counters || 0) !== 0 || p.card.a.isPlaneswalker || Object.keys(p.other || {}).length) list.push({ o, p });
+          const good = x => x.o === g || (x.p.counters || 0) < 0;
           let only = null;
-          if (g.ask && !g.dry) { const has = g.battlefield.filter(p => (p.counters || 0) !== 0 || p.card.a.isPlaneswalker || Object.keys(p.other || {}).length); if (has.length) only = decide(g, { kind: 'target', what: 'proliferate', options: has, def: has.slice(), multi: true, pick: has.length, upTo: true, source }); }          // a person chooses which of their permanents
+          if (g.ask && !g.dry && list.length) only = decide(g, { kind: 'target', what: 'proliferate', options: list.map(x => x.p), def: list.filter(good).map(x => x.p), multi: true, pick: list.length, upTo: true, source });          // a person chooses which permanents
+          const done = [];
           for (let pk = 0; pk < (bfInfo(g).prolifTwice ? 2 : 1); pk++) {
-            if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) addPoison(g, 1, ev, source, 'Proliferate');
-            for (const p of g.battlefield.slice()) {
-              if (only && !only.includes(p)) continue;
-              if ((p.counters || 0) > 0) addCounters(g, p, '+1/+1', 1, ev, source);
-              else if ((p.counters || 0) < 0) addCounters(g, p, '-1/-1', 1, ev, source);
-              if (p.card.a.isPlaneswalker) addCounters(g, p, 'loyalty', 1, ev, source);
-              for (const k of Object.keys(p.other || {})) addCounters(g, p, k, 1, ev, source);
+            if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) { addPoison(g, 1, ev, source, 'Proliferate'); if (!done.includes('poison counters')) done.push('poison counters'); }
+            for (const x of list) {
+              const p = x.p, o = x.o;
+              if (!o.battlefield.includes(p) || (only ? !only.includes(p) : !good(x))) continue;
+              if ((p.counters || 0) > 0) addCounters(o, p, '+1/+1', 1, ev, source);
+              else if ((p.counters || 0) < 0) addCounters(o, p, '-1/-1', 1, ev, source);
+              if (p.card.a.isPlaneswalker) addCounters(o, p, 'loyalty', 1, ev, source);
+              for (const k of Object.keys(p.other || {})) addCounters(o, p, k, 1, ev, source);
+              if (!done.includes(p.card.name)) done.push(p.card.name);
             }
             if (!g.dry) eachTrigger(g, 'proliferated', ev);          // Ezuri, Stalker of Spheres: whenever you proliferate
           }
+          if (!g.dry) ev.push({ type: 'note', text: done.length ? `Proliferate: one more of each counter on ${done.join(', ')}` : 'Proliferate: nothing with a counter was chosen', source });          // the log shows that it went off
           break; }
         case 'extraTurn': g.extraTurns = (g.extraTurns || 0) + (f.n || 1); ev.push({ type: 'note', text: 'Takes an extra turn after this one', source }); break;
         case 'lookTake': {                                                                                    // look at the top N cards, keep the best K, the rest go to the bottom

@@ -128,6 +128,15 @@
 .ch-mana { gap: 8px; align-items: center; flex-wrap: wrap; }
 .ch-mana .ch-mana-n { width: 90px; }
 .ch-mana .ch-mana-inf { font-size: 20px; line-height: 1; padding: 2px 12px; }
+.ch-mana .ch-inf-w { display: none; font-size: 14px; }
+/* T-121: on a touch screen the loop controls are real tap targets: the ∞ button is 44 px tall and says what it is, and the option
+   cards of a combo sheet are wide enough to read */
+@media (pointer: coarse), (max-width: 600px), (max-height: 500px) {
+  .ch-mana .ch-mana-inf { min-height: 44px; min-width: 56px; padding: 6px 14px; }
+  .ch-mana .ch-inf-w { display: inline; }
+  .ch-mana .ch-mana-go { min-height: 44px; }
+  .ch-sheet.combo .ch-opts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
 
 /* T-089: paying a cost: the cost on top, the sources as chips, a colour picker only where a source can make more than one colour */
 .ch-sheet.pay .ch-opts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }

@@ -259,6 +259,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | ui/tags-panel | Deck tab Tags panel: folding groups, even grid, Show all, tap a tag to search (PC and iPhone) |
 | ui/combos | Build tab "Combos and win conditions" (combos folded to their names, cards that win outright, finishers) and Simulate tab "How games end" (share won by combo, a card that wins, damage; PC and iPhone) |
 | ui/category-odds | Draw Odds "Odds by category": odds match exact math, − / +, tapping a row picks its cards (PC and iPhone) |
+| ui/sample-on-table | A Simulate sample game replays on the real Practice table: after turn N the table equals the simulation's own state (hand, battlefield, graveyard, life), then Next turn plays on (browser test) |
 | ui/viewer-everywhere | Every card on every tab opens in the card viewer: click, 🔍 corner or right-click (browser test) |
 | ui/desktop-viewer | PC: clicking a card opens the viewer (price, previous / next); the autopilot speed slider (browser test) |
 | ui/cardview | Phone tap menu (bottom sheet) and card viewer: next/previous, printings, shop links (browser test) |

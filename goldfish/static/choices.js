@@ -112,7 +112,7 @@
         <div class="ch-body">
           <div class="ch-text hint">${esc(q.text)}${q.multi ? ` <b class="ch-count"></b>` : ''}</div>
           ${q.combo ? `<div class="ch-combo" role="status"><b>Combo assembled</b><span class="ch-combo-name">${esc(q.combo.name)}</span>${q.combo.cards.length ? `<small>${esc(q.combo.cards.join(' + '))}</small>` : ''}</div>` : ''}
-          ${q.combo && q.combo.outcome === 'mana' ? `<div class="ch-mana row"><label>How much mana? <input class="ch-mana-n" type="number" min="1" step="1" placeholder="number" aria-label="How much mana"></label><button class="ch-mana-go" type="button" disabled>Take that much</button><button class="ch-mana-inf" type="button" title="As much as you like">∞</button></div>` : ''}
+          ${q.combo && q.combo.outcome === 'mana' ? `<div class="ch-mana row"><label>How much mana? <input class="ch-mana-n" type="number" min="1" step="1" placeholder="number" aria-label="How much mana"></label><button class="ch-mana-go" type="button" disabled>Take that much</button><button class="ch-mana-inf" type="button" title="As much as you like" aria-label="Infinite mana: as much as you like">∞<span class="ch-inf-w"> Infinite</span></button></div>` : ''}
           ${q.dest ? `<div class="ch-dest"><span>Goes to</span> <b>${esc(q.dest)}</b></div>` : ''}
           ${ts.length > 12 ? '<input class="ch-filter" type="search" placeholder="Filter by name or type…" aria-label="Filter the cards">' : ''}
           ${q.stack && q.stack.length ? `<details class="ch-stack"><summary>On the stack · ${q.stack.length} <small>(top: ${esc(q.stack[0].name)})</small></summary><div class="ch-stack-list"></div></details>` : ''}

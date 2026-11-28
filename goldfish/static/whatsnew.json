@@ -4,7 +4,7 @@
     {
       "v": 224,
       "lines": [
-        "More groundwork for full priority: activated abilities now pay their cost and wait on the stack, so there is a chance to respond. Still switched off, so games play as before."
+        "More groundwork for full priority: activated abilities now pay their cost and wait on the stack, so there is a chance to respond, and the autopilot can respond during blocks and damage. Still switched off, so games play as before."
       ]
     },
     {

@@ -46,6 +46,19 @@ const ONLY = process.env.LOOP_ONLY ? new RegExp(process.env.LOOP_ONLY) : null;
       const auto = await p.$('.ch-sheet .ch-auto'); if (auto) await auto.click().catch(() => {});
       await p.waitForTimeout(500);
     }
+    // the 🔁 Loop setting: the setup row's checkbox is hidden once the table fills the phone, so the table's bar carries a toggle too
+    const lb = '#tab-duel .vs-bar .vs-loopbtn';
+    check(`${name}: the 🔁 Loop toggle is on the table's bar`, await p.locator(lb).count() === 1);
+    await p.locator(lb).evaluate(e => e.scrollIntoView({ block: 'nearest', inline: 'center' })).catch(() => {});
+    const lr = await p.evaluate(sel => { const e = document.querySelector(sel), x = e.getBoundingClientRect(), h = document.elementFromPoint(x.x + x.width / 2, x.y + x.height / 2); return { l: x.left, r: x.right, t: x.top, b: x.bottom, h: x.height, w: x.width, hit: !!h && (h === e || e.contains(h)), vw: innerWidth, vh: innerHeight }; }, lb);
+    check(`${name}: Loop is fully on screen and nothing covers its centre`, lr.l >= 0 && lr.r <= lr.vw && lr.t >= 0 && lr.b <= lr.vh && lr.hit, JSON.stringify(lr));
+    if (touch) check(`${name}: Loop is at least 44 px (high and wide)`, lr.h >= 43.5 && lr.w >= 43.5, Math.round(lr.w) + 'x' + Math.round(lr.h));
+    const was = await p.$eval('#tab-duel .vs-loop', e => e.checked);
+    await tapIt(p, lb); await p.waitForTimeout(300);
+    const now = await p.$eval('#tab-duel .vs-loop', e => e.checked);
+    check(`${name}: a tap toggles Loop and the button shows it`, now === !was && (await p.$eval(lb, e => e.classList.contains('on') && e.getAttribute('aria-pressed') === 'true')) === now, `${was} -> ${now}`);
+    await tapIt(p, lb); await p.waitForTimeout(300);
+    check(`${name}: a second tap switches it off again`, (await p.$eval('#tab-duel .vs-loop', e => e.checked)) === was);
     await p.evaluate(() => {
       const gm = window.__isfVersus.duel.game, g = gm.games[0], G = window.Goldfish, card = n => g.deck.unique.find(c => c.name === n);
       const put = n => { const x = G.enterWithTriggers(g, { iid: g.nextIid++, card: card(n) }, {}, []); x.sick = false; x.tapped = false; x.enteredTurn = 1; return x; };

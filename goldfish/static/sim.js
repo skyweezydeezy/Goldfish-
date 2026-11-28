@@ -5779,6 +5779,7 @@
     if (!any) return;
     for (const q of x.battlefield.slice()) if (q.card.a.yardLeave) for (const t of q.card.a.triggers) if (t.kinds.includes('yardLeave') && !(t.creatureOnly && !creature) && !(t.myTurn && x.activeTurn === false)) fire(x, t, q, ev, null);
   }
+  const it0 = (stack, base) => stack.length > base;
   function settle(h, ev) {
     if (h.settling) return;
     h.settling = true; h.acts = (h.acts || 0) + 1;
@@ -5804,6 +5805,7 @@
           if (h.killTurn == null && !h.infinite) { ev.push({ type: 'note', text: `Infinite loop (${it.source && it.source.card ? it.source.card.name : 'a trigger'} keeps repeating): the goldfish loses all its life`, source: null }); h.damage = Math.max(h.damage, h.opts.oppLife); if (h.opp) (isPod(h) ? podAlive(h) : [h.opp]).forEach(o => { o.life = 0; }); h.infinite = true; { const halves = h.battlefield.filter(q => q.card.a.comboRole).map(q => q.card.name).filter((x, i, xs) => xs.indexOf(x) === i); h.loopText = halves.length >= 2 ? halves.join(' + ') + ': a loop that never stops' : (it.source && it.source.card ? it.source.card.name : 'a trigger') + ' keeps repeating'; } checkKill(h, ev); }
           break;
         }
+        if (h.opts.priority && !h.dry && it0(stack, base)) priorityRound(h, 'stack', ev, { controller: stack[stack.length - 1].controller || h, text: stack[stack.length - 1].trig && stack[stack.length - 1].trig.text, card: stack[stack.length - 1].source && stack[stack.length - 1].source.card || null });          // T-127 stage 3: a round before each trigger resolves (CR 117.4, 405.5)
         const it = stack.pop(), x = it.g, px = x.xValue, pl = x.lastCast, pm = x.thatMuch, ps = x.spellsCast;
         x.xValue = it.x; x.lastCast = it.last; x.thatMuch = it.much; x.spellsCast = it.sc;          // what the ability remembers from when it triggered (the spell's X, the amount, the spells cast before it)
         const v0 = tableVer(h);
@@ -5822,8 +5824,8 @@
   // T-127 stage 1: the priority round (CR 117.3-117.4). Off unless opts.priority; with nothing on the stack, each player in turn order may act, and the step ends when
   // every player has passed in a row. Stage 1 only lets a seated person act (the autopilot's responses still live in the old windows: tryCounter, instantWindow, protectLethal;
   // autoRespond takes them over in stage 2), so with nobody seated the round is skipped at once (the fast path) and a person who takes every default (Pass) changes nothing.
-  const PRIORITY_STEPS = { upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat' };
-  const SMART_OWN = new Set(['beginCombat', 'blockers', 'endCombat']), SMART_OTHER = new Set(['upkeep', 'main', 'beginCombat', 'attackers', 'blockers', 'damage', 'endCombat', 'end']);
+  const PRIORITY_STEPS = { stack: 'Ability on the stack', upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat' };
+  const SMART_OWN = new Set(['beginCombat', 'blockers', 'endCombat']), SMART_OTHER = new Set(['stack', 'upkeep', 'main', 'beginCombat', 'attackers', 'blockers', 'damage', 'endCombat', 'end']);
   const PRIO_MAIN = new WeakMap();          // kept off the game object: the played copy and the plain copy must dump the same (every-default sweep)
   function priorityPlayers(g) { const all = g.match && g.match.players ? g.match.players.filter(x => !x.dead) : [g].concat(g.opp ? [g.opp] : []), i = all.indexOf(g); return i > 0 ? all.slice(i).concat(all.slice(0, i)) : all; }
   function wantsPriority(p, g, step) {          // opts.autoPass: 'smart' (default), 'stops', 'never' (asks at every step) or 'always' (never asks)
@@ -5844,17 +5846,17 @@
     ev.push({ type: 'note', text: `${label}: cast ${c.card.name}`, source: null }, ...r);
     return true;
   }
-  function priorityRound(g, step, ev) {
-    if (!g.opts.priority || g.dry || matchOver(g) || tableStack(g).length) return 0;          // off, a rehearsal, or something is still on the stack (stage 2 resolves those)
+  function priorityRound(g, step, ev, over) {          // over: an object waits on the stack (a trigger, between two resolutions): over = { controller, text }
+    if (!g.opts.priority || g.dry || matchOver(g) || (tableStack(g).length && !over)) return 0;          // off, a rehearsal, or something is still on the stack (stage 2 resolves those)
     const ps = priorityPlayers(g);
     if (!ps.some(p => p.ask)) return 0;          // the fast path: nobody who could act
     if (step === 'main') { if (PRIO_MAIN.get(g) === g.turn) return 0; PRIO_MAIN.set(g, g.turn); }          // castPhase runs several times in a turn: one round at the end of the main phase
     let acts = 0, passes = 0, i = 0;
     for (let k = 0; k < 40 && passes < ps.length && !matchOver(g); k++) {
       const p = ps[i % ps.length]; let did = false;
-      if (p.ask && !p.dead && wantsPriority(p, g, step)) {
+      if (p.ask && !p.dead && wantsPriority(p, over ? over.controller : g, step)) {
         const options = responseCards(p, null).concat(responseAbilities(p));
-        if (options.length) { const pick = decide(p, { kind: 'priority', options, def: null, optional: true, always: true, step, active: g }); if (pick) did = priorityAct(p, pick, ev, step); }
+        if (options.length) { const pick = decide(p, { kind: 'priority', options, def: null, optional: true, always: true, step, active: over ? over.controller : g, top: over ? over.text : null, topCard: over ? over.card : null }); if (pick) did = priorityAct(p, pick, ev, step); }
       }
       if (did) { passes = 0; acts++; continue; }          // they act again: they get priority again (CR 117.3c)
       passes++; i++;
@@ -15172,6 +15174,14 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (manaUnits(d).filter(u => u.colors.has('U') || u.colors.has('B')).length < 2) return;
     const v = responseCards(g, null).find(x => x.card.a.prot === 'veil'); if (v) respondWith(g, v, ev, inst);
   }
+  // T-127 stage 3: the responders to a spell on the stack, in one place: the caster's own protection first (Autumn's Veil), then the responder's answers that change the spell
+  // (Hullbreaker Horror, Redirect Lightning and its kin, Return the Favor, Wandering Archaic's copy when the rule is off), then a counterspell (tryCounter0: Cursecatcher, Mana Drain,
+  // Force of Will...). A seated person's answers do not come through here: personAnswer asks them inside tryCounter0 and priorityRound asks them at every other step.
+  function autoRespond(g, d, inst, ev, ps, by) {
+    casterVeil(g, d, inst, ev);
+    stackResponses(g, d, inst, ev, ps);
+    return ps.gone ? false : tryCounter0(g, inst, ev, by);
+  }
   function tryCounter(g, inst, ev, by) {
     const d = by || g.opp;
     if (inst.card.a.splitSecondSpell) return false;          // split second: nothing can be cast or activated in response
@@ -15180,9 +15190,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ps = { inst, caster: g, responder: d, by: by || null, lock: PENDING.get(inst) || null, gone: false };
     const wg = g.pendingSpell, wd = d.pendingSpell; g.pendingSpell = ps; d.pendingSpell = ps;
     try {
-      casterVeil(g, d, inst, ev);
-      stackResponses(g, d, inst, ev, ps);
-      const r = ps.gone ? false : tryCounter0(g, inst, ev, by);
+      const r = autoRespond(g, d, inst, ev, ps, by);
       if (ps.gone) { (inst.card.commander ? g.command : g.hand).push(inst); ev.push({ type: 'note', text: `${inst.card.name} returns to its owner's hand`, source: null }); return true; }
       return r;
     } finally { if (wg) g.pendingSpell = wg; else delete g.pendingSpell; if (wd) d.pendingSpell = wd; else delete d.pendingSpell; }

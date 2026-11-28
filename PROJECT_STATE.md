@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] The user (2026-11-28 04:35 UTC): ranking games = 300 per pair, then top-ups of 300 for decks whose 95% intervals overlap a ranking neighbour, cap 1,200 per pair (~450-550k matches; replaces 2,000 -> 10,000). Full run only after T-122/T-127 are live.
 - [V] The user (2026-11-28 04:15 UTC): item 6 means Simulate's Sample games replay on the real Practice table (T-123 option A); and "Yes, full priority": build a real priority loop and stack for spells, abilities and triggers (T-127, design note first).
 - [V] The user (2026-11-28 04:10 UTC): "complete ranking of all decks within ICEYfish. 2000 games vs each other deck increased to 10000 games if win pct falls within pct of variance." Ranking resumes. MAIN's reading [A]: escalate a pair to 10,000 matches when |p-0.5| < 1.96*sqrt(0.25/n) at n=2,000 (about +/-2.2 pts); threshold is a flag.
 - [V] The user (2026-11-28 04:00 UTC): seven fixes (T-119 to T-125); hardest constraint: rules behaviour must match the Comprehensive Rules (timing, priority, stack, turn structure).
@@ -244,7 +245,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-104 | Teach the other benders (the user): Firebending, Waterbend, Airbend exact per reminder text/CR, person choices, every line ok/neutral | Card teaching 6 | `claude/card-teaching` | After T-103 |
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
-| T-126 | Complete ranking (the user): adaptive round robin, 2,000 matches per pair, 10,000 when within the margin of 50%; sharded over helper sessions; cost estimate to MAIN first | Deck Brackets 3 (`session_01K5kL4YcBh9ANfXmUy98ymh`) | `claude/deck-brackets` (+ claude/ranking-split) | Active since 04:10 UTC |
+| T-126 | Complete ranking: 300 matches per pair + neighbour-overlap top-ups (cap 1,200); Rank sort + win % in menus; full run after T-122/T-127 | Deck Brackets 3 (`session_01K5kL4YcBh9ANfXmUy98ymh`) | `claude/deck-brackets` | Tooling active; run held |
 | T-127 | Full priority loop and stack (the user): CR 117, 405, 601-608; design note docs/PRIORITY-DESIGN.md first; re-check brackets after | T-122 session | `claude/t122-timing-audit` | Planned after T-122 fixes |
 | T-128 | Proliferate choices (the user: "Atraxa proliferate should have options to choose what counters to proliferate"): per CR 701.27 a person chooses any number of permanents and/or players with counters; each gets one more of each kind it has; autopilot keeps its choice | to assign after v218 is live (new card-teaching session) | — | Planned |
 | T-129 | Blurry top of the table (the user, screenshot docs/briefs/t129-blurry-speed-bar.jpg): the speed bar (turtle/slider/rabbit, "7.5x slower") and the control row (menu, dice, play, fast-forward 6, loop, +) render soft; find the cause (likely a fit-scale transform) and make it sharp on phone and iPad | to assign after v218 is live (UI session) | — | Planned |

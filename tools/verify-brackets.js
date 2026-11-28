@@ -325,11 +325,12 @@ function apply() {
   const doc = JSON.parse(fs.readFileSync(OUT, 'utf8'));
   for (const v of doc.decks) {
     if (ONLY && !v.file.includes(ONLY)) continue;          // --apply --only=<deck>: only that deck is written
-    const file = path.join(DECKS, v.file), lines = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\/\/\s*Checked\b/i.test(l));
+    const file = path.join(DECKS, v.file), raw = fs.readFileSync(file, 'utf8').replace(/\r/g, '').split('\n'), lines = raw.filter(l => !/^\/\/\s*Checked\b/i.test(l)), fieldClause = ((raw.find(l => /^\/\/\s*Checked\b/i.test(l)) || '').match(/; field win [^;]*$/) || [''])[0];          // the field win % of the last ranking stays on the line
     const g = v.goldfish, f = v.field;
     let line = `// Checked by ICEYfish (v${v.version || doc.version}, ${g.games.toLocaleString('en-US')} games): median kill T${g.medianKill}, ${g.by5}% by T5, ${g.by7}% by T7; fastest ${g.earliestKill ? 'T' + g.earliestKill : 'none by T' + (g.byT != null ? 10 : '')}: ${g.by2}% by T2, ${g.by3}% by T3, ${g.by4}% by T4; ${v.rules.gameChangers.length} Game Changers`;
     if (v.commander) line += v.verified === v.stated ? `; B${v.verified} confirmed` : (v.stated ? `; was B${v.stated} -> B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket}` + (v.stated === 5 ? '; B5 needs a median kill before T4' : v.verified > v.stated ? `; the rules rule out B${v.stated}` : '') : `; B${v.verified}: card rules B${v.rules.floor}, speed B${v.speedBracket} (no Drive bracket given)`);
     else line += '; not a Commander deck, no bracket';
+    line += fieldClause;
     if (v.commander) { const b = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l)); if (b >= 0) lines[b] = `// Bracket ${v.verified}`; else lines.splice(1, 0, `// Bracket ${v.verified}`); }
     const at = lines.findIndex(l => /^\/\/\s*Bracket\s*\d/i.test(l));
     lines.splice(at >= 0 ? at + 1 : 1, 0, line);

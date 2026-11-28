@@ -162,7 +162,7 @@
   });
 
   // Display (app-wide, kept in this browser like sound and the playmat): how a tab fades in, and the order of the built-in deck menus
-  const DECK_ORDERS = ['bracket', 'color-bracket', 'color'], LEGACY_ORDER = { 'bracket-rank': 'bracket', 'color-rank': 'color', rank: 'bracket' };          // the old rank orders are gone
+  const DECK_ORDERS = ['bracket', 'color-bracket', 'color', 'rank'], LEGACY_ORDER = { 'bracket-rank': 'bracket', 'color-rank': 'color' };          // 'bracket-rank' and 'color-rank' of the first version are Bracket and Color now
   let deckOrder = 'bracket', decksListed = false;                // decksListed: the built-in index has loaded, so the menus can be refilled
   (() => {
     const KEY = 'isf_display', FADE = { smooth: '2s', quick: '.35s', off: '0s' };
@@ -696,8 +696,10 @@
   //   bracket (default): groups "Bracket 5 … 1", then "No bracket"; inside a group by name
   //   color-bracket:     groups by color (below), inside a color by bracket (highest first), then name
   //   color:             groups by color, inside a color by name
-  // The bracket is the one filed on each deck (Wizards of the Coast's Commander Brackets, checked by ICEYfish: the card rules first). There is no
-  // internal strength ranking for now (the user, 2026-11-26): no win %, no kill turn, no rank in the menus until that system is rebuilt.
+  //   rank:              one list by field win % (decks/index.json "fieldWin", from the adaptive round robin of tools/rank-field.js), highest first, then name;
+  //                      a deck that has not been ranked comes last
+  // The bracket is the one filed on each deck (Wizards of the Coast's Commander Brackets, checked by ICEYfish: the card rules first). Every option shows
+  // the deck's field win % after its bracket once it has been measured (the user, 2026-11-28); nothing else (no kill turn, no rank number) is shown.
   // Color order (WUBRG): one color (W U B R G), two colors, three, four, five, colorless last. Inside a count the identities sort by
   // their letters in W U B R G order: WU WB WR WG UB UR UG BR BG RG; WUB WUR WUG WBR WBG WRG UBR UBG URG BRG; four colors by the color left out.
   const BRACKET_NAME = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
@@ -711,12 +713,14 @@
   const opt = (d, noColors) => {
     const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
     if (d.bracket) bits.push('B' + d.bracket + (d.bracketEst ? '?' : ''));
+    if (d.fieldWin != null) bits.push(Math.round(d.fieldWin) + '%');
     return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
   };
   function builtinOptions() {
     const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';
     const byColor = cmp => { const keys = [...new Set(BUILTIN.map(d => d.colors || ''))].sort((x, y) => colorRank(x).localeCompare(colorRank(y)));
       return keys.map(k => group(COLOR_NAME[k] || k, BUILTIN.filter(d => (d.colors || '') === k).sort(cmp), true)).join(''); };
+    if (deckOrder === 'rank') return group('All decks · by win %', BUILTIN.slice().sort((a, b) => ((b.fieldWin == null ? -1 : b.fieldWin) - (a.fieldWin == null ? -1 : a.fieldWin)) || byName(a, b)));
     if (deckOrder === 'color') return byColor(byName);
     if (deckOrder === 'color-bracket') return byColor((a, b) => byBracket(a, b) || byName(a, b));
     let html = '';

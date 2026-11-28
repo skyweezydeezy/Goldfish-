@@ -121,7 +121,7 @@
         <div class="ch-body">
           <div class="pr-ctx" role="status">${esc(priorityLine(q))}</div>
           <div class="ch-info hint" hidden>${esc(q.text || '')} Passing moves the game on; if everyone passes with something on the stack, it resolves. You can change when you are stopped in Settings → Display → Stop to respond.</div>
-          <div class="row ch-btns pr-btns"><button class="primary pr-pass" type="button">Pass</button><button class="pr-go" type="button" hidden></button></div>
+          <div class="row ch-btns pr-btns"><button class="primary pr-pass ch-none ch-auto" type="button">Pass</button><button class="pr-go" type="button" hidden></button></div>
           <div class="ch-opts pr-opts" role="group" aria-label="What you can use now"></div>
         </div>`;
       const $ = s => el.querySelector(s), box = $('.pr-opts'), go = $('.pr-go');

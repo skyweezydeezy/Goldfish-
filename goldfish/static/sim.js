@@ -8216,14 +8216,33 @@
         case 'emblem': (g.emblems = g.emblems || []).push(Object.assign({ p: f.p, t: f.t, keywords: f.keywords || [], types: f.types }, f.filter ? { filter: f.filter } : {})); touch(g); ev.push({ type: 'note', text: f.types ? `Emblem: your ${f.types.join(', ')}s have ${f.keywords.join(', ')}` : `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;          // filter: rules batch 55 (Kaito's Ninjas)
         case 'proliferate': {                                            // CR 701.34: choose any permanents and/or players with a counter; each gets one more of each kind already there
           // the permanents with a counter, yours and (a pod: every) opponent's. The autopilot takes all of its own and an opponent's only when it is shrunk by -1/-1 counters;
-          // a person chooses among them all (T-087)
+          // a person chooses among them all (T-087), players with counters too (T-128): poison on the opponent, your experience / energy / rad, an opponent's rad
           const list = []; for (const o of [g].concat(g.opp && !g.dry ? otherPlayers(g) : [])) for (const p of o.battlefield) if ((p.counters || 0) !== 0 || p.card.a.isPlaneswalker || Object.keys(p.other || {}).length) list.push({ o, p });
           const good = x => x.o === g || (x.p.counters || 0) < 0;
-          let only = null;
-          if (g.ask && !g.dry && list.length) only = decide(g, { kind: 'target', what: 'proliferate', options: list.map(x => x.p), def: list.filter(good).map(x => x.p), multi: true, pick: list.length, upTo: true, source });          // a person chooses which permanents
+          let only = null, plist = [];
+          if (g.ask && !g.dry) {
+            const mine = []; for (const [k, v] of [['experience', g.experience], ['energy', g.energy], ['rad', g.rad]]) if (v > 0) mine.push([k, v]);
+            if (mine.length) plist.push({ prolPlayer: true, o: g, kinds: mine, def: false });          // unchecked: the autopilot leaves them alone, and a person's defaults are its pick (the sweep)
+            if ((g.poisonDealt || 0) > 0) plist.push({ prolPlayer: true, o: null, kinds: [['poison', g.poisonDealt]], def: true });
+            for (const o of (g.opp ? otherPlayers(g) : [])) if (o.rad > 0) plist.push({ prolPlayer: true, o, kinds: [['rad', o.rad]], def: false });
+          }
+          if (g.ask && !g.dry && (list.length || plist.length)) {
+            const opts = list.map(x => x.p).concat(plist);
+            only = decide(g, { kind: 'target', what: 'proliferate', options: opts, def: list.filter(good).map(x => x.p).concat(plist.filter(x => x.def)), multi: true, pick: opts.length, upTo: true, source });          // a person chooses which permanents and players
+          }
           const done = [];
           for (let pk = 0; pk < (bfInfo(g).prolifTwice ? 2 : 1); pk++) {
-            if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) { addPoison(g, 1, ev, source, 'Proliferate'); if (!done.includes('poison counters')) done.push('poison counters'); }
+            if (only) {
+              for (const pe of plist) {
+                if (!only.includes(pe)) continue;
+                for (const [k] of pe.kinds) {
+                  if (k === 'poison') { if (g.killTurn == null && !matchOver(g)) addPoison(g, 1, ev, source, 'Proliferate'); }
+                  else if (k === 'rad') addRad(pe.o, 1, ev, source);
+                  else applyEffects(g, [{ type: k }], source, ev, null);
+                  if (!done.includes(k + ' counters')) done.push(k + ' counters');
+                }
+              }
+            } else if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) { addPoison(g, 1, ev, source, 'Proliferate'); if (!done.includes('poison counters')) done.push('poison counters'); }
             for (const x of list) {
               const p = x.p, o = x.o;
               if (!o.battlefield.includes(p) || (only ? !only.includes(p) : !good(x))) continue;
@@ -12692,6 +12711,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.combatPre === g.turn) { g.combatPre = null; g.combatDone = true; } else { combatStart(g, ev); settle(g, ev); }          // beginning of combat: its triggers resolve before attackers are declared
     let phases = 1;
     for (let ph = 0; ph < phases && ph < 6; ph++) {
+      if (ph > 0 && !g.dry) { eachTrigger(g, 'combat', ev); settle(g, ev); }          // CR 506.1, 507.1: every combat phase has its own beginning of combat step (the first one ran above)
       if (g.throttleTurn === g.turn && !g.dry) g.battlefield.forEach(q => { if (isCreaturePerm(q) && q.attackedTurn === g.turn) q.tapped = false; });          // Full Throttle: attackers untap at each combat
       crewVehicles(g, ev);
       let attackers = g.battlefield.filter(p => canAttack(g, p));
@@ -13030,6 +13050,8 @@ g.actSeq = (g.actSeq || 0) + 1;
   function endTurn(g) { return acting(g, () => endTurn0(g)); }
   function endTurn0(g) {
     emptyPool(g);          // T-101: the second main phase ends
+    // CR 603.7, 603.7b: "at the beginning of the next end step" returns that were set up before this end step happen in it; one set up during it (a creature that dies in the end-step window, a sacrifice at the end step) waits for the next turn's
+    const endDue = new Map(); if (!g.dry) for (const x of [g].concat(otherPlayers(g))) endDue.set(x, { flick: (x.endFlicker || []).splice(0), ret: (x.endReturn || []).splice(0) });
     const iw = [];
     if (g.opp && !g.dry && !matchOver(g)) instantWindow(g.opp, iw, 'end');                                  // the other player's end-step window
     if (!g.dry && !matchOver(g)) dwarfEnd(g, iw);          // Vault Robber, Óin the Brave
@@ -13078,8 +13100,8 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (left.length) { for (const i of left) { g.hand.splice(g.hand.indexOf(i), 1); i.valakutEx = false; i.temp = null; g.graveyard.push(i); if (i.card.a.isLand) landToYard(g, ev, false); } ev.push({ type: 'note', text: `${vx.card.name}: ${left.length} exiled card${left.length === 1 ? '' : 's'} to the graveyard`, source: vx }); damageOpp(g, left.length, ev, vx); } }
     if (!g.dry && !bothSides(g).some(isCreaturePerm)) for (const x of [g].concat(otherPlayers(g))) for (const ps of (tableHas(x, 'pestEnd') ? x.battlefield.slice() : NONE)) if (ps.card.a.pestEnd) { leavePerm(x, ps, ev); ev.push({ type: 'note', text: `${ps.card.name} is sacrificed (no creatures on the battlefield)`, source: ps }); }          // Pestilence
     eachTrigger(g, 'end', ev); settle(g, ev);          // the end step's triggers resolve before the cleanup step (discard to hand size)
-    if (!g.dry) for (const x of [g].concat(otherPlayers(g))) if (x.endFlicker && x.endFlicker.length) for (const i of x.endFlicker.splice(0)) { const at = x.exile.indexOf(i); if (at < 0) continue; x.exile.splice(at, 1); enterWithTriggers(x, i, {}, ev); ev.push({ type: 'note', text: `${i.card.name} returns to the battlefield (Flickerwisp)`, source: null }); }          // Flickerwisp
-    if (!g.dry) for (const x of [g].concat(otherPlayers(g))) if (x.endReturn && x.endReturn.length) for (const i of x.endReturn.splice(0)) { const at = x.graveyard.indexOf(i); if (at < 0) continue; x.graveyard.splice(at, 1); enterWithTriggers(x, i, {}, ev); ev.push({ type: 'note', text: `Daretti's emblem: ${i.card.name} returns to the battlefield`, source: null }); }
+    if (!g.dry) for (const x of [g].concat(otherPlayers(g))) if (endDue.get(x).flick.length) for (const i of endDue.get(x).flick) { const at = x.exile.indexOf(i); if (at < 0) continue; x.exile.splice(at, 1); enterWithTriggers(x, i, {}, ev); ev.push({ type: 'note', text: `${i.card.name} returns to the battlefield (Flickerwisp)`, source: null }); }          // Flickerwisp
+    if (!g.dry) for (const x of [g].concat(otherPlayers(g))) if (endDue.get(x).ret.length) for (const i of endDue.get(x).ret) { const at = x.graveyard.indexOf(i); if (at < 0) continue; x.graveyard.splice(at, 1); enterWithTriggers(x, i, {}, ev); ev.push({ type: 'note', text: `Daretti's emblem: ${i.card.name} returns to the battlefield`, source: null }); }
     if (!g.dry && g.opp && (g.poisonDealt || 0) >= 3) for (const q of (tableHas(g, 'ixhel') ? g.battlefield.filter(x => x.card.a.ixhel) : [])) thiefLook(g, g.opp, 1, ev, q, false);          // Ixhel, Scion of Atraxa (corrupted)
     if (!g.dry && g.opp) for (const q of (tableHas(g, 'dawnbreak') ? g.battlefield.filter(x => x.card.a.dawnbreak) : [])) {          // Dawnbreak Reclaimer: their worst creature card for yours, when yours is worth more
       const rv = (o, i) => (i.card.a.mv || 0) + (i.card.a.power || 0); const theirs = g.opp.graveyard.filter(i => i.card.a.isCreature).sort((x, y) => rv(g.opp, x) - rv(g.opp, y))[0], mine = g.graveyard.filter(i => i.card.a.isCreature).sort((x, y) => rv(g, x) - rv(g, y))[0];
@@ -13100,6 +13122,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     g.battlefield.forEach(p => { if (p.eotCard) { p.card = p.eotCard; know(g, p.card); p.eotCard = null; touch(g); } p.eotNoKw = false; p.eotToughDmg = false; p.eotArt = false; p.eotFire = null; p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
     for (const x of [g].concat(otherPlayers(g))) x.battlefield.forEach(p => { p.dmg = 0; p.dt = false; });          // cleanup step: damage wears off every permanent
     sba(g, ev);
+    if (!g.dry) for (let k = 0; k < 5 && !matchOver(g); k++) { settle(g, ev); if (g.hand.length <= maxHandSize(g)) break; cleanupDiscard(g, ev); }          // CR 514.3a: a trigger from the cleanup step (a discard that draws) gets resolved, and there is another cleanup step if the hand is too big again
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
     return iw.length ? iw.concat(ev) : ev;
   }
@@ -13716,6 +13739,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     return false;
   }
 
+  const EXTRA_TURN_LIMIT = 40;          // CR 500.7: a player takes every extra turn they have, one after another; this only stops a loop that makes one for ever
   function playTurn(g) {
     const ev = beginTurn(g);
     const le = matchOver(g) ? null : landStep(g);                                                          // won at the upkeep or the draw step: nothing more is played
@@ -13732,7 +13756,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function simulate(deck, opts, seed) {
     const g = newGame(deck, opts, seed);
     mulligan(g);
-    for (let t = 0; t < opts.turns; t++) { playTurn(g); for (let k = 0; g.extraTurns > 0 && k < 3; k++) { g.extraTurns--; playTurn(g); } }
+    for (let t = 0; t < opts.turns; t++) { playTurn(g); for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT; k++) { g.extraTurns--; playTurn(g); } }
     return g;
   }
 
@@ -14209,6 +14233,12 @@ g.actSeq = (g.actSeq || 0) + 1;
           if (regenerates(game, p, ev)) continue;
           ev.push({ type: 'note', text: `${p.card.name} dies in combat`, source: p }); leavePerm(game, p, ev); }
         for (const [game, list] of [[g, attackers], [d, [...blocks.values()].flat()]]) for (const p of list) if (alive(game, p) && isCreaturePerm(p) && toughnessOf(game, p) <= 0) { ev.push({ type: 'note', text: `${p.card.name} dies (no counters left)`, source: p }); leavePerm(game, p, ev); }          // Polukranos
+      }
+      if (step === 'first' && steps.length > 1 && !g.dry) {          // CR 510.4, 704.3: the first-strike damage step ends before the regular one: lifelink gain, leave and "dies" triggers happen now
+        flushLeaves(g, ev); flushLeaves(d, ev);
+        if (llD > 0) { gainLife(d, llD, ev, null); llD = 0; }
+        if (ll > 0 && !matchOver(g)) { gainLife(g, ll, ev, null); ll = 0; }
+        settle(g, ev);
       }
     }
     for (const game of [g, d]) game.battlefield.forEach(p => { p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });          // damage stays until the cleanup step
@@ -15249,7 +15279,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const tev = playTurn(g);
         if (hook) hook(g, t, tev);
         if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;          // Stranglehold: an extra turn is skipped
-        for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null; k++) { g.extraTurns--; const e2 = playTurn(g); if (hook) hook(g, t, e2); }
+        for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT && m.winner == null; k++) { g.extraTurns--; const e2 = playTurn(g); if (hook) hook(g, t, e2); }
         if (m.winner == null && g.library.length === 0 && g.hand.length === 0) m.winner = g.opp.pid;       // nothing left to draw
       }
     }
@@ -15470,7 +15500,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ev = playTurn(g);
     if (hook) hook(g, ev);
     if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;
-    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
+    for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
   }
@@ -15487,7 +15517,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ev = [], m = g.match;
     if (!matchOver(g)) ev.push(...combat(g)); if (!matchOver(g)) ev.push(...postCombat(g)); ev.push(...endTurn(g));
     if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;
-    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
+    for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
   }

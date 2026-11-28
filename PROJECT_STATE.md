@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] MAIN (2026-11-28 05:22 UTC), T-127 design (docs/PRIORITY-DESIGN.md @ 8057f2d) accepted: cast triggers resolve before the spell (CR 603.3, the user's rules-first constraint); names question kind 'priority', opts.autoPass ('smart'), table.stack, priorityRound, autoRespond; one engine session per stage, a UI session for the priority sheet after stage 1; stages 0+1 GO (no behaviour change, bench within +20%).
 - [V] The user (2026-11-28 04:40 UTC): ranking = one pass of 300 matches per pair (~413k, ~3.9 CPU-h), no top-ups; overlapping decks show a rank range (ties) instead of an exact order. (MAIN's earlier 500k top-up estimate was wrong: neighbours are ~1 pt apart, top-ups would reach ~1.6M.)
 - [V] Card teaching 8 handed over at ~590k tokens; Card teaching 13 (`session_01K5kL4YTDSHuWHUJbt2CUeA`) is the standing Teach session (trigger updated). CT8 is archived after T-125 merges.
 - [V] The user (2026-11-28 04:35 UTC): ranking games = 300 per pair, then top-ups of 300 for decks whose 95% intervals overlap a ranking neighbour, cap 1,200 per pair (~450-550k matches; replaces 2,000 -> 10,000). Full run only after T-122/T-127 are live.
@@ -111,6 +112,7 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 219** (2026-11-28 04:50 UTC): PR #190, Teach #188 (closed with comment).
 - [V] **Version 218** (2026-11-28 04:27 UTC): PR #189, 4/4 + Pages green: T-120 ticket endpoint groundwork (off until the owner sets the /exec URL).
 - [V] **Version 217** (2026-11-26 22:12 UTC): PR #186, 4/4 + Pages green: T-118 (Mana Tithe cast+tax for a person, Demonic Consultation names a card, Basalt/Grim Monolith loops by hand with the mana shortcut, Port Razer extra combat). Fingerprint moved only for the red-rum fixture (has those cards).
 - [V] **Version 216** (2026-11-26 20:34 UTC): PR #185, 4/4 + Pages green: T-117 puzzles (four finishers, no Go off).
@@ -249,15 +251,15 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
 | T-126 | Ranking: one pass 300/pair, rank ranges on ties; Rank sort + win % in menus | Deck Brackets 3 | `claude/deck-brackets` @ 2e81f88 (+ single-pass update) | Tooling [R]; run held for T-122/T-127 |
-| T-127 | Full priority loop and stack (the user): CR 117, 405, 601-608; design note docs/PRIORITY-DESIGN.md first; re-check brackets after | T-122 session | `claude/t122-timing-audit` | Planned after T-122 fixes |
-| T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` | Active since 04:32 UTC |
-| T-129 | Blurry speed bar and control strip | T-121 session | `claude/t121-duel-loop-button` | Active since 04:33 UTC |
+| T-127 | Full priority loop and stack | T-122 session | design `claude/t127-priority-design` @ 8057f2d | Design [R] + accepted; stages 0+1 active since 05:22 UTC |
+| T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [R] 04:39 UTC: suite 270, sweep bad 0, fingerprint identical; next batch |
+| T-129 | Blurry strip: .panel.active fade fill-mode both -> backwards (WebKit soft layer) | T-121 session | `claude/t121-duel-loop-button` @ 579f423 | [R] 04:46 UTC: crisp-strip 28/28; needs the user's check on a real iPhone; next batch |
 | T-124 | Teach issue #188 | Card teaching 8 | `claude/card-teaching` @ 3f3befb | [R] in PR #190 (v219) |
 | T-125 | Entrancing Melody target after X | Card teaching 8 | `claude/card-teaching` @ b8e24d1 | [R] 04:28 UTC: t125 5/5, full suite 270, sweep bad 0; next batch |
 | T-119 | Puzzles: pay sheet in puzzles, Rocks before the dragon by a person, phone tab bar | T-115 session | `claude/t115-puzzles` @ b8d7d15 | [R] 04:28 UTC: puzzles 99/99, UI 113/113, versus x3, sweep bad 0; next batch |
 | T-120 | Tickets reach the owner without sign-in | T-120 session (`session_01K5kL4ZD9cmscY4bg4HREWm`) | `claude/t120-ticket-delivery` @ 53bdcab | [R] in PR #189 (v218). Live only after the owner deploys the Apps Script and the /exec URL goes in ticket-config.js |
 | T-121 | Duel on phones: 🔁 Loop button on the game bar (root cause: tfocus hides the setup row), ∞ button labelled | T-121 session (`session_01K5kL4XSdwKoTCAt2tnSATL`) | `claude/t121-duel-loop-button` @ 9650971 | [R] 04:26 UTC: duel-loop-phone 106/106; next batch. Session now on T-129 |
-| T-122 | Timing audit | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ c84c8c5 | Phase 1 [R] docs/TIMING-AUDIT.md; Phase 2 GO 04:15 UTC: extra-turn cap, per-combat triggers, SBA between damage steps, delayed end step, small batch |
+| T-122 | Timing audit + fixes 1-5 (extra turns CR 500.7, per-combat triggers 506.1/507.1, first-strike SBA 510.4, next end step 603.7, cleanup 514.3a) | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ 6c9f14a | [R] 05:16 UTC: suite 274, sweep bad 0, fingerprint 1 line explained; next batch |
 | T-123 | Simulate Sample games replay on the real Practice table | T-123 session (`session_01K5kL4ZX6se17TgCAFfhACk`) | `claude/t123-tutorial-real-table` @ 77f7f92 | [R] 04:17 UTC: sample-on-table 9/9, tutorials pass; next batch |
 | T-118 | Engine fixes (the user): Mana Tithe, Consultation naming, loops by hand (Monoliths), Port Razer | Card teaching 8 | `claude/card-teaching` @ 211f1b0 | [V] Verified v217 (PR #186). Other loop pieces (Rings, Pili-Pala, Scepter) still autopilot-only |
 | T-116 | New Drive deck Winota | Deck Brackets 3 | `claude/deck-brackets` | [V] Verified v215 (PR #184): B4 |

@@ -714,7 +714,8 @@
     const bits = [d.name]; if (!noColors) bits.push(d.colors || 'C');
     if (d.bracket) bits.push('B' + d.bracket + (d.bracketEst ? '?' : ''));
     if (d.fieldWin != null) bits.push(Math.round(d.fieldWin) + '%');
-    return `<option value="builtin:${esc(d.file)}">${esc(bits.join(' · '))}</option>`;
+    const tip = d.fieldWin != null && d.fieldCI ? ` title="${esc('Win % against the other built-in decks: 95% range ' + d.fieldCI[0] + '-' + d.fieldCI[1] + (d.rankRange ? ', rank ' + (d.rankRange[0] === d.rankRange[1] ? d.rankRange[0] : d.rankRange[0] + '-' + d.rankRange[1]) : ''))}"` : '';
+    return `<option value="builtin:${esc(d.file)}"${tip}>${esc(bits.join(' · '))}</option>`;
   };
   function builtinOptions() {
     const group = (label, ds, noColors) => ds.length ? `<optgroup label="${esc(label)}">` + ds.map(d => opt(d, noColors)).join('') + '</optgroup>' : '';

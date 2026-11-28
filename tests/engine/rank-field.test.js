@@ -1,4 +1,4 @@
-// tools/rank-field.js (T-126): the adaptive round robin. Four decks, tiny numbers (per pair 20, top-up 20, cap 60). One process and sharded helpers (round by
+// tools/rank-field.js (T-126): the round robin (one pass by default; top-up rounds with --topup). Four decks, tiny numbers (per pair 20, top-up 20, cap 60). One process and sharded helpers (round by
 // round, in a shared directory) give the same result; --ci decides who is topped up (0: nobody, 100: every pair up to the cap); a merge refuses what it
 // should and says "not complete" while a round is due; a killed run resumes. Nothing here touches index.json or the deck files (--no-apply, ISF_RANK_OUT).
 const { spawnSync } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
@@ -28,6 +28,11 @@ check('--ci=0: intervals of no width never overlap, so nobody is topped up (6 x 
 run(['--ci=100', '--ckpt-dir=' + T + '/c100']); merge(T + '/c100', 100, T + '/c100.json');
 check('--ci=100: everything overlaps, so every pair goes to the cap (6 x 60 matches, three rounds)', read(T + '/c100.json').matches === 360 && read(T + '/c100.json').rounds === 3 && read(T + '/c100.json').pairsByMatches['60'] === 6);
 check('the first 20 matches of every pair are identical whether or not it is topped up (seeds continue at k = 20)', (() => { const g = d => new Map(fs.readFileSync(files(d)[0], 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(r => r.job && r.job.k0 === 0).map(r => [r.job.u, [r.a, r.b, r.none].join()])); const x = g(T + '/c0'), y = g(T + '/c100'); return x.size === 6 && [...x].every(([u, v]) => y.get(u) === v); })());
+// the default is ONE PASS: no --topup, no round after the first, every pair 20 matches; each deck has its interval and a rank range ("show ties")
+const runD = args => spawnSync(process.execPath, [TOOL, '--decks=' + D, '--per-pair=20', '--chunk=20', '--seed=7'].concat(args), { encoding: 'utf8', env: Object.assign({}, process.env, { ISF_RANK_OUT: T + '/d.json' }) });
+runD(['--ckpt-dir=' + T + '/d']); const dm = runD(['--merge', '--no-apply'].concat(files(T + '/d')));
+check('the default is one pass: 6 pairs x 20 matches, one round, no top-up', dm.status === 0 && read(T + '/d.json').matches === 120 && read(T + '/d.json').rounds === 1 && read(T + '/d.json').topup === 0, dm.stdout.split('\n')[0].slice(0, 100));
+check('one pass: every deck has fieldWin, its 95% range and a rank range (ties show as a range)', read(T + '/d.json').decks.every(d => d.fieldCI.length === 2 && d.rankRange[0] <= d.rank && d.rank <= d.rankRange[1]));
 // refusals
 check('--merge of a complete run exits 0', merge(T + '/c100', 100, T + '/z.json').status === 0);
 fs.mkdirSync(T + '/cut'); const lines = fs.readFileSync(files(T + '/c100')[0], 'utf8').trim().split('\n'); fs.writeFileSync(T + '/cut/a.jsonl', lines.slice(0, lines.length - 2).join('\n') + '\n');

@@ -1,16 +1,20 @@
 #!/usr/bin/env node
-// The adaptive round robin that ranks every built-in Commander deck by its win % against the others (task T-126; the user, 2026-11-28:
-// "every pair plays 300 matches; where two neighbours in the ranking have overlapping 95 % intervals, add 300 matches to every pair involving either
-// deck; repeat until no neighbours overlap or a pair reaches 1,200").
-//   node tools/rank-field.js                                   one process plays every round and writes the ranking
-//   node tools/rank-field.js --shard=3/10 --ckpt-dir=<dir>     helper 3 of 10 (0-based): plays its pairs' share of the CURRENT round, then stops
-//   node tools/rank-field.js --merge <files…> [--no-apply]     all rounds' shard files -> docs/agents/field-ranking.json (+ index.json, deck check lines)
-//   node tools/rank-field.js --model                           the cost model for the whole field (no matches played)
+// The round robin that ranks every built-in Commander deck by its win % against the others (task T-126; the user, 2026-11-28: "300 per pair, show ties").
+//   node tools/rank-field.js                                   one process plays all pairs and writes the ranking
+//   node tools/rank-field.js --shard=3/10 --ckpt-dir=<dir>     helper 3 of 10 (0-based): plays its pairs' share, then stops
+//   node tools/rank-field.js --merge <files…> [--no-apply]     the shard files -> docs/agents/field-ranking.json (+ index.json, deck check lines)
+//   node tools/rank-field.js --model                           the cost model (no matches played)
 //   (the same through `node tools/verify-brackets.js --rank …`)
-// Options: --per-pair=300  --topup=300  --cap=1200  --ci=1.96 (width of the interval)  --chunk=100 (matches per job and per checkpoint line, must divide the
+// Options: --per-pair=300  --topup=0  --cap=1200  --ci=1.96 (width of the interval)  --chunk=100 (matches per job and per checkpoint line, must divide the
 //   other three)  --seed=  --jobs= (threads)  --decks=a.txt,b.txt (a dry run on some decks)  --ckpt-dir=
 //
-// THE ROUNDS. Round 0: every pair of Commander decks plays --per-pair matches. Then, from all the data so far, each deck gets fieldWin and a 95 % interval and
+// THE DEFAULT IS ONE PASS: every pair of Commander decks plays 300 matches, nothing more (--topup=0); about 413,000 matches for 53 decks. Where two decks
+// next to each other in the ranking have overlapping intervals the ranking cannot tell them apart: each deck shows its win % with its 95 % range and, instead
+// of one exact rank, the rankRange (the best and worst rank the intervals allow).
+// TOP-UP ROUNDS (optional, --topup=300 --cap=1200, the user's first wording): after a pass, wherever neighbours' intervals overlap, every pair involving
+// either deck gets --topup more matches (not beyond --cap), and the same step is repeated until nothing overlaps or no pair can grow. With 53 decks nearly
+// every pair ends at the cap (about 1.6 million matches, `--model`), which is why the default is one pass.
+// THE ROUNDS (with --topup > 0). Round 0: every pair of Commander decks plays --per-pair matches. Then, from all the data so far, each deck gets fieldWin and a 95 % interval and
 // the decks are put in rank order. Wherever two decks next to each other in that order have overlapping intervals, both decks are "unsettled", and every pair
 // involving an unsettled deck gets --topup more matches, unless it is already at --cap. That is round 1. The same step is repeated on the new data (round 2, …)
 // until no neighbours overlap or no pair can grow any more. A pair therefore plays 300, 600, 900 or 1,200 matches.
@@ -29,12 +33,12 @@ const { Worker, isMainThread, parentPort } = require('worker_threads');
 const ROOT = path.join(__dirname, '..'), STATIC = path.join(ROOT, 'goldfish', 'static'), DECKS = path.join(STATIC, 'decks');
 const OUT = process.env.ISF_RANK_OUT || path.join(ROOT, 'docs', 'agents', 'field-ranking.json');
 const argv = process.argv.slice(2), arg = (k, d) => { const a = argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
-const PER = +arg('per-pair', 300), TOPUP = +arg('topup', 300), CAP = +arg('cap', 1200), CI = +arg('ci', 1.96), CHUNK = +arg('chunk', 100), SEED = +arg('seed', 20261128);
+const PER = +arg('per-pair', 300), TOPUP = +arg('topup', 0), CAP = +arg('cap', 1200), CI = +arg('ci', 1.96), CHUNK = +arg('chunk', 100), SEED = +arg('seed', 20261128);
 const JOBS = +arg('jobs', os.cpus().length), MATCH_TURNS = 25;
 const SHARD = (m => m ? { i: +m[1], of: +m[2] } : null)(arg('shard', '').match(/^(\d+)\/(\d+)$/));
 const die = m => { console.error(m); process.exit(1); };
 if (arg('shard', '') && (!SHARD || SHARD.i >= SHARD.of || SHARD.of < 1)) die('--shard=i/N needs 0 <= i < N, for example --shard=3/10');
-if (!(CHUNK > 0) || PER % CHUNK || TOPUP % CHUNK || CAP % CHUNK || CAP < PER || !(TOPUP > 0)) die('--per-pair, --topup and --cap must be multiples of --chunk, with cap >= per-pair and topup > 0');
+if (!(CHUNK > 0) || PER % CHUNK || TOPUP % CHUNK || CAP % CHUNK || CAP < PER || !(TOPUP >= 0)) die('--per-pair, --topup and --cap must be multiples of --chunk, with cap >= per-pair and topup >= 0');
 
 // ---------- worker: one chunk of matches of one pair ----------
 if (!isMainThread) {
@@ -100,7 +104,7 @@ function replay(decks, pairs, res) {
     if (missing.length) return { complete: false, round, target, missing };
     const rows = fieldStats(pairs, p => totalsOf(res, p.u, target[p.u])), { order, bad } = unsettled(rows, nameOf);
     let changed = false;
-    for (const p of pairs) if ((bad.has(p.x) || bad.has(p.y)) && target[p.u] < CAP) { target[p.u] = Math.min(CAP, target[p.u] + TOPUP); changed = true; }
+    if (TOPUP > 0) for (const p of pairs) if ((bad.has(p.x) || bad.has(p.y)) && target[p.u] < CAP) { target[p.u] = Math.min(CAP, target[p.u] + TOPUP); changed = true; }
     if (!changed) return { complete: true, round, target, rows, order, unsettledLeft: bad.size };
     round++;
   }
@@ -193,10 +197,10 @@ function merge(files) {
   const IDX = path.join(DECKS, 'index.json'), idx = JSON.parse(fs.readFileSync(IDX, 'utf8'));
   for (const d of idx.decks) { const x = out.find(y => y.file === d.file); if (!x) continue; Object.assign(d, { fieldWin: x.fieldWin, fieldCI: x.fieldCI, rank: x.rank, rankRange: x.rankRange, rankedAt: doc.date }); }
   fs.writeFileSync(IDX, JSON.stringify(idx, null, 1) + '\n');
-  for (const x of out) {          // the check line of each deck gets "; field win 41.2% (rank 7 of 53)" at its end
+  for (const x of out) {          // the check line of each deck gets "; field win 41.2% (95% range 40.4-42.0), rank 5-9 of 53" at its end
     const f = path.join(DECKS, x.file); if (!fs.existsSync(f)) continue;
     const lines = fs.readFileSync(f, 'utf8').replace(/\r/g, '').split('\n'), at = lines.findIndex(l => /^\/\/\s*Checked by ICEYfish/i.test(l)); if (at < 0) continue;
-    lines[at] = lines[at].replace(/; field win [^;]*$/, '') + `; field win ${x.fieldWin}% (rank ${x.rank} of ${out.length})`; fs.writeFileSync(f, lines.join('\n'));
+    lines[at] = lines[at].replace(/; field win [^;]*$/, '') + `; field win ${x.fieldWin}% (95% range ${x.fieldCI[0]}-${x.fieldCI[1]}), rank ${x.rankRange[0] === x.rankRange[1] ? x.rankRange[0] : x.rankRange[0] + '-' + x.rankRange[1]} of ${out.length}`; fs.writeFileSync(f, lines.join('\n'));
   }
   console.log('index.json and the check lines: fieldWin, fieldCI, rank, rankRange, rankedAt written. Now run: node tools/build-deck-index.js');
 }
@@ -220,7 +224,7 @@ function model() {
     for (;;) {
       pairsM.forEach((p, i) => { const add = target[i] - tot[i].n; if (add <= 0) return; const pa = (1 - draw) * sig(str[p.x] - str[p.y]), pb = 1 - draw - pa, a = bin(add, pa), b = bin(add - a, pa < 1 ? pb / (1 - pa) : 0); tot[i].a += a; tot[i].b += b; tot[i].n = target[i]; });
       const rows = fieldStats(pairsM, p => tot[p.u]), { bad } = unsettled(rows, d => String(d).padStart(4, '0'));
-      let changed = false; pairsM.forEach((p, i) => { if ((bad.has(p.x) || bad.has(p.y)) && target[i] < CAP) { target[i] = Math.min(CAP, target[i] + TOPUP); changed = true; } });
+      let changed = false; if (TOPUP > 0) pairsM.forEach((p, i) => { if ((bad.has(p.x) || bad.has(p.y)) && target[i] < CAP) { target[i] = Math.min(CAP, target[i] + TOPUP); changed = true; } });
       if (!changed) break; rounds++;
     }
     runs.push({ matches: target.reduce((a, b) => a + b, 0), rounds: rounds + 1, atCap: target.filter(t => t === CAP).length });

@@ -2,6 +2,14 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 221,
+      "lines": [
+        "Proliferate lets you choose: pick which permanents and players get one more of each counter they have.",
+        "Timing follows the rules more closely: extra turns are no longer capped, beginning-of-combat triggers fire in every combat, deaths and lifelink resolve between first-strike and regular damage, and \"next end step\" effects wait for the next end step.",
+        "The speed bar and table controls should look sharp on iPhone and iPad."
+      ]
+    },
+    {
       "v": 220,
       "lines": [
         "Puzzles: you choose how each cost is paid (Rocks before the dragon can be won by hand now), and the Puzzle tab fits phones: two rows of tabs up to 430 px wide.",

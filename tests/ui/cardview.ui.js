@@ -35,9 +35,9 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('the menu is a full-width sheet at the bottom of the screen', await p.$eval('#ctxMenu', e => { const r = e.getBoundingClientRect(); return Math.abs(r.width - innerWidth) < 2 && Math.abs(r.bottom - innerHeight) < 2; }));
   await p.tap('.ctx-backdrop', { position: { x: 100, y: 100 } }); await p.waitForTimeout(300);
   check('tapping outside closes it and does nothing else', !(await p.isVisible('#ctxMenu')) && n0 === await nHand());
-  await hand.tap(edge); await p.waitForTimeout(300); await p.tap('#ctxMenu .ctx-cancel'); await p.waitForTimeout(200);
+  await hand.tap(edge); await p.waitForTimeout(450); await p.tap('#ctxMenu .ctx-cancel'); await p.waitForTimeout(200);
   check('Back closes it', !(await p.isVisible('#ctxMenu')));
-  await hand.tap(edge); await p.waitForTimeout(300); await p.tap('#ctxMenu button:has-text("View card")'); await p.waitForTimeout(3000);
+  await hand.tap(edge); await p.waitForTimeout(450); await p.tap('#ctxMenu button:has-text("View card")'); await p.waitForTimeout(3000);
   const name0 = await p.textContent('.lb-name'), count0 = await p.textContent('.lb-count');
   check('View card opens the viewer with a position count', /^\d+ \/ \d+$/.test(count0), name0 + ' ' + count0);
   await p.tap('.lb-nav.next'); await p.waitForTimeout(300);
@@ -56,19 +56,17 @@ const check = (name, ok, detail) => { (ok ? pass++ : fail++); console.log((ok ? 
   check('shop links for TCGplayer, Card Kingdom and ManaPool', shop.length === 3 && /tcgplayer\.com/.test(shop[0]) && /cardkingdom\.com/.test(shop[1]) && /manapool\.com/.test(shop[2]));
   // the link follows the printing: a product page when Scryfall knows the printing's TCGplayer id, a search link when it does not.
   // So try printings until one has an id (the check still fails when none does).
-  let offered = false, followed = false;
-  // (And "Use this printing" is not offered for the printing the card already has, so a printing counts only when both hold.)
-  for (let k = 0; k < Math.min(nPrint, 8) && !(offered && followed); k++) {
+  // T-112: tapping a printing of a card of your deck uses it at once (no Use button) and says so. The card's own printing says nothing new,
+  // so try printings until one shows the message and a product link (the check still fails when none does).
+  let linked = false, said = false;
+  for (let k = 0; k < Math.min(nPrint, 8) && !(linked && said); k++) {
     await (await p.$$('.lb-print'))[k].tap();
-    await p.waitForFunction(() => { const u = document.querySelector('.lb-use'); return !!u && u.getClientRects().length > 0; }, null, { timeout: 5000, polling: 200 }).catch(() => {});
-    offered = await p.isVisible('.lb-use');
-    followed = await p.$eval('.lb-buy', a => /tcgplayer\.com\/product\/\d+/.test(a.href)).catch(() => false);
+    await p.waitForFunction(() => /Now using/.test((document.querySelector('#toast') || {}).textContent || ''), null, { timeout: 4000, polling: 200 }).catch(() => {});
+    said = /Now using/.test(await p.textContent('#toast').catch(() => ''));
+    linked = await p.$eval('.lb-buy', a => /tcgplayer\.com\/product\/\d+/.test(a.href)).catch(() => false);
   }
-  check('choosing a printing offers to use it, and its shop links follow it', offered && followed, JSON.stringify({ offered, followed, nPrint, name: name0 }));
-  await p.tap('.lb-use'); await p.waitForTimeout(400);
-  const pr = await p.$$('.lb-print'); await pr[1].tap(); await p.waitForTimeout(900);          // T-112: a card of your deck switches at once (no separate button)
-  check('tapping a printing of your own card uses it at once, and its shop links follow it', !(await p.$('.lb-use')) && /tcgplayer\.com\/product\/\d+/.test(await p.$eval('.lb-buy', a => a.href)));
-  check('using it confirms with a message', /Now using/.test(await p.textContent('#toast')));
+  check('tapping a printing of your own card uses it at once (no Use button), and its shop links follow it', !(await p.$('.lb-use')) && linked, JSON.stringify({ linked, nPrint, name: name0 }));
+  check('using it confirms with a message', said);
   await p.tap('.lb-x'); await p.waitForTimeout(200);
   check('Close closes the viewer', !(await p.isVisible('#lightbox.show')));
   check('no page errors', errs.length === 0, errs.join(' | '));

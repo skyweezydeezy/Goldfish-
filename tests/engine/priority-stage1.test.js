@@ -34,7 +34,7 @@ const play = (a, b) => { G.combat(a); G.castPhase(a); };
 const asked = qs => qs.filter(x => x.d.kind === 'priority').map(x => x.d.step);
 
 T('off by default: a seated person is never asked for priority', () => {
-  const r = run({}, null, play);
+  const r = run({ priority: false }, null, play);
   check('no priority question', asked(r.qs).length === 0, asked(r.qs).join(','));
 });
 T('opts.priority on, smart: the person holding Lightning Bolt is asked on the other player\'s turn', () => {

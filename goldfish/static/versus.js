@@ -298,7 +298,7 @@
     return r;
   }
   async function choose(mode, gm, q, view) {
-    if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
+    if ((q.kind === 'instant' || q.kind === 'priority') && q.step === 'end') gm.endAsked = true;          // the engine asked about instants at this end step: the page's own window then only offers abilities
     gm.preview = view; gm.choice = q; q.noAuto = gm.remote != null; render(mode);          // the table shows the game as it stands at the moment of the question
     try { return await C.ask(q); } finally { gm.preview = null; gm.choice = null; }
   }
@@ -307,7 +307,7 @@
   // to a different question than the one this device is at means the two games have parted ways: the game stops.
   async function answer(mode, gm, q, local) {
     if (gm.remote == null) return local();
-    if (q.kind === 'instant' && q.step === 'end') gm.endAsked = true;
+    if ((q.kind === 'instant' || q.kind === 'priority') && q.step === 'end') gm.endAsked = true;
     const s = q.seat, queue = gm.picks[s];
     if (s !== gm.human || queue.length) {
       if (s !== gm.human) { gm.waiting = s; render(mode); }

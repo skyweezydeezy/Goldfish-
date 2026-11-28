@@ -3891,7 +3891,9 @@
     const u = Object.assign(Object.create(null), ...games.map(x => x.U)); games.forEach(x => { x.U = u; });
   }
 
+  const PRIORITY_ENV = typeof process !== 'undefined' && !!process.env && process.env.ISF_PRIORITY === '1';          // T-127: run the whole test suite with the priority rules on (ISF_PRIORITY=1 node tests/run.js)
   function newGame(deck, opts, seed) {
+    if (PRIORITY_ENV && opts.priority === undefined) opts = Object.assign({}, opts, { priority: true });
     const rnd = mulberry32(seed >>> 0);
     const g0 = {
       rnd, opts, seed, deck, U: deckFacts(deck),
@@ -5756,6 +5758,12 @@
     if (h) { (h.trigQ || (h.trigQ = [])).push({ g, trig, source, subject, amount, x: g.xValue, last: g.lastCast, much: g.thatMuch, sc: g.spellsCast }); return; }
     fireNow(g, trig, source, ev, subject, amount);
   }
+  // T-127 stage 2: a triggered ability the engine plays by hand (Boromir's counter, Wandering Archaic) that waits to go on the stack like any other trigger and runs `run(ev)` when it resolves
+  function queueRun(g, source, text, run) {
+    const h = actingHost(g);
+    if (!h) { run([]); return; }
+    (h.trigQ || (h.trigQ = [])).push({ g, trig: { text, fx: [], kinds: [] }, source, run, subject: null, amount: undefined, x: g.xValue, last: g.lastCast, much: g.thatMuch, sc: g.spellsCast });
+  }
   // effects that cannot make a state-based action apply (no permanent leaves, enters or shrinks; a player's life is checked anyway)
   const SBA_SAFE = new Set(['draw', 'gainLife', 'drain', 'loseLife', 'damage', 'scry', 'surveil', 'mill', 'treasure', 'food', 'poison']);
   const sbaSafe = it => !it.trig.nth && it.trig.fx.every(f => SBA_SAFE.has(f.type) || (f.type === 'counters' && (f.kind === '+1/+1' || (f.kind && f.kind !== '-1/-1' && f.kind !== 'loyalty'))));
@@ -5799,7 +5807,7 @@
         const it = stack.pop(), x = it.g, px = x.xValue, pl = x.lastCast, pm = x.thatMuch, ps = x.spellsCast;
         x.xValue = it.x; x.lastCast = it.last; x.thatMuch = it.much; x.spellsCast = it.sc;          // what the ability remembers from when it triggered (the spell's X, the amount, the spells cast before it)
         const v0 = tableVer(h);
-        try { fireNow(x, it.trig, it.source, ev, it.subject, it.amount); } finally { x.xValue = px; x.lastCast = pl; x.thatMuch = pm; x.spellsCast = ps; }
+        try { if (it.run) it.run(ev); else fireNow(x, it.trig, it.source, ev, it.subject, it.amount); } finally { x.xValue = px; x.lastCast = pl; x.thatMuch = pm; x.spellsCast = ps; }
         dirty = tableVer(h) !== v0 || !sbaSafe(it);
       }
     } finally { h.acts--; h.settling = false; }
@@ -5815,7 +5823,7 @@
   // every player has passed in a row. Stage 1 only lets a seated person act (the autopilot's responses still live in the old windows: tryCounter, instantWindow, protectLethal;
   // autoRespond takes them over in stage 2), so with nobody seated the round is skipped at once (the fast path) and a person who takes every default (Pass) changes nothing.
   const PRIORITY_STEPS = { upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat' };
-  const SMART_OWN = new Set(['beginCombat', 'blockers', 'endCombat']), SMART_OTHER = new Set(['upkeep', 'main', 'beginCombat', 'blockers', 'damage', 'endCombat']);
+  const SMART_OWN = new Set(['beginCombat', 'blockers', 'endCombat']), SMART_OTHER = new Set(['upkeep', 'main', 'beginCombat', 'attackers', 'blockers', 'damage', 'endCombat', 'end']);
   const PRIO_MAIN = new WeakMap();          // kept off the game object: the played copy and the plain copy must dump the same (every-default sweep)
   function priorityPlayers(g) { const all = g.match && g.match.players ? g.match.players.filter(x => !x.dead) : [g].concat(g.opp ? [g.opp] : []), i = all.indexOf(g); return i > 0 ? all.slice(i).concat(all.slice(0, i)) : all; }
   function wantsPriority(p, g, step) {          // opts.autoPass: 'smart' (default), 'stops', 'never' (asks at every step) or 'always' (never asks)
@@ -9389,6 +9397,11 @@
     g._striveTargets = inst.card.a.strive ? (inst.striveTargets || []) : null;
     { g._onlyBlack = inst._blackOnly === true; let lk; try { lk = lockTargets(g, inst); } finally { g._onlyBlack = false; inst._blackOnly = null; } if (lk) PENDING.set(inst, lk);          // T-072: targets are chosen as the spell is cast, before anyone can respond
       inst.crimed = false; if (!g.dry && a.isInstantSorcery && tableHas(g, 'crimeTrig') && crimeCommitted(g, inst.overloaded ? (a.overload && a.overload.fx) || [] : a.spellFx, lk)) { inst.crimed = true; fireCrimes(g, ev); } }          // T-094: a crime is committed as the spell is cast (even if it is then countered)
+    if (g.opts.priority && !g.dry) {          // T-127 stage 2, CR 603.3 / 601.2: the spell is on the stack and its "whenever you cast" triggers (and Boromir's, Archaic's) go on top of it and resolve first
+      if (g.opp && !a.splitSecondSpell) { queueBoromir(g, inst, ev); if (!inst.isCopy) queueArchaic(g, inst, ev); }
+      settle(g, ev);
+      if (inst._boromired) { inst._boromired = false; (inst.card.commander ? g.command : g.graveyard).push(inst); return; }          // countered by the trigger above
+    }
     if (g.opp && !g.dry && g.ask && !g.inResponse) ownPriority(g, inst, ev);          // a person's spell waits on the stack: they may respond to it first ("does it resolve?")
     if (g.opp && !g.dry && (tryCounter(g, inst, ev) || (isPod(g) && g.match.players.some(x => x.ask && x !== g && x !== g.opp && !x.dead && tryCounter(g, inst, ev, x))))) return;          // answered by a counterspell: it never resolves
     if (g.ask && !g.dry && a.isInstantSorcery && !inst.card.tribeBase) { const was = inst.card; chooseTribeOnEnter(g, inst, true); if (inst.card !== was) { a = inst.card.a; g._castTribe = inst.card.chosenType; } }          // Kindred Summons: a person names the creature type as it resolves
@@ -14504,10 +14517,11 @@ g.actSeq = (g.actSeq || 0) + 1;
         const sc = (fxs.length ? 20 : 0) + a.castMv;                                                        // interaction first, then the most mana it can use
         if (sc > bs) { bs = sc; best = c; }
       }
-      if (me.ask) {                                                                                       // a person: any instant or flash card they can pay for, the autopilot's pick as the default, or not now
+      if (me.ask && me.opts.priority && !wantsPriority(me, me.opp, step === 'combat' ? 'attackers' : step)) best = null;          // auto-pass: a seated person who is not asked here passes
+      else if (me.ask) {                                                                                       // a person: any instant or flash card they can pay for, the autopilot's pick as the default, or not now
         const opts = peekCards(me.hand, () => me.hand.filter(c => c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(me, c.card) && canPay(effectiveCost(me, c), units)));
         if (!opts.length) break;
-        best = decide(me, { kind: 'instant', options: opts, def: best, optional: true, step, caster: me.opp });
+        best = decide(me, { kind: me.opts.priority ? 'priority' : 'instant', options: opts, def: best, optional: true, step, caster: me.opp, active: me.opp });          // T-127: with opts.priority the person gets the priority question here (the autopilot's pick is still the default)
       }
       if (!best) break;
       if (best.card.a.cost.x && best.extraX == null) best.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (best.card.a.cost.generic + best.card.a.cost.pips.length) + xDiscountNow(me)) / (best.card.a.cost.x || 1))));          // an X spell takes all the spare mana, as in the main phase (a person's starting X is the same)
@@ -15059,8 +15073,9 @@ g.actSeq = (g.actSeq || 0) + 1;
       ev.push({ type: 'note', text: `${ar.card.name}: ${inst.card.name}'s controller does not pay, so a copy resolves for its controller`, source: ar }); copySpell(o, inst, ev, 1);
     }
   }
+  function queueArchaic(g, inst, ev) { if (g.dry || !inst.card.a.isInstantSorcery || !inst.card.a.spellFx.length) return; const o = (isPod(g) ? otherPlayers(g) : [g.opp]).find(x => x && !x.dead && tableHas(x, 'archaic')); if (!o) return; const ar = o.battlefield.find(q => q.card.a.archaic && !q.phased); if (ar) queueRun(o, ar, 'Whenever an opponent casts an instant or sorcery spell, that player may pay {2}. If they do not, you may copy it.', e => archaicTrigger(g, inst, e)); }
   function stackResponses(g, d, inst, ev, ps) {          // the autopilot's answers (a person's go through personAnswer: the same cards, cast with respondWith)
-    if (!ps.by) archaicTrigger(g, inst, ev);          // a trigger of the permanent on the table: for the person and the autopilot alike
+    if (!ps.by && !g.opts.priority) archaicTrigger(g, inst, ev);          // a trigger of the permanent on the table: for the person and the autopilot alike
     if (d.ask || d.dead || g.dry) return;
     const a = inst.card.a, big = inst.card.commander || a.comboRole || a.isPlaneswalker || a.castMv >= 4;
     const hz = (tableHas(d, 'horror') ? d.battlefield.find(q => q.card.a.horror) : undefined);
@@ -15104,12 +15119,21 @@ g.actSeq = (g.actSeq || 0) + 1;
     return out;
   }
   // Boromir, Warden of the Tower: a spell another player casts without spending any mana is countered (a free cast, a pitch cost, a {0} spell)
-  function boromirCounter(g, inst, ev) {
-    if (g.dry || inst._manaN !== 0 || uncounterable(g, inst)) return false;
+  function boromirHolder(g, inst) {
+    if (g.dry || inst._manaN !== 0 || uncounterable(g, inst)) return null;
     const holders = isPod(g) ? otherPlayers(g) : (g.opp ? [g.opp] : []);
     const o = holders.find(h => tableHas(h, 'boromir') && h.battlefield.some(q => q.card.a.boromir && !q.phased));
-    if (!o) return false;
-    const b = o.battlefield.find(q => q.card.a.boromir && !q.phased);
+    return o ? { o, b: o.battlefield.find(q => q.card.a.boromir && !q.phased) } : null;
+  }
+  function queueBoromir(g, inst, ev) {          // with opts.priority: a triggered ability of Boromir that resolves before the spell does
+    const h = boromirHolder(g, inst); if (!h) return; const b = h.b;
+    queueRun(h.o, b, 'Whenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.', e => { if (boromirHolder(g, inst)) { e.push({ type: 'note', text: `${b.card.name}: no mana was spent to cast ${inst.card.name}, it is countered`, source: b }); inst._boromired = true; } });
+  }
+  function boromirCounter(g, inst, ev) {
+    if (g.opts.priority) return false;          // handled as a trigger on the stack (queueBoromir)
+    const hb = boromirHolder(g, inst);
+    if (!hb) return false;
+    const b = hb.b;
     ev.push({ type: 'note', text: `${b.card.name}: no mana was spent to cast ${inst.card.name}, it is countered`, source: b });
     (inst.card.commander ? g.command : g.graveyard).push(inst);
     return true;

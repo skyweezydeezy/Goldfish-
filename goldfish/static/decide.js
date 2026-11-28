@@ -300,7 +300,7 @@
       q.text = d.step === 'end' ? 'You may cast an instant or a card with flash now with the mana you left untapped (only the ones you can pay for are listed).' : 'Attackers are declared. You may cast an instant or a card with flash now (only the ones you can pay for are listed); then combat goes on.';
       q.none = 'Not now';
     } else if (d.kind === 'priority') {                                                                    // T-127 stage 1 (docs/PRIORITY-DESIGN.md): you hold priority at a step; the default is to pass
-      const lab = { upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat' }[d.step] || d.step;
+      const lab = { upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat', combat: 'Attackers declared', end: 'End step' }[d.step] || d.step;
       const own = d.active && d.active === g;
       q.step = d.step; q.stepName = lab; q.turnOf = own ? 'You' : (m && m.names && d.active ? m.names[d.active.pid] : 'Opponent');          // T-130: the priority sheet (choices.js) writes its own one-line context from these
       q.title = `${lab}${own ? '' : ' (' + (m && m.names && d.active ? m.names[d.active.pid] : 'their') + ' turn)'}: cast an instant or use an ability?`;

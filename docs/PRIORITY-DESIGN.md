@@ -195,3 +195,14 @@ never reaches the live site.
 - `opts.autoPass`: `'smart'` (default: own turn at the beginning of combat, blockers, end of combat; another player's turn also at upkeep, main, damage), `'stops'` (`opts.stops`), `'never'`, `'always'`.
 - `decide.js`: question kind `priority` (title, text, "Pass"). The UI sheet is the UI session's task; the generic list of options works as for `instant`.
 - `tools/every-default-sweep.js`: `PRIORITY=1` runs the sweep with `opts.priority` and `autoPass: 'never'`.
+
+## 12. Stage 2: what was built (branch `claude/t127-stack-2`)
+
+All behind `opts.priority` (and `ISF_PRIORITY=1` for the test suite: `newGame` turns it on for every game that does not set `priority` itself).
+
+- **Cast triggers first (CR 603.3):** `resolveSpellInner` settles the stack (triggers, APNAP) before the response window, so "whenever you cast" triggers resolve before the spell can be answered or resolve.
+  Measured note: Young Pyromancer's token already came before Lightning Bolt's damage with the rule off, so the visible change is smaller than the design feared; it matters for triggers that were queued rather than run inline.
+- **Boromir and Wandering Archaic are triggers on the stack:** `queueRun` queues a hand-played triggered ability (`{ run }`) like any trigger; `settle` runs it when it resolves. Boromir's counter sets `inst._boromired`; `boromirCounter` and the Archaic call in `stackResponses` stand down when the rule is on.
+- **Windows:** with the rule on, `instantWindow` (attackers declared, end step) asks a seated person the `priority` question (`step` 'combat' / 'end', titles "Attackers declared" / "End step") and obeys `opts.autoPass` (a person who is not asked passes; the autopilot's own plays are unchanged).
+- **Not moved (deliberate):** the counterspell, redirect, copy, Hullbreaker, Return the Favor and protection responders (`tryCounter0`, `stackResponses`, `casterVeil`, `personAnswer`, `protectOne`) still run as nested casts inside the response window. They already sit on the real stack (a nested `castCard` pushes its own object and resolves last in, first out), so moving them behind `autoRespond` changes nothing observable and is left for stage 3 with the trigger loop. `g.pendingSpell` is still the record of the response window.
+- **Puzzles:** `puzzle-core.js` / `puzzle.js` answer the new question with "pass", and the hidden opponent acts only in the old windows (attack, end step).

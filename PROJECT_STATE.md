@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] T-131 fuzzy guessing of unknown rules lines (user, 2026-11-28): design in docs/briefs/t131-fuzzy-rules.md accepted as written ("Go with this design"): setting off by default, 0.80 threshold, 'guessed' status, still on the Teach list, never used in measurements. Starts after v225 is live.
 - [R] Open from T-110 (2026-11-28 08:54): (1) LIVE regression: remote Duel on iPhone upright, the step strip (159f639, T-095) makes the bar wider than 375 px; playmat/sound/help reachable only by side-scroll; remote-mobile.ui.js fails on live. Needs a layout fix (no test change). (2) step-strip.ui.js iPad Practice once got [combat,main2] (race, passed on rerun). (3) tune.test.js 275 s vs 300 s cap. PR #187 (T-110 tests) ready, merge after v225. Assign (1) and (3) after v225 is live.
 - [V] Ranking start (user, 2026-11-28): as soon as T-127 stage 6 is live, MAIN starts the re-bracket check of all built-in decks and then the 300/pair ranking run (T-126) without asking again.
 - [V] Sessions (2026-11-28 07:25 UTC): archived T-130, T-121, T-123, T-120, Card teaching 12 and the T-115 puzzle session (all work live). Active: MAIN, Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`, T-127 stages 3-6), Card teaching 13 (Teach), Deck Brackets 3 (ranking run after stage 6), T-110 (UI health), Drive watcher. The T-122 session is archived once stage 3 merges.

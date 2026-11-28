@@ -212,3 +212,18 @@ All behind `opts.priority` (and `ISF_PRIORITY=1` for the test suite: `newGame` t
 - `autoRespond(g, d, inst, ev, ps, by)`: the autopilot's responders to a spell in one place (caster's veil, `stackResponses`, `tryCounter0`); `tryCounter` calls it. A pure move: with the rule off nothing changes. A seated person's answers still come from `personAnswer` (inside `tryCounter0`) and `priorityRound`.
 - `settle` runs a priority round (`priorityRound(h, 'stack', ev, over)`) before each trigger resolves when `opts.priority` is on: a seated person who holds something to cast or use is asked (question kind `priority`, step `stack`, titled "<card> is on the stack: respond?"), and a response resolves first. `smart` asks only for the other player's objects; `never` for every object; `always` never.
 - Not done: moving the person's responders into the loop (they are already asked in `personAnswer`/`priorityRound`), and abilities (stage 4). Handoff: `docs/agents/PRIORITY.md`.
+
+## 14. Stage 4: what was built (branch `claude/t127-stack-4`)
+
+- Activated abilities (CR 602): with `opts.priority` on, the cost is paid at activation and the effect goes on the stack (`queueRun(..., 'activated')`, kind kept by `settle`), below the triggers the cost caused and above nothing else, so it resolves last of its own batch and gets the stage-3 priority round (step `stack`, "<card> is on the stack: respond?"). `useAbility` then settles at once so the caller sees the finished board (the autopilot's loops depend on it).
+- Which abilities: every declarative `a.activated` entry (`cost`, `tap`, `sac*`, `fx`) and four hand-coded closures with a clean seam (Food: gain 3 life, `sacRamp`, `pingCounter`, `reservoir`) via `resolveAs`. Mana abilities (CR 605) are not in `abilityList` and never use the stack.
+- Counter: `G.ABIL_STATS = { stacked, legacy }` counts activations by `useAbility`; an entry that ran in one piece (every other hand-coded closure in `abilityList`: equip, loyalty-style sacrifice outlets, cycling/channel, the one-ring/necro/squirrel family, command-zone put, ...) counts as legacy. Targets are still chosen when the effect resolves (as for triggers), not at activation.
+- Not moved: `zombieAbilities`, `deathTaxAbilities` and other autopilot-only routines that perform an ability inline without `useAbility`; planeswalker loyalty abilities (`pwAbilities`).
+
+## 15. Stage 5: what was built (branch `claude/t127-stack-5`)
+
+- **Autopilot defender through the loop:** `priorityRound` at `blockers` and `damage` (the rule on, the attacker's turn) runs `instantWindow(defender, ev, step)` for an autopilot defender and, for a seated defender, offers the autopilot's own pick (`instantPick`, extracted from `instantWindow`) as the default of the `priority` question, so a person who takes every default plays the autopilot's game (the sweep). `priorityAct` casts at these steps exactly as `instantWindow` does (same flags, same X rule).
+- **First-strike damage step:** `resolveCombatVs` runs `priorityRound(g, 'damage')` after the first-strike step settles (CR 510.4).
+- **`endCombat` trigger kind:** the parser reads "At end of combat, ..." (also "on your turn"); `combat0` fires those triggers and settles them just before the end-of-combat priority round. Fires only with `opts.priority` on, so the rule-off game is unchanged (no card in the current data uses it yet).
+- **autoRespond group:** `autoRespondAttack(g, d, attackers, ev)` = `answerAttack` + `protectLethal` + `instantWindow('combat')` (a pure move, same order); `autoRespondTarget` = `protectOne`, called from `answered`. The old function names stay.
+- Exports: `instantPick`, `priorityRound`.

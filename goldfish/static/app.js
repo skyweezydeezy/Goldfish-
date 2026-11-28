@@ -550,7 +550,36 @@
     const q = new URLSearchParams({ template: 'teach-card.yml', title, labels: 'unlearned', cards: list.map(block).join('\n\n'), version: 'v' + (self.ISF_VERSION || '?') });
     return `${TEACH_REPO}/issues/new?${q.toString()}`;
   }
-  function teachButton(cards, label) { return `<a class="teach-btn" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  // Tickets (T-120): with a public endpoint set in ticket-config.js, the Teach button POSTs the request there (no GitHub or Google sign-in);
+  // with none, or after a failed send, it stays the GitHub link above. ticket.js and ticket-config.js load on demand (not in the SHELL).
+  const teachSets = [];
+  let ticketReady = null, ticketRendered = false;
+  const ticketEndpoint = () => { const c = self.ISF_TICKET, T = self.__isfTicket; return c && T && T.isUrl(c.endpoint) ? c.endpoint : ''; };
+  function ticketLoad() {
+    if (!ticketReady) ticketReady = Promise.all(['ticket.js', 'ticket-config.js'].map(f => driveLoad(f + '?v=' + (self.ISF_VERSION || 0)))).catch(() => {}).then(() => { if (ticketEndpoint() && !ticketRendered) { ticketRendered = true; renderTeach(); } });
+    return ticketReady;
+  }
+  const ticketCid = (() => { const id = 'c' + Math.random().toString(36).slice(2, 12); return () => id; })();          // per page load, never stored
+  const teachLines = cards => cards.map(c => ({ name: c.name, lines: unreadLines(c) }));
+  async function sendTicket(kind, o, btn, labels) {
+    const T = self.__isfTicket, url = ticketEndpoint();
+    if (!url) return 'unconfigured';
+    const was = btn.textContent; btn.textContent = 'Sending…'; btn.setAttribute('aria-busy', 'true');
+    const r = await T.send(url, T.build(kind, Object.assign({ version: 'v' + (self.ISF_VERSION || '?'), cid: ticketCid() }, o)));
+    btn.removeAttribute('aria-busy');
+    if (r.state === 'sent') { btn.textContent = labels.sent; btn.dataset.ticket = 'sent'; toast(labels.toast); }
+    else { btn.textContent = labels.failed; btn.dataset.ticket = 'failed'; toast('Could not send (' + (r.error || 'error') + '). ' + labels.fallback); if (labels.restore) btn.textContent = was; }
+    return r.state;
+  }
+  function teachButton(cards, label) { teachSets.push(cards); return `<a class="teach-btn" data-tk="${teachSets.length - 1}" href="${esc(teachUrl(cards))}" target="_blank" rel="noopener">${esc(label || 'Teach these cards')}</a>`; }
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a.teach-btn[data-tk]');
+    if (!a || !ticketEndpoint() || a.dataset.ticket === 'failed') return;          // not set up, or the send failed once: the GitHub link works as before
+    e.preventDefault();
+    if (a.dataset.ticket === 'sent' || a.getAttribute('aria-busy')) return;
+    sendTicket('teach', { cards: teachLines(teachSets[+a.dataset.tk] || []), source: a.closest('#teachBanner') ? 'banner' : 'newcards' }, a,
+      { sent: 'Sent ✓ thank you', toast: 'Sent to ICEYfish. Thank you!', failed: 'Send failed: open GitHub instead', fallback: 'Tap again to open GitHub.' });
+  });
   // ---- Save to Drive for teaching (T-109): a deck that is not built in, with unread lines, becomes a .txt in the built-in deck format. A phone's
   // share sheet (Web Share, files) lets the person pick Google Drive and the ManaBox folder; elsewhere the file downloads. Nothing is sent by the app.
   const isBuiltinLoaded = () => /^builtin:/.test(selLoaded || '');
@@ -603,6 +632,12 @@
   async function saveDirect() {
     if (driveBusy) return; driveBusy = true;
     try {
+      if (ticketEndpoint()) {          // a public endpoint is set: no Google sign-in, the deck goes straight to the owner
+        const b = $('#driveDirect'), d = driveDeck(), st = await sendTicket('deck', { deck: d, cards: teachLines(S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : []), source: 'deck' }, b,
+          { sent: 'Sent ✓', toast: 'Deck sent to ICEYfish for teaching. Thank you!', failed: 'Send failed', fallback: 'Saving it to your device instead.', restore: true });
+        if (st === 'failed') await saveToDrive('Could not send it.');
+        return;
+      }
       if (navigator.onLine === false) return await saveToDrive('Offline.');
       let cfg;
       try { await driveLoad('drive-config.js?v=' + (self.ISF_VERSION || 0)); cfg = self.ISF_DRIVE; } catch (e) { return await saveToDrive('Could not reach Google.'); }
@@ -628,10 +663,11 @@
   }
   function renderTeach() {
     const box = $('#teachBanner'); if (!box) return;
+    ticketLoad();
     const cards = S.deck ? S.deck.unique.filter(c => c.a && c.a.coverageLevel && c.a.coverageLevel !== 'ok' && !(c.a.isLand && /Basic/.test(c.type_line))) : [];
     if (!cards.length) { box.hidden = true; box.innerHTML = ''; return; }
     const names = cards.slice(0, 4).map(c => esc(c.name)).join(', ') + (cards.length > 4 ? ` and ${cards.length - 4} more` : '');
-    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}${isBuiltinLoaded() ? '' : '<button type="button" class="teach-btn teach-drive" id="driveSave">Save to Drive for teaching</button><button type="button" class="teach-btn teach-drive" id="driveDirect">Save to my Drive</button>' + (driveFolder() ? '<a href="#" class="teach-folder" id="driveFolder">Change folder</a>' : '')}${isBuiltinLoaded() ? '' : '<span class="hint teach-how teach-drive-how">Save it in your ManaBox folder in Google Drive; ICEYfish checks it within the hour and teaches its cards.</span>'}<span class="hint teach-how">Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.</span>`;
+    box.innerHTML = `<span class="teach-icon">🧠</span><span class="teach-text"><b>${cards.length} card${cards.length > 1 ? 's' : ''} ${cards.length > 1 ? "aren't" : "isn't"} fully understood yet:</b> ${names}. Their results are rough until the simulator learns them.</span>${teachButton(cards)}${isBuiltinLoaded() ? '' : '<button type="button" class="teach-btn teach-drive" id="driveSave">Save to Drive for teaching</button><button type="button" class="teach-btn teach-drive" id="driveDirect">' + (ticketEndpoint() ? 'Send deck for teaching' : 'Save to my Drive') + '</button>' + (!ticketEndpoint() && driveFolder() ? '<a href="#" class="teach-folder" id="driveFolder">Change folder</a>' : '')}${isBuiltinLoaded() ? '' : '<span class="hint teach-how teach-drive-how">Save it in your ManaBox folder in Google Drive; ICEYfish checks it within the hour and teaches its cards.</span>'}<span class="hint teach-how">${ticketEndpoint() ? 'Sends the request straight to ICEYfish: no account needed. Only the card names and their unread lines are sent, never your list.' : 'Opens GitHub with the request filled in: just press Create. Only the card names are sent, never your list.'}</span>`;
     const ds = $('#driveSave'); if (ds) ds.addEventListener('click', () => saveToDrive());
     const dd = $('#driveDirect'); if (dd) dd.addEventListener('click', saveDirect);
     const df = $('#driveFolder'); if (df) df.addEventListener('click', e => { e.preventDefault(); try { localStorage.removeItem(DRIVE_FOLDER); } catch (x) { /* ignore */ } renderTeach(); toast('Folder forgotten: you will pick it on your next save.'); });

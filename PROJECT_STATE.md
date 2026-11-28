@@ -258,14 +258,14 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-126 | Ranking: one pass 300/pair, rank ranges on ties; Rank sort + win % in menus | Deck Brackets 3 | `claude/deck-brackets` @ 2e81f88 (+ single-pass update) | Tooling [R]; run held for T-122/T-127 |
 | T-127 | Full priority loop and stack | Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`) from docs/agents/PRIORITY.md | `claude/t127-stack-3` @ 40368cb -> stages 4-6 | Stages 0-2 [V] v222; stage 3 [R] (OFF identical, ON suite/sweep green, +1.9%/+5.2%); stages 4-6 active |
 | T-130 | Priority sheet UI + Stop to respond | T-130 session (archived) | `claude/t130-priority-ui` @ 4493ef8 | [V] Verified v222 |
-| T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [V] Verified v221; user confirmed sharp on iPhone (v222) |
+| T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [V] Verified v221 |
 | T-129 | Blurry strip: .panel.active fade fill-mode both -> backwards (WebKit soft layer) | T-121 session | `claude/t121-duel-loop-button` @ 579f423 | [V] Verified v221; user confirmed sharp on iPhone (v222) |
 | T-124 | Teach issue #188 | Card teaching 8 | `claude/card-teaching` @ 3f3befb | [R] in PR #190 (v219) |
 | T-125 | Entrancing Melody target after X | Card teaching 8 | `claude/card-teaching` @ b8e24d1 | [V] Verified v220 |
 | T-119 | Puzzles: pay sheet in puzzles, Rocks before the dragon by a person, phone tab bar | T-115 session | `claude/t115-puzzles` @ b8d7d15 | [V] Verified v220 |
 | T-120 | Tickets reach the owner without sign-in | T-120 session (`session_01K5kL4ZD9cmscY4bg4HREWm`) | `claude/t120-ticket-delivery` @ 53bdcab | [R] in PR #189 (v218). Live only after the owner deploys the Apps Script and the /exec URL goes in ticket-config.js |
 | T-121 | Duel on phones: 🔁 Loop button on the game bar (root cause: tfocus hides the setup row), ∞ button labelled | T-121 session (`session_01K5kL4XSdwKoTCAt2tnSATL`) | `claude/t121-duel-loop-button` @ 9650971 | [V] Verified v220 |
-| T-122 | Timing audit + fixes 1-5 (extra turns CR 500.7, per-combat triggers 506.1/507.1, first-strike SBA 510.4, next end step 603.7, cleanup 514.3a) | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ 6c9f14a | [V] Verified v221; user confirmed sharp on iPhone (v222) |
+| T-122 | Timing audit + fixes 1-5 (extra turns CR 500.7, per-combat triggers 506.1/507.1, first-strike SBA 510.4, next end step 603.7, cleanup 514.3a) | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ 6c9f14a | [V] Verified v221 |
 | T-123 | Simulate Sample games replay on the real Practice table | T-123 session (`session_01K5kL4ZX6se17TgCAFfhACk`) | `claude/t123-tutorial-real-table` @ 77f7f92 | [V] Verified v220 |
 | T-118 | Engine fixes (the user): Mana Tithe, Consultation naming, loops by hand (Monoliths), Port Razer | Card teaching 8 | `claude/card-teaching` @ 211f1b0 | [V] Verified v217 (PR #186). Other loop pieces (Rings, Pili-Pala, Scepter) still autopilot-only |
 | T-116 | New Drive deck Winota | Deck Brackets 3 | `claude/deck-brackets` | [V] Verified v215 (PR #184): B4 |

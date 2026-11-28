@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] Sessions (2026-11-28 07:25 UTC): archived T-130, T-121, T-123, T-120, Card teaching 12 and the T-115 puzzle session (all work live). Active: MAIN, Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`, T-127 stages 3-6), Card teaching 13 (Teach), Deck Brackets 3 (ranking run after stage 6), T-110 (UI health), Drive watcher. The T-122 session is archived once stage 3 merges.
 - [V] MAIN (2026-11-28 05:22 UTC), T-127 design (docs/PRIORITY-DESIGN.md @ 8057f2d) accepted: cast triggers resolve before the spell (CR 603.3, the user's rules-first constraint); names question kind 'priority', opts.autoPass ('smart'), table.stack, priorityRound, autoRespond; one engine session per stage, a UI session for the priority sheet after stage 1; stages 0+1 GO (no behaviour change, bench within +20%).
 - [V] The user (2026-11-28 04:40 UTC): ranking = one pass of 300 matches per pair (~413k, ~3.9 CPU-h), no top-ups; overlapping decks show a rank range (ties) instead of an exact order. (MAIN's earlier 500k top-up estimate was wrong: neighbours are ~1 pt apart, top-ups would reach ~1.6M.)
 - [V] Card teaching 8 handed over at ~590k tokens; Card teaching 13 (`session_01K5kL4YTDSHuWHUJbt2CUeA`) is the standing Teach session (trigger updated). CT8 is archived after T-125 merges.
@@ -112,6 +113,7 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 222** (2026-11-28 07:18 UTC): PR #194, 4/4 + Pages green: T-127 stages 0-2 (off by default) + T-130 priority sheet. Suite 280, sweep bad 0, 8 UI files (phone-card-tap timed out under load, passed alone 123/123).
 - [V] **Version 221** (2026-11-28 06:26 UTC): PR #193, 4/4 + Pages green: T-122 timing fixes 1-5, T-128 proliferate choices, T-129 crisp strip (needs the user's iPhone check). Suite 277, sweep bad 0.
 - [V] **Version 220** (05:35 UTC): PR #192: T-119 puzzles, T-121 Duel Loop button, T-123 sample games on the real table, T-125 Entrancing Melody. Suite 271, sweep bad 0, 11 UI files.
 - [V] **Version 219** (2026-11-28 04:50 UTC): PR #190, Teach #188 (closed with comment).
@@ -253,8 +255,8 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
 | T-126 | Ranking: one pass 300/pair, rank ranges on ties; Rank sort + win % in menus | Deck Brackets 3 | `claude/deck-brackets` @ 2e81f88 (+ single-pass update) | Tooling [R]; run held for T-122/T-127 |
-| T-127 | Full priority loop and stack | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t127-stack-0-1` @ 3e475e4, `claude/t127-stack-2` @ ffc6726 | Stages 0+1 [R] (+2.0% bench), stage 2 [R] (OFF identical, ON suite/sweep green, +4.5%); stage 3 active |
-| T-130 | Priority sheet UI + Stop to respond setting | T-130 session (`session_01K5kL4ZPCcp3pPurfrRE7zt`) | `claude/t130-priority-ui` @ 176e5fe | [R]; follow-up: kind 'priority' at end/attackers in versus.js |
+| T-127 | Full priority loop and stack | Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`) from docs/agents/PRIORITY.md | `claude/t127-stack-3` @ 40368cb -> stages 4-6 | Stages 0-2 [V] v222; stage 3 [R] (OFF identical, ON suite/sweep green, +1.9%/+5.2%); stages 4-6 active |
+| T-130 | Priority sheet UI + Stop to respond | T-130 session (archived) | `claude/t130-priority-ui` @ 4493ef8 | [V] Verified v222 |
 | T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [V] Verified v221 |
 | T-129 | Blurry strip: .panel.active fade fill-mode both -> backwards (WebKit soft layer) | T-121 session | `claude/t121-duel-loop-button` @ 579f423 | [V] Verified v221 |
 | T-124 | Teach issue #188 | Card teaching 8 | `claude/card-teaching` @ 3f3befb | [R] in PR #190 (v219) |

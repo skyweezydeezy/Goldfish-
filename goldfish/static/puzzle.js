@@ -79,8 +79,9 @@
   const tell = ev => { for (const t of texts(ev)) say(t); };
   // the engine's questions: the opponent's from its habit (counter or answer at the first chance), yours from the page (a response, a target, a choice)
   function answer(q) {
+    if (q.kind === 'priority' && !(q.seat === 1 && (q.step === 'combat' || q.step === 'end'))) return 'none';          // T-127: the opponent acts only in the old windows (the attack, the end step)
     if (q.seat === 1) { const p = Core.greedy(q), w = p === 'none' ? null : q.options[p]; say(w ? `Opponent: ${w.name}${q.spell ? ' in response to ' + q.spell.name : ''}.` : null); return p; }
-    if (q.kind === 'resolve' || q.kind === 'instant') return 'none';
+    if (q.kind === 'resolve' || q.kind === 'instant' || q.kind === 'priority') return 'none';
     if (q.pay) { const was = window.__isfPayChoose; window.__isfPayChoose = true; try { return C ? C.ask(q) : 'smart'; } finally { window.__isfPayChoose = was; } }          // a puzzle always asks how a cost is paid when there is more than one way (the Display setting does not turn the sheet off here)
     if (q.kind === 'tax') return Math.max(0, q.options.findIndex(o => /pay/i.test(o.name)));
     if (q.kind === 'counter' && !(q.options && q.options.length)) return 'none';

@@ -58,9 +58,10 @@
   // Every engine call is a function of the games; run(fn) makes it with both seats seated. answer(q, view) gives the pick for a question; the
   // default answers the opponent's with greedy() and the person's with the autopilot's choice, paying every "unless you pay" it can.
   function defaultAnswer(q) {
+    if (q.kind === 'priority') return q.seat === 1 && (q.step === 'combat' || q.step === 'end') ? greedy(q) : 'none';          // T-127: only the old windows (the attack, the end step) ask the hidden opponent to act
     if (q.seat === 1) return greedy(q);
     if (q.kind === 'tax') return Math.max(0, q.options.findIndex(o => /pay/i.test(o.name)));
-    if (q.kind === 'resolve' || q.kind === 'counter' || q.kind === 'instant') return 'none';
+    if (q.kind === 'resolve' || q.kind === 'counter' || q.kind === 'instant' || q.kind === 'priority') return 'none';
     if (q.kind === 'target' && q.options.length) return 0;
     return 'auto';
   }
@@ -200,6 +201,7 @@
   function answerFor(mv, payMode) {
     const picks = (mv.picks || []).slice(), resp = (mv.resp || []).slice(), pays = (mv.pay || []).slice();
     return (q, view) => {
+      if (q.kind === 'priority') return q.seat === 1 && (q.step === 'combat' || q.step === 'end') ? greedy(q) : 'none';          // T-127: the priority question is never part of a puzzle's scripted answers; the hidden opponent acts only in the old windows (the attack, the end step)
       if (q.seat === 1) return greedy(q);
       if (q.kind === 'resolve') return 'none';
       if (q.kind === 'pay' && !pays.length && typeof payMode === 'function') return payMode(q);          // a person-model: a function from the question to a pick

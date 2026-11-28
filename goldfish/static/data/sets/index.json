@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26",
+ "updated": "2026-11-28",
  "sets": [
   {
    "code": "30a",
@@ -2096,12 +2096,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/gtc.svg?1794805200",
    "partial": true,
-   "cards": 43,
-   "originals": 43,
+   "cards": 44,
+   "originals": 44,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 40,
+    "full": 41,
     "approx": 2,
     "partial": 1,
     "none": 0
@@ -2348,12 +2348,12 @@
    "set_type": "expansion",
    "icon": "https://svgs.scryfall.io/sets/vow.svg?1794805200",
    "partial": true,
-   "cards": 32,
-   "originals": 32,
+   "cards": 33,
+   "originals": 33,
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 29,
+    "full": 30,
     "approx": 0,
     "partial": 3,
     "none": 0
@@ -2894,6 +2894,24 @@
    "missing": 0,
    "coverage": {
     "full": 25,
+    "approx": 0,
+    "partial": 0,
+    "none": 0
+   }
+  },
+  {
+   "code": "pm10",
+   "name": "Magic 2010 Promos",
+   "released_at": "2009-07-16",
+   "set_type": "promo",
+   "icon": "https://svgs.scryfall.io/sets/m10.svg?1795410000",
+   "partial": true,
+   "cards": 1,
+   "originals": 1,
+   "reprints": 0,
+   "missing": 0,
+   "coverage": {
+    "full": 1,
     "approx": 0,
     "partial": 0,
     "none": 0
@@ -4801,8 +4819,8 @@
    "reprints": 0,
    "missing": 0,
    "coverage": {
-    "full": 43,
-    "approx": 8,
+    "full": 44,
+    "approx": 7,
     "partial": 2,
     "none": 1
    }

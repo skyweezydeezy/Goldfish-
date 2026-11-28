@@ -1,7 +1,7 @@
 /* ICEYfish - Puzzle (puzzle.js, T-115): the Puzzle tab */
 .pz-body { max-width: 980px; margin: 0 auto; padding: 4px 2px 40px; }
 .pz-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 8px; }
-.pz-head h2 { margin: 0; flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-head h2 { margin: 0; flex: 1; min-width: 0; font-size: 17px; overflow-wrap: anywhere; }
 .pz-head button { min-height: 36px; padding: 4px 12px; flex: 0 0 auto; }
 .pz-score { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 12px; margin: 4px 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); color: var(--text-secondary); font-size: 13px; }
 .pz-score b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
@@ -64,7 +64,8 @@
 .pz-fold { margin: 4px 0 8px; }
 @media (max-width: 520px) {
   .pz-t { width: 56px; } .pz-opp-t { width: 48px; } .pz-bf-t { width: 40px; }
-  .pz-bar button { flex: 1 1 calc(50% - 8px); padding: 6px 8px; }
+  .pz-bar { gap: 6px; }
+  .pz-bar button { flex: 1 1 calc(33% - 6px); min-width: 0; padding: 6px 4px; font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .pz * { transition: none !important; animation: none !important; } }
 

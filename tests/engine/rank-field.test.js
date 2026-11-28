@@ -5,7 +5,7 @@ const ROOT = path.join(__dirname, '..', '..'), TOOL = path.join(ROOT, 'tools', '
 let pass = 0, fail = 0;
 const check = (n, ok, d) => { (ok ? pass++ : fail++); console.log((ok ? 'PASS' : 'FAIL') + '  ' + n + (d !== undefined ? '   [' + d + ']' : '')); };
 const T = fs.mkdtempSync(path.join(os.tmpdir(), 'rankfield-')), D = 'black-mage-blackout.txt,bridge-to-the-inevitable-abyss.txt,captains-lockdown.txt,compleat-contagion.txt';
-const run = (args, out) => spawnSync(process.execPath, [TOOL, '--decks=' + D, '--n0=20', '--n1=60', '--chunk=20', '--seed=7'].concat(args), { encoding: 'utf8', env: Object.assign({}, process.env, out ? { ISF_RANK_OUT: out } : {}) });
+const run = (args, out) => spawnSync(process.execPath, [TOOL, '--decks=' + D, '--n0=20', '--n1=60', '--chunk=20', '--seed=7'].concat(args, args.includes('--merge') ? ['--no-apply'] : []), { encoding: 'utf8', env: Object.assign({}, process.env, out ? { ISF_RANK_OUT: out } : {}) });
 const read = f => JSON.parse(fs.readFileSync(f, 'utf8')), files = d => fs.readdirSync(d).filter(f => f.endsWith('.jsonl')).map(f => path.join(d, f)).sort();
 const same = (a, b) => { for (const o of [a, b]) { delete o.date; delete o.secondsPerShard; delete o.cpuHours; delete o.shards; } return JSON.stringify(a) === JSON.stringify(b); };
 

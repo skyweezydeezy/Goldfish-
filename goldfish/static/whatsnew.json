@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 218,
+      "lines": [
+        "Groundwork for sending card corrections without signing in to anything: once it's switched on, \"Teach these cards\" and deck saves go straight to ICEYfish."
+      ]
+    },
+    {
       "v": 217,
       "lines": [
         "Mana Tithe now gets cast against you and asks if you'll pay {1}. Demonic Consultation lets you name the card, even one that isn't in your library.",

@@ -241,6 +241,7 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | timing-first-strike-step | T-122: the first-strike damage step ends before the regular one: dies triggers resolve between them (CR 510.4, 704.3) |
 | timing-next-end-step | T-122: a "next end step" return set up during the end step waits for the next turn's (CR 603.7) |
 | timing-cleanup | T-122: a trigger in the cleanup step gets resolved and the hand is discarded down again (CR 514.3a) |
+| priority-stage1 | T-127 stages 0+1: one stack per table, the priority round (opts.priority, opts.autoPass, question kind 'priority'): off by default, smart/never/always, a response at the beginning of combat, defaults change nothing |
 | ui/versus-fit | 1v1 and Pod on a PC, an iPad and an iPhone: the whole table fits the screen; every permanent and pile of every player, your hand and your buttons are inside it |
 | ui/ticket-endpoint | T-120: tickets to the public Apps Script endpoint (mocked with Playwright routing): not configured = GitHub link as before; configured = Teach and Send deck POST text/plain (no preflight, no credentials) with every card, line, deck file/text, version and source; Sent / Send failed states; a failure falls back to GitHub or the file share; iPhone and desktop |
 | ui/imprint | The imprinted card is shown with its permanent: Isochron Scepter and Chrome Mox on the Goldfish Table (real casts), Isochron Scepter on the 1v1 table; clicking it opens the card |

@@ -299,6 +299,13 @@
       q.title = d.step === 'end' ? `End of ${who}'s turn: cast an instant?` : `${who} attacks: cast an instant?`;
       q.text = d.step === 'end' ? 'You may cast an instant or a card with flash now with the mana you left untapped (only the ones you can pay for are listed).' : 'Attackers are declared. You may cast an instant or a card with flash now (only the ones you can pay for are listed); then combat goes on.';
       q.none = 'Not now';
+    } else if (d.kind === 'priority') {                                                                    // T-127 stage 1 (docs/PRIORITY-DESIGN.md): you hold priority at a step; the default is to pass
+      const lab = { upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat' }[d.step] || d.step;
+      const own = d.active && d.active === g;
+      q.step = d.step;
+      q.title = `${lab}${own ? '' : ' (' + (m && m.names && d.active ? m.names[d.active.pid] : 'their') + ' turn)'}: cast an instant or use an ability?`;
+      q.text = 'You have priority. Cast an instant or a card with flash, or use an ability, or pass (only what you can pay for is listed).';
+      q.none = 'Pass';
     } else if (d.kind === 'ringbearer') {
       const lv = Math.min(4, d.n || 1), ord = ['', 'first', 'second', 'third', 'fourth'][d.n] || d.n + 'th';
       q.title = `💍 The Ring tempts you (${ord} time): choose your Ring-bearer`;

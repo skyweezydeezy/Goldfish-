@@ -82,7 +82,7 @@
     if (q.kind === 'priority' && !(q.seat === 1 && (q.step === 'combat' || q.step === 'end'))) return 'none';          // T-127: the opponent acts only in the old windows (the attack, the end step)
     if (q.seat === 1) { const p = Core.greedy(q), w = p === 'none' ? null : q.options[p]; say(w ? `Opponent: ${w.name}${q.spell ? ' in response to ' + q.spell.name : ''}.` : null); return p; }
     if (q.kind === 'resolve' || q.kind === 'instant' || q.kind === 'priority') return 'none';
-    if (q.kind === 'pay') return 'auto';
+    if (q.pay) { const was = window.__isfPayChoose; window.__isfPayChoose = true; try { return C ? C.ask(q) : 'smart'; } finally { window.__isfPayChoose = was; } }          // a puzzle always asks how a cost is paid when there is more than one way (the Display setting does not turn the sheet off here)
     if (q.kind === 'tax') return Math.max(0, q.options.findIndex(o => /pay/i.test(o.name)));
     if (q.kind === 'counter' && !(q.options && q.options.length)) return 'none';
     return C ? C.ask(q) : 'auto';
@@ -134,13 +134,12 @@
     if (!P || !root) return;
     const { pz, sc } = P, g = sc.g, b = sc.b, over = P.phase === 'over', me = P.phase === 'me' && !P.busy;
     const hand = g.hand.concat(g.command || []);
-    const goal = pz.deadline > 1 ? `Win by the end of your turn ${pz.deadline}` : 'Win this turn';
     root.innerHTML = `<div class="pz-body" data-phase="${P.phase}" data-type="${pz.type}" data-level="${pz.level}">
       <div class="pz-head"><button type="button" class="ghost pz-back">‹ Puzzles</button><h2 class="pz-title">${esc(pz.title)}</h2><button type="button" class="ghost pz-info" aria-expanded="false" title="How the opponent plays">ⓘ</button></div>
       <p class="pz-sub">${TYPES[pz.type].name} · <b>${LVN[pz.level]}</b></p>
       <div class="pz-fold" hidden><p class="hint">${esc(OPP[pz.level])} It plays like the engine's autopilot: it blocks, it counters or answers the first thing it can, and it uses removal at the end of your turn. You never see its hand.</p></div>
       <p class="pz-premise">${esc(pz.premise)}</p>
-      <div class="pz-goal">${esc(goal)}: <b>${over ? (P.over === 'win' ? '✓ done' : 'not this time') : `turn ${g.turn || 1}${pz.deadline > 1 ? ' (your turn ' + Math.max(1, sc.mine) + ' of ' + pz.deadline + ')' : ''}`}</b></div>
+      <div class="pz-goal">${over ? (P.over === 'win' ? '<b>✓ done</b>' : '<b>not this time</b>') : `Turn <b>${g.turn || 1}</b>${pz.deadline > 1 ? ' · your turn <b>' + Math.max(1, sc.mine) + '</b> of ' + pz.deadline : ''}`}</div>
       <div class="pz-opp"><div class="pz-oh"><b>Opponent</b> <span class="pz-life" data-life="opp">${b.life} life</span> <span class="pz-sub2">${landsLine(b)} · ${b.hand.length ? `<span class="pz-hid" data-n="${b.hand.length}">${b.hand.length} card${b.hand.length === 1 ? '' : 's'} in hand (hidden)</span>` : 'no cards in hand'}</span></div>
         <div class="pz-tiles pz-oppbf">${b.battlefield.some(p => !p.asLand) ? '' : '<i class="hint">no permanents</i>'}</div><p class="pz-meta">${esc(graveLine(b))}</p></div>
       <div class="pz-table">

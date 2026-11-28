@@ -132,7 +132,6 @@
       minHandSize: +$('#optMullTo').value || 5, idealLandRatio: fmt === 'commander' ? 0.42 : 0.4, n: +$('#optN').value || 2000,
       policy: currentPolicy(),                                // choices learned in the Policy lab for this deck
       bookCombos: S.bookCombos || [],                         // the Commander Spellbook combos the goldfish counts for this deck (renderComboBook)
-      ...(window.__isfPriority ? { priority: true } : {}),          // T-130: the priority loop (off unless the hidden test toggle is on)
       ...(window.__isfAutoPass && window.__isfAutoPass !== 'smart' ? { autoPass: window.__isfAutoPass } : {}),          // 'never' asks at every step, 'always' never asks (Settings → Display → Stop to respond)
     };
   }
@@ -180,11 +179,10 @@
     { const o = LEGACY_ORDER[d.deckOrder] || d.deckOrder; if (o && DECK_ORDERS.includes(o)) $('#dispDeckOrder').value = o; }
     $('#dispPayChoose').checked = d.payChoose !== false;          // T-099: on unless the person switched it off
     if (['smart', 'never', 'always'].includes(d.stop)) $('#dispStop').value = d.stop;
-    window.__isfPriority = d.priority === true;          // T-130: a hidden test toggle (no control): { priority: true } in isf_display turns opts.priority on. The engine session makes it the default at stage 6.
     apply();
     for (const id of ['#dispFade', '#dispDeckOrder', '#dispPayChoose', '#dispStop']) $(id).addEventListener('change', () => {
       apply();
-      try { localStorage.setItem(KEY, JSON.stringify({ fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked, stop: $('#dispStop').value, priority: d.priority === true })); } catch (e) { /* storage blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ fade: $('#dispFade').value, deckOrder: $('#dispDeckOrder').value, payChoose: $('#dispPayChoose').checked, stop: $('#dispStop').value })); } catch (e) { /* storage blocked */ }
     });
   })();
 

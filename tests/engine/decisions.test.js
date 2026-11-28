@@ -261,7 +261,7 @@ const other = q => q.options.findIndex(o => !o.def);
   answer(p, run, [qq => named(/Force of Will/)(qq)]);
   check('...and it is: the blue card is exiled, 1 life is paid, the spell is countered', a.exile.includes(blue) && a.life === 39 && b.graveyard.includes(gt)); }
 
-const PR = process.env.ISF_PRIORITY === '1';          // T-127: the whole suite also runs with the priority rules on
+const PR = process.env.ISF_PRIORITY !== '0';          // T-127: the whole suite also runs with the priority rules on
 // ---- 3. responses: an opponent declares attackers (the engine's instant window asks a person first)
 { const mk = seat => { const p = pod(['frodo', 'zul-ashur'], 5); p.games.forEach(g => { g.turn = 6; g.hand = []; g.battlefield = []; g.command = []; }); if (seat) D.seat(p.games[0]); const [a, b] = p.games;
     lands(a, 1, /^Plains$/); const sw = toHand(a, /^Swords to Plowshares$/); const gt = putOn(b, card(b, /Grave Titan/)); b.battlefield.filter(q => q.token).forEach(q => { q.sick = true; }); G.podFocus(b, a); b.forceAttackers = [gt.iid]; return { p, a, b, sw, gt }; };

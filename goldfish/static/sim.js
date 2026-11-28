@@ -3892,9 +3892,10 @@
     const u = Object.assign(Object.create(null), ...games.map(x => x.U)); games.forEach(x => { x.U = u; });
   }
 
-  const PRIORITY_ENV = typeof process !== 'undefined' && !!process.env && process.env.ISF_PRIORITY === '1';          // T-127: run the whole test suite with the priority rules on (ISF_PRIORITY=1 node tests/run.js)
+  // T-127 stage 6: the priority loop is on by default. `priority: false` in a game's options (or ISF_PRIORITY=0 in the environment, for comparing with the old engine) turns it off.
+  const PRIORITY_DEFAULT = !(typeof process !== 'undefined' && !!process.env && process.env.ISF_PRIORITY === '0');
   function newGame(deck, opts, seed) {
-    if (PRIORITY_ENV && opts.priority === undefined) opts = Object.assign({}, opts, { priority: true });
+    if (PRIORITY_DEFAULT && opts.priority === undefined) opts = Object.assign({}, opts, { priority: true });
     const rnd = mulberry32(seed >>> 0);
     const g0 = {
       rnd, opts, seed, deck, U: deckFacts(deck),

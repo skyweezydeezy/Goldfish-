@@ -418,3 +418,7 @@
 .vs-ps.hot, #hPoison.hot { color: #fff; background: #c0392b; }
 #hPoison.hot { padding: 0 6px; border-radius: 6px; }
 .vs-arena.pod .vs-opps .vs-ps { order: 4; font-size: 10px; padding: 1px 5px; }
+
+/* T-121: the Loop toggle on the table's bar (table focus hides the setup row's checkbox): lit when on, a 44 px tap target on touch */
+.vs-bar .vs-loopbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (pointer: coarse), (max-width: 600px), (max-height: 500px) { .vs-bar .vs-loopbtn { min-height: 44px; min-width: 44px; } }

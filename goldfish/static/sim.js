@@ -14187,6 +14187,12 @@ g.actSeq = (g.actSeq || 0) + 1;
           ev.push({ type: 'note', text: `${p.card.name} dies in combat`, source: p }); leavePerm(game, p, ev); }
         for (const [game, list] of [[g, attackers], [d, [...blocks.values()].flat()]]) for (const p of list) if (alive(game, p) && isCreaturePerm(p) && toughnessOf(game, p) <= 0) { ev.push({ type: 'note', text: `${p.card.name} dies (no counters left)`, source: p }); leavePerm(game, p, ev); }          // Polukranos
       }
+      if (step === 'first' && steps.length > 1 && !g.dry) {          // CR 510.4, 704.3: the first-strike damage step ends before the regular one: lifelink gain, leave and "dies" triggers happen now
+        flushLeaves(g, ev); flushLeaves(d, ev);
+        if (llD > 0) { gainLife(d, llD, ev, null); llD = 0; }
+        if (ll > 0 && !matchOver(g)) { gainLife(g, ll, ev, null); ll = 0; }
+        settle(g, ev);
+      }
     }
     for (const game of [g, d]) game.battlefield.forEach(p => { p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });          // damage stays until the cleanup step
     flushLeaves(g, ev); flushLeaves(d, ev);

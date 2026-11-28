@@ -149,3 +149,20 @@
 .ch-paycol { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
 .ch-col { min-width: 34px; min-height: 34px; padding: 2px 6px; border-radius: 8px; border: 1px solid rgba(143,216,255,.35); background: var(--surface-2, #172a3a); color: inherit; font-size: 14px; cursor: pointer; }
 .ch-col.on { border-color: #7fdc7f; box-shadow: 0 0 8px rgba(12,163,12,.6); }
+
+/* T-130: the priority sheet. Compact: one line of context, a big Pass, then what you can use now as chips. */
+.ch-sheet.priority { width: min(560px, calc(100vw - 16px)); max-height: min(70vh, 460px); max-height: min(70dvh, 460px); gap: 6px; padding: 10px 12px; }
+.ch-sheet.priority .ch-title { font-size: 14px; }
+.ch-sheet.priority .ch-body { overflow: auto; }
+.ch-i { flex: none; padding: 2px 9px; font-size: 14px; line-height: 1.4; border-radius: 99px; min-width: 32px; min-height: 32px; }
+.pr-ctx { font-size: 13px; color: var(--ice-2, #d6f1ff); overflow-wrap: anywhere; }
+.ch-sheet.priority .ch-info { font-size: 12px; margin: 0; }
+.pr-btns { display: flex; gap: 8px; flex-wrap: nowrap; }
+.pr-btns button { min-height: 48px; font-size: 16px; }
+.pr-pass { flex: 2 1 0; font-weight: 700; }
+.pr-go { flex: 3 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-opts { display: flex; flex-wrap: wrap; gap: 6px; overflow-y: auto; min-height: 0; max-height: 30vh; grid-template-columns: none; }
+.pr-opt { flex: 1 1 150px; min-width: 0; min-height: 44px; text-align: left; justify-content: flex-start; align-items: flex-start; }
+.pr-opt.sel { outline: 2px solid #7fdc7f; }
+@media (max-width: 600px) { .ch-sheet.priority { padding: 8px 10px; } .pr-opt { flex-basis: 100%; } }
+@media (max-height: 460px) { .ch-sheet.priority { bottom: 2px; max-height: 94dvh; padding: 6px 10px; gap: 4px; } .pr-btns button { min-height: 44px; } .pr-opts { max-height: 22dvh; } }

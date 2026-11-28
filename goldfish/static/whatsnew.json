@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 222,
+      "lines": [
+        "Groundwork for full priority and a real stack (the Comprehensive Rules' way of responding to spells and triggers). It stays switched off for now, so games play as before."
+      ]
+    },
+    {
       "v": 221,
       "lines": [
         "Proliferate lets you choose: pick which permanents and players get one more of each counter they have.",

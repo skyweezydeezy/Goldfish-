@@ -209,7 +209,7 @@
       else if (d.kind === 'mode' && o.text) { item.name = o.text; }
       else if (d.kind === 'mode') { item.name = fxLabel(o.mode); const same = opts.filter(x => fxLabel(x.mode) === item.name); if (same.length > 1) item.name += ` (mode ${(d.f && d.f.modes ? d.f.modes.indexOf(o.mode) : k) + 1} on the card)`; }
       else if (d.kind === 'explore') { item.name = o ? 'Put it into your graveyard' : 'Keep it on top of your library'; item.note = o ? 'mill it: you draw something else next' : 'you draw it next'; }
-      else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); }          // one of your permanents' abilities, used in response
+      else if (o && o.ability) { item.name = `${o.card.name}: ${o.label}`; item.card = o.card; item.iid = o.iid; item.note = 'in response: activate' + (o.cost ? ` (${o.cost})` : ''); item.ability = true; }          // one of your permanents' abilities, used in response
       else if (d.kind === 'counter') { item.name = o.c.card.name; item.card = o.c.card; item.iid = o.c.iid; item.note = o.how === 'pitchX' ? `counter it (X is its mana value): exile ${o.pitch.card.name}` : o.how === 'pitch' ? `counter it: exile ${o.pitch.card.name}${o.c.card.a.pitch.life ? ' and pay ' + o.c.card.a.pitch.life + ' life' : ''}` : (HOW[o.how] || '') + (o.free && o.how === 'respond' ? ' (free: you control a commander)' : ''); }
       else if (d.kind === 'resolve') { item.name = o.card.name; item.card = o.card; item.iid = o.iid; item.note = HOW.respond; }
       else if (d.kind === 'protect') { item.name = o; }
@@ -303,6 +303,13 @@
       q.title = d.step === 'end' ? `End of ${who}'s turn: cast an instant?` : `${who} attacks: cast an instant?`;
       q.text = d.step === 'end' ? 'You may cast an instant or a card with flash now with the mana you left untapped (only the ones you can pay for are listed).' : 'Attackers are declared. You may cast an instant or a card with flash now (only the ones you can pay for are listed); then combat goes on.';
       q.none = 'Not now';
+    } else if (d.kind === 'priority') {                                                                    // T-127 stage 1 (docs/PRIORITY-DESIGN.md): you hold priority at a step; the default is to pass
+      const lab = { upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat', combat: 'Attackers declared', end: 'End step' }[d.step] || d.step;
+      const own = d.active && d.active === g;
+      q.step = d.step; q.stepName = lab; q.turnOf = own ? 'You' : (m && m.names && d.active ? m.names[d.active.pid] : 'Opponent');          // T-130: the priority sheet (choices.js) writes its own one-line context from these
+      q.title = `${lab}${own ? '' : ' (' + (m && m.names && d.active ? m.names[d.active.pid] : 'their') + ' turn)'}: cast an instant or use an ability?`;
+      q.text = 'You have priority. Cast an instant or a card with flash, or use an ability, or pass (only what you can pay for is listed).';
+      q.none = 'Pass';
     } else if (d.kind === 'ringbearer') {
       const lv = Math.min(4, d.n || 1), ord = ['', 'first', 'second', 'third', 'fourth'][d.n] || d.n + 'th';
       q.title = `💍 The Ring tempts you (${ord} time): choose your Ring-bearer`;

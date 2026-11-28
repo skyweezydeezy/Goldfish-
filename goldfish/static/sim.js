@@ -12668,6 +12668,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     if (g.combatPre === g.turn) { g.combatPre = null; g.combatDone = true; } else { combatStart(g, ev); settle(g, ev); }          // beginning of combat: its triggers resolve before attackers are declared
     let phases = 1;
     for (let ph = 0; ph < phases && ph < 6; ph++) {
+      if (ph > 0 && !g.dry) { eachTrigger(g, 'combat', ev); settle(g, ev); }          // CR 506.1, 507.1: every combat phase has its own beginning of combat step (the first one ran above)
       if (g.throttleTurn === g.turn && !g.dry) g.battlefield.forEach(q => { if (isCreaturePerm(q) && q.attackedTurn === g.turn) q.tapped = false; });          // Full Throttle: attackers untap at each combat
       crewVehicles(g, ev);
       let attackers = g.battlefield.filter(p => canAttack(g, p));

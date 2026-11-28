@@ -112,6 +112,8 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 221** (2026-11-28 06:26 UTC): PR #193, 4/4 + Pages green: T-122 timing fixes 1-5, T-128 proliferate choices, T-129 crisp strip (needs the user's iPhone check). Suite 277, sweep bad 0.
+- [V] **Version 220** (05:35 UTC): PR #192: T-119 puzzles, T-121 Duel Loop button, T-123 sample games on the real table, T-125 Entrancing Melody. Suite 271, sweep bad 0, 11 UI files.
 - [V] **Version 219** (2026-11-28 04:50 UTC): PR #190, Teach #188 (closed with comment).
 - [V] **Version 218** (2026-11-28 04:27 UTC): PR #189, 4/4 + Pages green: T-120 ticket endpoint groundwork (off until the owner sets the /exec URL).
 - [V] **Version 217** (2026-11-26 22:12 UTC): PR #186, 4/4 + Pages green: T-118 (Mana Tithe cast+tax for a person, Demonic Consultation names a card, Basalt/Grim Monolith loops by hand with the mana shortcut, Port Razer extra combat). Fingerprint moved only for the red-rum fixture (has those cards).
@@ -251,16 +253,17 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
 | T-126 | Ranking: one pass 300/pair, rank ranges on ties; Rank sort + win % in menus | Deck Brackets 3 | `claude/deck-brackets` @ 2e81f88 (+ single-pass update) | Tooling [R]; run held for T-122/T-127 |
-| T-127 | Full priority loop and stack | T-122 session | design `claude/t127-priority-design` @ 8057f2d | Design [R] + accepted; stages 0+1 active since 05:22 UTC |
-| T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [R] 04:39 UTC: suite 270, sweep bad 0, fingerprint identical; next batch |
-| T-129 | Blurry strip: .panel.active fade fill-mode both -> backwards (WebKit soft layer) | T-121 session | `claude/t121-duel-loop-button` @ 579f423 | [R] 04:46 UTC: crisp-strip 28/28; needs the user's check on a real iPhone; next batch |
+| T-127 | Full priority loop and stack | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t127-stack-0-1` @ 3e475e4, `claude/t127-stack-2` @ ffc6726 | Stages 0+1 [R] (+2.0% bench), stage 2 [R] (OFF identical, ON suite/sweep green, +4.5%); stage 3 active |
+| T-130 | Priority sheet UI + Stop to respond setting | T-130 session (`session_01K5kL4ZPCcp3pPurfrRE7zt`) | `claude/t130-priority-ui` @ 176e5fe | [R]; follow-up: kind 'priority' at end/attackers in versus.js |
+| T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [V] Verified v221 |
+| T-129 | Blurry strip: .panel.active fade fill-mode both -> backwards (WebKit soft layer) | T-121 session | `claude/t121-duel-loop-button` @ 579f423 | [V] Verified v221 |
 | T-124 | Teach issue #188 | Card teaching 8 | `claude/card-teaching` @ 3f3befb | [R] in PR #190 (v219) |
-| T-125 | Entrancing Melody target after X | Card teaching 8 | `claude/card-teaching` @ b8e24d1 | [R] 04:28 UTC: t125 5/5, full suite 270, sweep bad 0; next batch |
-| T-119 | Puzzles: pay sheet in puzzles, Rocks before the dragon by a person, phone tab bar | T-115 session | `claude/t115-puzzles` @ b8d7d15 | [R] 04:28 UTC: puzzles 99/99, UI 113/113, versus x3, sweep bad 0; next batch |
+| T-125 | Entrancing Melody target after X | Card teaching 8 | `claude/card-teaching` @ b8e24d1 | [V] Verified v220 |
+| T-119 | Puzzles: pay sheet in puzzles, Rocks before the dragon by a person, phone tab bar | T-115 session | `claude/t115-puzzles` @ b8d7d15 | [V] Verified v220 |
 | T-120 | Tickets reach the owner without sign-in | T-120 session (`session_01K5kL4ZD9cmscY4bg4HREWm`) | `claude/t120-ticket-delivery` @ 53bdcab | [R] in PR #189 (v218). Live only after the owner deploys the Apps Script and the /exec URL goes in ticket-config.js |
-| T-121 | Duel on phones: 🔁 Loop button on the game bar (root cause: tfocus hides the setup row), ∞ button labelled | T-121 session (`session_01K5kL4XSdwKoTCAt2tnSATL`) | `claude/t121-duel-loop-button` @ 9650971 | [R] 04:26 UTC: duel-loop-phone 106/106; next batch. Session now on T-129 |
-| T-122 | Timing audit + fixes 1-5 (extra turns CR 500.7, per-combat triggers 506.1/507.1, first-strike SBA 510.4, next end step 603.7, cleanup 514.3a) | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ 6c9f14a | [R] 05:16 UTC: suite 274, sweep bad 0, fingerprint 1 line explained; next batch |
-| T-123 | Simulate Sample games replay on the real Practice table | T-123 session (`session_01K5kL4ZX6se17TgCAFfhACk`) | `claude/t123-tutorial-real-table` @ 77f7f92 | [R] 04:17 UTC: sample-on-table 9/9, tutorials pass; next batch |
+| T-121 | Duel on phones: 🔁 Loop button on the game bar (root cause: tfocus hides the setup row), ∞ button labelled | T-121 session (`session_01K5kL4XSdwKoTCAt2tnSATL`) | `claude/t121-duel-loop-button` @ 9650971 | [V] Verified v220 |
+| T-122 | Timing audit + fixes 1-5 (extra turns CR 500.7, per-combat triggers 506.1/507.1, first-strike SBA 510.4, next end step 603.7, cleanup 514.3a) | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ 6c9f14a | [V] Verified v221 |
+| T-123 | Simulate Sample games replay on the real Practice table | T-123 session (`session_01K5kL4ZX6se17TgCAFfhACk`) | `claude/t123-tutorial-real-table` @ 77f7f92 | [V] Verified v220 |
 | T-118 | Engine fixes (the user): Mana Tithe, Consultation naming, loops by hand (Monoliths), Port Razer | Card teaching 8 | `claude/card-teaching` @ 211f1b0 | [V] Verified v217 (PR #186). Other loop pieces (Rings, Pili-Pala, Scepter) still autopilot-only |
 | T-116 | New Drive deck Winota | Deck Brackets 3 | `claude/deck-brackets` | [V] Verified v215 (PR #184): B4 |
 | T-115 | Puzzle redesign | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`, idle) | `claude/t115-puzzles` | [V] v214; T-117 [V] v216 |

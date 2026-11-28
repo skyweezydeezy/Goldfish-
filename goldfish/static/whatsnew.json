@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 219,
+      "lines": [
+        "Taught on request: Cemetery Gatekeeper, Cori Mountain Monastery, Shadow Alley Denizen and Vampire Nocturnus. Intimidate now limits blockers as it should."
+      ]
+    },
+    {
       "v": 218,
       "lines": [
         "Groundwork for sending card corrections without signing in to anything: once it's switched on, \"Teach these cards\" and deck saves go straight to ICEYfish."

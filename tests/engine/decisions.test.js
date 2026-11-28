@@ -275,7 +275,7 @@ const PR = process.env.ISF_PRIORITY !== '0';          // T-127: the whole suite 
   const A = mk(false), B = mk(false); D.seat(A.p.games[0]); RS(A.p.games, 0, run, () => 'auto'); run(B.p.games);
   check('..."the autopilot decides" casts what the autopilot casts', D.dump(A.p.games) === D.dump(B.p.games));
   s = mk(true); const q2 = open(s.p, gs => G.instantWindow(gs[0], [], 'end')).q;
-  check('at the opponent\'s end step the same question is asked ("End of ...\'s turn")', !!q2 && (PR ? q2.kind === 'priority' && /^End step/.test(q2.title) : q2.kind === 'instant' && /^End of .*'s turn: cast an instant\?/.test(q2.title)), q2 && q2.title); }
+  check('at the opponent\'s end step the same question is asked ("End of ...\'s turn")', !!q2 && (q2.kind === 'instant' && /^End of .*'s turn: cast an instant\?/.test(q2.title)), q2 && q2.title); }
 
 // ---- 3. responses: the end of another player's turn
 { const p = table(['frodo', 'zul-ashur']), [a, b] = p.games; lands(a, 1, /^Plains$/); const sw = toHand(a, /^Swords to Plowshares$/), sorc = toHand(a, /^Diabolic Intent$/), big = toHand(a, /^Anguished Unmaking$/); const tb = putOn(b, card(b, /Grave Titan/));

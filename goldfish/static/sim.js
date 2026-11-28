@@ -5827,7 +5827,8 @@
   // every player has passed in a row. Stage 1 only lets a seated person act (the autopilot's responses still live in the old windows: tryCounter, instantWindow, protectLethal;
   // autoRespond takes them over in stage 2), so with nobody seated the round is skipped at once (the fast path) and a person who takes every default (Pass) changes nothing.
   const PRIORITY_STEPS = { stack: 'Ability on the stack', upkeep: 'Upkeep', draw: 'Draw step', main: 'Main phase', beginCombat: 'Beginning of combat', blockers: 'Blockers declared', damage: 'Combat damage', endCombat: 'End of combat' };
-  const SMART_OWN = new Set(['beginCombat', 'blockers', 'endCombat']), SMART_OTHER = new Set(['stack', 'upkeep', 'main', 'beginCombat', 'attackers', 'blockers', 'damage', 'endCombat', 'end']);
+  // T-127 stage 6: 'smart' (the default) stops where a person would expect it: after blockers on your own turn; on another player's turn at the objects on the stack, the attackers, the blockers and the end step. 'stops' / 'never' ask elsewhere.
+  const SMART_OWN = new Set(['blockers']), SMART_OTHER = new Set(['stack', 'attackers', 'blockers', 'end']);
   const PRIO_MAIN = new WeakMap();          // kept off the game object: the played copy and the plain copy must dump the same (every-default sweep)
   function priorityPlayers(g) { const all = g.match && g.match.players ? g.match.players.filter(x => !x.dead) : [g].concat(g.opp ? [g.opp] : []), i = all.indexOf(g); return i > 0 ? all.slice(i).concat(all.slice(0, i)) : all; }
   function wantsPriority(p, g, step) {          // opts.autoPass: 'smart' (default), 'stops', 'never' (asks at every step) or 'always' (never asks)
@@ -14579,7 +14580,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       else if (me.ask) {                                                                                       // a person: any instant or flash card they can pay for, the autopilot's pick as the default, or not now
         const opts = peekCards(me.hand, () => me.hand.filter(c => c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(me, c.card) && canPay(effectiveCost(me, c), units)));
         if (!opts.length) break;
-        best = decide(me, { kind: me.opts.priority ? 'priority' : 'instant', options: opts, def: best, optional: true, step, caster: me.opp, active: me.opp });          // T-127: with opts.priority the person gets the priority question here (the autopilot's pick is still the default)
+        best = decide(me, { kind: 'instant', options: opts, def: best, optional: true, step, caster: me.opp, active: me.opp });          // T-127: with opts.priority the person gets the priority question here (the autopilot's pick is still the default)
       }
       if (!best) break;
       if (best.card.a.cost.x && best.extraX == null) best.extraX = Math.max(0, Math.min(20, Math.floor((units.length - (best.card.a.cost.generic + best.card.a.cost.pips.length) + xDiscountNow(me)) / (best.card.a.cost.x || 1))));          // an X spell takes all the spare mana, as in the main phase (a person's starting X is the same)

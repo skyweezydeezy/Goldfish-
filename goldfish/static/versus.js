@@ -1112,6 +1112,7 @@
       ? `<button class="vs-play primary" title="Watch the game at the speed of the slider">${gm.playing ? '⏸ Pause' : '▶ Play'}</button><button class="vs-next" title="Play one turn">+1 turn</button><button class="vs-nextround" title="Play one round: every player takes a turn">+1 round</button><button class="vs-toend" title="Play the rest of the game at once">⏭<span class="wide"> Skip to the</span> end</button>`
       : `<span class="hint" data-status>${gm.choice ? 'Your choice' : gm.remote != null && !gm.over ? esc(waitText(gm)) : gm.phase === 'mull' ? 'Opening hands' : gm.phase === 'block' ? who + ' is attacking you' : gm.phase === 'respond' ? 'End of ' + who + "'s turn" : cur(gm).pid === gm.human ? 'Your turn' : who + ' is playing…'}</span>`) +
       (gm.io ? `<span class="vs-conn ${gm.io.connected() ? 'on' : 'off'}" title="${gm.io.connected() ? 'Connected to the other device' : 'Not connected: the game waits until the other device is back'}">${gm.io.connected() ? '● Connected' : '○ Not connected'}</span>` : '') +
+      (gm.remote == null ? `<button class="ghost vs-loopbtn${q('.vs-loop').checked ? ' on' : ''}" type="button" aria-pressed="${q('.vs-loop').checked}" title="Loop: with every seat on the autopilot, each game plays itself and the next one starts after a short pause. Tap again to stop after the game being played.">🔁<span class="wide"> Loop</span></button>` : '') +
       `<button class="ghost vs-looks" title="Choose your own playmat and sleeves. The other players are dealt random sets.">🎨<span class="wide"> My playmat</span></button>` +
         `<button class="ghost open-sound" title="Music and sound effects"><span class="sound-ic">${window.__isfAudio && !(window.__isfAudio.get().sfx || window.__isfAudio.get().music) ? '🔇' : '🔊'}</span><span class="wide"> Sound</span></button>` +
         `<button class="ghost tut-help vs-help" type="button" title="Help: tours of each tab" aria-label="Help and tours" aria-haspopup="menu">?</button>` +
@@ -1183,6 +1184,7 @@
         if (list.length) { e.stopPropagation(); A.viewCard(list[0], list); }
         return;
       }
+      if (hit('vs-loopbtn')) { const cb = V[mode].q('.vs-loop'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', { bubbles: true })); V[mode].bar = null; return render(mode); }          // T-121: the table-focus view hides the setup row, so the Loop setting is on the bar too
       if (hit('vs-looks')) { if (window.__isfLooks) window.__isfLooks.open(); return; }
       if (hit('vs-again')) return endChoice(mode, 'again');
       if (hit('vs-change')) return endChoice(mode, 'change');

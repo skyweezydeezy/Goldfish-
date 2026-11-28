@@ -2043,6 +2043,11 @@
       { const mt = line.match(/^more than meets the eye ((?:\{[^}]+\})+)/i); if (mt) { a.mtmte = parseCost(mt[1]); rec.status = 'ok'; continue; } }          // Slicer: cast it converted (effectiveCost0, resolveSpellInner)
       if (/^living metal\b/i.test(line)) { a.livingMetal = true; rec.status = 'ok'; continue; }          // Slicer, High-Speed Antagonist: a creature during your turn (beginTurn0)
       if (/^whenever ~ deals combat damage to a player, convert it at end of combat\.?$/i.test(line)) { a.triggers.push({ kinds: ['combatDamage'], who: '~', fx: [{ type: 'convertEoc' }], text: raw }); rec.status = 'ok'; continue; }          // Slicer
+      if (/^\{3\}\{r\}, \{t\}: exile the top card of your library\. until the end of your next turn, you may play that card\.?$/i.test(line)) { a.activated.push({ cost: parseCost('{3}{R}'), tap: true, fx: [{ type: 'impulseOwn', n: 1, next: true }], text: raw }); rec.status = 'ok'; continue; }          // Cori Mountain Monastery
+      if (/^when ~ enters, exile a card from a graveyard\.?$/i.test(line)) { a.gatekeeper = true; a.triggers.push({ kinds: ['etb'], who: '~', fx: [{ type: 'gateExile' }], text: raw }); rec.status = 'ok'; continue; }          // Cemetery Gatekeeper
+      if (/^whenever a player plays a land or casts a spell, if it shares a card type with the exiled card, ~ deals 2 damage to that player\.?$/i.test(line)) { a.gatekeeper = true; rec.status = 'ok'; continue; }          // (gateHit, in fireCastTriggers and playLandCard)
+      if (/^whenever another black creature you control enters, target creature gains intimidate until end of turn\.?$/i.test(line)) { a.triggers.push({ kinds: ['permEtb'], other: true, nontoken: false, filter: 'creature', color: 'B', fx: [{ type: 'pumpOne', self: false, p: 0, t: 0, keywords: ['intimidate'] }], text: raw }); rec.status = 'ok'; continue; }          // Shadow Alley Denizen
+      if (/^as long as the top card of your library is black, ~ and other vampire creatures you control get \+2\/\+1 and have flying\.?$/i.test(line)) { a.nocturnus = true; rec.status = 'ok'; continue; }          // Vampire Nocturnus (condAnthem, hasKw)
       if (/^\{g\}, \{t\}: add x mana in any combination of colors, where x is the greatest power among creatures you control\.?$/i.test(line)) { a.selvalaMana = true; rec.status = 'ok'; continue; }          // Selvala, Heart of the Wilds (manaUnits: X mana less the {G})
       if (/^whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power\.?$/i.test(line)) { a.selvalaDraw = true; rec.status = 'ok'; continue; }          // Selvala (fireEnterWatchers: either player's creature)
       if (/^\{t\}: add x mana of any one color, where x is ~'s power/i.test(line)) { a.powerMana = true; rec.status = 'ok'; continue; }          // Kami of Whispered Hopes
@@ -4105,7 +4110,7 @@
     if (q.attachedTo != null && a.attachBonus) { let l = info.attach.get(q.attachedTo); if (!l) info.attach.set(q.attachedTo, l = []); l.push(a.attachBonus.per ? Object.assign({ src: q }, a.attachBonus) : a.attachBonus); }          // a "for each" bonus keeps its Aura or Equipment (its own counters)
     if (q.produce) { info.producers.push(q); if (q.produce.restrict) info.restrictMana = true; }
     if (q.asLand || (a.isArtifact && !q.token && info.artLands)) info.lands++;
-    if (a.abilStax) { info.abilStax = true; (info.abilStaxers = info.abilStaxers || []).push(q); } if (st.moon) info.moonSeen = true; if (a.cityAnthem) info.cityAnthem = true; if (a.jetmir6 || a.jetmir9) info.jetmir = true; if (a.paruns) info.paruns = true; if (a.greymond) (info.greymonds = info.greymonds || []).push(q); if (a.legendAura) info.legendAura = true; if (st.oppMinus) info.oppMinus = true; if (st.maha) info.maha = true; if (st.narset) info.narset = true; if (st.normEtb) info.normEtb = true; if (st.tamiyo) info.tamiyo = true; if (st.vorinHalf) info.vorinHalf = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
+    if (a.abilStax) { info.abilStax = true; (info.abilStaxers = info.abilStaxers || []).push(q); } if (st.moon) info.moonSeen = true; if (a.cityAnthem) info.cityAnthem = true; if (a.jetmir6 || a.jetmir9) info.jetmir = true; if (a.paruns) info.paruns = true; if (a.greymond) (info.greymonds = info.greymonds || []).push(q); if (a.nocturnus) (info.nocturnus = info.nocturnus || []).push(q); if (a.legendAura) info.legendAura = true; if (st.oppMinus) info.oppMinus = true; if (st.maha) info.maha = true; if (st.narset) info.narset = true; if (st.normEtb) info.normEtb = true; if (st.tamiyo) info.tamiyo = true; if (st.vorinHalf) info.vorinHalf = true; if (a.noAttack) info.noAttack = true; if (a.arbiter) info.arbiter = true; if (st.noCounter) (info.noCounter = info.noCounter || []).push(st.noCounter); if (a.winnower) info.winnower = true; if (a.lambholt) (info.lambholt = info.lambholt || []).push(q); if (a.cantLose) info.cantLose = true; if (a.preventDmg) info.preventDmg = true; if (a.playerHexproof) info.playerHex = true;
     if (st.reducers.length) info.reducers.push(q);
     if (st.trigDouble || st.trigDoublePower != null) info.trigDouble = true; if (st.trigDoubleColorless) info.trigDoubleColorless = true; if (a.wizardStaff) info.wizardStaff = true;          // trigger doublers: looked up every time a trigger fires
     if (a.inspiringLeader) info.inspiringLeader = (info.inspiringLeader || 0) + 1;
@@ -4314,6 +4319,7 @@
     if (info.tenLands && g.battlefield.filter(q => q.asLand).length >= 10) n += k === 'p' ? info.tenLands.p : info.tenLands.t;          // Fecund Greenshell
     if (info.perEquip) { const eq = (tableHas(g, 'isEquipment') ? g.battlefield.filter(q => q.attachedTo === p.iid && q.card.a.isEquipment) : []).length; if (eq) n += (k === 'p' ? info.perEquip.p : info.perEquip.t) * eq; }          // Bruenor Battlehammer
     if (info.jetmir && k === 'p' && g.battlefield.includes(p)) { const c = g.battlefield.filter(isCreaturePerm).length; n += (c >= 6 ? 1 : 0) + (c >= 9 ? 1 : 0); }          // Jetmir's two more steps
+    if (info.nocturnus && isCreaturePerm(p) && matchesFilter(p.card, 'vampire')) for (const q of info.nocturnus) if (g.library[0] && colorsOf(g, g.library[0].card).includes('B')) n += k === 'p' ? 2 : 1;          // Vampire Nocturnus
     if (info.greymonds && k && isCreaturePerm(p) && matchesFilter(p.card, 'human') && g.battlefield.filter(q => isCreaturePerm(q) && matchesFilter(q.card, 'human')).length >= 4) n += 2;          // Greymond: four Humans, +2/+2
     if (info.paruns && isCreaturePerm(p)) for (const q of (tableHas(g, 'paruns') ? g.battlefield : NONE)) { if (!q.card.a.paruns || q.attachedTo == null) continue; const e = g.battlefield.find(x => x.iid === q.attachedTo && isCreaturePerm(x)); if (!e) continue; if (e.tapped && p.tapped && k === 'p') n += 2; else if (!e.tapped && !p.tapped && k === 't') n += 2; }          // Sword of the Paruns: tapped creatures +2/+0 while the equipped one is tapped, untapped +0/+2 while it is not
     if (info.legendAura && p.card.a.isLegendary) for (const q of (tableHas(g, 'legendAura') ? g.battlefield : NONE)) { const la = q.card.a.legendAura; if (la && q.attachedTo === p.iid) n += k === 'p' ? la.p : la.t; }          // Combat Research
@@ -4385,6 +4391,7 @@
     if (k === 'hexproof' && !g.dry && g.opp && isCreaturePerm(p) && otherPlayers(g).some(o => (tableHas(o, 'noHexOpp') && o.battlefield.some(q => q.card.a.noHexOpp)))) return false;          // Archetype of Endurance
     if (k === 'double strike' && bfInfo(g).halvar && isCreaturePerm(p) && g.battlefield.includes(p) && ((tableHas(g, 'isAura') || tableHas(g, 'isEquipment')) && g.battlefield.some(q => q.attachedTo === p.iid && (q.card.a.isAura || q.card.a.isEquipment)))) return true;          // Halvar, God of Battle
     if (k === 'flying' && p.card.a.jumpFly && g.activeTurn !== false) return true;          // Cid: jump
+    if (k === 'flying' && bfInfo(g).nocturnus && isCreaturePerm(p) && matchesFilter(p.card, 'vampire') && g.library[0] && colorsOf(g, g.library[0].card).includes('B')) return true;          // Vampire Nocturnus
     if ((k === 'first strike' || k === 'vigilance' || k === 'lifelink') && bfInfo(g).greymonds && isCreaturePerm(p) && matchesFilter(p.card, 'human') && bfInfo(g).greymonds.some(q => q.greyChosen && q.greyChosen.includes(k))) return true;          // Greymond, Avacyn's Stalwart
     if (k === 'vigilance' && bfInfo(g).ingaEsika && isCreaturePerm(p) && g.battlefield.includes(p)) return true;          // Inga and Esika
     if (k === 'swampwalk' && !p.card.a.zombieWalk && isCreaturePerm(p) && g.battlefield.includes(p) && matchesFilter(p.card, 'zombie') && (tableHas(g, 'zombieWalk') && g.battlefield.some(q => q.card.a.zombieWalk))) return true;          // Zombie Master
@@ -7357,6 +7364,16 @@
         }
         case 'battleCry': for (const q of g.battlefield) if (q.attacking && q !== source) q.eotP = (q.eotP || 0) + 1; if (source) ev.push({ type: 'note', text: `${source.card.name}: battle cry, each other attacking creature gets +1/+0`, source }); break;          // battle cry
         case 'convertEoc': if (source && g.battlefield.includes(source)) source.convertEoc = true; break;          // Slicer, High-Speed Antagonist: converted at end of combat
+        case 'gateExile': {          // Cemetery Gatekeeper: exile a card from a graveyard; the card types it has are the ones that hurt
+          if (!source) break; const yards = [{ o: g, i: g.graveyard }].concat(otherPlayers(g).map(o => ({ o, i: o.graveyard }))), all = [].concat(...yards.map(y => y.i.map(c => ({ c, o: y.o }))));
+          if (!all.length) { ev.push({ type: 'note', text: `${source.card.name}: no card to exile`, source }); break; }
+          const cnt = (deck, t) => deck ? deck.unique.filter(c => cardTypes(c).has(t)).reduce((n, c) => n + (c.qty || 1), 0) : 0;
+          const score = ({ c }) => [...cardTypes(c.card)].reduce((sc, t) => sc + otherPlayers(g).reduce((n, o) => n + cnt(o.deck, t), 0) - 1.5 * cnt(g.deck, t), 0);
+          let pick = all.slice().sort((x, y) => score(y) - score(x))[0];
+          if (g.ask && !g.dry && all.length > 1) { const r = decide(g, { kind: 'target', what: 'gate', options: all.map(x => x.c), def: pick.c, source }); const hit = r && all.find(x => x.c === r); if (hit) pick = hit; }
+          pick.o.graveyard.splice(pick.o.graveyard.indexOf(pick.c), 1); g.exile.push(pick.c); source.gateTypes = [...cardTypes(pick.c.card)];
+          ev.push({ type: 'note', text: `${source.card.name} exiles ${pick.c.card.name}: ${source.gateTypes.join(', ')} spells and lands now hurt their player`, source }); break;
+        }
         case 'redirectSpell': {          // Redirect Lightning, Ricochet Trap, Return the Favor (second mode), Hydroelectric Specimen via 'redirectToSelf': the spell's one locked target becomes another legal target
           const ps = g.pendingSpell, L = ps && ps.lock && ps.lock.map.size === 1 ? [...ps.lock.map.entries()][0] : null;
           if (f.favor && ps && !favorMode(g, ps, ev, source, 'redirect')) break;
@@ -9027,7 +9044,8 @@
       if (g.ajaniPoison && (a.isCreature || a.isPlaneswalker) && g.killTurn == null && !matchOver(g)) addPoison(g, g.ajaniPoison, ev, null, "Ajani's emblem");          // Ajani, Sleeper Agent: two poison counters for each creature or planeswalker spell
       g.mvCast = { turn: g.turn, n: (g.mvCast && g.mvCast.turn === g.turn ? g.mvCast.n : 0) + (a.mv || 0) };          // Call Forth the Tempest
       g.lastCast = inst;
-      if (a.trapWatch !== false && (inst.card.colors || []).includes('U')) g.blueSeq = turnSeq(g);          // Ricochet Trap: an opponent cast a blue spell this turn
+      if (a.trapWatch !== false && (inst.card.colors || []).includes('U')) g.blueSeq = turnSeq(g);
+      gateHit(g, inst.card, ev);          // Ricochet Trap: an opponent cast a blue spell this turn
       g.improviseTurn = null;
       if (a.isCreature && !g.combatDone && (a.power || 0) >= 2) { const ar = (tableHas(g, 'exertHaste') ? g.battlefield.find(q => q.card.a.exertHaste && q.exertUsed === g.turn && q.exerted !== g.turn + 1) : undefined); if (ar) { ar.exerted = g.turn + 1; inst.hasteCast = true; ev.push({ type: 'note', text: `${ar.card.name} is exerted: ${inst.card.name} has haste this turn`, source: ar }); } }          // Arena of Glory
       { const fromHand = !(inst.freeCast || inst.fbCast || inst.escaping || inst.retracing || inst.breaching), info = bfInfo(g);          // cascade: printed on the card, or given by Zhulodok / Quandrix, the Proof
@@ -12134,6 +12152,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ev = [];
     if (g.hand.includes(inst)) g.hand.splice(g.hand.indexOf(inst), 1);
     const perm = enterWithTriggers(g, inst, { asMdfcLand: asMdfc }, ev);
+    gateHit(g, inst.card, ev);
     if (inst.card.a.chasm && !g.dry) sacCheapest(g, ev, q => q.asLand && q !== perm, inst.card.name);          // Glacial Chasm: another land
     for (const ct of (tableHas(g, 'traitors') ? g.battlefield.filter(q => q.card.a.traitors && q !== perm) : [])) { leavePerm(g, ct, ev); ev.push({ type: 'note', text: `${ct.card.name} is sacrificed (another land was played)`, source: ct }); }          // City of Traitors
     if (g.castTurn[inst.card.uid] == null) g.castTurn[inst.card.uid] = g.turn;
@@ -13966,6 +13985,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     { const gi = bfInfo(g); if (gi.winnower && (b.card.a.mv || 0) % 2 === 0) return false; if (gi.lambholt) for (const q of gi.lambholt) if (isCreaturePerm(q) && powerOf(d, b) < powerOf(g, q)) return false; }          // Void Winnower (a token's mana value is 0), Champion of Lambholt
     if (hasKw(g, a, 'flying') && !(hasKw(d, b, 'flying') || hasKw(d, b, 'reach'))) return false;
     if (hasKw(g, a, 'unblockable') || hasKw(g, a, 'shadow') || hasKw(g, a, 'horsemanship')) return false;
+    if (hasKw(g, a, 'intimidate') && !(b.card.a.isArtifact || colorsOf(d, b.card).some(c => colorsOf(g, a.card).includes(c)))) return false;          // intimidate: only artifact creatures and creatures that share a color
     if (hasKw(g, a, 'skulk') && powerOf(d, b) > powerOf(g, a)) return false;
     if (g.ring && g.ring.tempts >= 1 && g.ring.bearer === a.iid && powerOf(d, b) > powerOf(g, a)) return false;          // the Ring, level 1: your Ring-bearer can't be blocked by creatures with greater power
     return true;
@@ -14956,6 +14976,13 @@ g.actSeq = (g.actSeq || 0) + 1;
   // ---------- the spell on the stack (T-100): while a spell waits for an answer (tryCounter), g.pendingSpell = { inst, caster, lock, responder } on both players ----------
   // Only the response window exists, no general stack. The answers: a counterspell (tryCounter0), Redirect Lightning (change the target the spell locked as it was cast),
   // Hullbreaker Horror (a spell cast in response returns the spell to its owner's hand). Abilities and triggers on the stack stay out of this model.
+  const CARD_TYPES = ['Artifact', 'Battle', 'Creature', 'Enchantment', 'Instant', 'Land', 'Planeswalker', 'Sorcery', 'Kindred'];
+  const cardTypes = card => { const front = String((card.type_line || '').split('//')[0]).split('—')[0]; return new Set(CARD_TYPES.filter(t => new RegExp('\\b' + t + '\\b').test(front))); };
+  function gateHit(g, card, ev) {          // Cemetery Gatekeeper: a player plays a land or casts a spell that shares a card type with the exiled card: 2 damage to that player
+    if (g.dry || !tableHas(g, 'gatekeeper')) return;
+    const ts = cardTypes(card);
+    for (const q of bothSides(g)) if (q.card.a.gatekeeper && q.gateTypes && q.gateTypes.some(t => ts.has(t))) { g.life -= 2; ev.push({ type: 'note', text: `${q.card.name}: ${card.name} shares a card type with the exiled card, 2 damage`, source: q }); checkDeath(g, ev); }
+  }
   // is a copy of the other player's spell worth it for o: it is worth cards or mana, or it hits a creature of theirs that matters
   const copyWorth = (o, caster, inst) => { const fx = inst.card.a.spellFx; return fxValue(o, fx) >= 3 || (fx.some(INTERACT_FX) && caster.battlefield.some(q => isCreaturePerm(q) && threat(caster, o, q) >= 2.5)); };
   function archaicTrigger(g, inst, ev) {          // Wandering Archaic: whenever an opponent casts an instant or sorcery spell, they may pay {2}; if they don't, you may copy it (with new targets)

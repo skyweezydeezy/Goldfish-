@@ -71,7 +71,9 @@ main { padding: 16px 18px 60px; max-width: 1700px; margin: 0 auto; }
    makes it readable within about half a second, then it settles gently. Opacity only: nothing moves while it fades.
    (People who ask their device for reduced motion get the instant switch, from the rule further down.) */
 :root { --mode-fade: 2s; }
-.panel.active { display: block; animation: modein var(--mode-fade) cubic-bezier(.2, .7, .3, 1) both; }
+.panel.active { display: block; animation: modein var(--mode-fade) cubic-bezier(.2, .7, .3, 1) backwards; }
+/* T-129: 'backwards', not 'both'. A finished animation that keeps filling forwards (opacity: 1) keeps the whole panel on its own compositing layer, and on iPhone and
+   iPad that layer is rasterised soft: the speed bar, the control row, the text, the icons. 'backwards' holds the start (opacity 0) while the fade waits, then lets go. */
 @keyframes modein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 

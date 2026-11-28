@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] The user (2026-11-28 04:10 UTC): "complete ranking of all decks within ICEYfish. 2000 games vs each other deck increased to 10000 games if win pct falls within pct of variance." Ranking resumes. MAIN's reading [A]: escalate a pair to 10,000 matches when |p-0.5| < 1.96*sqrt(0.25/n) at n=2,000 (about +/-2.2 pts); threshold is a flag.
 - [V] The user (2026-11-28 04:00 UTC): seven fixes (T-119 to T-125); hardest constraint: rules behaviour must match the Comprehensive Rules (timing, priority, stack, turn structure).
 - [V] The user (2026-11-26 19:10 UTC), puzzles: vary the Medium/Hard fast-win finishers, and remove "Go off" (the person plays every combo piece). Done as T-117.
 - [V] The user (2026-11-26 18:20 UTC), T-115 fast wins: "Mix both": Easy fast-win puzzles may start the opponent at a lower life (shown on screen); Medium and Hard start at 40 and win by combo, infect/poison, commander damage or an alternate win.
@@ -242,6 +243,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-104 | Teach the other benders (the user): Firebending, Waterbend, Airbend exact per reminder text/CR, person choices, every line ok/neutral | Card teaching 6 | `claude/card-teaching` | After T-103 |
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
+| T-126 | Complete ranking (the user): adaptive round robin, 2,000 matches per pair, 10,000 when within the margin of 50%; sharded over helper sessions; cost estimate to MAIN first | Deck Brackets 3 (`session_01K5kL4YcBh9ANfXmUy98ymh`) | `claude/deck-brackets` (+ claude/ranking-split) | Active since 04:10 UTC |
 | T-124 | Teach issue #188 (Cemetery Gatekeeper, Cori Mountain Monastery, Shadow Alley Denizen, Vampire Nocturnus), filed 2026-11-27 13:01 UTC; top of queue, merges on its own | Card teaching 8 (`session_01K5kL4W3kFGpFCLCxQctBCX`) | `claude/card-teaching` | Active since 2026-11-28 04:02 UTC |
 | T-125 | Entrancing Melody (the user): choose X, then a target creature with mana value X (CR 601.2b-c), legality on resolution (608.2b) | Card teaching 8 | `claude/card-teaching` | Planned after T-124 |
 | T-119 | Puzzles (the user): Rocks Before the Dragon unwinnable (no person mana choice; use the pay sheet, prove every puzzle playable by a person); Puzzle tab fits phones 320-430px both orientations + iPad | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`) | `claude/t115-puzzles` | Active since 04:02 UTC |

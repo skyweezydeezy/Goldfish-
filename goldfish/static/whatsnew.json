@@ -2,6 +2,12 @@
   "about": "What's new, shown once after an update (tutorial.js). Newest first. v = the version number the change went live in; lines = one or two short sentences a player understands. MAIN adds an entry at each merge: v is the version on the default branch before the merge, plus 1.",
   "entries": [
     {
+      "v": 223,
+      "lines": [
+        "More groundwork for full priority: triggered abilities now wait on the stack with a chance to respond between each one. Still switched off, so games play as before."
+      ]
+    },
+    {
       "v": 222,
       "lines": [
         "Groundwork for full priority and a real stack (the Comprehensive Rules' way of responding to spells and triggers). It stays switched off for now, so games play as before."

@@ -235,6 +235,11 @@ games to make sure nothing throws. Add a new `tests/engine/<feature>.test.js` fo
 | remote-ice | The servers Play a friend connects through, read from `remote.js`: public STUN servers with valid `stun:` URIs and no login, and no relay (TURN, login, relay host or service) left in the file. |
 | qr | QR codes made in the page (`goldfish/static/qr.js`, for Play a friend): the QR version size for the text, the three finder patterns, a white quiet zone, too-long text refused; where `zbarimg` is installed, every code (1 to 950 characters, and an invite link) scans back to exactly its text. |
 | puzzles | T-115: the 12 hand-built puzzles (`goldfish/static/puzzles.json`, rules in `puzzle-core.js`): two of each type (fast win, endgame) and difficulty; the intended line wins against the real hidden hand with every move legal, every listed tempting wrong line does not, a replay is the same game, every card is read exactly (coverage full), the hints never give the line away, each puzzle has its lesson; the search tool (`tools/lib/puzzle-search.js`) finds the intended line of a one-turn puzzle |
+| timing-extra-turns | T-122: every extra turn is taken, not three per turn (CR 500.7) |
+| timing-combat-phases | T-122: an additional combat phase has its own beginning of combat (CR 506.1, 507.1) |
+| timing-first-strike-step | T-122: the first-strike damage step ends before the regular one: dies triggers resolve between them (CR 510.4, 704.3) |
+| timing-next-end-step | T-122: a "next end step" return set up during the end step waits for the next turn's (CR 603.7) |
+| timing-cleanup | T-122: a trigger in the cleanup step gets resolved and the hand is discarded down again (CR 514.3a) |
 | ui/versus-fit | 1v1 and Pod on a PC, an iPad and an iPhone: the whole table fits the screen; every permanent and pile of every player, your hand and your buttons are inside it |
 | ui/imprint | The imprinted card is shown with its permanent: Isochron Scepter and Chrome Mox on the Goldfish Table (real casts), Isochron Scepter on the 1v1 table; clicking it opens the card |
 | ui/sylvan-library | T-090: Duel, a person with Sylvan Library at their draw step: "draw two additional cards?", "pay 4 life to keep <card>?" for each (Pay 4 life / Put it on top), the life is paid, and the draw-step log line says what was drawn, the life paid and what went back |

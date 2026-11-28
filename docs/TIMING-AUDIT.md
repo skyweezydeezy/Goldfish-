@@ -124,3 +124,25 @@ explained.
 
 Not changing: anything that makes a decision for a person who is not asked; any exported name (`sim.js` exports,
 `decide.js` question kinds); `version.js`; the `VERSION` line in `sw.js`.
+
+## 7. Phase 2 results (MAIN's go: items 1-5 of section 6)
+
+Each fix is its own commit with a test in `tests/engine/timing-*.test.js`. After each: full engine suite all ok, every-default sweep
+`bad 0`, fingerprint compared with the v217 base (`4bd97b95...`).
+
+| Fix | Row | CR | What changed (`sim.js`) | Test | Fingerprint |
+|---|---|---|---|---|---|
+| 1 | #23 | 500.7 | The `k < 3` limit on extra turns in `simulate`, `runMatch` and both pod loops is now `EXTRA_TURN_LIMIT` (40), a loop guard. Before, a banked extra turn past the third was put off to a later turn, or lost when the game ended. | timing-extra-turns | identical |
+| 2 | #16 | 506.1, 507.1 | `combat0`: from the second combat phase on, `eachTrigger(g,'combat')` and `settle` run at its start. The haste and tap effects in `combatStart` still run once per turn (not changed). | timing-combat-phases | identical |
+| 3 | #14 | 510.4, 704.3 | `resolveCombatVs`: when there are two damage steps, after the first one: `flushLeaves`, lifelink gain for both sides and `settle` (so dies triggers resolve before the regular step). | timing-first-strike-step | one game changes: red-rum-raiders vs second-breakfast, seed 285095 (same winner, same turn; final lives 22 / -1 instead of 39 / -18; consistent with a lifelink-gain drain now killing at the end of the first-strike step instead of after the regular one; the card was not identified) |
+| 4 | #42 | 603.7, 603.7b | `endTurn0`: the lists `endFlicker` and `endReturn` are taken at the top of the function; what is added during the end step (the window, a sacrifice) waits for the next turn's end step. | timing-next-end-step | identical to fix 3's |
+| 5a | #21 | 514.3a | `endTurn0`: after the cleanup `sba`, `settle`, then discard again while the hand is over the limit (at most 5 rounds). | timing-cleanup | identical to fix 4's |
+
+Not changed in the small batch, with the reason:
+- #22 (solo goldfish: pool not emptied at the end step): `endTurn0` already empties the pool when the second main phase ends, so a pool
+  is empty at the end step unless mana is made during the end step itself. No observable case; left alone.
+- #7 (no `settle` between the draw step and main-phase triggers): the queue order already resolves draw triggers first; no observable
+  difference found; left alone.
+- #44 (the opponent's until-end-of-turn effects cleared before end-step triggers): looks deliberate and no test needs it; left alone.
+- #15 (end of combat step with its own trigger kind): a feature (new kind in the parser), not a fix; left for a decision.
+- #12, #26, #28, #37: the priority loop. A separate decision for the user (MAIN is asking).

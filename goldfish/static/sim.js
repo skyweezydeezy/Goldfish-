@@ -13079,6 +13079,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     g.battlefield.forEach(p => { if (p.eotCard) { p.card = p.eotCard; know(g, p.card); p.eotCard = null; touch(g); } p.eotNoKw = false; p.eotToughDmg = false; p.eotArt = false; p.eotFire = null; p.eotP = 0; p.eotT = 0; p.eotKw = null; p.protColors = null; p.regenShield = false; p.eotAnnihilator = 0; p.eotOnlySpirits = false; p.eotOnlyHaste = false; p.eotToxic = 0; p.eotUnblockColor = null; p.eotHexColor = null; if (p.animated && !p.animated.perm && !(p.animated.untilTurn && p.animated.untilTurn > g.turn)) p.animated = null; });
     for (const x of [g].concat(otherPlayers(g))) x.battlefield.forEach(p => { p.dmg = 0; p.dt = false; });          // cleanup step: damage wears off every permanent
     sba(g, ev);
+    if (!g.dry) for (let k = 0; k < 5 && !matchOver(g); k++) { settle(g, ev); if (g.hand.length <= maxHandSize(g)) break; cleanupDiscard(g, ev); }          // CR 514.3a: a trigger from the cleanup step (a discard that draws) gets resolved, and there is another cleanup step if the hand is too big again
     g.landsThisTurn = null; g.manaAvailThisTurn = null;
     return iw.length ? iw.concat(ev) : ev;
   }

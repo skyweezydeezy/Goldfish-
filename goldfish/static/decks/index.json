@@ -14,7 +14,18 @@
    "by5": 0,
    "by7": 1.5,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "fieldWin": 32.2,
+   "fieldCI": [
+    22.4,
+    42.1
+   ],
+   "rank": 3,
+   "rankRange": [
+    3,
+    4
+   ],
+   "rankedAt": "2026-11-28"
   },
   {
    "file": "captains-lockdown.txt",
@@ -29,7 +40,18 @@
    "by5": 5.5,
    "by7": 45.9,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "fieldWin": 61.7,
+   "fieldCI": [
+    50.4,
+    73
+   ],
+   "rank": 2,
+   "rankRange": [
+    1,
+    2
+   ],
+   "rankedAt": "2026-11-28"
   },
   {
    "file": "friendship-is-magic.txt",
@@ -148,7 +170,18 @@
    "by5": 13.6,
    "by7": 74.3,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "fieldWin": 78.3,
+   "fieldCI": [
+    68.2,
+    88.4
+   ],
+   "rank": 1,
+   "rankRange": [
+    1,
+    2
+   ],
+   "rankedAt": "2026-11-28"
   },
   {
    "file": "compound-interest.txt",
@@ -367,7 +400,18 @@
    "by5": 1.4,
    "by7": 6.9,
    "learnedAt": "2026-11-19",
-   "learnedVs": "field"
+   "learnedVs": "field",
+   "fieldWin": 26.1,
+   "fieldCI": [
+    18.1,
+    34.1
+   ],
+   "rank": 4,
+   "rankRange": [
+    3,
+    4
+   ],
+   "rankedAt": "2026-11-28"
   },
   {
    "file": "current-without-end.txt",

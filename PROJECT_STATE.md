@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] The user (2026-11-28 04:15 UTC): item 6 means Simulate's Sample games replay on the real Practice table (T-123 option A); and "Yes, full priority": build a real priority loop and stack for spells, abilities and triggers (T-127, design note first).
 - [V] The user (2026-11-28 04:10 UTC): "complete ranking of all decks within ICEYfish. 2000 games vs each other deck increased to 10000 games if win pct falls within pct of variance." Ranking resumes. MAIN's reading [A]: escalate a pair to 10,000 matches when |p-0.5| < 1.96*sqrt(0.25/n) at n=2,000 (about +/-2.2 pts); threshold is a flag.
 - [V] The user (2026-11-28 04:00 UTC): seven fixes (T-119 to T-125); hardest constraint: rules behaviour must match the Comprehensive Rules (timing, priority, stack, turn structure).
 - [V] The user (2026-11-26 19:10 UTC), puzzles: vary the Medium/Hard fast-win finishers, and remove "Go off" (the person plays every combo piece). Done as T-117.
@@ -244,13 +245,14 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
 | T-126 | Complete ranking (the user): adaptive round robin, 2,000 matches per pair, 10,000 when within the margin of 50%; sharded over helper sessions; cost estimate to MAIN first | Deck Brackets 3 (`session_01K5kL4YcBh9ANfXmUy98ymh`) | `claude/deck-brackets` (+ claude/ranking-split) | Active since 04:10 UTC |
+| T-127 | Full priority loop and stack (the user): CR 117, 405, 601-608; design note docs/PRIORITY-DESIGN.md first; re-check brackets after | T-122 session | `claude/t122-timing-audit` | Planned after T-122 fixes |
 | T-124 | Teach issue #188 (Cemetery Gatekeeper, Cori Mountain Monastery, Shadow Alley Denizen, Vampire Nocturnus), filed 2026-11-27 13:01 UTC; top of queue, merges on its own | Card teaching 8 (`session_01K5kL4W3kFGpFCLCxQctBCX`) | `claude/card-teaching` | Active since 2026-11-28 04:02 UTC |
 | T-125 | Entrancing Melody (the user): choose X, then a target creature with mana value X (CR 601.2b-c), legality on resolution (608.2b) | Card teaching 8 | `claude/card-teaching` | Planned after T-124 |
 | T-119 | Puzzles (the user): Rocks Before the Dragon unwinnable (no person mana choice; use the pay sheet, prove every puzzle playable by a person); Puzzle tab fits phones 320-430px both orientations + iPad | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`) | `claude/t115-puzzles` | Active since 04:02 UTC |
-| T-120 | Teach/correction tickets reach the owner without sign-in (the user): public Apps Script endpoint (execute as owner, anyone), no secrets in client, every field in payload, owner's manual Google steps | T-120 session (`session_01K5kL4ZD9cmscY4bg4HREWm`) | `claude/t120-ticket-delivery` | Active since 04:03 UTC |
+| T-120 | Tickets reach the owner without sign-in | T-120 session (`session_01K5kL4ZD9cmscY4bg4HREWm`) | `claude/t120-ticket-delivery` @ 53bdcab | [R] in PR #189 (v218). Live only after the owner deploys the Apps Script and the /exec URL goes in ticket-config.js |
 | T-121 | Duel on mobile: the loop ("unlock the loop") button missing; make it visible and tappable | T-121 session (`session_01K5kL4XSdwKoTCAt2tnSATL`) | `claude/t121-duel-loop-button` | Active since 04:03 UTC |
-| T-122 | Timing engine audit vs. the Comprehensive Rules (the user): phase 1 audit doc + report, MAIN's go, then fixes with CR-cited tests | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` | Active (phase 1) since 04:03 UTC |
-| T-123 | Tutorial replay on the real default tabletop from seeded states through the real engine (the user) | T-123 session (`session_01K5kL4ZX6se17TgCAFfhACk`) | `claude/t123-tutorial-real-table` | Active since 04:03 UTC |
+| T-122 | Timing audit | T-122 session (`session_01K5kL4Xj9s2zPfWBcUnFCcS`) | `claude/t122-timing-audit` @ c84c8c5 | Phase 1 [R] docs/TIMING-AUDIT.md; Phase 2 GO 04:15 UTC: extra-turn cap, per-combat triggers, SBA between damage steps, delayed end step, small batch |
+| T-123 | Simulate Sample games replay on the real Practice table (user's option A) | T-123 session (`session_01K5kL4ZX6se17TgCAFfhACk`) | `claude/t123-tutorial-real-table` | Active |
 | T-118 | Engine fixes (the user): Mana Tithe, Consultation naming, loops by hand (Monoliths), Port Razer | Card teaching 8 | `claude/card-teaching` @ 211f1b0 | [V] Verified v217 (PR #186). Other loop pieces (Rings, Pili-Pala, Scepter) still autopilot-only |
 | T-116 | New Drive deck Winota | Deck Brackets 3 | `claude/deck-brackets` | [V] Verified v215 (PR #184): B4 |
 | T-115 | Puzzle redesign | T-115 session (`session_01K5kL4XN94u2se8TohNFWQ2`, idle) | `claude/t115-puzzles` | [V] v214; T-117 [V] v216 |

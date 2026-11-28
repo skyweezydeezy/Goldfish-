@@ -7,7 +7,7 @@ Each area: its own task, behind an option until it passes, then on by default. G
 
 | # | Area | CR | State |
 |---|---|---|---|
-| 1 | Targets chosen on cast/activation, checked again on resolution; a spell or ability whose every target is illegal doesn't resolve | 601.2c, 602.2b, 608.2b | queued (T-132), after v225 |
+| 1 | Targets for triggered and activated abilities chosen when they go on the stack, checked again on resolution (spells already do this: T-072, v197) | 602.2b, 603.3d, 608.2b | queued (T-132), after v225 |
 | 2 | The remaining abilities onto the stack: loyalty, equip, cycling/channel, hand/command-zone abilities, sacrifice outlets, autopilot-only routines | 602, 606, 702.6, 702.29 | planned |
 | 3 | Layer system for continuous effects, with timestamps and dependency | 613 | planned |
 | 4 | Replacement and prevention effects; the affected player chooses the order | 614-616 | planned |

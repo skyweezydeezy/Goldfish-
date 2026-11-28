@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] Ranking start (user, 2026-11-28): as soon as T-127 stage 6 is live, MAIN starts the re-bracket check of all built-in decks and then the 300/pair ranking run (T-126) without asking again.
 - [V] Sessions (2026-11-28 07:25 UTC): archived T-130, T-121, T-123, T-120, Card teaching 12 and the T-115 puzzle session (all work live). Active: MAIN, Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`, T-127 stages 3-6), Card teaching 13 (Teach), Deck Brackets 3 (ranking run after stage 6), T-110 (UI health), Drive watcher. The T-122 session is archived once stage 3 merges.
 - [V] MAIN (2026-11-28 05:22 UTC), T-127 design (docs/PRIORITY-DESIGN.md @ 8057f2d) accepted: cast triggers resolve before the spell (CR 603.3, the user's rules-first constraint); names question kind 'priority', opts.autoPass ('smart'), table.stack, priorityRound, autoRespond; one engine session per stage, a UI session for the priority sheet after stage 1; stages 0+1 GO (no behaviour change, bench within +20%).
 - [V] The user (2026-11-28 04:40 UTC): ranking = one pass of 300 matches per pair (~413k, ~3.9 CPU-h), no top-ups; overlapping decks show a rank range (ties) instead of an exact order. (MAIN's earlier 500k top-up estimate was wrong: neighbours are ~1 pt apart, top-ups would reach ~1.6M.)

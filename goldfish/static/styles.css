@@ -1514,3 +1514,5 @@ body.tfocus .vs-me .row:has(.vs-block-go), body.tfocus .vs-me > .row:last-child 
   .topbar { flex-wrap: wrap; }
   .tabs { order: 4; flex-basis: 100%; }
 }
+.replay-ctl { align-items: center; gap: 8px; margin-top: 8px; }
+.replay-turn { min-width: 96px; text-align: center; font-weight: 600; }

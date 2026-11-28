@@ -50,6 +50,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [V] Sessions (2026-11-28 10:52 UTC): T-110 archived (work live in v225). New: T-131 fuzzy rules `session_01K5kL4VXstP7B9p1WJaVHvU` (claude/t131-fuzzy-rules); T-133 iPhone Duel bar width + tune.test cap `session_01K5kL4WQAKjGVM4hR6jeABs` (claude/t133-bar-width). Deck Brackets 3 assigned the new Drive deck Rules Lawyers [B4] (Winota) with the bracket check. Priority 2: stage 6 UI fixes, then T-132.
 - [V] Rules roadmap (user, 2026-11-28): after T-127, work through docs/briefs/rules-roadmap.md one area at a time ("continue ... until we ingest and apply all rules properly"). Next: T-132 targets for triggered/activated abilities when put on the stack (602.2b/603.3d/608.2b; spells already lock targets on cast since T-072, v197), after v225 is live. Each area changes results a little, so the ranking (T-126) shows the version it was run on.
 - [V] Copyright (user, 2026-11-28): all-rights-reserved LICENSE, holder SWD Marketing ("Licensed to SWD Marketing"), branch `claude/license` @ 084bed6; also in index.html and the version pill title. Repo stays public (update.py and Pages need it).
 - [R] v225 (stage 6) UI run (2026-11-28 ~10:00): engine 283 ok, sweep bad 0, but UI fails: priority (toggle test), timeouts in atraxa-end, commander-rule, decisions, duel-floating, fetch, imprint, ipad-card-tap, proliferate-choice, rift, ring (+ remote-mobile, already on live). Sent back to Priority 2.
@@ -120,6 +121,7 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 225** (2026-11-28 10:47 UTC): PR #197, 4/4 + Pages green: copyright LICENSE (SWD Marketing) + T-110 UI test health (supersedes PR #187, closed). Engine 283 ok; 21 UI files ok except remote-mobile (live bug, T-133). Stage 6 (full priority) moves to v226.
 - [V] **Version 224** (2026-11-28 09:10 UTC): PR #196, 4/4 + Pages green: T-127 stages 4-5 (off by default). Suite 283, sweep bad 0, UI priority/decisions/versus/versus-fit.
 - [V] **Version 223** (2026-11-28 08:34 UTC): PR #195, 4/4 + Pages green: T-127 stage 3 (off by default). Suite 281, sweep bad 0, UI priority/decisions/versus/versus-fit. One engine job hit tune.test.js's 300 s cap (275 s locally; the other engine run passed the same commit); passed on its single re-run. Open: tune.test.js runs close to its cap.
 - [V] **Version 222** (2026-11-28 07:18 UTC): PR #194, 4/4 + Pages green: T-127 stages 0-2 (off by default) + T-130 priority sheet. Suite 280, sweep bad 0, 8 UI files (phone-card-tap timed out under load, passed alone 123/123).

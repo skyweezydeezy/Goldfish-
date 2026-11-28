@@ -1,0 +1,15 @@
+# Comprehensive Rules roadmap (after T-127 full priority)
+
+The user (2026-11-28): "Let's continue to revisit this line of thought until we ingest and apply all rules properly as intended."
+Standing direction: after each rules area is live and verified, MAIN takes the next one off this list (asking the user only if the order should change), and goes back over the list until every area matches the Comprehensive Rules.
+
+Each area: its own task, behind an option until it passes, then on by default. Gates as for T-127: option off = fingerprint identical; option on = suite, sweep and full UI green; bench within +20%. Each one reports which results moved, and why.
+
+| # | Area | CR | State |
+|---|---|---|---|
+| 1 | Targets chosen on cast/activation, checked again on resolution; a spell or ability whose every target is illegal doesn't resolve | 601.2c, 602.2b, 608.2b | queued (T-132), after v225 |
+| 2 | The remaining abilities onto the stack: loyalty, equip, cycling/channel, hand/command-zone abilities, sacrifice outlets, autopilot-only routines | 602, 606, 702.6, 702.29 | planned |
+| 3 | Layer system for continuous effects, with timestamps and dependency | 613 | planned |
+| 4 | Replacement and prevention effects; the affected player chooses the order | 614-616 | planned |
+| 5 | Multiplayer APNAP order for triggers and choices (Pod) | 101.4, 603.3b | planned |
+| 6 | Review pass: audit each CR section against the engine again (as T-122 did for timing) and add what's missing to this list | all | planned |

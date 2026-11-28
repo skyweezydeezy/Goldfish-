@@ -268,7 +268,7 @@ const PR = process.env.ISF_PRIORITY === '1';          // T-127: the whole suite 
   const run = gs => G.combat(gs[1]);
   let s = mk(true); const { q, still } = open(s.p, run);
   check('when an opponent attacks, a person is asked whether to cast an instant now (the autopilot\'s pick is the default)', !!q && (PR ? q.kind === 'priority' : q.kind === 'instant' && /attacks: cast an instant/.test(q.title)) && q.options.some(o => o.name === 'Swords to Plowshares') && q.none === (PR ? 'Pass' : 'Not now') && (PR || q.def.length === 1) && still, q && q.title);
-  answer(s.p, run, PR ? [() => 'none', () => 'none'] : [() => 'none']);          // with the priority rules on (ISF_PRIORITY=1) the beginning of combat asks first, then the attack
+  answer(s.p, run, PR ? [1, 2, 3, 4, 5, 6].map(() => () => 'none') : [() => 'none']);          // with the priority rules on (ISF_PRIORITY=1) the beginning of combat asks first, then the attack
   check('..."Not now": the instant stays in hand and the attack goes on', s.a.hand.includes(s.sw) && s.a.life < 40, s.a.life);
   s = mk(true); answer(s.p, run, [qq => qq.options.findIndex(o => o.name === 'Swords to Plowshares')]);
   check('...cast it: the attacker is exiled before damage', s.a.graveyard.includes(s.sw) && !s.b.battlefield.includes(s.gt) && s.a.life === 40, s.a.life);

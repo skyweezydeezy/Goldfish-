@@ -56,6 +56,7 @@ const KEY = 'isf_puzzle2';
   // T-134: a tap opens the card; a card with one action still opens, with that one button; the tap that opened it cannot press it; a card with nothing to do is for reading
   await p.click('.pz-card[data-name="Mountain"]'); await p.waitForSelector('#lightbox.show .lb-act');
   check('a tap on a card in hand opens it in the viewer with its one action as a button (and nothing was played)', await p.$$eval('#lightbox .lb-act', xs => xs.length === 1 && /^Play Mountain/.test(xs[0].textContent)) && await p.$$eval('.pz-card', xs => xs.length) === 7);
+  check('the viewer from a puzzle keeps the buy links, the printings and the rules lines beside the action', await p.$$eval('#lightbox .lb-shop a', xs => xs.length >= 3 && xs.some(a => /tcgplayer/.test(a.href)) && xs.some(a => /cardkingdom/.test(a.href)) && xs.some(a => /manapool/.test(a.href))) && await p.$('#lightbox .lb-prints') !== null);
   await p.$eval('#lightbox .lb-act', b => b.click()); await p.waitForTimeout(100);
   check('the ghost-tap guard: a press within 350 ms of opening does nothing', await p.$eval('#lightbox', e => e.classList.contains('show')) && await p.$$eval('.pz-card', xs => xs.length) === 7);
   await p.keyboard.press('Escape'); await p.waitForTimeout(100);

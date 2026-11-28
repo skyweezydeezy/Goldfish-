@@ -1,6 +1,6 @@
 # T-127 design note: a real priority loop and one stack (CR 117, 405, 601-608)
 
-Status: **design only, waiting for MAIN's go.** Author: the T-122 TASK session. Base: default branch at Version 219.
+Status: **design accepted by MAIN; stages 0+1 built on `claude/t127-stack-0-1` (see section 11).** Author: the T-122 TASK session. Base: default branch at Version 219.
 Everything about today's engine below was read in the code (function names are the anchors); nothing in the engine is changed by this note.
 Numbers for speed come from `node tools/bench.js` run on this base.
 
@@ -180,3 +180,18 @@ never reaches the live site.
    (the default pass keeps the page working).
 7. Estimated size: stage 0-1 are small; stage 2 is the bulk (castCard0 split plus every response path); stage 4 is the longest.
    Suggested owners: one engine session per stage in order (they all edit `sim.js`), a UI session for the sheet after stage 1.
+
+## 11. Stages 0+1: what was built (and where it differs from sections 2-8)
+
+- `tableOf(g)` / `tableStack(g)`: one stack per table (`g.match.stack`, or `g.stack` in a goldfish game). `castCard` pushes `{ kind: 'spell', controller, source, inst, seq }`
+  and removes it when the cast ends; `settle` puts triggers there as `{ kind: 'triggered', controller, ... }` and works above its own `base`, so a nested call never pops what
+  is under it. `stackView` reads it (same output). The old `spellStack` / `stackItems` are gone; `trigQ` stays as the list of triggers that wait to go on the stack.
+  `cloneState` gives a rehearsal its own empty stack; `decide.js`'s `clonePod` already deep-copies it.
+- **Difference:** `g.pendingSpell` was **not** turned into a getter in stage 0. It is still set and cleared by `tryCounter`; it is replaced when the response paths move in stage 2.
+- `priorityRound(g, step, ev)`, `priorityPlayers`, `wantsPriority`, `priorityAct`: off unless `opts.priority`; skipped at once when nobody is seated (the fast path); only
+  when the stack is empty; a seated person with something to cast or use is asked (kind `priority`, default Pass), acts, and gets priority again.
+  Hooks (inert by default): end of upkeep, end of draw, end of each main phase (once per turn per player), beginning of combat, after blockers, after damage, end of combat.
+  Not hooked yet (the old windows still serve them, so they would ask twice): declare attackers (`instantWindow 'combat'`) and the end step (`instantWindow 'end'`).
+- `opts.autoPass`: `'smart'` (default: own turn at the beginning of combat, blockers, end of combat; another player's turn also at upkeep, main, damage), `'stops'` (`opts.stops`), `'never'`, `'always'`.
+- `decide.js`: question kind `priority` (title, text, "Pass"). The UI sheet is the UI session's task; the generic list of options works as for `instant`.
+- `tools/every-default-sweep.js`: `PRIORITY=1` runs the sweep with `opts.priority` and `autoPass: 'never'`.

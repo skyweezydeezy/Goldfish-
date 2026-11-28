@@ -8216,14 +8216,33 @@
         case 'emblem': (g.emblems = g.emblems || []).push(Object.assign({ p: f.p, t: f.t, keywords: f.keywords || [], types: f.types }, f.filter ? { filter: f.filter } : {})); touch(g); ev.push({ type: 'note', text: f.types ? `Emblem: your ${f.types.join(', ')}s have ${f.keywords.join(', ')}` : `Emblem: creatures you control get +${f.p}/+${f.t}${f.keywords && f.keywords.length ? ' and ' + f.keywords.join(', ') : ''}`, source }); break;          // filter: rules batch 55 (Kaito's Ninjas)
         case 'proliferate': {                                            // CR 701.34: choose any permanents and/or players with a counter; each gets one more of each kind already there
           // the permanents with a counter, yours and (a pod: every) opponent's. The autopilot takes all of its own and an opponent's only when it is shrunk by -1/-1 counters;
-          // a person chooses among them all (T-087)
+          // a person chooses among them all (T-087), players with counters too (T-128): poison on the opponent, your experience / energy / rad, an opponent's rad
           const list = []; for (const o of [g].concat(g.opp && !g.dry ? otherPlayers(g) : [])) for (const p of o.battlefield) if ((p.counters || 0) !== 0 || p.card.a.isPlaneswalker || Object.keys(p.other || {}).length) list.push({ o, p });
           const good = x => x.o === g || (x.p.counters || 0) < 0;
-          let only = null;
-          if (g.ask && !g.dry && list.length) only = decide(g, { kind: 'target', what: 'proliferate', options: list.map(x => x.p), def: list.filter(good).map(x => x.p), multi: true, pick: list.length, upTo: true, source });          // a person chooses which permanents
+          let only = null, plist = [];
+          if (g.ask && !g.dry) {
+            const mine = []; for (const [k, v] of [['experience', g.experience], ['energy', g.energy], ['rad', g.rad]]) if (v > 0) mine.push([k, v]);
+            if (mine.length) plist.push({ prolPlayer: true, o: g, kinds: mine, def: false });          // unchecked: the autopilot leaves them alone, and a person's defaults are its pick (the sweep)
+            if ((g.poisonDealt || 0) > 0) plist.push({ prolPlayer: true, o: null, kinds: [['poison', g.poisonDealt]], def: true });
+            for (const o of (g.opp ? otherPlayers(g) : [])) if (o.rad > 0) plist.push({ prolPlayer: true, o, kinds: [['rad', o.rad]], def: false });
+          }
+          if (g.ask && !g.dry && (list.length || plist.length)) {
+            const opts = list.map(x => x.p).concat(plist);
+            only = decide(g, { kind: 'target', what: 'proliferate', options: opts, def: list.filter(good).map(x => x.p).concat(plist.filter(x => x.def)), multi: true, pick: opts.length, upTo: true, source });          // a person chooses which permanents and players
+          }
           const done = [];
           for (let pk = 0; pk < (bfInfo(g).prolifTwice ? 2 : 1); pk++) {
-            if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) { addPoison(g, 1, ev, source, 'Proliferate'); if (!done.includes('poison counters')) done.push('poison counters'); }
+            if (only) {
+              for (const pe of plist) {
+                if (!only.includes(pe)) continue;
+                for (const [k] of pe.kinds) {
+                  if (k === 'poison') { if (g.killTurn == null && !matchOver(g)) addPoison(g, 1, ev, source, 'Proliferate'); }
+                  else if (k === 'rad') addRad(pe.o, 1, ev, source);
+                  else applyEffects(g, [{ type: k }], source, ev, null);
+                  if (!done.includes(k + ' counters')) done.push(k + ' counters');
+                }
+              }
+            } else if ((g.poisonDealt || 0) > 0 && g.killTurn == null && !matchOver(g)) { addPoison(g, 1, ev, source, 'Proliferate'); if (!done.includes('poison counters')) done.push('poison counters'); }
             for (const x of list) {
               const p = x.p, o = x.o;
               if (!o.battlefield.includes(p) || (only ? !only.includes(p) : !good(x))) continue;

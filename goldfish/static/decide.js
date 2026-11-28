@@ -164,7 +164,7 @@
     return: ['return a creature to your hand', 'Choose a creature you control to return to its owner\'s hand.'],          // Whitemane Lion, Shrieking Drake
     skate: ['double the counters', 'Choose any number of your permanents with counters: each kind of counter on them is doubled.'],
     flickerwisp: ['exile another permanent', 'Choose a permanent to exile. A card of yours returns at the beginning of the next end step; a token is gone for good.'],
-    proliferate: ['proliferate', 'Choose any number of your permanents with counters: each gets another counter of each kind already there.'],
+    proliferate: ['proliferate', 'Choose any number of permanents and players with counters (none is fine): each gets another counter of each kind already there. The kinds on one permanent or player can\'t be split: all of them grow.'],
     untap: ['untap what?', 'Choose the permanent to untap.'],
     tap: ['tap what?', 'Choose the permanent to tap.'],
     fiendhunter: ['exile which creature?', 'Choose the creature to exile until Fiend Hunter leaves the battlefield.'],
@@ -223,8 +223,11 @@
       else if (d.kind === 'x' && d.what === 'prelate') { item.name = 'Number ' + o; item.note = 'noncreature spells with mana value ' + o + ' can\'t be cast'; }
       else if (d.kind === 'x') { item.name = 'X = ' + o; item.note = o === opts[opts.length - 1] ? 'all the mana you can pay' : ''; }
       else if (d.kind === 'tribe') { item.name = o; const n = (d.counts || {})[o] || 0; item.note = (o === d.learned ? (d.spellAsk ? 'the autopilot\'s pick · ' : 'learned · ') : '') + (n ? `${n} creature card${n === 1 ? '' : 's'}${d.spellAsk ? ' in your graveyard' : ''}` : 'named by your cards'); }
+      else if (d.what === 'proliferate' && o && o.prolPlayer) { item.name = o.o === g ? 'You' : o.o && m && m.names ? m.names[o.o.pid] : 'Opponent'; item.note = o.kinds.map(([k, n]) => k + ' ×' + n).join(' · '); item.owner = o.o && o.o !== g ? o.o.pid : null; }          // T-128: a player's counters
       else {
         item.name = o.card.name; item.card = o.card; item.iid = o.iid;
+        if (d.what === 'proliferate') { const w = owner(o), cl = []; if (o.counters) cl.push((o.counters > 0 ? '+1/+1' : '-1/-1') + ' ×' + Math.abs(o.counters)); if (o.loyalty > 0) cl.push('loyalty ×' + o.loyalty); for (const k of Object.keys(o.other || {})) if (o.other[k]) cl.push(k + ' ×' + o.other[k]); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', cl.join(' · ')].filter(Boolean).join(' · '); }
+        else
         if (d.what === 'graveyard') { item.note = [d.theirs && d.theirs.has(o) ? "in another player's graveyard" : '', (o.card.type_line || '').split(' — ')[0]].filter(Boolean).join(' · '); }
         else if (d.kind === 'target' || d.kind === 'sacrifice' || d.kind === 'legend') { const w = owner(o); item.owner = w.pid; item.note = [w !== g && m && m.names ? m.names[w.pid] : '', ptOf(w, o), o.counters ? (o.counters > 0 ? '+' : '') + o.counters + ' counters' : '', o.token ? 'token' : ''].filter(Boolean).join(' · '); }
       }

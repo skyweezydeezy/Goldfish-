@@ -13692,6 +13692,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     return false;
   }
 
+  const EXTRA_TURN_LIMIT = 40;          // CR 500.7: a player takes every extra turn they have, one after another; this only stops a loop that makes one for ever
   function playTurn(g) {
     const ev = beginTurn(g);
     const le = matchOver(g) ? null : landStep(g);                                                          // won at the upkeep or the draw step: nothing more is played
@@ -13708,7 +13709,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   function simulate(deck, opts, seed) {
     const g = newGame(deck, opts, seed);
     mulligan(g);
-    for (let t = 0; t < opts.turns; t++) { playTurn(g); for (let k = 0; g.extraTurns > 0 && k < 3; k++) { g.extraTurns--; playTurn(g); } }
+    for (let t = 0; t < opts.turns; t++) { playTurn(g); for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT; k++) { g.extraTurns--; playTurn(g); } }
     return g;
   }
 
@@ -15217,7 +15218,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         const tev = playTurn(g);
         if (hook) hook(g, t, tev);
         if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;          // Stranglehold: an extra turn is skipped
-        for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null; k++) { g.extraTurns--; const e2 = playTurn(g); if (hook) hook(g, t, e2); }
+        for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT && m.winner == null; k++) { g.extraTurns--; const e2 = playTurn(g); if (hook) hook(g, t, e2); }
         if (m.winner == null && g.library.length === 0 && g.hand.length === 0) m.winner = g.opp.pid;       // nothing left to draw
       }
     }
@@ -15438,7 +15439,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ev = playTurn(g);
     if (hook) hook(g, ev);
     if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;
-    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
+    for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); const e2 = playTurn(g); if (hook) hook(g, e2); ev.push(...e2); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
   }
@@ -15455,7 +15456,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     const ev = [], m = g.match;
     if (!matchOver(g)) ev.push(...combat(g)); if (!matchOver(g)) ev.push(...postCombat(g)); ev.push(...endTurn(g));
     if (g.extraTurns > 0 && othersPerms(g).some(({ q }) => q.card.a.skipExtra)) g.extraTurns = 0;
-    for (let k = 0; g.extraTurns > 0 && k < 3 && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
+    for (let k = 0; g.extraTurns > 0 && k < EXTRA_TURN_LIMIT && m.winner == null && !g.dead; k++) { g.extraTurns--; podFocus(g); ev.push(...playTurn(g)); }
     if (m.winner == null && !g.dead && g.library.length === 0 && g.hand.length === 0) eliminate(g, null, ev, 'empty');
     return ev;
   }

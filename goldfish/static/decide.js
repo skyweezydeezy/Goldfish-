@@ -140,6 +140,7 @@
   // pick, how many may be chosen. Returns null when there is nothing to choose between.
   // titles and help for the targets of activated abilities (G.abilityMenu): what -> [title, text]
   const TARGET_WORDS = {
+    steal: ['gain control of which creature?', 'Choose a creature an opponent controls with mana value equal to X: you gain control of it (for good). It is chosen as the spell is cast.'],
     gate: ['exile a card from a graveyard', 'Choose a card from any graveyard to exile. Whenever a player plays a land or casts a spell that shares a card type with it, that player takes 2 damage.'],
     needle: ['name a card', 'Choose a nonland card name: activated abilities of sources with that name can\'t be activated. The permanents with an activated ability on the table are listed.'],
     breath: ['attach Breath of Fury to which creature?', 'The enchanted creature is sacrificed: choose another creature you control to enchant. Then untap all your creatures and there is an additional combat phase.'],

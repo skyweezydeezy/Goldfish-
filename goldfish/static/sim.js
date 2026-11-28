@@ -7328,7 +7328,11 @@
         case 'stealOne': if (g.opp) {          // Agent of Treachery, Entrancing Melody (mana value X), Thieving Skydiver (kicked: an artifact with mana value X or less)
           const X = f.mvX ? 1 + ((g.lastCast && g.lastCast.extraX) || 0) : f.kickX ? ((source && source.inst && source.inst.kickX) || (g.lastCast && g.lastCast.kicked && g.lastCast.kickX) || 0) : null;
           if (f.kickX && !(X > 0)) break;
-          const t = stealPick(g, g.opp, f, X); if (!t || answered(g, t, 'exile', source, ev)) break;
+          const L = lockRec || !f.mvX ? null : tgtLock(g, f); let t;
+          if (L) { t = L.t; if (!(t && lockLegal(g, t, f) && (t.card.a.mv || 0) === X)) { ev.push({ type: 'note', text: `${t ? t.card.name + ' is no longer a legal target' : 'No target'}: the spell does nothing`, source }); break; } }          // CR 608.2b: still a creature of theirs with mana value X
+          else { t = stealPick(g, g.opp, f, X); if (f.mvX && g.ask && !g.dry) { const opts = g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q) && !q.card.commander && (q.card.a.mv || 0) === X); if (opts.length) t = decide(g, { kind: 'target', what: 'steal', options: opts, def: t || opts[0], source }) || t; } }          // a person chooses among the creatures with mana value X, as the spell is cast (locked)
+          if (lockRec) { if (t) { lockRec.map.set(f, { t }); lockRec.taken.add(t); } break; }
+          if (!t || answered(g, t, 'exile', source, ev)) break;
           stealPerm(g, t, ev, false); if (f.kickX && t.card.a.isEquipment && source && g.battlefield.includes(source)) t.attachedTo = source.iid;
         } break;
         case 'firestorm': if (g.opp) {          // Firestorm: X damage to each of X targets (the discards were paid as it was cast)
@@ -9982,8 +9986,9 @@
       for (let e = 0; e <= 40; e++) { inst.extraX = e; if (canPay(effectiveCost(g, inst), allUnits(g))) top = e; else break; }
       inst.extraX = was;
       if (top >= 0) {
-        const xs = []; for (let x = 1; x <= top + 1; x++) xs.push(x);
-        const def = Math.min(top + 1, 1 + (was == null ? top : was));
+        let xs = []; for (let x = 1; x <= top + 1; x++) xs.push(x);
+        if (g.opp && inst.card.a.spellFx.some(f => f.type === 'stealOne' && f.mvX)) { const mvs = new Set(g.opp.battlefield.filter(q => isCreaturePerm(q) && targetable(g.opp, q) && !q.card.commander).map(q => q.card.a.mv || 0)); const fx2 = xs.filter(x => mvs.has(x)); if (fx2.length) xs = fx2; }          // Entrancing Melody: only a value some creature of theirs has (the target is chosen next)
+        let def = Math.min(top + 1, 1 + (was == null ? top : was)); if (!xs.includes(def)) def = xs[xs.length - 1];
         inst.extraX = decide(g, { kind: 'x', options: xs, def, source: inst, less: g.xCastTurn !== g.turn && bfInfo(g).xDiscount ? bfInfo(g).xDiscount.reduce((t, z) => t + Math.max(0, z.counters || 0), 0) : 0 }) - 1;
       }
     }
@@ -14265,7 +14270,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   let lockRec = null;                                          // { map: effect -> { t, face, none }, taken: Set } while targets are being chosen
   const LOCKS = new WeakMap(), PENDING = new WeakMap();        // game -> locks in force while its spell resolves; spell instance -> locks (for the counter question)
   const tgtLock = (g, f) => { const m = LOCKS.get(g); if (!m || !m.map.has(f)) return undefined; const L = m.map.get(f); m.map.delete(f); return L; };          // used once
-  const lockable = f => f.type === 'striveCopy' || f.type === 'earthbend' || f.type === 'airbend' || (f.type === 'removal' ? !f.noTarget : f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'divideDamage' || (f.type === 'threaten' && !f.each) || (f.type === 'tapOpp' && f.what !== 'all') || (f.type === 'damage' && !!f.any && !f.multi));
+  const lockable = f => f.type === 'striveCopy' || f.type === 'earthbend' || f.type === 'airbend' || (f.type === 'removal' ? !f.noTarget : f.type === 'bounce' || f.type === 'burnCreature' || f.type === 'divideDamage' || (f.type === 'threaten' && !f.each) || (f.type === 'tapOpp' && f.what !== 'all') || (f.type === 'stealOne' && !!f.mvX) || (f.type === 'damage' && !!f.any && !f.multi));
   const holderOf = (g, t) => (isPod(g) ? g.match.players : [g, g.opp]).find(x => x && x.battlefield.includes(t));
   // CR 608.2b: the target must still be on the battlefield, of the right kind and not hexproof / shroud / protected now
   function lockLegal(g, t, f) {

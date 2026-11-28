@@ -106,7 +106,7 @@ function loadAll() {
 }
 
 // ---------- worker: one job at a time ----------
-if (!isMainThread) {
+if (!isMainThread && !(workerData && workerData.external)) {          // workerData.external: tools/rank-field.js runs its own worker and only borrows loadAll()
   const { G, decks } = loadAll();
   parentPort.on('message', job => {
     let out;
@@ -370,6 +370,8 @@ function report() {
   fs.writeFileSync(md, text); console.log('Wrote the table into', path.relative(ROOT, md));
 }
 
-if (require.main !== module) module.exports = { RULES, GAME_CHANGERS, BRACKET_NAME, cardRules, speedBracket, medianTurn, loadAll, OUT };
+module.exports = { RULES, GAME_CHANGERS, BRACKET_NAME, cardRules, speedBracket, medianTurn, loadAll, OUT };
+if (require.main !== module) { /* required by a test or by tools/rank-field.js: exports only */ }
+else if (process.argv.includes('--rank')) require('./rank-field.js');          // node tools/verify-brackets.js --rank ...: the adaptive round robin (T-126)
 else if (process.argv.includes('--merge')) merge(process.argv.slice(2).filter(a => !a.startsWith('--')));
 else if (process.argv.includes('--apply')) apply(); else if (process.argv.includes('--report')) report(); else simulate().catch(e => { console.error(e); process.exit(1); });

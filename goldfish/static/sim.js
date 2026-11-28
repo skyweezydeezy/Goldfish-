@@ -5850,7 +5850,7 @@
     return true;
   }
   function priorityRound(g, step, ev, over) {          // over: an object waits on the stack (a trigger, between two resolutions): over = { controller, text }
-    if (!g.opts.priority || g.dry || matchOver(g) || (tableStack(g).length && !over)) return 0;          // off, a rehearsal, or something is still on the stack (stage 2 resolves those)
+    if (!g.opts.priority || g.dry || matchOver(g) || (!g.opp && !g.match) || (tableStack(g).length && !over)) return 0;          // a lone goldfish game has nobody to answer: no rounds (the Table page's auto-play would stop at every step)          // off, a rehearsal, or something is still on the stack (stage 2 resolves those)
     const ps = priorityPlayers(g);
     // T-127 stage 5: after blockers and after damage the autopilot defender acts through the loop (its instant-speed play, as in instantWindow); a seated defender's default is that same pick
     const dfn = !over && (step === 'blockers' || step === 'damage') && g.opp && !g.opp.dead && g.activeTurn !== false ? g.opp : null;

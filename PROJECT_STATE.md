@@ -49,6 +49,7 @@ Firm requirements. The user's own wording is in `CLAUDE.md`; this is the list, n
 
 ## 2. Architecture and accepted decisions
 
+- [R] Open from T-110 (2026-11-28 08:54): (1) LIVE regression: remote Duel on iPhone upright, the step strip (159f639, T-095) makes the bar wider than 375 px; playmat/sound/help reachable only by side-scroll; remote-mobile.ui.js fails on live. Needs a layout fix (no test change). (2) step-strip.ui.js iPad Practice once got [combat,main2] (race, passed on rerun). (3) tune.test.js 275 s vs 300 s cap. PR #187 (T-110 tests) ready, merge after v225. Assign (1) and (3) after v225 is live.
 - [V] Ranking start (user, 2026-11-28): as soon as T-127 stage 6 is live, MAIN starts the re-bracket check of all built-in decks and then the 300/pair ranking run (T-126) without asking again.
 - [V] Sessions (2026-11-28 07:25 UTC): archived T-130, T-121, T-123, T-120, Card teaching 12 and the T-115 puzzle session (all work live). Active: MAIN, Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`, T-127 stages 3-6), Card teaching 13 (Teach), Deck Brackets 3 (ranking run after stage 6), T-110 (UI health), Drive watcher. The T-122 session is archived once stage 3 merges.
 - [V] MAIN (2026-11-28 05:22 UTC), T-127 design (docs/PRIORITY-DESIGN.md @ 8057f2d) accepted: cast triggers resolve before the spell (CR 603.3, the user's rules-first constraint); names question kind 'priority', opts.autoPass ('smart'), table.stack, priorityRound, autoRespond; one engine session per stage, a UI session for the priority sheet after stage 1; stages 0+1 GO (no behaviour change, bench within +20%).
@@ -114,6 +115,7 @@ Accepted decisions:
 
 ## 3. Latest verified version
 
+- [V] **Version 224** (2026-11-28 09:10 UTC): PR #196, 4/4 + Pages green: T-127 stages 4-5 (off by default). Suite 283, sweep bad 0, UI priority/decisions/versus/versus-fit.
 - [V] **Version 223** (2026-11-28 08:34 UTC): PR #195, 4/4 + Pages green: T-127 stage 3 (off by default). Suite 281, sweep bad 0, UI priority/decisions/versus/versus-fit. One engine job hit tune.test.js's 300 s cap (275 s locally; the other engine run passed the same commit); passed on its single re-run. Open: tune.test.js runs close to its cap.
 - [V] **Version 222** (2026-11-28 07:18 UTC): PR #194, 4/4 + Pages green: T-127 stages 0-2 (off by default) + T-130 priority sheet. Suite 280, sweep bad 0, 8 UI files (phone-card-tap timed out under load, passed alone 123/123).
 - [V] **Version 221** (2026-11-28 06:26 UTC): PR #193, 4/4 + Pages green: T-122 timing fixes 1-5, T-128 proliferate choices, T-129 crisp strip (needs the user's iPhone check). Suite 277, sweep bad 0.
@@ -257,7 +259,7 @@ States: Planned → Active → Reported → Accepted → Integrated → Verified
 | T-106 | Spacing setting removed: Standard only (the user) | MAIN | `claude/t106-standard-spacing` @ 6e97ae9 | [I] In the v207 batch (PR #175) |
 | T-107 | Pre-teach popular cards (the user): rules batches 84+ pick the EDHREC top ~2,000 by play rate, every unread/partial/false-ok line; running list docs/PRETEACH.md | Card Rules Engine 9 | `claude/engine-rules` | After T-098 rebase and T-101 |
 | T-126 | Ranking: one pass 300/pair, rank ranges on ties; Rank sort + win % in menus | Deck Brackets 3 | `claude/deck-brackets` @ 2e81f88 (+ single-pass update) | Tooling [R]; run held for T-122/T-127 |
-| T-127 | Full priority loop and stack | Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`) from docs/agents/PRIORITY.md | `claude/t127-stack-3` @ 40368cb -> stages 4-6 | Stages 0-2 [V] v222; stage 3 [V] v223; stage 4 [R] `claude/t127-stack-4` @ 4f4266b (bench +14.6% OFF); stages 5-6 active |
+| T-127 | Full priority loop and stack | Priority 2 (`session_01K5kL4X9kBh8mMDZ2MUAbap`) from docs/agents/PRIORITY.md | `claude/t127-stack-3` @ 40368cb -> stages 4-6 | Stages 0-2 [V] v222; stage 3 [V] v223; stages 4-5 [V] v224; stage 6 [R] `claude/t127-stack-6` @ 3d09cf3 (default ON, bench +11.8%, fingerprint moves: pods up to 3/40, goldfish kill turn same 174/175) -> v225 testing (full UI) |
 | T-130 | Priority sheet UI + Stop to respond | T-130 session (archived) | `claude/t130-priority-ui` @ 4493ef8 | [V] Verified v222 |
 | T-128 | Proliferate choices (CR 701.27) | Card teaching 12 (`session_01K5kL4Wdn7n4sDuMvmXwWaf`) | `claude/t128-proliferate` @ 2cba7fb (PR #191 draft) | [V] Verified v221 |
 | T-129 | Blurry strip: .panel.active fade fill-mode both -> backwards (WebKit soft layer) | T-121 session | `claude/t121-duel-loop-button` @ 579f423 | [V] Verified v221; user confirmed sharp on iPhone (v222) |

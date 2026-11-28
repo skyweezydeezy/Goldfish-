@@ -573,6 +573,7 @@
     [/^at the beginning of (?:your|each) upkeep,?\s*/i, ['upkeep']],
     [/^at the beginning of (?:your|each) draw step,?\s*/i, ['upkeep']],
     [/^at the beginning of combat on your turn,?\s*/i, ['combat']],
+    [/^at (?:the )?end of combat(?: on your turn)?,?\s*/i, ['endCombat']],          // T-127 stage 5: fired when the rule is on (priorityRound's end-of-combat step)
     [/^whenever a creature you control explores,?\s*/i, ['explores']],                                   // Wildgrowth Walker
     [/^at the beginning of each of your postcombat main phases,?\s*/i, ['postcombat']],
     [/^when(?:ever)? ~ leaves the battlefield,?\s*/i, ['leave']],
@@ -5838,7 +5839,8 @@
   function priorityAct(p, pick, ev, step) {          // a person's answer to the priority question: cast the card or use the ability, as a response
     const label = PRIORITY_STEPS[step] || step;
     if (pick.ability) { const r = useAbility(p, pick.p, pick.i); if (!r) return false; ev.push({ type: 'note', text: `${label}: ${pick.card.name}`, source: null }, ...r); return true; }
-    const c = pick.c || pick, was = p.inWindow, wr = p.inResponse, fr = freeNow(p, c) && p.hand.includes(c); p.inWindow = true; p.inResponse = true;
+    const c = pick.c || pick, win = step === 'blockers' || step === 'damage', was = p.inWindow, wr = p.inResponse, fr = freeNow(p, c) && p.hand.includes(c); p.inWindow = true; p.inResponse = !win;          // T-127 stage 5: at the combat steps a card is cast exactly as instantWindow casts it (so a person's default is the autopilot's play)
+    if (win && c.card.a.cost.x && c.extraX == null) c.extraX = Math.max(0, Math.min(20, Math.floor((manaUnits(p).length - (c.card.a.cost.generic + c.card.a.cost.pips.length) + xDiscountNow(p)) / (c.card.a.cost.x || 1))));
     let r = null;
     if (fr) c.freeCast = true;
     try { r = castCard(p, c); } finally { p.inWindow = was; p.inResponse = wr; if (fr) c.freeCast = false; }
@@ -5849,14 +5851,18 @@
   function priorityRound(g, step, ev, over) {          // over: an object waits on the stack (a trigger, between two resolutions): over = { controller, text }
     if (!g.opts.priority || g.dry || matchOver(g) || (tableStack(g).length && !over)) return 0;          // off, a rehearsal, or something is still on the stack (stage 2 resolves those)
     const ps = priorityPlayers(g);
-    if (!ps.some(p => p.ask)) return 0;          // the fast path: nobody who could act
+    // T-127 stage 5: after blockers and after damage the autopilot defender acts through the loop (its instant-speed play, as in instantWindow); a seated defender's default is that same pick
+    const dfn = !over && (step === 'blockers' || step === 'damage') && g.opp && !g.opp.dead && g.activeTurn !== false ? g.opp : null;
+    if (!ps.some(p => p.ask) && !(dfn && !dfn.ask)) return 0;          // the fast path: nobody who could act
     if (step === 'main') { if (PRIO_MAIN.get(g) === g.turn) return 0; PRIO_MAIN.set(g, g.turn); }          // castPhase runs several times in a turn: one round at the end of the main phase
     let acts = 0, passes = 0, i = 0;
     for (let k = 0; k < 40 && passes < ps.length && !matchOver(g); k++) {
       const p = ps[i % ps.length]; let did = false;
-      if (p.ask && !p.dead && wantsPriority(p, over ? over.controller : g, step)) {
+      if (p === dfn && !p.ask) { if (instantWindow(p, ev, step)) acts++; }          // the autopilot defender (instantWindow casts up to four, as in the attackers window)
+      else if (p.ask && !p.dead && wantsPriority(p, over ? over.controller : g, step)) {
         const options = responseCards(p, null).concat(responseAbilities(p));
-        if (options.length) { const pick = decide(p, { kind: 'priority', options, def: null, optional: true, always: true, step, active: over ? over.controller : g, top: over ? over.text : null, topCard: over ? over.card : null }); if (pick) did = priorityAct(p, pick, ev, step); }
+        const def0 = p === dfn ? instantPick(p, step) : null;
+        if (options.length) { const pick = decide(p, { kind: 'priority', options, def: def0 && options.includes(def0) ? def0 : null, optional: true, always: true, step, active: over ? over.controller : g, top: over ? over.text : null, topCard: over ? over.card : null }); if (pick) did = priorityAct(p, pick, ev, step); }
       }
       if (did) { passes = 0; acts++; continue; }          // they act again: they get priority again (CR 117.3c)
       passes++; i++;
@@ -12879,7 +12885,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (rb && attackers.includes(rb) && g.ring.tempts >= 2) { ev.push({ type: 'note', text: `💍 ${rb.card.name} carries the Ring and attacks: loot`, source: rb }); ringLoot(g, ev); }
       let dmg = 0, vsLifelink = 0, psn = 0;
       let hitters = [];
-      if (g.opp && !g.dry) { attackers = answerAttack(g, g.opp, attackers, ev); if (!attackers.length) break; protectLethal(g, g.opp, attackers, ev); instantWindow(g.opp, ev, 'combat'); attackers = attackers.filter(p => g.battlefield.includes(p)); }          // Angel's Grace, Teferi's Protection against a lethal attack          // the defender answers attackers at instant speed
+      if (g.opp && !g.dry) { attackers = autoRespondAttack(g, g.opp, attackers, ev); if (!attackers.length) break; }          // Angel's Grace, Teferi's Protection against a lethal attack          // the defender answers attackers at instant speed
       if (g.opp) { const r = resolveCombatVs(g, attackers, ev); dmg = r.dmg; hitters = r.hitters; if (!g.dry && hitters.length && tableHas(g.opp, 'cabbage')) for (const q of g.opp.battlefield.filter(x => x.card.a.cabbage)) for (let k = 0; k < hitters.length; k++) if (foodsOf(g.opp).length) { sacrificeFoods(g.opp, 1, ev); ev.push({ type: 'note', text: `${q.card.name}: a creature dealt combat damage to its controller, a Food is sacrificed`, source: q }); } vsLifelink = r.lifelink; psn = r.psn || 0; }
       if (g.opp) sba(g, ev);          // combat damage dealt: state-based actions
       else for (const p of attackers) {
@@ -12970,6 +12976,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       if (g.extraCombats > 0) { g.extraCombats--; phases++; }
     }
     endCombatMana(g, ev);
+    if (g.opts.priority && !g.dry) { eachTrigger(g, 'endCombat', ev); settle(g, ev); }          // T-127 stage 5: "at end of combat" triggers (the rule on)
     priorityRound(g, 'endCombat', ev);
     emptyPool(g);          // T-101: the combat phase ends
     return ev;
@@ -14320,6 +14327,7 @@ g.actSeq = (g.actSeq || 0) + 1;
         if (llD > 0) { gainLife(d, llD, ev, null); llD = 0; }
         if (ll > 0 && !matchOver(g)) { gainLife(g, ll, ev, null); ll = 0; }
         settle(g, ev);
+        priorityRound(g, 'damage', ev);          // T-127 stage 5: priority in the first-strike damage step (CR 510.4)
       }
     }
     for (const game of [g, d]) game.battlefield.forEach(p => { p.noDmgBy = false; p.noDmgTo = false; p.outOfCombat = false; });          // damage stays until the cleanup step
@@ -14419,7 +14427,7 @@ g.actSeq = (g.actSeq || 0) + 1;
   }
   // the other player answers a targeted effect: true when nothing more happens (the target is protected, regenerated or indestructible)
   function answered(g, t, kind, source, ev) {
-    const d = g.opp, r = protectOne(g, d, t, kind, ev, source);
+    const d = g.opp, r = autoRespondTarget(g, d, t, kind, ev, source);
     if (!r) return false;
     if (r === 'fizzle' || !d.battlefield.includes(t)) { ev.push({ type: 'note', text: `${t.card.name} is no longer a legal target: the effect does nothing`, source }); return true; }
     if (kind === 'destroy' && (indestructible(d, t) || t.regenShield)) { if (t.regenShield) { t.regenShield = false; t.tapped = true; t.dmg = 0; } ev.push({ type: 'note', text: `${t.card.name} survives`, source }); return true; }
@@ -14539,14 +14547,11 @@ g.actSeq = (g.actSeq || 0) + 1;
     try { r = castCard(me, best); } finally { me.inWindow = false; }
     if (r) ev.push({ type: 'note', text: `${fl.card.name}: flash this turn; cast ${best.card.name} at the end of the other player's turn`, source: null }, ...r);
   }
-  function instantWindow(me, ev, step) {
-    if (!me || me.dry || me.dead || matchOver(me) || !me.opp) return 0;
-    if (step === 'end') flashLandWindow(me, ev);
-    if (pol(me, 'instantTiming') === 'off') return 0;
-    let cast = 0;
-    for (let k = 0; k < 4 && !matchOver(me); k++) {
-      const units = manaUnits(me);
-      let best = null, bs = -Infinity;
+  // T-127 stage 5: the autopilot's own pick for an instant-speed play at a step (interaction first, then the most mana it can use); null when nothing is worth casting
+  function instantPick(me, step) {
+    if (!me || me.dry || me.dead || matchOver(me) || !me.opp || pol(me, 'instantTiming') === 'off') return null;
+    const units = manaUnits(me);
+    let best = null, bs = -Infinity;
       for (const c of me.hand) {
         const a = c.card.a;
         if (!a || a.isLand || a.counter || !instantSpeedFor(me, c.card)) continue;
@@ -14559,6 +14564,16 @@ g.actSeq = (g.actSeq || 0) + 1;
         const sc = (fxs.length ? 20 : 0) + a.castMv;                                                        // interaction first, then the most mana it can use
         if (sc > bs) { bs = sc; best = c; }
       }
+    return best;
+  }
+  function instantWindow(me, ev, step) {
+    if (!me || me.dry || me.dead || matchOver(me) || !me.opp) return 0;
+    if (step === 'end') flashLandWindow(me, ev);
+    if (pol(me, 'instantTiming') === 'off') return 0;
+    let cast = 0;
+    for (let k = 0; k < 4 && !matchOver(me); k++) {
+      const units = manaUnits(me);
+      let best = instantPick(me, step);
       if (me.ask && me.opts.priority && !wantsPriority(me, me.opp, step === 'combat' ? 'attackers' : step)) best = null;          // auto-pass: a seated person who is not asked here passes
       else if (me.ask) {                                                                                       // a person: any instant or flash card they can pay for, the autopilot's pick as the default, or not now
         const opts = peekCards(me.hand, () => me.hand.filter(c => c.card.a && !c.card.a.isLand && !c.card.a.counter && instantSpeedFor(me, c.card) && canPay(effectiveCost(me, c), units)));
@@ -14571,7 +14586,7 @@ g.actSeq = (g.actSeq || 0) + 1;
       let r = null;
       try { r = castCard(me, best); } finally { me.inWindow = false; }
       if (!r) break;
-      ev.push({ type: 'note', text: `On the other player's turn (${step === 'combat' ? 'attackers declared' : 'end step'}): cast ${best.card.name}`, source: null }, ...r);
+      ev.push({ type: 'note', text: `On the other player's turn (${step === 'combat' ? 'attackers declared' : step === 'blockers' ? 'blockers declared' : step === 'damage' ? 'combat damage' : 'end step'}): cast ${best.card.name}`, source: null }, ...r);
       cast++;
     }
     // Teferi, Master of Time: a loyalty ability on the other player's turn too (the autopilot uses it at their end step; a person chooses it on the page)
@@ -15198,6 +15213,15 @@ g.actSeq = (g.actSeq || 0) + 1;
     stackResponses(g, d, inst, ev, ps);
     return ps.gone ? false : tryCounter0(g, inst, ev, by);
   }
+  // T-127 stage 5: the autopilot's answers to an attack in one place: the combat tricks that remove or spoil attackers (answerAttack), the protection against a lethal attack (protectLethal),
+  // then its instant-speed plays at the attackers window (instantWindow). A pure move: the order is the one the attack code used.
+  function autoRespondAttack(g, d, attackers, ev) {
+    attackers = answerAttack(g, d, attackers, ev); if (!attackers.length) return attackers;
+    protectLethal(g, d, attackers, ev); instantWindow(d, ev, 'combat');
+    return attackers.filter(p => g.battlefield.includes(p));
+  }
+  // ...and its answer to a targeted effect (regenerate, protect, sacrifice-to-save: protectOne), called from `answered`
+  const autoRespondTarget = (g, d, t, kind, ev, source) => protectOne(g, d, t, kind, ev, source);
   function tryCounter(g, inst, ev, by) {
     const d = by || g.opp;
     if (inst.card.a.splitSecondSpell) return false;          // split second: nothing can be cast or activated in response
@@ -15719,7 +15743,7 @@ g.actSeq = (g.actSeq || 0) + 1;
     tutorOptions, removalTargets, counterTarget, discardValue, maxHandSize, cleanupDiscard, newPod, podTurn, podTurnPre, podTurnPost, previewAttack, beginCombatOnly,
     postCombatTriggers, chosenOf, COLOR_NAME, chosenFor, deckTribes, cardForTribe, instantSpeedFor, chainVeilState, useChainVeil, loyaltyState, useLoyalty, autoLoyalty, activateLoyalty, landcycleCard, transmuteCard, cycleLands, transmuteTargets, faceChoice, castBackFace, canCastBack, backFaceCost, faceCards,
     dealOpening, keepOpening, mullCost, podFocus, podAlive, podMonteCarlo, podMonteCarloPart, podMonteCarloMerge, podLog, turnSummary, eliminate, canAttack,
-    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, ABIL_STATS, yardCastable, otherAbilities, setChosenColor, autoColor, eachTrigger, bestTribeOnBoard, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
+    parseCost, parseAdd, gyTarget, inLoop, sba, unlegendary, stackView, abilityMenu, useAbility, ABIL_STATS, instantPick, priorityRound, yardCastable, otherAbilities, setChosenColor, autoColor, eachTrigger, bestTribeOnBoard, castAftermath, comboPlan, deckLines, xDiscountNow, flashLandWindow, actCost, deckCombos, boardCombo, moreCombos, bookCombo, bookList, exploreMill, tribeBonus, tutorScore, tutorContext, lifeFloor, pumpLethal, activeLocks, ghostDraws, ghostDiscards, wheel, comboKind, comboNeed, sendHome, crackHeld, heldFetches, resolveCombatVs, creatureValue, sagaAdvance, tokenGroups, counterMult, foodsOf, pickSacrifice, linkPod, pickTarget, playPod,
   };
   root.Goldfish = api;
   if (typeof module !== 'undefined') module.exports = api;
